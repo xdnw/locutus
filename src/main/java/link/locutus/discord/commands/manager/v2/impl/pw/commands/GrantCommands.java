@@ -2064,9 +2064,9 @@ public class GrantCommands {
 
             //in the case an unknown error occurs while sending the grant
             if (status.getStatus() == OffshoreInstance.TransferStatus.OTHER) {
-                Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
-                if (blacklist == null) blacklist = new HashSet<>();
-                blacklist.add(receiver.getId());
+                Set<DBNation> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
+                if (blacklist == null) blacklist = new ObjectLinkedOpenHashSet<>();
+                blacklist.add(receiver);
                 GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, user, blacklist);
 
                 Role role = Roles.ECON.toRole2(db);

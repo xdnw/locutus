@@ -748,9 +748,11 @@ public abstract class GuildSetting<T> {
 
     @Command(desc = "The human readable representation of the value")
     @RolePermission(Roles.ADMIN)
-    public String getValueString(@Me GuildDB db) {
+    public String getValueString(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
         T value = getOrNull(db);
-        if (value == null) return null;
+        if (value == null) {
+            return getValueRaw(db, checkDelegate);
+        }
         return toReadableString(db, value);
     }
 
@@ -769,6 +771,7 @@ public abstract class GuildSetting<T> {
     @Command(desc = "The setting raw value string")
     @RolePermission(Roles.ADMIN)
     public String getValueRaw(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
+        if (this == GuildKey.API_KEY) return null;
         return getRaw(db, checkDelegate);
     }
 

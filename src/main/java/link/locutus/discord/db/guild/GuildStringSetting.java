@@ -5,7 +5,10 @@ import link.locutus.discord.db.GuildDB;
 
 public abstract class GuildStringSetting extends GuildSetting<String> {
     public GuildStringSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup) {
-        super(category, subgroup, Key.of(String.class));
+        this(category, subgroup, null);
+    }
+    public GuildStringSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Class annotation) {
+        super(category, subgroup, annotation != null ? Key.of(String.class, annotation) : Key.of(String.class));
     }
 
     @Override

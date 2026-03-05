@@ -16,7 +16,18 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllowAttachment;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Ephemeral;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -25,16 +36,41 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.CustomConditionMessage;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.EnemyAlertChannelMode;
+import link.locutus.discord.db.entities.MMRMatcher;
+import link.locutus.discord.db.entities.MessageTrigger;
+import link.locutus.discord.db.entities.NationFilterString;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.pnw.*;
+import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.BeigeReason;
+import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.GuildOrAlliance;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.AutoAuditType;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.KeyValue;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.IMentionable;
+import net.dv8tion.jda.api.entities.Invite;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONArray;
@@ -43,7 +79,17 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -271,60 +317,60 @@ public class GuildKey {
 //        }
 //    }.setupRequirements(f -> f.requires(OPENAI_KEY));
 
-    public static final GuildSetting<int[]> GPT_USAGE_LIMITS = new GuildSetting<int[]>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null, int[].class) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String GPT_USAGE_LIMITS(@Me GuildDB db, @Me User user, int userTurnLimit, int userDayLimit, int guildTurnLimit, int guildDayLimit) {
-            int[] combined = new int[]{userTurnLimit, userDayLimit, guildTurnLimit, guildDayLimit};
-            return GPT_USAGE_LIMITS.set(db, user, combined);
-        }
-
-        @Override
-        public int[] validate(GuildDB db, User user, int[] limits) {
-            // ensure length = 4
-            if (limits.length != 4) {
-                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + limits.length);
-            }
-            // ensure all > 0
-            for (int limit : limits) {
-                if (limit < 0) {
-                    throw new IllegalArgumentException("Invalid limit. Must be >= 0");
-                }
-            }
-            return limits;
-        }
-
-        @Override
-        public int[] parse(GuildDB db, String input) {
-            // 4 numbers, comma separated
-            String[] split = input.split(",");
-            if (split.length != 4) {
-                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + split.length);
-            }
-            int[] limits = new int[4];
-            for (int i = 0; i < 4; i++) {
-                try {
-                    limits[i] = Integer.parseInt(split[i]);
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid limit. Must be a number, not: `" + split[i] + "`");
-                }
-            }
-            return limits;
-        }
-
-        @Override
-        public String help() {
-            return "gpt user and guild usage limits, by turn and day\n" +
-                    "Used to limit costs incurred from excessive usage" +
-                    "Usage is only tracked per session, and is reset each time the bot restarts";
-        }
-
-        @Override
-        public String toString(int[] value) {
-            return StringMan.join(value, ",");
-        }
-    };
+//    public static final GuildSetting<int[]> GPT_USAGE_LIMITS = new GuildSetting<int[]>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null, int[].class) {
+//        @NoFormat
+//        @Command(descMethod = "help")
+//        @RolePermission(Roles.ADMIN)
+//        public String GPT_USAGE_LIMITS(@Me GuildDB db, @Me User user, int userTurnLimit, int userDayLimit, int guildTurnLimit, int guildDayLimit) {
+//            int[] combined = new int[]{userTurnLimit, userDayLimit, guildTurnLimit, guildDayLimit};
+//            return GPT_USAGE_LIMITS.set(db, user, combined);
+//        }
+//
+//        @Override
+//        public int[] validate(GuildDB db, User user, int[] limits) {
+//            // ensure length = 4
+//            if (limits.length != 4) {
+//                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + limits.length);
+//            }
+//            // ensure all > 0
+//            for (int limit : limits) {
+//                if (limit < 0) {
+//                    throw new IllegalArgumentException("Invalid limit. Must be >= 0");
+//                }
+//            }
+//            return limits;
+//        }
+//
+//        @Override
+//        public int[] parse(GuildDB db, String input) {
+//            // 4 numbers, comma separated
+//            String[] split = input.split(",");
+//            if (split.length != 4) {
+//                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + split.length);
+//            }
+//            int[] limits = new int[4];
+//            for (int i = 0; i < 4; i++) {
+//                try {
+//                    limits[i] = Integer.parseInt(split[i]);
+//                } catch (NumberFormatException e) {
+//                    throw new IllegalArgumentException("Invalid limit. Must be a number, not: `" + split[i] + "`");
+//                }
+//            }
+//            return limits;
+//        }
+//
+//        @Override
+//        public String help() {
+//            return "gpt user and guild usage limits, by turn and day\n" +
+//                    "Used to limit costs incurred from excessive usage" +
+//                    "Usage is only tracked per session, and is reset each time the bot restarts";
+//        }
+//
+//        @Override
+//        public String toString(int[] value) {
+//            return StringMan.join(value, ",");
+//        }
+//    };
 
     public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, null, List.class, String.class) {
         @NoFormat
@@ -601,7 +647,7 @@ public class GuildKey {
                     "Must also set " + RECRUIT_MESSAGE_CONTENT.getCommandMention();
         }
     }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance());
-    public static final GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT, NATION_CREATION) {
+    public static final GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT, NATION_CREATION, TextArea.class) {
 
         private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<\\s*([a-z]+)\\s*[^>]*>.*?<\\s*/\\s*\\1\\s*>", Pattern.DOTALL);
 
@@ -642,7 +688,7 @@ public class GuildKey {
             return "The #channel to receive recruitment message output";
         }
     }.setupRequirements(f -> f.requires(RECRUIT_MESSAGE_SUBJECT).requires(RECRUIT_MESSAGE_CONTENT).requires(API_KEY).requireValidAlliance().requireActiveGuild());
-    public static final GuildSetting<Long> RECRUIT_MESSAGE_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT, NATION_CREATION) {
+    public static final GuildSetting<Long> RECRUIT_MESSAGE_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT, NATION_CREATION, Timediff.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1551,7 +1597,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
 
-    public static final GuildSetting<Long> FORCE_RSS_CONVERSION = new GuildLongSetting(GuildSettingCategory.BANK_CONVERSION, null) {
+    public static final GuildSetting<Long> FORCE_RSS_CONVERSION = new GuildLongSetting(GuildSettingCategory.BANK_CONVERSION, null, Timestamp.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2029,7 +2075,7 @@ public class GuildKey {
             return MAIL_NEW_APPLICANTS.setAndValidate(db, user, enabled);
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
-    public static final GuildSetting<String> MAIL_NEW_APPLICANTS_TEXT = new GuildStringSetting(GuildSettingCategory.RECRUIT, ALLIANCE_APPLICATION) {
+    public static final GuildSetting<String> MAIL_NEW_APPLICANTS_TEXT = new GuildStringSetting(GuildSettingCategory.RECRUIT, ALLIANCE_APPLICATION, TextArea.class) {
         @Override
         public String help() {
             return "The message to send to new applicants via in-game mail.\n" +
@@ -2273,7 +2319,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 
-    public static final GuildSetting<Long> GRANT_REQUEST_DECAY = new GuildLongSetting(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS) {
+    public static final GuildSetting<Long> GRANT_REQUEST_DECAY = new GuildLongSetting(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS, Timediff.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2554,69 +2600,63 @@ public class GuildKey {
             throw new IllegalArgumentException("This guild is not an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
         }
     }, "The guild must be a valid offshore"));
-    public static final GuildSetting<Set<Integer>> GRANT_TEMPLATE_BLACKLIST = new GuildSetting<Set<Integer>>(GuildSettingCategory.BANK_GRANTS, null, Set.class, Integer.class) {
+    public static final GuildSetting<Set<DBNation>> GRANT_TEMPLATE_BLACKLIST = new GuildSetting<Set<DBNation>>(GuildSettingCategory.BANK_GRANTS, null, Set.class, DBNation.class) {
 
         @Command(descMethod = "help")
         @RolePermission(Roles.ECON)
         public String toggleGrants(@Me GuildDB db, DBNation nation) {
+            Set<DBNation> blacklist = GRANT_TEMPLATE_BLACKLIST.getOrNull(db, false);
 
-            Set<Integer> blacklist = GRANT_TEMPLATE_BLACKLIST.getOrNull(db, false);
+            if(blacklist == null) blacklist = new ObjectLinkedOpenHashSet<>();
 
-            if(blacklist == null)
-                blacklist = new HashSet<>();
-
-            if(!blacklist.contains(nation.getId())) {
-                blacklist.add(nation.getId());
+            if(!blacklist.contains(nation)) {
+                blacklist.add(nation);
                 GRANT_TEMPLATE_BLACKLIST.set(db, null, blacklist);
-
                 return "Member has been added to the black list";
             }
             else {
-                blacklist.remove(nation.getId());
+                blacklist.remove(nation);
                 GRANT_TEMPLATE_BLACKLIST.set(db, null, blacklist);
-
                 return "Member has been removed from the black list";
             }
         }
 
         @Override
         public String help() {
-            return "The id of the member you want to add to the blacklist";
+            return "The id of the nation you want to add to the blacklist";
         }
 
         @Override
-        public Set<Integer> validate(GuildDB db, User user, Set<Integer> nationIDs) {
-            for(int id : nationIDs) {
-                DBNation nation = DBNation.getById(id);
-
-                if(nation == null)
-                    throw new IllegalArgumentException("Nation does not exist");
+        public Set<DBNation> validate(GuildDB db, User user, Set<DBNation> nationIDs) {
+            for(DBNation n : nationIDs) {
+                if (!n.isValid()) {
+                    throw new IllegalArgumentException("Nation: `" + n.getId() + "` is not valid");
+                }
             }
 
             return nationIDs;
         }
 
         @Override
-        public String toReadableString(GuildDB db, Set<Integer> value) {
-
+        public String toReadableString(GuildDB db, Set<DBNation> value) {
             List<String> names = new ArrayList<>();
-
-            for (int id : value) {
-                DBNation nation = DBNation.getById(id);
-                // add name to list, or add the id if nation is null
-
+            for (DBNation nation : value) {
                 if(nation == null)
                     names.add(nation.getId() + "");
                 else
                     names.add(nation.getName());
             }
-
             return String.join(",", names);
         }
 
         @Override
-        public String toString(Set<Integer> value) {
-            return StringMan.join(value, ",");
+        public Set<DBNation> parse(GuildDB db, String input) {
+            return DiscordUtil.parseNations(db == null ? null : db.getGuild(), null, null, input, false, true);
+        }
+
+        @Override
+        public String toString(Set<DBNation> value) {
+            return value.stream().map(f -> f.getId() + "").collect(Collectors.joining(","));
         }
     };
 
@@ -2723,7 +2763,7 @@ public class GuildKey {
     }.setupRequirements(f -> f.requireValidAlliance().requiresOffshore());
 
     // add a limit interval
-    public static final GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.BANK_GRANTS, GRANT_TEMPLATE_LIMIT) {
+    public static final GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.BANK_GRANTS, GRANT_TEMPLATE_LIMIT, Timediff.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)

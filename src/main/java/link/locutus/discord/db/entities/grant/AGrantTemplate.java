@@ -445,16 +445,16 @@ public abstract class AGrantTemplate<T> {
             }
         }));
 
-        Set<Integer> blacklist = db == null ? null : GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
+        Set<DBNation> blacklist = db == null ? null : GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
 
         if(blacklist == null)
             blacklist = Collections.emptySet();
 
-        Set<Integer> finalBlacklist = blacklist;
+        Set<DBNation> finalBlacklist = blacklist;
         list.add(new Grant.Requirement("Nation must NOT be added to setting: `GRANT_TEMPLATE_BLACKLIST`", false, new Function<DBNation, Boolean>() {
            @Override
            public Boolean apply(DBNation dbNation) {
-               return !finalBlacklist.contains(dbNation.getId());
+               return !finalBlacklist.contains(dbNation);
            }
        }));
 //

@@ -260,11 +260,14 @@ public class AuthBindings extends WebBindingHelper {
                     UUID uuid = UUID.fromString(uuidStr);
                     if (uuid != null) {
                         record = WebRoot.db().get(uuid);
+                        if (record == null) {
+                            context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
+                            errors.add("Auth record not found for " + PageHandler.CookieType.DISCORD_OAUTH.name() + " cookie UUID: " + uuid);
+                        }
                     }
                 } catch (IllegalArgumentException e) {
                     context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
-                    uuidStr = null;
-                    errors.add("Invalid cookie: " + uuidStr);
+                    errors.add("Invalid UUID in " + PageHandler.CookieType.DISCORD_OAUTH.name() + " cookie: " + uuidStr);
                 }
             }
 
@@ -295,6 +298,10 @@ public class AuthBindings extends WebBindingHelper {
                 if (commandAuth != null) {
                     UUID uuid = UUID.fromString(commandAuth);
                     record = WebRoot.db().get(uuid);
+                    if (record == null) {
+                        context.removeCookie(PageHandler.CookieType.URL_AUTH.getCookieId());
+                        errors.add("Auth record not found for " + PageHandler.CookieType.URL_AUTH.name() + " cookie UUID: " + uuid);
+                    }
                 }
             }
         }
@@ -379,6 +386,10 @@ public class AuthBindings extends WebBindingHelper {
             }
             if ((user != null || nation != null) && (!requireNation || nation != null)) {
                 return record;
+            }
+        } else {
+            if (context.cookie(PageHandler.CookieType.URL_AUTH_SET.getCookieId()) != null) {
+                context.removeCookie(PageHandler.CookieType.URL_AUTH_SET.getCookieId());
             }
         }
 

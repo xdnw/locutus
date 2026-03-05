@@ -5,20 +5,43 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.*;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.CommandGroup;
+import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.ResearchCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.SettingCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
@@ -33,6 +56,8 @@ import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.db.entities.menu.MenuState;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildSettingCategory;
+import link.locutus.discord.db.guild.GuildSettingSubgroup;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
@@ -50,7 +75,16 @@ import org.json.JSONObject;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -89,6 +123,17 @@ public class CommandManager2 {
         WebRoot web = WebRoot.getInstance();
         if (web != null) {
             addParsers.accept(web.getPageHandler().getCommands());
+        }
+        { // Manually add parsers
+            List<Class<?>> manual = List.of(GuildSettingCategory.class, GuildSettingSubgroup.class);
+            for (Class<?> t : manual) {
+                Parser<?> parser = store.get(Key.of(t));
+                if (parser != null) {
+                    parsers.add(parser);
+                } else {
+                    Logg.info("No parser for " + t.getSimpleName());
+                }
+            }
         }
 
         for (Parser<?> parser : parsers) {

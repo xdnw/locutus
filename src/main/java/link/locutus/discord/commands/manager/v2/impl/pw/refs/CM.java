@@ -8955,28 +8955,6 @@ public class CM {
 
             }
         }
-        public static class settings_artificial_intelligence{
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GPT_USAGE_LIMITS", field="GPT_USAGE_LIMITS")
-            public static class GPT_USAGE_LIMITS extends CommandRef {
-                public static final GPT_USAGE_LIMITS cmd = new GPT_USAGE_LIMITS();
-            public GPT_USAGE_LIMITS userTurnLimit(String value) {
-                return set("userTurnLimit", value);
-            }
-
-            public GPT_USAGE_LIMITS userDayLimit(String value) {
-                return set("userDayLimit", value);
-            }
-
-            public GPT_USAGE_LIMITS guildTurnLimit(String value) {
-                return set("guildTurnLimit", value);
-            }
-
-            public GPT_USAGE_LIMITS guildDayLimit(String value) {
-                return set("guildDayLimit", value);
-            }
-
-            }
-        }
         public static class settings_audit{
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DISABLED_MEMBER_AUDITS", field="DISABLED_MEMBER_AUDITS")
             public static class DISABLED_MEMBER_AUDITS extends CommandRef {

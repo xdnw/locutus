@@ -3,12 +3,15 @@ package link.locutus.discord.gpt.pw;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.GptHandler;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.builder.api.*;
+import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.api.LoggerComponentBuilder;
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +60,7 @@ public class LimitManager {
             provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.GUILD_TURN_LIMIT);
             provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.GUILD_DAY_LIMIT);
 
-            int[] localLimits = GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
+            int[] localLimits = {};//GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
             if (localLimits != null) {
                 // min between both
                 provider.setTurnLimit(Math.min(provider.getTurnLimit(), localLimits[0]));

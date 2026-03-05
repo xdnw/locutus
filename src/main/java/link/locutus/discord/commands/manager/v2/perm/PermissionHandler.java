@@ -1,6 +1,12 @@
 package link.locutus.discord.commands.manager.v2.perm;
 
-import link.locutus.discord.commands.manager.v2.binding.*;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import net.dv8tion.jda.api.entities.User;
 
 import java.lang.annotation.Annotation;
 
@@ -14,7 +20,9 @@ public class PermissionHandler extends SimpleValueStore {
 
             boolean hasPerm = (Boolean) parser.apply(locals, null);
             if (!hasPerm) {
-                throw new IllegalCallerException("No permission for `" + parser.getKey().toSimpleString() + "`: `" + parser.getDescription() + "`");
+                User userOrNull = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                String prefix = userOrNull != null ? "`" + userOrNull.getAsTag() + "` lacking permission: " : "Lacking permission: ";
+                throw new IllegalCallerException(prefix + "`" + parser.getKey().toSimpleString() + "`: `" + parser.getDescription() + "`");
             }
         }
     }
