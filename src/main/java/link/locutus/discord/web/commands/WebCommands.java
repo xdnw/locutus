@@ -30,10 +30,9 @@ public class WebCommands {
     @Command(desc = "Get the login code for the web interface")
     @Ephemeral
     public String web(@Me DBNation nation, @Me User user, @Me @Default GuildDB db) {
-        UUID uuid = WebUtil.generateSecureUUID();
-        DBAuthRecord token = WebRoot.db().updateToken(uuid, nation.getId(), user.getIdLong());
+        DBAuthRecord token = WebUtil.getOrGenerateAuth(nation.getId(), user.getIdLong());
         List<String> urls = new ArrayList<>();
-        String frontEndUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login/" + uuid;
+        String frontEndUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login/" + token.token;
         if (db != null) {
             frontEndUrl += "?guild=" + db.getIdLong();
         }

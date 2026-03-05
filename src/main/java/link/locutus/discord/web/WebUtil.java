@@ -87,14 +87,7 @@ public class WebUtil {
     }
 
     public static String mailLogin(ApiKeyPool pool, DBNation nation, boolean backend, boolean allowExisting) throws IOException {
-        DBAuthRecord existing = null;
-        if (allowExisting) {
-            existing = WebRoot.db().get(nation.getNation_id());
-        }
-        if (existing == null) {
-            UUID uuid = WebUtil.generateSecureUUID();
-            existing = WebRoot.db().updateToken(uuid, nation.getNation_id(), null);
-        }
+        DBAuthRecord existing = WebUtil.getOrGenerateAuth(nation.getId(), null);
         UUID uuid = existing.token;
         String authUrl;
         if (backend) {
@@ -133,6 +126,27 @@ public class WebUtil {
         } catch (MalformedURLException e) {
             return 443;
         }
+    }
+
+    public static DBAuthRecord getOrGenerateAuth(Integer nationId, Long userId) {
+        if (nationId == null && userId == null) throw new IllegalArgumentException("Must provide either nationId or userId");
+        DBAuthRecord existing = null;
+        if (nationId != null) {
+            existing = WebRoot.db().get(nationId);
+        }
+        if (userId != null) {
+            DBAuthRecord userToken = WebRoot.db().get(userId);
+            if (userToken != null && existing != null && !userToken.token.equals(existing.token)) {
+                WebRoot.db().removeToken(existing.token, existing.getNationId(), null);
+                WebRoot.db().updateToken(userToken.token, nationId, userId);
+                existing = userToken;
+            }
+        }
+        if (existing == null) {
+            UUID uuid = WebUtil.generateSecureUUID();
+            existing = WebRoot.db().updateToken(uuid, nationId, userId);
+        }
+        return existing;
     }
 
     public static UUID generateSecureUUID() {

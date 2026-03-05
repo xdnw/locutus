@@ -210,7 +210,6 @@ public class AuthBindings extends WebBindingHelper {
     }
 
     public static DBAuthRecord generateAuthRecord(Context context, long userId, Integer previousNationId) {
-        UUID newUUID = WebUtil.generateSecureUUID();
         DBNation nationExisting = DiscordUtil.getNation(userId);
         Integer nationId = null;
         if (nationExisting == null && previousNationId != null && DBNation.getById(previousNationId) != null) {
@@ -219,7 +218,7 @@ public class AuthBindings extends WebBindingHelper {
             PNWUser pnwUser = new PNWUser(nationId, userId, fullDiscriminator);
             Locutus.imp().getDiscordDB().addUser(pnwUser);
         }
-        return WebRoot.db().updateToken(newUUID, nationId, userId);
+        return WebUtil.getOrGenerateAuth(previousNationId, userId);
     }
 
     public static DBAuthRecord getAuth(WebStore ws, Context context, boolean allowRedirect, boolean requireNation, boolean requireUser) throws IOException {
@@ -352,7 +351,7 @@ public class AuthBindings extends WebBindingHelper {
             }
             if (nation != null) {
                 try {
-                    String mailUrl = WebUtil.mailLogin(nation, isBackend, false);
+                    String mailUrl = WebUtil.mailLogin(nation, isBackend, true);
                     throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
                 } catch (IllegalArgumentException e) {
                     errors.add(e.getMessage());
