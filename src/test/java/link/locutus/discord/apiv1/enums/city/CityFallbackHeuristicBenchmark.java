@@ -29,7 +29,6 @@ public final class CityFallbackHeuristicBenchmark {
     private static final double GROSS_MODIFIER = 0d;
 
     private static final int DEFAULT_SCENARIOS = 7;
-    private static final int DEFAULT_DONORS_PER_SCENARIO = 400;
     private static final int DEFAULT_WARMUP_ROUNDS = 2;
     private static final int DEFAULT_MEASURE_ROUNDS = 5;
 
@@ -37,8 +36,13 @@ public final class CityFallbackHeuristicBenchmark {
     }
 
     public static void main(String[] args) {
+        runBulkBatchBenchmark();
+        // runRegressionBench();
+        System.exit(0);
+    }
+
+    public static void runRegressionBench() {
         int scenarioCount = Integer.getInteger("cityFallbackBenchScenarios", DEFAULT_SCENARIOS);
-        int donorsPerScenario = Integer.getInteger("cityFallbackBenchDonors", DEFAULT_DONORS_PER_SCENARIO);
         int warmupRounds = Integer.getInteger("cityFallbackBenchWarmups", DEFAULT_WARMUP_ROUNDS);
         int measureRounds = Integer.getInteger("cityFallbackBenchRounds", DEFAULT_MEASURE_ROUNDS);
         long seed = Long.getLong("cityFallbackBenchSeed", 20260302L);
@@ -264,6 +268,42 @@ public final class CityFallbackHeuristicBenchmark {
 
     private static double nanosToMillis(long nanos) {
         return nanos / 1_000_000d;
+    }
+
+    private static void runBulkBatchBenchmark() {
+        int entryCount = 5000;
+
+        /* load donors from the DB so the bulk test mirrors real data */
+        List<Scenario> scenarios = createDbScenario(entryCount);
+        Collection<DBCity> donors = scenarios.get(0).donors; // shared set
+
+        int donorCount = donors.size();
+        System.out.printf(Locale.ROOT,
+                "\n=== bulk batch benchmark entries=%d, donors=%d ===%n",
+                entryCount,
+                donorCount);
+
+        BatchEntry[] batch = new BatchEntry[entryCount];
+        for (int i = 0; i < entryCount; i++) {
+            JavaCity src = scenarios.get(i).source;
+            batch[i] = new BatchEntry(src, CONTINENT, NUM_CITIES, 0L, RADS, GROSS_MODIFIER);
+        }
+
+        System.out.println("prepared batch, starting benchmark...");
+
+        long start = System.nanoTime();
+        INationCity[] results = CityFallbackHeuristic.findBestBatch(
+                batch,
+                CityFallbackHeuristicBenchmark::scoreCity,
+                null,
+                null,
+                donors);
+        long elapsed = System.nanoTime() - start;
+
+        System.out.printf(Locale.ROOT,
+                "bulk batch call took %.3f ms, results=%d%n",
+                nanosToMillis(elapsed),
+                results == null ? 0 : results.length);
     }
 
     private record Scenario(JavaCity source, Collection<DBCity> donors) {
