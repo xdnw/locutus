@@ -1,8 +1,8 @@
 package link.locutus.discord.apiv1.enums.city;
 
 
-import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -22,11 +22,10 @@ import link.locutus.discord.util.math.ArrayUtil;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -35,10 +34,13 @@ import java.util.function.ToDoubleFunction;
 public final class CityFallbackHeuristic {
     private static final ForkJoinPool SHARED_POOL = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
     private static final int BEAM_WIDTH = 8;
-    private static final int PARALLEL_THRESHOLD = 64;
-    private static final int QUERY_PARALLEL_THRESHOLD = 4;
+    private static final int PARALLEL_THRESHOLD = 2048;
+    private static final int QUERY_PARALLEL_THRESHOLD = 8;
     private static final boolean EAGER_INCUMBENT_PUBLISH = true;
     private static final double PRE_SCORE_PRUNE_SLACK = 0d;
+
+    private static final int SCORE_CACHE_CAPACITY = 4096;
+    private static final int BEAM_SET_CAPACITY = 512;
 
     private static final int HOSPITAL_ORDINAL = Buildings.HOSPITAL.ordinal();
     private static final int POLICE_ORDINAL = Buildings.POLICE_STATION.ordinal();
@@ -178,7 +180,9 @@ public final class CityFallbackHeuristic {
         fixedBuildingCounts[Buildings.NUCLEAR_POWER.ordinal()] = targetPowerSignature[2];
         fixedBuildingCounts[Buildings.WIND_POWER.ordinal()] = targetPowerSignature[3];
 
-        this.fixedBuildingTotal = Arrays.stream(targetMilitarySignature).sum() + Arrays.stream(targetPowerSignature).sum();
+        this.fixedBuildingTotal =
+                targetMilitarySignature[0] + targetMilitarySignature[1] + targetMilitarySignature[2] + targetMilitarySignature[3]
+                        + targetPowerSignature[0] + targetPowerSignature[1] + targetPowerSignature[2] + targetPowerSignature[3];
         this.fixedRequiredInfra = fixedBuildingTotal * 50d;
         this.originRequiredInfra = origin.getRequiredInfra();
         this.targetPoweredInfra = targetSignature.getPoweredInfra();
@@ -241,7 +245,7 @@ public final class CityFallbackHeuristic {
         this.ageBonus = originCreated <= 0 || originCreated == Long.MAX_VALUE
                 ? 1d
                 : (1d + Math.log(Math.max(1d,
-                TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - originCreated)))
+                TimeUnit.MILLISECONDS.toDays(Math.max(0L, evalDate - originCreated))))
                 * 0.06666666666666667d);
         this.newPlayerBonus = 1d + Math.max(1d - (numCities - 1) * 0.05d, 0d);
         this.incomeFactor = newPlayerBonus * grossModifier;
@@ -261,10 +265,57 @@ public final class CityFallbackHeuristic {
         }
     }
 
-    public static void main(String[] args) {
-        for (int i = 1; i < 50; i++) {
-            System.out.println(i + ". " + (Math.max(1d - (i - 1) * 0.05d, 0d)));
+    public static final class PreparedSearch {
+        private final SharedBatchContext shared;
+
+        private PreparedSearch(SharedBatchContext shared) {
+            this.shared = shared;
         }
+    }
+
+    public static PreparedSearch prepare(
+            Continent continent,
+            int numCities,
+            Predicate<Project> hasProject,
+            double rads,
+            double grossModifier,
+            Collection<DBCity> donors
+    ) {
+        long projectBits = toProjectBits(hasProject);
+        return new PreparedSearch(
+                new SharedBatchContext(
+                        new BatchGroupKey(
+                                continent,
+                                numCities,
+                                projectBits,
+                                Double.doubleToLongBits(rads),
+                                Double.doubleToLongBits(grossModifier)
+                        ),
+                        donors
+                )
+        );
+    }
+
+    public static INationCity findBest(
+            ICity source,
+            PreparedSearch prepared,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Double infraLow
+    ) {
+        CityFallbackHeuristic ctx = create(source, prepared.shared, valueFunction, goal, infraLow);
+        return ctx == null ? null : ctx.searchPrepared(prepared.shared.beamDonors, true, true);
+    }
+
+    public static INationCity findBestExactSlotOnly(
+            ICity source,
+            PreparedSearch prepared,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Double infraLow
+    ) {
+        CityFallbackHeuristic ctx = create(source, prepared.shared, valueFunction, goal, infraLow);
+        return ctx == null ? null : ctx.searchPrepared(prepared.shared.exactDonors, false, true);
     }
 
     public static INationCity findBest(
@@ -279,19 +330,13 @@ public final class CityFallbackHeuristic {
             Double infraLow,
             Collection<DBCity> donors
     ) {
-        long projectBits = toProjectBits(hasProject);
-        SharedBatchContext shared = new SharedBatchContext(
-                new BatchGroupKey(
-                        continent,
-                        numCities,
-                        projectBits,
-                        Double.doubleToLongBits(rads),
-                        Double.doubleToLongBits(grossModifier)
-                ),
-                donors
+        return findBest(
+                source,
+                prepare(continent, numCities, hasProject, rads, grossModifier, donors),
+                valueFunction,
+                goal,
+                infraLow
         );
-        CityFallbackHeuristic ctx = create(source, shared, valueFunction, goal, infraLow);
-        return ctx == null ? null : ctx.searchPrepared(shared.beamDonors, true, true);
     }
 
     public static INationCity findBestExactSlotOnly(
@@ -306,19 +351,13 @@ public final class CityFallbackHeuristic {
             Double infraLow,
             Collection<DBCity> donors
     ) {
-        long projectBits = toProjectBits(hasProject);
-        SharedBatchContext shared = new SharedBatchContext(
-                new BatchGroupKey(
-                        continent,
-                        numCities,
-                        projectBits,
-                        Double.doubleToLongBits(rads),
-                        Double.doubleToLongBits(grossModifier)
-                ),
-                donors
+        return findBestExactSlotOnly(
+                source,
+                prepare(continent, numCities, hasProject, rads, grossModifier, donors),
+                valueFunction,
+                goal,
+                infraLow
         );
-        CityFallbackHeuristic ctx = create(source, shared, valueFunction, goal, infraLow);
-        return ctx == null ? null : ctx.searchPrepared(shared.exactDonors, false, true);
     }
 
     public static INationCity[] findBestBatch(
@@ -352,34 +391,37 @@ public final class CityFallbackHeuristic {
         INationCity[] results = new INationCity[entries.length];
         if (entries.length == 0) return results;
 
-        Map<BatchGroupKey, List<Integer>> groups = new LinkedHashMap<>();
+        Map<BatchGroupKey, IntArrayList> groups = new LinkedHashMap<>();
         for (int i = 0; i < entries.length; i++) {
-            groups.computeIfAbsent(keyOf(entries[i]), k -> new ObjectArrayList<>()).add(i);
+            groups.computeIfAbsent(keyOf(entries[i]), k -> new IntArrayList()).add(i);
         }
 
-        for (Map.Entry<BatchGroupKey, List<Integer>> grouped : groups.entrySet()) {
+        for (Map.Entry<BatchGroupKey, IntArrayList> grouped : groups.entrySet()) {
             SharedBatchContext shared = new SharedBatchContext(grouped.getKey(), donors);
             ObjectArrayList<PackedDonor> donorList = useBeamSearch ? shared.beamDonors : shared.exactDonors;
-            List<Integer> indexes = grouped.getValue();
+            IntArrayList indexes = grouped.getValue();
 
             if (SHARED_POOL.getParallelism() <= 1 || indexes.size() < QUERY_PARALLEL_THRESHOLD) {
-                boolean parallelizeDonors = indexes.size() == 1;
+                boolean parallelizeDonors = indexes.size() <= 2;
                 for (int i = 0; i < indexes.size(); i++) {
-                    int idx = indexes.get(i);
+                    int idx = indexes.getInt(i);
                     CityFallbackHeuristic ctx = create(entries[idx].source(), shared, valueFunction, goal, infraLow);
                     results[idx] = ctx == null ? null : ctx.searchPrepared(donorList, useBeamSearch, parallelizeDonors);
                 }
             } else {
-                try {
-                    SHARED_POOL.submit(() ->
-                            indexes.parallelStream().forEach(idx -> {
-                                CityFallbackHeuristic ctx = create(entries[idx].source(), shared, valueFunction, goal, infraLow);
-                                results[idx] = ctx == null ? null : ctx.searchPrepared(donorList, useBeamSearch, false);
-                            })
-                    ).get();
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException("Failed during batch fallback evaluation", e);
-                }
+                SHARED_POOL.invoke(new BatchSearchTask(
+                        entries,
+                        results,
+                        indexes.toIntArray(),
+                        0,
+                        indexes.size(),
+                        shared,
+                        donorList,
+                        useBeamSearch,
+                        valueFunction,
+                        goal,
+                        infraLow
+                ));
             }
         }
 
@@ -394,7 +436,7 @@ public final class CityFallbackHeuristic {
             Double infraLow
     ) {
         DBCity origin = new SimpleDBCity(source);
-        double targetInfra = Objects.requireNonNullElseGet(infraLow, origin::getInfra);
+        double targetInfra = infraLow != null ? infraLow : origin.getInfra();
 
         SimpleDBCity sig = new SimpleDBCity(origin);
         sig.setInfra(targetInfra);
@@ -403,7 +445,10 @@ public final class CityFallbackHeuristic {
         int[] milSig = getMilitarySignature(origin);
         int[] powSig = getPowerSignature(sig);
         int totalSlots = (int) (ArrayUtil.toCents(targetInfra) / 50_00);
-        int fixedSlots = Arrays.stream(milSig).sum() + Arrays.stream(powSig).sum();
+        int fixedSlots =
+                milSig[0] + milSig[1] + milSig[2] + milSig[3]
+                        + powSig[0] + powSig[1] + powSig[2] + powSig[3];
+
         int civilianSlots = totalSlots - fixedSlots;
         if (civilianSlots <= 0) return null;
 
@@ -424,42 +469,20 @@ public final class CityFallbackHeuristic {
     private INationCity searchPrepared(ObjectArrayList<PackedDonor> donorList, boolean useBeamSearch, boolean parallelizeDonors) {
         bestValueSoFar = Double.NEGATIVE_INFINITY;
 
-        int parallelism = SHARED_POOL.getParallelism();
         EvaluatedCandidate best;
-
-        if (!parallelizeDonors || parallelism <= 1 || donorList.size() < PARALLEL_THRESHOLD) {
+        if (!parallelizeDonors || SHARED_POOL.getParallelism() <= 1 || donorList.size() < PARALLEL_THRESHOLD) {
             best = null;
             DonorWorker worker = newDonorWorker();
             for (int i = 0; i < donorList.size(); i++) {
-                PackedDonor donor = donorList.get(i);
-                EvaluatedCandidate candidate = evaluateDonor(donor, useBeamSearch, worker);
-                best = chooseBetter(best, candidate);
-                if (candidate != null) {
-                    publishBestMaybe(candidate.value());
+                EvaluatedCandidate candidate = evaluateDonor(donorList.get(i), useBeamSearch, worker);
+                EvaluatedCandidate next = chooseBetter(best, candidate);
+                if (next != best && next != null && EAGER_INCUMBENT_PUBLISH) {
+                    publishBestMaybe(next.value());
                 }
+                best = next;
             }
         } else {
-            try {
-                best = SHARED_POOL.submit(() -> donorList.parallelStream()
-                        .collect(
-                                () -> new ParallelAccumulator(newDonorWorker()),
-                                (acc, donor) -> {
-                                    EvaluatedCandidate candidate = evaluateDonor(donor, useBeamSearch, acc.worker);
-                                    acc.best = chooseBetter(acc.best, candidate);
-                                    if (EAGER_INCUMBENT_PUBLISH && candidate != null) {
-                                        publishBestMaybe(candidate.value());
-                                    }
-                                },
-                                (left, right) -> {
-                                    left.best = chooseBetter(left.best, right.best);
-                                    if (left.best != null) {
-                                        publishBestMaybe(left.best.value());
-                                    }
-                                }
-                        ).best).get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException("Failed during fallback donor evaluation", e);
-            }
+            best = SHARED_POOL.invoke(new DonorRangeTask(donorList, useBeamSearch, 0, donorList.size()));
         }
 
         if (best == null) return null;
@@ -474,8 +497,6 @@ public final class CityFallbackHeuristic {
         PreparedDonors prepared = preparePackedDonors(
                 donors,
                 civilianCaps,
-                addableCivilianIndices,
-                packedCivilianIndices,
                 civilianOrdinals,
                 civilianShift,
                 civilianMask
@@ -484,31 +505,15 @@ public final class CityFallbackHeuristic {
     }
 
     private EvaluatedCandidate evaluateDonor(PackedDonor packedDonor, boolean useBeamSearch, DonorWorker worker) {
-        worker.localScoreCache().clear();
+        worker.localScoreCache().reset();
 
         DBCity donor = packedDonor.donor();
-        long donorState = packedDonor.packed();
-
         long candidateState;
         PackedCandidateView view = worker.view();
 
         if (useBeamSearch) {
-            long repairedState = donorState;
-            int civilianCount = 0;
-
-            for (int idx = 0; idx < packedCivilianIndices.length; idx++) {
-                int bi = packedCivilianIndices[idx];
-                int current = (int) ((repairedState & civilianMask[bi]) >>> civilianShift[bi]);
-                if (current <= 0) continue;
-
-                int cap = civilianCaps[bi];
-                int clamped = Math.min(current, cap);
-                if (clamped != current) {
-                    repairedState = (repairedState & ~civilianMask[bi])
-                            | (((long) clamped << civilianShift[bi]) & civilianMask[bi]);
-                }
-                civilianCount += clamped;
-            }
+            long repairedState = packedDonor.clampedPacked();
+            int civilianCount = packedDonor.postClampCivilianCount();
 
             if (!isFastStructurallyFeasible(Math.min(civilianCount, targetCivilianSlots))) return null;
 
@@ -530,7 +535,7 @@ public final class CityFallbackHeuristic {
         } else {
             if (packedDonor.postClampCivilianCount() != targetCivilianSlots) return null;
             if (packedDonor.rawCivilianCount() != targetCivilianSlots) return null;
-            candidateState = donorState;
+            candidateState = packedDonor.clampedPacked();
         }
 
         if (goal != null) {
@@ -541,7 +546,7 @@ public final class CityFallbackHeuristic {
         double value = scoreState(candidateState, view, worker);
         if (!Double.isFinite(value)) return null;
 
-        return new EvaluatedCandidate(donor, candidateState, value, donor.getId());
+        return new EvaluatedCandidate(donor, candidateState, value, packedDonor.donorId());
     }
 
     private EvaluatedCandidate chooseBetter(EvaluatedCandidate left, EvaluatedCandidate right) {
@@ -558,7 +563,7 @@ public final class CityFallbackHeuristic {
         int bestIndex = -1;
         double bestValue = Double.NEGATIVE_INFINITY;
         PackedCandidateView childView = worker.childView();
-        Long2DoubleOpenHashMap localScoreCache = worker.localScoreCache();
+        StateScoreCache localScoreCache = worker.localScoreCache();
 
         for (int idx = 0; idx < addableCivilianIndices.length; idx++) {
             int bi = addableCivilianIndices[idx];
@@ -595,17 +600,14 @@ public final class CityFallbackHeuristic {
     }
 
     private DonorWorker newDonorWorker() {
-        Long2DoubleOpenHashMap localScoreCache = new Long2DoubleOpenHashMap(4096);
-        localScoreCache.defaultReturnValue(Double.NaN);
-        LongOpenHashSet beamSet = new LongOpenHashSet(BEAM_WIDTH * NUM_CIVILIAN_BUILDINGS * 2);
         return new DonorWorker(
                 new PackedCandidateView(),
                 new PackedCandidateView(),
                 new long[BEAM_WIDTH],
                 new long[BEAM_WIDTH],
                 new double[BEAM_WIDTH],
-                localScoreCache,
-                beamSet
+                new StateScoreCache(SCORE_CACHE_CAPACITY),
+                new LongStateSet(BEAM_SET_CAPACITY)
         );
     }
 
@@ -636,12 +638,13 @@ public final class CityFallbackHeuristic {
         beamStates[0] = startState;
 
         PackedCandidateView childView = worker.childView();
-        Long2DoubleOpenHashMap localScoreCache = worker.localScoreCache();
-        LongOpenHashSet beamSet = worker.beamSet();
+        StateScoreCache localScoreCache = worker.localScoreCache();
+        LongStateSet beamSet = worker.beamSet();
 
         for (int i = 0; i < steps; i++) {
             if (i > 0 && !addMode && topScores[0] + PRE_SCORE_PRUNE_SLACK < bestValueSoFar) return Long.MIN_VALUE;
-            beamSet.clear();
+            beamSet.reset();
+
             int stepCivilianCount = addMode ? (startCivilianCount + i + 1) : (startCivilianCount - i - 1);
             if (!isFastStructurallyFeasible(stepCivilianCount)) return Long.MIN_VALUE;
 
@@ -664,7 +667,6 @@ public final class CityFallbackHeuristic {
                         if (!beamSet.add(childState)) continue;
 
                         double value = localScoreCache.get(childState);
-
                         if (Double.isNaN(value)) {
                             view.unpacked[ordinal] = amt + 1;
                             childView.setCivilianStateIncremental(view, bi, amt, amt + 1);
@@ -704,7 +706,6 @@ public final class CityFallbackHeuristic {
                         if (!beamSet.add(childState)) continue;
 
                         double value = localScoreCache.get(childState);
-
                         if (Double.isNaN(value)) {
                             view.unpacked[ordinal] = amt - 1;
                             childView.setCivilianStateIncremental(view, bi, amt, amt - 1);
@@ -784,7 +785,7 @@ public final class CityFallbackHeuristic {
     }
 
     private double scoreState(long state, PackedCandidateView view, DonorWorker worker) {
-        Long2DoubleOpenHashMap local = worker.localScoreCache();
+        StateScoreCache local = worker.localScoreCache();
         double cached = local.get(state);
         if (!Double.isNaN(cached)) return cached;
 
@@ -794,11 +795,7 @@ public final class CityFallbackHeuristic {
         return computed;
     }
 
-    private int getCivilianCount(DBCity city) {
-        return getCivilianCountStatic(city);
-    }
-
-    private static int getCivilianCountStatic(DBCity city) {
+    private static int getCivilianCount(DBCity city) {
         byte[] buildings = city.getBuildings3();
         int total = 0;
 
@@ -909,26 +906,84 @@ public final class CityFallbackHeuristic {
     private static PreparedDonors preparePackedDonors(
             Collection<DBCity> donors,
             int[] civilianCaps,
-            int[] addableCivilianIndices,
-            int[] packedCivilianIndices,
             int[] civilianOrdinals,
             int[] civilianShift,
             long[] civilianMask
     ) {
-        LongOpenHashSet seenBeamStates = new LongOpenHashSet(Math.max(16, donors.size() * 2));
-        ObjectArrayList<PackedDonor> beam = new ObjectArrayList<>(donors.size());
+        Long2IntOpenHashMap exactIndexByRawPacked = new Long2IntOpenHashMap(Math.max(16, donors.size() * 2));
+        exactIndexByRawPacked.defaultReturnValue(-1);
         ObjectArrayList<PackedDonor> exact = new ObjectArrayList<>(donors.size());
 
         for (DBCity donor : donors) {
-            long packed = packCivilianState(donor, packedCivilianIndices, civilianOrdinals, civilianShift, civilianMask);
-            int postClampCivilianCount = estimatePostClampCivilianCount(donor, civilianCaps, addableCivilianIndices, civilianOrdinals);
-            int rawCivilianCount = getCivilianCountStatic(donor);
+            byte[] buildings = donor.getBuildings3();
 
-            PackedDonor packedDonor = new PackedDonor(donor, packed, postClampCivilianCount, rawCivilianCount);
-            exact.add(packedDonor);
+            long rawPacked = 0L;
+            long clampedPacked = 0L;
+            int rawCivilianCount = 0;
+            int postClampCivilianCount = 0;
 
-            if (seenBeamStates.add(packed)) {
+            if (buildings.length == PW.City.Building.SIZE) {
+                for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
+                    int current = buildings[civilianOrdinals[i]] & 0xFF;
+                    rawCivilianCount += current;
+
+                    long mask = civilianMask[i];
+                    if (mask != 0L && current != 0) {
+                        rawPacked |= ((long) current << civilianShift[i]) & mask;
+                    }
+
+                    int cap = civilianCaps[i];
+                    if (cap <= 0 || current <= 0) continue;
+
+                    int clamped = Math.min(current, cap);
+                    postClampCivilianCount += clamped;
+                    clampedPacked |= ((long) clamped << civilianShift[i]) & mask;
+                }
+            } else {
+                for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
+                    int current = donor.getBuildingOrdinal(civilianOrdinals[i]);
+                    rawCivilianCount += current;
+
+                    long mask = civilianMask[i];
+                    if (mask != 0L && current != 0) {
+                        rawPacked |= ((long) current << civilianShift[i]) & mask;
+                    }
+
+                    int cap = civilianCaps[i];
+                    if (cap <= 0 || current <= 0) continue;
+
+                    int clamped = Math.min(current, cap);
+                    postClampCivilianCount += clamped;
+                    clampedPacked |= ((long) clamped << civilianShift[i]) & mask;
+                }
+            }
+
+            int donorId = donor.getId();
+            PackedDonor packedDonor = new PackedDonor(donor, clampedPacked, postClampCivilianCount, rawCivilianCount, donorId);
+
+            int exactIndex = exactIndexByRawPacked.get(rawPacked);
+            if (exactIndex < 0) {
+                exactIndexByRawPacked.put(rawPacked, exact.size());
+                exact.add(packedDonor);
+            } else if (donorId < exact.get(exactIndex).donorId()) {
+                exact.set(exactIndex, packedDonor);
+            }
+        }
+
+        Long2IntOpenHashMap beamIndexByClampedPacked = new Long2IntOpenHashMap(Math.max(16, exact.size() * 2));
+        beamIndexByClampedPacked.defaultReturnValue(-1);
+        ObjectArrayList<PackedDonor> beam = new ObjectArrayList<>(exact.size());
+
+        for (int i = 0; i < exact.size(); i++) {
+            PackedDonor packedDonor = exact.get(i);
+            long clampedPacked = packedDonor.clampedPacked();
+
+            int beamIndex = beamIndexByClampedPacked.get(clampedPacked);
+            if (beamIndex < 0) {
+                beamIndexByClampedPacked.put(clampedPacked, beam.size());
                 beam.add(packedDonor);
+            } else if (packedDonor.donorId() < beam.get(beamIndex).donorId()) {
+                beam.set(beamIndex, packedDonor);
             }
         }
 
@@ -1000,6 +1055,7 @@ public final class CityFallbackHeuristic {
         }
 
         void setCivilianStateIncremental(PackedCandidateView parent, int changedBi, int oldAmt, int newAmt) {
+            this.lastSetState = Long.MIN_VALUE;
             this.unpacked = parent.unpacked;
 
             this.uncappedCommerce = parent.uncappedCommerce + (newAmt - oldAmt) * civilianCommerce[changedBi];
@@ -1097,22 +1153,223 @@ public final class CityFallbackHeuristic {
             long[] beamStates,
             long[] nextBeam,
             double[] topScores,
-            Long2DoubleOpenHashMap localScoreCache,
-            LongOpenHashSet beamSet
+            StateScoreCache localScoreCache,
+            LongStateSet beamSet
     ) {}
 
-    private static final class ParallelAccumulator {
-        private final DonorWorker worker;
-        private EvaluatedCandidate best;
+    private final class DonorRangeTask extends RecursiveTask<EvaluatedCandidate> {
+        private final ObjectArrayList<PackedDonor> donorList;
+        private final boolean useBeamSearch;
+        private final int from;
+        private final int to;
 
-        private ParallelAccumulator(DonorWorker worker) {
-            this.worker = worker;
+        private DonorRangeTask(ObjectArrayList<PackedDonor> donorList, boolean useBeamSearch, int from, int to) {
+            this.donorList = donorList;
+            this.useBeamSearch = useBeamSearch;
+            this.from = from;
+            this.to = to;
+        }
+
+        @Override
+        protected EvaluatedCandidate compute() {
+            int len = to - from;
+            if (len <= PARALLEL_THRESHOLD) {
+                DonorWorker worker = newDonorWorker();
+                EvaluatedCandidate best = null;
+
+                for (int i = from; i < to; i++) {
+                    EvaluatedCandidate candidate = evaluateDonor(donorList.get(i), useBeamSearch, worker);
+                    EvaluatedCandidate next = chooseBetter(best, candidate);
+                    if (next != best && next != null && EAGER_INCUMBENT_PUBLISH) {
+                        publishBestMaybe(next.value());
+                    }
+                    best = next;
+                }
+
+                return best;
+            }
+
+            int mid = (from + to) >>> 1;
+            DonorRangeTask right = new DonorRangeTask(donorList, useBeamSearch, mid, to);
+            right.fork();
+
+            EvaluatedCandidate leftBest = new DonorRangeTask(donorList, useBeamSearch, from, mid).compute();
+            EvaluatedCandidate rightBest = right.join();
+
+            EvaluatedCandidate best = chooseBetter(leftBest, rightBest);
+            if (best != null && EAGER_INCUMBENT_PUBLISH) {
+                publishBestMaybe(best.value());
+            }
+            return best;
+        }
+    }
+
+    private static final class BatchSearchTask extends RecursiveAction {
+        private final BatchEntry[] entries;
+        private final INationCity[] results;
+        private final int[] indexes;
+        private final int from;
+        private final int to;
+        private final SharedBatchContext shared;
+        private final ObjectArrayList<PackedDonor> donorList;
+        private final boolean useBeamSearch;
+        private final ToDoubleFunction<INationCity> valueFunction;
+        private final Predicate<INationCity> goal;
+        private final Double infraLow;
+
+        private BatchSearchTask(
+                BatchEntry[] entries,
+                INationCity[] results,
+                int[] indexes,
+                int from,
+                int to,
+                SharedBatchContext shared,
+                ObjectArrayList<PackedDonor> donorList,
+                boolean useBeamSearch,
+                ToDoubleFunction<INationCity> valueFunction,
+                Predicate<INationCity> goal,
+                Double infraLow
+        ) {
+            this.entries = entries;
+            this.results = results;
+            this.indexes = indexes;
+            this.from = from;
+            this.to = to;
+            this.shared = shared;
+            this.donorList = donorList;
+            this.useBeamSearch = useBeamSearch;
+            this.valueFunction = valueFunction;
+            this.goal = goal;
+            this.infraLow = infraLow;
+        }
+
+        @Override
+        protected void compute() {
+            int len = to - from;
+            if (len <= QUERY_PARALLEL_THRESHOLD) {
+                for (int i = from; i < to; i++) {
+                    int idx = indexes[i];
+                    CityFallbackHeuristic ctx = create(entries[idx].source(), shared, valueFunction, goal, infraLow);
+                    results[idx] = ctx == null ? null : ctx.searchPrepared(donorList, useBeamSearch, false);
+                }
+                return;
+            }
+
+            int mid = (from + to) >>> 1;
+            invokeAll(
+                    new BatchSearchTask(entries, results, indexes, from, mid, shared, donorList, useBeamSearch, valueFunction, goal, infraLow),
+                    new BatchSearchTask(entries, results, indexes, mid, to, shared, donorList, useBeamSearch, valueFunction, goal, infraLow)
+            );
+        }
+    }
+
+    private static int tableSizeFor(int requestedCapacity) {
+        if (requestedCapacity <= 2) return 2;
+        int n = Integer.highestOneBit(requestedCapacity - 1) << 1;
+        return n > 0 ? n : (1 << 30);
+    }
+
+    private static long mix64(long z) {
+        z = (z ^ (z >>> 33)) * 0xff51afd7ed558ccdL;
+        z = (z ^ (z >>> 33)) * 0xc4ceb9fe1a85ec53L;
+        return z ^ (z >>> 33);
+    }
+
+    private static final class StateScoreCache {
+        private final long[] keys;
+        private final double[] values;
+        private final int[] stamps;
+        private final int mask;
+        private final int maxSize;
+
+        private int stamp = 1;
+        private int size = 0;
+
+        private StateScoreCache(int requestedCapacity) {
+            int capacity = tableSizeFor(requestedCapacity);
+            this.keys = new long[capacity];
+            this.values = new double[capacity];
+            this.stamps = new int[capacity];
+            this.mask = capacity - 1;
+            this.maxSize = capacity - (capacity >>> 2);
+        }
+
+        void reset() {
+            size = 0;
+            if (++stamp == 0) {
+                Arrays.fill(stamps, 0);
+                stamp = 1;
+            }
+        }
+
+        double get(long key) {
+            int idx = ((int) mix64(key)) & mask;
+            while (stamps[idx] == stamp) {
+                if (keys[idx] == key) return values[idx];
+                idx = (idx + 1) & mask;
+            }
+            return Double.NaN;
+        }
+
+        void put(long key, double value) {
+            int idx = ((int) mix64(key)) & mask;
+            while (stamps[idx] == stamp) {
+                if (keys[idx] == key) {
+                    values[idx] = value;
+                    return;
+                }
+                idx = (idx + 1) & mask;
+            }
+            if (size >= maxSize) return;
+            stamps[idx] = stamp;
+            keys[idx] = key;
+            values[idx] = value;
+            size++;
+        }
+    }
+
+    private static final class LongStateSet {
+        private final long[] keys;
+        private final int[] stamps;
+        private final int mask;
+        private final int maxSize;
+
+        private int stamp = 1;
+        private int size = 0;
+
+        private LongStateSet(int requestedCapacity) {
+            int capacity = tableSizeFor(requestedCapacity);
+            this.keys = new long[capacity];
+            this.stamps = new int[capacity];
+            this.mask = capacity - 1;
+            this.maxSize = capacity - (capacity >>> 2);
+        }
+
+        void reset() {
+            size = 0;
+            if (++stamp == 0) {
+                Arrays.fill(stamps, 0);
+                stamp = 1;
+            }
+        }
+
+        boolean add(long key) {
+            int idx = ((int) mix64(key)) & mask;
+            while (stamps[idx] == stamp) {
+                if (keys[idx] == key) return false;
+                idx = (idx + 1) & mask;
+            }
+            if (size >= maxSize) return true;
+            stamps[idx] = stamp;
+            keys[idx] = key;
+            size++;
+            return true;
         }
     }
 
     private record EvaluatedCandidate(DBCity donor, long state, double value, int donorId) {}
 
-    private record PackedDonor(DBCity donor, long packed, int postClampCivilianCount, int rawCivilianCount) {}
+    private record PackedDonor(DBCity donor, long clampedPacked, int postClampCivilianCount, int rawCivilianCount, int donorId) {}
 
     private record PreparedDonors(ObjectArrayList<PackedDonor> beamDonors, ObjectArrayList<PackedDonor> exactDonors) {}
 
@@ -1188,7 +1445,7 @@ public final class CityFallbackHeuristic {
                 civilianPollution[i] = b.pollution(hasProject);
 
                 int cap = civilianCaps[i];
-                int bits = cap >= 0 ? bitsForCount(cap) : 0;
+                int bits = cap > 0 ? bitsForCount(cap) : 0;
                 civilianBits[i] = bits;
                 civilianShift[i] = bitOffset;
 
@@ -1238,8 +1495,6 @@ public final class CityFallbackHeuristic {
             PreparedDonors prepared = preparePackedDonors(
                     donors,
                     civilianCaps,
-                    addableCivilianIndices,
-                    packedCivilianIndices,
                     civilianOrdinals,
                     civilianShift,
                     civilianMask
