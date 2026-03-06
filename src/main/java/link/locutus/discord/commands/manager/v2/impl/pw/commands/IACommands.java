@@ -1636,8 +1636,8 @@ public class IACommands {
             if (errorMsg != null) return errorMsg;
         }
         if (bracket != null) {
-            Set<Integer> allowedTaxIds = GuildKey.ALLOWED_TAX_BRACKETS.getOrNull(db);
-            if (!isGov && allowedTaxIds != null && !allowedTaxIds.contains(bracket.taxId)) {
+            Set<TaxBracket> allowedTaxIds = GuildKey.ALLOWED_TAX_BRACKETS.getOrNull(db);
+            if (!isGov && allowedTaxIds != null && !allowedTaxIds.contains(bracket)) {
                 return "Only the following tax ids are allowed: " + allowedTaxIds;
             }
         }

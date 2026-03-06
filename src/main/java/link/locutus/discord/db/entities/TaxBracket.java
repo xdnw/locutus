@@ -162,4 +162,17 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     public int getRssRate() {
         return rssRate;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof TaxBracket) {
+            return taxId == ((TaxBracket) obj).taxId;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return taxId;
+    }
 }

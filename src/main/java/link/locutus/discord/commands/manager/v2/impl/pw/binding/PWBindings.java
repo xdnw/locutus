@@ -151,6 +151,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.mail.Mail;
 import link.locutus.discord.util.trade.TradeManager;
@@ -176,6 +177,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
@@ -628,17 +630,17 @@ public class PWBindings extends BindingHelper {
             Priority is first to last (so put defaults at the bottom)""", examples = """
             #cities<10:1
             #cities>=10:2""")
-    public Map<NationFilter, Integer> taxIdMap(@Default @Me User author, @Default @Me DBNation nation, @Me GuildDB db,
+    public Map<NationFilter, TaxBracket> taxIdMap(@Default @Me User author, @Default @Me DBNation nation, @Me GuildDB db,
             String input) {
-        Map<NationFilter, Integer> filterToBracket = new LinkedHashMap<>();
+        Map<NationFilter, TaxBracket> filterToBracket = new LinkedHashMap<>();
         for (String line : input.split("[\n|;]")) {
-            String[] split = line.split("[:]");
-            if (split.length != 2)
+            List<String> split = StringMan.split(line, ":", 2);
+            if (split.size() != 2)
                 continue;
 
-            String filterStr = split[0].trim();
+            String filterStr = split.getFirst().trim();
             NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
-            int bracket = Integer.parseInt(split[1]);
+            TaxBracket bracket = PWBindings.bracket(db, split.get(1).trim(), Long.MAX_VALUE, false);
             filterToBracket.put(filter, bracket);
         }
         if (filterToBracket.isEmpty())
@@ -1908,6 +1910,10 @@ public class PWBindings extends BindingHelper {
     }
 
     public static TaxBracket bracket(@Default @Me GuildDB db, String input, long cache) {
+        return bracket(db, input, cache, true);
+    }
+
+    public static TaxBracket bracket(@Default @Me GuildDB db, String input, long cache, boolean fetchFromApiIfId) {
         Integer taxId;
         if (MathMan.isInteger(input)) {
             taxId = Integer.parseInt(input);
@@ -1916,27 +1922,30 @@ public class PWBindings extends BindingHelper {
         } else {
             taxId = null;
         }
-        if (db == null) {
-            if (taxId == null)
-                throw new IllegalArgumentException("Invalid tax id: `" + input + "`");
+        if ((!fetchFromApiIfId || db == null) && taxId != null) {
             DBNation nation = Locutus.imp().getNationDB().getFirstNationMatching(f -> f.getTax_id() == taxId);
-            if (nation == null) {
-                throw new IllegalArgumentException("No nation found with tax id: `" + taxId + "`");
-            } else {
-                return new TaxBracket(taxId, nation.getAlliance_id(), "", -1, -1, 0L);
+            if (fetchFromApiIfId) {
+                if (nation == null) {
+                    throw new IllegalArgumentException("No nation found with tax id: `" + taxId + "`");
+                }
             }
+            return new TaxBracket(taxId, nation != null ? nation.getAlliance_id() : -1, "", -1, -1, 0L);
         }
-        AllianceList allianceList = db.getAllianceList();
-        if (allianceList == null) {
-            throw new IllegalArgumentException(
-                    "No alliance registered. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
-        }
-        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(cache);
+
+        Supplier<Map<Integer, TaxBracket>> bracketsSupplier = new CachedSupplier<>(() -> {
+            AllianceList allianceList = db == null ? null : db.getAllianceList();
+            if (allianceList == null) {
+                throw new IllegalArgumentException(
+                        "No alliance registered. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
+            }
+            return allianceList.getTaxBrackets(cache);
+        });
+
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");
             int moneyRate = Integer.parseInt(split[0]);
             int rssRate = Integer.parseInt(split[1]);
-
+            Map<Integer, TaxBracket> brackets = bracketsSupplier.get();
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 if (bracket.moneyRate == moneyRate && bracket.rssRate == rssRate) {
@@ -1946,12 +1955,18 @@ public class PWBindings extends BindingHelper {
             throw new IllegalArgumentException(
                     "No bracket found for `" + input + "`. Are you sure that tax rate exists ingame?");
         }
-        TaxBracket bracket = brackets.get(taxId);
-        if (bracket != null)
-            return bracket;
-        throw new IllegalArgumentException(
-                "Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds())
-                        + ". If the bracket was just created, please try again in a minute.");
+        if (fetchFromApiIfId) {
+            Map<Integer, TaxBracket> brackets = bracketsSupplier.get();
+            TaxBracket bracket = brackets.get(taxId);
+            if (bracket != null) {
+                return bracket;
+            } else {
+                throw new IllegalArgumentException(
+                        "Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds())
+                                + ". If the bracket was just created, please try again in a minute.");
+            }
+        }
+        throw new IllegalArgumentException("Invalid tax id: `" + input + "`");
     }
 
     @Binding(value = "A report id", examples = "1234")

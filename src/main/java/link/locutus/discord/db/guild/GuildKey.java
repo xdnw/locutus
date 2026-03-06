@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -33,6 +34,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBind
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -63,6 +65,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.IMentionable;
@@ -92,6 +95,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -767,28 +771,76 @@ public class GuildKey {
             return response;
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
-    public static final GuildSetting<Map<NationFilter, Integer>> REQUIRED_TAX_BRACKET = new GuildSetting<Map<NationFilter, Integer>>(GuildSettingCategory.TAX, TAX_AUTO_ASSIGN, Map.class, NationFilter.class, Integer.class) {
+    public static final GuildSetting<Map<NationFilter, TaxBracket>> REQUIRED_TAX_BRACKET = new GuildSetting<Map<NationFilter, TaxBracket>>(GuildSettingCategory.TAX, TAX_AUTO_ASSIGN, Map.class, NationFilter.class, Integer.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String addRequiredBracket(@Me GuildDB db, @Me User user, NationFilter filter, TaxBracket bracket) {
-            Map<NationFilter, Integer> existing = REQUIRED_TAX_BRACKET.getOrNull(db, false);
+            Map<NationFilter, TaxBracket> existing = REQUIRED_TAX_BRACKET.getOrNull(db, false);
             existing = existing == null ? new HashMap<>() : new LinkedHashMap<>(existing);
-            existing.put(filter, bracket.getId());
+            existing.put(filter, bracket);
             return REQUIRED_TAX_BRACKET.setAndValidate(db, user, existing);
         }
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String REQUIRED_TAX_BRACKET(@Me GuildDB db, @Me User user, Map<NationFilter, Integer> brackets) {
+        public String REQUIRED_TAX_BRACKET(@Me GuildDB db, @Me User user, Map<NationFilter, TaxBracket> brackets) {
             return REQUIRED_TAX_BRACKET.setAndValidate(db, user, brackets);
         }
 
         @Override
-        public String toString(Map<NationFilter, Integer> filterToBracket) {
+        public Map<NationFilter, TaxBracket> parse(GuildDB db, String input) {
+            Map<NationFilter, TaxBracket> result = new Object2ObjectLinkedOpenHashMap<>();
+            String[] split = input.split("\n");
+            for (String s : split) {
+                s = s.trim();
+                if (s.isEmpty()) continue;
+                List<String> split2 = StringMan.split(s, ":", 2);
+                if (split2.size() != 2) {
+                    throw new IllegalArgumentException("Invalid format for entry: " + s + ". Expected format: `filter:bracket`");
+                }
+                NationFilter filter = new NationFilterString(split2.get(0), db.getGuild(), null, null);
+                TaxBracket bracket = PWBindings.bracket(db, split2.get(1).trim(), 0, false);
+                result.put(filter, bracket);
+            }
+            return result;
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Map<NationFilter, TaxBracket> value) {
+            Supplier<Map<Integer, String>> namesCachedSupplier = CachedSupplier.of(() -> {
+                Map<Integer, String> namesCached = new Int2ObjectOpenHashMap<>();
+                AllianceList aaList = db.getAllianceList();
+                if (aaList != null) {
+                    try {
+                        Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Long.MAX_VALUE);
+                        for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
+                            TaxBracket bracket = entry.getValue();
+                            if (bracket.moneyRate != -1) {
+                                namesCached.put(entry.getKey(), bracket.getSubText());
+                            }
+                        }
+                    } catch (IllegalArgumentException ignore) {}
+                }
+                return namesCached;
+            });
             StringBuilder result = new StringBuilder();
-            for (Map.Entry<NationFilter, Integer> entry : filterToBracket.entrySet()) {
-                result.append(entry.getKey().getFilter() + ":" + entry.getValue() + "\n");
+            for (Map.Entry<NationFilter, TaxBracket> entry : value.entrySet()) {
+                TaxBracket bracket = entry.getValue();
+                String name = bracket.getName();
+                if (name == null || name.isEmpty()) {
+                    name = namesCachedSupplier.get().getOrDefault(bracket.taxId, "tax_id=" + String.valueOf(bracket.taxId));
+                }
+                result.append(entry.getKey().getFilter() + ":" + name + "\n");
+            }
+            return result.toString().trim();
+        }
+
+        @Override
+        public String toString(Map<NationFilter, TaxBracket> filterToBracket) {
+            StringBuilder result = new StringBuilder();
+            for (Map.Entry<NationFilter, TaxBracket> entry : filterToBracket.entrySet()) {
+                result.append(entry.getKey().getFilter() + ":" + entry.getValue().getId() + "\n");
             }
             return result.toString().trim();
         }
@@ -810,8 +862,7 @@ public class GuildKey {
         }
 
         @Override
-        public Map<NationFilter, Integer> validate(GuildDB db, User user, Map<NationFilter, Integer> parsed) {
-
+        public Map<NationFilter, TaxBracket> validate(GuildDB db, User user, Map<NationFilter, TaxBracket> parsed) {
             AllianceList alliance = db.getAllianceList();
             if (alliance == null || alliance.isEmpty())
                 throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
@@ -820,8 +871,8 @@ public class GuildKey {
             if (brackets.isEmpty())
                 throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
 
-            for (Map.Entry<NationFilter, Integer> entry : parsed.entrySet()) {
-                if (!brackets.containsKey(entry.getValue())) {
+            for (Map.Entry<NationFilter, TaxBracket> entry : parsed.entrySet()) {
+                if (!brackets.containsKey(entry.getValue().taxId)) {
                     throw new IllegalArgumentException("No tax bracket founds for id: " + entry.getValue());
                 }
             }
@@ -3092,53 +3143,71 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requireValidAlliance().requireActiveGuild());
 
-    public static final GuildSetting<Set<Integer>> ALLOWED_TAX_BRACKETS = new GuildSetting<Set<Integer>>(GuildSettingCategory.TAX, TAX_SELF_ASSIGN, Set.class, Integer.class) {
+    public static final GuildSetting<Set<TaxBracket>> ALLOWED_TAX_BRACKETS = new GuildSetting<Set<TaxBracket>>(GuildSettingCategory.TAX, TAX_SELF_ASSIGN, Set.class, Integer.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String ALLOWED_TAX_BRACKETS(@Me GuildDB db, @Me User user, Set<TaxBracket> brackets) {
-            Set<Integer> taxIds = new IntOpenHashSet();
+            Set<TaxBracket> taxIds = new ObjectLinkedOpenHashSet<>();
             for (TaxBracket bracket : brackets) {
                 int aaId = bracket.getAlliance_id(false);
                 if (aaId != 0 && !db.isAllianceId(aaId)) {
                     throw new IllegalArgumentException("Invalid alliance id: " + aaId + " for tax_id=" + bracket.getId());
                 }
-                taxIds.add(bracket.getId());
+                taxIds.add(bracket);
             }
             return ALLOWED_TAX_BRACKETS.setAndValidate(db, user, taxIds);
         }
+
         @Override
         public String help() {
             return "The tax bracket ids allowed to be set by members, if enabled ";
         }
 
         @Override
-        public String toReadableString(GuildDB db, Set<Integer> taxIds) {
-            Map<Integer, String> namesCached = new Int2ObjectOpenHashMap<>();
-
-            AllianceList aaList = db.getAllianceList();
-            if (aaList != null) {
-                try {
-                    Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Long.MAX_VALUE);
-                    for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
-                        TaxBracket bracket = entry.getValue();
-                        if (bracket.moneyRate != -1) {
-                            namesCached.put(entry.getKey(), bracket.getSubText());
-                        }
-                    }
-                } catch (IllegalArgumentException ignore) {}
+        public Set<TaxBracket> parse(GuildDB db, String input) {
+            Set<TaxBracket> result = new ObjectLinkedOpenHashSet<>();
+            String[] split = input.split(",");
+            for (String s : split) {
+                s = s.trim();
+                TaxBracket bracket = PWBindings.bracket(db, s, 0, false);
+                result.add(bracket);
             }
+            return result;
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Set<TaxBracket> taxIds) {
+            Supplier<Map<Integer, String>> namesCachedSupplier = CachedSupplier.of(() -> {
+                Map<Integer, String> namesCached = new Int2ObjectOpenHashMap<>();
+                AllianceList aaList = db.getAllianceList();
+                if (aaList != null) {
+                    try {
+                        Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Long.MAX_VALUE);
+                        for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
+                            TaxBracket bracket = entry.getValue();
+                            if (bracket.moneyRate != -1) {
+                                namesCached.put(entry.getKey(), bracket.getSubText());
+                            }
+                        }
+                    } catch (IllegalArgumentException ignore) {}
+                }
+                return namesCached;
+            });
             List<String> names = new ArrayList<>();
-            for (int id : taxIds) {
-                String name = namesCached.getOrDefault(id, "tax_id=" + id);
+            for (TaxBracket id : taxIds) {
+                String name = id.getName();
+                if (name == null || name.isEmpty()) {
+                    name = namesCachedSupplier.get().getOrDefault(id.taxId, "tax_id=" + id.taxId);
+                }
                 names.add(name);
             }
             return String.join(",", names);
         }
 
         @Override
-        public String toString(Set<Integer> value) {
-            return StringMan.join(value, ",");
+        public String toString(Set<TaxBracket> value) {
+            return value.stream().map(f -> f.taxId + "").collect(Collectors.joining(","));
         }
 
     }.setupRequirements(f -> f.requires(API_KEY).requires(MEMBER_CAN_SET_BRACKET).requireValidAlliance());

@@ -151,7 +151,7 @@ public class GuildHandler {
         return setNationTaxBrackets(nations, db.getOrThrow(GuildKey.REQUIRED_TAX_BRACKET), responses);
     }
 
-    public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilter, Integer> requiredTaxBracket, Consumer<String> responses) throws Exception {
+    public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilter, TaxBracket> requiredTaxBracket, Consumer<String> responses) throws Exception {
         Set<Integer> aaIds = db.getAllianceIds();
         nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
         if (nations.isEmpty()) return Collections.emptyMap();
@@ -177,11 +177,10 @@ public class GuildHandler {
 
             String reason = null;
             TaxBracket required = null;
-            for (Map.Entry<NationFilter, Integer> entry : requiredTaxBracket.entrySet()) {
+            for (Map.Entry<NationFilter, TaxBracket> entry : requiredTaxBracket.entrySet()) {
                 if (entry.getKey().test(nation)) {
-                    Integer requiredId = entry.getValue();
+                    required = entry.getValue();
                     reason = entry.getKey().getFilter();
-                    required = brackets.get(requiredId);
                     break;
                 }
             }

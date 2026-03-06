@@ -119,8 +119,8 @@ public class SetBracket extends Command {
             }
         }
         if (bracket == null) return "No alliance bracket found for: `" + arg + "`";
-        Set<Integer> allowedTaxIds = GuildKey.ALLOWED_TAX_BRACKETS.getOrNull(db);
-        if (!isGov && allowedTaxIds != null && !allowedTaxIds.contains(bracket.taxId)) {
+        Set<TaxBracket> allowedTaxIds = GuildKey.ALLOWED_TAX_BRACKETS.getOrNull(db);
+        if (!isGov && allowedTaxIds != null && !allowedTaxIds.contains(bracket)) {
             return "Only the following tax ids are allowed: " + allowedTaxIds;
         }
 

@@ -3414,7 +3414,7 @@ public class BankCommands {
 
         Set<DBNation> nations = alliances.getNations();
 
-        Map<NationFilter, Integer> requiredBrackets = db.getOrNull(GuildKey.REQUIRED_TAX_BRACKET);
+        Map<NationFilter, TaxBracket> requiredBrackets = db.getOrNull(GuildKey.REQUIRED_TAX_BRACKET);
         Map<NationFilter, TaxRate> requiredInternalRates = db.getOrNull(GuildKey.REQUIRED_INTERNAL_TAXRATE);
 
         if (requiredBrackets == null) requiredBrackets = Collections.emptyMap();
@@ -3428,12 +3428,12 @@ public class BankCommands {
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
             header.set(1, nation.getCities() + "");
 
-            Map.Entry<NationFilter, Integer> requiredBracket = requiredBrackets.entrySet().stream().filter(f -> f.getKey().test(nation)).findFirst().orElse(null);
+            Map.Entry<NationFilter, TaxBracket> requiredBracket = requiredBrackets.entrySet().stream().filter(f -> f.getKey().test(nation)).findFirst().orElse(null);
             Map.Entry<NationFilter, TaxRate> requiredInternal = requiredInternalRates.entrySet().stream().filter(f -> f.getKey().test(nation)).findFirst().orElse(null);
 
             header.set(2, requiredBracket != null ? requiredBracket.getKey().getFilter() : "");
-            int taxId = requiredBracket != null ? requiredBracket.getValue() : -1;
-            TaxBracket bracket = brackets.get(taxId);
+            TaxBracket bracket = requiredBracket != null ? requiredBracket.getValue() : null;
+            bracket = brackets.getOrDefault(bracket != null ? bracket.taxId : -1, bracket);
             header.set(3, bracket != null ? bracket.getName() : "");
             header.set(4, bracket != null ? bracket.taxId : "");
             header.set(5, bracket != null ? "'" + bracket.getTaxRate().toString() + "'" : "");
