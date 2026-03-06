@@ -564,6 +564,8 @@ public class JavaCity implements IMutableCity {
         if (best != null && (optimized == null || valueFunction.applyAsDouble(best) > valueFunction.applyAsDouble(optimized))) {
             System.out.println("Best was better than optimized: " + valueFunction.applyAsDouble(best) + " vs " + (optimized == null ? "null" : valueFunction.applyAsDouble(optimized)) + " | prior city json was: " + (optimized == null ? "null" : optimized.toJson(false)));
             return new JavaCity(best);
+        } else if (optimized != null) {
+            System.out.println("Optimized was better than best: " + valueFunction.applyAsDouble(optimized) + " vs " + (best == null ? "null" : valueFunction.applyAsDouble(best)) + " | prior city json was: " + optimized.toJson(false));
         }
         if (optimized == null) return null;
         copy.setBuildings(optimized);
