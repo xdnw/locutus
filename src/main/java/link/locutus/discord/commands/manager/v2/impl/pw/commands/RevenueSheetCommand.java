@@ -54,114 +54,64 @@ public class RevenueSheetCommand {
             @Switch("t") @Timestamp Long snapshotTime
     ) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
 
-        validateNationCount(nations, db);
+        long start = System.currentTimeMillis();
+        if (nations.getNations().size() > 100 && (db == null || !db.isValidAlliance())) {
+            throw new IllegalArgumentException(
+                    "Too many nations: " + nations.getNations().size() + " (max: 100 outside of an alliance guild)"
+            );
+        }
+        System.out.println("[RevenueSheet] Starting revenue command: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
-        Set<DBNation> snapshot = PW.getNationsSnapshot(
+        Set<DBNation> nationSet = new LinkedHashSet<>(PW.getNationsSnapshot(
                 nations.getNations(),
                 nations.getFilter(),
                 snapshotTime,
                 db == null ? null : db.getGuild()
-        );
+        ));
 
-        SpreadSheet targetSheet = (sheet != null)
-                ? sheet
-                : SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
-
-        FilterResult filtered = filterNations(snapshot, db, includeUntaxable);
-        if (filtered.nations.isEmpty()) {
-            return appendFooter("No nations to process.", filtered.footer);
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
         }
 
-        List<String> header = buildRevenueHeader();
-        targetSheet.setHeader(header);
+        System.out.println("[RevenueSheet] Create sheet/nation: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
-        CompletableFuture<IMessageBuilder> progressMessage = io.sendMessage("Please wait...");
-        AtomicLong lastProgressUpdate = new AtomicLong(System.currentTimeMillis());
-
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(filtered.nations, DBNation.class);
-
-        List<CompletableFuture<List<String>>> rowFutures = new ArrayList<>(filtered.nations.size());
-        for (DBNation nation : filtered.nations) {
-            rowFutures.add(CompletableFuture.supplyAsync(
-                    () -> buildRevenueRow(
-                            nation,
-                            header.size(),
-                            cacheStore,
-                            io,
-                            progressMessage,
-                            lastProgressUpdate
-                    ),
-                    Locutus.imp().getExecutor()
-            ));
-        }
-
-        for (CompletableFuture<List<String>> future : rowFutures) {
-            targetSheet.addRow(future.get());
-        }
-
-        targetSheet.updateClearCurrentTab();
-        targetSheet.updateWrite();
-
-        IMessageBuilder result = targetSheet.attach(io.create(), "revenue");
-        if (!filtered.footer.isEmpty()) {
-            result.append("\n" + String.join("\n", filtered.footer));
-        }
-        result.send();
-
-        return null;
-    }
-
-    private void validateNationCount(NationList nations, GuildDB db) {
-        int requested = nations.getNations().size();
-        boolean isAllianceGuild = db != null && db.isValidAlliance();
-
-        if (requested > 100 && !isAllianceGuild) {
-            throw new IllegalArgumentException(
-                    "Too many nations: " + requested + " (max: 100 outside of an alliance guild)"
-            );
-        }
-    }
-
-    private FilterResult filterNations(Set<DBNation> input, GuildDB db, boolean includeUntaxable) {
-        Set<DBNation> nations = new LinkedHashSet<>(input);
         List<String> footer = new ArrayList<>();
+        int before = nationSet.size();
 
-        int before = nations.size();
-
-        int removedNotAlliance = 0;
         if (db != null) {
             Set<Integer> allianceIds = db.getAllianceIds(false);
-            nations.removeIf(nation ->
-                    nation.getPosition() <= Rank.APPLICANT.id
-                            || (!allianceIds.isEmpty() && !allianceIds.contains(nation.getAlliance_id()))
+            nationSet.removeIf(n ->
+                    n.getPosition() <= Rank.APPLICANT.id ||
+                            (!allianceIds.isEmpty() && !allianceIds.contains(n.getAlliance_id()))
             );
-            removedNotAlliance = before - nations.size();
-            before = nations.size();
+            int removed = before - nationSet.size();
+            if (removed > 0) {
+                footer.add(removed + " nations were removed for not being members of the guild's alliances");
+            }
+            before = nationSet.size();
         }
 
-        nations.removeIf(nation -> nation.getVm_turns() > 0);
-        int removedVm = before - nations.size();
-        before = nations.size();
-
-        if (!includeUntaxable) {
-            nations.removeIf(nation -> !nation.isTaxable());
-        }
-        int removedUntaxable = before - nations.size();
-
-        if (removedNotAlliance > 0) {
-            footer.add(removedNotAlliance + " nations were removed for not being members of the guild's alliances");
-        }
+        nationSet.removeIf(n -> n.getVm_turns() > 0);
+        int removedVm = before - nationSet.size();
         if (removedVm > 0) {
             footer.add(removedVm + " nations were removed for being in vacation mode");
         }
+        before = nationSet.size();
+
+        if (!includeUntaxable) {
+            nationSet.removeIf(n -> !n.isTaxable());
+        }
+        int removedUntaxable = before - nationSet.size();
         if (removedUntaxable > 0) {
             footer.add(removedUntaxable + " nations were removed for being untaxable");
         }
 
-        return new FilterResult(nations, footer);
-    }
+        if (nationSet.isEmpty()) {
+            return footer.isEmpty()
+                    ? "No nations to process."
+                    : "No nations to process.\n" + String.join("\n", footer);
+        }
 
-    private List<String> buildRevenueHeader() {
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
                 "tax_id",
@@ -181,250 +131,218 @@ public class RevenueSheetCommand {
                 "commerce %",
                 "optimal %"
         ));
-
         for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) {
-                continue;
+            if (type != ResourceType.CREDITS) {
+                header.add(type.name());
             }
-            header.add(type.name());
         }
+        sheet.setHeader(header);
 
-        return header;
-    }
+        CompletableFuture<IMessageBuilder> msg = io.sendMessage("Please wait...");
+        List<DBNation> nationList = new ArrayList<>(nationSet);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
 
-    private List<String> buildRevenueRow(
-            DBNation nation,
-            int rowSize,
-            ValueStore<DBNation> cacheStore,
-            IMessageIO io,
-            CompletableFuture<IMessageBuilder> progressMessage,
-            AtomicLong lastProgressUpdate
-    ) {
-        updateProgressIfNeeded(nation, io, progressMessage, lastProgressUpdate);
+        ToDoubleFunction<INationCity> valueFunction = INationCity::getRevenueConverted;
 
-        double[] revenue = nation.getRevenue(cacheStore);
-        Map<Integer, DBCity> cityMap = nation._getCitiesV3();
+        List<NationRowData> data = new ArrayList<>(nationList.size());
+        List<BatchEntry> batch = new ArrayList<>();
+        List<Double> currentBatchRevenue = new ArrayList<>();
 
-        CityAverages averages = calculateCityAverages(nation, cityMap);
-        RevenueBreakdown revenueBreakdown = calculateRevenueBreakdown(revenue);
-        String optimalPercent = calculateBatchOptimalPercent(nation, cityMap);
+        System.out.println("[RevenueSheet] Cache: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
-        List<String> row = new ArrayList<>(Collections.nCopies(rowSize, ""));
+        for (DBNation nation : nationList) {
+            double[] revenue = nation.getRevenue(cacheStore);
+            Map<Integer, DBCity> cities = nation._getCitiesV3();
 
-        row.set(0, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
-        row.set(1, String.valueOf(nation.getTax_id()));
-        row.set(2, String.valueOf(nation.getCities()));
-        row.set(3, MathMan.format(nation.getAvg_infra()));
-        row.set(4, MathMan.format(nation.getAvgLand()));
-        row.set(5, MathMan.format(nation.getAvgBuildings()));
-        row.set(6, MathMan.format(averages.disease));
-        row.set(7, MathMan.format(averages.crime));
-        row.set(8, MathMan.format(averages.pollution));
-        row.set(9, MathMan.format(averages.population));
-        row.set(10, asSheetText(nation.getMMR()));
-        row.set(11, asSheetText(nation.getMMRBuildingStr()));
-        row.set(12, MathMan.format(revenueBreakdown.convertedTotal));
-        row.set(13, formatPercent(revenueBreakdown.rawConverted, revenueBreakdown.convertedTotal));
-        row.set(14, formatPercent(revenueBreakdown.manufacturedConverted, revenueBreakdown.convertedTotal));
-        row.set(15, formatPercent(revenueBreakdown.commerceConverted, revenueBreakdown.convertedTotal));
-        row.set(16, optimalPercent);
+            double disease = 0;
+            double crime = 0;
+            double pollution = 0;
+            double population = 0;
+            double currentProfit = 0;
 
-        int column = 17;
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) {
-                continue;
+            int batchStart = batch.size();
+
+            for (DBCity city : cities.values()) {
+                double cityRevenue = valueFunction.applyAsDouble(city);
+
+                disease += city.getDisease();
+                crime += city.getCrime();
+                pollution += city.getPollution();
+                population += city.getPopulation();
+                currentProfit += cityRevenue;
+
+                batch.add(new BatchEntry(
+                        city,
+                        nation.getContinent(),
+                        nation.getCities(),
+                        nation.getProjectBitMask(),
+                        nation.getRads(),
+                        nation.getGrossModifier()
+                ));
+                currentBatchRevenue.add(cityRevenue);
             }
-            row.set(column++, MathMan.format(revenue[type.ordinal()]));
+
+            int cityCount = cities.size();
+            data.add(new NationRowData(
+                    nation,
+                    revenue,
+                    cityCount == 0 ? 0 : disease / cityCount,
+                    cityCount == 0 ? 0 : crime / cityCount,
+                    cityCount == 0 ? 0 : pollution / cityCount,
+                    cityCount == 0 ? 0 : population / cityCount,
+                    currentProfit,
+                    batchStart,
+                    cityCount
+            ));
         }
 
-        return row;
-    }
+        System.out.println("[RevenueSheet] Data: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
-    private void updateProgressIfNeeded(
-            DBNation nation,
-            IMessageIO io,
-            CompletableFuture<IMessageBuilder> progressMessage,
-            AtomicLong lastProgressUpdate
-    ) {
-        long now = System.currentTimeMillis();
-        long last = lastProgressUpdate.get();
-
-        if (now - last < 10_000L) {
-            return;
-        }
-
-        if (lastProgressUpdate.compareAndSet(last, now)) {
-            io.updateOptionally(progressMessage, "Updating build for " + nation.getMarkdownUrl());
-        }
-    }
-
-    private CityAverages calculateCityAverages(DBNation nation, Map<Integer, DBCity> cityMap) {
-        if (cityMap.isEmpty()) {
-            return new CityAverages(0, 0, 0, 0);
-        }
-
-        double disease = 0;
-        double crime = 0;
-        double pollution = 0;
-        double population = 0;
-
-        for (DBCity city : cityMap.values()) {
-            disease += city.getDisease();
-            crime += city.getCrime();
-            pollution += city.getPollution();
-            population += city.getPopulation();
-        }
-
-        int cityCount = cityMap.size();
-        return new CityAverages(
-                disease / cityCount,
-                crime / cityCount,
-                pollution / cityCount,
-                population / cityCount
-        );
-    }
-
-    private RevenueBreakdown calculateRevenueBreakdown(double[] revenue) {
-        double convertedTotal = ResourceType.convertedTotal(revenue);
-        double rawConverted = 0;
-        double manufacturedConverted = 0;
-
-        for (ResourceType type : ResourceType.values) {
-            if (type.isManufactured()) {
-                manufacturedConverted += ResourceType.convertedTotal(type, revenue[type.ordinal()]);
-            }
-            if (type.isRaw()) {
-                rawConverted += ResourceType.convertedTotal(type, revenue[type.ordinal()]);
+        INationCity[] best = null;
+        if (!batch.isEmpty()) {
+            io.updateOptionally(msg, "Running city heuristic for " + batch.size() + " cities across " + data.size() + " nations...");
+            try {
+                best = CityFallbackHeuristic.findBestBatch(
+                        batch.toArray(new BatchEntry[0]),
+                        valueFunction,
+                        null, // TODO goal
+                        null, // TODO infraLow
+                        Locutus.imp().getNationDB().getCities() // TODO donors if needed
+                );
+            } catch (Exception e) {
+                best = null;
             }
         }
 
-        // Preserved from original behavior: revenue[0] is the commerce/money bucket in this codebase.
-        double commerceConverted = revenue[0];
+        System.out.println("[RevenueSheet] Find Best: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
-        return new RevenueBreakdown(convertedTotal, rawConverted, manufacturedConverted, commerceConverted);
-    }
+        for (NationRowData rowData : data) {
+            double optimalProfit = 0;
+            int end = rowData.batchStart + rowData.batchLen;
 
-    /**
-     * Replaces old single-city optimalBuild(...) logic with batch optimization for all cities in the nation.
-     *
-     * "optimal %" now means:
-     *   current total city profit / batch-heuristic best total city profit
-     *
-     * Placeholders:
-     * - the exact valueFunction type may differ in your branch
-     * - goal and donors are set as placeholders because their concrete types were not provided
-     */
-    private String calculateBatchOptimalPercent(DBNation nation, Map<Integer, DBCity> cityMap) {
-        try {
-            List<DBCity> currentCities = new ObjectArrayList<>(cityMap.values());
+            for (int i = rowData.batchStart; i < end; i++) {
+                double current = currentBatchRevenue.get(i);
+                double chosen = current;
 
-            BatchEntry[] batch = currentCities.stream()
-                    .map(city -> new BatchEntry(
-                            city,
-                            nation.getContinent(),
-                            nation.getCities(),
-                            nation.getProjectBitMask(),
-                            nation.getRads(),
-                            nation.getGrossModifier()
-                    ))
-                    .toArray(BatchEntry[]::new);
+                if (best != null && i < best.length) {
+                    INationCity candidate = best[i];
+                    if (candidate != null) {
+                        double candidateRevenue = valueFunction.applyAsDouble(candidate);
+                        if (Double.isFinite(candidateRevenue)) {
+                            chosen = Math.max(current, candidateRevenue);
+                        }
+                    }
+                }
 
-            ToDoubleFunction<INationCity> valueFunction = INationCity::getRevenueConverted;
-
-            double currentProfit = currentCities.stream()
-                    .mapToDouble(DBCity::getRevenueConverted)
-                    .sum();
-
-            INationCity[] optimalCities = findBestBatch(batch, valueFunction);
-
-            double optimalProfit = 0d;
-            for (INationCity optimalCity : optimalCities) {
-                optimalProfit += optimalCity.getRevenueConverted();
+                optimalProfit += chosen;
             }
 
-            if (optimalProfit <= 0d) {
-                return MathMan.format(100d);
+            rowData.optimalProfit = optimalProfit;
+        }
+
+        System.out.println("[RevenueSheet] Optimal Profit: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
+
+        for (NationRowData rowData : data) {
+            DBNation nation = rowData.nation;
+            double[] revenue = rowData.revenue;
+
+            double revenueConverted = ResourceType.convertedTotal(revenue);
+            double rawConverted = 0;
+            double manufacturedConverted = 0;
+
+            for (ResourceType type : ResourceType.values) {
+                if (type.isManufactured()) {
+                    manufacturedConverted += ResourceType.convertedTotal(type, revenue[type.ordinal()]);
+                }
+                if (type.isRaw()) {
+                    rawConverted += ResourceType.convertedTotal(type, revenue[type.ordinal()]);
+                }
             }
 
-            double ratio = Math.min(1d, currentProfit / optimalProfit);
-            return MathMan.format(100d * ratio);
+            double commerceConverted = revenue[0];
+            double optimalPct = rowData.optimalProfit <= 0
+                    ? 100d
+                    : 100d * Math.min(1d, rowData.currentProfit / rowData.optimalProfit);
 
-        } catch (IllegalArgumentException e) {
-            return e.getMessage();
+            List<String> row = new ArrayList<>(Collections.nCopies(header.size(), ""));
+            row.set(0, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+            row.set(1, String.valueOf(nation.getTax_id()));
+            row.set(2, String.valueOf(nation.getCities()));
+            row.set(3, MathMan.format(nation.getAvg_infra()));
+            row.set(4, MathMan.format(nation.getAvgLand()));
+            row.set(5, MathMan.format(nation.getAvgBuildings()));
+            row.set(6, MathMan.format(rowData.avgDisease));
+            row.set(7, MathMan.format(rowData.avgCrime));
+            row.set(8, MathMan.format(rowData.avgPollution));
+            row.set(9, MathMan.format(rowData.avgPopulation));
+            row.set(10, "=\"" + nation.getMMR() + "\"");
+            row.set(11, "=\"" + nation.getMMRBuildingStr() + "\"");
+            row.set(12, MathMan.format(revenueConverted));
+            row.set(13, MathMan.format(revenueConverted == 0 ? 0 : 100d * rawConverted / revenueConverted));
+            row.set(14, MathMan.format(revenueConverted == 0 ? 0 : 100d * manufacturedConverted / revenueConverted));
+            row.set(15, MathMan.format(revenueConverted == 0 ? 0 : 100d * commerceConverted / revenueConverted));
+            row.set(16, MathMan.format(optimalPct));
+
+            int col = 17;
+            for (ResourceType type : ResourceType.values) {
+                if (type != ResourceType.CREDITS) {
+                    row.set(col++, MathMan.format(revenue[type.ordinal()]));
+                }
+            }
+
+            sheet.addRow(row);
         }
-    }
 
-    /**
-     * Wrapper around CityFallbackHeuristic.findBestBatch(...) so placeholders stay isolated.
-     *
-     * Replace the placeholder nulls with the actual values your implementation expects.
-     */
-    private INationCity[] findBestBatch(
-            BatchEntry[] batch,
-            ToDoubleFunction<INationCity> valueFunction
-    ) {
-        return CityFallbackHeuristic.findBestBatch(
-                batch,
-                valueFunction,
-                null,
-                null,
-                Locutus.imp().getNationDB().getCities()
-        );
-    }
+        System.out.println("[RevenueSheet] Add rows: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
-    private String formatPercent(double value, double total) {
-        if (total == 0d) {
-            return MathMan.format(0d);
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        System.out.println("[RevenueSheet] Write Rows: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
+
+        IMessageBuilder result = sheet.attach(io.create(), "revenue");
+        if (!footer.isEmpty()) {
+            result.append("\n" + String.join("\n", footer));
         }
-        return MathMan.format(100d * value / total);
+        result.send();
+
+        System.out.println("[RevenueSheet] Send msg: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
+
+        return null;
     }
 
-    private String asSheetText(String value) {
-        return "=\"" + value + "\"";
-    }
+    private static final class NationRowData {
+        private final DBNation nation;
+        private final double[] revenue;
+        private final double avgDisease;
+        private final double avgCrime;
+        private final double avgPollution;
+        private final double avgPopulation;
+        private final double currentProfit;
+        private final int batchStart;
+        private final int batchLen;
+        private double optimalProfit;
 
-    private String appendFooter(String message, List<String> footer) {
-        if (footer == null || footer.isEmpty()) {
-            return message;
-        }
-        return message + "\n" + String.join("\n", footer);
-    }
-
-    private static final class FilterResult {
-        private final Set<DBNation> nations;
-        private final List<String> footer;
-
-        private FilterResult(Set<DBNation> nations, List<String> footer) {
-            this.nations = nations;
-            this.footer = footer;
-        }
-    }
-
-    private static final class CityAverages {
-        private final double disease;
-        private final double crime;
-        private final double pollution;
-        private final double population;
-
-        private CityAverages(double disease, double crime, double pollution, double population) {
-            this.disease = disease;
-            this.crime = crime;
-            this.pollution = pollution;
-            this.population = population;
-        }
-    }
-
-    private static final class RevenueBreakdown {
-        private final double convertedTotal;
-        private final double rawConverted;
-        private final double manufacturedConverted;
-        private final double commerceConverted;
-
-        private RevenueBreakdown(double convertedTotal, double rawConverted, double manufacturedConverted, double commerceConverted) {
-            this.convertedTotal = convertedTotal;
-            this.rawConverted = rawConverted;
-            this.manufacturedConverted = manufacturedConverted;
-            this.commerceConverted = commerceConverted;
+        private NationRowData(
+                DBNation nation,
+                double[] revenue,
+                double avgDisease,
+                double avgCrime,
+                double avgPollution,
+                double avgPopulation,
+                double currentProfit,
+                int batchStart,
+                int batchLen
+        ) {
+            this.nation = nation;
+            this.revenue = revenue;
+            this.avgDisease = avgDisease;
+            this.avgCrime = avgCrime;
+            this.avgPollution = avgPollution;
+            this.avgPopulation = avgPopulation;
+            this.currentProfit = currentProfit;
+            this.batchStart = batchStart;
+            this.batchLen = batchLen;
         }
     }
 }
