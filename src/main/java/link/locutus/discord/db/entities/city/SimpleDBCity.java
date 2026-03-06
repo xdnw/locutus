@@ -24,8 +24,9 @@ public class SimpleDBCity extends DBCity {
     private int land_cents;
     private int infra_cents;
     private boolean powered;
-    private byte[] buildings3;
     private int nuke_turn;
+
+    private byte[] buildings3;
 
     public SimpleDBCity(int nation_id) {
         this.setNation_id(nation_id);

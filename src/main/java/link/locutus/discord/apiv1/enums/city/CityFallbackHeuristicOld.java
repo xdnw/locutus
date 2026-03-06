@@ -16,8 +16,8 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
-import java.util.Arrays;
 
 final class CityFallbackHeuristicOld {
     private static final int BEAM_WIDTH = 8;
@@ -62,12 +61,6 @@ final class CityFallbackHeuristicOld {
     private final LongAdder valueFunctionCalls = new LongAdder();
     private final LongAdder generatedChildren = new LongAdder();
     private final LongAdder dedupSurvivors = new LongAdder();
-    private final LongAdder normalizeNanos = new LongAdder();
-    private final LongAdder repairNanos = new LongAdder();
-    private final LongAdder fitNanos = new LongAdder();
-    private final LongAdder validateNanos = new LongAdder();
-    private final LongAdder goalNanos = new LongAdder();
-    private final LongAdder scoreNanos = new LongAdder();
 
     private CityFallbackHeuristicOld(Continent continent,
                                   Predicate<Project> hasProject,
@@ -245,28 +238,18 @@ final class CityFallbackHeuristicOld {
         if (debugCounters) {
             System.out.println("CityFallbackHeuristicOld counters: valueCalls=" + valueFunctionCalls.sum()
                     + ", generatedChildren=" + generatedChildren.sum()
-                    + ", dedupSurvivors=" + dedupSurvivors.sum()
-                    + ", normalizeMs=" + nanosToMillis(normalizeNanos.sum())
-                    + ", repairMs=" + nanosToMillis(repairNanos.sum())
-                    + ", fitMs=" + nanosToMillis(fitNanos.sum())
-                    + ", validateMs=" + nanosToMillis(validateNanos.sum())
-                    + ", goalMs=" + nanosToMillis(goalNanos.sum())
-                    + ", scoreMs=" + nanosToMillis(scoreNanos.sum()));
+                    + ", dedupSurvivors=" + dedupSurvivors.sum());
         }
 
         return best == null ? null : best.candidate();
     }
 
     private EvaluatedCandidate evaluateDonor(DBCity donor, boolean useBeamSearch, ThreadLocal<LongOpenHashSet> localSeen) {
-        long t0 = System.nanoTime();
         SimpleNationCity normalized = normalize(donor);
-        normalizeNanos.add(System.nanoTime() - t0);
         SimpleNationCity candidate;
 
         if (useBeamSearch) {
-            t0 = System.nanoTime();
             SimpleNationCity repaired = repairBeamBaseline(normalized);
-            repairNanos.add(System.nanoTime() - t0);
             if (repaired == null) {
                 return null;
             }
@@ -277,35 +260,24 @@ final class CityFallbackHeuristicOld {
                 return null;
             }
 
-            t0 = System.nanoTime();
             candidate = fitCivilianSlots(repaired);
-            fitNanos.add(System.nanoTime() - t0);
             if (candidate == null) {
                 return null;
             }
-            t0 = System.nanoTime();
-            boolean valid = isValidCandidate(candidate);
-            validateNanos.add(System.nanoTime() - t0);
-            if (!valid) {
+            if (!isValidCandidate(candidate)) {
                 return null;
             }
         } else {
             if (getCivilianCount(normalized) != targetCivilianSlots) {
                 return null;
             }
-            t0 = System.nanoTime();
-            boolean valid = isValidCandidate(normalized);
-            validateNanos.add(System.nanoTime() - t0);
-            if (!valid) {
+            if (!isValidCandidate(normalized)) {
                 return null;
             }
             candidate = normalized;
         }
 
-        t0 = System.nanoTime();
-        boolean goalPassed = goal == null || goal.test(candidate);
-        goalNanos.add(System.nanoTime() - t0);
-        if (!goalPassed) {
+        if (goal != null && !goal.test(candidate)) {
             return null;
         }
         double value = score(candidate);
@@ -415,6 +387,7 @@ final class CityFallbackHeuristicOld {
 
     private SimpleNationCity normalize(DBCity donor) {
         SimpleNationCity copy = new SimpleNationCity(donor, getRevenue, convertedFunc);
+        copy.setPowered(true);
         copy.setNuke_turn(0);
         copy.setLand(targetLand);
         copy.setInfra(targetInfra);
@@ -528,17 +501,8 @@ final class CityFallbackHeuristicOld {
     }
 
     private double score(INationCity city) {
-        long start = System.nanoTime();
-        try {
-            valueFunctionCalls.increment();
-            return valueFunction.applyAsDouble(city);
-        } finally {
-            scoreNanos.add(System.nanoTime() - start);
-        }
-    }
-
-    private static String nanosToMillis(long nanos) {
-        return String.format(java.util.Locale.ROOT, "%.3f", nanos / 1_000_000d);
+        valueFunctionCalls.increment();
+        return valueFunction.applyAsDouble(city);
     }
 
     // --- signature helpers ---

@@ -10,12 +10,17 @@ import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.Research;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -29,20 +34,21 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
-import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.MMRDouble;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
@@ -66,10 +72,25 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -454,6 +475,30 @@ public final class PW {
             return profit;
         }
 
+        public static double getDisease(Predicate<Project> hasProject,
+                                        Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings,
+                                        long infra_cents, long land_cents, double pollution) {
+            int hospitals = getBuildings.apply(Buildings.HOSPITAL);
+            double hospitalModifier;
+            if (hospitals > 0) {
+                double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
+                hospitalModifier = hospitals * hospitalPct;
+            } else {
+                hospitalModifier = 0;
+            }
+            double pollutionModifier = pollution * 0.05;
+            return Math.max(0, ((0.01 * MathMan.sqr((infra_cents) / (land_cents * 0.01 + 0.001)) - 25) * 0.01d)
+                    + (infra_cents * 0.01 * 0.001) - hospitalModifier + pollutionModifier);
+        }
+
+        public static int getPopulation(long infra_cents, double crime, double disease, long ageDays) {
+            double ageBonus = (1 + Math.log(Math.max(1, ageDays)) * 0.0666666666666666666666666666666);
+            double diseaseDeaths = ((disease * 0.01) * infra_cents);
+            double crimeDeaths = Math.max((crime * 0.1) * (infra_cents) - 25, 0);
+
+            return (int) Math.round(Math.max(10, ((infra_cents - diseaseDeaths - crimeDeaths) * ageBonus)));
+        }
+
         public static double[] profit(Continent continent,
                 double rads,
                 long date,
@@ -517,22 +562,6 @@ public final class PW {
             return profitBuffer;
         }
 
-        public static double getDisease(Predicate<Project> hasProject,
-                Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings,
-                long infra_cents, long land_cents, double pollution) {
-            int hospitals = getBuildings.apply(Buildings.HOSPITAL);
-            double hospitalModifier;
-            if (hospitals > 0) {
-                double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
-                hospitalModifier = hospitals * hospitalPct;
-            } else {
-                hospitalModifier = 0;
-            }
-            double pollutionModifier = pollution * 0.05;
-            return Math.max(0, ((0.01 * MathMan.sqr((infra_cents) / (land_cents * 0.01 + 0.001)) - 25) * 0.01d)
-                    + (infra_cents * 0.01 * 0.001) - hospitalModifier + pollutionModifier);
-        }
-
         public static double nextCityCost(DBNation nation, int amount) {
             int current = nation.getCities();
             return cityCost(nation, current, current + amount);
@@ -546,14 +575,6 @@ public final class PW {
                     // nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
                     nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
                     nation != null && nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
-        }
-
-        public static int getPopulation(long infra_cents, double crime, double disease, long ageDays) {
-            double ageBonus = (1 + Math.log(Math.max(1, ageDays)) * 0.0666666666666666666666666666666);
-            double diseaseDeaths = ((disease * 0.01) * infra_cents);
-            double crimeDeaths = Math.max((crime * 0.1) * (infra_cents) - 25, 0);
-
-            return (int) Math.round(Math.max(10, ((infra_cents - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
 
         public static double cityCost(int from, int to, boolean manifestDestiny, boolean govSupportAgency,

@@ -1813,7 +1813,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         );
     }
 
-    private int loadCities() throws SQLException {
+    public int loadCities() throws SQLException {
         int total = 0;
         SelectBuilder builder = getDb().selectBuilder("CITY_BUILDS").select("*");
         try (ResultSet rs = builder.executeRaw()) {

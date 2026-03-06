@@ -20,37 +20,6 @@ public class BFSUtil<T> {
     private final long timeout;
 
     private static final long DEFAULT_MAX_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(1);
-    private static final String PRUNING_PROPERTY = "locutus.bfs.boundPruning";
-    private static final String PRUNING_ENV = "LOCUTUS_BFS_BOUND_PRUNING";
-    private static final String STRICT_TIMEOUT_PROPERTY = "locutus.bfs.strictTimeout";
-    private static final String STRICT_TIMEOUT_ENV = "LOCUTUS_BFS_STRICT_TIMEOUT";
-    private static final String MAX_TIMEOUT_PROPERTY = "locutus.bfs.maxTimeoutMs";
-    private static final String MAX_TIMEOUT_ENV = "LOCUTUS_BFS_MAX_TIMEOUT_MS";
-    private static final String REPRIORITIZE_MODE_PROPERTY = "locutus.bfs.reprioritizeMode";
-    private static final String REPRIORITIZE_MODE_ENV = "LOCUTUS_BFS_REPRIORITIZE_MODE";
-    private static final String SCHEDULER_MODE_PROPERTY = "locutus.bfs.schedulerMode";
-    private static final String SCHEDULER_MODE_ENV = "LOCUTUS_BFS_SCHEDULER_MODE";
-    private static final String SCHEDULE_BASE_STEP_PROPERTY = "locutus.bfs.schedule.baseStep";
-    private static final String SCHEDULE_BASE_STEP_ENV = "LOCUTUS_BFS_SCHEDULE_BASE_STEP";
-    private static final String SCHEDULE_SLOPE_WINDOW_PROPERTY = "locutus.bfs.schedule.slopeWindow";
-    private static final String SCHEDULE_SLOPE_WINDOW_ENV = "LOCUTUS_BFS_SCHEDULE_SLOPE_WINDOW";
-    private static final String SCHEDULE_MIN_IMPROVEMENT_EPS_PROPERTY = "locutus.bfs.schedule.minImprovementEpsilon";
-    private static final String SCHEDULE_MIN_IMPROVEMENT_EPS_ENV = "LOCUTUS_BFS_SCHEDULE_MIN_IMPROVEMENT_EPSILON";
-    private static final String SCHEDULE_GRACE_DELAY_PROPERTY = "locutus.bfs.schedule.graceDelayMs";
-    private static final String SCHEDULE_GRACE_DELAY_ENV = "LOCUTUS_BFS_SCHEDULE_GRACE_DELAY_MS";
-    private static final String SCHEDULE_STAGNATION_WINDOW_PROPERTY = "locutus.bfs.schedule.stagnationWindow";
-    private static final String SCHEDULE_STAGNATION_WINDOW_ENV = "LOCUTUS_BFS_SCHEDULE_STAGNATION_WINDOW";
-    private static final String SCHEDULE_PRESSURE_THRESHOLD_PROPERTY = "locutus.bfs.schedule.pressureThreshold";
-    private static final String SCHEDULE_PRESSURE_THRESHOLD_ENV = "LOCUTUS_BFS_SCHEDULE_PRESSURE_THRESHOLD";
-    private static final String SCHEDULE_MAX_STEP_PROPERTY = "locutus.bfs.schedule.maxStep";
-    private static final String SCHEDULE_MAX_STEP_ENV = "LOCUTUS_BFS_SCHEDULE_MAX_STEP";
-    private static final String FRONTIER_STALE_REFRESH_BUDGET_PROPERTY = "locutus.bfs.frontier.staleRefreshBudget";
-    private static final String FRONTIER_STALE_REFRESH_BUDGET_ENV = "LOCUTUS_BFS_FRONTIER_STALE_REFRESH_BUDGET";
-    private static final String FRONTIER_HEAD_STABILIZATION_LIMIT_PROPERTY = "locutus.bfs.frontier.headStabilizationLimit";
-    private static final String FRONTIER_HEAD_STABILIZATION_LIMIT_ENV = "LOCUTUS_BFS_FRONTIER_HEAD_STABILIZATION_LIMIT";
-    private static final String FRONTIER_FALLBACK_EAGER_REBUILD_PROPERTY = "locutus.bfs.frontier.fallbackEagerRebuild";
-    private static final String FRONTIER_FALLBACK_EAGER_REBUILD_ENV = "LOCUTUS_BFS_FRONTIER_FALLBACK_EAGER_REBUILD";
-    private static final String CITY_NODE_CLASS = "link.locutus.discord.db.entities.CityNode";
 
     public enum SearchStage {
         EXACT,
@@ -62,11 +31,7 @@ public class BFSUtil<T> {
         EAGER;
 
         static ReprioritizeMode resolve() {
-            String configured = readStringPropertyOrEnv(REPRIORITIZE_MODE_PROPERTY, REPRIORITIZE_MODE_ENV);
-            if (configured == null) {
-                return LAZY;
-            }
-            return "eager".equalsIgnoreCase(configured.trim()) ? EAGER : LAZY;
+            return LAZY;
         }
     }
 
@@ -75,11 +40,7 @@ public class BFSUtil<T> {
         LEGACY;
 
         static SchedulerMode resolve() {
-            String configured = readStringPropertyOrEnv(SCHEDULER_MODE_PROPERTY, SCHEDULER_MODE_ENV);
-            if (configured == null) {
-                return ADAPTIVE;
-            }
-            return "legacy".equalsIgnoreCase(configured.trim()) ? LEGACY : ADAPTIVE;
+            return ADAPTIVE;
         }
     }
 
@@ -127,14 +88,11 @@ public class BFSUtil<T> {
 
     private record FrontierMaintenancePolicy(int staleRefreshBudget, int headStabilizationLimit, boolean allowFallbackEagerRebuild) {
         static FrontierMaintenancePolicy resolve() {
-            int staleRefreshBudget = (int) parsePositiveLongOrDefault(
-                    readStringPropertyOrEnv(FRONTIER_STALE_REFRESH_BUDGET_PROPERTY, FRONTIER_STALE_REFRESH_BUDGET_ENV),
-                    32L);
-            int headStabilizationLimit = (int) parsePositiveLongOrDefault(
-                    readStringPropertyOrEnv(FRONTIER_HEAD_STABILIZATION_LIMIT_PROPERTY, FRONTIER_HEAD_STABILIZATION_LIMIT_ENV),
-                    256L);
-            String fallbackRaw = readStringPropertyOrEnv(FRONTIER_FALLBACK_EAGER_REBUILD_PROPERTY, FRONTIER_FALLBACK_EAGER_REBUILD_ENV);
-            boolean fallback = fallbackRaw == null || Boolean.parseBoolean(fallbackRaw);
+            // configuration no longer driven by properties or environment variables;
+            // just use the hard‑coded defaults that were previously the fallbacks.
+            int staleRefreshBudget = 32;
+            int headStabilizationLimit = 256;
+            boolean fallback = true; // allow eager rebuild by default
             return new FrontierMaintenancePolicy(Math.max(1, staleRefreshBudget), Math.max(1, headStabilizationLimit), fallback);
         }
     }
@@ -532,11 +490,11 @@ public class BFSUtil<T> {
     private Frontier<T> createFrontier() {
         ReprioritizeMode reprioritizeMode = ReprioritizeMode.resolve();
         FrontierMaintenancePolicy maintenancePolicy = FrontierMaintenancePolicy.resolve();
-        if (origin != null && CITY_NODE_CLASS.equals(origin.getClass().getName())) {
-            return new PrimitiveFrontier<>(reprioritizeMode, maintenancePolicy);
-        }
+        // drop special-case for city nodes; always use the object-based frontier
         return new ObjectFrontier<>(reprioritizeMode, maintenancePolicy);
     }
+
+    private static long consumeExpandedNodeCount = 0;
 
     public T search() {
         final Frontier<T> frontier = createFrontier();
@@ -670,7 +628,12 @@ public class BFSUtil<T> {
         long diff = System.currentTimeMillis() - originalStart;
         double nodesPerSecond = computeNodesPerSecond(expandedNodes, diff);
         Logg.text("BFS/A* searched " + expandedNodes + " options in " + diff + "ms for a rate of " + MathMan.format(nodesPerSecond) + " per second");
+        this.consumeExpandedNodeCount = expandedNodes;
         return max;
+    }
+
+    public static long consumeExpandedNodeCount() {
+        return consumeExpandedNodeCount;
     }
 
     private static double legacyNextFactor(double currentFactor) {
@@ -703,14 +666,16 @@ public class BFSUtil<T> {
                                           double pressureThreshold,
                                           double maxStep) {
         static AdaptiveSchedulePolicy resolve() {
-            double baseStep = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_BASE_STEP_PROPERTY, SCHEDULE_BASE_STEP_ENV), 0.03d);
-            int slopeWindow = (int) parsePositiveLongOrDefault(readStringPropertyOrEnv(SCHEDULE_SLOPE_WINDOW_PROPERTY, SCHEDULE_SLOPE_WINDOW_ENV), 8L);
-            double minImprovementEpsilon = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_MIN_IMPROVEMENT_EPS_PROPERTY, SCHEDULE_MIN_IMPROVEMENT_EPS_ENV), 1e-6d);
-            long graceDelayMs = parsePositiveLongOrDefault(readStringPropertyOrEnv(SCHEDULE_GRACE_DELAY_PROPERTY, SCHEDULE_GRACE_DELAY_ENV), 2500L);
-            int stagnationWindow = (int) parsePositiveLongOrDefault(readStringPropertyOrEnv(SCHEDULE_STAGNATION_WINDOW_PROPERTY, SCHEDULE_STAGNATION_WINDOW_ENV), 3L);
-            double pressureThreshold = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_PRESSURE_THRESHOLD_PROPERTY, SCHEDULE_PRESSURE_THRESHOLD_ENV), 1.08d);
-            double maxStep = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_MAX_STEP_PROPERTY, SCHEDULE_MAX_STEP_ENV), 0.18d);
-            return new AdaptiveSchedulePolicy(baseStep, slopeWindow, minImprovementEpsilon, graceDelayMs, Math.max(1, stagnationWindow), pressureThreshold, maxStep);
+            // ignore external configuration, always return the built-in defaults
+            double baseStep = 0.03d;
+            int slopeWindow = 8;
+            double minImprovementEpsilon = 1e-6d;
+            long graceDelayMs = 2500L;
+            int stagnationWindow = 3;
+            double pressureThreshold = 1.08d;
+            double maxStep = 0.18d;
+            return new AdaptiveSchedulePolicy(baseStep, slopeWindow, minImprovementEpsilon, graceDelayMs,
+                    Math.max(1, stagnationWindow), pressureThreshold, maxStep);
         }
 
         double nextFactor(double currentFactor,
@@ -764,75 +729,18 @@ public class BFSUtil<T> {
     }
 
     private static boolean isBoundPruningEnabled() {
-        String propertyValue = System.getProperty(PRUNING_PROPERTY);
-        if (propertyValue != null) {
-            return Boolean.parseBoolean(propertyValue);
-        }
-        String envValue = System.getenv(PRUNING_ENV);
-        if (envValue != null) {
-            return Boolean.parseBoolean(envValue);
-        }
+        // always enabled; configuration removed
         return true;
     }
 
     private static boolean isStrictTimeoutEnabled() {
-        String propertyValue = System.getProperty(STRICT_TIMEOUT_PROPERTY);
-        if (propertyValue != null) {
-            return Boolean.parseBoolean(propertyValue);
-        }
-        String envValue = System.getenv(STRICT_TIMEOUT_ENV);
-        if (envValue != null) {
-            return Boolean.parseBoolean(envValue);
-        }
+        // always enforce the timeout; external toggles removed
         return true;
     }
 
     private static long resolveMaxTimeoutMs() {
-        String propertyValue = System.getProperty(MAX_TIMEOUT_PROPERTY);
-        if (propertyValue != null) {
-            return parsePositiveLongOrDefault(propertyValue, DEFAULT_MAX_TIMEOUT_MS);
-        }
-        String envValue = System.getenv(MAX_TIMEOUT_ENV);
-        if (envValue != null) {
-            return parsePositiveLongOrDefault(envValue, DEFAULT_MAX_TIMEOUT_MS);
-        }
+        // always use the built-in default timeout
         return DEFAULT_MAX_TIMEOUT_MS;
-    }
-
-    private static long parsePositiveLongOrDefault(String raw, long fallback) {
-        if (raw == null) {
-            return fallback;
-        }
-        try {
-            long parsed = Long.parseLong(raw.trim());
-            return parsed > 0 ? parsed : fallback;
-        } catch (RuntimeException ignored) {
-            return fallback;
-        }
-    }
-
-    private static double parsePositiveDoubleOrDefault(String raw, double fallback) {
-        if (raw == null) {
-            return fallback;
-        }
-        try {
-            double parsed = Double.parseDouble(raw.trim());
-            return parsed > 0d ? parsed : fallback;
-        } catch (RuntimeException ignored) {
-            return fallback;
-        }
-    }
-
-    private static String readStringPropertyOrEnv(String propertyKey, String envKey) {
-        String propertyValue = System.getProperty(propertyKey);
-        if (propertyValue != null && !propertyValue.isBlank()) {
-            return propertyValue;
-        }
-        String envValue = System.getenv(envKey);
-        if (envValue != null && !envValue.isBlank()) {
-            return envValue;
-        }
-        return null;
     }
 
     private static double aggressivePruneThreshold(double bestScore, SearchStage stage) {

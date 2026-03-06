@@ -5,24 +5,30 @@ import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
+import link.locutus.discord.util.MathMan;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 
 public final class CityFallbackHeuristicBenchmark {
+    // .\gradlew cityFallbackBenchQuick -PcityFallbackBenchDonors=200000 -PcityFallbackBenchScenarios=1 -PcityFallbackBenchWarmups=0 -PcityFallbackBenchRounds=1 -PcityFallbackBenchDebugCounters=true
     private static final Predicate<Project> NO_PROJECTS = p -> false;
     private static final Continent CONTINENT = Continent.NORTH_AMERICA;
     private static final int NUM_CITIES = 20;
     private static final double RADS = 3_000d;
     private static final double GROSS_MODIFIER = 0d;
 
-    private static final int DEFAULT_SCENARIOS = 6;
+    private static final int DEFAULT_SCENARIOS = 7;
     private static final int DEFAULT_DONORS_PER_SCENARIO = 400;
     private static final int DEFAULT_WARMUP_ROUNDS = 2;
     private static final int DEFAULT_MEASURE_ROUNDS = 5;
@@ -38,7 +44,9 @@ public final class CityFallbackHeuristicBenchmark {
         long seed = Long.getLong("cityFallbackBenchSeed", 20260302L);
 
         long scenarioStart = System.nanoTime();
-        List<Scenario> scenarios = createScenarios(scenarioCount, donorsPerScenario, seed);
+//        List<Scenario> scenarios = createScenarios(scenarioCount, donorsPerScenario, seed);
+        List<Scenario> scenarios = createDbScenario(scenarioCount);
+        int donorsActual = scenarios.get(0).donors.size();
         long scenarioNanos = System.nanoTime() - scenarioStart;
         ToDoubleFunction<INationCity> valueFunction = CityFallbackHeuristicBenchmark::scoreCity;
 
@@ -46,7 +54,7 @@ public final class CityFallbackHeuristicBenchmark {
             "prepared scenarios in %.3f ms (scenarios=%d, donors=%d)%n",
             nanosToMillis(scenarioNanos),
             scenarioCount,
-            donorsPerScenario);
+                donorsActual);
 
         runRounds("warmup", scenarios, valueFunction, warmupRounds);
         Metrics measured = runRounds("measure", scenarios, valueFunction, measureRounds);
@@ -57,7 +65,7 @@ public final class CityFallbackHeuristicBenchmark {
 
         System.out.println("=== CityFallbackHeuristic benchmark ===");
         System.out.println("scenarios=" + scenarioCount
-                + ", donorsPerScenario=" + donorsPerScenario
+                + ", donorsPerScenario=" + donorsActual
                 + ", warmups=" + warmupRounds
                 + ", rounds=" + measureRounds
                 + ", seed=" + seed);
@@ -136,9 +144,40 @@ public final class CityFallbackHeuristicBenchmark {
             double currentValue = currentBest == null ? Double.NEGATIVE_INFINITY : valueFunction.applyAsDouble(currentBest);
 
             metrics.comparisons++;
-            if (currentValue + 1e-9 < oldValue) {
+            if (currentValue + 1 < oldValue) {
+                System.out.println("quality regression detected: oldValue=" + MathMan.format(oldValue) + ", currentValue=" + MathMan.format(currentValue) + " | diff: " + MathMan.format(currentValue - oldValue));
                 metrics.qualityRegressions++;
                 metrics.maxQualityDrop = Math.max(metrics.maxQualityDrop, oldValue - currentValue);
+
+                if (currentValue < oldValue - 1.0) {
+                    System.out.println("=== REGRESSION DETAIL ===");
+                    System.out.println("old value=" + oldValue + " new value=" + currentValue);
+
+                    // Print old best building counts
+                    System.out.print("OLD buildings: ");
+                    for (Building b : Buildings.values()) {
+                        int amt = oldBest.getBuilding(b);
+                        if (amt > 0) System.out.print(b.name() + "=" + amt + " ");
+                    }
+                    System.out.println();
+
+                    // Print new best building counts
+                    System.out.print("NEW buildings: ");
+                    for (Building b : Buildings.values()) {
+                        int amt = currentBest.getBuilding(b);
+                        if (amt > 0) System.out.print(b.name() + "=" + amt + " ");
+                    }
+                    System.out.println();
+
+                    // Cross-score: evaluate old config with new scorer and vice versa
+                    double oldConfigNewScore = valueFunction.applyAsDouble(oldBest);
+                    double newConfigOldScore = valueFunction.applyAsDouble(currentBest);
+                    System.out.println("old config re-scored: " + oldConfigNewScore);
+                    System.out.println("new config re-scored: " + newConfigOldScore);
+                }
+
+            } else if (currentValue > oldValue + 1) {
+                System.out.println("quality improvement detected: oldValue=" + MathMan.format(oldValue) + ", currentValue=" + MathMan.format(currentValue) + " | diff: " + MathMan.format(currentValue - oldValue));
             }
         }
         return metrics;
@@ -147,7 +186,7 @@ public final class CityFallbackHeuristicBenchmark {
     private static List<Scenario> createScenarios(int scenarioCount, int donorsPerScenario, long seed) {
         Random random = new Random(seed);
         ArrayList<Scenario> scenarios = new ArrayList<>(scenarioCount);
-        double[] infraOptions = {500d, 750d, 1_000d, 1_500d, 2_000d, 2_500d};
+        double[] infraOptions = {3_500, 3_000, 2_500, 2_000, 1_500, 1_000, 750, 500};
 
         for (int i = 0; i < scenarioCount; i++) {
             double infra = infraOptions[i % infraOptions.length];
@@ -170,7 +209,39 @@ public final class CityFallbackHeuristicBenchmark {
 
             scenarios.add(new Scenario(source, donors));
         }
+
         return scenarios;
+    }
+
+    public static List<Scenario> createDbScenario(int scenarioCount) {
+        try {
+            System.out.println("Creating DB...");
+            NationDB db = new NationDB();
+            System.out.println("Loading cities from DB...");
+            db.loadCities();
+            System.out.println("Loaded " + db.getCities().size() + " cities from DB.");
+            Set<DBCity> allCities = db.getCities();
+
+            ArrayList<Scenario> scenarios = new ArrayList<>(scenarioCount);
+            double[] infraOptions = {3_500, 3_000, 2_500, 2_000, 1_500, 1_000, 750, 500};
+
+            for (int i = 0; i < scenarioCount; i++) {
+                double infra = infraOptions[i % infraOptions.length];
+                JavaCity source = new JavaCity()
+                        .setInfra(infra)
+                        .setLand(1_500d + (i * 120d))
+                        .setAge(600 + (i * 100));
+                source.setOptimalPower(CONTINENT);
+
+                scenarios.add(new Scenario(source, allCities));
+            }
+
+            return scenarios;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static void fillCivilianBuildings(JavaCity donor, Random random) {
@@ -188,20 +259,14 @@ public final class CityFallbackHeuristicBenchmark {
     }
 
     private static double scoreCity(INationCity city) {
-        return city.getRevenueConverted()
-                + (city.getBuilding(Buildings.STADIUM) * 1_250d)
-                + (city.getBuilding(Buildings.MALL) * 650d)
-                + (city.getBuilding(Buildings.BANK) * 500d)
-                + (city.getBuilding(Buildings.SUPERMARKET) * 300d)
-                + (city.getBuilding(Buildings.HOSPITAL) * 120d)
-                + (city.getBuilding(Buildings.POLICE_STATION) * 120d);
+        return city.getRevenueConverted();
     }
 
     private static double nanosToMillis(long nanos) {
         return nanos / 1_000_000d;
     }
 
-    private record Scenario(JavaCity source, List<DBCity> donors) {
+    private record Scenario(JavaCity source, Collection<DBCity> donors) {
     }
 
     private static final class Metrics {

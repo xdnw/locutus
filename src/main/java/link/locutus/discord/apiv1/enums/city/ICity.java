@@ -14,13 +14,12 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.MMRInt;
-import link.locutus.discord.db.entities.city.SimpleDBCity;
-import link.locutus.discord.db.entities.city.SimpleNationCity;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -147,11 +146,11 @@ public interface ICity {
         return CityFallbackHeuristic.findBest(this, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow, Locutus.imp().getNationDB().getCities());
     }
 
-    default INationCity findBestFromDonors(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow, Iterable<DBCity> donors) {
+    default INationCity findBestFromDonors(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow, Collection<DBCity> donors) {
         return CityFallbackHeuristic.findBest(this, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow, donors);
     }
 
-    default INationCity findBestExactSlotOnlyFromDonors(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow, Iterable<DBCity> donors) {
+    default INationCity findBestExactSlotOnlyFromDonors(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow, Collection<DBCity> donors) {
         return CityFallbackHeuristic.findBestExactSlotOnly(this, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow, donors);
     }
 

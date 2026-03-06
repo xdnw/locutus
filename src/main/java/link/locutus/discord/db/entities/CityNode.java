@@ -670,10 +670,6 @@ public final class CityNode implements INationCity {
         return numBuildings;
     }
 
-    public double optimisticRevenueUpperBound(Building[] orderedBuildings, int startIndex, double[] topGainScratch) {
-        return optimisticRevenueUpperBound(cached.getOrComputeModIndices(orderedBuildings), startIndex, topGainScratch);
-    }
-
     public double optimisticRevenueUpperBound(int[] orderedModIndices, int startIndex, double[] topGainScratch) {
         double scoreNow = getRevenueConverted();
         int freeSlots = getFreeSlots();
