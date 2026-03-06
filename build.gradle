@@ -181,6 +181,8 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.VirtualConflictMeta',
                 'link.locutus.discord.web.commands.binding.value_types.WebTreatyChanges',
                 'link.locutus.discord.web.commands.binding.value_types.WebCurrentTreaties',
+                'link.locutus.discord.db.guild.GuildSettingCategory',
+                'link.locutus.discord.db.guild.GuildSettingSubgroup'
         ]
         outputKind = 'module'
         nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']

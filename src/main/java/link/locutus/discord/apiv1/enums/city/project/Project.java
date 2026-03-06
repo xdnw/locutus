@@ -21,6 +21,8 @@ public interface Project {
 
     public double[] costArr();
 
+    public boolean affectsCityRevenue();
+
     @Command(desc = "Market value of project")
     default double getMarketValue() {
         return ResourceType.convertedTotal(cost());

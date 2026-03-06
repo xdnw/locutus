@@ -5,19 +5,39 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.AccessType;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
+import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.RssConvertMode;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.commands.manager.v2.binding.annotation.StarIsGuild;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.UserCommand;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -34,18 +54,38 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.AddBalanceBuilder;
+import link.locutus.discord.db.entities.AttackCost;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.pnw.*;
+import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.GuildOrAlliance;
+import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.FetchDeposit;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.ResetDepositsBuilder;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
-import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
@@ -71,12 +111,33 @@ import java.security.GeneralSecurityException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAccumulator;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.DoubleBinaryOperator;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.MONEY;
@@ -1537,166 +1598,6 @@ public class BankCommands {
             Map errors = force ? new HashMap<>() : TransferResult.toMap(allStatuses);
             return transferBulkWithErrors(io, bulkCmd, author, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key, errors);
         }
-    }
-
-    @Command(desc = "Get a sheet of nations and their revenue (compared to optimal city builds)", viewable = true)
-    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String revenueSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("i") boolean include_untaxable,
-                               @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db == null ? null : db.getGuild());
-        if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
-        }
-
-        int sizeOriginal = nationSet.size();
-        int numRemovedNotAA = 0;
-        if (db != null) {
-            Set<Integer> ids = db.getAllianceIds(false);
-            nationSet.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || (!ids.isEmpty() && !ids.contains(f.getAlliance_id())));
-            numRemovedNotAA = sizeOriginal - (sizeOriginal = nationSet.size());
-        }
-        nationSet.removeIf(f -> f.getVm_turns() > 0);
-        int numRemovedVM = sizeOriginal - (sizeOriginal = nationSet.size());
-        if (!include_untaxable) nationSet.removeIf(f -> !f.isTaxable());
-        int numRemovedUntaxable = sizeOriginal - (sizeOriginal = nationSet.size());
-        List<String> footer = new ArrayList<>();
-        if (numRemovedNotAA > 0) footer.add(numRemovedNotAA + " nations were removed for not being members of the guild's alliances");
-        if (numRemovedVM > 0) footer.add(numRemovedVM + " nations were removed for being in vacation mode");
-        if (numRemovedUntaxable > 0) footer.add(numRemovedUntaxable + " nations were removed for being untaxable");
-
-        if (nationSet.isEmpty()) {
-            return "No nations to process." + StringMan.join(footer, "\n");
-        }
-
-        if (nations.getNations().size() > 100 && !db.isValidAlliance()) {
-            throw new IllegalArgumentException("Too many nations: " + nations.getNations().size() + " (max: 100 outside of an alliance guild)");
-        }
-
-        List<String> header = new ArrayList<>(Arrays.asList(
-                "nation",
-                "tax_id",
-                "cities",
-                "avg_infra",
-                "avg_land",
-                "avg_buildings",
-                "avg_disease",
-                "avg_crime",
-                "avg_pollution",
-                "avg_population",
-                "mmr[unit]",
-                "mmr[build]",
-                "revenue[converted]",
-                "raws %",
-                "manu %",
-                "commerce %",
-                "optimal %"
-        ));
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) continue;
-            header.add(type.name());
-        }
-        sheet.setHeader(header);
-
-        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Please wait... "));
-        long[] start = {System.currentTimeMillis()};
-
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
-        Function<DBNation, List<String>> addRowTask = nation -> {
-            if (start[0] + 10000 < System.currentTimeMillis()) {
-                start[0] = System.currentTimeMillis();
-                io.updateOptionally(msgFuture, "Updating build for " + nation.getMarkdownUrl());
-            }
-
-            double[] revenue = nation.getRevenue(cacheStore);
-
-            double disease = 0;
-            double crime = 0;
-            double pollution = 0;
-            double population = 0;
-            Map<Integer, JavaCity> cities = nation.getCityMap(false, false);
-            for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                JavaCity city = entry.getValue();
-                disease += city.getMetrics(nation::hasProject).disease;
-                crime += city.getMetrics(nation::hasProject).crime;
-                pollution += city.getMetrics(nation::hasProject).pollution;
-                population += city.getMetrics(nation::hasProject).population;
-            }
-            disease /= cities.size();
-            crime /= cities.size();
-            pollution /= cities.size();
-            population /= cities.size();
-
-            double revenueConverted = ResourceType.convertedTotal(revenue);
-            double revenueRaw = 0;
-            double revenueManu = 0;
-            for (ResourceType type : ResourceType.values) {
-                if (type.isManufactured()) revenueManu += ResourceType.convertedTotal(type, revenue[type.ordinal()]);
-                if (type.isRaw()) revenueRaw += ResourceType.convertedTotal(type, revenue[type.ordinal()]);
-            }
-            double revenueCommerce = revenue[0];
-
-            List<String> row = new ArrayList<>(header);
-            row.set(0, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
-            row.set(1, nation.getTax_id() + "");
-            row.set(2, nation.getCities() + "");
-            row.set(3, MathMan.format(nation.getAvg_infra()));
-            row.set(4, MathMan.format(nation.getAvgLand()));
-            row.set(5, MathMan.format(nation.getAvgBuildings()));
-            row.set(6, MathMan.format(disease));
-            row.set(7, MathMan.format(crime));
-            row.set(8, MathMan.format(pollution));
-            row.set(9, MathMan.format(population));
-            row.set(10, "=\"" + nation.getMMR()+ "\"");
-            row.set(11, "=\"" + nation.getMMRBuildingStr()+ "\"");
-            row.set(12, MathMan.format(revenueConverted));
-
-            row.set(13, MathMan.format(100 * revenueRaw / revenueConverted));
-            row.set(14, MathMan.format(100 * revenueManu / revenueConverted));
-            row.set(15, MathMan.format(100 * revenueCommerce / revenueConverted));
-
-            JavaCity city1 = cities.entrySet().iterator().next().getValue();
-
-            double profit = city1.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
-            JavaCity origin = new JavaCity(city1);
-            origin.zeroNonMilitary().setOptimalPower(nation.getContinent());
-            try {
-                JavaCity optimal = origin.optimalBuild(nation, 0, false, null);
-                double profitOptimal = 0;
-                if (optimal != null) {
-                    profitOptimal = optimal.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
-                }
-                double optimalGain = profit >= profitOptimal ? 1 : profit / profitOptimal;
-
-                row.set(16, MathMan.format(100 * optimalGain));
-            } catch (IllegalArgumentException e) {
-                row.set(16, e.getMessage());
-            }
-
-            int i = 17;
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
-                row.set(i++, MathMan.format(revenue[type.ordinal()]));
-            }
-
-            return row;
-        };
-
-        List<Future<List<String>>> addRowFutures = new ArrayList<>();
-
-        for (DBNation nation : nationSet) {
-            Future<List<String>> future = Locutus.imp().getExecutor().submit(() -> addRowTask.apply(nation));
-            addRowFutures.add(future);
-        }
-
-        for (Future<List<String>> future : addRowFutures) {
-            sheet.addRow(future.get());
-        }
-
-        sheet.updateClearCurrentTab();
-        sheet.updateWrite();
-
-        sheet.attach(io.create(), "revenue").append(StringMan.join(footer, "\n")).send();
-        return null;
     }
 
     @Command(desc = "Get a sheet of members and their saved up warchest (can include deposits and potential revenue)", viewable = true)

@@ -26,6 +26,7 @@ public class AProject implements Project {
     private String name;
     private int index;
     private boolean disabled;
+    private boolean affectsRevenue;
     private QuadFunction<Integer, DBNation, Project, Double, RoiResult> roi;
 
     public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements, QuadFunction<Integer, DBNation, Project, Double, RoiResult> roi) {
@@ -45,6 +46,16 @@ public class AProject implements Project {
     @Override
     public QuadFunction<Integer, DBNation, Project, Double, RoiResult> getRoiFunction() {
         return roi;
+    }
+
+    protected Project setEffectsCityRevenue() {
+        this.affectsRevenue = true;
+        return this;
+    }
+
+    @Override
+    public boolean affectsCityRevenue() {
+        return affectsRevenue;
     }
 
     public AProject disable() {

@@ -7335,7 +7335,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="revenueSheet")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.RevenueSheetCommand.class,method="revenueSheet")
             public static class revenueSheet extends CommandRef {
                 public static final revenueSheet cmd = new revenueSheet();
             public revenueSheet nations(String value) {
@@ -13010,7 +13010,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="revenueSheet")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.RevenueSheetCommand.class,method="revenueSheet")
             public static class revenueSheet extends CommandRef {
                 public static final revenueSheet cmd = new revenueSheet();
             public revenueSheet nations(String value) {

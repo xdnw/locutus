@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.IMutableCity;
+import link.locutus.discord.apiv1.enums.city.INationCity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -15,7 +16,15 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.city.*;
+import link.locutus.discord.event.city.CityBuildingChangeEvent;
+import link.locutus.discord.event.city.CityCreateEvent;
+import link.locutus.discord.event.city.CityInfraBuyEvent;
+import link.locutus.discord.event.city.CityInfraDamageEvent;
+import link.locutus.discord.event.city.CityInfraSellEvent;
+import link.locutus.discord.event.city.CityLandBuyEvent;
+import link.locutus.discord.event.city.CityLandSellEvent;
+import link.locutus.discord.event.city.CityNukeEvent;
+import link.locutus.discord.event.city.CityPowerChangeEvent;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PW;
@@ -29,7 +38,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
-public abstract class DBCity implements IMutableCity {
+public abstract class DBCity implements IMutableCity, INationCity {
     public static final ToIntFunction<SimpleDBCity> GET_ID = SimpleDBCity::getId;
 
     @Override
@@ -39,8 +48,6 @@ public abstract class DBCity implements IMutableCity {
         }
         getBuildings3()[building.ordinal()] = (byte) amt;
     }
-
-
 
     public void setDateCreated(long date_created) {
         this.setCreated(date_created);
@@ -604,19 +611,7 @@ public abstract class DBCity implements IMutableCity {
 
     @Command(desc = "Get the profit of the city")
     public Map<ResourceType, Double> getRevenue() {
-        double[] profitBuffer = ResourceType.getBuffer();
-
-        DBNation nation = getNation();
-
-        Continent continent = nation == null ? Continent.NORTH_AMERICA : nation.getContinent();
-        double rads = nation == null ? Locutus.imp().getTradeManager().getGlobalRadiation() : nation.getRads();
-        long date = System.currentTimeMillis();
-        Predicate<Project> hasProject = nation == null ? Predicates.alwaysFalse() : nation::hasProject;
-        int numCities = nation == null ? 21 : nation.getCities();
-        double grossModifier = nation == null ? 1 : nation.getGrossModifier();
-        boolean forceUnpowered = false;
-        int turns = 12;
-        double[] profit = PW.City.profit(continent, rads, date, hasProject, profitBuffer, numCities, grossModifier, forceUnpowered, turns, this);
+        double[] profit = getProfit(null);
         return ResourceType.resourcesToMap(profit);
     }
 
@@ -629,6 +624,27 @@ public abstract class DBCity implements IMutableCity {
         int numCities = nation == null ? 21 : nation.getCities();
         double grossModifier = nation == null ? 1 : nation.getGrossModifier();
         return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, this);
+    }
+
+    @Override
+    public double getRevenueConverted() {
+        return getRevenueValue();
+    }
+
+    @Override
+    public double[] getProfit(double[] buffer) {
+        if (buffer == null) buffer = ResourceType.getBuffer();
+        DBNation nation = getNation();
+
+        Continent continent = nation == null ? Continent.NORTH_AMERICA : nation.getContinent();
+        double rads = nation == null ? Locutus.imp().getTradeManager().getGlobalRadiation() : nation.getRads();
+        long date = System.currentTimeMillis();
+        Predicate<Project> hasProject = nation == null ? Predicates.alwaysFalse() : nation::hasProject;
+        int numCities = nation == null ? 21 : nation.getCities();
+        double grossModifier = nation == null ? 1 : nation.getGrossModifier();
+        boolean forceUnpowered = false;
+        int turns = 12;
+        return PW.City.profit(continent, rads, date, hasProject, buffer, numCities, grossModifier, forceUnpowered, turns, this);
     }
 
     public abstract void setPowered(boolean powered);

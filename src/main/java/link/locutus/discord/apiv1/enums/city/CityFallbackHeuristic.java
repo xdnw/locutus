@@ -21,6 +21,9 @@ import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
@@ -29,10 +32,11 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 
-final class CityFallbackHeuristic {
+public final class CityFallbackHeuristic {
     private static final ForkJoinPool SHARED_POOL = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
     private static final int BEAM_WIDTH = 8;
     private static final int PARALLEL_THRESHOLD = 64;
+    private static final int QUERY_PARALLEL_THRESHOLD = 4;
     private static final boolean EAGER_INCUMBENT_PUBLISH = true;
     private static final double PRE_SCORE_PRUNE_SLACK = 0d;
 
@@ -46,7 +50,9 @@ final class CityFallbackHeuristic {
 
     private static final int NUM_CIVILIAN_BUILDINGS = CIVILIAN_BUILDINGS.length;
 
-    // --- instance fields: fixed for the entire search ---
+    // --- instance fields: fixed for one source/search ---
+    private final SharedBatchContext shared;
+
     private final Continent continent;
     private final Predicate<Project> hasProject;
     private final double targetInfra;
@@ -61,7 +67,6 @@ final class CityFallbackHeuristic {
     private final DBCity origin;
     private final ICity targetSignature;
 
-    // precomputed: which civilian buildings are legal on this continent and their caps
     private final double diseaseDeathFactor;
     private final double crimeDeathFactor;
     private final double incomeFactorA;
@@ -106,31 +111,27 @@ final class CityFallbackHeuristic {
     private final int numCities;
     private final double rads;
     private final double grossModifier;
-    private final boolean debugCounters;
-    private final int[] packedCivilianIndices;   // buildings actually encoded in packed state
-    private final int[] addableCivilianIndices;  // buildings with cap > 0
+    private final int[] packedCivilianIndices;
+    private final int[] addableCivilianIndices;
 
     private volatile double bestValueSoFar = Double.NEGATIVE_INFINITY;
 
-    private CityFallbackHeuristic(Continent continent,
-                                  Predicate<Project> hasProject,
-                                  double targetInfra,
-                                  double targetLand,
-                                  int targetCivilianSlots,
-                                  int[] targetMilitarySignature,
-                                  int[] targetPowerSignature,
-                                  ToDoubleFunction<INationCity> valueFunction,
-                                  Predicate<INationCity> goal,
-                                  BiConsumer<DBCity, double[]> getRevenue,
-                                  ToDoubleFunction<DBCity> convertedFunc,
-                                  DBCity origin,
-                                  ICity targetSignature,
-                                  int numCities,
-                                  double rads,
-                                  double grossModifier,
-                                  long evalDate) {
-        this.continent = continent;
-        this.hasProject = hasProject;
+    private CityFallbackHeuristic(
+            SharedBatchContext shared,
+            double targetInfra,
+            double targetLand,
+            int targetCivilianSlots,
+            int[] targetMilitarySignature,
+            int[] targetPowerSignature,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            DBCity origin,
+            ICity targetSignature
+    ) {
+        this.shared = shared;
+
+        this.continent = shared.continent;
+        this.hasProject = shared.hasProject;
         this.targetInfra = targetInfra;
         this.targetLand = targetLand;
         this.targetCivilianSlots = targetCivilianSlots;
@@ -138,53 +139,35 @@ final class CityFallbackHeuristic {
         this.targetPowerSignature = targetPowerSignature;
         this.valueFunction = valueFunction;
         this.goal = goal;
-        this.getRevenue = getRevenue;
-        this.convertedFunc = convertedFunc;
+        this.getRevenue = shared.getRevenue;
+        this.convertedFunc = shared.convertedFunc;
         this.origin = origin;
         this.targetSignature = targetSignature;
-        this.numCities = numCities;
-        this.rads = rads;
-        this.grossModifier = grossModifier;
-        this.evalDate = evalDate;
-        this.debugCounters = Boolean.getBoolean("locutus.cityFallback.debugCounters");
+        this.numCities = shared.numCities;
+        this.rads = shared.rads;
+        this.grossModifier = shared.grossModifier;
+        this.evalDate = shared.evalDate;
 
-        this.civilianCaps = new int[NUM_CIVILIAN_BUILDINGS];
-        this.civilianOrdinals = new int[NUM_CIVILIAN_BUILDINGS];
-        this.ordinalToCivilianIndex = new int[PW.City.Building.SIZE];
-        this.civilianShift = new int[NUM_CIVILIAN_BUILDINGS];
-        this.civilianBits = new int[NUM_CIVILIAN_BUILDINGS];
-        this.civilianMask = new long[NUM_CIVILIAN_BUILDINGS];
-        this.civilianStep = new long[NUM_CIVILIAN_BUILDINGS];
-        this.civilianCommerce = new int[NUM_CIVILIAN_BUILDINGS];
-        this.civilianPollution = new int[NUM_CIVILIAN_BUILDINGS];
-        Arrays.fill(this.ordinalToCivilianIndex, -1);
-
-        int bitOffset = 0;
-        for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
-            Building b = CIVILIAN_BUILDINGS[i];
-            civilianCaps[i] = b.canBuild(continent) ? b.getCap(hasProject) : -1;
-            civilianOrdinals[i] = b.ordinal();
-            ordinalToCivilianIndex[b.ordinal()] = i;
-
-            civilianCommerce[i] = b.getCommerce();
-            civilianPollution[i] = b.pollution(hasProject);
-
-            int cap = civilianCaps[i];
-            int bits = cap >= 0 ? bitsForCount(cap) : 0;
-            civilianBits[i] = bits;
-            civilianShift[i] = bitOffset;
-            if (bits == 0) {
-                civilianMask[i] = 0L;
-                civilianStep[i] = 0L;
-                continue;
-            }
-            long localMask = bits == 63 ? -1L : ((1L << bits) - 1L);
-            civilianMask[i] = localMask << bitOffset;
-            civilianStep[i] = 1L << bitOffset; // Enables branchless O(1) addition step
-            bitOffset += bits;
-        }
+        this.civilianCaps = shared.civilianCaps;
+        this.civilianOrdinals = shared.civilianOrdinals;
+        this.ordinalToCivilianIndex = shared.ordinalToCivilianIndex;
+        this.civilianShift = shared.civilianShift;
+        this.civilianBits = shared.civilianBits;
+        this.civilianMask = shared.civilianMask;
+        this.civilianStep = shared.civilianStep;
+        this.civilianCommerce = shared.civilianCommerce;
+        this.civilianPollution = shared.civilianPollution;
+        this.maxCommerce = shared.maxCommerce;
+        this.hospitalPct = shared.hospitalPct;
+        this.policePct = shared.policePct;
+        this.hasSpecializedPoliceTraining = shared.hasSpecializedPoliceTraining;
+        this.commerceContributionByOrdinal = shared.commerceContributionByOrdinal;
+        this.pollutionContributionByOrdinal = shared.pollutionContributionByOrdinal;
+        this.packedCivilianIndices = shared.packedCivilianIndices;
+        this.addableCivilianIndices = shared.addableCivilianIndices;
 
         this.originCreated = origin.getCreated();
+
         this.fixedBuildingCounts = new int[PW.City.Building.SIZE];
         fixedBuildingCounts[Buildings.BARRACKS.ordinal()] = targetMilitarySignature[0];
         fixedBuildingCounts[Buildings.FACTORY.ordinal()] = targetMilitarySignature[1];
@@ -196,24 +179,12 @@ final class CityFallbackHeuristic {
         fixedBuildingCounts[Buildings.WIND_POWER.ordinal()] = targetPowerSignature[3];
 
         this.fixedBuildingTotal = Arrays.stream(targetMilitarySignature).sum() + Arrays.stream(targetPowerSignature).sum();
-        this.fixedRequiredInfra = (Arrays.stream(targetMilitarySignature).sum() + Arrays.stream(targetPowerSignature).sum()) * 50d;
+        this.fixedRequiredInfra = fixedBuildingTotal * 50d;
         this.originRequiredInfra = origin.getRequiredInfra();
         this.targetPoweredInfra = targetSignature.getPoweredInfra();
         this.hasSufficientPower = targetPoweredInfra >= targetInfra;
         this.maxFeasibleCivilianCount = Math.max(0, (int) Math.floor((targetInfra - fixedRequiredInfra) / 50d));
         this.targetPoweredInfraInt = (int) Math.ceil(targetPoweredInfra);
-
-        this.maxCommerce = getMaxCommerce(hasProject);
-        this.hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5d : 2.5d;
-        this.policePct = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5d : 2.5d;
-        this.hasSpecializedPoliceTraining = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);
-        this.commerceContributionByOrdinal = new int[PW.City.Building.SIZE];
-        this.pollutionContributionByOrdinal = new int[PW.City.Building.SIZE];
-
-        for (Building building : Buildings.values()) {
-            commerceContributionByOrdinal[building.ordinal()] = building.getCommerce();
-            pollutionContributionByOrdinal[building.ordinal()] = building.pollution(hasProject);
-        }
 
         this.profitLookupOffset = new int[NUM_CIVILIAN_BUILDINGS];
         int totalCaps = 0;
@@ -228,7 +199,8 @@ final class CityFallbackHeuristic {
             int cap = Math.max(0, civilianCaps[i]);
             Building building = CIVILIAN_BUILDINGS[i];
             for (int amt = 1; amt <= cap; amt++) {
-                flatCivilianProfitLookup[profitLookupOffset[i] + amt] = building.profitConverted(continent, rads, hasProject, targetLand, amt);
+                flatCivilianProfitLookup[profitLookupOffset[i] + amt] =
+                        building.profitConverted(continent, rads, hasProject, targetLand, amt);
             }
         }
 
@@ -236,6 +208,7 @@ final class CityFallbackHeuristic {
         int fixedPollutionAcc = 0;
         double fixedRevenueAcc = 0d;
         int unpoweredInfra = (int) Math.ceil(targetInfra);
+
         for (int ordinal = 0; ordinal < PW.City.Building.SIZE; ordinal++) {
             if (ordinalToCivilianIndex[ordinal] >= 0) continue;
 
@@ -262,10 +235,14 @@ final class CityFallbackHeuristic {
         this.fixedRevenueConverted = fixedRevenueAcc;
 
         this.basePopulation = targetInfra * 100d;
-        this.diseaseBase = ((0.01 * MathMan.sqr((targetInfra * 100d) / (targetLand + 0.001d)) - 25d) * 0.01d) + (targetInfra * 0.001d);
+        this.diseaseBase =
+                ((0.01 * MathMan.sqr((targetInfra * 100d) / (targetLand + 0.001d)) - 25d) * 0.01d)
+                        + (targetInfra * 0.001d);
         this.ageBonus = originCreated <= 0 || originCreated == Long.MAX_VALUE
                 ? 1d
-                : (1d + Math.log(Math.max(1d, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - originCreated))) * 0.06666666666666667d);
+                : (1d + Math.log(Math.max(1d,
+                TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - originCreated)))
+                * 0.06666666666666667d);
         this.newPlayerBonus = 1d + Math.max(1d - (numCities - 1) * 0.05d, 0d);
         this.incomeFactor = newPlayerBonus * grossModifier;
 
@@ -274,55 +251,154 @@ final class CityFallbackHeuristic {
         this.incomeFactorA = 0.0145d * this.incomeFactor;
         this.incomeFactorB = 0.725d * this.incomeFactor;
 
-        double food = (basePopulation * basePopulation) / 125_000_000d + (basePopulation * (ageBonus - 1d)) / 850d;
+        double food = (basePopulation * basePopulation) / 125_000_000d
+                + (basePopulation * (ageBonus - 1d)) / 850d;
         this.foodConverted = ResourceType.convertedTotalNegative(ResourceType.FOOD, food);
-        this.crimeByCommerce = new double[maxCommerce + 1];
 
+        this.crimeByCommerce = new double[maxCommerce + 1];
         for (int i = 0; i <= maxCommerce; i++) {
             crimeByCommerce[i] = Math.max(0d, (MathMan.sqr(103 - i) + basePopulation) * 0.000009d);
         }
+    }
 
-        int packedCivilianCount = 0;
-        int addableCivilianCount = 0;
-        for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
-            if (civilianBits[i] != 0) packedCivilianCount++;
-            if (civilianCaps[i] > 0) addableCivilianCount++;
-        }
-
-        this.packedCivilianIndices = new int[packedCivilianCount];
-        this.addableCivilianIndices = new int[addableCivilianCount];
-
-        for (int i = 0, p = 0, a = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
-            if (civilianBits[i] != 0) packedCivilianIndices[p++] = i;
-            if (civilianCaps[i] > 0) addableCivilianIndices[a++] = i;
+    public static void main(String[] args) {
+        for (int i = 1; i < 50; i++) {
+            System.out.println(i + ". " + (Math.max(1d - (i - 1) * 0.05d, 0d)));
         }
     }
 
-    static INationCity findBest(ICity source, Continent continent, int numCities,
-                                ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal,
-                                Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow,
-                                Collection<DBCity> donors) {
-        CityFallbackHeuristic ctx = create(source, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
-        return ctx == null ? null : ctx.search(donors, true);
+    public static INationCity findBest(
+            ICity source,
+            Continent continent,
+            int numCities,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Predicate<Project> hasProject,
+            double rads,
+            double grossModifier,
+            Double infraLow,
+            Collection<DBCity> donors
+    ) {
+        long projectBits = toProjectBits(hasProject);
+        SharedBatchContext shared = new SharedBatchContext(
+                new BatchGroupKey(
+                        continent,
+                        numCities,
+                        projectBits,
+                        Double.doubleToLongBits(rads),
+                        Double.doubleToLongBits(grossModifier)
+                ),
+                donors
+        );
+        CityFallbackHeuristic ctx = create(source, shared, valueFunction, goal, infraLow);
+        return ctx == null ? null : ctx.searchPrepared(shared.beamDonors, true, true);
     }
 
-    static INationCity findBestExactSlotOnly(ICity source, Continent continent, int numCities,
-                                             ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal,
-                                             Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow,
-                                             Collection<DBCity> donors) {
-        CityFallbackHeuristic ctx = create(source, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
-        return ctx == null ? null : ctx.search(donors, false);
+    public static INationCity findBestExactSlotOnly(
+            ICity source,
+            Continent continent,
+            int numCities,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Predicate<Project> hasProject,
+            double rads,
+            double grossModifier,
+            Double infraLow,
+            Collection<DBCity> donors
+    ) {
+        long projectBits = toProjectBits(hasProject);
+        SharedBatchContext shared = new SharedBatchContext(
+                new BatchGroupKey(
+                        continent,
+                        numCities,
+                        projectBits,
+                        Double.doubleToLongBits(rads),
+                        Double.doubleToLongBits(grossModifier)
+                ),
+                donors
+        );
+        CityFallbackHeuristic ctx = create(source, shared, valueFunction, goal, infraLow);
+        return ctx == null ? null : ctx.searchPrepared(shared.exactDonors, false, true);
     }
 
-    private static CityFallbackHeuristic create(ICity source, Continent continent, int numCities,
-                                                ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal,
-                                                Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow) {
+    public static INationCity[] findBestBatch(
+            BatchEntry[] entries,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Double infraLow,
+            Collection<DBCity> donors
+    ) {
+        return findBestBatchInternal(entries, valueFunction, goal, infraLow, donors, true);
+    }
+
+    public static INationCity[] findBestExactSlotOnlyBatch(
+            BatchEntry[] entries,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Double infraLow,
+            Collection<DBCity> donors
+    ) {
+        return findBestBatchInternal(entries, valueFunction, goal, infraLow, donors, false);
+    }
+
+    private static INationCity[] findBestBatchInternal(
+            BatchEntry[] entries,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Double infraLow,
+            Collection<DBCity> donors,
+            boolean useBeamSearch
+    ) {
+        INationCity[] results = new INationCity[entries.length];
+        if (entries.length == 0) return results;
+
+        Map<BatchGroupKey, List<Integer>> groups = new LinkedHashMap<>();
+        for (int i = 0; i < entries.length; i++) {
+            groups.computeIfAbsent(keyOf(entries[i]), k -> new ObjectArrayList<>()).add(i);
+        }
+
+        for (Map.Entry<BatchGroupKey, List<Integer>> grouped : groups.entrySet()) {
+            SharedBatchContext shared = new SharedBatchContext(grouped.getKey(), donors);
+            ObjectArrayList<PackedDonor> donorList = useBeamSearch ? shared.beamDonors : shared.exactDonors;
+            List<Integer> indexes = grouped.getValue();
+
+            if (SHARED_POOL.getParallelism() <= 1 || indexes.size() < QUERY_PARALLEL_THRESHOLD) {
+                boolean parallelizeDonors = indexes.size() == 1;
+                for (int i = 0; i < indexes.size(); i++) {
+                    int idx = indexes.get(i);
+                    CityFallbackHeuristic ctx = create(entries[idx].source(), shared, valueFunction, goal, infraLow);
+                    results[idx] = ctx == null ? null : ctx.searchPrepared(donorList, useBeamSearch, parallelizeDonors);
+                }
+            } else {
+                try {
+                    SHARED_POOL.submit(() ->
+                            indexes.parallelStream().forEach(idx -> {
+                                CityFallbackHeuristic ctx = create(entries[idx].source(), shared, valueFunction, goal, infraLow);
+                                results[idx] = ctx == null ? null : ctx.searchPrepared(donorList, useBeamSearch, false);
+                            })
+                    ).get();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException("Failed during batch fallback evaluation", e);
+                }
+            }
+        }
+
+        return results;
+    }
+
+    private static CityFallbackHeuristic create(
+            ICity source,
+            SharedBatchContext shared,
+            ToDoubleFunction<INationCity> valueFunction,
+            Predicate<INationCity> goal,
+            Double infraLow
+    ) {
         DBCity origin = new SimpleDBCity(source);
         double targetInfra = Objects.requireNonNullElseGet(infraLow, origin::getInfra);
 
         SimpleDBCity sig = new SimpleDBCity(origin);
         sig.setInfra(targetInfra);
-        sig.setOptimalPower(continent);
+        sig.setOptimalPower(shared.continent);
 
         int[] milSig = getMilitarySignature(origin);
         int[] powSig = getPowerSignature(sig);
@@ -331,36 +407,32 @@ final class CityFallbackHeuristic {
         int civilianSlots = totalSlots - fixedSlots;
         if (civilianSlots <= 0) return null;
 
-        long date = System.currentTimeMillis();
-        BiConsumer<DBCity, double[]> getRevenue = (city, buffer) ->
-                PW.City.profit(continent, rads, date, hasProject, buffer, numCities, grossModifier, false, 12, city);
-        ToDoubleFunction<DBCity> convertedFunc = city ->
-                PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, city);
-
-        return new CityFallbackHeuristic(continent, hasProject, targetInfra, origin.getLand(), civilianSlots, milSig, powSig,
-                valueFunction, goal, getRevenue, convertedFunc, origin, sig, numCities, rads, grossModifier, date);
+        return new CityFallbackHeuristic(
+                shared,
+                targetInfra,
+                origin.getLand(),
+                civilianSlots,
+                milSig,
+                powSig,
+                valueFunction,
+                goal,
+                origin,
+                sig
+        );
     }
 
-    private INationCity search(Collection<DBCity> donors, boolean useBeamSearch) {
-        record PackedDonor(DBCity donor, long packed) {}
-
-        LongOpenHashSet seenDonorStates = new LongOpenHashSet(donors.size() * 2);
-        ObjectArrayList<PackedDonor> donorList = new ObjectArrayList<>(donors.size());
-        for (DBCity donor : donors) {
-            long packed = packCivilianState(donor);
-            if (seenDonorStates.add(packed)) {
-                donorList.add(new PackedDonor(donor, packed));
-            }
-        }
+    private INationCity searchPrepared(ObjectArrayList<PackedDonor> donorList, boolean useBeamSearch, boolean parallelizeDonors) {
+        bestValueSoFar = Double.NEGATIVE_INFINITY;
 
         int parallelism = SHARED_POOL.getParallelism();
         EvaluatedCandidate best;
 
-        if (parallelism <= 1 || donorList.size() < PARALLEL_THRESHOLD) {
+        if (!parallelizeDonors || parallelism <= 1 || donorList.size() < PARALLEL_THRESHOLD) {
             best = null;
             DonorWorker worker = newDonorWorker();
-            for (PackedDonor donor : donorList) {
-                EvaluatedCandidate candidate = evaluateDonor(donor.donor(), donor.packed(), useBeamSearch, worker);
+            for (int i = 0; i < donorList.size(); i++) {
+                PackedDonor donor = donorList.get(i);
+                EvaluatedCandidate candidate = evaluateDonor(donor, useBeamSearch, worker);
                 best = chooseBetter(best, candidate);
                 if (candidate != null) {
                     publishBestMaybe(candidate.value());
@@ -372,8 +444,7 @@ final class CityFallbackHeuristic {
                         .collect(
                                 () -> new ParallelAccumulator(newDonorWorker()),
                                 (acc, donor) -> {
-                                    EvaluatedCandidate candidate =
-                                            evaluateDonor(donor.donor(), donor.packed(), useBeamSearch, acc.worker);
+                                    EvaluatedCandidate candidate = evaluateDonor(donor, useBeamSearch, acc.worker);
                                     acc.best = chooseBetter(acc.best, candidate);
                                     if (EAGER_INCUMBENT_PUBLISH && candidate != null) {
                                         publishBestMaybe(candidate.value());
@@ -399,8 +470,24 @@ final class CityFallbackHeuristic {
         return materialized;
     }
 
-    private EvaluatedCandidate evaluateDonor(DBCity donor, long donorState, boolean useBeamSearch, DonorWorker worker) {
+    private INationCity search(Collection<DBCity> donors, boolean useBeamSearch) {
+        PreparedDonors prepared = preparePackedDonors(
+                donors,
+                civilianCaps,
+                addableCivilianIndices,
+                packedCivilianIndices,
+                civilianOrdinals,
+                civilianShift,
+                civilianMask
+        );
+        return searchPrepared(useBeamSearch ? prepared.beamDonors() : prepared.exactDonors(), useBeamSearch, true);
+    }
+
+    private EvaluatedCandidate evaluateDonor(PackedDonor packedDonor, boolean useBeamSearch, DonorWorker worker) {
         worker.localScoreCache().clear();
+
+        DBCity donor = packedDonor.donor();
+        long donorState = packedDonor.packed();
 
         long candidateState;
         PackedCandidateView view = worker.view();
@@ -417,7 +504,8 @@ final class CityFallbackHeuristic {
                 int cap = civilianCaps[bi];
                 int clamped = Math.min(current, cap);
                 if (clamped != current) {
-                    repairedState = (repairedState & ~civilianMask[bi]) | (((long) clamped << civilianShift[bi]) & civilianMask[bi]);
+                    repairedState = (repairedState & ~civilianMask[bi])
+                            | (((long) clamped << civilianShift[bi]) & civilianMask[bi]);
                 }
                 civilianCount += clamped;
             }
@@ -440,9 +528,8 @@ final class CityFallbackHeuristic {
 
             if (candidateState == Long.MIN_VALUE) return null;
         } else {
-            int postClampCount = estimatePostClampCivilianCount(donor);
-            if (postClampCount != targetCivilianSlots) return null;
-            if (getCivilianCount(donor) != targetCivilianSlots) return null;
+            if (packedDonor.postClampCivilianCount() != targetCivilianSlots) return null;
+            if (packedDonor.rawCivilianCount() != targetCivilianSlots) return null;
             candidateState = donorState;
         }
 
@@ -455,31 +542,6 @@ final class CityFallbackHeuristic {
         if (!Double.isFinite(value)) return null;
 
         return new EvaluatedCandidate(donor, candidateState, value, donor.getId());
-    }
-
-    private int estimatePostClampCivilianCount(DBCity donor) {
-        byte[] buildings = donor.getBuildings3();
-        int total = 0;
-
-        if (buildings.length == PW.City.Building.SIZE) {
-            for (int idx = 0; idx < addableCivilianIndices.length; idx++) {
-                int bi = addableCivilianIndices[idx];
-                int current = buildings[civilianOrdinals[bi]];
-                if (current > 0) {
-                    total += Math.min(current, civilianCaps[bi]);
-                }
-            }
-        } else {
-            for (int idx = 0; idx < addableCivilianIndices.length; idx++) {
-                int bi = addableCivilianIndices[idx];
-                int current = donor.getBuildingOrdinal(civilianOrdinals[bi]);
-                if (current > 0) {
-                    total += Math.min(current, civilianCaps[bi]);
-                }
-            }
-        }
-
-        return total;
     }
 
     private EvaluatedCandidate chooseBetter(EvaluatedCandidate left, EvaluatedCandidate right) {
@@ -536,9 +598,15 @@ final class CityFallbackHeuristic {
         Long2DoubleOpenHashMap localScoreCache = new Long2DoubleOpenHashMap(4096);
         localScoreCache.defaultReturnValue(Double.NaN);
         LongOpenHashSet beamSet = new LongOpenHashSet(BEAM_WIDTH * NUM_CIVILIAN_BUILDINGS * 2);
-        return new DonorWorker(new PackedCandidateView(), new PackedCandidateView(),
-                new long[BEAM_WIDTH], new long[BEAM_WIDTH], new double[BEAM_WIDTH],
-                localScoreCache, beamSet);
+        return new DonorWorker(
+                new PackedCandidateView(),
+                new PackedCandidateView(),
+                new long[BEAM_WIDTH],
+                new long[BEAM_WIDTH],
+                new double[BEAM_WIDTH],
+                localScoreCache,
+                beamSet
+        );
     }
 
     private void normalizeAndApplyInto(SimpleNationCity target, DBCity donor, long state) {
@@ -681,8 +749,19 @@ final class CityFallbackHeuristic {
     }
 
     private long packCivilianState(DBCity city) {
+        return packCivilianState(city, packedCivilianIndices, civilianOrdinals, civilianShift, civilianMask);
+    }
+
+    private static long packCivilianState(
+            DBCity city,
+            int[] packedCivilianIndices,
+            int[] civilianOrdinals,
+            int[] civilianShift,
+            long[] civilianMask
+    ) {
         byte[] buildings = city.getBuildings3();
         long state = 0L;
+
         if (buildings.length != PW.City.Building.SIZE) {
             for (int idx = 0; idx < packedCivilianIndices.length; idx++) {
                 int bi = packedCivilianIndices[idx];
@@ -696,6 +775,7 @@ final class CityFallbackHeuristic {
                 state |= (value << civilianShift[bi]) & civilianMask[bi];
             }
         }
+
         return state;
     }
 
@@ -715,8 +795,13 @@ final class CityFallbackHeuristic {
     }
 
     private int getCivilianCount(DBCity city) {
+        return getCivilianCountStatic(city);
+    }
+
+    private static int getCivilianCountStatic(DBCity city) {
         byte[] buildings = city.getBuildings3();
         int total = 0;
+
         if (buildings.length == PW.City.Building.SIZE) {
             for (int i = 0; i < CIVILIAN_ORDINALS.length; i++) {
                 total += buildings[CIVILIAN_ORDINALS[i]];
@@ -726,6 +811,41 @@ final class CityFallbackHeuristic {
                 total += city.getBuildingOrdinal(CIVILIAN_ORDINALS[i]);
             }
         }
+
+        return total;
+    }
+
+    private int estimatePostClampCivilianCount(DBCity donor) {
+        return estimatePostClampCivilianCount(donor, civilianCaps, addableCivilianIndices, civilianOrdinals);
+    }
+
+    private static int estimatePostClampCivilianCount(
+            DBCity donor,
+            int[] civilianCaps,
+            int[] addableCivilianIndices,
+            int[] civilianOrdinals
+    ) {
+        byte[] buildings = donor.getBuildings3();
+        int total = 0;
+
+        if (buildings.length == PW.City.Building.SIZE) {
+            for (int idx = 0; idx < addableCivilianIndices.length; idx++) {
+                int bi = addableCivilianIndices[idx];
+                int current = buildings[civilianOrdinals[bi]];
+                if (current > 0) {
+                    total += Math.min(current, civilianCaps[bi]);
+                }
+            }
+        } else {
+            for (int idx = 0; idx < addableCivilianIndices.length; idx++) {
+                int bi = addableCivilianIndices[idx];
+                int current = donor.getBuildingOrdinal(civilianOrdinals[bi]);
+                if (current > 0) {
+                    total += Math.min(current, civilianCaps[bi]);
+                }
+            }
+        }
+
         return total;
     }
 
@@ -764,6 +884,55 @@ final class CityFallbackHeuristic {
         if (value > bestValueSoFar) {
             bestValueSoFar = value;
         }
+    }
+
+    private static long toProjectBits(Predicate<Project> hasProject) {
+        long bits = 0L;
+        for (Project project : Projects.values()) {
+            if (project.affectsCityRevenue() && hasProject.test(project)) {
+                bits |= (1L << project.ordinal());
+            }
+        }
+        return bits;
+    }
+
+    private static BatchGroupKey keyOf(BatchEntry entry) {
+        return new BatchGroupKey(
+                entry.continent(),
+                Math.min(21, entry.numCities()),
+                entry.projectBits(),
+                Double.doubleToLongBits(Math.min(1000, entry.rads())),
+                Double.doubleToLongBits(entry.grossModifier())
+        );
+    }
+
+    private static PreparedDonors preparePackedDonors(
+            Collection<DBCity> donors,
+            int[] civilianCaps,
+            int[] addableCivilianIndices,
+            int[] packedCivilianIndices,
+            int[] civilianOrdinals,
+            int[] civilianShift,
+            long[] civilianMask
+    ) {
+        LongOpenHashSet seenBeamStates = new LongOpenHashSet(Math.max(16, donors.size() * 2));
+        ObjectArrayList<PackedDonor> beam = new ObjectArrayList<>(donors.size());
+        ObjectArrayList<PackedDonor> exact = new ObjectArrayList<>(donors.size());
+
+        for (DBCity donor : donors) {
+            long packed = packCivilianState(donor, packedCivilianIndices, civilianOrdinals, civilianShift, civilianMask);
+            int postClampCivilianCount = estimatePostClampCivilianCount(donor, civilianCaps, addableCivilianIndices, civilianOrdinals);
+            int rawCivilianCount = getCivilianCountStatic(donor);
+
+            PackedDonor packedDonor = new PackedDonor(donor, packed, postClampCivilianCount, rawCivilianCount);
+            exact.add(packedDonor);
+
+            if (seenBeamStates.add(packed)) {
+                beam.add(packedDonor);
+            }
+        }
+
+        return new PreparedDonors(beam, exact);
     }
 
     private final class PackedCandidateView implements INationCity {
@@ -843,9 +1012,8 @@ final class CityFallbackHeuristic {
                     + flatCivilianProfitLookup[offset + newAmt]
                     - flatCivilianProfitLookup[offset + oldAmt];
 
-// Safely reads already mutated shared array without any conditional checks
             int hospitals = this.unpacked[HOSPITAL_ORDINAL];
-            int police    = this.unpacked[POLICE_ORDINAL];
+            int police = this.unpacked[POLICE_ORDINAL];
 
             double disease = diseaseBase - (hospitals > 0 ? hospitals * hospitalPct : 0d) + newPol * 0.05d;
             double newDisease = disease > 0d ? disease : 0d;
@@ -853,7 +1021,7 @@ final class CityFallbackHeuristic {
             double crime = crimeByCommerce[newComm] - (police > 0 ? police * policePct : 0d);
             double newCrime = crime > 0d ? crime : 0d;
 
-            double diseaseDeaths = newDisease * diseaseDeathFactor; // Uses precalculated factor logic consistency
+            double diseaseDeaths = newDisease * diseaseDeathFactor;
             double crimeDeaths = newCrime * crimeDeathFactor - 25d;
             if (crimeDeaths < 0d) crimeDeaths = 0d;
 
@@ -862,14 +1030,14 @@ final class CityFallbackHeuristic {
 
             double newIncome = (incomeFactorA * newComm + incomeFactorB) * newPop;
 
-            this.cachedNumBuildings      = parent.cachedNumBuildings + (newAmt - oldAmt);
-            this.cachedCommerce          = newComm;
-            this.cachedPollution         = newPol;
-            this.cachedDisease           = newDisease;
-            this.cachedCrime             = newCrime;
-            this.cachedPopulation        = newPop;
-            this.cachedCivilianRevenue   = newCivilianRevenue;
-            this.cachedRevenueConverted  = fixedRevenueConverted + newCivilianRevenue + newIncome - foodConverted;
+            this.cachedNumBuildings = parent.cachedNumBuildings + (newAmt - oldAmt);
+            this.cachedCommerce = newComm;
+            this.cachedPollution = newPol;
+            this.cachedDisease = newDisease;
+            this.cachedCrime = newCrime;
+            this.cachedPopulation = newPop;
+            this.cachedCivilianRevenue = newCivilianRevenue;
+            this.cachedRevenueConverted = fixedRevenueConverted + newCivilianRevenue + newIncome - foodConverted;
         }
 
         @Override
@@ -942,5 +1110,142 @@ final class CityFallbackHeuristic {
         }
     }
 
-    private record EvaluatedCandidate(DBCity donor, long state, double value, int donorId) { }
+    private record EvaluatedCandidate(DBCity donor, long state, double value, int donorId) {}
+
+    private record PackedDonor(DBCity donor, long packed, int postClampCivilianCount, int rawCivilianCount) {}
+
+    private record PreparedDonors(ObjectArrayList<PackedDonor> beamDonors, ObjectArrayList<PackedDonor> exactDonors) {}
+
+    private record BatchGroupKey(
+            Continent continent,
+            int numCities,
+            long projectBits,
+            long radsBits,
+            long grossModifierBits
+    ) {}
+
+    private static final class SharedBatchContext {
+        private final Continent continent;
+        private final long projectBits;
+        private final Predicate<Project> hasProject;
+        private final int numCities;
+        private final double rads;
+        private final double grossModifier;
+        private final long evalDate;
+
+        private final int[] civilianCaps;
+        private final int[] civilianOrdinals;
+        private final int[] ordinalToCivilianIndex;
+        private final int[] civilianShift;
+        private final int[] civilianBits;
+        private final long[] civilianMask;
+        private final long[] civilianStep;
+        private final int[] civilianCommerce;
+        private final int[] civilianPollution;
+        private final int maxCommerce;
+        private final double hospitalPct;
+        private final double policePct;
+        private final boolean hasSpecializedPoliceTraining;
+        private final int[] commerceContributionByOrdinal;
+        private final int[] pollutionContributionByOrdinal;
+        private final int[] packedCivilianIndices;
+        private final int[] addableCivilianIndices;
+
+        private final BiConsumer<DBCity, double[]> getRevenue;
+        private final ToDoubleFunction<DBCity> convertedFunc;
+
+        private final ObjectArrayList<PackedDonor> beamDonors;
+        private final ObjectArrayList<PackedDonor> exactDonors;
+
+        private SharedBatchContext(BatchGroupKey key, Collection<DBCity> donors) {
+            this.continent = key.continent();
+            this.projectBits = key.projectBits();
+            this.hasProject = Projects.optimize(project -> (projectBits & (1L << project.ordinal())) != 0L);
+            this.numCities = key.numCities();
+            this.rads = Double.longBitsToDouble(key.radsBits());
+            this.grossModifier = Double.longBitsToDouble(key.grossModifierBits());
+            this.evalDate = System.currentTimeMillis();
+
+            this.civilianCaps = new int[NUM_CIVILIAN_BUILDINGS];
+            this.civilianOrdinals = new int[NUM_CIVILIAN_BUILDINGS];
+            this.ordinalToCivilianIndex = new int[PW.City.Building.SIZE];
+            this.civilianShift = new int[NUM_CIVILIAN_BUILDINGS];
+            this.civilianBits = new int[NUM_CIVILIAN_BUILDINGS];
+            this.civilianMask = new long[NUM_CIVILIAN_BUILDINGS];
+            this.civilianStep = new long[NUM_CIVILIAN_BUILDINGS];
+            this.civilianCommerce = new int[NUM_CIVILIAN_BUILDINGS];
+            this.civilianPollution = new int[NUM_CIVILIAN_BUILDINGS];
+            Arrays.fill(this.ordinalToCivilianIndex, -1);
+
+            int bitOffset = 0;
+            for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
+                Building b = CIVILIAN_BUILDINGS[i];
+                civilianCaps[i] = b.canBuild(continent) ? b.getCap(hasProject) : -1;
+                civilianOrdinals[i] = b.ordinal();
+                ordinalToCivilianIndex[b.ordinal()] = i;
+
+                civilianCommerce[i] = b.getCommerce();
+                civilianPollution[i] = b.pollution(hasProject);
+
+                int cap = civilianCaps[i];
+                int bits = cap >= 0 ? bitsForCount(cap) : 0;
+                civilianBits[i] = bits;
+                civilianShift[i] = bitOffset;
+
+                if (bits == 0) {
+                    civilianMask[i] = 0L;
+                    civilianStep[i] = 0L;
+                    continue;
+                }
+
+                long localMask = bits == 63 ? -1L : ((1L << bits) - 1L);
+                civilianMask[i] = localMask << bitOffset;
+                civilianStep[i] = 1L << bitOffset;
+                bitOffset += bits;
+            }
+
+            this.maxCommerce = getMaxCommerce(hasProject);
+            this.hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5d : 2.5d;
+            this.policePct = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5d : 2.5d;
+            this.hasSpecializedPoliceTraining = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);
+
+            this.commerceContributionByOrdinal = new int[PW.City.Building.SIZE];
+            this.pollutionContributionByOrdinal = new int[PW.City.Building.SIZE];
+            for (Building building : Buildings.values()) {
+                commerceContributionByOrdinal[building.ordinal()] = building.getCommerce();
+                pollutionContributionByOrdinal[building.ordinal()] = building.pollution(hasProject);
+            }
+
+            int packedCivilianCount = 0;
+            int addableCivilianCount = 0;
+            for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
+                if (civilianBits[i] != 0) packedCivilianCount++;
+                if (civilianCaps[i] > 0) addableCivilianCount++;
+            }
+
+            this.packedCivilianIndices = new int[packedCivilianCount];
+            this.addableCivilianIndices = new int[addableCivilianCount];
+            for (int i = 0, p = 0, a = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
+                if (civilianBits[i] != 0) packedCivilianIndices[p++] = i;
+                if (civilianCaps[i] > 0) addableCivilianIndices[a++] = i;
+            }
+
+            this.getRevenue = (city, buffer) ->
+                    PW.City.profit(continent, rads, evalDate, hasProject, buffer, numCities, grossModifier, false, 12, city);
+            this.convertedFunc = city ->
+                    PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, city);
+
+            PreparedDonors prepared = preparePackedDonors(
+                    donors,
+                    civilianCaps,
+                    addableCivilianIndices,
+                    packedCivilianIndices,
+                    civilianOrdinals,
+                    civilianShift,
+                    civilianMask
+            );
+            this.beamDonors = prepared.beamDonors();
+            this.exactDonors = prepared.exactDonors();
+        }
+    }
 }

@@ -42,53 +42,7 @@ public class Projects {
             .cost(LEAD, 500)
             .output(MUNITIONS)
             .roi(getCityBuildRoi())
-            .build();
-
-    private static QuadFunction<Integer, DBNation, Project, Double, RoiResult> getCityBuildRoi() {
-        return (days, nation, project, originRevenue) -> {
-            Continent continent = nation.getContinent();
-            ResourceType output = project.getOutput();
-            if (output != null && output.hasBuilding()) {
-                Building building = output.getBuilding();
-                if (!building.canBuild(continent)) return null;
-            }
-            // get first city
-            DBCity first = nation._getCitiesV3().values().iterator().next();
-            Predicate<Project> hasProject = Projects.optimize(nation.hasProjectPredicate().or(f -> f.equals(project)));
-            Function<ICity, Double> profit = city -> {
-                return PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
-            };
-            // optimalbuild
-            JavaCity optimal = new JavaCity(first).zeroNonMilitary().setOptimalPower(continent).optimalBuild(nation.getContinent(),
-                    nation.getCities(),
-                    INationCity::getRevenueConverted,
-                    null,
-                    hasProject,
-                    5000,
-                    nation.getRads(),
-                    false,
-                    true,
-                    nation.getGrossModifier(),
-                    null);
-
-            if (output != null && output.hasBuilding() && optimal.getBuilding(output.getBuilding()) == 0) {
-                return new RoiResult(
-                        "Additional city revenue over the timeframe",
-                        0,
-                        project.getMarketValue()
-                );
-            }
-            double optimalProfit = profit.apply(optimal);
-            double revenuePerDay = Math.max(0, optimalProfit - originRevenue) * days * nation.getCities();
-
-            // return revenue increase over now
-            return new RoiResult(
-                    "Additional city revenue over the timeframe",
-                    revenuePerDay,
-                    project.getMarketValue()
-            );
-        };
-    }
+            .build().setEffectsCityRevenue();
 
     public static final Project BAUXITEWORKS = new Builder("bauxite_works", 1)
             .image("bauxiteworks.png")
@@ -100,7 +54,7 @@ public class Projects {
             .cost(LEAD, 500)
             .output(ALUMINUM)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project CENTER_FOR_CIVIL_ENGINEERING = new Builder("center_for_civil_engineering", 11)
             .image("cfce.png")
@@ -142,7 +96,7 @@ public class Projects {
             .cost(LEAD, 500)
             .output(GASOLINE)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project INTELLIGENCE_AGENCY = new Builder("central_intelligence_agency", 10)
             .image("cia.png")
@@ -156,7 +110,7 @@ public class Projects {
             .cost(MONEY, 50000000)
             .cost(ALUMINUM, 10000)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project IRON_DOME = new Builder("iron_dome", 8)
             .image("irondome.png")
@@ -174,7 +128,7 @@ public class Projects {
             .cost(LEAD, 500)
             .output(STEEL)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project MASS_IRRIGATION = new Builder("mass_irrigation", 4)
             .image("massirrigation.png")
@@ -187,7 +141,7 @@ public class Projects {
             .cost(LEAD, 500)
             .output(FOOD)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project MISSILE_LAUNCH_PAD = new Builder("missile_launch_pad", 6)
             .image("missilelaunchpad.png")
@@ -259,7 +213,7 @@ public class Projects {
             .cost(LEAD, 500)
             .output(URANIUM)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project VITAL_DEFENSE_SYSTEM = new Builder("vital_defense_system", 9)
             .image("vds.png")
@@ -275,7 +229,7 @@ public class Projects {
             .cost(MONEY, 10000000)
             .requiredProjects(() -> new Project[]{CENTER_FOR_CIVIL_ENGINEERING})
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project PIRATE_ECONOMY = new Builder("pirate_economy", 19)
             .cost(MONEY, 25_000_000)
@@ -295,7 +249,7 @@ public class Projects {
             .cost(OIL, 10_000)
             .requiredProjects(() -> new Project[]{URBAN_PLANNING, SPACE_PROGRAM})
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project TELECOMMUNICATIONS_SATELLITE = new Builder("telecommunications_satellite", 21)
             .cost(URANIUM, 10000)
@@ -305,7 +259,7 @@ public class Projects {
             .cost(MONEY, 300000000)
             .requiredProjects(() -> new Project[]{INTERNATIONAL_TRADE_CENTER, URBAN_PLANNING, SPACE_PROGRAM})
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project ADVANCED_ENGINEERING_CORPS = new Builder("advanced_engineering_corps", 26)
             .image("advanced_engineering_corps.jpg")
@@ -356,7 +310,7 @@ public class Projects {
             .cost(FOOD, 100000)
             .cost(MONEY, 10000000)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project SPECIALIZED_POLICE_TRAINING_PROGRAM = new Builder("specialized_police_training_program", 25)
             .image("specialized_police_training_program.jpg")
@@ -364,7 +318,7 @@ public class Projects {
             .cost(FOOD, 250_000)
             .cost(ALUMINUM, 5_000)
             .roi(getCityBuildRoi())
-            .build();
+            .build().setEffectsCityRevenue();
 
     public static final Project RESEARCH_AND_DEVELOPMENT_CENTER = new Builder("research_and_development_center", 28)
             .image("research_and_development_center.jpg")
@@ -438,7 +392,7 @@ public class Projects {
             .cost(ALUMINUM, 15_000)
             .cost(STEEL, 10_000)
             .requiredProjects(() -> new Project[]{RESEARCH_AND_DEVELOPMENT_CENTER, CLINICAL_RESEARCH_CENTER})
-            .build();
+            .build().setEffectsCityRevenue();
 
     // Bureau of Domestic Affairs:
     //Requires Government Support Agency.
@@ -552,13 +506,6 @@ public class Projects {
             .build();
 
     // Military Research Center
-    // <td>
-    //                            <img src="/img/resources/money.png" data-toggle="tooltip" title="" alt="Money" data-original-title="Money">
-    //            100,000,000.00        <br>            <img src="/img/resources/steel.png" data-toggle="tooltip" title="" alt="Steel" data-original-title="Steel">
-    //            10,000.00        <br>            <img src="/img/resources/aluminum.png" data-toggle="tooltip" title="" alt="Aluminum" data-original-title="Aluminum">
-    //            10,000.00        <br>            <img src="/img/resources/munitions.png" data-toggle="tooltip" title="" alt="Munitions" data-original-title="Munitions">
-    //            10,000.00        <br>            <img src="/img/resources/gasoline.png" data-toggle="tooltip" title="" alt="Gasoline" data-original-title="Gasoline">
-    //            10,000.00                    </td>
     public static final Project MILITARY_RESEARCH_CENTER = new Builder("military_research_center", 39)
             .cost(MONEY, 100_000_000)
             .cost(STEEL, 10_000)
@@ -569,13 +516,6 @@ public class Projects {
             .build();
 
     // Military Doctrine
-    // <td>
-    //                            <img src="/img/resources/money.png" data-toggle="tooltip" title="" alt="Money" data-original-title="Money" aria-describedby="tooltip61962"><div class="tooltip fade top in" role="tooltip" id="tooltip61962" style="top: 6176.89px; left: 822.822px; display: block;"><div class="tooltip-arrow" style="left: 50%;"></div><div class="tooltip-inner">Money</div></div>
-    //            10,000,000.00        <br>            <img src="/img/resources/steel.png" data-toggle="tooltip" title="" alt="Steel" data-original-title="Steel">
-    //            10,000.00        <br>            <img src="/img/resources/aluminum.png" data-toggle="tooltip" title="" alt="Aluminum" data-original-title="Aluminum">
-    //            10,000.00        <br>            <img src="/img/resources/munitions.png" data-toggle="tooltip" title="" alt="Munitions" data-original-title="Munitions">
-    //            10,000.00        <br>            <img src="/img/resources/gasoline.png" data-toggle="tooltip" title="" alt="Gasoline" data-original-title="Gasoline">
-    //            10,000.00                    </td>
     public static final Project MILITARY_DOCTRINE = new Builder("military_doctrine", 40)
             .cost(MONEY, 10_000_000)
             .cost(STEEL, 10_000)
@@ -602,6 +542,51 @@ public class Projects {
         return values;
     }
 
+    private static QuadFunction<Integer, DBNation, Project, Double, RoiResult> getCityBuildRoi() {
+        return (days, nation, project, originRevenue) -> {
+            Continent continent = nation.getContinent();
+            ResourceType output = project.getOutput();
+            if (output != null && output.hasBuilding()) {
+                Building building = output.getBuilding();
+                if (!building.canBuild(continent)) return null;
+            }
+            // get first city
+            DBCity first = nation._getCitiesV3().values().iterator().next();
+            Predicate<Project> hasProject = Projects.optimize(nation.hasProjectPredicate().or(f -> f.equals(project)));
+            Function<ICity, Double> profit = city -> {
+                return PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
+            };
+            // optimalbuild
+            JavaCity optimal = new JavaCity(first).zeroNonMilitary().setOptimalPower(continent).optimalBuild(nation.getContinent(),
+                    nation.getCities(),
+                    INationCity::getRevenueConverted,
+                    null,
+                    hasProject,
+                    5000,
+                    nation.getRads(),
+                    false,
+                    true,
+                    nation.getGrossModifier(),
+                    null);
+
+            if (output != null && output.hasBuilding() && optimal.getBuilding(output.getBuilding()) == 0) {
+                return new RoiResult(
+                        "Additional city revenue over the timeframe",
+                        0,
+                        project.getMarketValue()
+                );
+            }
+            double optimalProfit = profit.apply(optimal);
+            double revenuePerDay = Math.max(0, optimalProfit - originRevenue) * days * nation.getCities();
+
+            // return revenue increase over now
+            return new RoiResult(
+                    "Additional city revenue over the timeframe",
+                    revenuePerDay,
+                    project.getMarketValue()
+            );
+        };
+    }
 
     // Recycling Initiative
 
