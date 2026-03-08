@@ -79,7 +79,7 @@ public class DepositTypeInfo {
     }
 
     public boolean isDeposits() {
-        return (type == DepositType.DEPOSIT || type == DepositType.TRADE) && !isIgnored();
+        return (type == DepositType.DEPOSIT || type == DepositType.TRADE || type == DepositType.TAX) && !isIgnored();
     }
 
     public boolean isIgnored() {
