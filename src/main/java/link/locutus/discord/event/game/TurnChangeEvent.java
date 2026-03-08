@@ -39,6 +39,5 @@ public class TurnChangeEvent extends GuildScopeEvent { // todo post to all guild
             }
             if (hasAlliance) post(db);
         }
-
     }
 }

@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -54,6 +55,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.db.entities.menu.MenuState;
+import link.locutus.discord.db.entities.metric.GrowthAsset;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
@@ -64,6 +66,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.jooby.WebRoot;
+import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -125,7 +128,7 @@ public class CommandManager2 {
             addParsers.accept(web.getPageHandler().getCommands());
         }
         { // Manually add parsers
-            List<Class<?>> manual = List.of(GuildSettingCategory.class, GuildSettingSubgroup.class);
+            List<Class<?>> manual = List.of(GuildSettingCategory.class, GuildSettingSubgroup.class, AlliancePermission.class, GrowthAsset.class, OnlineStatus.class);
             for (Class<?> t : manual) {
                 Parser<?> parser = store.get(Key.of(t));
                 if (parser != null) {

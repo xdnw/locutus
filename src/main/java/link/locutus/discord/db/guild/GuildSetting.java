@@ -25,6 +25,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -200,7 +201,28 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Type a, Type... subArgs) {
-        this(category, subgroup, TypeToken.getParameterized(a, subArgs).getType());
+        this(category, subgroup, buildSettingType(a, subArgs));
+    }
+
+    private static Type buildSettingType(Type root, Type... subArgs) {
+        if (root instanceof Class<?> rootClass && areAllClasses(subArgs)) {
+            Class<?>[] sequence = new Class<?>[subArgs.length + 1];
+            sequence[0] = rootClass;
+            for (int i = 0; i < subArgs.length; i++) {
+                sequence[i + 1] = (Class<?>) subArgs[i];
+            }
+            return ReflectionUtil.buildNestedType(sequence);
+        }
+        return TypeToken.getParameterized(root, subArgs).getType();
+    }
+
+    private static boolean areAllClasses(Type... types) {
+        for (Type type : types) {
+            if (!(type instanceof Class<?>)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public GuildSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Type t) {

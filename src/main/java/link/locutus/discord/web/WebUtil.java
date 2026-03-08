@@ -129,24 +129,107 @@ public class WebUtil {
     }
 
     public static DBAuthRecord getOrGenerateAuth(Integer nationId, Long userId) {
-        if (nationId == null && userId == null) throw new IllegalArgumentException("Must provide either nationId or userId");
-        DBAuthRecord existing = null;
-        if (nationId != null) {
-            existing = WebRoot.db().get(nationId);
+        if (nationId == null && userId == null) {
+            throw new IllegalArgumentException("Must provide either nationId or userId");
         }
-        if (userId != null) {
-            DBAuthRecord userToken = WebRoot.db().get(userId);
-            if (userToken != null && existing != null && !userToken.token.equals(existing.token)) {
-                WebRoot.db().removeToken(existing.token, existing.getNationId(), null);
-                WebRoot.db().updateToken(userToken.token, nationId, userId);
-                existing = userToken;
+
+        DBAuthRecord nationRecord = nationId != null ? WebRoot.db().get(nationId) : null;
+        DBAuthRecord userRecord = userId != null ? WebRoot.db().get(userId) : null;
+
+        DBAuthRecord keep = pickRecord(nationRecord, userRecord);
+
+        Integer keepNation = keep != null ? keep.getNationId() : null;
+        Long keepUser = keep != null ? keep.getUserId() : null;
+
+        Integer targetNation = nationId != null ? nationId : keepNation;
+        Long targetUser = userId != null ? userId : keepUser;
+
+        // Re-check DB for resolved target IDs too, not just the originally provided ones.
+        DBAuthRecord targetNationRecord = targetNation == null
+                ? null
+                : (nationId != null && Objects.equals(targetNation, nationId)
+                ? nationRecord
+                : WebRoot.db().get(targetNation));
+
+        DBAuthRecord targetUserRecord = targetUser == null
+                ? null
+                : (userId != null && Objects.equals(targetUser, userId)
+                ? userRecord
+                : WebRoot.db().get(targetUser));
+
+        Map<UUID, Removal> removals = new LinkedHashMap<>();
+
+        if (keep != null) {
+            // Remove only the conflicting target side from other tokens.
+            if (targetNationRecord != null && !sameToken(targetNationRecord, keep)) {
+                queueRemoval(removals, targetNationRecord.token, targetNation, null);
+            }
+            if (targetUserRecord != null && !sameToken(targetUserRecord, keep)) {
+                queueRemoval(removals, targetUserRecord.token, null, targetUser);
+            }
+
+            // Remove only stale sides from the kept token.
+            if (keepNation != null && !Objects.equals(keepNation, targetNation)) {
+                queueRemoval(removals, keep.token, keepNation, null);
+            }
+            if (keepUser != null && !Objects.equals(keepUser, targetUser)) {
+                queueRemoval(removals, keep.token, null, keepUser);
             }
         }
-        if (existing == null) {
-            UUID uuid = WebUtil.generateSecureUUID();
-            existing = WebRoot.db().updateToken(uuid, nationId, userId);
+
+        for (Map.Entry<UUID, Removal> entry : removals.entrySet()) {
+            Removal removal = entry.getValue();
+            WebRoot.db().removeToken(false, entry.getKey(), removal.nationId, removal.userId);
         }
-        return existing;
+
+        boolean nationNeedsUpdate =
+                targetNation != null && (
+                        keep == null
+                                || !sameToken(targetNationRecord, keep)
+                                || (keepNation != null && !Objects.equals(keepNation, targetNation))
+                );
+
+        boolean userNeedsUpdate =
+                targetUser != null && (
+                        keep == null
+                                || !sameToken(targetUserRecord, keep)
+                                || (keepUser != null && !Objects.equals(keepUser, targetUser))
+                );
+
+        if (!nationNeedsUpdate && !userNeedsUpdate) {
+            return keep;
+        }
+
+        UUID token = keep != null ? keep.token : WebUtil.generateSecureUUID();
+        return WebRoot.db().updateToken(token, targetNation, targetUser);
+    }
+
+    private static DBAuthRecord pickRecord(DBAuthRecord nationRecord, DBAuthRecord userRecord) {
+        if (nationRecord == null) return userRecord;
+        if (userRecord == null) return nationRecord;
+        return nationRecord.timestamp >= userRecord.timestamp ? nationRecord : userRecord;
+    }
+
+    private static boolean sameToken(DBAuthRecord a, DBAuthRecord b) {
+        return a != null && b != null && Objects.equals(a.token, b.token);
+    }
+
+    private static void queueRemoval(Map<UUID, Removal> removals, UUID token, Integer nationId, Long userId) {
+        if (token == null || (nationId == null && userId == null)) {
+            return;
+        }
+        Removal removal = removals.computeIfAbsent(token, k -> new Removal());
+        if (nationId != null) {
+            removal.nationId = nationId;
+        }
+        if (userId != null) {
+            removal.userId = userId;
+        }
+    }
+
+    private static final class Removal {
+        private Integer nationId;
+        private Long userId;
     }
 
     public static UUID generateSecureUUID() {

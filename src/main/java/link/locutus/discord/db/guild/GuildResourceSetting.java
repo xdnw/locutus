@@ -16,7 +16,6 @@ public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType
 
     @Override
     public Map<ResourceType, Double> validate(GuildDB db, User user, Map<ResourceType, Double> value) {
-        // ensure amounts are positive
         for (Map.Entry<ResourceType, Double> entry : value.entrySet()) {
             if (entry.getValue() < 0) {
                 throw new IllegalArgumentException("Amounts must be positive (" + entry.getKey() + " x" + MathMan.format(entry.getValue()) + ")");

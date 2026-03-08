@@ -221,7 +221,6 @@ public class TimeUtil {
         return timeToSec(string, System.currentTimeMillis(), false);
     }
 
-    // Fix for incorrect paring. Only applies fix after specific date to avoid retroactively altering
     public static long timeToSec_BugFix1(String string, long currentTime) {
         if (currentTime > 1652245190000L) {
             return timeToSec(string, currentTime, true);
@@ -242,12 +241,17 @@ public class TimeUtil {
                 return (currentTime - timestamp) / 1000L;
             }
         }
-        if (string.length() > 10 && ((string.charAt(0) == 't' && string.startsWith("timestamp:")))) {
-            long timestamp = Long.parseLong(string.split(":")[1]);
-            if (forwards) {
-                return (timestamp - currentTime) / 1000L;
-            } else {
-                return (currentTime - timestamp) / 1000L;
+        if (string.length() > 10 && (string.charAt(0) == 't')) {
+            boolean isTimestamp = string.startsWith("timestamp:");
+            boolean isTimediff = !isTimestamp && string.startsWith("timediff:");
+            if (isTimediff || isTimestamp) {
+                long timestamp = Long.parseLong(string.split(":")[1]);
+                if (isTimediff) return timestamp / 1000L;
+                if (forwards) {
+                    return (timestamp - currentTime) / 1000L;
+                } else {
+                    return (currentTime - timestamp) / 1000L;
+                }
             }
         }
         if (MathMan.isInteger(string)) {

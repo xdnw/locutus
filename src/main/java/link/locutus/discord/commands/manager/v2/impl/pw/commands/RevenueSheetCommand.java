@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -39,7 +38,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 
 public class RevenueSheetCommand {
@@ -69,11 +67,13 @@ public class RevenueSheetCommand {
                 db == null ? null : db.getGuild()
         ));
 
+        System.out.println("[RevenueSheet] Create nations: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
+
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
         }
 
-        System.out.println("[RevenueSheet] Create sheet/nation: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
+        System.out.println("[RevenueSheet] Create sheet: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
         List<String> footer = new ArrayList<>();
         int before = nationSet.size();
@@ -296,8 +296,8 @@ public class RevenueSheetCommand {
         System.out.println("[RevenueSheet] Add rows: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
         sheet.updateClearCurrentTab();
+        System.out.println("[RevenueSheet] clear tab: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
         sheet.updateWrite();
-
         System.out.println("[RevenueSheet] Write Rows: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
         IMessageBuilder result = sheet.attach(io.create(), "revenue");

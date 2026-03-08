@@ -50,6 +50,7 @@ import link.locutus.discord.web.commands.api.IAEndpoints;
 import link.locutus.discord.web.commands.api.MultiEndpoints;
 import link.locutus.discord.web.commands.api.StatEndpoints;
 import link.locutus.discord.web.commands.api.TaxEndpoints;
+import link.locutus.discord.web.commands.api.CoalitionEndpoints;
 import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.api.TreatyEndpoints;
 import link.locutus.discord.web.commands.binding.AuthBindings;
@@ -146,6 +147,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new CoalitionGraphEndpoints(), "api");
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
         this.commands.registerSubCommands(new TaxEndpoints(), "api");
+        this.commands.registerSubCommands(new CoalitionEndpoints(), "api");
         this.commands.registerSubCommands(new MultiEndpoints(), "api");
         this.commands.registerSubCommands(new TreatyEndpoints(), "api");
 

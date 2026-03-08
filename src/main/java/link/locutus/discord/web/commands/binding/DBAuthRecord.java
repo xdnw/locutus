@@ -16,8 +16,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class DBAuthRecord {
-    private final long userId;
-    private final int nationId;
+    private long userId;
+    private int nationId;
     public final UUID token;
     public final long timestamp;
 
@@ -63,6 +63,19 @@ public class DBAuthRecord {
         return String.join(", ", parts);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        DBAuthRecord other = (DBAuthRecord) obj;
+        return token.equals(other.token);
+    }
+
+    @Override
+    public int hashCode() {
+        return token.hashCode();
+    }
+
     public DBNation getNation(boolean fetch) {
         DBNation nation = nationId == 0 ? null : DBNation.getById(nationId);
         if (nation == null && fetch && userId != 0) {
@@ -80,6 +93,14 @@ public class DBAuthRecord {
 
     public boolean isExpired() {
         return System.currentTimeMillis() - timestamp > TimeUnit.DAYS.toMillis(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
+    }
+
+    public void setNationId(int nationId) {
+        this.nationId = nationId;
+    }
+
+    public void setUserId(long userId) {
+        this.userId = userId;
     }
 
     /**
@@ -126,7 +147,7 @@ public class DBAuthRecord {
             if (nationId != 0) {
                 PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
                 if (user != null) {
-                    return user.getDiscordId();
+                    return userId = user.getDiscordId();
                 }
             }
             return null;
@@ -139,7 +160,7 @@ public class DBAuthRecord {
             if (userId != 0) {
                 DBNation nation = DiscordUtil.getNation(userId);
                 if (nation != null) {
-                    return nation.getNation_id();
+                    return nationId = nation.getNation_id();
                 }
             }
             return null;

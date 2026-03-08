@@ -5,6 +5,8 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
 
 import java.util.*;
 
@@ -81,7 +83,18 @@ public class ArgumentStack {
             return (T) consumeNext();
         Parser<?> parser = store.get(key);
         if (parser == null) {
-            throw new IllegalStateException("No binding found for: " + key);
+            String keySimple = key.toSimpleString();
+            Parser closest = null;
+            double closestDist = Double.MAX_VALUE;
+            for (Parser value : store.getParsers().values()) {
+                String parserSimple = value.getKey().toSimpleString();
+                double dist = StringMan.distanceWeightedQwertSift4(keySimple, parserSimple);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closest = value;
+                }
+            }
+            throw new IllegalStateException("No binding found for: " + key + (closest != null ? " (closest: " + closest.getKey() + ", distance: " + MathMan.format(closestDist) + ")" : ""));
         }
         return (T) parser.apply(this);
     }

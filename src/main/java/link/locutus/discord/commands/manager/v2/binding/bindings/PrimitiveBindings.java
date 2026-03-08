@@ -67,8 +67,14 @@ public class PrimitiveBindings extends BindingHelper {
     }
 
     @TextArea
-    @Binding(examples = "hello", value = "A single line of text")
+    @Binding(examples = "hello", value = "A text input")
     public static String TextArea(String input, @Default ParameterData param) {
+        return String(input, param);
+    }
+
+    @WYSIWYG
+    @Binding(examples = "hello", value = "A text input")
+    public static String WYSIWYG(String input, @Default ParameterData param) {
         return String(input, param);
     }
 
@@ -284,7 +290,8 @@ public class PrimitiveBindings extends BindingHelper {
             if ((MathMan.isInteger(argument) && argument.length() > 12)) {
                 return Long.parseLong(argument);
             }
-            return System.currentTimeMillis() - TimeUtil.timeToSec(argument) * 1000;
+            long now = System.currentTimeMillis();
+            return now - TimeUtil.timeToSec(argument, now, false) * 1000;
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid timestamp: `" + argument + "`: " + e.getMessage());
         }

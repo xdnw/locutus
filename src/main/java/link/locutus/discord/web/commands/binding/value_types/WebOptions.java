@@ -21,6 +21,13 @@ public class WebOptions {
         }
     }
 
+    public int size() {
+        int size = 0;
+        if (key_numeric != null) size = key_numeric.size();
+        if (key_string != null) size = key_string.size();
+        return size;
+    }
+
     public WebOptions withIcon() {
         this.icon = new ObjectArrayList<>();
         return this;

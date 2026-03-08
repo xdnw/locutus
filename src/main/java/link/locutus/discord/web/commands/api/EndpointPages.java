@@ -188,24 +188,32 @@ public class EndpointPages extends PageHelper {
     @Command(desc = "Fetch UI options for an input type based on current user/guild/nation context", viewable = true)
     @ReturnType(value = WebOptions.class, cache = CacheType.LocalStorage, duration = 30)
     public Object input_options(String type, @Me @Default GuildDB db, @Me @Default User user, @Me @Default DBNation nation) {
+        System.out.println("Fetching options for type: " + type + " | Guild: " + (db == null ? "null" : db.getId()) + " | User: " + (user == null ? "null" : user.getId()) + " | Nation: " + (nation == null ? "null" : nation.getId()));
         PageHandler ph = WebRoot.getInstance().getPageHandler();
         WebOption option = ph.getQueryOption(type);
         if (option == null) {
+            System.out.println("Invalid option type: " + type);
             return error("Invalid option type (" + type + "). available options: " + ph.getQueryOptionNames());
         }
         if (option.isRequiresGuild() && db == null) {
+            System.out.println("Option requires guild but no guild found in context");
             return error(option.getName() + " requires a guild. Please select a guild.");
         }
         if (option.isRequiresNation() && nation == null) {
+            System.out.println("Option requires nation but no nation found in context");
             return error(option.getName() + " requires a nation. Please select a nation.");
         }
         if (option.isRequiresUser() && user == null) {
+            System.out.println("Option requires user but no user found in context");
             return error(option.getName() + " requires a user. Please select a user.");
         }
         try {
-            return option.getQueryOptions(db, user, nation);
+            WebOptions results = option.getQueryOptions(db, user, nation);
+            System.out.println("Fetched options for " + option.getName() + " with " + results.size() + " results");
+            return results;
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("Failed to get options for " + option.getName() + ": " + e.getMessage());
             return error("Failed to get options for " + option.getName() + ": " + e.getMessage());
         }
     }

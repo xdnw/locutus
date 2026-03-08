@@ -181,6 +181,7 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.VirtualConflictMeta',
                 'link.locutus.discord.web.commands.binding.value_types.WebTreatyChanges',
                 'link.locutus.discord.web.commands.binding.value_types.WebCurrentTreaties',
+                'link.locutus.discord.web.commands.binding.value_types.WebCoalitions',
                 'link.locutus.discord.db.guild.GuildSettingCategory',
                 'link.locutus.discord.db.guild.GuildSettingSubgroup'
         ]

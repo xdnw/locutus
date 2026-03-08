@@ -11,24 +11,37 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.AccessType;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
+import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.AllianceMeta;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
-import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -38,7 +51,17 @@ import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -412,7 +435,7 @@ public class OffshoreInstance {
         if (disabledGuilds.containsKey(guild)) {
             return true;
         }
-        Set<Long> coalition = getGuildDB().getCoalitionRaw(Coalition.FROZEN_FUNDS);
+        Set<Long> coalition = getGuildDB().getCoalitionRaw(Coalition.FROZEN_FUNDS); // Note: Modifying alliances or coalitions requires synchronized (BANK_LOCK)
         if (coalition.contains(guild)) return true;
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db != null) {
@@ -1640,18 +1663,15 @@ public class OffshoreInstance {
             }
         }
 
-        {
-            try {
-                PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
-                return createTransfer(auth, api, receiver, transfer, note);
-            } catch (HttpClientErrorException.Unauthorized e) {
-//                return KeyValue.of(TransferStatus.INVALID_API_KEY, "Invalid API key");
-                return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                String msg = e.getMessage();
-                return categorize(receiver, transfer, note, msg);
-            }
+        try {
+            PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
+            return createTransfer(auth, api, receiver, transfer, note);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            String msg = e.getMessage();
+            return categorize(receiver, transfer, note, msg);
         }
 
 //
@@ -1843,37 +1863,29 @@ public class OffshoreInstance {
      */
 
     private TransferResult categorize(NationOrAlliance receiver, Map<ResourceType, Double> amount, String note, String msg) {
-
         if (msg.contains("You successfully transferred funds from the alliance bank.")) {
-//            return KeyValue.of(TransferStatus.SUCCESS, msg);
             return new TransferResult(TransferStatus.SUCCESS, receiver, amount, note).addMessage(msg);
         }
         if (msg.contains("This API key does not allow you to withdraw resources from an alliance bank.")) {
             return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, amount, note).addMessage(msg);
         }
         if (msg.contains("You can't send funds to this nation because they are in Vacation Mode") || msg.contains("You can't withdraw resources to a nation in vacation mode") || msg.contains("You can't withdraw while in Vacation Mode")) {
-//            return KeyValue.of(TransferStatus.VACATION_MODE, msg);
             return new TransferResult(TransferStatus.VACATION_MODE, receiver, amount, note).addMessage(msg);
         }
         if (msg.contains("There was an Error with your Alliance Bank Withdrawal: You can't withdraw funds to that nation because they are under a naval blockade. When the naval blockade ends they will be able to receive funds.")
         || msg.contains("You can't withdraw resources to a blockaded nation.")) {
-//            return KeyValue.of(TransferStatus.BLOCKADE, msg);
             return new TransferResult(TransferStatus.BLOCKADE, receiver, amount, note).addMessage(msg);
         }
         if (msg.contains("This player has been flagged for using the same network as you.")) {
-//            return KeyValue.of(TransferStatus.MULTI, msg);
             return new TransferResult(TransferStatus.MULTI, receiver, amount, note).addMessage(msg);
         }
         if (msg.contains("Insufficient funds") || msg.contains("You don't have that much") || msg.contains("You don't have enough resources.")) {
-//            return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
             return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, note).addMessage(msg);
         }
         if (msg.contains("You did not enter a valid recipient name.")) {
-//            return KeyValue.of(TransferStatus.INVALID_DESTINATION, msg);
             return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, note).addMessage(msg);
         }
         if (msg.contains("You did not withdraw anything.") || msg.contains("You can't withdraw no resources.")) {
-//            return KeyValue.of(TransferStatus.NOTHING_WITHDRAWN, msg);
             return new TransferResult(TransferStatus.NOTHING_WITHDRAWN, receiver, amount, note).addMessage(msg);
         }
         boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
@@ -1895,15 +1907,12 @@ public class OffshoreInstance {
             if (whitelistedError) {
                 messages.add("Ensure Whitelisted access is enabled in " + Settings.PNW_URL() + "/account");
             }
-//            return KeyValue.of(TransferStatus.INVALID_API_KEY, msg);
             return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, amount, note).addMessages(messages);
         }
         if (msg.contains("You need provide the X-Bot-Key header with the key for a verified bot to use this endpoint.")) {
-//            return KeyValue.of(TransferStatus.INVALID_API_KEY, msg);
             return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, amount, note).addMessage(msg);
         }
         if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
-//        return KeyValue.of(TransferStatus.OTHER, msg);
         return new TransferResult(TransferStatus.OTHER, receiver, amount, note).addMessage(msg);
     }
 }

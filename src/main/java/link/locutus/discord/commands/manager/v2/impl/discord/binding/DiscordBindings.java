@@ -31,6 +31,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
+import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -384,7 +385,7 @@ public class DiscordBindings extends BindingHelper {
         throw new IllegalArgumentException("No channel binding found.");
     }
 
-    @Binding
+    @Binding(webType = {ICommand.class, WildcardType.class})
     public CommandCallable command(String input) {
         CommandCallable callable = Locutus.imp().getCommandManager().getV2().getCommands().get(input);
         if (callable == null) {

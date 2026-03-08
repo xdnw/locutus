@@ -2073,7 +2073,7 @@ public class AdminCommands {
             Run the command without arguments to get a list of attributes""")
     @RolePermission(Roles.ADMIN)
     public String editAlliance(@Me GuildDB db, DBAlliance alliance, @Default String attribute,
-            @Default @TextArea String value) throws Exception {
+            @Default @WYSIWYG String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: "
                     + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();

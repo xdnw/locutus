@@ -86,6 +86,9 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption appMenu(String input) {
         return new WebOption(AppMenu.class).setRequiresGuild().setQueryMap((guild, user, nation) -> {
             WebOptions data = new WebOptions(false).withText().withSubtext();
+            // manually add `user` and `message`
+            data.add("user", "User", "User context menu");
+            data.add("message", "Message", "Message context menu");
             for (AppMenu menu : guild.getMenuManager().getAppMenus().values()) {
                 data.addSubtext(menu.title, menu.description.split("\n")[0]);
             }
@@ -221,7 +224,7 @@ public class WebOptionBindings extends BindingHelper {
 //Building - return Buildings.values -> name()
     @Binding(types = Building.class)
     public WebOption getBuilding() {
-        List<String> options = Arrays.stream(Buildings.values()).map(Building::name).toList();
+        List<String> options = Arrays.stream(Buildings.values()).map(Building::nameUpperUnd).toList();
         return new WebOption(Building.class).setOptions(options);
     }
 
