@@ -138,7 +138,7 @@ public class AuthBindings extends WebBindingHelper {
             context.removeCookie(type.getCookieId());
         }
         if (auth != null) {
-            WebRoot.db().removeToken(auth.getUUID(), auth.getNationIdRaw(), auth.getUserIdRaw());
+            WebRoot.db().removeToken(true, auth.getUUID(), auth.getNationIdRaw(), auth.getUserIdRaw());
         }
         if (redirect) {
             PageHelper.redirect(ws, context, WebRoot.REDIRECT, false);
@@ -373,6 +373,7 @@ public class AuthBindings extends WebBindingHelper {
 
         if (record != null && record.isExpired()) {
             UUID verifiedUid = WebUtil.generateSecureUUID();
+            WebRoot.db().removeToken(false, record.token, record.getNationIdRaw(), record.getUserIdRaw());
             record = WebRoot.db().updateToken(verifiedUid, record.getNationId(), record.getUserId());
             WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), verifiedUid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
         }

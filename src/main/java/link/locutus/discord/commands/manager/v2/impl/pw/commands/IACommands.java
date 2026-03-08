@@ -1534,7 +1534,7 @@ public class IACommands {
             `Hello Nation/12345678910`
             (Note: DM Borg to setup mail responses)""")
     @NoFormat
-    public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean force, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
+    public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @AllowAttachment @WYSIWYG String message, @Switch("f") boolean force, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         subject = MarkupUtil.transformURLIntoLinks(subject);
         message = MarkupUtil.transformURLIntoLinks(message);
         if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
@@ -1975,7 +1975,7 @@ public class IACommands {
                                     String subject,
                                     @Arg("The locutus command to run") String command,
                                     @Arg("Message to send along with the command result")
-                                    @TextArea String body, @Switch("s") SpreadSheet sheet,
+                                        @AllowAttachment @WYSIWYG String body, @Switch("s") SpreadSheet sheet,
                                     @Arg("Send as a discord direct message")
                                     @Switch("d") boolean sendDM,
                                     @Arg("Skip sending in-game mail\n" +

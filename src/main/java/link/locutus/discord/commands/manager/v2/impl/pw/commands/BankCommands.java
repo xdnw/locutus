@@ -3642,43 +3642,42 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Send from your nation's deposits) to another account (internal transfer", groups = {
-            "Amount to send",
-            "Required: Send To",
-            "Optional: Send From"
-    },
-            groupDescs = {
-                    "",
-                    "Pick a receiver account, nation, or both",
-                    "If there are multiple alliances registered to this guild"
-            })
-    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON})
-    public String send(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me,
-                       @Arg(value = "The amount to send", group = 0)
-                       @AllianceDepositLimit Map<ResourceType, Double> amount,
+        @Command(desc = "Send from your nation's deposits) to another account (internal transfer", groups = {
+                "Amount to send",
+                "Required: Send To",
+                "Optional: Send From"
+        },
+                groupDescs = {
+                        "",
+                        "Pick a receiver account, nation, or both",
+                        "If there are multiple alliances registered to this guild"
+                })
+        @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON})
+        public String send(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me,
+                           @Arg(value = "The amount to send", group = 0)
+                           @AllianceDepositLimit Map<ResourceType, Double> amount,
 
-                       @Arg(value = "The offshore alliance or guild account to send to\n" +
-                       "Defaults to this guild", group = 1)
-                       @Default GuildOrAlliance receiver_account,
-                       @Arg(value = "The alliance or guild nation account to send to\n" +
-                       "Defaults to None", group = 1)
-                       @Default DBNation receiver_nation,
+                           @Arg(value = "The offshore alliance or guild account to send to\n" +
+                           "Defaults to this guild", group = 1)
+                           @Default GuildOrAlliance receiver_account,
+                           @Arg(value = "The alliance or guild nation account to send to\n" +
+                           "Defaults to None", group = 1)
+                           @Default DBNation receiver_nation,
 
-                       @Arg(value = "The offshore alliance account to send from\n" +
-                       "Defaults to your alliance (if valid)", group = 2)
-                       @Default DBAlliance sender_alliance,
+                           @Arg(value = "The offshore alliance account to send from\n" +
+                           "Defaults to your alliance (if valid)", group = 2)
+                           @Default DBAlliance sender_alliance,
 
-                       @Switch("f") boolean force) throws IOException {
-        if (OffshoreInstance.DISABLE_TRANSFERS && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) throw new IllegalArgumentException(DISABLED_MESSAGE);
-        return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, force);
-    }
+                           @Switch("f") boolean force) throws IOException {
+            if (OffshoreInstance.DISABLE_TRANSFERS && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) throw new IllegalArgumentException(DISABLED_MESSAGE);
+            return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, force);
+        }
 
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)", groups = {
             "Amount to send",
             "Required: Send To",
             "Optional: Send From"
-    },
-    groupDescs = {
+    }, groupDescs = {
             "",
             "Pick a receiver account, nation, or both",
             "If using a different account to send from"
@@ -3701,43 +3700,87 @@ public class BankCommands {
                                  "Defaults to your nation", group = 2)
                          @Default DBNation sender_nation,
                          @Switch("f") boolean force) throws IOException {
-        switch (user.getId()) {
-            case "509173429241380884", "455788595274317844", "770284720297607228", "212911465248718848" -> {
-                break;
-            }
-            default -> {
-                throw new IllegalArgumentException("This command is currently a WIP");
-            }
+        if (!Roles.MEMBER.hasOnRoot(user)) {
+            throw new IllegalArgumentException("This command is currently a WIP");
         }
         GuildDB sender_guild = sender_account != null && sender_account.isGuild() ? sender_account.asGuild() : senderDB;
-        if (sender_guild != null && sender_guild != senderDB) {
+        if (sender_guild != null && sender_guild.getIdLong() != senderDB.getIdLong()) {
             throw new IllegalArgumentException("`sender_account` is a guild that does not match this guild. You must run the command in the guild of the sender account");
         }
+
         DBAlliance sender_alliance = sender_account != null && sender_account.isAlliance() ? sender_account.asAlliance() : null;
 
-        if (OffshoreInstance.DISABLE_TRANSFERS && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) throw new IllegalArgumentException(DISABLED_MESSAGE);
+        // Only infer a default sender alliance when the sender account was omitted.
+        // If the user explicitly selected a guild account, preserve that.
+        if (sender_account == null) {
+            Set<Integer> aaIds = senderDB.getAllianceIds();
+            if (!aaIds.isEmpty()) {
+                if (sender_nation != null && aaIds.contains(sender_nation.getAlliance_id())) {
+                    sender_alliance = DBAlliance.getOrCreate(sender_nation.getAlliance_id());
+                } else if (aaIds.size() == 1) {
+                    sender_alliance = DBAlliance.getOrCreate(aaIds.iterator().next());
+                } else {
+                    throw new IllegalArgumentException("Sender DB " + senderDB + " has multiple alliances: "
+                            + StringMan.getString(aaIds)
+                            + " and must be specified via the `sender_account` argument");
+                }
+            }
+        }
+
+        if (OffshoreInstance.DISABLE_TRANSFERS && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) {
+            throw new IllegalArgumentException(DISABLED_MESSAGE);
+        }
+
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
             throw new IllegalArgumentException("Sender alliance is not in this guild");
         }
+
         if (receiver_account == null && receiver_nation == null) {
             throw new IllegalArgumentException("Please specify a `receiver_account` or `receiver_nation` or both");
         }
-        boolean hasEcon = Roles.ECON.has(user, senderDB.getGuild());
+
+        GuildDB receiverDB = receiver_account != null && receiver_account.isGuild() ? receiver_account.asGuild() : null;
+        DBAlliance receiverAlliance = receiver_account != null && receiver_account.isAlliance() ? receiver_account.asAlliance() : null;
+
+        // If receiver account omitted and only a nation was provided, resolve via the nation's alliance/guild.
+        // If a guild account was explicitly chosen, preserve it.
+        if (receiver_account == null && receiver_nation != null) {
+            receiverAlliance = receiver_nation.getAlliance();
+            if (receiverAlliance == null) {
+                throw new IllegalArgumentException("No alliance found for nation: " + receiver_nation.getMarkdownUrl());
+            }
+            receiverDB = receiverAlliance.getGuildDB();
+            if (receiverDB == null) {
+                throw new IllegalArgumentException("No guild found for alliance: " + receiverAlliance.getMarkdownUrl()
+                        + ". Register to a guild using " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+            }
+        }
+
+        int roleAA = sender_alliance != null ? sender_alliance.getId() : 0;
+        boolean hasEcon = Roles.ECON.has(user, senderDB.getGuild(), roleAA);
+
         if (!hasEcon) {
             if (sender_alliance != null && sender_alliance.getId() != me.getAlliance_id()) {
-                throw new IllegalArgumentException("You do not have permission to send from another alliance (only: " + me.getAllianceUrlMarkup() + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+                throw new IllegalArgumentException("You do not have permission to send from another alliance (only: "
+                        + me.getAllianceUrlMarkup() + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
             }
             if (sender_nation == null) {
-                throw new IllegalArgumentException("You do not have permission to omit `sender_nation` " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+                throw new IllegalArgumentException("You do not have permission to omit `sender_nation` "
+                        + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
             } else if (sender_nation.getId() != me.getId()) {
-                throw new IllegalArgumentException("You do not have permission to send from another nation (only: " + me.getNationUrlMarkup() + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+                throw new IllegalArgumentException("You do not have permission to send from another nation (only: "
+                        + me.getNationUrlMarkup() + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
             }
         }
 
         double[] amountArr = ResourceType.resourcesToArray(amount);
-        GuildDB receiverDB = receiver_account.isGuild() ? receiver_account.asGuild() : null;
-        DBAlliance receiverAlliance = receiver_account.isAlliance() ? receiver_account.asAlliance() : null;
-        List<TransferResult> results = senderDB.sendInternal(user, me, sender_guild, sender_alliance, sender_nation, receiverDB, receiverAlliance, receiver_nation, amountArr, force);
+        List<TransferResult> results = senderDB.sendInternal(
+                user, me,
+                sender_guild, sender_alliance, sender_nation,
+                receiverDB, receiverAlliance, receiver_nation,
+                amountArr, force
+        );
+
         if (results.size() == 1) {
             TransferResult result = results.get(0);
             if (result.getStatus() == OffshoreInstance.TransferStatus.CONFIRMATION) {
@@ -3755,6 +3798,7 @@ public class BankCommands {
                 return null;
             }
         }
+
         Map.Entry<String, String> embed = TransferResult.toEmbed(results);
         channel.create().embed(embed.getKey(), embed.getValue()).send();
         return null;

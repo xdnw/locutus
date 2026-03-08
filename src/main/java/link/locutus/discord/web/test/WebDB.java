@@ -1,5 +1,6 @@
 package link.locutus.discord.web.test;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DBMainV3;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
@@ -64,7 +65,7 @@ public class WebDB extends DBMainV3 {
         });
     }
 
-    public void removeToken(@Nullable UUID uuid, @Nullable Integer nationId, @Nullable Long userId) {
+    public void removeToken(boolean resolve, @Nullable UUID uuid, @Nullable Integer nationId, @Nullable Long userId) {
         if (userId == null && nationId == null && uuid == null) {
             throw new IllegalArgumentException("All of userId and nationId and uuid cannot be null");
         }
@@ -72,25 +73,37 @@ public class WebDB extends DBMainV3 {
             DBAuthRecord record = authByNationId.remove(nationId);
             if (record != null) {
                 authByUUID.remove(record.token);
-                if (record.getUserIdRaw() != null) authByUserId.remove(record.getUserIdRaw());
+                if (resolve && record.getUserId() != null) {
+                    userId = record.getUserIdRaw();
+                    authByUserId.remove(userId);
+                }
             }
         }
         if (userId != null) {
             DBAuthRecord record = authByUserId.remove(userId);
             if (record != null) {
                 authByUUID.remove(record.token);
-                if (record.getNationIdRaw() != null) authByNationId.remove(record.getNationIdRaw());
+                if (resolve && record.getNationId() != null) {
+                    nationId = record.getNationIdRaw();
+                    authByNationId.remove(nationId);
+                }
             }
         }
         if (uuid != null) {
             DBAuthRecord record = authByUUID.remove(uuid);
-            if (record != null) {
-                if (record.getUserIdRaw() != null) authByUserId.remove(record.getUserIdRaw());
-                if (record.getNationIdRaw() != null) authByNationId.remove(record.getNationIdRaw());
+            if (record != null && resolve) {
+                if (userId == null && record.getUserId() != null) {
+                    userId = record.getUserIdRaw();
+                    authByUserId.remove(userId);
+                }
+                if (nationId == null && record.getNationId() != null) {
+                    nationId = record.getNationIdRaw();
+                    authByNationId.remove(nationId);
+                }
             }
         }
         StringBuilder query = new StringBuilder("DELETE FROM `AUTH` WHERE ");
-        List<String> where = new ArrayList<>();
+        List<String> where = new ObjectArrayList<>(3);
         if (userId != null) {
             where.add("`USER_ID` = " + userId);
         }
@@ -107,8 +120,9 @@ public class WebDB extends DBMainV3 {
     }
 
     public synchronized DBAuthRecord updateToken(UUID uuid, @Nullable Integer nation, @Nullable Long userId) {
-        removeToken(uuid, nation, userId);
         DBAuthRecord record = new DBAuthRecord(userId == null ? 0 : userId, nation == null ? 0 : nation, uuid, System.currentTimeMillis());
+        record.getUserId();
+        record.getNationId();
         addToken(uuid, record);
         return record;
     }
@@ -118,7 +132,6 @@ public class WebDB extends DBMainV3 {
         long big = uuid.getMostSignificantBits();
         Integer nationId = auth.getNationIdRaw();
         Long userId = auth.getUserIdRaw();
-        removeToken(uuid, nationId, userId);
         ctx().execute("INSERT OR REPLACE INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ", small, big, nationId, userId, auth.timestamp);
         if (nationId != null) {
             authByNationId.put(nationId, auth);

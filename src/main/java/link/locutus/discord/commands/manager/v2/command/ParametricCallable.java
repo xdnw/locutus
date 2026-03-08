@@ -17,6 +17,7 @@ import link.locutus.discord.gpt.mcp.MCPUtil;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -149,7 +150,20 @@ public class ParametricCallable<T> implements ICommand<T> {
             Key<Object> key = Key.of(type, annotations);
             Parser<?> binding = store.get(key);
             if (binding == null) {
-                throw new IllegalStateException("No binding found for " + key + " for command: " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
+                String keySimple = key.toSimpleString();
+                Parser closest = null;
+                double closestDist = Double.MAX_VALUE;
+                Map<Key, Parser> parsers = store.getParsers();
+                for (Parser value : parsers.values()) {
+                    String parserSimple = value.getKey().toSimpleString();
+                    double dist = StringMan.distanceWeightedQwertSift4(keySimple, parserSimple);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closest = value;
+                    }
+                }
+                throw new IllegalStateException("No binding found for " + key + " for command: " + method.getDeclaringClass().getSimpleName() + "#" + method.getName() + "\n" +
+                        "closest: " + (closest != null ? closest.getKey() : "none") + " dist: " + MathMan.format(closestDist));
             }
             parameter.setBinding(binding);
 

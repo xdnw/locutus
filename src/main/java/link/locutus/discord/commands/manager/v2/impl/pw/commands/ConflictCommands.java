@@ -184,7 +184,7 @@ public class ConflictCommands {
     }
 
     @Command(desc = "Set the status/summary text shown for a conflict and push metadata to the website")
-    public String setStatus(ConflictManager manager, Conflict conflict, @TextArea String status, @Me DBNation me,
+    public String setStatus(ConflictManager manager, Conflict conflict, @AllowAttachment @TextArea String status, @Me DBNation me,
             @Me User user, @Me Guild guild, @Me GuildDB db) throws IOException {
         requireConflictWritePerm(conflict, me, user, guild, db);
         conflict.setStatus(status.replace("\\n", "\n"));
@@ -193,7 +193,7 @@ public class ConflictCommands {
     }
 
     @Command(desc = "Set the casus belli text for a conflict and push metadata to the website")
-    public String setCB(ConflictManager manager, Conflict conflict, @TextArea String casus_belli, @Me DBNation me,
+    public String setCB(ConflictManager manager, Conflict conflict, @AllowAttachment @TextArea String casus_belli, @Me DBNation me,
             @Me User user, @Me Guild guild, @Me GuildDB db) throws IOException {
         requireConflictWritePerm(conflict, me, user, guild, db);
         conflict.setCasusBelli(casus_belli.replace("\\n", "\n"));

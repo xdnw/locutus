@@ -17,6 +17,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllowAttachment;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -29,6 +30,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.WYSIWYG;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -75,6 +77,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -651,14 +654,19 @@ public class GuildKey {
                     "Must also set " + RECRUIT_MESSAGE_CONTENT.getCommandMention();
         }
     }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance());
-    public static final GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT, NATION_CREATION, TextArea.class) {
+    public static final GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT, NATION_CREATION, WYSIWYG.class) {
 
         private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<\\s*([a-z]+)\\s*[^>]*>.*?<\\s*/\\s*\\1\\s*>", Pattern.DOTALL);
+
+        @Override
+        public String toReadableString(GuildDB db, String value) {
+            return MarkupUtil.htmlToMarkdown(value);
+        }
 
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, @AllowAttachment String message) {
+        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, @AllowAttachment @WYSIWYG String message) {
             boolean containsHtml = HTML_TAG_PATTERN.matcher(message).find();
             if (!containsHtml) {
                 message = MarkupUtil.markdownToHTML(MarkupUtil.formatDiscordMarkdown(message, db == null ? null : db.getGuild()));
@@ -771,7 +779,7 @@ public class GuildKey {
             return response;
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
-    public static final GuildSetting<Map<NationFilter, TaxBracket>> REQUIRED_TAX_BRACKET = new GuildSetting<Map<NationFilter, TaxBracket>>(GuildSettingCategory.TAX, TAX_AUTO_ASSIGN, Map.class, NationFilter.class, Integer.class) {
+    public static final GuildSetting<Map<NationFilter, TaxBracket>> REQUIRED_TAX_BRACKET = new GuildSetting<Map<NationFilter, TaxBracket>>(GuildSettingCategory.TAX, TAX_AUTO_ASSIGN, Map.class, NationFilter.class, TaxBracket.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1530,12 +1538,17 @@ public class GuildKey {
             return "The guild to defer war rooms to";
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requires(ALLIANCE_ID));
-    public static final GuildSetting<Map.Entry<Integer, Long>> DELEGATE_SERVER = new GuildSetting<Map.Entry<Integer, Long>>(GuildSettingCategory.DEFAULT, null, Map.class, Integer.class, Long.class) {
+    public static final GuildSetting<Map.Entry<Integer, Long>> DELEGATE_SERVER = new GuildSetting<Map.Entry<Integer, Long>>(GuildSettingCategory.DEFAULT, null, Map.Entry.class, Integer.class, Long.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String DELEGATE_SERVER(@Me GuildDB db, @Me User user, Guild guild) {
             return DELEGATE_SERVER.setAndValidate(db, user, KeyValue.of(0, guild.getIdLong()));
+        }
+
+        @Override
+        public String getWebType(ValueStore store) {
+            return Guild.class.getSimpleName();
         }
 
         @Override
@@ -1697,7 +1710,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static final GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_CONVERSION, null, Map.class, NationFilter.class, Map.class) {
+    public static final GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_CONVERSION, null, Map.class, NationFilter.class, Map.class, ResourceType.class, Double.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2126,16 +2139,22 @@ public class GuildKey {
             return MAIL_NEW_APPLICANTS.setAndValidate(db, user, enabled);
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
-    public static final GuildSetting<String> MAIL_NEW_APPLICANTS_TEXT = new GuildStringSetting(GuildSettingCategory.RECRUIT, ALLIANCE_APPLICATION, TextArea.class) {
+    public static final GuildSetting<String> MAIL_NEW_APPLICANTS_TEXT = new GuildStringSetting(GuildSettingCategory.RECRUIT, ALLIANCE_APPLICATION, WYSIWYG.class) {
         @Override
         public String help() {
             return "The message to send to new applicants via in-game mail.\n" +
                     "Supports nation placeholders, see: <https://github.com/xdnw/locutus/wiki/nation_placeholders>";
         }
+
+        @Override
+        public String toReadableString(GuildDB db, String value) {
+            return MarkupUtil.htmlToMarkdown(value);
+        }
+
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String MAIL_NEW_APPLICANTS_TEXT(@Me GuildDB db, @Me User user, String message) {
+        public String MAIL_NEW_APPLICANTS_TEXT(@Me GuildDB db, @Me User user, @AllowAttachment @WYSIWYG String message) {
             return MAIL_NEW_APPLICANTS_TEXT.setAndValidate(db, user, message);
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(MAIL_NEW_APPLICANTS));
@@ -2226,6 +2245,11 @@ public class GuildKey {
 
     public static final GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, null, Map.class, Long.class, MessageChannel.class) {
 
+        @Override
+        public String getWebType(ValueStore store) {
+            return "Map<" + DBAlliance.class.getSimpleName() + "," + TextChannel.class.getSimpleName() +  ">";
+        }
+
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2271,7 +2295,24 @@ public class GuildKey {
             Map<Long, MessageChannel> parsed = new HashMap<>();
             for (String line : input.split("[\n;,]")) {
                 String[] split = line.split("[:=]", 2);
-                long id = split.length == 1 ? 0 : Long.parseLong(split[0]);
+                long id;
+                //  = split.length == 1 ? 0 : Long.parseLong(split[0]);
+                if (split.length == 1) {
+                    id = 0;
+                } else {
+                    String alliancePart = split[0].trim();
+                    if (alliancePart.equals("*")) {
+                        id = 0;
+                    } else if (MathMan.isInteger(alliancePart)) {
+                        id = Long.parseLong(alliancePart);
+                    } else {
+                        Integer aaId = PW.parseAllianceId(alliancePart);
+                        if (aaId == null) {
+                            throw new IllegalArgumentException("Invalid alliance: " + alliancePart);
+                        }
+                        id = aaId;
+                    }
+                }
                 MessageChannel channel = DiscordUtil.getChannel(db.getGuild(), split[split.length - 1]);
                 if (channel != null) {
                     parsed.put(id, channel);
@@ -2749,6 +2790,12 @@ public class GuildKey {
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
 
     public static final GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.BANK_GRANTS, GRANT_TEMPLATE_LIMIT, Map.class, Long.class, Double.class) {
+
+        @Override
+        public String getWebType(ValueStore store) {
+            return "Map<" + Role.class.getSimpleName() + ",Double>";
+        }
+
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -3143,7 +3190,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requireValidAlliance().requireActiveGuild());
 
-    public static final GuildSetting<Set<TaxBracket>> ALLOWED_TAX_BRACKETS = new GuildSetting<Set<TaxBracket>>(GuildSettingCategory.TAX, TAX_SELF_ASSIGN, Set.class, Integer.class) {
+    public static final GuildSetting<Set<TaxBracket>> ALLOWED_TAX_BRACKETS = new GuildSetting<Set<TaxBracket>>(GuildSettingCategory.TAX, TAX_SELF_ASSIGN, Set.class, TaxBracket.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)

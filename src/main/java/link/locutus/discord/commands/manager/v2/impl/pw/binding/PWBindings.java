@@ -190,7 +190,7 @@ public class PWBindings extends BindingHelper {
         new GPTBindings().register(store);
         new SheetBindings().register(store);
         // new StockBinding().register(store);
-        new NewsletterBindings().register(store);
+        // new NewsletterBindings().register(store);
         return store;
     }
 
@@ -652,7 +652,6 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "City build json or url", examples = { "city/id=371923", "{city-json}",
             "city/id=1{json-modifiers}" })
     public CityBuild city(@Default @Me DBNation nation, @TextArea String input) {
-        // {city X Nation}
         int index = input.indexOf('{');
         Integer cityId = null;
         CityBuild build = null;
