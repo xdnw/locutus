@@ -200,7 +200,7 @@ public class CoalitionSide {
         onEach.accept(getAllianceDamageStatsByDay(true, allianceId, cities, day));
     }
 
-    public void updateWar(DBWar previous, DBWar current, boolean isAttacker) {
+    public void updateWar(DBWar previous, DBWar current, boolean isAttacker, boolean declaredFirstTwoTurns) {
         WarStatistics wars = get();
         int cities;
         long day = TimeUtil.getDay(current.getDate());
@@ -210,8 +210,8 @@ public class CoalitionSide {
             attackerAA = current.getAttacker_aa();
             attackerId = current.getAttacker_id();
             if (previous == null) {
-                wars.inflictedAndOffensiveStats.newWar(current, true);
-                applyAttackerStats(attackerAA, attackerId, cities, day, p -> p.newWar(current, true));
+                wars.inflictedAndOffensiveStats.newWar(current, true, declaredFirstTwoTurns);
+                applyAttackerStats(attackerAA, attackerId, cities, day, p -> p.newWar(current, true, declaredFirstTwoTurns));
             } else {
                 wars.inflictedAndOffensiveStats.updateWar(previous, current, true);
                 applyAttackerStats(attackerAA, attackerId, cities, day, p -> p.updateWar(previous, current, true));
@@ -221,8 +221,8 @@ public class CoalitionSide {
             attackerId = current.getDefender_id();
             cities = current.getDefCities();
             if (previous == null) {
-                wars.lossesAndDefensiveStats.newWar(current, false);
-                applyDefenderStats(attackerAA, attackerId, cities, day, p -> p.newWar(current, false));
+                wars.lossesAndDefensiveStats.newWar(current, false, false);
+                applyDefenderStats(attackerAA, attackerId, cities, day, p -> p.newWar(current, false, false));
             } else {
                 wars.lossesAndDefensiveStats.updateWar(previous, current, false);
                 applyDefenderStats(attackerAA, attackerId, cities, day, p -> p.updateWar(previous, current, false));

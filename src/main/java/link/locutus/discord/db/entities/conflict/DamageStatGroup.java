@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
@@ -23,6 +24,7 @@ import static link.locutus.discord.db.entities.conflict.ConflictColumn.ranking;
 
 public class DamageStatGroup {
     public char totalWars;
+    public char warsDeclaredFirstTwoTurns;
     public char activeWars;
     public int attacks = 0;
     public char warsWon;
@@ -41,14 +43,19 @@ public class DamageStatGroup {
     public final double[] costByUnit = new double[MilitaryUnit.values.length];
     public final char[] buildings = new char[Buildings.values().length];
     private long infraCents = 0;
+
+    private static final Map<ConflictColumn, Function<DamageStatGroup, Object>> HEADER =
+            Collections.unmodifiableMap(buildHeader());
+    private static final Map<ConflictColumn, Function<DamageStatGroup, Object>> RANKING =
+            Collections.unmodifiableMap(buildRanking(HEADER));
+
     public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createRanking() {
-        Map<ConflictColumn, Function<DamageStatGroup, Object>> header = createHeader();
-        header.entrySet().removeIf(e -> !e.getKey().isRanking());
-        return header;
+        return RANKING;
     }
 
     public void clear() {
         totalWars = 0;
+        warsDeclaredFirstTwoTurns = 0;
         activeWars = 0;
         attacks = 0;
         warsWon = 0;
@@ -67,7 +74,12 @@ public class DamageStatGroup {
         Arrays.fill(buildings, (char) 0);
         infraCents = 0;
     }
+
     public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createHeader() {
+        return HEADER;
+    }
+
+    private static Map<ConflictColumn, Function<DamageStatGroup, Object>> buildHeader() {
         Map<ConflictColumn, Function<DamageStatGroup, Object>> map = new Object2ObjectLinkedOpenHashMap<>();
         map.put(ranking("loss_value", ColumnType.STANDARD, "Total market value of damage", false), p -> (long) ResourceType.convertedTotal(p.totalCost));
         for (ResourceType type : ResourceType.values) {
@@ -116,6 +128,7 @@ public class DamageStatGroup {
         // Counts //
 
         map.put(ranking("wars", ColumnType.WARS, "Number of wars", true), p -> (int) p.totalWars);
+        map.put(ranking("wars_1st_2_turns", ColumnType.WARS, "Number of wars declared in the first 2 turns of the conflict", true), p -> (int) p.warsDeclaredFirstTwoTurns);
         map.put(header("wars_active", ColumnType.WARS, "Number of active wars", true), p -> (int) p.activeWars);
         map.put(ranking("attacks", ColumnType.ATTACKS, "Number of attacks", true), p -> (int) p.attacks);
         map.put(ranking("wars_won", ColumnType.WARS,"Number of wars won", true), p -> (int) p.warsWon);
@@ -159,6 +172,16 @@ public class DamageStatGroup {
         return map;
     }
 
+    private static Map<ConflictColumn, Function<DamageStatGroup, Object>> buildRanking(Map<ConflictColumn, Function<DamageStatGroup, Object>> header) {
+        Map<ConflictColumn, Function<DamageStatGroup, Object>> ranking = new Object2ObjectLinkedOpenHashMap<>();
+        for (Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>> entry : header.entrySet()) {
+            if (entry.getKey().isRanking()) {
+                ranking.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return ranking;
+    }
+
     public void apply(AbstractCursor attack, DBWar war, boolean isAttacker) {
         if (isAttacker) {
             attack.addAttUnitLosses(units);
@@ -177,8 +200,11 @@ public class DamageStatGroup {
         }
     }
 
-    public void newWar(DBWar war, boolean isAttacker) {
+    public void newWar(DBWar war, boolean isAttacker, boolean declaredFirstTwoTurns) {
         totalWars++;
+        if (isAttacker && declaredFirstTwoTurns) {
+            warsDeclaredFirstTwoTurns++;
+        }
         if (war.isActive()) activeWars++;
         else {
             addWarStatus(war.getStatus(), isAttacker);

@@ -689,18 +689,23 @@ public class Conflict {
                 .computeIfAbsent(aaId2, k -> new DamageStatGroup());
     }
 
+    private boolean isDeclaredInFirstTwoTurns(long turn, DBWar previous) {
+        return previous == null && turn >= getStartTurn() && turn < getStartTurn() + 2;
+    }
+
     public boolean updateWar(DBWar previous, DBWar current, long turn, long date) {
         CoalitionSide side = getCoalition(current.getAttacker_aa(), current.getDefender_aa(), turn);
         if (side == null)
             return false;
         latestWarOrAttack = date;
+        boolean declaredFirstTwoTurns = isDeclaredInFirstTwoTurns(turn, previous);
 
         CoalitionSide otherSide = side.getOther();
-        side.updateWar(previous, current, true);
-        otherSide.updateWar(previous, current, false);
+        side.updateWar(previous, current, true, declaredFirstTwoTurns);
+        otherSide.updateWar(previous, current, false, declaredFirstTwoTurns);
 
         if (previous == null) {
-            getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true);
+            getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true, declaredFirstTwoTurns);
         }
 
         return true;
