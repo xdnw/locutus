@@ -209,7 +209,7 @@ public class EndpointPages extends PageHelper {
         }
         try {
             WebOptions results = option.getQueryOptions(db, user, nation);
-            System.out.println("Fetched options for " + option.getName() + " with " + results.size() + " results");
+            System.out.println("Fetched options for " + option.getName() + " with " + results.getSize() + " results");
             return results;
         } catch (Exception e) {
             e.printStackTrace();

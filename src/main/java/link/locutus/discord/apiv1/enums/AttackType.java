@@ -539,6 +539,7 @@ public enum AttackType {
             case "NAVALINFRA": return NAVAL_INFRA;
             case "NAVALGROUND": return NAVAL_GROUND;
             case "NAVALAIR": return NAVAL_AIR;
+            case "NAVALSHIPS": return NAVAL;
         }
         return valueOf(input);
     }
