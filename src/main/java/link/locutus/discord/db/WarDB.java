@@ -2612,8 +2612,40 @@ public class WarDB extends DBMainV2 {
     }
 
     public Set<DBWar> getWars(Set<Integer> alliances, long start, long end) {
-        Map<Integer, DBWar> wars = getWarsForNationOrAlliance(null, alliances::contains, f -> f.getDate() > start && f.getDate() < end);
-        return new ObjectOpenHashSet<>(wars.values());
+        return getWarsByAllianceIds(alliances, f -> f.getDate() > start && f.getDate() < end);
+    }
+
+    public Set<DBWar> getWarsInclusive(Set<Integer> alliances, long start, long end) {
+        return getWarsByAllianceIds(alliances, f -> f.getDate() >= start && f.getDate() <= end);
+    }
+
+    private Set<DBWar> getWarsByAllianceIds(Set<Integer> alliances, Predicate<DBWar> warFilter) {
+        if (alliances == null || alliances.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        Set<DBWar> result = new ObjectOpenHashSet<>();
+        synchronized (warsByAllianceId) {
+            for (int allianceId : alliances) {
+                if (allianceId == 0) {
+                    continue;
+                }
+                Object wars = warsByAllianceId.get(allianceId);
+                if (wars == null) {
+                    continue;
+                }
+                if (warFilter == null) {
+                    ArrayUtil.iterateElements(DBWar.class, wars, result::add);
+                } else {
+                    ArrayUtil.iterateElements(DBWar.class, wars, war -> {
+                        if (warFilter.test(war)) {
+                            result.add(war);
+                        }
+                    });
+                }
+            }
+        }
+        return result;
     }
 
     public Set<DBWar> getWarsById(Set<Integer> warIds) {

@@ -895,7 +895,7 @@ public class ConflictManager {
         Set<Integer> aaIds = conflict.getAllianceIds();
 
         AttackQuery query = db.queryAttacks()
-                .withWarsForNationOrAlliance(null, aaIds::contains, f -> f.getDate() >= start && f.getDate() <= end);
+                .withWarSet(f -> f.getWarsInclusive(aaIds, start, end));
 
         loadWarsFromQueryAndProcess(conflict, clearBeforeUpdate, query);
     }
@@ -925,6 +925,15 @@ public class ConflictManager {
                 loadConflictWars(unloaded, false, false, true);
             }
         }
+    }
+
+    private Set<Integer> getParticipantAllianceIds(Collection<Conflict> conflicts) {
+        Set<Integer> allianceIds = new IntOpenHashSet();
+        for (Conflict conflict : conflicts) {
+            allianceIds.addAll(conflict.getAllianceIds());
+        }
+        allianceIds.remove(0);
+        return allianceIds;
     }
 
     public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate, boolean isStartup,
@@ -964,17 +973,16 @@ public class ConflictManager {
                     return;
                 startMs = TimeUtil.getTimeFromTurn(startTurn);
                 endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn);
+                Set<Integer> allianceIds = getParticipantAllianceIds(conflictsFinal);
 
                 Set<DBWar> wars = new ObjectOpenHashSet<>();
-                for (DBWar war : this.db.getWars()) {
-                    if (war.getDate() >= startMs && war.getDate() <= endMs) {
-                        if (updateWar(holder, null, war, allowedConflicts)) {
-                            // if (war.isActive() && TimeUtil.getTurn(war.getDate()) + 61 < currentTurn) {
-                            // System.out.println("INVALID WAR EXPIRED " + war.getWarId() + " | " +
-                            // war.getDate() + " | " + war.getStatus());
-                            // }
-                            wars.add(war);
-                        }
+                for (DBWar war : this.db.getWarsInclusive(allianceIds, startMs, endMs)) {
+                    if (updateWar(holder, null, war, allowedConflicts)) {
+                        // if (war.isActive() && TimeUtil.getTurn(war.getDate()) + 61 < currentTurn) {
+                        // System.out.println("INVALID WAR EXPIRED " + war.getWarId() + " | " +
+                        // war.getDate() + " | " + war.getStatus());
+                        // }
+                        wars.add(war);
                     }
                 }
 
