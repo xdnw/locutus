@@ -8,8 +8,10 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,116 +22,114 @@ import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class PageRequestQueue {
-    private RequestTracker tracker;
+public class PageRequestQueue implements AutoCloseable {
+    private final RequestTracker tracker;
     private final ScheduledExecutorService service;
-    // field of priority queue
     private final PriorityQueue<PageRequestTask<?>> queue;
     private final Object lock = new Object();
+    private final Set<Integer> inFlightDomains = new HashSet<>();
 
     private final AtomicInteger delayIncrement = new AtomicInteger(0);
 
     public PageRequestQueue(int threads) {
-        // ScheduledExecutorService service
         this.queue = new PriorityQueue<>(Comparator.comparingLong(PageRequestTask::getPriority));
         this.service = Executors.newScheduledThreadPool(threads);
         tracker = new RequestTracker();
 
         for (int i = 0; i < threads; i++) {
-            service.submit(new Runnable() {
-                @Override
-                public void run() {
-                    while (true) {
-                        boolean isEmpty ;
-                        synchronized (queue) {
-                            isEmpty = queue.isEmpty();
-                        }
-                        if (isEmpty) {
-                            synchronized (lock) {
-                                synchronized (queue) {
-                                    if (!queue.isEmpty()) {
-                                        continue;
-                                    }
-                                }
-                                try {
-                                    lock.wait();
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                    return;
-                                }
-                            }
-                        }
-
-                        AtomicLong waitTime = new AtomicLong();
-                        PageRequestTask<?> task = null;
-                        synchronized (queue) {
-                            task = findAndRemoveTask(waitTime);
-                        }
-                        if (task == null) {
-                            long wait = waitTime.get();
-                            if (wait <= 0) {
-                                wait = (delayIncrement.addAndGet(100) % 900) + 100;
-                            }
-                            synchronized (queue) {
-                                if (queue.isEmpty()) {
-                                    continue;
-                                }
-                            }
-                            try {
-                                Thread.sleep(wait);
-                            } catch (InterruptedException e) {
-                                throw new RuntimeException(e);
-                            }
-                            continue;
-                        }
-                        PageRequestQueue.this.run(task);
-                    }
-                }
-            });
+            service.submit(this::workerLoop);
         }
     }
 
-    private PageRequestTask findAndRemoveTask(AtomicLong waitTime) {
-        synchronized (queue) {
-            if (queue.isEmpty()) return null;
-            PageRequestTask task = findTask(waitTime);
-            if (task != null) {
-                queue.remove(task);
+    private void workerLoop() {
+        while (!service.isShutdown()) {
+            PageRequestTask<?> task;
+            try {
+                task = awaitTask();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
             }
-            return task;
+            if (task == null) {
+                continue;
+            }
+            run(task);
         }
     }
 
-    private PageRequestTask findTask(AtomicLong waitTime) {
-        long minWait = Long.MAX_VALUE;
+    private PageRequestTask<?> awaitTask() throws InterruptedException {
+        synchronized (lock) {
+            while (!service.isShutdown()) {
+                AtomicLong waitTime = new AtomicLong();
+                PageRequestTask<?> task = findAndRemoveTask(waitTime);
+                if (task != null) {
+                    return task;
+                }
+                if (queue.isEmpty()) {
+                    lock.wait();
+                    continue;
+                }
+                long wait = waitTime.get();
+                if (wait <= 0) {
+                    wait = (delayIncrement.addAndGet(100) % 900) + 100;
+                }
+                lock.wait(wait);
+            }
+        }
+        return null;
+    }
 
-        boolean hasNonRateLimitedTask = false;
+    private PageRequestTask<?> findAndRemoveTask(AtomicLong waitTime) {
+        if (queue.isEmpty()) {
+            return null;
+        }
+        PageRequestTask<?> task = findTask(waitTime);
+        if (task != null) {
+            queue.remove(task);
+            inFlightDomains.add(tracker.getDomainId(task.getUrl()));
+        }
+        return task;
+    }
+
+    private PageRequestTask<?> findTask(AtomicLong waitTime) {
+        long minWait = Long.MAX_VALUE;
 
         long now = System.currentTimeMillis();
         long oneMinute = now - TimeUnit.MINUTES.toMillis(1);
-        long fiveMinutes = now - TimeUnit.MINUTES.toMillis(5);
 
-        PageRequestTask firstDelayTask = null;
-        PageRequestTask firstBufferTask = null;
-        PageRequestTask firstTask = null;
+        PageRequestTask<?> firstDelayTask = null;
+        PageRequestTask<?> firstBufferTask = null;
+        PageRequestTask<?> firstTask = null;
+        List<PageRequestTask<?>> completedTasks = null;
 
-        PageRequestTask[] elems = queue.toArray(new PageRequestTask[0]);
+        PageRequestTask<?>[] elems = queue.toArray(new PageRequestTask<?>[0]);
         if (elems.length > 1) {
             Arrays.sort(elems, Comparator.comparingLong(PageRequestTask::getPriority));
         }
 
-        for (PageRequestTask task : elems) {
-            int domainId = tracker.getDomainId(task.getUrl());
-            if (!tracker.hasRateLimiting(domainId)) {
-                return task;
-            }
-            long retry = tracker.getRetryAfter(task.getUrl());
-
-            if (retry > now) {
-                minWait = Math.min(minWait, retry);
+        for (PageRequestTask<?> task : elems) {
+            if (task.isDone()) {
+                if (completedTasks == null) {
+                    completedTasks = new ArrayList<>();
+                }
+                completedTasks.add(task);
                 continue;
             }
-            hasNonRateLimitedTask = true;
+            int domainId = tracker.getDomainId(task.getUrl());
+            if (inFlightDomains.contains(domainId)) {
+                continue;
+            }
+
+            long nextEligibleAt = Math.max(task.getNextEligibleAt(), tracker.getRetryAfter(domainId));
+            if (nextEligibleAt > now) {
+                minWait = Math.min(minWait, nextEligibleAt - now);
+                continue;
+            }
+
+            if (!tracker.hasRateLimiting(domainId)) {
+                removeCompletedTasks(completedTasks);
+                return task;
+            }
 
             long timeStart = System.currentTimeMillis();
             int minuteCount = tracker.getDomainRequestsSince(task.getUrl(), oneMinute);
@@ -137,18 +137,19 @@ public class PageRequestQueue {
             if (timeEnd > 0) {
                 Logg.info("Took " + timeEnd + "ms to get minute count for " + task.getUrl());
             }
-//            double fiveCount = tracker.getDomainRequestsSince(task.getUrl(), fiveMinutes) / 5d;
-            double maxCount = minuteCount;//Math.max(minuteCount, fiveCount);
+            int maxCount = minuteCount;
 
             long submitDate = task.getCreationDate();
             long bufferMs = task.getAllowBuffering();
             long delayMs = task.getAllowDelay();
 
             if (bufferMs == 0 && delayMs == 0) {
+                removeCompletedTasks(completedTasks);
                 return task;
             }
 
             if (maxCount < 30) {
+                removeCompletedTasks(completedTasks);
                 return task;
             }
 
@@ -174,23 +175,27 @@ public class PageRequestQueue {
             }
         }
 
-        if (hasNonRateLimitedTask || true) {
-            if (firstDelayTask != null) {
-                return firstDelayTask;
-            }
-            if (firstBufferTask != null) {
-                return firstBufferTask;
-            }
-            if (firstTask != null) {
-                return firstTask;
-            }
+        removeCompletedTasks(completedTasks);
+        if (firstDelayTask != null) {
+            return firstDelayTask;
+        }
+        if (firstBufferTask != null) {
+            return firstBufferTask;
+        }
+        if (firstTask != null) {
+            return firstTask;
         }
         if (minWait != Long.MAX_VALUE) {
-            long wait = Math.min(60000, minWait - System.currentTimeMillis());
-            waitTime.set(wait);
-            return null;
+            waitTime.set(Math.min(60000, Math.max(1, minWait)));
         }
         return null;
+    }
+
+    private void removeCompletedTasks(List<PageRequestTask<?>> completedTasks) {
+        if (completedTasks == null || completedTasks.isEmpty()) {
+            return;
+        }
+        queue.removeAll(completedTasks);
     }
 
     public RequestTracker getTracker() {
@@ -198,18 +203,34 @@ public class PageRequestQueue {
     }
 
     public List<PageRequestTask<?>> getQueue() {
-        synchronized (queue) {
+        synchronized (lock) {
             return new ArrayList<>(queue);
         }
     }
 
-    public void run(PageRequestTask task) {
+    public <T> void run(PageRequestTask<T> task) {
         if (task != null) {
+            int domainId = tracker.getDomainId(task.getUrl());
+            boolean requeue = false;
             try {
-                tracker.runWithRetryAfter(task);
+                T result = tracker.runWithRetryAfter(task);
+                task.complete(result);
+            } catch (RequestTracker.RetryableRequestException e) {
+                if (!task.isDone()) {
+                    task.deferUntil(e.getRetryAtMillis());
+                    requeue = true;
+                }
             } catch (Throwable e) {
                 e.printStackTrace();
                 task.completeExceptionally(e);
+            } finally {
+                synchronized (lock) {
+                    inFlightDomains.remove(domainId);
+                    if (requeue) {
+                        queue.add(task);
+                    }
+                    lock.notifyAll();
+                }
             }
         }
     }
@@ -225,22 +246,28 @@ public class PageRequestQueue {
     }
 
     public <T> PageRequestTask<T> submit(Supplier<T> task, PagePriority taskEnum, long priority, int allowBuffering, int allowDelay, URI url) {
-        return submit(new PageRequestTask<T>(task, taskEnum, priority, allowBuffering, allowDelay, url));
+        return submit(new PageRequestTask<>(task, taskEnum, priority, allowBuffering, allowDelay, url));
     }
 
     public <T> PageRequestTask<T> submit(PageRequestTask<T> request) {
         synchronized (lock) {
-            synchronized (queue) {
-                queue.add(request);
-            }
+            queue.add(request);
             lock.notifyAll();
         }
         return request;
     }
 
     public int size() {
-        synchronized (queue) {
+        synchronized (lock) {
             return queue.size();
+        }
+    }
+
+    @Override
+    public void close() {
+        service.shutdownNow();
+        synchronized (lock) {
+            lock.notifyAll();
         }
     }
 
@@ -252,6 +279,8 @@ public class PageRequestQueue {
         private final int allowDelay;
         private final long creationDate;
         private final PagePriority taskEnum;
+        private volatile long nextEligibleAt;
+        private int rateLimitAttempts;
 
         public PageRequestTask(Supplier<T> task, PagePriority taskEnum, long priority, int allowBuffering, int allowDelay, URI uri) {
             this.creationDate = System.currentTimeMillis();
@@ -286,6 +315,30 @@ public class PageRequestQueue {
 
         public long getPriority() {
             return priority;
+        }
+
+        public PagePriority getTaskEnum() {
+            return taskEnum;
+        }
+
+        public long getNextEligibleAt() {
+            return nextEligibleAt;
+        }
+
+        public synchronized void deferUntil(long timestamp) {
+            nextEligibleAt = Math.max(nextEligibleAt, timestamp);
+        }
+
+        public synchronized void clearDeferral() {
+            nextEligibleAt = 0;
+        }
+
+        public synchronized int incrementRateLimitAttempts() {
+            return ++rateLimitAttempts;
+        }
+
+        public synchronized void resetRateLimitAttempts() {
+            rateLimitAttempts = 0;
         }
     }
 }
