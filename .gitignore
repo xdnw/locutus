@@ -56,3 +56,5 @@ lastBackup.txt
 /.vscode
 /.copilot
 .vscode/settings.json
+docs/
+AGENTS.md
