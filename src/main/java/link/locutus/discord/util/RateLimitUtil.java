@@ -1,9 +1,12 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.web.commands.WebIO;
 import net.dv8tion.jda.api.entities.Message;
@@ -28,6 +31,25 @@ public class RateLimitUtil {
     private static volatile long lastLimitTime = 0;
     private static volatile int lastLimitTotal = 0;
     private static volatile String lastRateLimitReport;
+
+    private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
+    private static final Set<Class<?>> FORWARDING_CALLERS = Set.of(
+            RateLimitUtil.class,
+            DiscordChannelIO.class,
+            DiscordHookIO.class,
+            DiscordMessageBuilder.class,
+            AMessageBuilder.class,
+            IMessageBuilder.class,
+            IMessageIO.class
+    );
+
+    private static final List<String> FORWARDING_CALLER_PREFIXES = List.of(
+            "link.locutus.discord.commands.manager.v2.impl.discord.Discord",
+            "link.locutus.discord.commands.manager.v2.command.",
+            "java.lang.reflect.",
+            "jdk.internal.reflect."
+    );
 
     public record RateLimitClassStat(String className, int requestsThisMinute) {
     }
@@ -67,8 +89,157 @@ public class RateLimitUtil {
         return messageQueue.values().stream().mapToInt(List::size).sum();
     }
 
-    public static DebugSnapshot getDebugSnapshot() {
-        return getDebugSnapshot(true);
+    private static boolean shouldSkipCallerFrame(Class<?> clazz) {
+        if (clazz == null) {
+            return true;
+        }
+        if (FORWARDING_CALLERS.contains(clazz)) {
+            return true;
+        }
+        String name = clazz.getName();
+        for (String prefix : FORWARDING_CALLER_PREFIXES) {
+            if (name.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<Map.Entry<Class<?>, Map<Long, Exception>>> getSortedRateLimitEntries(long cutoff) {
+        List<Map.Entry<Class<?>, Map<Long, Exception>>> entries = new ArrayList<>(rateLimitByClass.entrySet());
+        for (Map.Entry<Class<?>, Map<Long, Exception>> entry : entries) {
+            entry.getValue().entrySet().removeIf(f -> f.getKey() < cutoff);
+        }
+
+        return entries.stream()
+                .filter(entry -> !entry.getValue().isEmpty())
+                .sorted(Comparator
+                        .comparingInt((Map.Entry<Class<?>, Map<Long, Exception>> entry) -> entry.getValue().size())
+                        .reversed()
+                        .thenComparing(entry -> getActionClassName(entry.getKey())))
+                .toList();
+    }
+
+    private static String getRateLimitStackKey(Exception trace) {
+        return StringMan.stacktraceToString(trace.getStackTrace());
+    }
+
+    private static void appendClassStats(StringBuilder response, List<RateLimitClassStat> classStats, int maxResults) {
+        if (classStats.isEmpty()) {
+            response.append("none in the current minute");
+            return;
+        }
+
+        int shown = Math.min(Math.max(maxResults, 0), classStats.size());
+        for (int i = 0; i < shown; i++) {
+            RateLimitClassStat stat = classStats.get(i);
+            response.append("- ")
+                    .append(stat.className())
+                    .append(": ")
+                    .append(stat.requestsThisMinute())
+                    .append("\n");
+        }
+
+        int hidden = classStats.size() - shown;
+        if (hidden > 0) {
+            response.append("- ... and ")
+                    .append(hidden)
+                    .append(" more classes\n");
+        }
+    }
+
+    public static String formatDebugSummary(DebugSnapshot snapshot, int maxResults) {
+        StringBuilder response = new StringBuilder();
+
+        response.append("**Discord Rate Limit:** ")
+                .append(snapshot.requestsThisMinute())
+                .append("/")
+                .append(snapshot.limitPerMinute())
+                .append(" requests this minute (remaining: ")
+                .append(snapshot.remainingThisMinute())
+                .append(")\n");
+
+        response.append("- Queued actions: ")
+                .append(snapshot.queuedActionCount())
+                .append(" (worker running: ")
+                .append(snapshot.queuedActionWorkerRunning())
+                .append(")\n");
+
+        response.append("- Condensed message queue: ")
+                .append(snapshot.queuedMessageCount())
+                .append(" messages across ")
+                .append(snapshot.queuedMessageChannelCount())
+                .append(" channels\n");
+
+        if (snapshot.lastLimitTime() > 0) {
+            response.append("- Last recorded limit hit: ")
+                    .append(new Date(snapshot.lastLimitTime()))
+                    .append(" (")
+                    .append(snapshot.lastLimitTotal())
+                    .append(" requests)\n");
+        } else {
+            response.append("- Last recorded limit hit: none\n");
+        }
+
+        response.append("\n**By Class:** ");
+        if (snapshot.requestsByClass().isEmpty()) {
+            response.append("none in the current minute");
+        } else {
+            response.append("\n");
+            appendClassStats(response, snapshot.requestsByClass(), maxResults);
+        }
+
+        return response.toString().stripTrailing();
+    }
+
+    public static String formatDebugDetails(DebugSnapshot snapshot) {
+        StringBuilder detail = new StringBuilder();
+
+        detail.append("Discord rate limit snapshot\n");
+        detail.append("Generated: ").append(new Date()).append("\n");
+        detail.append("Requests this minute: ")
+                .append(snapshot.requestsThisMinute())
+                .append("/")
+                .append(snapshot.limitPerMinute())
+                .append("\n");
+        detail.append("Remaining this minute: ")
+                .append(snapshot.remainingThisMinute())
+                .append("\n");
+        detail.append("Queued actions: ")
+                .append(snapshot.queuedActionCount())
+                .append("\n");
+        detail.append("Queue worker running: ")
+                .append(snapshot.queuedActionWorkerRunning())
+                .append("\n");
+        detail.append("Queued message channels: ")
+                .append(snapshot.queuedMessageChannelCount())
+                .append("\n");
+        detail.append("Queued messages: ")
+                .append(snapshot.queuedMessageCount())
+                .append("\n");
+        detail.append("Last recorded limit hit: ");
+        if (snapshot.lastLimitTime() > 0) {
+            detail.append(new Date(snapshot.lastLimitTime()))
+                    .append(" (")
+                    .append(snapshot.lastLimitTotal())
+                    .append(" requests)\n");
+        } else {
+            detail.append("none\n");
+        }
+
+        detail.append("\nBy class:\n");
+        if (snapshot.requestsByClass().isEmpty()) {
+            detail.append("none in the current minute\n");
+        } else {
+            appendClassStats(detail, snapshot.requestsByClass(), Integer.MAX_VALUE);
+        }
+
+        if (snapshot.lastRateLimitReport() != null && !snapshot.lastRateLimitReport().isBlank()) {
+            detail.append("\nLast recorded over-limit report:\n");
+            detail.append(snapshot.lastRateLimitReport()).append("\n");
+        }
+
+        return detail.toString().stripTrailing();
     }
 
     public static DebugSnapshot getDebugSnapshot(boolean update) {
@@ -78,12 +249,8 @@ public class RateLimitUtil {
             pruneExpiredRequests(cutoff);
         }
 
-        List<RateLimitClassStat> requestsByClass = rateLimitByClass.entrySet().stream()
-                .map(entry -> new RateLimitClassStat(getActionClassName(entry.getKey()),
-                        (int) entry.getValue().keySet().stream().filter(f -> f >= cutoff).count()))
-                .filter(stat -> stat.requestsThisMinute() > 0)
-                .sorted(Comparator.comparingInt(RateLimitClassStat::requestsThisMinute).reversed()
-                        .thenComparing(RateLimitClassStat::className))
+        List<RateLimitClassStat> requestsByClass = getSortedRateLimitEntries(cutoff).stream()
+                .map(entry -> new RateLimitClassStat(getActionClassName(entry.getKey()), entry.getValue().size()))
                 .toList();
 
         int requests = requestsThisMinute.size();
@@ -117,45 +284,80 @@ public class RateLimitUtil {
     }
 
     private static String getRateLimitMessage(long cutoff) {
-        StringBuilder response = new StringBuilder("\n\n----------- RATE LIMIT: " + requestsThisMinute.size() + " -------------");
-        // sort the map
-        Map<Class<?>, Map<Long, Exception>> sorted = rateLimitByClass.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue(Comparator.comparingInt(value -> -value.keySet().stream().filter(f -> f > cutoff).mapToInt(f -> 1).sum())))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+        StringBuilder response = new StringBuilder()
+                .append("\n\n----------- RATE LIMIT: ")
+                .append(requestsThisMinute.size())
+                .append(" -------------");
 
-        for (Map.Entry<Class<?>, Map<Long, Exception>> entry : sorted.entrySet()) {
+        for (Map.Entry<Class<?>, Map<Long, Exception>> entry : getSortedRateLimitEntries(cutoff)) {
             Map<Long, Exception> category = entry.getValue();
-            if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
-            if (category.size() > 1) {
-                response.append("\n\n" + getActionClassName(entry.getKey()) + " = " + category.size());
-                Map<String, Integer> exceptionStrings = new HashMap<>();
-                for (Exception value : category.values()) {
-                    String key = StringMan.stacktraceToString(value.getStackTrace());
-                    int amt = exceptionStrings.getOrDefault(key, 0) + 1;
-                    exceptionStrings.put(key, amt);
-                }
-                // sort exceptionStrings
-                exceptionStrings = exceptionStrings.entrySet().stream()
-                        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-                for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
-                    response.append("\n- " + entry2.getValue() + ": " + entry2.getKey());
-                }
+            if (category.size() <= 1) {
+                continue;
             }
+
+            response.append("\n\n")
+                    .append(getActionClassName(entry.getKey()))
+                    .append(" = ")
+                    .append(category.size());
+
+            category.values().stream()
+                    .collect(Collectors.toMap(
+                            RateLimitUtil::getRateLimitStackKey,
+                            ignore -> 1,
+                            Integer::sum
+                    ))
+                    .entrySet().stream()
+                    .sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())
+                            .thenComparing(Map.Entry::getKey))
+                    .forEach(stackEntry -> response.append("\n- ")
+                            .append(stackEntry.getValue())
+                            .append(": ")
+                            .append(stackEntry.getKey()));
         }
+
         return response.toString();
     }
 
     private static <T> Map.Entry<Class<?>, Exception> getClass(RestAction<T> action) {
+        Class<?> callerClass = null;
+        List<StackTraceElement> filteredFrames = new ArrayList<>();
 
+        for (StackWalker.StackFrame frame : STACK_WALKER.walk(stream -> stream.toList())) {
+            Class<?> declaringClass = frame.getDeclaringClass();
+            if (shouldSkipCallerFrame(declaringClass)) {
+                continue;
+            }
+
+            if (callerClass == null) {
+                callerClass = declaringClass;
+            }
+
+            filteredFrames.add(frame.toStackTraceElement());
+        }
+
+        if (callerClass == null) {
+            callerClass = action != null ? action.getClass() : RateLimitUtil.class;
+        }
+
+        if (filteredFrames.isEmpty()) {
+            filteredFrames.add(new StackTraceElement(callerClass.getName(), "<unknown>", null, -1));
+        }
+
+        Exception trace = new Exception();
+        trace.setStackTrace(filteredFrames.toArray(StackTraceElement[]::new));
+        return new AbstractMap.SimpleEntry<>(callerClass, trace);
     }
 
     private static <T> RestAction<T> addRequest(RestAction<T> action) {
         long now = System.currentTimeMillis();
         long cutoff = getWindowCutoff(now);
+
+        Map.Entry<Class<?>, Exception> caller = getClass(action);
+
         requestsThisMinute.add(now);
-        rateLimitByClass.computeIfAbsent(action.getClass(), f -> new ConcurrentHashMap<>())
-                .put(now, new Exception());
+        rateLimitByClass.computeIfAbsent(caller.getKey(), f -> new ConcurrentHashMap<>())
+                .put(now, caller.getValue());
+
         pruneExpiredRequests(cutoff);
 
         if (requestsThisMinute.size() > getLimitPerMinute()) {
@@ -167,6 +369,7 @@ public class RateLimitUtil {
         } else {
             lastLimitTotal = 0;
         }
+
         return action;
     }
 
