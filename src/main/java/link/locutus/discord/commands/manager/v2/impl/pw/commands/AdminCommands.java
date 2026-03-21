@@ -1266,6 +1266,95 @@ public class AdminCommands {
         }
     }
 
+    @Ephemeral
+    @Command(desc = "Show the current Discord rate-limit usage and queue state")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String showRateLimit(
+            @Me GuildDB db,
+            @Me IMessageIO io,
+            @Arg("The number of request classes to include inline\n" +
+                    "Default: 10") @Switch("r") Integer numResults) {
+        if (db != Locutus.imp().getRootDb()) {
+            throw new IllegalArgumentException("This command is only available in the root server");
+        }
+        if (numResults == null) {
+            numResults = 10;
+        }
+
+        RateLimitUtil.DebugSnapshot snapshot = RateLimitUtil.getDebugSnapshot(true);
+        List<RateLimitUtil.RateLimitClassStat> classStats = snapshot.requestsByClass();
+        int shown = Math.min(numResults, classStats.size());
+        int hidden = classStats.size() - shown;
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("**Discord Rate Limit:** ")
+                .append(snapshot.requestsThisMinute())
+                .append("/")
+                .append(snapshot.limitPerMinute())
+                .append(" requests this minute (remaining: ")
+                .append(snapshot.remainingThisMinute())
+                .append(")\n");
+        sb.append("- Queued actions: ").append(snapshot.queuedActionCount())
+                .append(" (worker running: ").append(snapshot.queuedActionWorkerRunning()).append(")\n");
+        sb.append("- Condensed message queue: ").append(snapshot.queuedMessageCount())
+                .append(" messages across ").append(snapshot.queuedMessageChannelCount()).append(" channels\n");
+        if (snapshot.lastLimitTime() > 0) {
+            sb.append("- Last recorded limit hit: ").append(new Date(snapshot.lastLimitTime()))
+                    .append(" (").append(snapshot.lastLimitTotal()).append(" requests)\n");
+        } else {
+            sb.append("- Last recorded limit hit: none\n");
+        }
+
+        if (classStats.isEmpty()) {
+            sb.append("\n**By Class:** none in the current minute");
+        } else {
+            sb.append("\n**By Class:**\n");
+            for (int i = 0; i < shown; i++) {
+                RateLimitUtil.RateLimitClassStat stat = classStats.get(i);
+                sb.append("- ").append(stat.className()).append(": ").append(stat.requestsThisMinute()).append("\n");
+            }
+            if (hidden > 0) {
+                sb.append("- ... and ").append(hidden).append(" more classes\n");
+            }
+        }
+
+        boolean hasLastReport = snapshot.lastRateLimitReport() != null && !snapshot.lastRateLimitReport().isBlank();
+        if (hidden > 0 || hasLastReport) {
+            StringBuilder detail = new StringBuilder();
+            detail.append("Discord rate limit snapshot\n");
+            detail.append("Generated: ").append(new Date()).append("\n");
+            detail.append("Requests this minute: ").append(snapshot.requestsThisMinute()).append('/').append(snapshot.limitPerMinute()).append("\n");
+            detail.append("Remaining this minute: ").append(snapshot.remainingThisMinute()).append("\n");
+            detail.append("Queued actions: ").append(snapshot.queuedActionCount()).append("\n");
+            detail.append("Queue worker running: ").append(snapshot.queuedActionWorkerRunning()).append("\n");
+            detail.append("Queued message channels: ").append(snapshot.queuedMessageChannelCount()).append("\n");
+            detail.append("Queued messages: ").append(snapshot.queuedMessageCount()).append("\n");
+            detail.append("Last recorded limit hit: ");
+            if (snapshot.lastLimitTime() > 0) {
+                detail.append(new Date(snapshot.lastLimitTime())).append(" (").append(snapshot.lastLimitTotal()).append(" requests)\n");
+            } else {
+                detail.append("none\n");
+            }
+            detail.append("\nBy class:\n");
+            for (RateLimitUtil.RateLimitClassStat stat : classStats) {
+                detail.append("- ").append(stat.className()).append(": ").append(stat.requestsThisMinute()).append("\n");
+            }
+            if (hasLastReport) {
+                detail.append("\nLast recorded over-limit report:\n");
+                detail.append(snapshot.lastRateLimitReport()).append("\n");
+            }
+            io.create().file("rate_limit.txt", detail.toString()).send();
+            sb.append("\nAttached `rate_limit.txt` with the full class breakdown");
+            if (hasLastReport) {
+                sb.append(" and last recorded over-limit details");
+            }
+            sb.append('.');
+        }
+
+        System.err.println(sb.toString());
+        return "Done. See console";
+    }
+
     @Command(desc = "Generate and save the wiki pages for the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String dumpWiki(@Default String pathRelative)

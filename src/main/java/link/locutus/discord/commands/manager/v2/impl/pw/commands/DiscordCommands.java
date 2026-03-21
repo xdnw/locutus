@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.manager.v2.impl.pw.commands;
+odapackage link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -321,7 +321,7 @@ public class DiscordCommands {
         String desc = embed.getDescription();
 
 
-        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, embedMessage.getButtons(), embedMessage.getJumpUrl(), true);
+        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, DiscordUtil.getButtonsFromMessage(embedMessage), embedMessage.getJumpUrl(), true);
         List<String> commands = new ArrayList<>();
 
         commands.add(CM.embed.create.cmd.title(title).description(desc).toSlashCommand(false));

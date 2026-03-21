@@ -17,15 +17,89 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class RateLimitUtil {
     private static final Collection<Long> requestsThisMinute = new ConcurrentLinkedQueue<>();
-    private static final Map<Class, Map<Long, Exception>> rateLimitByClass = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Map<Long, Exception>> rateLimitByClass = new ConcurrentHashMap<>();
 
-    private static long lastLimitTime = 0;
-    private static int lastLimitTotal = 0;
+    private static volatile long lastLimitTime = 0;
+    private static volatile int lastLimitTotal = 0;
+    private static volatile String lastRateLimitReport;
+
+    public record RateLimitClassStat(String className, int requestsThisMinute) {
+    }
+
+    public record DebugSnapshot(int limitPerMinute,
+                                int requestsThisMinute,
+                                int remainingThisMinute,
+                                int queuedActionCount,
+                                boolean queuedActionWorkerRunning,
+                                int queuedMessageChannelCount,
+                                int queuedMessageCount,
+                                long lastLimitTime,
+                                int lastLimitTotal,
+                                String lastRateLimitReport,
+                                List<RateLimitClassStat> requestsByClass) {
+    }
+
+    private static long getWindowCutoff(long now) {
+        return now - TimeUnit.MINUTES.toMillis(1);
+    }
+
+    private static void pruneExpiredRequests(long cutoff) {
+        requestsThisMinute.removeIf(f -> f < cutoff);
+        for (Map<Long, Exception> category : rateLimitByClass.values()) {
+            if (category.size() > 1) {
+                category.entrySet().removeIf(f -> f.getKey() < cutoff);
+            }
+        }
+    }
+
+    private static String getActionClassName(Class<?> clazz) {
+        String simpleName = clazz.getSimpleName();
+        return simpleName.isBlank() ? clazz.getName() : simpleName;
+    }
+
+    private static int getQueuedMessageCount() {
+        return messageQueue.values().stream().mapToInt(List::size).sum();
+    }
+
+    public static DebugSnapshot getDebugSnapshot() {
+        return getDebugSnapshot(true);
+    }
+
+    public static DebugSnapshot getDebugSnapshot(boolean update) {
+        long now = System.currentTimeMillis();
+        long cutoff = getWindowCutoff(now);
+        if (update) {
+            pruneExpiredRequests(cutoff);
+        }
+
+        List<RateLimitClassStat> requestsByClass = rateLimitByClass.entrySet().stream()
+                .map(entry -> new RateLimitClassStat(getActionClassName(entry.getKey()),
+                        (int) entry.getValue().keySet().stream().filter(f -> f >= cutoff).count()))
+                .filter(stat -> stat.requestsThisMinute() > 0)
+                .sorted(Comparator.comparingInt(RateLimitClassStat::requestsThisMinute).reversed()
+                        .thenComparing(RateLimitClassStat::className))
+                .toList();
+
+        int requests = requestsThisMinute.size();
+        int limit = getLimitPerMinute();
+        return new DebugSnapshot(limit,
+                requests,
+                Math.max(0, limit - requests),
+                queuedActions.size(),
+                runningTask.get(),
+                messageQueue.size(),
+                getQueuedMessageCount(),
+                lastLimitTime,
+                lastLimitTotal,
+                lastRateLimitReport,
+                requestsByClass);
+    }
 
     public static int getCurrentUsed() {
         return getCurrentUsed(false);
@@ -33,8 +107,7 @@ public class RateLimitUtil {
 
     public static int getCurrentUsed(boolean update) {
         if (update) {
-            long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
-            requestsThisMinute.removeIf(f -> f < cutoff);
+            pruneExpiredRequests(getWindowCutoff(System.currentTimeMillis()));
         }
         return requestsThisMinute.size();
     }
@@ -43,20 +116,18 @@ public class RateLimitUtil {
         return 50;
     }
 
-    private static Map<Class, String> lastErrorMsg = new ConcurrentHashMap<>();
-
-    private static String getRateLimitMessage(Map<Long, Exception> category, long cutoff) {
+    private static String getRateLimitMessage(long cutoff) {
         StringBuilder response = new StringBuilder("\n\n----------- RATE LIMIT: " + requestsThisMinute.size() + " -------------");
         // sort the map
-        Map<Class, Map<Long, Exception>> sorted = rateLimitByClass.entrySet().stream()
+        Map<Class<?>, Map<Long, Exception>> sorted = rateLimitByClass.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue(Comparator.comparingInt(value -> -value.keySet().stream().filter(f -> f > cutoff).mapToInt(f -> 1).sum())))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
 
-        for (Map.Entry<Class, Map<Long, Exception>> entry : sorted.entrySet()) {
-            category = entry.getValue();
+        for (Map.Entry<Class<?>, Map<Long, Exception>> entry : sorted.entrySet()) {
+            Map<Long, Exception> category = entry.getValue();
             if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
             if (category.size() > 1) {
-                response.append("\n\n" + entry.getKey().getSimpleName() + " = " + category.size());
+                response.append("\n\n" + getActionClassName(entry.getKey()) + " = " + category.size());
                 Map<String, Integer> exceptionStrings = new HashMap<>();
                 for (Exception value : category.values()) {
                     String key = StringMan.stacktraceToString(value.getStackTrace());
@@ -77,20 +148,17 @@ public class RateLimitUtil {
 
     private static <T> RestAction<T> addRequest(RestAction<T> action) {
         long now = System.currentTimeMillis();
-        long cutoff = now - TimeUnit.MINUTES.toMillis(1);
+        long cutoff = getWindowCutoff(now);
         requestsThisMinute.add(now);
-        Map<Long, Exception> category = rateLimitByClass.computeIfAbsent(action.getClass(), f -> new ConcurrentHashMap<>());
-        category.put(now, new Exception());
+        rateLimitByClass.computeIfAbsent(action.getClass(), f -> new ConcurrentHashMap<>())
+                .put(now, new Exception());
+        pruneExpiredRequests(cutoff);
 
-        if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
-        if (requestsThisMinute.size() > 1) requestsThisMinute.removeIf(f -> f < cutoff);
-
-        if (requestsThisMinute.size() > 50) {
+        if (requestsThisMinute.size() > getLimitPerMinute()) {
             if (lastLimitTime < cutoff || requestsThisMinute.size() > lastLimitTotal + 10) {
                 lastLimitTime = now;
                 lastLimitTotal = requestsThisMinute.size();
-                String msg = getRateLimitMessage(category, cutoff);
-                lastErrorMsg.put(action.getClass(), msg);
+                lastRateLimitReport = getRateLimitMessage(cutoff);
             }
         } else {
             lastLimitTotal = 0;
@@ -125,7 +193,8 @@ public class RateLimitUtil {
             return;
         }
         long channelId = io.getIdLong();
-        if (!condense || requestsThisMinute.size() < 10 || channelId <= 0) {
+        int requests = getCurrentUsed(true);
+        if (!condense || requests < 10 || channelId <= 0) {
             IMessageBuilder msg = io.create();
             if (apply.apply(msg)) {
                 msg.send();
@@ -134,7 +203,6 @@ public class RateLimitUtil {
         }
 
         if (bufferSeconds == null) {
-            int requests = requestsThisMinute.size();
             if (requests < 20) bufferSeconds = 10;
             else if (requests < 30) bufferSeconds = 30;
             else if (requests < 50) bufferSeconds = 45;
@@ -188,45 +256,58 @@ public class RateLimitUtil {
     }
 
     private static final ConcurrentLinkedQueue<Runnable> queuedActions = new ConcurrentLinkedQueue<>();
-    private static boolean runningTask = false;
+    private static final AtomicBoolean runningTask = new AtomicBoolean(false);
+
+    private static void startQueueWorkerIfNeeded() {
+        if (!runningTask.compareAndSet(false, true)) {
+            return;
+        }
+
+        Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+            @Override
+            public void runUnsafe() throws InterruptedException {
+                try {
+                    while (true) {
+                        if (queuedActions.isEmpty()) {
+                            return;
+                        }
+                        if (getCurrentUsed(true) >= getLimitPerMinute()) {
+                            Thread.sleep(1000);
+                            continue;
+                        }
+
+                        Runnable current = queuedActions.poll();
+                        if (current == null) {
+                            continue;
+                        }
+
+                        try {
+                            current.run();
+                        } catch (Throwable e) {
+                            AlertUtil.error("Error with queued action", e);
+                        }
+                    }
+                } finally {
+                    runningTask.set(false);
+                    if (!queuedActions.isEmpty()) {
+                        startQueueWorkerIfNeeded();
+                    }
+                }
+            }
+        });
+    }
 
     public static void queueWhenFree(RestAction<?> action) {
         queueWhenFree(() -> queue(action));
     }
 
     public static void queueWhenFree(Runnable action) {
-        if (getCurrentUsed() < getLimitPerMinute()) {
+        if (getCurrentUsed(true) < getLimitPerMinute()) {
             action.run();
             return;
         }
         queuedActions.add(action);
-
-        if (!runningTask) {
-            synchronized (RateLimitUtil.class) {
-                if (!runningTask) {
-                    runningTask = true;
-                    Locutus.imp().getExecutor().submit(new CaughtRunnable() {
-                        @Override
-                        public void runUnsafe() throws InterruptedException {
-                            while (true) {
-                                if (queuedActions.isEmpty() || getCurrentUsed(true) >= getLimitPerMinute()) {
-                                    Thread.sleep(10000);
-                                    continue;
-                                }
-                                Runnable current = queuedActions.poll();
-                                if (current == null) continue;
-
-                                try {
-                                    current.run();
-                                } catch (Throwable e) {
-                                    AlertUtil.error("Error with queued action", e);
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-        }
+        startQueueWorkerIfNeeded();
     }
 
     public static <T> T complete(RestAction<T> action) {
