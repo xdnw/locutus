@@ -6,9 +6,9 @@ import de.siegmar.fastcsv.reader.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -46,6 +46,24 @@ import java.util.function.Supplier;
 import static link.locutus.discord.config.Messages.TAB_TYPE;
 
 public class CustomSheetCommands {
+
+    private static PlaceholderRegistry requirePlaceholders(ValueStore store) {
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            throw new IllegalStateException("PlaceholderRegistry was not provided in the current value store");
+        }
+        return registry;
+    }
+
+    private static Class<?> parseType(PlaceholderRegistry registry, String typeStr) {
+        for (Class<?> type : registry.getTypes()) {
+            if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(typeStr) || type.getSimpleName().equalsIgnoreCase(typeStr)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Invalid type: `" + typeStr + "`. Options: "
+                + StringMan.getString(registry.getTypes().stream().map(PlaceholdersMap::getClassName)));
+    }
 
     @NoFormat
     @Command(desc = "List the sheet keys in use", viewable = true)
@@ -107,7 +125,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "Rename a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String renameTemplate(@Me GuildDB db, SheetTemplate sheet, String name) {
+    public String renameTemplate(@Me GuildDB db, SheetTemplate<?> sheet, String name) {
         name = name.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
         if (!name.matches("[a-z0-9_]+")) {
@@ -126,7 +144,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "Rename a selection alias")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String renameSelection(@Me GuildDB db, SelectionAlias sheet, String name) {
+    public String renameSelection(@Me GuildDB db, SelectionAlias<?> sheet, String name) {
         name = name.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
         if (!name.matches("[a-z0-9_]+")) {
@@ -216,7 +234,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "View a custom sheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String deleteSelectionAlias(@Me GuildDB db, SelectionAlias selection) {
+    public String deleteSelectionAlias(@Me GuildDB db, SelectionAlias<?> selection) {
         db.getSheetManager().removeSelectionAlias(selection.getName());
         return "Deleted selection with alias `" + selection.getName() + "`\n" +
                 "- `" + selection.getSelection() + "`";
@@ -225,7 +243,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "View a sheet template", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String viewTemplate(SheetTemplate sheet) {
+    public String viewTemplate(SheetTemplate<?> sheet) {
         return sheet.toString() + "\n\n" +
                 "See: " + CM.sheet_custom.add_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.remove_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.update.cmd.toSlashMention();
     }
@@ -233,7 +251,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "Delete a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String deleteTemplate(@Me GuildDB db, SheetTemplate sheet) {
+    public String deleteTemplate(@Me GuildDB db, SheetTemplate<?> sheet) {
         db.getSheetManager().deleteSheetTemplate(sheet.getName());
         return "Deleted sheet template `" + sheet.getName() + "`";
     }
@@ -241,7 +259,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "Remove columns in a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String deleteColumns(@Me GuildDB db, SheetTemplate sheet, List<Integer> columns) {
+    public String deleteColumns(@Me GuildDB db, SheetTemplate<?> sheet, List<Integer> columns) {
         List<Integer> toRemove = new ArrayList<>();
         for (int column : columns) {
             if (column <= 0 || column > sheet.getColumns().size()) {
@@ -268,8 +286,11 @@ public class CustomSheetCommands {
             You must create a selection alias and sheet template first
             Sheets must be generated/updated with the update command""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, @CreateSheet SelectionAlias select, @CreateSheet SheetTemplate columns, @Switch("f") boolean force) {
-        columns = columns.resolve(select.getType());
+    public <T> String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db,
+            @CreateSheet CustomSheet sheet, String tabName, @CreateSheet SelectionAlias<?> select,
+            @CreateSheet SheetTemplate<?> columns, @Switch("f") boolean force) {
+        Class type = select.getType();
+        columns = columns.resolve(type);
         tabName = tabName.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
         if (!tabName.matches("[a-z0-9_]+")) {
@@ -391,7 +412,7 @@ public class CustomSheetCommands {
 
     private String autoPredicate(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet, BiPredicate<Integer, String> allowTab) throws GeneralSecurityException, IOException {
         CustomSheetManager manager = db.getSheetManager();
-        PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
+        PlaceholderRegistry phMap = requirePlaceholders(store);
 
         List<String> messageList = new ObjectArrayList<>();
         Map<String, List<String>> errorGroups = new Object2ObjectLinkedOpenHashMap<>();
@@ -470,7 +491,7 @@ public class CustomSheetCommands {
                 if (typeStr != null && !typeStr.isEmpty() && !typeStr.contains(",") && !typeStr.contains("#") && !typeStr.contains("(") && !typeStr.contains(" ")) {
                     Class type;
                     try {
-                        type = SheetBindings.type(typeStr);
+                        type = parseType(phMap, typeStr);
                     } catch (IllegalArgumentException e2) {
                         messageList.add(e2.getMessage());
                         continue;

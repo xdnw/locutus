@@ -13,6 +13,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -454,17 +455,27 @@ public interface NationList extends NationFilter {
 
     @Command(desc = "Market value of taxable nation revenue")
     default double getRevenueConverted() {
-        return ResourceType.convertedTotal(getRevenue());
+        return getRevenueConverted(new SimpleValueStore());
+    }
+
+    @Command(desc = "Market value of taxable nation revenue")
+    default double getRevenueConverted(ValueStore store) {
+        return ResourceType.convertedTotal(getRevenue(store));
     }
 
     @Command(desc = "Revenue of taxable nations")
     default Map<ResourceType, Double> getRevenue() {
-        return getRevenue(getNationsMatching(DBNation::isTaxable));
+        return getRevenue(new SimpleValueStore());
     }
 
-    private Map<ResourceType, Double> getRevenue(Set<DBNation> nations) {
+    @Command(desc = "Revenue of taxable nations")
+    default Map<ResourceType, Double> getRevenue(ValueStore store) {
+        return getRevenue(store, getNationsMatching(DBNation::isTaxable));
+    }
+
+    private Map<ResourceType, Double> getRevenue(ValueStore store, Set<DBNation> nations) {
         double[] total = ResourceType.getBuffer();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, nations, DBNation.class);
         for (DBNation nation : nations) {
             total = ResourceType.add(total, nation.getRevenue(cacheStore));
         }

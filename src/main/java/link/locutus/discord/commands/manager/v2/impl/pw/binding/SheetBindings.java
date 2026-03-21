@@ -1,13 +1,13 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
@@ -33,17 +33,35 @@ import java.util.Set;
 
 public class SheetBindings extends BindingHelper {
 
-    @PlaceholderType
-    @Binding(value = "An entity type for a placeholder\n" +
-            "Used for sheets or formatted messages", examples = {"nation", "city", "alliance", "war"})
-    public static Class<?> type(String input) {
-        Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
+    private static <T> SelectionAlias<T> parseInlineSelectionAlias(PlaceholderRegistry registry, ValueStore store, Class<T> type, String filter, String modifier) {
+        Placeholders<T, ?> parser = registry.get(type);
+        parser.parseSet(store, filter);
+        return new SelectionAlias<>("", type, filter, modifier);
+    }
+
+    private static Class<?> resolveType(Set<Class<?>> types, String input) {
         for (Class<?> type : types) {
             if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(input) || type.getSimpleName().equalsIgnoreCase(input)) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Invalid type: `" + input + "`. Options: " + StringMan.getString(types.stream().map(PlaceholdersMap::getClassName)));
+        throw new IllegalArgumentException(
+                "Invalid type: `" + input + "`. Options: " + StringMan.getString(types.stream().map(PlaceholdersMap::getClassName)));
+    }
+
+    private static Set<Class<?>> requireTypes(ValueStore store) {
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            throw new IllegalStateException("PlaceholderRegistry was not provided in the current value store");
+        }
+        return registry.getTypes();
+    }
+
+    @PlaceholderType
+    @Binding(value = "An entity type for a placeholder\n" +
+            "Used for sheets or formatted messages", examples = {"nation", "city", "alliance", "war"})
+    public Class<?> placeholderType(ValueStore store, String input) {
+        return resolveType(requireTypes(store), input);
     }
 
     @Binding(value = "A list of whole numbers (comma separated)")
@@ -71,7 +89,7 @@ public class SheetBindings extends BindingHelper {
             Sheet templates are column formats for a sheet
             Templates, each with a selection can be used to generate multi-tabbed spreadsheets
             If the command supports it, you can specify a new template inline""")
-    public static SheetTemplate template(@Me GuildDB db, ParameterData data, CustomSheetManager manager, String name) {
+    public static SheetTemplate<?> template(@Me GuildDB db, ParameterData data, CustomSheetManager manager, String name) {
         if (name.contains("{")) {
             if (data == null || data.getAnnotation(CreateSheet.class) == null) {
                 templateError(name, "This function only permits existing templates.\n", manager);
@@ -79,7 +97,7 @@ public class SheetBindings extends BindingHelper {
             List<String> columns = StringMan.split(name, " ");
             return new SheetTemplate<>(name, null, columns);
         }
-        SheetTemplate template = manager.getSheetTemplate(name);
+        SheetTemplate<?> template = manager.getSheetTemplate(name);
         if (template == null) {
             templateError(name, "Specify placeholders " + MarkupUtil.markdownUrl("types", "https://github.com/xdnw/locutus/wiki/custom_spreadsheets#selection-types") + " for a placeholders", manager);
         }
@@ -91,13 +109,16 @@ public class SheetBindings extends BindingHelper {
         throw new IllegalArgumentException(msg + "No template found with name `" + name + "`. Options: " + StringMan.getString(options) + ". Or create a sheet template with `/sheet_template add <type>`");
     }
 
-    public static SelectionAlias selectionAlias(boolean allowInline, CustomSheetManager manager, ValueStore store, String name) {
-        SelectionAlias<Object> alias = manager.getSelectionAlias(name, false);
+    public static SelectionAlias<?> selectionAlias(boolean allowInline, CustomSheetManager manager, ValueStore store, String name) {
+        SelectionAlias<?> alias = manager.getSelectionAlias(name, false);
         if (alias != null) return alias;
         if (allowInline) {
-            PlaceholdersMap phM = Locutus.cmd().getV2().getPlaceholders();
-            Set<Class<?>> types = phM.getTypes();
-            for (Class type : types) {
+            PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+            if (registry == null) {
+                throw new IllegalStateException("PlaceholderRegistry was not provided in the current value store");
+            }
+            Set<Class<?>> types = registry.getTypes();
+            for (Class<?> type : types) {
                 String typeName = PlaceholdersMap.getClassName(type);
                 String prefixRegex = typeName.toLowerCase(Locale.ROOT) + ":(\\w+)|" + typeName.toLowerCase(Locale.ROOT) + ":";
                 if (!name.startsWith(typeName) && !name.matches(prefixRegex + ".*")) {
@@ -115,9 +136,7 @@ public class SheetBindings extends BindingHelper {
                     modifier = typeNameAndModifier.substring(start + 1, end);
                 }
                 String filter = split.get(1);
-                Placeholders parser = phM.get(type);
-                parser.parseSet(store, filter);
-                return new SelectionAlias<>("", type, filter, modifier);
+                return parseInlineSelectionAlias(registry, store, type, filter, modifier);
             }
         }
         Set<String> options = manager.getSelectionAliasNames();
@@ -128,7 +147,7 @@ public class SheetBindings extends BindingHelper {
             A selection alias name that has been created in this guild
             Used to reference a list of nations or other entities that can be used in commands and sheets
             If the command supports it, you can specify a new selection alias inline e.g. `nation:*,#cities>10`""")
-    public static SelectionAlias selectionAlias(ParameterData data, CustomSheetManager manager, ValueStore store, String name) {
+    public static SelectionAlias<?> selectionAlias(ParameterData data, CustomSheetManager manager, ValueStore store, String name) {
         boolean allowInline = data != null && data.getAnnotation(CreateSheet.class) != null;
         return selectionAlias(allowInline, manager, store, name);
     }

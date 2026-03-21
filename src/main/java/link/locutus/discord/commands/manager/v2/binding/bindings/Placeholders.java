@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
@@ -109,13 +108,6 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         return null;
     }
 
-    public Placeholders<T, M> init() {
-        this.commands.registerCommandsClass(getType());
-        // new PWMath2Type().register(math2Type);
-        // new PWType2Math().register(type2Math);
-        return this;
-    }
-
     public abstract Set<String> getSheetColumns();
 
     public abstract Set<SelectorInfo> getSelectorInfo();
@@ -150,7 +142,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         if (name.length() > 20) {
             throw new IllegalArgumentException("Name too long: `" + name + "` (max 20 chars)");
         }
-        SelectionAlias<T> existing = db.getSheetManager().getSelectionAlias(name, false);
+        SelectionAlias<?> existing = db.getSheetManager().getSelectionAlias(name, false);
         if (existing != null) {
             throw new IllegalArgumentException("Selection already exists: `" + existing.toString() + "`");
         }
@@ -249,7 +241,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
     }
 
     protected static <T, M> String _addColumns(Placeholders<T, M> placeholders, @Me JSONObject command, @Me GuildDB db,
-            @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet, TypedFunction<T, String>... columns) {
+            @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate<?> sheet, TypedFunction<T, String>... columns) {
         boolean created = false;
         if (sheet == null) {
             created = true;
@@ -337,8 +329,8 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         { // Predicate<T>
             Key<Object> key = Key.nested(Predicate.class, type);
             store.addParser(key,
-                    new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        String inputStr = (String) input;
+                    new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                        String inputStr = input;
                         String desc = getDSL(gpt, valueStore, inputStr, numFilters, Placeholders.DSLType.PREDICATE);
                         return Map.of("type", "string", "description", desc);
                     }));
@@ -346,8 +338,8 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         { // Set<T>
             Key<Object> key = Key.nested(Set.class, type);
             store.addParser(key,
-                    new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        String inputStr = (String) input;
+                    new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                        String inputStr = input;
                         String desc = getDSL(gpt, valueStore, inputStr, numFilters, Placeholders.DSLType.SET);
                         return Map.of("type", "string", "description", desc);
                     }));
@@ -355,8 +347,8 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         { // TypedFunction<T, String>
             Key<Object> key = Key.of(TypeToken.getParameterized(TypedFunction.class, type, String.class).getType());
             store.addParser(key,
-                    new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        String inputStr = (String) input;
+                    new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                        String inputStr = input;
                         String desc = getDSL(gpt, valueStore, inputStr, numFilters,
                                 Placeholders.DSLType.FORMATTER_STRING);
                         return Map.of("type", "string", "description", desc);
@@ -365,8 +357,8 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         { // TypedFunction<T, Double>
             Key<Object> key = Key.of(TypeToken.getParameterized(TypedFunction.class, type, Double.class).getType());
             store.addParser(key,
-                    new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        String inputStr = (String) input;
+                    new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                        String inputStr = input;
                         String desc = getDSL(gpt, valueStore, inputStr, numFilters,
                                 Placeholders.DSLType.FORMATTER_NUMBER);
                         return Map.of("type", "string", "description", desc);
@@ -376,8 +368,8 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             Key<Object> key = Key.of(
                     TypeUtils.parameterize(Set.class, TypeUtils.parameterize(TypedFunction.class, type, Double.class)));
             store.addParser(key,
-                    new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        String inputStr = (String) input;
+                    new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    String inputStr = input;
                         String desc = getDSL(gpt, valueStore, inputStr, numFilters, DSLType.FORMATTER_NUMBER_ARRAY);
                         return Map.of(
                                 "type", "array",
@@ -389,8 +381,8 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             Key<Object> key = Key.of(
                     TypeUtils.parameterize(Set.class, TypeUtils.parameterize(TypedFunction.class, type, String.class)));
             store.addParser(key,
-                    new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        String inputStr = (String) input;
+                    new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    String inputStr = input;
                         String desc = getDSL(gpt, valueStore, inputStr, numFilters, DSLType.FORMATTER_STRING_ARRAY);
                         return Map.of(
                                 "type", "array",
@@ -401,12 +393,12 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         { // ICommand<T>
             Key<Object> key = Key.nested(link.locutus.discord.commands.manager.v2.command.ICommand.class, type);
             store.addParser(key,
-                    new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    new FunctionConsumerParser<>(key, (valueStore, input) -> {
                         // items is {"const": command name, "description": command description}
                         PermissionHandler permisser = (PermissionHandler) valueStore
                                 .getProvided(Key.of(PermissionHandler.class));
                         List<Map<String, String>> items = new ObjectArrayList<>();
-                        for (ParametricCallable cmd : getParametricCallables()) {
+                        for (ParametricCallable<?> cmd : getParametricCallables()) {
                             if (!cmd.hasPermission(valueStore, permisser)) {
                                 continue;
                             }
@@ -1007,7 +999,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             // if hasPlaceholder is false, then parse in entirety
             if (!hasPlaceholder) {
                 Parser<?> binding = param.getBinding();
-                LocalValueStore locals = new LocalValueStore<>(store);
+                LocalValueStore locals = new LocalValueStore(store);
                 locals.addProvider(param);
                 Object val = binding.apply(locals, input);
                 return new ResolvedFunction<>(param.getType(), val, input);
@@ -1066,7 +1058,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             }
         }
         if (param != null) {
-            LocalValueStore locals = new LocalValueStore<>(store);
+            LocalValueStore locals = new LocalValueStore(store);
             locals.addProvider(param);
             Parser typeFunc = store.get(param.getBinding().getKey());
             if (typeFunc == null) {
@@ -1097,7 +1089,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             }
             if (str.startsWith("{") && str.endsWith("}")) {
                 if (param != null) {
-                    LocalValueStore locals = new LocalValueStore<>(store);
+                    LocalValueStore locals = new LocalValueStore(store);
                     locals.addProvider(param);
                     Parser mathFunc = store.get(param.getBinding().getKey());
                     if (mathFunc == null) {
@@ -1190,7 +1182,8 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             if (previousFunc != null) {
                 Type type = previousFunc.getType();
                 if (type instanceof Class) {
-                    placeholders = Locutus.cmd().getV2().getPlaceholders().get((Class) type);
+                    PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+                    placeholders = registry == null ? null : registry.get((Class) type);
                 } else {
                     TypedFunction<T, ?> result = handleParameterized(store, functionName, argumentString, previousFunc,
                             depth, throwError);
@@ -1350,7 +1343,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         if (user == null && nation != null) {
             user = nation.getUser();
         }
-        LocalValueStore locals = new LocalValueStore<>(this.getStore());
+        LocalValueStore locals = new LocalValueStore(this.getStore());
         if (nation != null) {
             locals.addProvider(Key.of(DBNation.class, Me.class), nation);
         }
@@ -1489,7 +1482,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
 
     private static String[] prefixes = { "get", "is", "can", "has" };
 
-    // public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore<?>
+    // public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore
     // store, String id, boolean ignorePerms) {
     // Map.Entry<Type, Function<T, Object>> typeFunction;
     // try {
@@ -1531,7 +1524,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
     // return null;
     // }
     //
-    // LocalValueStore locals = new LocalValueStore<>(store);
+    // LocalValueStore locals = new LocalValueStore(store);
     //// locals.addProvider(Key.of(instanceType, Me.class), nullInstance);
     // ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
     //

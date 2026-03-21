@@ -86,7 +86,7 @@ public class PnwPusherShardManager {
                 MessageChannel channel = db.getOrNull(GuildKey.ESPIONAGE_ALERT_CHANNEL);
                 if (channel != null && channel.canTalk()) {
                     try {
-                        String msg = "Disabling " + GuildKey.ESPIONAGE_ALERT_CHANNEL.name() + " (invalid key)\n" +
+                        String msg = "Disabling `" + GuildKey.ESPIONAGE_ALERT_CHANNEL.name() + "` (invalid key)\n" +
                                 "- " + CM.settings.delete.cmd.key(GuildKey.API_KEY.name()) + "\n" +
                                 "- " + CM.settings_default.registerApiKey.cmd.toSlashMention() + "\n" +
                                 "- " + CM.settings_war_alerts.ESPIONAGE_ALERT_CHANNEL.cmd.toSlashMention();

@@ -48,6 +48,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRDouble;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationList;
@@ -476,8 +477,8 @@ public final class PW {
         }
 
         public static double getDisease(Predicate<Project> hasProject,
-                                        Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings,
-                                        long infra_cents, long land_cents, double pollution) {
+                Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings,
+                long infra_cents, long land_cents, double pollution) {
             int hospitals = getBuildings.apply(Buildings.HOSPITAL);
             double hospitalModifier;
             if (hospitals > 0) {
@@ -893,6 +894,9 @@ public final class PW {
         Map<DepositType, Object> notes3 = record.getNoteMap();
         DepositType type = DepositType.DEPOSIT;
         double decayFactor = 1;
+        boolean useMarkedAccountFilter = ignoreMarkedDeposits
+            && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE;
+        long taggedAccountId = useMarkedAccountFilter ? record.getTaggedAccountId() : 0;
 
         for (Map.Entry<DepositType, Object> entry2 : notes3.entrySet()) {
             DepositType tag2 = entry2.getKey();
@@ -906,8 +910,7 @@ public final class PW {
                     return;
                 case IGNORE:
                     if (includeIgnored) {
-                        if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE
-                                && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
+                        if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
                             return;
                         }
                         continue;
@@ -916,8 +919,7 @@ public final class PW {
                 case DEPOSIT:
                 case TRADE:
                 case WARCHEST:
-                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE
-                            && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
+                    if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
                         return;
                     }
                     type = DepositType.DEPOSIT;
@@ -925,15 +927,13 @@ public final class PW {
                 case RAWS:
                 case TAX:
                     type = DepositType.TAX;
-                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE
-                            && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
+                    if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
                         return;
                     }
                     continue;
                 case LOAN:
                 case GRANT:
-                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE
-                            && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
+                    if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
                         return;
                     }
                     if (type == DepositType.DEPOSIT) {
@@ -1045,7 +1045,7 @@ public final class PW {
             String hash = null;
             if (value instanceof Number n) {
                 hash = getHash.get();
-                if (record.note.contains(hash)) {
+                if (record.isValidHash()) {
                     cashValue = n.doubleValue();
                 }
             }
@@ -1098,26 +1098,27 @@ public final class PW {
                     if (hash == null)
                         hash = getHash.get();
 
-                    String note = record.note;
-                    note = note.toLowerCase(Locale.ROOT).replaceAll("#cash[^ ]*", "");
-                    note = note.replaceAll("#[a-f0-9]{32}", "");
-                    note = note.replaceAll("\\s+", " ").trim();
-                    note += " #" + hash + " " + "#cash=" + MathMan.format(cashValue).replace(",", "");
+                    TransactionNote.Builder updatedNotes = record.editNote()
+                            .put(DepositType.CASH, cashValue);
 
                     if (convert != null) {
                         long convertBits = 0;
                         for (byte b : convert) {
                             convertBits |= (1L << b);
                         }
-                        note += " #rss=" + convertBits;
+                        updatedNotes.put(DepositType.RSS, convertBits);
                     }
 
-                    record.note = note.trim();
+                    TransactionNote updatedNote = updatedNotes.build();
+                    Transaction2 updatedRecord = Transaction2.construct(record.tx_id, record.tx_datetime,
+                            record.sender_id, record.sender_type, record.receiver_id, record.receiver_type,
+                            record.banker_nation, updatedNote, true, record.isLootTransfer(), record.resources);
+                    updatedRecord.original_id = record.original_id;
 
                     if (record.isInternal()) {
-                        guildDB.updateNote(record.original_id, record.note);
+                        guildDB.updateNote(record.original_id, updatedNote);
                     } else {
-                        Locutus.imp().getBankDB().addTransaction(record, false);
+                        Locutus.imp().getBankDB().addTransaction(updatedRecord, false);
                     }
                 }
             }
@@ -1325,7 +1326,8 @@ public final class PW {
         }
     }
 
-    public static Map<NationList, NationList> getNationsSnapshots(ValueStore store, List<NationList> lists, NationFilter globalFilter, long snapshotDate, Guild guild) {
+    public static Map<NationList, NationList> getNationsSnapshots(ValueStore store, List<NationList> lists,
+            NationFilter globalFilter, long snapshotDate, Guild guild) {
         if (snapshotDate >= TimeUtil.getTimeFromDay(TimeUtil.getDay())) {
             Map<NationList, NationList> result = new LinkedHashMap<>();
             for (NationList list : lists) {
@@ -1336,7 +1338,8 @@ public final class PW {
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
         DataDumpParser dumper = Locutus.imp().getDataDumper(true);
         long day = TimeUtil.getDay(snapshotDate);
-        if (store == null) store = ph.createLocals(guild, null, null);
+        if (store == null)
+            store = ph.createLocals(guild, null, null);
 
         NationModifier snapshotModifier = new NationModifier(snapshotDate, false, false);
 
@@ -1350,7 +1353,8 @@ public final class PW {
             }
         }
 
-        System.out.println("Getting snapshots for " + lists.size() + " lists with global filter " + (globalFilter == null ? "null" : globalFilter.getFilter()));
+        System.out.println("Getting snapshots for " + lists.size() + " lists with global filter "
+                + (globalFilter == null ? "null" : globalFilter.getFilter()));
 
         try {
             INationSnapshot snapshot = dumper.getSnapshotDelegate(day, true, false);

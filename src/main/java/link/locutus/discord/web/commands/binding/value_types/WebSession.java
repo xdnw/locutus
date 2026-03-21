@@ -2,6 +2,7 @@ package link.locutus.discord.web.commands.binding.value_types;
 
 import net.dv8tion.jda.api.entities.Guild;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import java.util.List;
 
 public class WebSession {
     public @Nullable String user;
@@ -19,6 +20,14 @@ public class WebSession {
     public @Nullable String guild_icon;
     public @Nullable Boolean registered;
     public @Nullable Integer registered_nation;
+    public @Nullable List<Integer> guild_alliances;
+    public @Nullable List<String> guild_alliances_names;
+    public long delegates_to;
+    public @Nullable String delegate_server_name;
+    public long fa_server;
+    public @Nullable String fa_server_name;
+    public long ma_server;
+    public @Nullable String ma_server_name;
 
     public WebSession() {
     }

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -99,14 +100,17 @@ public class Deposits extends Command {
             return usage(args.size(), 1, 2, channel);
         }
 
+        ValueStore store = placeholderLocals(guild, channel, author, me);
+
         return BankCommands.deposits(
                 guild,
                 guildDb,
                 channel,
                 banker,
                 author,
-                (args.get(0).equalsIgnoreCase("*")) ? guildDb : PWBindings.nationOrAllianceOrGuildOrTaxId(args.get(0)),
-                args.size() == 2 ? PWBindings.alliances(guild, args.get(1), author, me) : null,
+                (args.get(0).equalsIgnoreCase("*")) ? guildDb
+                    : PWBindings.parseNationOrAllianceOrGuildOrTaxId(runtimeServices(), args.get(0), true, null, null),
+                args.size() == 2 ? PWBindings.alliances(store, guild, args.get(1), author, me) : null,
                 cutOff != 0 ? cutOff : null,
                 endTime != Long.MAX_VALUE ? endTime : null,
                 flags.contains('b'),

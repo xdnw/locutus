@@ -1,20 +1,21 @@
 package link.locutus.discord.web.commands.binding;
 
 import cn.easyproject.easyocr.ImageType;
-import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeCommandContext;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -43,24 +44,27 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class DiscordWebBindings extends WebBindingHelper {
-    public DiscordWebBindings(PlaceholdersMap pm) {
+    public DiscordWebBindings(PlaceholderRegistry registry) {
         addBinding(store -> {
-            for (Class<?> type : pm.getTypes()) {
-                pm.get(type).registerWebLegacy(store);
+            for (Class<?> type : registry.getTypes()) {
+                registry.get(type).registerWebLegacy(store);
             }
         });
     }
 
     @HtmlInput
     @Binding(types = {ICommand.class, WildcardType.class}, multiple = true)
-    public String iCommand(@Me User user, @Default ParameterData param) {
-        return command(user, param);
+    public String iCommand(CommandRuntimeCommandContext commands, @Me User user, @Default ParameterData param) {
+        return command(commands, user, param);
     }
 
     @HtmlInput
     @Binding(types = CommandCallable.class)
-    public String command(@Me User user, @Default ParameterData param) {
-        List<CommandCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
+    public String command(CommandRuntimeCommandContext commands, @Me User user, @Default ParameterData param) {
+        List<CommandCallable> options = new ArrayList<>();
+        for (ParametricCallable<?> callable : commands.getParametricCommands()) {
+            options.add(callable);
+        }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getFullPath());
             subtext.add(obj.simpleDesc().split("\n")[0]);
@@ -129,10 +133,11 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types=Guild.class)
-    public String guild(@Default @Me User user, @Default ParameterData param, @Default @Me DBNation nation) {
+    public String guild(CommandRuntimeLookupContext runtime, @Default @Me User user, @Default ParameterData param,
+            @Default @Me DBNation nation) {
         Set<Guild> options = new ObjectLinkedOpenHashSet<>();
         if (user != null) {
-            options.addAll(Locutus.imp().getDiscordApi().getMutualGuilds(user));
+            options.addAll(runtime.getMutualGuilds(user));
         }
         if (nation != null) {
             DBAlliance aa = nation.getAlliance();
@@ -167,7 +172,8 @@ public class DiscordWebBindings extends WebBindingHelper {
             values.add(obj.getIdLong());
 
             String sub = "<img class='guild-icon-inline' src='" + obj.getIconUrl() + "'>";
-            Set<Integer> alliances = Locutus.imp().getGuildDB(obj).getAllianceIds();
+            GuildDB guildDb = runtime.getGuildDb(obj);
+            Set<Integer> alliances = guildDb == null ? Collections.emptySet() : guildDb.getAllianceIds();
             if (!alliances.isEmpty()) sub += "AA:" + StringMan.join(alliances, ",AA:");
             subtext.add(sub);
         });
@@ -175,8 +181,9 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types= GuildDB.class)
-    public String guildDB(@Default @Me User user, @Default ParameterData param, @Default @Me DBNation nation) {
-        return guild(user, param, nation);
+    public String guildDB(CommandRuntimeLookupContext runtime, @Default @Me User user,
+            @Default ParameterData param, @Default @Me DBNation nation) {
+        return guild(runtime, user, param, nation);
     }
 
     @HtmlInput

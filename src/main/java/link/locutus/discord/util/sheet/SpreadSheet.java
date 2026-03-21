@@ -18,18 +18,21 @@ import com.google.api.services.sheets.v4.model.RowData;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.api.services.sheets.v4.model.SheetProperties;
 import com.google.api.services.sheets.v4.model.Spreadsheet;
+import link.locutus.discord.apiv1.enums.DepositType;
 import com.google.api.services.sheets.v4.model.SpreadsheetProperties;
 import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.opencsv.CSVWriter;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
@@ -88,11 +91,11 @@ public class SpreadSheet {
 
     private static final String FIRST_TAB_SENTINEL = "\u0000:first-tab";
 
-    private static final PassiveExpiringMap<String, SharedState> CACHE =
-            new PassiveExpiringMap<>(HANDLE_CACHE_MINUTES, TimeUnit.MINUTES);
+    private static final PassiveExpiringMap<String, SharedState> CACHE = new PassiveExpiringMap<>(HANDLE_CACHE_MINUTES,
+            TimeUnit.MINUTES);
 
-    private static final PassiveExpiringMap<String, PendingCreate> PENDING_CREATES =
-            new PassiveExpiringMap<>(PENDING_CACHE_MINUTES, TimeUnit.MINUTES);
+    private static final PassiveExpiringMap<String, PendingCreate> PENDING_CREATES = new PassiveExpiringMap<>(
+            PENDING_CACHE_MINUTES, TimeUnit.MINUTES);
 
     private static final ExecutorService SHEET_IO = Executors.newFixedThreadPool(
             Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors())),
@@ -100,14 +103,14 @@ public class SpreadSheet {
                 Thread t = new Thread(r, "SpreadSheet-io");
                 t.setDaemon(true);
                 return t;
-            }
-    );
+            });
 
     public static boolean isSheet(String arg) {
         return arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:");
     }
 
-    public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero, BiFunction<Integer, String, T> parseCell) {
+    public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero,
+            BiFunction<Integer, String, T> parseCell) {
         List<String> expectedLower = new ObjectArrayList<>(expectedColumns.size());
         for (String col : expectedColumns) {
             expectedLower.add(col == null ? "" : col.toLowerCase(Locale.ROOT));
@@ -119,7 +122,8 @@ public class SpreadSheet {
         return parseSheet(sheetId, expectedColumns, defaultZero, parseColumnType, parseCell);
     }
 
-    public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero, Function<String, Integer> parseColumnType, BiFunction<Integer, String, T> parseCell) {
+    public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero,
+            Function<String, Integer> parseColumnType, BiFunction<Integer, String, T> parseCell) {
         SheetId keys = SpreadSheet.parseId(sheetId);
         SpreadSheet sheet;
         try {
@@ -129,21 +133,25 @@ public class SpreadSheet {
         }
 
         String tab = keys.tabName;
-        if (tab == null) tab = sheet.getDefaultTab(true);
+        if (tab == null)
+            tab = sheet.getDefaultTab(true);
         List<List<Object>> rows = sheet.fetchAll(tab);
         synchronized (sheet.valuesLock) {
             sheet.valuesByTab.remove(normalizeTabKey(tab));
         }
-        if (rows == null || rows.isEmpty()) return Collections.emptySet();
+        if (rows == null || rows.isEmpty())
+            return Collections.emptySet();
 
         Set<T> toAdd = new ObjectLinkedOpenHashSet<>();
         Map<Integer, String> columnIndexToName = new LinkedHashMap<>();
         Map<Integer, Integer> columnIndexToColumnType = new LinkedHashMap<>();
         List<Object> header = rows.get(0);
         for (int i = 0; i < header.size(); i++) {
-            if (header.get(i) == null) continue;
+            if (header.get(i) == null)
+                continue;
             String name = header.get(i).toString().trim();
-            if (name.isEmpty()) continue;
+            if (name.isEmpty())
+                continue;
             Integer columnType = parseColumnType.apply(name);
             if (columnType != null) {
                 columnIndexToColumnType.put(i, columnType);
@@ -164,15 +172,19 @@ public class SpreadSheet {
 
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
-            if (row == null || row.isEmpty()) continue;
+            if (row == null || row.isEmpty())
+                continue;
 
             for (Map.Entry<Integer, Integer> entry : columnIndexToColumnType.entrySet()) {
                 int index = entry.getKey();
-                if (index >= row.size()) continue;
+                if (index >= row.size())
+                    continue;
                 Object cell = row.get(index);
-                if (cell == null) continue;
+                if (cell == null)
+                    continue;
                 String cellStr = cell.toString().trim();
-                if (cellStr.isEmpty()) continue;
+                if (cellStr.isEmpty())
+                    continue;
 
                 String columnName = columnIndexToName.get(index);
                 try {
@@ -188,12 +200,14 @@ public class SpreadSheet {
             }
         }
         if (!invalid.isEmpty()) {
-            throw new IllegalArgumentException("Could not parse sheet: `" + sheetId + "`. Errors:\n- " + StringMan.join(invalid.values(), "\n- "));
+            throw new IllegalArgumentException(
+                    "Could not parse sheet: `" + sheetId + "`. Errors:\n- " + StringMan.join(invalid.values(), "\n- "));
         }
         return toAdd;
     }
 
-    public static List<List<Object>> generateTransactionsListCells(List<Transaction2> transactions, boolean includeHeader, boolean ascending) {
+    public static List<List<Object>> generateTransactionsListCells(List<Transaction2> transactions,
+            boolean includeHeader, boolean ascending) {
         List<List<Object>> cells = new ObjectArrayList<>();
 
         List<Object> header = new ObjectArrayList<>(Arrays.asList(
@@ -205,10 +219,10 @@ public class SpreadSheet {
                 "receiver_id",
                 "receiver_type",
                 "banker",
-                "note"
-        ));
+                "note"));
         for (ResourceType value : ResourceType.values()) {
-            if (value == ResourceType.CREDITS) continue;
+            if (value == ResourceType.CREDITS)
+                continue;
             header.add(value.name());
         }
 
@@ -226,7 +240,7 @@ public class SpreadSheet {
             String type;
             if (record.tx_id == -1) {
                 type = "INTERNAL";
-            } else if (record.sender_type == 1 && record.receiver_id == 2 && record.note.equals("#tax")) {
+            } else if (record.sender_type == 1 && record.receiver_id == 2 && record.hasNoteTag(DepositType.TAX)) {
                 type = "TAX";
             } else {
                 type = "BANK";
@@ -239,10 +253,11 @@ public class SpreadSheet {
             header.set(5, record.receiver_id + "");
             header.set(6, record.receiver_type);
             header.set(7, record.banker_nation);
-            header.set(8, record.note);
+            header.set(8, record.getStructuredNote().toDisplayString());
             int i = 9;
             for (ResourceType value : ResourceType.values()) {
-                if (value == ResourceType.CREDITS) continue;
+                if (value == ResourceType.CREDITS)
+                    continue;
                 header.set(i++, record.resources[value.ordinal()]);
             }
 
@@ -252,7 +267,8 @@ public class SpreadSheet {
         return cells;
     }
 
-    public CompletableFuture<IMessageBuilder> addTransactionsList(IMessageIO channel, List<Transaction2> transactions, boolean includeHeader) throws IOException {
+    public CompletableFuture<IMessageBuilder> addTransactionsList(IMessageIO channel, List<Transaction2> transactions,
+            boolean includeHeader) throws IOException {
         List<List<Object>> cells = generateTransactionsListCells(transactions, includeHeader, true);
         if (includeHeader) {
             reset();
@@ -283,9 +299,11 @@ public class SpreadSheet {
     public <T> T loadHeader(T instance, List<Object> headerStr) throws NoSuchFieldException, IllegalAccessException {
         for (int i = 0; i < headerStr.size(); i++) {
             Object columnObj = headerStr.get(i);
-            if (columnObj == null) continue;
+            if (columnObj == null)
+                continue;
             String columnName = columnObj.toString().toLowerCase(Locale.ROOT).replaceAll("[^a-z_]", "");
-            if (columnName.isEmpty()) continue;
+            if (columnName.isEmpty())
+                continue;
             Field field = instance.getClass().getDeclaredField(columnName);
             field.set(instance, i);
         }
@@ -298,7 +316,8 @@ public class SpreadSheet {
                 if (key == null) {
                     throw new IllegalArgumentException("Either a guild or title must be provided");
                 }
-                throw new IllegalArgumentException("This command must be run in a guild, or a sheet must be specified for: " + key.name());
+                throw new IllegalArgumentException(
+                        "This command must be run in a guild, or a sheet must be specified for: " + key.name());
             }
             titleOrNull = dbOrNull.getGuild().getId() + "." + key.name();
         }
@@ -400,7 +419,8 @@ public class SpreadSheet {
         try {
             Spreadsheet spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
                     () -> service.spreadsheets().get(state.spreadsheetId).setFields("properties(title)").execute());
-            if (spreadsheet != null && spreadsheet.getProperties() != null && spreadsheet.getProperties().getTitle() != null) {
+            if (spreadsheet != null && spreadsheet.getProperties() != null
+                    && spreadsheet.getProperties().getTitle() != null) {
                 return spreadsheet.getProperties().getTitle();
             }
         } catch (RuntimeException e) {
@@ -446,7 +466,8 @@ public class SpreadSheet {
             m = Pattern.compile(regex).matcher(id);
             if (m.find()) {
                 tabId = Integer.parseInt(m.group(1));
-                if (tabId == 0) tabId = null;
+                if (tabId == 0)
+                    tabId = null;
             }
             regex = "#tab=([a-zA-Z0-9-_]{1,})";
             m = Pattern.compile(regex).matcher(id);
@@ -480,7 +501,8 @@ public class SpreadSheet {
         }
         ResolvedTab resolved = state.resolveById(id, true);
         if (resolved == null) {
-            throw new IllegalArgumentException("No tab with id `" + id + "` found. Options: " + StringMan.getString(fetchTabs()));
+            throw new IllegalArgumentException(
+                    "No tab with id `" + id + "` found. Options: " + StringMan.getString(fetchTabs()));
         }
         setDefaultTab(resolved.title, resolved.id, false);
     }
@@ -511,7 +533,8 @@ public class SpreadSheet {
             CompletableFuture.runAsync(() -> {
                 try {
                     SharedState state = ensureRemoteReady();
-                    if (state == null) return;
+                    if (state == null)
+                        return;
                     state.ensureTabsExist(Collections.singleton(tabToCreate));
                     ResolvedTab resolved = state.resolveByName(tabToCreate, true);
                     if (resolved != null) {
@@ -523,39 +546,49 @@ public class SpreadSheet {
         }
     }
 
-    public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
+    public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative,
+            TransactionNote defaultNote) {
         Map<String, Boolean> result = new LinkedHashMap<>();
         List<List<Object>> rows = fetchAll(null);
-        if (rows == null || rows.isEmpty()) return result;
+        if (rows == null || rows.isEmpty())
+            return result;
 
         List<Object> header = rows.get(0);
 
         Integer noteI = null;
         for (int i = 0; i < header.size(); i++) {
             Object col = header.get(i);
-            if (col != null && col.toString().equalsIgnoreCase("note")) noteI = i;
+            if (col != null && col.toString().equalsIgnoreCase("note"))
+                noteI = i;
         }
 
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
-            if (row.isEmpty() || row.size() < 2) continue;
+            if (row.isEmpty() || row.size() < 2)
+                continue;
 
             Object name = row.get(0);
-            if (name == null) continue;
+            if (name == null)
+                continue;
             String nameStr = name + "";
-            if (nameStr.isEmpty()) continue;
+            if (nameStr.isEmpty())
+                continue;
 
             Map<ResourceType, Double> transfer = new LinkedHashMap<>();
             for (int j = 1; j < row.size(); j++) {
                 Object rssName = header.size() > j ? header.get(j) : null;
-                if (rssName == null || rssName.toString().isEmpty() || (noteI != null && j == noteI)) continue;
+                if (rssName == null || rssName.toString().isEmpty() || (noteI != null && j == noteI))
+                    continue;
                 Object amtStr = row.get(j);
-                if (amtStr == null || amtStr.toString().isEmpty()) continue;
+                if (amtStr == null || amtStr.toString().isEmpty())
+                    continue;
                 try {
                     ResourceType type = ResourceType.parse(rssName.toString());
-                    if (type == null) throw new IllegalArgumentException("Invalid resource: " + rssName);
+                    if (type == null)
+                        throw new IllegalArgumentException("Invalid resource: " + rssName);
                     Double amt = MathMan.parseDouble(amtStr.toString());
-                    if (amt == null) continue;
+                    if (amt == null)
+                        continue;
                     transfer.put(type, transfer.getOrDefault(type, 0d) + amt);
                     continue;
                 } catch (IllegalArgumentException ignore) {
@@ -564,22 +597,28 @@ public class SpreadSheet {
                 if (rssName.toString().equalsIgnoreCase("cost_raw")
                         || rssName.toString().equalsIgnoreCase("deposit_raw")
                         || rssName.toString().equalsIgnoreCase("resources")) {
-                    for (Map.Entry<ResourceType, Double> entry : ResourceType.parseResources(amtStr.toString()).entrySet()) {
+                    for (Map.Entry<ResourceType, Double> entry : ResourceType.parseResources(amtStr.toString())
+                            .entrySet()) {
                         transfer.putIfAbsent(entry.getKey(), entry.getValue());
                     }
                 }
             }
-            if (transfer.isEmpty()) continue;
-            if (negative) transfer = ResourceType.subResourcesToA(new LinkedHashMap<>(), transfer);
+            if (transfer.isEmpty())
+                continue;
+            if (negative)
+                transfer = ResourceType.subResourcesToA(new LinkedHashMap<>(), transfer);
 
-            NationOrAllianceOrGuildOrTaxid account = PWBindings.nationOrAllianceOrGuildOrTaxId(nameStr, true);
+            NationOrAllianceOrGuildOrTaxid account = PWBindings.parseNationOrAllianceOrGuildOrTaxId(
+                    Locutus.cmd().getV2().getCommandRuntimeServices(), nameStr, true, null, null);
             if (account == null) {
                 throw new IllegalArgumentException("Invalid nation/alliance/guild: `" + nameStr + "`");
             }
-            Object noteObj = null;
-            if (noteI != null && row.size() > noteI) noteObj = row.get(noteI);
-            if (noteObj == null) noteObj = defaultNote;
-            builder.add(account, transfer, noteObj == null ? "" : noteObj.toString());
+            TransactionNote note = defaultNote == null ? TransactionNote.empty() : defaultNote;
+            if (noteI != null && row.size() > noteI)
+                note = row.get(noteI) == null ? note
+                        : TransactionNote.parseLegacy(row.get(noteI).toString(),
+                                System.currentTimeMillis());
+            builder.add(account, transfer, note);
         }
         return result;
     }
@@ -602,7 +641,8 @@ public class SpreadSheet {
             if (includeTab && defaultTabId == null) {
                 tryResolveDefaultTabId();
             }
-            return formatRemoteUrl(state.spreadsheetId, false) + (includeTab && defaultTabId != null ? "#gid=" + defaultTabId : "");
+            return formatRemoteUrl(state.spreadsheetId, false)
+                    + (includeTab && defaultTabId != null ? "#gid=" + defaultTabId : "");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -616,7 +656,8 @@ public class SpreadSheet {
         return attach(msg, MarkupUtil.escapeMarkdown(name), null, false, 0);
     }
 
-    public IMessageBuilder attach(IMessageBuilder msg, String name, StringBuilder output, boolean allowInline, int currentLength) {
+    public IMessageBuilder attach(IMessageBuilder msg, String name, StringBuilder output, boolean allowInline,
+            int currentLength) {
         SharedState state;
         try {
             flush();
@@ -635,7 +676,8 @@ public class SpreadSheet {
                 for (String csv : csvs.values()) {
                     length += csv.length();
                 }
-                boolean willInline = length + currentLength + (9 * csvs.size()) < Message.MAX_CONTENT_LENGTH && allowInline;
+                boolean willInline = length + currentLength + (9 * csvs.size()) < Message.MAX_CONTENT_LENGTH
+                        && allowInline;
 
                 StringBuilder sb = new StringBuilder();
                 for (Map.Entry<String, String> entry : csvs.entrySet()) {
@@ -649,7 +691,8 @@ public class SpreadSheet {
                     }
                     String csv = entry.getValue();
                     if (willInline) {
-                        if (sb.length() > 0) sb.append("\n");
+                        if (sb.length() > 0)
+                            sb.append("\n");
                         sb.append(title).append("```csv\n").append(csv).append("```");
                     } else {
                         append = "(`sheet:" + spreadsheetId + "`)";
@@ -665,14 +708,18 @@ public class SpreadSheet {
             append = "\n" + (name == null ? "" : name + ": " + formatRemoteUrl(state.spreadsheetId, true));
         }
 
-        if (output != null) output.append(append);
-        else msg.append(append);
+        if (output != null)
+            output.append(append);
+        else
+            msg.append(append);
         return msg;
     }
 
     public IMessageBuilder send(IMessageIO io, String header, String footer) {
-        if (header == null) header = "";
-        if (footer == null) footer = "";
+        if (header == null)
+            header = "";
+        if (footer == null)
+            footer = "";
 
         SharedState state;
         try {
@@ -701,7 +748,8 @@ public class SpreadSheet {
             if (willInline) {
                 StringBuilder sb = new StringBuilder();
                 sb.append(header);
-                if (!header.isEmpty()) sb.append("\n");
+                if (!header.isEmpty())
+                    sb.append("\n");
                 for (Map.Entry<String, String> entry : csvs.entrySet()) {
                     sb.append(entry.getKey()).append("\n```csv\n").append(entry.getValue()).append("```\n");
                 }
@@ -709,7 +757,8 @@ public class SpreadSheet {
                 msg.append(sb.toString());
             } else {
                 msg.append(header);
-                if (!header.isEmpty()) msg.append("\n");
+                if (!header.isEmpty())
+                    msg.append("\n");
                 msg.append(footer);
                 for (Map.Entry<String, String> entry : csvs.entrySet()) {
                     msg.file(entry.getKey() + ".csv", entry.getValue());
@@ -765,14 +814,16 @@ public class SpreadSheet {
 
     public void addRow(String tab, List<?> list) {
         String requested = tab == null ? getDefaultTab() : tab;
-        if (requested == null) requested = "";
+        if (requested == null)
+            requested = "";
         String key = normalizeTabKey(requested);
 
         synchronized (valuesLock) {
             if (!requested.isEmpty()) {
                 tabNamesByKey.putIfAbsent(key, requested);
             }
-            valuesByTab.computeIfAbsent(key, k -> new ObjectArrayList<>()).add(formatRow(requested, new ObjectArrayList<>(list)));
+            valuesByTab.computeIfAbsent(key, k -> new ObjectArrayList<>())
+                    .add(formatRow(requested, new ObjectArrayList<>(list)));
         }
     }
 
@@ -817,7 +868,8 @@ public class SpreadSheet {
 
     public List<List<Object>> getCachedValues(String tab) {
         String requested = tab == null ? getDefaultTab() : tab;
-        if (requested == null) requested = "";
+        if (requested == null)
+            requested = "";
         String key = normalizeTabKey(requested);
 
         synchronized (valuesLock) {
@@ -841,7 +893,8 @@ public class SpreadSheet {
         Integer rowCount = null;
 
         String requested = tab == null ? getDefaultTab() : tab;
-        if (requested == null) requested = "";
+        if (requested == null)
+            requested = "";
         String key = normalizeTabKey(requested);
 
         for (int i = 0; i < row.size(); i++) {
@@ -865,8 +918,10 @@ public class SpreadSheet {
                 }
             }
 
-            if (hasRow) s = s.replace("$row", String.valueOf(rowCount + 1));
-            if (hasCol) s = s.replace("$column", SheetUtil.getLetter(i + 1));
+            if (hasRow)
+                s = s.replace("$row", String.valueOf(rowCount + 1));
+            if (hasCol)
+                s = s.replace("$column", SheetUtil.getLetter(i + 1));
             out.add(s);
         }
         return out;
@@ -890,7 +945,8 @@ public class SpreadSheet {
         }
 
         String requested = tab == null ? getDefaultTab() : tab;
-        if (requested == null) requested = "";
+        if (requested == null)
+            requested = "";
         String key = normalizeTabKey(requested);
         ResolvedTab resolved = resolveSingleRemoteTab(state, key, requested, true);
         if (resolved == null) {
@@ -919,8 +975,10 @@ public class SpreadSheet {
     }
 
     /**
-     * Checks if the provided tabs exist in the Google Spreadsheet. If a tab does not exist, it is created.
-     * The method returns a map where the keys are the tab names in lower case and the values are Booleans
+     * Checks if the provided tabs exist in the Google Spreadsheet. If a tab does
+     * not exist, it is created.
+     * The method returns a map where the keys are the tab names in lower case and
+     * the values are Booleans
      * indicating whether the tab was created during the method execution.
      */
     public Map<String, Boolean> updateCreateTabsIfAbsent(Set<String> tabs) throws IOException {
@@ -936,7 +994,8 @@ public class SpreadSheet {
         LinkedHashMap<String, String> missing = new LinkedHashMap<>();
 
         for (String tab : tabs) {
-            if (tab == null || tab.isEmpty()) continue;
+            if (tab == null || tab.isEmpty())
+                continue;
             String key = normalizeTabKey(tab);
             ResolvedTab found = before.findByName(tab);
             if (found != null) {
@@ -993,7 +1052,8 @@ public class SpreadSheet {
         try {
             flush();
             SharedState state = ensureRemoteReady();
-            if (state == null) return null;
+            if (state == null)
+                return null;
             Integer id = state.addTabDirect(tabName);
             if (id != null) {
                 ResolvedTab resolved = state.resolveById(id, false);
@@ -1009,7 +1069,8 @@ public class SpreadSheet {
     }
 
     /**
-     * Queues writes. They are flushed automatically on attach/send/remote reads, or by calling flush().
+     * Queues writes. They are flushed automatically on attach/send/remote reads, or
+     * by calling flush().
      */
     public void updateWrite() throws IOException {
         synchronized (valuesLock) {
@@ -1021,11 +1082,13 @@ public class SpreadSheet {
     }
 
     /**
-     * Queues a write for the given tab. They are flushed automatically on attach/send/remote reads, or by calling flush().
+     * Queues a write for the given tab. They are flushed automatically on
+     * attach/send/remote reads, or by calling flush().
      */
     public void updateWrite(String tabName) throws IOException {
         String requested = tabName == null ? getDefaultTab() : tabName;
-        if (requested == null) requested = "";
+        if (requested == null)
+            requested = "";
         String key = normalizeTabKey(requested);
         synchronized (valuesLock) {
             if (!requested.isEmpty()) {
@@ -1106,13 +1169,16 @@ public class SpreadSheet {
         List<ValueRange> data = new ObjectArrayList<>();
         for (String key : writeKeys) {
             ResolvedTab tab = resolvedByKey.get(key);
-            if (tab == null || tab.title == null || tab.title.isEmpty()) continue;
+            if (tab == null || tab.title == null || tab.title.isEmpty())
+                continue;
 
             List<List<Object>> values = valuesSnapshot.get(key);
-            if (values == null || values.isEmpty()) continue;
+            if (values == null || values.isEmpty())
+                continue;
 
             int width = maxWidth(values);
-            if (width <= 0) width = 1;
+            if (width <= 0)
+                width = 1;
 
             String range = withTab(tab.title, SheetUtil.getRange(0, 0, width - 1, values.size() - 1));
             data.add(new ValueRange().setRange(range).setValues(values));
@@ -1121,7 +1187,8 @@ public class SpreadSheet {
         if (!clearRanges.isEmpty()) {
             BatchClearValuesRequest clearBody = new BatchClearValuesRequest().setRanges(clearRanges);
             SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                    () -> state.getService().spreadsheets().values().batchClear(state.spreadsheetId, clearBody).execute());
+                    () -> state.getService().spreadsheets().values().batchClear(state.spreadsheetId, clearBody)
+                            .execute());
         }
 
         if (!data.isEmpty()) {
@@ -1130,7 +1197,8 @@ public class SpreadSheet {
                     .setData(data);
 
             SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                    () -> state.getService().spreadsheets().values().batchUpdate(state.spreadsheetId, writeBody).execute());
+                    () -> state.getService().spreadsheets().values().batchUpdate(state.spreadsheetId, writeBody)
+                            .execute());
         }
 
         synchronized (valuesLock) {
@@ -1188,7 +1256,8 @@ public class SpreadSheet {
             SharedState state = ensureRemoteReady();
 
             String actualTab = tab;
-            if (actualTab == null || actualTab.isEmpty()) actualTab = getDefaultTab(true);
+            if (actualTab == null || actualTab.isEmpty())
+                actualTab = getDefaultTab(true);
 
             if (state == null) {
                 if (shared != null) {
@@ -1253,10 +1322,10 @@ public class SpreadSheet {
 
             BatchGetValuesResponse response;
             try {
-                Sheets.Spreadsheets.Values.BatchGet request =
-                        state.getService().spreadsheets().values().batchGet(state.spreadsheetId)
-                                .setRanges(ranges)
-                                .setFields("valueRanges(values)");
+                Sheets.Spreadsheets.Values.BatchGet request = state.getService().spreadsheets().values()
+                        .batchGet(state.spreadsheetId)
+                        .setRanges(ranges)
+                        .setFields("valueRanges(values)");
                 response = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS, request::execute);
             } catch (RuntimeException e) {
                 state.invalidateTabs();
@@ -1266,10 +1335,10 @@ public class SpreadSheet {
                 for (String title : titles) {
                     ranges.add(quoteSheetName(title));
                 }
-                Sheets.Spreadsheets.Values.BatchGet request =
-                        state.getService().spreadsheets().values().batchGet(state.spreadsheetId)
-                                .setRanges(ranges)
-                                .setFields("valueRanges(values)");
+                Sheets.Spreadsheets.Values.BatchGet request = state.getService().spreadsheets().values()
+                        .batchGet(state.spreadsheetId)
+                        .setRanges(ranges)
+                        .setFields("valueRanges(values)");
                 response = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS, request::execute);
             }
 
@@ -1322,8 +1391,10 @@ public class SpreadSheet {
             }
 
             String finalRange = (actualTab != null && !actualTab.isEmpty()) ? withTab(actualTab, range) : range;
-            Sheets.Spreadsheets.Values.Get query = state.getService().spreadsheets().values().get(state.spreadsheetId, finalRange);
-            if (onGet != null) onGet.accept(query);
+            Sheets.Spreadsheets.Values.Get query = state.getService().spreadsheets().values().get(state.spreadsheetId,
+                    finalRange);
+            if (onGet != null)
+                onGet.accept(query);
 
             ValueRange result = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS, query::execute);
             return copyRows(result == null ? null : result.getValues());
@@ -1346,7 +1417,8 @@ public class SpreadSheet {
                 ranges.add(withTab(tab, "1:1"));
             }
 
-            Sheets.Spreadsheets.Values.BatchGet request = state.getService().spreadsheets().values().batchGet(state.spreadsheetId)
+            Sheets.Spreadsheets.Values.BatchGet request = state.getService().spreadsheets().values()
+                    .batchGet(state.spreadsheetId)
                     .setRanges(ranges)
                     .setValueRenderOption("FORMULA")
                     .setFields("valueRanges(values)");
@@ -1390,7 +1462,8 @@ public class SpreadSheet {
      */
     public void updateClearTab(String tab) throws IOException {
         String requested = tab == null ? getDefaultTab() : tab;
-        if (requested == null) requested = "";
+        if (requested == null)
+            requested = "";
         String key = normalizeTabKey(requested);
 
         synchronized (valuesLock) {
@@ -1410,7 +1483,8 @@ public class SpreadSheet {
         }
 
         TabsSnapshot snapshot = state.getTabsSnapshot(true);
-        if (snapshot.byId.isEmpty()) return;
+        if (snapshot.byId.isEmpty())
+            return;
 
         List<String> ranges = new ObjectArrayList<>(snapshot.byId.size());
         for (String title : snapshot.byId.values()) {
@@ -1419,7 +1493,8 @@ public class SpreadSheet {
 
         BatchClearValuesRequest requestBody = new BatchClearValuesRequest().setRanges(ranges);
         SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                () -> state.getService().spreadsheets().values().batchClear(state.spreadsheetId, requestBody).execute());
+                () -> state.getService().spreadsheets().values().batchClear(state.spreadsheetId, requestBody)
+                        .execute());
     }
 
     public void clearAllButFirstRow(String tabName) throws IOException {
@@ -1431,8 +1506,8 @@ public class SpreadSheet {
         }
 
         ClearValuesRequest requestBody = new ClearValuesRequest();
-        Sheets.Spreadsheets.Values.Clear request =
-                state.getService().spreadsheets().values().clear(state.spreadsheetId, withTab(tabName, "2:40000"), requestBody);
+        Sheets.Spreadsheets.Values.Clear request = state.getService().spreadsheets().values().clear(state.spreadsheetId,
+                withTab(tabName, "2:40000"), requestBody);
 
         SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS, request::execute);
     }
@@ -1442,16 +1517,19 @@ public class SpreadSheet {
             flush();
             SharedState state = ensureRemoteReady();
             if (state == null) {
-                throw new IllegalArgumentException("Spreadsheet not found or accessible: `" + spreadsheetId + "` (Are you sure the google account associated with the bot has access to it?)");
+                throw new IllegalArgumentException("Spreadsheet not found or accessible: `" + spreadsheetId
+                        + "` (Are you sure the google account associated with the bot has access to it?)");
             }
 
             TabsSnapshot snapshot = state.getTabsSnapshot(true);
             if (snapshot.byId.isEmpty()) {
-                throw new IllegalArgumentException("Spreadsheet not found or accessible: `" + spreadsheetId + "` (Are you sure the google account associated with the bot has access to it?)");
+                throw new IllegalArgumentException("Spreadsheet not found or accessible: `" + spreadsheetId
+                        + "` (Are you sure the google account associated with the bot has access to it?)");
             }
             return new LinkedHashMap<>(snapshot.byId);
         } catch (IOException | RuntimeException e) {
-            throw new IllegalArgumentException("Spreadsheet not found or accessible: `" + spreadsheetId + "` (Are you sure the google account associated with the bot has access to it?)", e);
+            throw new IllegalArgumentException("Spreadsheet not found or accessible: `" + spreadsheetId
+                    + "` (Are you sure the google account associated with the bot has access to it?)", e);
         }
     }
 
@@ -1523,12 +1601,10 @@ public class SpreadSheet {
         }
 
         ClearValuesRequest requestBody = new ClearValuesRequest();
-        Sheets.Spreadsheets.Values.Clear request =
-                state.getService().spreadsheets().values().clear(
-                        state.spreadsheetId,
-                        (tab == null || tab.isEmpty() ? range : withTab(tab, range)),
-                        requestBody
-                );
+        Sheets.Spreadsheets.Values.Clear request = state.getService().spreadsheets().values().clear(
+                state.spreadsheetId,
+                (tab == null || tab.isEmpty() ? range : withTab(tab, range)),
+                requestBody);
 
         SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS, request::execute);
     }
@@ -1544,7 +1620,8 @@ public class SpreadSheet {
     public Map<String, String> toCsv() {
         Map<String, List<List<Object>>> snapshot = new LinkedHashMap<>();
         synchronized (valuesLock) {
-            if (this.valuesByTab.isEmpty()) return Collections.emptyMap();
+            if (this.valuesByTab.isEmpty())
+                return Collections.emptyMap();
             for (Map.Entry<String, List<List<Object>>> entry : this.valuesByTab.entrySet()) {
                 snapshot.put(entry.getKey(), copyRows(entry.getValue()));
             }
@@ -1554,7 +1631,8 @@ public class SpreadSheet {
         for (Map.Entry<String, List<List<Object>>> entry : snapshot.entrySet()) {
             String tabKey = entry.getKey();
             List<List<Object>> rows = entry.getValue();
-            if (tabKey.isEmpty() && rows.isEmpty()) continue;
+            if (tabKey.isEmpty() && rows.isEmpty())
+                continue;
 
             String displayName = displayTabName(tabKey);
 
@@ -1586,7 +1664,8 @@ public class SpreadSheet {
         checkArgument(arguments.length > 0);
         return findColumn(columnDefault, s -> {
             for (String arg : arguments) {
-                if (s.contains(arg.toLowerCase(Locale.ROOT))) return true;
+                if (s.contains(arg.toLowerCase(Locale.ROOT)))
+                    return true;
             }
             return false;
         });
@@ -1594,13 +1673,16 @@ public class SpreadSheet {
 
     public List<Object> findColumn(int columnDefault, Predicate<String> acceptName) {
         Map<String, List<Object>> resultMap = findColumn(columnDefault, acceptName, false);
-        if (resultMap == null || resultMap.isEmpty()) return null;
+        if (resultMap == null || resultMap.isEmpty())
+            return null;
         return resultMap.values().iterator().next();
     }
 
-    public Map<String, List<Object>> findColumn(int columnDefault2, Predicate<String> acceptName, boolean acceptMultiple) {
+    public Map<String, List<Object>> findColumn(int columnDefault2, Predicate<String> acceptName,
+            boolean acceptMultiple) {
         synchronized (valuesLock) {
-            if (valuesByTab.isEmpty()) throw new IllegalArgumentException("No values found. Was `loadValues` called?");
+            if (valuesByTab.isEmpty())
+                throw new IllegalArgumentException("No values found. Was `loadValues` called?");
         }
 
         List<List<Object>> values = getCachedValues(getDefaultTab(true));
@@ -1614,9 +1696,11 @@ public class SpreadSheet {
         List<Object> header = values.get(0);
         for (int i = 0; i < header.size(); i++) {
             Object obj = header.get(i);
-            if (obj == null) continue;
+            if (obj == null)
+                continue;
             String objStr = obj.toString().toLowerCase(Locale.ROOT);
-            if (!acceptName.test(objStr)) continue;
+            if (!acceptName.test(objStr))
+                continue;
             columnIds.put(objStr, i);
             if (!acceptMultiple) {
                 break;
@@ -1626,7 +1710,8 @@ public class SpreadSheet {
         if (columnIds.isEmpty() && columnDefault2 >= 0 && columnDefault2 < header.size()) {
             columnIds.put(header.get(columnDefault2).toString().toLowerCase(Locale.ROOT), columnDefault2);
         }
-        if (columnIds.isEmpty()) return null;
+        if (columnIds.isEmpty())
+            return null;
 
         for (Map.Entry<String, Integer> entry : columnIds.entrySet()) {
             String name = entry.getKey();
@@ -1673,7 +1758,8 @@ public class SpreadSheet {
 
     private void warmRemoteAsync() {
         SharedState state = this.shared;
-        if (state == null) return;
+        if (state == null)
+            return;
 
         boolean warmTabs = defaultTabId != null || defaultTab == null || defaultTab.isEmpty();
         CompletableFuture.runAsync(() -> {
@@ -1732,9 +1818,11 @@ public class SpreadSheet {
 
     private void syncFromPendingIfReady() {
         PendingCreate pending = this.pendingCreate;
-        if (pending == null) return;
+        if (pending == null)
+            return;
         CompletableFuture<SharedState> future = pending.future;
-        if (future == null || !future.isDone() || future.isCompletedExceptionally()) return;
+        if (future == null || !future.isDone() || future.isCompletedExceptionally())
+            return;
         try {
             SharedState ready = future.getNow(null);
             if (ready != null) {
@@ -1746,13 +1834,16 @@ public class SpreadSheet {
 
     private CompletableFuture<SharedState> startPendingCreateIfNeeded(PendingCreate pending) {
         CompletableFuture<SharedState> future = pending.future;
-        if (future != null) return future;
+        if (future != null)
+            return future;
 
         synchronized (pending.lock) {
             future = pending.future;
-            if (future != null) return future;
+            if (future != null)
+                return future;
 
-            CompletableFuture<SharedState> createdFuture = CompletableFuture.supplyAsync(() -> createRemoteForPending(pending), SHEET_IO);
+            CompletableFuture<SharedState> createdFuture = CompletableFuture
+                    .supplyAsync(() -> createRemoteForPending(pending), SHEET_IO);
             pending.future = createdFuture;
 
             createdFuture.whenComplete((state, ex) -> {
@@ -1823,8 +1914,10 @@ public class SpreadSheet {
 
     private void tryResolveDefaultTabId() {
         SharedState state = shared;
-        if (state == null) return;
-        if (defaultTabId != null) return;
+        if (state == null)
+            return;
+        if (defaultTabId != null)
+            return;
 
         try {
             if (defaultTab != null && !defaultTab.isEmpty()) {
@@ -1845,7 +1938,8 @@ public class SpreadSheet {
     }
 
     private String getRequestedTabNameForKey(String key) {
-        if (FIRST_TAB_SENTINEL.equals(key)) return null;
+        if (FIRST_TAB_SENTINEL.equals(key))
+            return null;
 
         synchronized (valuesLock) {
             String name = tabNamesByKey.get(key);
@@ -1859,7 +1953,8 @@ public class SpreadSheet {
         }
     }
 
-    private ResolvedTab resolveSingleRemoteTab(SharedState state, String key, String requestedName, boolean createIfAbsent) throws IOException {
+    private ResolvedTab resolveSingleRemoteTab(SharedState state, String key, String requestedName,
+            boolean createIfAbsent) throws IOException {
         if (FIRST_TAB_SENTINEL.equals(key)) {
             return state.getFirstTab(true);
         }
@@ -1918,7 +2013,8 @@ public class SpreadSheet {
     }
 
     private void postResolveTab(String key, ResolvedTab resolved) {
-        if (resolved == null) return;
+        if (resolved == null)
+            return;
 
         if (!FIRST_TAB_SENTINEL.equals(key)) {
             synchronized (valuesLock) {
@@ -1943,15 +2039,18 @@ public class SpreadSheet {
 
     private void migrateLocalTabKey(String fromKey, String toTitle) {
         String toKey = normalizeTabKey(toTitle);
-        if (fromKey.equals(toKey)) return;
+        if (fromKey.equals(toKey))
+            return;
 
         synchronized (valuesLock) {
             List<List<Object>> existing = valuesByTab.remove(fromKey);
             if (existing != null && !existing.isEmpty()) {
                 valuesByTab.computeIfAbsent(toKey, k -> new ObjectArrayList<>()).addAll(existing);
             }
-            if (queuedWriteTabs.remove(fromKey)) queuedWriteTabs.add(toKey);
-            if (queuedClearTabs.remove(fromKey)) queuedClearTabs.add(toKey);
+            if (queuedWriteTabs.remove(fromKey))
+                queuedWriteTabs.add(toKey);
+            if (queuedClearTabs.remove(fromKey))
+                queuedClearTabs.add(toKey);
 
             String oldName = tabNamesByKey.remove(fromKey);
             if (oldName != null || !toTitle.isEmpty()) {
@@ -1991,13 +2090,16 @@ public class SpreadSheet {
     }
 
     private static String quoteSheetName(String tabName) {
-        if (tabName == null || tabName.isEmpty()) return "";
+        if (tabName == null || tabName.isEmpty())
+            return "";
         return "'" + tabName.replace("'", "''") + "'";
     }
 
     private static String withTab(String tabName, String range) {
-        if (tabName == null || tabName.isEmpty()) return range;
-        if (range == null || range.isEmpty()) return quoteSheetName(tabName);
+        if (tabName == null || tabName.isEmpty())
+            return range;
+        if (range == null || range.isEmpty())
+            return quoteSheetName(tabName);
         return quoteSheetName(tabName) + "!" + range;
     }
 
@@ -2013,7 +2115,8 @@ public class SpreadSheet {
 
     private static List<List<Object>> copyRows(List<List<Object>> rows) {
         List<List<Object>> out = new ObjectArrayList<>();
-        if (rows == null || rows.isEmpty()) return out;
+        if (rows == null || rows.isEmpty())
+            return out;
         for (List<Object> row : rows) {
             if (row == null) {
                 out.add(new ObjectArrayList<>());
@@ -2057,7 +2160,8 @@ public class SpreadSheet {
     }
 
     private static void removePendingCreate(PendingCreate pending) {
-        if (pending == null || pending.cacheKey == null) return;
+        if (pending == null || pending.cacheKey == null)
+            return;
         synchronized (PENDING_CREATES) {
             PendingCreate current = PENDING_CREATES.get(pending.cacheKey);
             if (current == pending) {
@@ -2101,26 +2205,30 @@ public class SpreadSheet {
         private final LinkedHashMap<Integer, String> byId;
         private final LinkedHashMap<String, Integer> byNameLower;
 
-        private TabsSnapshot(long loadedAt, LinkedHashMap<Integer, String> byId, LinkedHashMap<String, Integer> byNameLower) {
+        private TabsSnapshot(long loadedAt, LinkedHashMap<Integer, String> byId,
+                LinkedHashMap<String, Integer> byNameLower) {
             this.loadedAt = loadedAt;
             this.byId = byId;
             this.byNameLower = byNameLower;
         }
 
         private ResolvedTab findById(Integer id) {
-            if (id == null) return null;
+            if (id == null)
+                return null;
             String title = byId.get(id);
             return title == null ? null : new ResolvedTab(id, title);
         }
 
         private ResolvedTab findByName(String name) {
-            if (name == null || name.isEmpty()) return null;
+            if (name == null || name.isEmpty())
+                return null;
             Integer id = byNameLower.get(normalizeTabKey(name));
             return id == null ? null : new ResolvedTab(id, byId.get(id));
         }
 
         private ResolvedTab first() {
-            if (byId.isEmpty()) return null;
+            if (byId.isEmpty())
+                return null;
             Map.Entry<Integer, String> first = byId.entrySet().iterator().next();
             return new ResolvedTab(first.getKey(), first.getValue());
         }
@@ -2145,7 +2253,8 @@ public class SpreadSheet {
         }
 
         private void seedService(Sheets initialService) {
-            if (initialService == null) return;
+            if (initialService == null)
+                return;
             synchronized (serviceLock) {
                 if (this.service == null) {
                     this.service = initialService;
@@ -2156,7 +2265,8 @@ public class SpreadSheet {
 
         private Sheets getService() {
             Sheets current = service;
-            if (current != null) return current;
+            if (current != null)
+                return current;
 
             long now = System.currentTimeMillis();
             if (now - lastServiceFailureAt < SERVICE_RETRY_COOLDOWN_MS) {
@@ -2165,7 +2275,8 @@ public class SpreadSheet {
 
             synchronized (serviceLock) {
                 current = service;
-                if (current != null) return current;
+                if (current != null)
+                    return current;
 
                 now = System.currentTimeMillis();
                 if (now - lastServiceFailureAt < SERVICE_RETRY_COOLDOWN_MS) {
@@ -2184,7 +2295,8 @@ public class SpreadSheet {
         }
 
         private void scheduleShareIfNeeded() {
-            if (!shareScheduled.compareAndSet(false, true)) return;
+            if (!shareScheduled.compareAndSet(false, true))
+                return;
             CompletableFuture.runAsync(() -> {
                 try {
                     DriveFile gdFile = new DriveFile(spreadsheetId);
@@ -2196,16 +2308,19 @@ public class SpreadSheet {
         }
 
         private void seedTabsFromSpreadsheet(Spreadsheet spreadsheet) {
-            if (spreadsheet == null || spreadsheet.getSheets() == null) return;
+            if (spreadsheet == null || spreadsheet.getSheets() == null)
+                return;
 
             LinkedHashMap<Integer, String> byId = new LinkedHashMap<>();
             LinkedHashMap<String, Integer> byNameLower = new LinkedHashMap<>();
 
             for (Sheet sheet : spreadsheet.getSheets()) {
-                if (sheet == null || sheet.getProperties() == null) continue;
+                if (sheet == null || sheet.getProperties() == null)
+                    continue;
                 Integer id = sheet.getProperties().getSheetId();
                 String title = sheet.getProperties().getTitle();
-                if (id == null || title == null) continue;
+                if (id == null || title == null)
+                    continue;
                 byId.put(id, title);
                 byNameLower.put(normalizeTabKey(title), id);
             }
@@ -2217,7 +2332,8 @@ public class SpreadSheet {
 
         private TabsSnapshot getTabsSnapshot(boolean forceRefresh) {
             Sheets api = getService();
-            if (api == null) return TabsSnapshot.EMPTY;
+            if (api == null)
+                return TabsSnapshot.EMPTY;
 
             TabsSnapshot snapshot = tabsSnapshot;
             long now = System.currentTimeMillis();
@@ -2241,10 +2357,12 @@ public class SpreadSheet {
                 LinkedHashMap<String, Integer> byNameLower = new LinkedHashMap<>();
                 if (spreadsheet != null && spreadsheet.getSheets() != null) {
                     for (Sheet sheet : spreadsheet.getSheets()) {
-                        if (sheet == null || sheet.getProperties() == null) continue;
+                        if (sheet == null || sheet.getProperties() == null)
+                            continue;
                         Integer id = sheet.getProperties().getSheetId();
                         String title = sheet.getProperties().getTitle();
-                        if (id == null || title == null) continue;
+                        if (id == null || title == null)
+                            continue;
                         byId.put(id, title);
                         byNameLower.put(normalizeTabKey(title), id);
                     }
@@ -2262,7 +2380,8 @@ public class SpreadSheet {
         }
 
         private void putTabInCache(Integer id, String title) {
-            if (id == null || title == null) return;
+            if (id == null || title == null)
+                return;
             synchronized (tabsLock) {
                 TabsSnapshot current = tabsSnapshot == null ? TabsSnapshot.EMPTY : tabsSnapshot;
                 LinkedHashMap<Integer, String> byId = new LinkedHashMap<>(current.byId);
@@ -2274,7 +2393,8 @@ public class SpreadSheet {
         }
 
         private void removeTabFromCache(Integer id) {
-            if (id == null) return;
+            if (id == null)
+                return;
             synchronized (tabsLock) {
                 TabsSnapshot current = tabsSnapshot == null ? TabsSnapshot.EMPTY : tabsSnapshot;
                 LinkedHashMap<Integer, String> byId = new LinkedHashMap<>(current.byId);
@@ -2288,19 +2408,23 @@ public class SpreadSheet {
         }
 
         private ResolvedTab resolveById(Integer id, boolean refreshOnMiss) {
-            if (id == null) return null;
+            if (id == null)
+                return null;
             TabsSnapshot snapshot = getTabsSnapshot(false);
             ResolvedTab found = snapshot.findById(id);
-            if (found != null || !refreshOnMiss) return found;
+            if (found != null || !refreshOnMiss)
+                return found;
             snapshot = getTabsSnapshot(true);
             return snapshot.findById(id);
         }
 
         private ResolvedTab resolveByName(String name, boolean refreshOnMiss) {
-            if (name == null || name.isEmpty()) return null;
+            if (name == null || name.isEmpty())
+                return null;
             TabsSnapshot snapshot = getTabsSnapshot(false);
             ResolvedTab found = snapshot.findByName(name);
-            if (found != null || !refreshOnMiss) return found;
+            if (found != null || !refreshOnMiss)
+                return found;
             snapshot = getTabsSnapshot(true);
             return snapshot.findByName(name);
         }
@@ -2308,7 +2432,8 @@ public class SpreadSheet {
         private ResolvedTab getFirstTab(boolean refreshIfNeeded) {
             TabsSnapshot snapshot = getTabsSnapshot(false);
             ResolvedTab first = snapshot.first();
-            if (first != null || !refreshIfNeeded) return first;
+            if (first != null || !refreshIfNeeded)
+                return first;
             snapshot = getTabsSnapshot(true);
             return snapshot.first();
         }
@@ -2316,10 +2441,12 @@ public class SpreadSheet {
         private Map<String, Integer> ensureTabsExist(Collection<String> tabNames) {
             LinkedHashMap<String, String> requested = new LinkedHashMap<>();
             for (String tabName : tabNames) {
-                if (tabName == null || tabName.isEmpty()) continue;
+                if (tabName == null || tabName.isEmpty())
+                    continue;
                 requested.put(normalizeTabKey(tabName), tabName);
             }
-            if (requested.isEmpty()) return Collections.emptyMap();
+            if (requested.isEmpty())
+                return Collections.emptyMap();
 
             Map<String, Integer> result = new LinkedHashMap<>();
 
@@ -2330,25 +2457,28 @@ public class SpreadSheet {
                     result.put(entry.getKey(), found.id);
                 }
             }
-            if (result.size() == requested.size()) return result;
+            if (result.size() == requested.size())
+                return result;
 
             snapshot = getTabsSnapshot(true);
             for (Map.Entry<String, String> entry : requested.entrySet()) {
-                if (result.containsKey(entry.getKey())) continue;
+                if (result.containsKey(entry.getKey()))
+                    continue;
                 ResolvedTab found = snapshot.findByName(entry.getValue());
                 if (found != null) {
                     result.put(entry.getKey(), found.id);
                 }
             }
-            if (result.size() == requested.size()) return result;
+            if (result.size() == requested.size())
+                return result;
 
             List<Request> requests = new ObjectArrayList<>();
             List<String> orderKeys = new ObjectArrayList<>();
             for (Map.Entry<String, String> entry : requested.entrySet()) {
-                if (result.containsKey(entry.getKey())) continue;
+                if (result.containsKey(entry.getKey()))
+                    continue;
                 requests.add(new Request().setAddSheet(
-                        new AddSheetRequest().setProperties(new SheetProperties().setTitle(entry.getValue()))
-                ));
+                        new AddSheetRequest().setProperties(new SheetProperties().setTitle(entry.getValue()))));
                 orderKeys.add(entry.getKey());
             }
 
@@ -2361,10 +2491,12 @@ public class SpreadSheet {
                     if (resp != null && resp.getReplies() != null) {
                         for (int i = 0; i < resp.getReplies().size() && i < orderKeys.size(); i++) {
                             AddSheetResponse addResp = resp.getReplies().get(i).getAddSheet();
-                            if (addResp == null || addResp.getProperties() == null) continue;
+                            if (addResp == null || addResp.getProperties() == null)
+                                continue;
                             Integer id = addResp.getProperties().getSheetId();
                             String title = addResp.getProperties().getTitle();
-                            if (id == null || title == null) continue;
+                            if (id == null || title == null)
+                                continue;
                             result.put(orderKeys.get(i), id);
                             putTabInCache(id, title);
                         }
@@ -2377,7 +2509,8 @@ public class SpreadSheet {
             if (result.size() != requested.size()) {
                 snapshot = getTabsSnapshot(true);
                 for (Map.Entry<String, String> entry : requested.entrySet()) {
-                    if (result.containsKey(entry.getKey())) continue;
+                    if (result.containsKey(entry.getKey()))
+                        continue;
                     ResolvedTab found = snapshot.findByName(entry.getValue());
                     if (found != null) {
                         result.put(entry.getKey(), found.id);
@@ -2389,9 +2522,11 @@ public class SpreadSheet {
         }
 
         private Integer addTabDirect(String tabName) {
-            if (tabName == null || tabName.isEmpty()) return null;
+            if (tabName == null || tabName.isEmpty())
+                return null;
             Sheets api = getService();
-            if (api == null) return null;
+            if (api == null)
+                return null;
 
             AddSheetRequest addSheetRequest = new AddSheetRequest()
                     .setProperties(new SheetProperties().setTitle(tabName));
@@ -2400,14 +2535,15 @@ public class SpreadSheet {
                     .setRequests(List.of(new Request().setAddSheet(addSheetRequest)));
 
             try {
-                BatchUpdateSpreadsheetResponse resp =
-                        SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                                () -> api.spreadsheets().batchUpdate(spreadsheetId, batchReq).execute());
+                BatchUpdateSpreadsheetResponse resp = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                        () -> api.spreadsheets().batchUpdate(spreadsheetId, batchReq).execute());
 
-                if (resp == null || resp.getReplies() == null || resp.getReplies().isEmpty()) return null;
+                if (resp == null || resp.getReplies() == null || resp.getReplies().isEmpty())
+                    return null;
 
                 AddSheetResponse addResp = resp.getReplies().get(0).getAddSheet();
-                if (addResp == null || addResp.getProperties() == null) return null;
+                if (addResp == null || addResp.getProperties() == null)
+                    return null;
 
                 Integer id = addResp.getProperties().getSheetId();
                 String title = addResp.getProperties().getTitle();
@@ -2416,7 +2552,8 @@ public class SpreadSheet {
             } catch (RuntimeException e) {
                 invalidateTabs();
                 ResolvedTab existing = resolveByName(tabName, true);
-                if (existing != null) return existing.id;
+                if (existing != null)
+                    return existing.id;
                 throw e;
             }
         }

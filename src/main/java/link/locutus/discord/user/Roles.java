@@ -3,6 +3,7 @@ package link.locutus.discord.user;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -182,6 +183,7 @@ public enum Roles {
         return min;
     }
 
+    @Command
     public int getId() {
         return id;
     }
@@ -206,6 +208,7 @@ public enum Roles {
         this.allowAdminBypass = allowAdminBypass;
     }
 
+    @Command
     public boolean allowAlliance() {
         return allowAlliance;
     }
@@ -261,6 +264,7 @@ public enum Roles {
         }
     }
 
+    @Command(desc = "Get the setting this role requires to have set")
     public GuildSetting getKey() {
         return key;
     }
@@ -273,7 +277,7 @@ public enum Roles {
 
     public AllianceList getAllianceList(User user, GuildDB db) {
         AllianceList list = db.getAllianceList();
-        if (list == null || list.isEmpty()) return new AllianceList();
+        if (list == null || list.isEmpty(Locutus.imp().getNationDB())) return new AllianceList();
         return list.subList(getAllowedAccounts(user, db).stream()
                 .map(Long::intValue)
                 .collect(Collectors.toSet()));

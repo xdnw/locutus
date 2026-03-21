@@ -3,13 +3,41 @@ package link.locutus.discord.db;
 import com.google.common.base.Predicates;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.politicsandwar.graphql.model.*;
+import com.politicsandwar.graphql.model.Alliance;
+import com.politicsandwar.graphql.model.AlliancePosition;
+import com.politicsandwar.graphql.model.AlliancesQueryRequest;
+import com.politicsandwar.graphql.model.Bankrec;
+import com.politicsandwar.graphql.model.BannedNation;
+import com.politicsandwar.graphql.model.City;
+import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationsQueryRequest;
+import com.politicsandwar.graphql.model.Treasure;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
-import it.unimi.dsi.fastutil.ints.*;
-import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntComparator;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntLongPair;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -19,8 +47,12 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
@@ -35,13 +67,25 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.AllianceChange;
+import link.locutus.discord.db.entities.AllianceMeta;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBAlliancePosition;
+import link.locutus.discord.db.entities.DBBan;
+import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBSpyUpdate;
+import link.locutus.discord.db.entities.DBTreasure;
+import link.locutus.discord.db.entities.DBTreatyChange;
+import link.locutus.discord.db.entities.LoanManager;
+import link.locutus.discord.db.entities.LootEntry;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.entities.TreatyChangeAction;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.nation.DBNationData;
-import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.event.Event;
@@ -52,13 +96,30 @@ import link.locutus.discord.event.city.CityCreateEvent;
 import link.locutus.discord.event.city.CityDeleteEvent;
 import link.locutus.discord.event.city.CityInfraDamageEvent;
 import link.locutus.discord.event.city.CityNukeEvent;
-import link.locutus.discord.event.nation.*;
+import link.locutus.discord.event.nation.NationBanEvent;
+import link.locutus.discord.event.nation.NationChangeActiveEvent;
+import link.locutus.discord.event.nation.NationChangeAllianceEvent;
+import link.locutus.discord.event.nation.NationChangePositionEvent;
+import link.locutus.discord.event.nation.NationChangeUnitEvent;
+import link.locutus.discord.event.nation.NationCreateEvent;
+import link.locutus.discord.event.nation.NationDeleteEvent;
 import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
-import link.locutus.discord.event.treaty.*;
+import link.locutus.discord.event.treaty.TreatyCancelEvent;
+import link.locutus.discord.event.treaty.TreatyCreateEvent;
+import link.locutus.discord.event.treaty.TreatyDowngradeEvent;
+import link.locutus.discord.event.treaty.TreatyExpireEvent;
+import link.locutus.discord.event.treaty.TreatyExtendEvent;
+import link.locutus.discord.event.treaty.TreatyUpgradeEvent;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.SpyTracker;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -69,14 +130,33 @@ import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.text.ParseException;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -86,7 +166,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnapshot {
+public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnapshot, TaxBracketLookup {
     private final Map<Integer, DBNation> nationsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBNation>> nationsByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, DBAlliance> alliancesById = new Int2ObjectOpenHashMap<>();
@@ -94,6 +174,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     private final Map<Integer, DBAlliancePosition> positionsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBAlliancePosition>> positionsByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, Treaty>> treatiesByAlliance = new Int2ObjectOpenHashMap<>();
+    private final AtomicLong treatyVersion = new AtomicLong(1);
 
     private final IntOpenHashSet dirtyCities =new IntOpenHashSet();
     private final Set<Integer> dirtyCityNations = Collections.synchronizedSet(new IntOpenHashSet());
@@ -106,6 +187,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public NationDB() throws SQLException, ClassNotFoundException {
         super("nations");
+    }
+
+    public long getTreatyVersion() {
+        return treatyVersion.get();
+    }
+
+    private void bumpTreatyVersion() {
+        treatyVersion.incrementAndGet();
     }
 
     @Override
@@ -136,21 +225,52 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return loanManager;
     }
 
+//    private void condenseCities() {
+//        synchronized (citiesByNation) {
+//            ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>();
+//            for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
+//                ArrayUtil.iterateElements(SimpleDBCity.class, entry.getValue(), dbCity -> {
+//                    ByteArrayList currBytes = new ByteArrayList(dbCity.getBuildings3());
+//                    ByteArrayList existing = cityBytes.get(currBytes);
+//                    if (existing != null) {
+//                        dbCity.setBuildings3(existing.elements());
+//                    } else {
+//                        cityBytes.add(currBytes);
+//                        dbCity.setBuildings3(currBytes.elements());
+//                    }
+//                });
+//            }
+//        }
+//    }
     private void condenseCities() {
         synchronized (citiesByNation) {
-            ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>();
-            for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-                ArrayUtil.iterateElements(SimpleDBCity.class, entry.getValue(), dbCity -> {
-                    ByteArrayList currBytes = new ByteArrayList(dbCity.getBuildings3());
-                    ByteArrayList existing = cityBytes.get(currBytes);
-                    if (existing != null) {
-                        dbCity.setBuildings3(existing.elements());
-                    } else {
-                        cityBytes.add(currBytes);
-                        dbCity.setBuildings3(currBytes.elements());
+            ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>(citiesByNation.size() * 2);
+
+            for (Object value : citiesByNation.values()) {
+                if (value == null) continue;
+
+                if (value instanceof SimpleDBCity city) {
+                    condenseCity(city, cityBytes);
+                } else {
+                    for (SimpleDBCity city : (ObjectOpenHashSet<SimpleDBCity>) value) {
+                        condenseCity(city, cityBytes);
                     }
-                });
+                }
             }
+        }
+    }
+
+    private static void condenseCity(SimpleDBCity city, ObjectOpenHashSet<ByteArrayList> cityBytes) {
+        byte[] buildings = city.getBuildings3();
+        if (buildings == null) return;
+        ByteArrayList key = ByteArrayList.wrap(buildings);
+        ByteArrayList existing = cityBytes.get(key);
+        if (existing != null) {
+            if (existing.elements() != buildings) {
+                city.setBuildings3(existing.elements());
+            }
+        } else {
+            cityBytes.add(key);
         }
     }
 
@@ -597,6 +717,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public void deleteTreaties(Set<Treaty> treaties, Consumer<Event> eventConsumer) {
         long turn = TimeUtil.getTurn(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(2));
         long now = System.currentTimeMillis();
+        boolean anyRemoved = false;
         for (Treaty treaty : treaties) {
             boolean removed = false;
             synchronized (treatiesByAlliance) {
@@ -604,6 +725,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 removed |= treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getFromId()) != null;
             }
             if (removed) {
+                anyRemoved = true;
                 if (treaty.getTurnEnds() <= turn + 1) {
                     addTreatyChange(now, TreatyChangeAction.EXPIRED, treaty.getType(),
                             treaty.getFromId(), treaty.getToId(), 0);
@@ -617,6 +739,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
         Set<Integer> ids = treaties.stream().map(Treaty::getId).collect(Collectors.toSet());
         deleteTreatiesInDB(ids);
+        if (anyRemoved) {
+            bumpTreatyVersion();
+        }
     }
 
     private void deleteAlliancesInDB(Set<Integer> ids) {
@@ -981,6 +1106,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         getNationsByAlliance(toAA.getId()).stream().filter(f -> f.getPositionEnum() != Rank.APPLICANT).findFirst().isEmpty()) continue;
                 eventConsumer.accept(new TreatyCreateEvent(current));
             }
+        }
+        if (!modified.isEmpty() || !newTreaties.isEmpty() || !deletedOrExpired.isEmpty()) {
+            bumpTreatyVersion();
         }
     }
     private long lastUpdateRecent = 0;
@@ -3778,8 +3906,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void loadAndPurgeMeta() {
-        List<Integer> toDelete = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META")) {
+        // 1) Load only valid meta rows
+        String selectValid = "SELECT id, key, meta FROM NATION_META m " +
+                "WHERE (m.id > 0 AND EXISTS (SELECT 1 FROM NATIONS2 n WHERE n.nation_id = m.id)) " +
+                "   OR (m.id < 0 AND EXISTS (SELECT 1 FROM ALLIANCES a WHERE a.id = -m.id))";
+
+        try (PreparedStatement stmt = prepareQuery(selectValid)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt("id");
@@ -3790,9 +3922,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         DBNation nation = nationsById.get(id);
                         if (nation != null) {
                             nation.setMetaRaw(key, data);
-                        } else {
-                            toDelete.add(id);
                         }
+                        // if nation == null, it means in-memory snapshot is stale; we'll purge below
                     } else {
                         int idAbs = Math.abs(id);
                         DBAlliance alliance;
@@ -3801,17 +3932,19 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         }
                         if (alliance != null) {
                             alliance.setMetaRaw(key, data);
-                        } else {
-                            toDelete.add(id);
                         }
+                        // if alliance == null, we'll purge below
                     }
-
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        update("DELETE FROM NATION_META where id in " + StringMan.getString(toDelete));
+
+        // 2) Purge orphaned meta rows in one SQL statement
+        String deleteOrphans = "DELETE FROM NATION_META WHERE (id > 0 AND NOT EXISTS (SELECT 1 FROM NATIONS2 n WHERE n.nation_id = NATION_META.id)) " +
+                "OR (id < 0 AND NOT EXISTS (SELECT 1 FROM ALLIANCES a WHERE a.id = -NATION_META.id))";
+        update(deleteOrphans);
     }
 
     public void setMeta(int nationId, NationMeta key, byte[] value) {

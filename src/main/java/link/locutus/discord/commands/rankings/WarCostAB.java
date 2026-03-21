@@ -1,11 +1,12 @@
 package link.locutus.discord.commands.rankings;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -13,23 +14,17 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class WarCostAB extends Command {
@@ -87,22 +82,24 @@ public class WarCostAB extends Command {
             if (flags.contains('w') || flags.contains('t') || flags.contains('s')) {
                 return "Cannot use flags: `-w`, `-t`, `-s` with a war url. See also " + CM.war.info.cmd.toSlashMention();
             }
-            DBWar war = PWBindings.war(arg0);
-            return StatCommands.warCost(author, guild, channel,
+            DBWar war = PWBindings.parseWar(runtimeServices().warDb(), arg0);
+            return StatCommands.warCost(author, guild, null, me, channel,
                     war,
                     flags.contains('u'),
                     flags.contains('i'),
                     flags.contains('c'),
                     flags.contains('l'),
-                    flags.contains('b'));
+                    flags.contains('b'),
+                    false);
         }
 
-        Set<NationOrAlliance> col1 = args.get(0).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(0), author, me);
-        Set<NationOrAlliance> col2 = args.get(1).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(1), author, me);
+        ValueStore store = placeholderLocals(guild, channel, author, me);
+        Set<NationOrAlliance> col1 = args.get(0).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(store, null, guild, args.get(0), false, author, me);
+        Set<NationOrAlliance> col2 = args.get(1).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(store, null, guild, args.get(1), false, author, me);
         long start = MathMan.isInteger(args.get(2)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(2))) : PrimitiveBindings.timestamp(args.get(2));
         Long end = args.size() == 4 ? (MathMan.isInteger(args.get(3)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(3))) : PrimitiveBindings.timestamp(args.get(3))) : null;
 
-        Placeholders<IAttack, Void> phAttacks = Locutus.imp().getCommandManager().getV2().getPlaceholders().get(IAttack.class);
+        Placeholders<IAttack, Void> phAttacks = placeholders(store, IAttack.class);
         Set<AttackType> attackTypes = attackTypeStr == null ? null : PWBindings.AttackTypes(phAttacks.createLocals(guild, author, me), attackTypeStr);
         Set<SuccessType> successTypes = attackSuccesStr == null ? null : PWBindings.SuccessTypes(attackSuccesStr);
         Set<WarType> warTypes = warTypeStr == null ? null : PWBindings.WarTypes(warTypeStr);
@@ -130,79 +127,5 @@ public class WarCostAB extends Command {
                 false,
                 false
         );
-    }
-
-    public static void reimburse(AttackCost cost, DBWar warUrl, Guild guild, IMessageIO io) {
-        if (warUrl == null) {
-            return;
-        }
-
-        GuildDB db = Locutus.imp().getGuildDB(guild);
-        Set<Integer> aaIds = db.getAllianceIds();
-        if (aaIds.isEmpty()) {
-            return;
-        }
-
-        DBNation nation = null;
-        if (aaIds.contains(warUrl.getAttacker_aa())) nation = Locutus.imp().getNationDB().getNationById(warUrl.getAttacker_id());
-        else if (aaIds.contains(warUrl.getDefender_aa())) nation = Locutus.imp().getNationDB().getNationById(warUrl.getDefender_id());
-        else {
-            return;
-        }
-        boolean primary = warUrl.isAttacker(nation);
-
-        Map<ResourceType, Double> total = cost.getTotal(primary);
-        if (total.isEmpty()) {
-            return;
-        }
-
-        CounterStat counterStats = Locutus.imp().getWarDb().getCounterStat(warUrl);
-        if (counterStats == null || !counterStats.isActive) return;
-
-        String offDefStr = primary ? "offensive" : "defensive";
-        String type = offDefStr + " counter";
-
-        switch (counterStats.type) {
-            case UNCONTESTED:
-                type = "Uncontested " + offDefStr + " war";
-                break;
-            case GETS_COUNTERED:
-                if (primary) {
-                    return;
-                }
-                break;
-            case IS_COUNTER:
-                if (!primary) {
-                    return;
-                }
-                break;
-            case ESCALATION:
-                type = "Contested " + offDefStr + " war";
-                break;
-        }
-
-        String totalStr = ResourceType.toString(total);
-
-        String note = "#counter=" + warUrl.warId;
-        List<Transaction2> transactions = db.getTransactionsByNote(note, false);
-        if (!transactions.isEmpty()) {
-            io.send("Already reimbursed:\n" + totalStr +" to " + warUrl.toUrl());
-            return;
-        }
-
-        String title = "Reimburse: ~$" + MathMan.format(ResourceType.convertedTotal(total));
-        String body = "Type: " + type + "\n" + "Amt: " + totalStr;
-
-        String reimburseEmoji = "Reimburse";
-        String cmd = Settings.commandPrefix(true) + "addbalance " + nation.getUrl() + " " + totalStr + " \"" + note + "\"";
-
-        String infoEmoji = "War Info";
-        String infoCmd = Settings.commandPrefix(true) + "warinfo " + warUrl.toUrl();
-
-        io.create()
-                .embed(title, body)
-                .commandButton(cmd, reimburseEmoji)
-                .commandButton(infoCmd, infoEmoji)
-                .send();
     }
 }

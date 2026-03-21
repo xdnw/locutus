@@ -181,15 +181,15 @@ Message: `$who Rose -l`
         return result.toString();
     }
 
-    public static String printSettings(List<GuildSetting> settings) {
+    public static String printSettings(List<? extends GuildSetting<?>> settings) {
         StringBuilder result = new StringBuilder();
         GuildSettingCategory cat = null;
-        for (GuildSetting setting : settings) {
+        for (GuildSetting<?> setting : settings) {
             if (cat != setting.getCategory()) {
                 cat = setting.getCategory();
                 result.append("## Category ").append(cat).append("\n\n");
             }
-            Set<ParametricCallable> callables = setting.getCallables();
+            Set<ParametricCallable<?>> callables = setting.getCallables();
             List<String> commandRefs = callables.stream().map(c -> c.getSlashCommand(Collections.emptyMap())).toList();
             if (commandRefs.isEmpty()) commandRefs = List.of(CM.settings.info.cmd.key(setting.name()).value("<value>").toString());
 
@@ -208,7 +208,7 @@ Message: `$who Rose -l`
         return result.toString();
     }
 
-    private static String printPerms(Parser parser) {
+    private static String printPerms(Parser<?> parser) {
         Annotation permAnnotation = parser.getKey().getAnnotations()[0];
 
         String typeUrlBase = "arguments";
@@ -262,9 +262,14 @@ Message: `$who Rose -l`
         return title + "\n" + body;
     }
 
-    private static List<Map.Entry<Key, Parser>> parsersSorted(ValueStore store) {
-        Map<Key, Parser> parsers = store.getParsers();
-        List<Map.Entry<Key, Parser>> parsersList = new ArrayList<>(parsers.entrySet());
+    @SuppressWarnings("unchecked")
+    private static Map<Key<?>, Parser<?>> parserMap(ValueStore store) {
+        return (Map<Key<?>, Parser<?>>) (Map<?, ?>) store.getParsers();
+    }
+
+    private static List<Map.Entry<Key<?>, Parser<?>>> parsersSorted(ValueStore store) {
+        Map<Key<?>, Parser<?>> parsers = parserMap(store);
+        List<Map.Entry<Key<?>, Parser<?>>> parsersList = new ArrayList<>(parsers.entrySet());
         // sort
         parsersList.sort((o1, o2) -> {
             // toString
@@ -278,10 +283,10 @@ Message: `$who Rose -l`
 
     public static String printPermissions(ValueStore store) {
         StringBuilder result = new StringBuilder();
-        List<Map.Entry<Key, Parser>> parsersList = parsersSorted(store);
+        List<Map.Entry<Key<?>, Parser<?>>> parsersList = parsersSorted(store);
 
-        for (Map.Entry<Key, Parser> entry : parsersList) {
-            Parser parser = entry.getValue();
+        for (Map.Entry<Key<?>, Parser<?>> entry : parsersList) {
+            Parser<?> parser = entry.getValue();
             result.append(printPerms(parser));
             result.append("\n\n---\n\n");
         }
@@ -290,10 +295,10 @@ Message: `$who Rose -l`
 
     public static String printParsers(ValueStore store) {
         StringBuilder result = new StringBuilder();
-        List<Map.Entry<Key, Parser>> parsersList = parsersSorted(store);
+        List<Map.Entry<Key<?>, Parser<?>>> parsersList = parsersSorted(store);
 
-        for (Map.Entry<Key, Parser> entry : parsersList) {
-            Parser parser = entry.getValue();
+        for (Map.Entry<Key<?>, Parser<?>> entry : parsersList) {
+            Parser<?> parser = entry.getValue();
             if (!parser.isConsumer(store)) continue;
             if (parser.getKey().getAnnotation(Autocomplete.class) != null) continue;
             result.append("## " + parser.getNameDescriptionAndExamples(true, true,false, true));

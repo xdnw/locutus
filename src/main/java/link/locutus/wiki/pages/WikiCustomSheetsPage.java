@@ -152,38 +152,6 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.selection_alias.list.cmd),
                 commandMarkdownSpoiler(CM.selection_alias.remove.cmd),
                 commandMarkdownSpoiler(CM.selection_alias.rename.cmd),
-                "# Sheet templates",
-                "A list of columns",
-                "See the type pages above for supported placeholders",
-                "Use `$row` and `$column` to reference the current row and column",
-                "Templates are used alongside a selection to create a sheet tab",
-                "## Add columns to a template",
-                "A template will be created if one does not already exist",
-                "Use the add command multiple times to add more than 25 columns",
-                commandMarkdownSpoiler(CM.sheet_template.add.nation.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.alliance.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.nationoralliance.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.continent.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.guild.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.project.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.treaty.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.ban.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.resourcetype.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.attacktype.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.militaryunit.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.treatytype.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.treasure.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.nationcolor.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.building.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.audittype.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.nationlist.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.bounty.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.city.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.taxbracket.cmd, false) +
-                commandMarkdownSpoiler(CM.sheet_template.add.user.cmd, false),
-                commandMarkdownSpoiler(CM.sheet_template.add.taxdeposit.cmd),
-                commandMarkdownSpoiler(CM.sheet_template.add.iattack.cmd),
-                commandMarkdownSpoiler(CM.sheet_template.add.war.cmd),
 //                commandMarkdownSpoiler(CM.sheet_template.add.transaction.cmd),
 //                commandMarkdownSpoiler(CM.sheet_template.add.trade.cmd),
                 "### View, list, remove or modify a template",

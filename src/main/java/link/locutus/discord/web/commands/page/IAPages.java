@@ -4,6 +4,8 @@ import gg.jte.generated.precompiled.guild.ia.JteauditsGenerated;
 import gg.jte.generated.precompiled.guild.ia.JteiachannelsGenerated;
 import gg.jte.generated.precompiled.guild.ia.JtementorsGenerated;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -55,7 +57,8 @@ public class IAPages {
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
     @NoForm
-    public String iaChannels(WebStore ws, @Me GuildDB db, @Me DBNation me, @Me User author) throws ExecutionException, InterruptedException {
+    public String iaChannels(WebStore ws, @Me GuildDB db, @Me DBNation me, @Me User author)
+            throws ExecutionException, InterruptedException {
         IACategory iaCat = db.getIACategory();
         iaCat.load();
         CompletableFuture<Void> future = iaCat.updateChannelMessages();
@@ -105,13 +108,15 @@ public class IAPages {
         List<IACategory.SortedCategory> categories = new ArrayList<>(Arrays.asList(IACategory.SortedCategory.values()));
         categories.add(null);
 
-//        for (Map.Entry<GuildMessageChannel, IACategory.SortedCategory> entry : categoryMap.entrySet()) {
-//
-//        }
-//
-//        for (Map.Entry<IACategory.SortedCategory, List<GuildMessageChannel>> entry : channelsByCategory.entrySet()) {
-//
-//        }
+        // for (Map.Entry<GuildMessageChannel, IACategory.SortedCategory> entry :
+        // categoryMap.entrySet()) {
+        //
+        // }
+        //
+        // for (Map.Entry<IACategory.SortedCategory, List<GuildMessageChannel>> entry :
+        // channelsByCategory.entrySet()) {
+        //
+        // }
 
         // json data
         // avatars (Map String Url (string))
@@ -150,20 +155,21 @@ public class IAPages {
         JsonElement usersJson = WebUtil.GSON.toJsonTree(usernames);
         JsonElement messagesJson = WebUtil.GSON.toJsonTree(messagesMap);
 
-        return WebStore.render(f -> JteiachannelsGenerated.render(f, null, ws, db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels));
+        return WebStore.render(f -> JteiachannelsGenerated.render(f, null, ws, db, me, author, iaCat, categories,
+                categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson,
+                myChannels));
     }
 
     @Command()
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
     @NoForm
-    public Object memberAuditIndex(WebStore ws, @Me GuildDB db) throws IOException {
+    public Object memberAuditIndex(WebStore ws, ValueStore store, @Me GuildDB db) throws IOException {
         AllianceList alliance = db.getAllianceList();
         IACheckup checkup = new IACheckup(db, alliance, true);
         Map<AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
 
-
-        List<DBNation> allNations = new ArrayList<>(alliance.getNations(true, 0, true));
+        List<DBNation> allNations = new ArrayList<>(alliance.getNations(Locutus.imp().getNationDB(), true, 0, true));
         Collections.sort(allNations, Comparator.comparingInt(DBNation::getCities));
 
         List<DBNation> inactive = allNations.stream().filter(f -> f.active_m() > 4320).collect(Collectors.toList());
@@ -173,12 +179,13 @@ public class IAPages {
                 f -> f.getNation() + " is " + TimeUtil.minutesToTime(f.active_m()) + " inactive"));
         allianceAuditResults.put(AuditType.INACTIVE, inactiveMap);
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, allNations, DBNation.class);
 
         for (DBNation nation : allNations) {
             Map<AuditType, Map.Entry<Object, String>> audit = checkup.checkupSafe(cacheStore, nation, true, true);
             for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : audit.entrySet()) {
-                Map<DBNation, String> nationMap = allianceAuditResults.computeIfAbsent(entry.getKey(), f -> new HashMap<>());
+                Map<DBNation, String> nationMap = allianceAuditResults.computeIfAbsent(entry.getKey(),
+                        f -> new HashMap<>());
                 nationMap.put(nation, entry.getValue().getValue());
             }
         }
@@ -188,9 +195,9 @@ public class IAPages {
         Collections.sort(auditTypes, (o1, o2) -> Integer.compare(o2.severity.ordinal(), o1.severity.ordinal()));
         for (AuditType type : auditTypes) {
             Map<DBNation, String> values = allianceAuditResults.get(type);
-            if (values != null) allianceAuditResultsSorted.put(type, values);
+            if (values != null)
+                allianceAuditResultsSorted.put(type, values);
         }
-
 
         return WebStore.render(f -> JteauditsGenerated.render(f, null, ws, db, allianceAuditResultsSorted));
     }
@@ -199,9 +206,10 @@ public class IAPages {
     @IsAlliance
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @NoForm
-    public Object mentorIndex(WebStore ws, IACategory iaCat, @Me Guild guild, @Me GuildDB db, @Me DBNation me) throws IOException {
+    public Object mentorIndex(WebStore ws, ValueStore store, IACategory iaCat, @Me Guild guild, @Me GuildDB db,
+            @Me DBNation me) throws IOException {
         List<DBNation> mentors = new ArrayList<>();
-        Roles[] mentorRoles = new Roles[]{Roles.INTERVIEWER, Roles.MENTOR};
+        Roles[] mentorRoles = new Roles[] { Roles.INTERVIEWER, Roles.MENTOR };
         for (Roles mentorRole : mentorRoles) {
             for (Member member : mentorRole.getAll(db)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -214,7 +222,8 @@ public class IAPages {
         boolean includeAudit = true;
         long timediff = TimeUnit.DAYS.toMillis(14);
 
-        Set<DBNation> mentees = new HashSet<>(db.getAllianceList().getNations(true, 10000, true));
+        Set<DBNation> mentees = new HashSet<>(
+                db.getAllianceList().getNations(Locutus.imp().getNationDB(), true, 10000, true));
 
         IACheckup checkup = includeAudit ? new IACheckup(db, db.getAllianceList(), true) : null;
         Map<DBNation, List<DBNation>> mentorMenteeMap = new HashMap<>();
@@ -233,17 +242,21 @@ public class IAPages {
 
         for (Map.Entry<DBNation, IAChannel> entry : iaCat.getChannelMap().entrySet()) {
             DBNation mentee = entry.getKey();
-            if (!mentees.contains(mentee)) continue;
+            if (!mentees.contains(mentee))
+                continue;
             User user = mentee.getUser();
-            if (user == null) continue;
+            if (user == null)
+                continue;
 
-            boolean graduated = Roles.hasAny(user, guild, Roles.GRADUATED, Roles.INTERNAL_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON_STAFF, Roles.MILCOM);
+            boolean graduated = Roles.hasAny(user, guild, Roles.GRADUATED, Roles.INTERNAL_AFFAIRS_STAFF,
+                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON_STAFF, Roles.MILCOM);
 
             IAChannel iaChan = iaCat.get(mentee);
             if (iaChan != null) {
                 TextChannel myChan = iaChan.getChannel();
                 if (myChan != null && myChan.getParentCategory() != null) {
-                    IACategory.SortedCategory category = IACategory.SortedCategory.parse(myChan.getParentCategory().getName());
+                    IACategory.SortedCategory category = IACategory.SortedCategory
+                            .parse(myChan.getParentCategory().getName());
                     if (category != null) {
                         categoryMap.put(mentee, category);
                         if (category == IACategory.SortedCategory.ARCHIVE) {
@@ -254,7 +267,6 @@ public class IAPages {
             }
             passedMap.put(mentee, graduated);
 
-
             IACategory.AssignedMentor mentorInfo = iaCat.getMentor(mentee, timediff);
             if (mentorInfo != null) {
                 mentorMenteeMap.computeIfAbsent(mentorInfo.mentor, f -> new ArrayList<>()).add(mentee);
@@ -262,7 +274,8 @@ public class IAPages {
             }
         }
 
-        if (mentorMenteeMap.isEmpty()) return "No mentees found";
+        if (mentorMenteeMap.isEmpty())
+            return "No mentees found";
 
         List<Map.Entry<DBNation, List<DBNation>>> mentorsSorted = new ArrayList<>(mentorMenteeMap.entrySet());
         mentorsSorted.sort(new Comparator<Map.Entry<DBNation, List<DBNation>>>() {
@@ -295,15 +308,17 @@ public class IAPages {
         List<Transaction2> transactions = db.getTransactions(requiredMentorActivity, false);
 
         for (Transaction2 transaction : transactions) {
-            if (!transaction.isSenderNation() || transaction.note == null || !transaction.note.contains("#incentive")) continue;
+            if (!transaction.isSenderNation() || !transaction.hasNoteTag(DepositType.INCENTIVE))
+                continue;
             int mentorId = (int) transaction.sender_id;
             Long last = lastMentorTxByNationId.get(mentorId);
-            if (last != null && last > transaction.tx_datetime) continue;
+            if (last != null && last > transaction.tx_datetime)
+                continue;
             lastMentorTxByNationId.put(mentorId, transaction.tx_datetime);
         }
 
         AllianceList alliance = db.getAllianceList();
-        Set<DBNation> members = alliance.getNations(true, 2880, true);
+        Set<DBNation> members = alliance.getNations(Locutus.imp().getNationDB(), true, 2880, true);
         members.removeIf(f -> !mentees.contains(f));
 
         for (DBNation member : members) {
@@ -316,7 +331,9 @@ public class IAPages {
                 membersNotOnDiscord.add(member);
                 continue;
             }
-            if (Roles.hasAny(user, guild, Roles.GRADUATED, Roles.ADMIN, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.INTERVIEWER, Roles.MILCOM, Roles.MILCOM_NO_PINGS, Roles.ECON, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS)) {
+            if (Roles.hasAny(user, guild, Roles.GRADUATED, Roles.ADMIN, Roles.INTERNAL_AFFAIRS_STAFF,
+                    Roles.INTERNAL_AFFAIRS, Roles.INTERVIEWER, Roles.MILCOM, Roles.MILCOM_NO_PINGS, Roles.ECON,
+                    Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS)) {
                 continue;
             }
             if (!passedMap.getOrDefault(member, false)) {
@@ -331,7 +348,7 @@ public class IAPages {
             }
         }
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(mentees, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, mentees, DBNation.class);
 
         for (DBNation mentor : mentors) {
             List<DBNation> myMentees = mentorMenteeMap.getOrDefault(mentor, Collections.emptyList());
@@ -341,11 +358,14 @@ public class IAPages {
             }
         }
 
-//        return "";//rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
-//                mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
-//                checkup).render().toString();
+        // return "";//rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted,
+        // menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+        // mentors, numPassedMap, membersUnverified, membersNotOnDiscord,
+        // nationsNoIAChan, noMentor, idleMentors,
+        // checkup).render().toString();
 
-        return WebStore.render(f -> JtementorsGenerated.render(f, null, ws, iaCat, db, cacheStore, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+        return WebStore.render(f -> JtementorsGenerated.render(f, null, ws, iaCat, db, cacheStore, mentorsSorted,
+                menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
                 mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
                 checkup));
     }

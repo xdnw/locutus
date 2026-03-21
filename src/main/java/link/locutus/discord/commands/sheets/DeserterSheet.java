@@ -54,7 +54,8 @@ public class DeserterSheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage(args.size(), 1, channel);
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Set<DBAlliance> alliances = PWBindings.alliances(guild, args.get(0), author, me);
+        var store = placeholderLocals(guild, channel, author, me);
+        Set<DBAlliance> alliances = PWBindings.alliances(store, guild, args.get(0), author, me);
         Long cutoff = args.size() >= 2 ? TimeUtil.timeToSec(args.get(1)) * 1000L : null;
         Set<DBNation> filter = args.size() >= 3 ? DiscordUtil.parseNations(guild, author, me, args.get(2), false, false) : null;
         boolean ignoreInactive = flags.contains('a');

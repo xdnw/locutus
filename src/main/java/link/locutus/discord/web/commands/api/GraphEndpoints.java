@@ -169,7 +169,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Get nth loot beige graph by score range", viewable = true)
     @ReturnType(WebGraph.class)
-    public WebGraph NthBeigeLootByScoreRange(@Me @Default GuildDB db, @Default NationList nations, @Default("5") int n,
+    public WebGraph NthBeigeLootByScoreRange(ValueStore store, @Me @Default GuildDB db, @Default NationList nations, @Default("5") int n,
                                              @Default @Timestamp Long snapshotDate) throws IOException {
         if (n <= 0) throw new IllegalArgumentException("N must be greater than 0");
         String filter;
@@ -181,7 +181,7 @@ public class GraphEndpoints {
                     f.active_m() > 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
         }
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db);
-        return new NthBeigeLoot(nationsSet, n).toHtmlJson();
+        return new NthBeigeLoot(store, nationsSet, n).toHtmlJson();
     }
 
     @Command(desc = "Get a game graph by day", viewable = true)
@@ -255,6 +255,7 @@ public class GraphEndpoints {
             Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares""", aliases = {"strengthTierGraph"}, viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph strengthTierGraph(@Me @Default GuildDB db,
+                                      ValueStore store,
                                       NationList coalition1,
                                       NationList coalition2,
                                       @Switch("i") boolean includeInactives,
@@ -269,7 +270,7 @@ public class GraphEndpoints {
         Set<DBNation> allNations = new ObjectOpenHashSet<>();
         allNations.addAll(coalition1Nations);
         allNations.addAll(coalition2Nations);
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, allNations, DBNation.class);
         return new StrengthTierGraph(cacheStore,
                 coalition1.getFilter(),
                 coalition2.getFilter(),

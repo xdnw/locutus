@@ -38,8 +38,8 @@ import java.util.stream.Collectors;
 
 public class MultiReport {
     private final int nationId;
-    private final Map<Integer, Set<PwUid>>  uuidByNation = new LinkedHashMap<>();
-    private final Map<Integer, Map<PwUid, Long>>  diffMap;
+    private final Map<Integer, Set<PwUid>> uuidByNation = new LinkedHashMap<>();
+    private final Map<Integer, Map<PwUid, Long>> diffMap;
     private final Map<Integer, Set<Map.Entry<DBWar, DBWar>>> illegalWarsByMulti;
     private final Map<Integer, Set<DBTrade>> illegalTradesByMulti;
 
@@ -54,10 +54,12 @@ public class MultiReport {
     public String toString() {
         return toString(false);
     }
+
     public String toString(boolean simple) {
         StringBuilder response = new StringBuilder();
 
-        if (diffMap.isEmpty()) return "No multis founds. Networks: " + uuidByNation.getOrDefault(nationId, Collections.emptySet()).size();
+        if (diffMap.isEmpty())
+            return "No multis founds. Networks: " + uuidByNation.getOrDefault(nationId, Collections.emptySet()).size();
 
         response.append("**Possible multis for: **" + PW.getMarkdownUrl(nationId, false)).append("\n");
 
@@ -71,8 +73,10 @@ public class MultiReport {
             DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
 
             String name;
-            if (nation == null) name = nationId + "";
-            else name = nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup();
+            if (nation == null)
+                name = nationId + "";
+            else
+                name = nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup();
 
             response.append("**Possible multis for: **" + PW.getMarkdownUrl(nationId, false)).append("\n");
 
@@ -84,7 +88,8 @@ public class MultiReport {
                 Map<PwUid, Long> diff = entry.getValue();
                 int concurrent = 0;
                 for (Map.Entry<PwUid, Long> timeDiff : diff.entrySet()) {
-                    if (timeDiff.getValue() <= TimeUnit.DAYS.toMillis(1)) concurrent++;
+                    if (timeDiff.getValue() <= TimeUnit.DAYS.toMillis(1))
+                        concurrent++;
                 }
                 response.append("shared networks: " + shared.size() + "/" + multiUUIDS.size())
                         .append(" ( " + concurrent + " same day)")
@@ -95,9 +100,12 @@ public class MultiReport {
                 for (Map.Entry<PwUid, Long> timeDiff : diff.entrySet()) {
                     String timeStr;
                     long uuidTimeDiff = timeDiff.getValue();
-                    if (uuidTimeDiff == 0) timeStr = "concurrent";
-                    else if (uuidTimeDiff >= Integer.MAX_VALUE || uuidTimeDiff < 0) timeStr = "unknown";
-                    else timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, uuidTimeDiff);
+                    if (uuidTimeDiff == 0)
+                        timeStr = "concurrent";
+                    else if (uuidTimeDiff >= Integer.MAX_VALUE || uuidTimeDiff < 0)
+                        timeStr = "unknown";
+                    else
+                        timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, uuidTimeDiff);
                     response.append("- ").append(timeDiff.getKey()).append(": " + timeStr + "\n");
                 }
             }
@@ -108,28 +116,33 @@ public class MultiReport {
                 for (Map.Entry<DBWar, DBWar> warEntry : wars) {
                     String key = warEntry.getKey().warId + "";
                     String value = warEntry.getValue().warId + "";
-                    if (warEntry.getKey().getAttacker_id() == this.nationId || warEntry.getKey().getDefender_id() == this.nationId) {
+                    if (warEntry.getKey().getAttacker_id() == this.nationId
+                            || warEntry.getKey().getDefender_id() == this.nationId) {
                         key = "**" + key + "**";
                     }
-                    if (warEntry.getValue().getAttacker_id() == this.nationId || warEntry.getValue().getDefender_id() == this.nationId) {
+                    if (warEntry.getValue().getAttacker_id() == this.nationId
+                            || warEntry.getValue().getDefender_id() == this.nationId) {
                         value = "**" + value + "**";
                     }
                     simpleList.add("(" + key + "," + value + ")");
                 }
                 response.append("shared wars: " + (simple ? "" : "\n"));
                 response.append(StringMan.getString(simpleList)).append("\n");
-                if (!simple) response.append('\n');
+                if (!simple)
+                    response.append('\n');
             }
 
             List<DBBan> bans = bansByNation.get(nationId);
             if (bans != null && !bans.isEmpty()) {
                 for (DBBan ban : bans) {
                     if (simple) {
-                        response.append(" BAN: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining()) + "\n");
+                        response.append(
+                                " BAN: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining()) + "\n");
                     } else {
                         response.append("ban: " + ban.reason + " | " +
                                 "<@" + ban.discord_id + "> | " +
-                                "remaining:" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining()) + "\n");
+                                "remaining:" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining())
+                                + "\n");
                     }
                 }
             }
@@ -141,7 +154,8 @@ public class MultiReport {
                 for (DBTrade offer : trades) {
                     int per = offer.getPpu();
                     ResourceType type = offer.getResource();
-                    if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000)) || type == ResourceType.CREDITS) {
+                    if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000))
+                            || type == ResourceType.CREDITS) {
                         tradeIds.add(offer.getTradeId());
                         worth += Math.abs(ResourceType.convertedTotal(offer.getResource(), offer.getQuantity()));
                     }
@@ -151,7 +165,8 @@ public class MultiReport {
                     response.append("\nshared trades:\n").append(StringMan.getString(tradeIds))
                             .append(" worth: $" + MathMan.format(worth))
                             .append("\n");
-                    if (!simple) response.append('\n');
+                    if (!simple)
+                        response.append('\n');
                 }
             }
 
@@ -163,9 +178,14 @@ public class MultiReport {
                     for (Transaction2 transfer : transfers) {
                         worth += transfer.convertedTotal();
                     }
-                    response.append("shared transfers: " + transfers.size() + " worth: $" + MathMan.format(worth)).append("\n");
+                    response.append("shared transfers: " + transfers.size() + " worth: $" + MathMan.format(worth))
+                            .append("\n");
                 } else {
-                    response.append("shared transfers:\n- ").append(StringMan.join(transfers.stream().map(Transaction2::toSimpleString).collect(Collectors.toList()), "\n- ")).append("\n\n");
+                    response.append("shared transfers:\n- ")
+                            .append(StringMan.join(
+                                    transfers.stream().map(Transaction2::toSimpleString).collect(Collectors.toList()),
+                                    "\n- "))
+                            .append("\n\n");
                 }
             }
 
@@ -176,9 +196,13 @@ public class MultiReport {
                     for (Map.Entry<Transaction2, Transaction2> pair : proxyTransfers) {
                         worth += pair.getValue().convertedTotal();
                     }
-                    response.append("3rd party transfers: " + proxyTransfers.size() + " worth: $" + MathMan.format(worth)).append("\n");
+                    response.append(
+                            "3rd party transfers: " + proxyTransfers.size() + " worth: $" + MathMan.format(worth))
+                            .append("\n");
                 } else {
-                    List<String> msg = proxyTransfers.stream().map(e -> e.getKey().toSimpleString() + " -> " + e.getValue().toSimpleString()).collect(Collectors.toList());
+                    List<String> msg = proxyTransfers.stream()
+                            .map(e -> e.getKey().toSimpleString() + " -> " + e.getValue().toSimpleString())
+                            .collect(Collectors.toList());
                     response.append("\n3rd party transfers:\n- ").append(StringMan.join(msg, "\n- ")).append("\n\n");
                 }
             }
@@ -189,11 +213,14 @@ public class MultiReport {
                 if (earnings != null || numGames != null) {
                     response.append("BB Wagers:");
                     if (simple) {
-                        if (numGames != null) response.append(" " + MathMan.format(numGames));
-                        if (earnings != null) response.append(" net $" + MathMan.format(earnings));
+                        if (numGames != null)
+                            response.append(" " + MathMan.format(numGames));
+                        if (earnings != null)
+                            response.append(" net $" + MathMan.format(earnings));
                     } else {
                         response.append("\n");
-                        if (earnings != null) response.append("- Net: $" + MathMan.format(earnings)).append("\n");
+                        if (earnings != null)
+                            response.append("- Net: $" + MathMan.format(earnings)).append("\n");
                         if (numGames != null)
                             response.append("- # Wagered Games: " + MathMan.format(numGames)).append("\n");
                     }
@@ -252,14 +279,16 @@ public class MultiReport {
             for (Map.Entry<PwUid, List<Map.Entry<Long, Long>>> entry : uuidsByTime.entrySet()) {
                 PwUid uuid = entry.getKey();
                 List<Map.Entry<Long, Long>> multiTime = multiUuids.get(uuid);
-                if (multiTime == null) continue;
+                if (multiTime == null)
+                    continue;
                 List<Map.Entry<Long, Long>> myTime = entry.getValue();
 
                 long diff = Long.MAX_VALUE;
-                outer:
-                for (Map.Entry<Long, Long> a : multiTime) {
+                outer: for (Map.Entry<Long, Long> a : multiTime) {
                     for (Map.Entry<Long, Long> b : myTime) {
-                        if ((a.getKey() == 0 && a.getValue() != Long.MAX_VALUE) || (b.getKey() == 0 && b.getValue() != Long.MAX_VALUE)) continue;
+                        if ((a.getKey() == 0 && a.getValue() != Long.MAX_VALUE)
+                                || (b.getKey() == 0 && b.getValue() != Long.MAX_VALUE))
+                            continue;
                         if (a.getKey() <= b.getValue() && a.getValue() >= b.getKey()) {
                             diff = 0;
                             break outer;
@@ -318,39 +347,44 @@ public class MultiReport {
 
                         int multiId1 = a.getAttacker_id() == defender ? a.getDefender_id() : a.getAttacker_id();
                         int multiId2 = b.getAttacker_id() == defender ? b.getDefender_id() : b.getAttacker_id();
-                        if (multiId1 == multiId2) continue;
-                        if (a.getAttacker_id() != multiId1 && b.getAttacker_id() != multiId2) continue;
+                        if (multiId1 == multiId2)
+                            continue;
+                        if (a.getAttacker_id() != multiId1 && b.getAttacker_id() != multiId2)
+                            continue;
 
                         if (TimeUnit.MILLISECONDS.toDays(Math.abs(a.getDate() - b.getDate())) > 6) {
                             continue;
                         }
 
-                        illegalWarsByMulti.computeIfAbsent(multiId1, f -> new ObjectLinkedOpenHashSet<>()).add(new KeyValue<>(a, b));
-                        illegalWarsByMulti.computeIfAbsent(multiId2, f -> new ObjectLinkedOpenHashSet<>()).add(new KeyValue<>(b, a));
+                        illegalWarsByMulti.computeIfAbsent(multiId1, f -> new ObjectLinkedOpenHashSet<>())
+                                .add(new KeyValue<>(a, b));
+                        illegalWarsByMulti.computeIfAbsent(multiId2, f -> new ObjectLinkedOpenHashSet<>())
+                                .add(new KeyValue<>(b, a));
                     }
                 }
             }
         }
         illegalWarsByMulti.remove(nationId);
 
-
         this.illegalTradesByMulti = new LinkedHashMap<>();
         List<DBTrade> myTrades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nationId, 0);
         for (DBTrade offer : myTrades) {
-            if ((offer.getSeller() == (nationId) || multis.contains(offer.getSeller())) && (offer.getBuyer() == (nationId) || multis.contains(offer.getBuyer()))) {
+            if ((offer.getSeller() == (nationId) || multis.contains(offer.getSeller()))
+                    && (offer.getBuyer() == (nationId) || multis.contains(offer.getBuyer()))) {
                 int multiId = (offer.getSeller() == (nationId)) ? offer.getBuyer() : offer.getSeller();
                 illegalTradesByMulti.computeIfAbsent(multiId, f -> new ObjectLinkedOpenHashSet<>()).add(offer);
             }
         }
 
         {
-          boolean sentBank = false;
+            boolean sentBank = false;
             List<Transaction2> transfers = trimTransfers(Locutus.imp().getBankDB().getNationTransfers(nationId, 0));
             for (Transaction2 transfer : transfers) {
                 if (transfer.banker_nation == nationId) {
                     if (multis.contains((int) transfer.getReceiver())) {
                         sentBank = true;
-                        illegalTransfers.computeIfAbsent((int) transfer.getReceiver(), f -> new HashSet<>()).add(transfer);
+                        illegalTransfers.computeIfAbsent((int) transfer.getReceiver(), f -> new HashSet<>())
+                                .add(transfer);
                     }
                 } else {
                     if (multis.contains(transfer.banker_nation)) {
@@ -361,13 +395,15 @@ public class MultiReport {
             }
 
             if (sentBank) {
-//                body.append("**Illegal Bank transfers**:\n - " + StringMan.join(illegalTransfers, "\n - ")).append("\n\n");
+                // body.append("**Illegal Bank transfers**:\n - " +
+                // StringMan.join(illegalTransfers, "\n - ")).append("\n\n");
             }
 
             Map<Long, List<Transaction2>> sharedTransfers = toShared(transfers);
             Set<Long> sharedKeys = new LongOpenHashSet();
             for (int otherId : multis) {
-                Map<Long, List<Transaction2>> multiTransfers = toShared(trimTransfers(Locutus.imp().getBankDB().getNationTransfers(otherId, 0)));
+                Map<Long, List<Transaction2>> multiTransfers = toShared(
+                        trimTransfers(Locutus.imp().getBankDB().getNationTransfers(otherId, 0)));
                 for (Map.Entry<Long, List<Transaction2>> entry : multiTransfers.entrySet()) {
                     if (sharedTransfers.containsKey(entry.getKey())) {
                         sharedKeys.add(entry.getKey());
@@ -376,7 +412,7 @@ public class MultiReport {
                 }
             }
 
-//            Set<String> illegalThirdPartyTransfers = new HashSet<>();
+            // Set<String> illegalThirdPartyTransfers = new HashSet<>();
 
             for (long key : sharedKeys) {
                 List<Transaction2> list = sharedTransfers.get(key);
@@ -385,19 +421,24 @@ public class MultiReport {
                         Transaction2 a = list.get(i);
                         Transaction2 b = list.get(j);
 
-                        if (a.receiver_type == b.receiver_type) continue;
+                        if (a.receiver_type == b.receiver_type)
+                            continue;
 
                         long diff = Math.abs(a.getDate() - b.getDate());
-                        if (TimeUnit.MILLISECONDS.toDays(diff) > 2) continue;
+                        if (TimeUnit.MILLISECONDS.toDays(diff) > 2)
+                            continue;
 
                         int nationA = (int) (a.receiver_type == 2 ? a.getSender() : a.getReceiver());
                         int nationB = (int) (b.receiver_type == 2 ? b.getSender() : b.getReceiver());
 
-                        if (nationA == nationB) continue;
+                        if (nationA == nationB)
+                            continue;
 
                         Map.Entry<Transaction2, Transaction2> entry = new KeyValue<>(a, b);
-                        illegalIndirectTransfers.computeIfAbsent(nationA, f -> new ObjectLinkedOpenHashSet<>()).add(entry);
-                        illegalIndirectTransfers.computeIfAbsent(nationB, f -> new ObjectLinkedOpenHashSet<>()).add(entry);
+                        illegalIndirectTransfers.computeIfAbsent(nationA, f -> new ObjectLinkedOpenHashSet<>())
+                                .add(entry);
+                        illegalIndirectTransfers.computeIfAbsent(nationB, f -> new ObjectLinkedOpenHashSet<>())
+                                .add(entry);
                     }
                 }
             }
@@ -424,12 +465,12 @@ public class MultiReport {
     }
 
     private List<Transaction2> trimTransfers(List<Transaction2> transfers) {
-        transfers.removeIf(t -> t.note != null && t.note.toLowerCase().contains("of the alliance bank inventory"));
+        transfers.removeIf(Transaction2::isLootTransfer);
         return transfers;
     }
 
     /**
-     * Maps a list of  wars to the opponent's nation id
+     * Maps a list of wars to the opponent's nation id
      */
     private Map<Integer, List<DBWar>> getDefenders(int nationId) {
         Set<DBWar> myWars = Locutus.imp().getWarDb().getWarsByNation(nationId);
@@ -450,37 +491,12 @@ public class MultiReport {
         return map;
     }
 
-    private Map<Integer, List<Map.Entry<Integer, Transaction2>>> getWarTransfers(int nationId) {
-        Map<Integer, List<Map.Entry<Integer, Transaction2>>> warTransfers = new HashMap<>();
-
-        List<Transaction2> transfers = Locutus.imp().getBankDB().getNationTransfers(nationId, 0);
-        for (Transaction2 transfer : transfers) {
-            if (transfer.note == null) continue;
-
-            String[] split = transfer.note.split(" defeated ");
-            if (split.length != 2) continue;
-            String name1 = split[0];
-            String name2 = split[1].split("'s nation and captured")[0];
-            try {
-                DBNation nation1 = Locutus.imp().getNationDB().getNationByLeader(name1);
-                DBNation nation2 = Locutus.imp().getNationDB().getNationByLeader(name2);
-                if (nation1 == null || nation2 == null) {
-                    continue;
-                }
-                int otherId = nation1.getNation_id() == nationId ? nation2.getNation_id() : nation1.getNation_id();
-                warTransfers.computeIfAbsent(otherId, i -> Lists.newArrayList()).add(new KeyValue<>(nationId, transfer));
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-        }
-        return warTransfers;
-    }
-
     public List<BBGame> getChallengeGames(int nationid) {
         return Locutus.imp().getBaseballDB().getBaseballGames(new Consumer<SelectBuilder>() {
             @Override
             public void accept(SelectBuilder f) {
-                f.where(QueryCondition.greater("wager", 0).and(QueryCondition.equals("home_nation_id", nationid).or(QueryCondition.equals("away_nation_id", nationid))));
+                f.where(QueryCondition.greater("wager", 0).and(QueryCondition.equals("home_nation_id", nationid)
+                        .or(QueryCondition.equals("away_nation_id", nationid))));
             }
         });
     }
@@ -499,7 +515,6 @@ public class MultiReport {
             }
         }
         return 0l;
-
 
     }
 }

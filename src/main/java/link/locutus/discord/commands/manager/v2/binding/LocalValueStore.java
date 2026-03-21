@@ -4,11 +4,11 @@ package link.locutus.discord.commands.manager.v2.binding;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class LocalValueStore<T> extends DelegateValueStore<T> {
-    private final ValueStore<T> global;
+public class LocalValueStore extends DelegateValueStore {
+    private final ValueStore global;
 
-    public LocalValueStore(ValueStore<T> parent) {
-        super(new SimpleValueStore<>());
+    public LocalValueStore(ValueStore parent) {
+        super(new SimpleValueStore());
         this.global = parent;
     }
 
@@ -17,7 +17,7 @@ public class LocalValueStore<T> extends DelegateValueStore<T> {
         if (key.getType() == ValueStore.class) {
             return new ProviderParser<>((Key) key, this);
         }
-        ValueStore<T> local = getParent();
+        ValueStore local = getParent();
         Parser<V> value = local.get(key);
 
         if (value == null) value = global.get(key);

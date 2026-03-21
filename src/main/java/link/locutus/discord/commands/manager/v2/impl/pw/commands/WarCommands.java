@@ -216,7 +216,7 @@ public class WarCommands {
     @WhitelistPermission
     @CoalitionPermission(Coalition.RAIDPERMS)
     @RolePermission(Roles.BEIGE_ALERT)
-    public String beigeReminder(@Me GuildDB db, @Me DBNation me,
+    public String beigeReminder(ValueStore store, @Me GuildDB db, @Me DBNation me,
                                 @Filter("*,#color=beige,#vm_turns=0,#isinwarrange=1|*,#vm_turns>0,#vm_turns<168,#isinwarrange=1") Set<DBNation> targets,
                                 @Arg("Require targets to have at least this much loot\n" +
                                  "Resources are valued at weekly market average prices")
@@ -240,7 +240,7 @@ public class WarCommands {
         targets.removeIf(f -> f.getVm_turns() > 14 * 12);
 
         if (requiredLoot != null && requiredLoot != 0) {
-            ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(targets, DBNation.class);
+            ValueStore cacheStore = PlaceholderCache.createCache(store, targets, DBNation.class);
             targets.removeIf(f -> f.lootTotal(cacheStore) < requiredLoot);
         }
 
@@ -618,7 +618,7 @@ public class WarCommands {
             if (milcom != null) response.append(milcom.getAsMention());
         } else {
             response.append("Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP);
-            response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.UNBLOCKADE_REQUESTS.name() + "\n");
+            response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.info.cmd.toSlashMention() + " with key: `" + GuildKey.UNBLOCKADE_REQUESTS.name() + "`\n");
 
         }
         RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
@@ -1031,7 +1031,7 @@ public class WarCommands {
     @Command(desc = "Find nations who aren't protected, or are in an alliance unable to provide suitable counters\n" +
             "Not suitable if you have no military", viewable = true)
     @RolePermission(Roles.MEMBER)
-    public String unprotected(@Me GuildDB db, Set<DBNation> targets, @Me DBNation me,
+    public String unprotected(ValueStore store, @Me GuildDB db, Set<DBNation> targets, @Me DBNation me,
                               @Switch("r") @Default("10") @Range(min=1, max=25) Integer numResults,
                               @Arg("Ignore the configured Do Not Raid list")
                               @Switch("d") boolean ignoreDNR,
@@ -1064,7 +1064,7 @@ public class WarCommands {
 
         List<DBNation> viewedNations = counterChance.subList(0, Math.min(numResults, counterChance.size()))
                 .stream().map(Map.Entry::getKey).toList();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, viewedNations, DBNation.class);
 
         for (int i = 0; i < Math.min(numResults, counterChance.size()); i++) {
             Map.Entry<DBNation, Double> entry = counterChance.get(i);
@@ -1124,7 +1124,7 @@ public class WarCommands {
                     "Filter Options"
             })
     @RolePermission(Roles.MEMBER)
-    public void war(@Me @Default User author, @Me IMessageIO channel, @Me DBNation me,
+    public void war(ValueStore store, @Me @Default User author, @Me IMessageIO channel, @Me DBNation me,
                     @Default("~enemies") Set<DBNation> targets,
 
                     @Arg(value = "Number of results to return\nDefaults to 8", group = 0)
@@ -1265,7 +1265,7 @@ public class WarCommands {
                 .map(Map.Entry::getKey)
                 .limit(numResults)
                 .toList();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, viewedNations, DBNation.class);
 
         for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
             if (count++ == numResults) break;
@@ -1984,7 +1984,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a sheet of raid targets", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String raidSheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author,
+    public String raidSheet(ValueStore store, @Me IMessageIO io, @Me GuildDB db, @Me @Default User author,
                             Set<DBNation> attackers,
                             Set<DBNation> targets,
                             @Switch("i") boolean includeInactiveAttackers,
@@ -2056,7 +2056,7 @@ public class WarCommands {
 
         // sort targets by loot
         List<DBNation> targetsSorted = new ObjectArrayList<>(targets);
-        ValueStore<DBNation> targetCacheStore = PlaceholderCache.createCache(targets, DBNation.class);
+        ValueStore targetCacheStore = PlaceholderCache.createCache(store, targets, DBNation.class);
         targetsSorted.sort((o1, o2) -> {
             Map<ResourceType, Double> loot1 = o1.getLootRevenueTotal(targetCacheStore);
             Map<ResourceType, Double> loot2 = o2.getLootRevenueTotal(targetCacheStore);
@@ -2963,7 +2963,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a sheet of alliance/nation/city military unit and building counts (MMR)", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String MMRSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet,
+    public String MMRSheet(ValueStore store, @Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet,
                            @Switch("f") boolean forceUpdate,
                            @Arg("List the military building count of each city instead of each nation")
                            @Switch("c") boolean showCities,
@@ -3028,7 +3028,7 @@ public class WarCommands {
             new SimpleNationList(nationSet).updateCities(true);
         }
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, nationSet, DBNation.class);
 
         for (Map.Entry<Integer, Set<DBNation>> entry : byAlliance.entrySet()) {
             int aaId = entry.getKey();
@@ -3893,7 +3893,7 @@ public class WarCommands {
 
         Map<DBNation, String> mailErrors = new LinkedHashMap<>();
         Map<DBNation, String> dmErrors = new LinkedHashMap<>();
-        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Sending messages...");
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Sending messages...");
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
             subject = entry.getValue().getKey();
@@ -3920,10 +3920,7 @@ public class WarCommands {
 
             if (System.currentTimeMillis() - start > 10000) {
                 start = System.currentTimeMillis();
-                if (msgFuture != null) {
-                    IMessageBuilder tmp = msgFuture.getNow(null);
-                    if (tmp != null) msgFuture = tmp.clear().append("Sending to " + attacker.getNation()).send();
-                }
+                channel.updateOptionally(msgFuture, "Sending to " + attacker.getNation());
             }
         }
 
@@ -4640,12 +4637,12 @@ public class WarCommands {
                                 CM.coalition.create.cmd.coalitionName(Coalition.ALLIES.name());
                     }
                     aaIds = new IntOpenHashSet(Arrays.asList(me.getAlliance_id()));
-                    counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 0, true));
+                    counterWith = new HashSet<>(new AllianceList(aaIds).getNations(Locutus.imp().getNationDB(), true, 0, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(allies));
                 }
             } else {
-                counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 0, true));
+                counterWith = new HashSet<>(new AllianceList(aaIds).getNations(Locutus.imp().getNationDB(), true, 0, true));
             }
         }
         counterWith.removeIf(nation -> nation.getAlliance_id() == 0);
@@ -4795,8 +4792,8 @@ public class WarCommands {
                               @Switch("m") boolean sendMail) {
         if (attackers == null) {
             AllianceList alliance = db.getAllianceList();
-            if (alliance != null && !alliance.isEmpty()) {
-                attackers = new HashSet<>(alliance.getNations(true, 2440, true));
+            if (alliance != null && !alliance.isEmpty(Locutus.imp().getNationDB())) {
+                attackers = new HashSet<>(alliance.getNations(Locutus.imp().getNationDB(), true, 2440, true));
             } else {
                 throw new IllegalArgumentException("This guild is not in an alliance, please provide the nations to counter with");
             }

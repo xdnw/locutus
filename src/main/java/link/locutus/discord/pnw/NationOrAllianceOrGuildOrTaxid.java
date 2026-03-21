@@ -1,5 +1,6 @@
 package link.locutus.discord.pnw;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.db.GuildDB;
@@ -110,8 +111,8 @@ public interface NationOrAllianceOrGuildOrTaxid {
         else if (isGuild()) {
             GuildDB db = asGuild();
             AllianceList aaList = db.getAllianceList();
-            if (aaList != null && !aaList.isEmpty()) {
-                nations.addAll(aaList.getNations(true, 0, true));
+            if (aaList != null && !aaList.isEmpty(Locutus.imp().getNationDB())) {
+                nations.addAll(aaList.getNations(Locutus.imp().getNationDB(), true, 0, true));
             } else {
                 Set<Member> membersWithRole = Roles.MEMBER.getAll(db);
                 for (Member member : membersWithRole) {
@@ -137,15 +138,16 @@ public interface NationOrAllianceOrGuildOrTaxid {
         else if (isGuild()) {
             GuildDB db = asGuild();
             AllianceList aaList = db.getAllianceList();
-            if (aaList == null && !aaList.isEmpty()) {
+            if (aaList == null || aaList.isEmpty(Locutus.imp().getNationDB())) {
                 for (Member member : db.getGuild().getMembers()) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {
                         nations.add(nation);
                     }
                 }
+                return nations;
             }
-            return aaList.getNations();
+            return aaList.getNations(Locutus.imp().getNationDB());
         }
         else if (isAlliance()) {
             nations.addAll(asAlliance().getNations(false, 0, false));

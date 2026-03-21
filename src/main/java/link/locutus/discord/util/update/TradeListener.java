@@ -173,8 +173,8 @@ public class TradeListener {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
                 AllianceList allianceList = db.getAllianceList();
-                if (allianceList == null || allianceList.isEmpty()) return;
-                Set<DBAlliance> alliances = allianceList.getAlliances();
+                if (allianceList == null || allianceList.isEmpty(Locutus.imp().getNationDB())) return;
+                Set<DBAlliance> alliances = allianceList.getAlliances(Locutus.imp().getNationDB());
 //                NationColor allianceColor = alliance.getColor();
 
                 StringBuilder aaMessage = new StringBuilder(message);

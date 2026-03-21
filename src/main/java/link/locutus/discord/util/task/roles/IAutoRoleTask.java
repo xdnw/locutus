@@ -22,5 +22,5 @@ public interface IAutoRoleTask {
 
     Function<Integer, Boolean> getAllowedAlliances();
 
-    String syncDB();
+    AutoRoleSyncState syncDB();
 }

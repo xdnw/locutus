@@ -1,11 +1,12 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
@@ -31,7 +32,7 @@ public class SheetCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={SheetTemplate.class})
+    @Binding(types={SheetTemplate.class, WildcardType.class})
     public List<String> SheetTemplate (@Me GuildDB db, String input) {
         List<String> options = new ArrayList<>(db.getSheetManager().getSheetTemplateNames(true));
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true, false);
@@ -47,8 +48,12 @@ public class SheetCompleter extends BindingHelper {
     @Autocomplete
     @PlaceholderType
     @Binding(types = {Class.class, WildcardType.class}, multiple = true)
-    public List<String> PlaceholderType(String input) {
-        Set<Class<?>> optionClasses = Locutus.cmd().getV2().getPlaceholders().getTypes();
+    public List<String> PlaceholderType(ValueStore store, String input) {
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            return List.of();
+        }
+        Set<Class<?>> optionClasses = registry.getTypes();
         List<String> options = optionClasses.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true, false);
     }

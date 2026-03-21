@@ -2002,7 +2002,7 @@ public class GrantCommands {
                 }
             }
             if (limit == null) {
-                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.key(GuildKey.GRANT_TEMPLATE_LIMITS.name()).toSlashMention() + ")\n" +
+                throw new IllegalArgumentException("Grant template limits are set (see: `" + CM.settings.info.cmd.key(GuildKey.GRANT_TEMPLATE_LIMITS.name()).toSlashMention() + "`)\n" +
                         "However you have none of the roles set in the limits.");
             }
         }
@@ -2021,7 +2021,7 @@ public class GrantCommands {
                 if (duration == null) duration = TimeUnit.DAYS.toMillis(1);
                 // if duration < 2h
                 if (duration < TimeUnit.HOURS.toMillis(2)) {
-                    throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_LIMIT_DELAY.name() + ")\n" +
+                    throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.GRANT_LIMIT_DELAY.name() + "`)\n" +
                             "However the duration is less than 2 hours.");
                 }
                 // get grants in past timeframe

@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -111,7 +110,7 @@ public class ParametricCallable<T> implements ICommand<T> {
         // of parameters
         int numOptional = 0;
 
-        LocalValueStore locals = new LocalValueStore<>(store);
+        LocalValueStore locals = new LocalValueStore(store);
 
         Set<String> flagList = new ObjectLinkedOpenHashSet<>();
 
@@ -324,7 +323,7 @@ public class ParametricCallable<T> implements ICommand<T> {
                 group = group.substring(1, group.length() - 1);
 
                 // validate command and arguments
-                Locutus.imp().getCommandManager().getV2().validateSlashCommand(group.substring(1), true);
+                getRoot().validateSlashCommand(group.substring(1), true);
 
                 return group;
             });
@@ -466,10 +465,10 @@ public class ParametricCallable<T> implements ICommand<T> {
     }
 
     public Map<ParameterData, Map.Entry<String, Object>> parseArgumentsToMap(ArgumentStack stack) {
-        ValueStore<?> store = stack.getStore();
+        ValueStore store = stack.getStore();
         validatePermissions(store, stack.getPermissionHandler());
 
-        ValueStore<?> locals = store;
+        ValueStore locals = store;
         locals.addProvider(Key.of(ParametricCallable.class, Me.class), this);
 
         Map<ParameterData, Map.Entry<String, Object>> argumentMap = new LinkedHashMap<>();

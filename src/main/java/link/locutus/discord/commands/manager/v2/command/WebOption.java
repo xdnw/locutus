@@ -20,7 +20,9 @@ public class WebOption {
     private Key key;
     private boolean allowCompletions;
     private boolean allowCustomOption;
+
     private List<String> options;
+
     private TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions;
     private boolean allowQuery;
     private boolean largeQuery;

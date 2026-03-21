@@ -165,7 +165,7 @@ public class WebRoot {
             });
         }).start(port);
 
-        this.pageHandler = new PageHandler(Locutus.imp().getCommandManager().getV2().getPlaceholders());
+        this.pageHandler = new PageHandler(Locutus.imp().getCommandManager().getV2());
         this.mcpHandler = pageHandler.createMCP();
         this.webDB = new WebDB();
 

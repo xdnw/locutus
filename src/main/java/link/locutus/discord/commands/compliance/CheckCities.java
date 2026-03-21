@@ -28,9 +28,12 @@ import link.locutus.discord.util.task.mail.MailApiResponse;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public class CheckCities extends Command {
     private final Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
@@ -124,7 +127,7 @@ public class CheckCities extends Command {
         if (mail && keys == null)
             throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createIsolatedCache(nations, DBNation.class);
 
         for (DBNation nation : nations) {
             int failed = 0;
@@ -134,17 +137,10 @@ public class CheckCities extends Command {
                 auditResult = auditResults.get(nation);
             }
             if (auditResult == null) {
-                CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Fetching city info: (this will take a minute)");
+                CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Fetching city info: (this will take a minute)");
                 auditResult = checkup.checkup(cacheStore, nation, individual, false);
                 auditResults.put(nation, auditResult);
-                try {
-                    IMessageBuilder msg = msgFuture.get();
-                    if (msg != null && msg.getId() > 0) {
-                        channel.delete(msg.getId());
-                    }
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
+                channel.deleteOptionally(msgFuture);
             }
             if (auditResult != null) {
                 auditResult = IACheckup.simplify(auditResult);

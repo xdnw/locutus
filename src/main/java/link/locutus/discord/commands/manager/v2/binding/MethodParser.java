@@ -208,6 +208,7 @@ public class MethodParser<T> implements Parser<T> {
                 Parser child = store.get(dependency);
                 if (child == null) {
                     Logg.text("Check consumer " + StringMan.getString(getKey()) + " | " + dependency);
+                    continue;
                 }
                 if (child.isConsumer(store)) {
                     isConsumer = true;

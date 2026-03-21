@@ -22,13 +22,11 @@ public class WebCoalitions {
     public static class WebCoalitionMember {
         public final long id;
         public final String name;
-        public final String type;
         public final boolean deleted;
 
-        public WebCoalitionMember(long id, String name, String type, boolean deleted) {
+        public WebCoalitionMember(long id, String name, boolean deleted) {
             this.id = id;
             this.name = name;
-            this.type = type;
             this.deleted = deleted;
         }
     }

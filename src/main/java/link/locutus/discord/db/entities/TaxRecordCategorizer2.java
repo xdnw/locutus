@@ -63,7 +63,6 @@ public class TaxRecordCategorizer2 {
     private final double[] incomeTotal;
     private final double[] expenseTotal;
 
-
     public enum TransactionType {
         TAX(false),
         DEPOSIT(false),
@@ -92,7 +91,8 @@ public class TaxRecordCategorizer2 {
     }
 
     public double[][] movingAverage(double[][] byTurn, int window) {
-        if (window <= 1) throw new IllegalArgumentException("Windows must be >1");
+        if (window <= 1)
+            throw new IllegalArgumentException("Windows must be >1");
         double[][] copy = new double[byTurn.length][ResourceType.values.length];
 
         double[] total = ResourceType.getBuffer();
@@ -115,7 +115,9 @@ public class TaxRecordCategorizer2 {
         return copy;
     }
 
-    public Map<TaxRecordCategorizer2.TransactionType, double[][]> sumTransfersByCategoryByTurn(long turnStart, long turnEnd, List<TaxDeposit> taxRecords, List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>> transfers) {
+    public Map<TaxRecordCategorizer2.TransactionType, double[][]> sumTransfersByCategoryByTurn(long turnStart,
+            long turnEnd, List<TaxDeposit> taxRecords,
+            List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>> transfers) {
         int len = (int) (turnEnd - turnStart + 1);
 
         double[][] totalGrantsByTurn = new double[len][ResourceType.values.length];
@@ -127,15 +129,19 @@ public class TaxRecordCategorizer2 {
         for (TaxDeposit record : taxRecords) {
             long turn = record.getTurn();
             int turnRel = (int) (turn - turnStart);
-            if (turnRel >= totalTaxByTurn.length || turnRel < 0) continue;
-            if (!acceptsNation.test(record.nationId)) continue;
+            if (turnRel >= totalTaxByTurn.length || turnRel < 0)
+                continue;
+            if (!acceptsNation.test(record.nationId))
+                continue;
 
             ResourceType.add(totalTaxByTurn[turnRel], record.resources);
         }
 
         for (Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType> transfer : transfers) {
             Transaction2 record = transfer.getKey();
-            if ((!acceptsNation.test((int) record.receiver_id) || !record.isReceiverNation()) && (!acceptsNation.test((int) record.sender_id) || !record.isSenderNation())) continue;
+            if ((!acceptsNation.test((int) record.receiver_id) || !record.isReceiverNation())
+                    && (!acceptsNation.test((int) record.sender_id) || !record.isSenderNation()))
+                continue;
             double[][] type;
             switch (transfer.getValue()) {
                 case TAX:
@@ -155,7 +161,8 @@ public class TaxRecordCategorizer2 {
             }
             long turn = TimeUtil.getTurn(record.tx_datetime);
             int turnRel = (int) (turn - turnStart);
-            if (turnRel >= type.length || turnRel < 0) continue;
+            if (turnRel >= type.length || turnRel < 0)
+                continue;
 
             ResourceType.add(type[turnRel], record.resources);
         }
@@ -168,12 +175,13 @@ public class TaxRecordCategorizer2 {
         return result;
     }
 
-
     public Map<Integer, List<Map.Entry<Transaction2, TransactionType>>> getTransactionsByBracketByType() {
         return transactionsByBracketByType;
     }
 
-    public TaxRecordCategorizer2(GuildDB db, long start, long end, boolean dontRequireGrant, boolean dontRequireTagged, boolean dontRequireExpiry, boolean includeDeposits, Predicate<Integer> acceptsNation, Consumer<String> errors) throws Exception {
+    public TaxRecordCategorizer2(GuildDB db, long start, long end, boolean dontRequireGrant, boolean dontRequireTagged,
+            boolean dontRequireExpiry, boolean includeDeposits, Predicate<Integer> acceptsNation,
+            Consumer<String> errors) throws Exception {
         this.db = db;
         this.aaIds = db.getAllianceIds();
         this.dontRequireGrant = dontRequireGrant;
@@ -185,24 +193,16 @@ public class TaxRecordCategorizer2 {
         Set<Predicate<Transaction2>> expenseRequirements = new HashSet<>();
         if (!dontRequireTagged) {
             expenseRequirements.add(tx -> {
-                if (aaIds.contains((int) tx.sender_id) && tx.isSenderAA()) return true;
-                Map<DepositType, Object> noteMap = tx.getNoteMap();
-                for (Map.Entry<DepositType, Object> entry : noteMap.entrySet()) {
-                    if (entry.getKey().getParent() != null) continue;
-                    if (entry.getValue() instanceof Number n) {
-                        if (aaIds.contains(n.intValue())) return true; {
-                            return true;
-                        }
-                    }
-                }
-                return false;
+                if (aaIds.contains((int) tx.sender_id) && tx.isSenderAA())
+                    return true;
+                return tx.getTaggedAccountId() != 0;
             });
         }
         if (!dontRequireGrant) {
-            expenseRequirements.add(tx -> tx.note != null && tx.note.contains("#grant"));
+            expenseRequirements.add(tx -> tx.hasNoteTag(DepositType.GRANT));
         }
         if (!dontRequireExpiry) {
-            expenseRequirements.add(tx -> tx.note != null && (tx.note.contains("#expire") || tx.note.contains("#decay")));
+            expenseRequirements.add(tx -> tx.hasNoteTag(DepositType.EXPIRE) || tx.hasNoteTag(DepositType.DECAY));
         }
 
         this.alliances = new IntOpenHashSet();
@@ -216,16 +216,18 @@ public class TaxRecordCategorizer2 {
         this.taxes.removeIf(f -> !acceptsNation.test(f.nationId));
         getTaxes().removeIf(f -> f.date < start || f.date > end);
 
-        this.brackets = new HashMap<>(db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(60)));
+        this.brackets = new HashMap<>(
+                db.getAllianceList().getTaxBrackets(Locutus.imp().getNationDB(), TimeUnit.MINUTES.toMillis(60)));
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
             TaxDeposit tax = getTaxes().get(i);
             if (tax.tax_id > 0 && !brackets.containsKey(tax.tax_id)) {
-                TaxBracket bracket = new TaxBracket(tax.tax_id, tax.allianceId, "", tax.moneyRate, tax.resourceRate, System.currentTimeMillis());
+                TaxBracket bracket = new TaxBracket(tax.tax_id, tax.allianceId, "", tax.moneyRate, tax.resourceRate,
+                        System.currentTimeMillis());
                 brackets.put(tax.tax_id, bracket);
             }
         }
 
-        this.allNations = new ArrayList<>(db.getAllianceList().getNations(true, 0, true));
+        this.allNations = new ArrayList<>(db.getAllianceList().getNations(Locutus.imp().getNationDB(), true, 0, true));
         this.allNations.removeIf(f -> !acceptsNation.test(f.getNation_id()));
         this.nationsByBracket = new Int2ObjectOpenHashMap<>();
         this.bracketsByNation = new Int2ObjectOpenHashMap<>();
@@ -257,7 +259,8 @@ public class TaxRecordCategorizer2 {
         for (TaxDeposit tax : getTaxes()) {
             if (tax.tax_id <= 0) {
                 TaxBracket currentBracket = getBracketsByNation().get(tax.nationId);
-                if (currentBracket != null && currentBracket.moneyRate == tax.moneyRate && currentBracket.rssRate == tax.resourceRate) {
+                if (currentBracket != null && currentBracket.moneyRate == tax.moneyRate
+                        && currentBracket.rssRate == tax.resourceRate) {
                     tax.tax_id = currentBracket.taxId;
                 } else {
                     long pair = MathMan.pairInt(tax.moneyRate, tax.resourceRate);
@@ -269,12 +272,14 @@ public class TaxRecordCategorizer2 {
             }
 
             long turn = TimeUtil.getTurn(tax.date);
-            Map<Long, Integer> nationBracketByTime = nationToBracketByTimeMap.computeIfAbsent(tax.nationId, f -> new Long2IntOpenHashMap());
+            Map<Long, Integer> nationBracketByTime = nationToBracketByTimeMap.computeIfAbsent(tax.nationId,
+                    f -> new Long2IntOpenHashMap());
             nationBracketByTime.put(turn, tax.tax_id);
 
             depositsByBracket.computeIfAbsent(tax.tax_id, f -> new ArrayList<>()).add(tax);
 
-            Map<Integer, Integer> nationDepositCount = getBracketToNationDepositCount().computeIfAbsent(tax.tax_id, f -> new Int2IntOpenHashMap());
+            Map<Integer, Integer> nationDepositCount = getBracketToNationDepositCount().computeIfAbsent(tax.tax_id,
+                    f -> new Int2IntOpenHashMap());
             nationDepositCount.put(tax.nationId, nationDepositCount.getOrDefault(tax.nationId, 0) + 1);
             getAllNationDepositCount().put(tax.nationId, getAllNationDepositCount().getOrDefault(tax.nationId, 0) + 1);
         }
@@ -300,7 +305,8 @@ public class TaxRecordCategorizer2 {
             }
             getExpenseTransfers().addAll(depositTransfers);
         }
-        getExpenseTransfers().removeIf(f -> ((!acceptsNation.test((int) f.receiver_id) || !f.isReceiverNation()) && (!acceptsNation.test((int) f.sender_id) || !f.isSenderNation())));
+        getExpenseTransfers().removeIf(f -> ((!acceptsNation.test((int) f.receiver_id) || !f.isReceiverNation())
+                && (!acceptsNation.test((int) f.sender_id) || !f.isSenderNation())));
 
         Collections.sort(getExpenseTransfers(), new Comparator<Transaction2>() {
             @Override
@@ -328,7 +334,8 @@ public class TaxRecordCategorizer2 {
             }
             if (taxId == null) {
                 TaxBracket bracket = getBracketsByNation().get(nationId);
-                if (bracket != null) taxId = bracket.taxId;
+                if (bracket != null)
+                    taxId = bracket.taxId;
             }
             if (taxId == null) {
                 try {
@@ -344,14 +351,16 @@ public class TaxRecordCategorizer2 {
             TransactionType type;
             if (transfer.isSenderNation()) {
                 type = TransactionType.DEPOSIT;
-            } else if (transfer.note != null && transfer.note.toLowerCase().contains("#expire")) {
+            } else if (transfer.hasNoteTag(DepositType.EXPIRE)) {
                 type = TransactionType.GRANT;
             } else {
                 type = TransactionType.WITHDRAWAL;
             }
-            transactionsByBracketByType.computeIfAbsent(taxId, f -> new ArrayList<>()).add(new KeyValue<>(transfer, type));
+            transactionsByBracketByType.computeIfAbsent(taxId, f -> new ArrayList<>())
+                    .add(new KeyValue<>(transfer, type));
             getTransactionsByNation().computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
-            getTransactionsByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
+            getTransactionsByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>())
+                    .computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
         }
 
         this.incomeByNationByBracket = new Int2ObjectOpenHashMap<>();
@@ -377,7 +386,8 @@ public class TaxRecordCategorizer2 {
                     myMap = getExpensesByNationByBracket();
                 }
 
-                double[] totalByNation = myMap.computeIfAbsent(id, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> ResourceType.getBuffer());
+                double[] totalByNation = myMap.computeIfAbsent(id, f -> new Int2ObjectOpenHashMap<>())
+                        .computeIfAbsent(nationId, f -> ResourceType.getBuffer());
                 ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, totalByNation, transfer.resources);
             }
         }
@@ -400,34 +410,42 @@ public class TaxRecordCategorizer2 {
             ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, getExpenseTotal(), entry.getValue());
         }
 
-        ////  income  ////
+        //// income ////
 
         this.incomeTotal = ResourceType.getBuffer();
         this.incomeByBracket = new Int2ObjectOpenHashMap<>();
         this.incomeByNation = new Int2ObjectOpenHashMap<>();
 
         TaxRate taxBase = db.getOrNull(GuildKey.TAX_BASE);
-        if (taxBase == null) taxBase = new TaxRate(100, 100);
+        if (taxBase == null)
+            taxBase = new TaxRate(100, 100);
         else {
             taxBase = new TaxRate(taxBase.money, taxBase.resources);
         }
-        if (taxBase.money < 0) taxBase.money = 100;
-        if (taxBase.resources < 0) taxBase.resources = 100;
-
+        if (taxBase.money < 0)
+            taxBase.money = 100;
+        if (taxBase.resources < 0)
+            taxBase.resources = 100;
 
         int[] internalTaxRate = new int[2];
         for (Map.Entry<Integer, List<TaxDeposit>> entry : depositsByBracket.entrySet()) {
             int taxId = entry.getKey();
             List<TaxDeposit> records = entry.getValue();
             for (TaxDeposit tax : records) {
-                if (tax.internalMoneyRate > 0) internalTaxRate[0] = tax.internalMoneyRate;
-                else internalTaxRate[0] = taxBase.money;
-                if (tax.internalResourceRate > 0) internalTaxRate[1] = tax.internalResourceRate;
-                else internalTaxRate[1] = taxBase.resources;
+                if (tax.internalMoneyRate > 0)
+                    internalTaxRate[0] = tax.internalMoneyRate;
+                else
+                    internalTaxRate[0] = taxBase.money;
+                if (tax.internalResourceRate > 0)
+                    internalTaxRate[1] = tax.internalResourceRate;
+                else
+                    internalTaxRate[1] = taxBase.resources;
 
                 tax.multiplyBaseInverse(internalTaxRate);
 
-                double[] currentTotal = getIncomeByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(tax.nationId, f -> ResourceType.getBuffer());
+                double[] currentTotal = getIncomeByNationByBracket()
+                        .computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>())
+                        .computeIfAbsent(tax.nationId, f -> ResourceType.getBuffer());
                 ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, currentTotal, tax.resources);
             }
         }

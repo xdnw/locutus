@@ -375,7 +375,7 @@ public class RaidCommand extends Command {
         Map<DBNation, Double> lootEst = new HashMap<>();
 
         long turn = TimeUtil.getTurn();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(enemies, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createIsolatedCache(enemies, DBNation.class);
         for (DBNation enemy : enemies) {
             double value = 0;
             {

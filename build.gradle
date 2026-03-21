@@ -90,6 +90,64 @@ tasks.register('runMain', JavaExec) {
     dependsOn tasks.named('testClasses')
 }
 
+tasks.register('cityFallbackBench', JavaExec) {
+    group = 'verification'
+    description = 'Benchmark CityFallbackHeuristic vs CityFallbackHeuristicOld using deterministic synthetic donor snapshots'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'link.locutus.discord.apiv1.enums.city.CityFallbackHeuristicBenchmark'
+    standardInput = System.in
+
+    def scenarios = providers.gradleProperty('cityFallbackBenchScenarios').orElse('6')
+    def donors = providers.gradleProperty('cityFallbackBenchDonors').orElse('400')
+    def warmups = providers.gradleProperty('cityFallbackBenchWarmups').orElse('2')
+    def rounds = providers.gradleProperty('cityFallbackBenchRounds').orElse('5')
+    def seed = providers.gradleProperty('cityFallbackBenchSeed').orElse('20260302')
+    def debugCounters = providers.gradleProperty('cityFallbackBenchDebugCounters').orElse('false')
+    def forceExit = providers.gradleProperty('cityFallbackBenchForceExit').orElse('true')
+    def oracleScenarios = providers.gradleProperty('cityFallbackBenchOracleScenarios').orElse('2')
+    def oracleMaxSlots = providers.gradleProperty('cityFallbackBenchOracleMaxSlots').orElse('10')
+    def gateCurrentOracleDrop = providers.gradleProperty('cityFallbackBenchGateCurrentOracleDrop').orElse('-1')
+    def gateCurrentOracleMisses = providers.gradleProperty('cityFallbackBenchGateCurrentOracleMisses').orElse('-1')
+
+    systemProperty 'cityFallbackBenchScenarios', scenarios.get()
+    systemProperty 'cityFallbackBenchDonors', donors.get()
+    systemProperty 'cityFallbackBenchWarmups', warmups.get()
+    systemProperty 'cityFallbackBenchRounds', rounds.get()
+    systemProperty 'cityFallbackBenchSeed', seed.get()
+    systemProperty 'locutus.cityFallback.debugCounters', debugCounters.get()
+    systemProperty 'cityFallbackBenchForceExit', forceExit.get()
+    systemProperty 'cityFallbackBenchOracleScenarios', oracleScenarios.get()
+    systemProperty 'cityFallbackBenchOracleMaxSlots', oracleMaxSlots.get()
+    systemProperty 'cityFallbackBenchGateCurrentOracleDrop', gateCurrentOracleDrop.get()
+    systemProperty 'cityFallbackBenchGateCurrentOracleMisses', gateCurrentOracleMisses.get()
+
+    dependsOn tasks.named('classes')
+    dependsOn tasks.named('testClasses')
+}
+
+tasks.register('cityFallbackBenchQuick', JavaExec) {
+    group = 'verification'
+    description = 'Quick benchmark preset for CityFallbackHeuristic vs CityFallbackHeuristicOld'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'link.locutus.discord.apiv1.enums.city.CityFallbackHeuristicBenchmark'
+    standardInput = System.in
+
+    systemProperty 'cityFallbackBenchScenarios', providers.gradleProperty('cityFallbackBenchScenarios').orElse('3').get()
+    systemProperty 'cityFallbackBenchDonors', providers.gradleProperty('cityFallbackBenchDonors').orElse('200').get()
+    systemProperty 'cityFallbackBenchWarmups', providers.gradleProperty('cityFallbackBenchWarmups').orElse('1').get()
+    systemProperty 'cityFallbackBenchRounds', providers.gradleProperty('cityFallbackBenchRounds').orElse('3').get()
+    systemProperty 'cityFallbackBenchSeed', providers.gradleProperty('cityFallbackBenchSeed').orElse('20260302').get()
+    systemProperty 'locutus.cityFallback.debugCounters', providers.gradleProperty('cityFallbackBenchDebugCounters').orElse('false').get()
+    systemProperty 'cityFallbackBenchForceExit', providers.gradleProperty('cityFallbackBenchForceExit').orElse('true').get()
+    systemProperty 'cityFallbackBenchOracleScenarios', providers.gradleProperty('cityFallbackBenchOracleScenarios').orElse('2').get()
+    systemProperty 'cityFallbackBenchOracleMaxSlots', providers.gradleProperty('cityFallbackBenchOracleMaxSlots').orElse('10').get()
+    systemProperty 'cityFallbackBenchGateCurrentOracleDrop', providers.gradleProperty('cityFallbackBenchGateCurrentOracleDrop').orElse('-1').get()
+    systemProperty 'cityFallbackBenchGateCurrentOracleMisses', providers.gradleProperty('cityFallbackBenchGateCurrentOracleMisses').orElse('-1').get()
+
+    dependsOn tasks.named('classes')
+    dependsOn tasks.named('testClasses')
+}
+
 def useJooq = providers.gradleProperty("jooq").isPresent()
 def useTs = providers.gradleProperty("ts").isPresent()
 def useShadow = gradle.startParameter.taskNames.any { it.endsWith("shadowJar") }
@@ -182,8 +240,21 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.WebTreatyChanges',
                 'link.locutus.discord.web.commands.binding.value_types.WebCurrentTreaties',
                 'link.locutus.discord.web.commands.binding.value_types.WebCoalitions',
+                'link.locutus.discord.web.commands.binding.value_types.WebRoleAliases',
+                'link.locutus.discord.web.commands.binding.value_types.WebAutoRoleRoles',
+                'link.locutus.discord.web.commands.binding.value_types.WebAllianceAutoRole',
+                'link.locutus.discord.web.commands.binding.value_types.WebCityAutoRole',
+                'link.locutus.discord.web.commands.binding.value_types.WebTaxAutoRole',
+                'link.locutus.discord.util.task.roles.AutoRoleResult',
+                'link.locutus.discord.util.task.roles.AutoRoleBulkResult',
+                'link.locutus.discord.util.task.roles.AutoRoleMemberResult',
+                'link.locutus.discord.util.task.roles.AutoRoleMaskedMember',
+                'link.locutus.discord.util.task.roles.AutoRoleSyncState',
+                'link.locutus.discord.util.task.roles.AutoRoleIssue',
+                'link.locutus.discord.util.task.roles.AutoRoleIssueType',
+                'link.locutus.discord.util.task.roles.UnmaskedReason',
                 'link.locutus.discord.db.guild.GuildSettingCategory',
-                'link.locutus.discord.db.guild.GuildSettingSubgroup'
+                'link.locutus.discord.db.guild.GuildSettingSubgroup',
         ]
         outputKind = 'module'
         nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
@@ -246,7 +317,7 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.21.1'
     implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
 
-    implementation ('net.dv8tion:JDA:6.3.2') {
+    implementation ('net.dv8tion:JDA:6.0.0-rc.2') {
         exclude module: 'opus-java'
     }
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.8.4'
@@ -658,11 +729,12 @@ def addOptionalGeneratedSrc(String taskName, Provider<Directory> outputDir) {
         sourceSets.main.java.srcDir(tasks.named(taskName).map { outputDir.get().asFile })
         tasks.named('compileJava') { dependsOn tasks.named(taskName) }
     } else {
-        sourceSets.main.java.srcDir(outputDir)
+        sourceSets.main.java.srcDir(outputDir.get().asFile)
     }
 }
 
 def jooqGeneratedDir = layout.buildDirectory.dir("generated-src")
+def jooqConfigurations = ['bank', 'locutus', 'nations', 'trade', 'war', 'web']
 
 // GraphQL (optional)
 addOptionalGeneratedSrc('graphqlCodegen', graphqlGeneratedDir)
@@ -676,12 +748,33 @@ if (jteTask) {
     sourceSets.main.java.srcDir(jteGeneratedDir)
 }
 
-// legacy fallback dir (always present on classpath)
-sourceSets.main.java.srcDir(jooqGeneratedDir)
+// Each jOOQ config generates under build/generated-src/jooq/<schema>/org/..., so the
+// schema directory itself must be the source root for IDE package inference.
+jooqConfigurations.each { configName ->
+    addOptionalGeneratedSrc(
+            "generate${configName.capitalize()}Jooq",
+            jooqGeneratedDir.map { it.dir("jooq/${configName}") }
+    )
+}
 
-// Optional: clean generated outputs
-tasks.named('clean') {
-    delete(graphqlGeneratedDir, jteGeneratedDir, jooqGeneratedDir)
+tasks.register('cleanGeneratedBaselines', Delete) {
+    group = 'build'
+    description = 'Deletes the preserved GraphQL, JTE, and jOOQ source baselines under build/.'
+    delete(
+            graphqlGeneratedDir.get().asFile,
+            jteGeneratedDir.get().asFile,
+            jooqGeneratedDir.get().asFile
+    )
+}
+
+tasks.named('clean', Delete) {
+    // These generated source trees are intentionally preserved because they act as
+    // checked-in/manual baselines and are not reliably reproducible on every machine.
+    setDelete(fileTree(layout.buildDirectory.get().asFile) {
+        exclude 'generated/**'
+        exclude 'generated-sources/**'
+        exclude 'generated-src/**'
+    })
 }
 
 tasks.withType(Test).configureEach {

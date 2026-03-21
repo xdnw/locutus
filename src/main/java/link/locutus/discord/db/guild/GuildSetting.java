@@ -150,7 +150,7 @@ public abstract class GuildSetting<T> {
 
         public static Requirement notWith(GuildSetting<?> setting, boolean checkDelegate) {
             checkNotNull(setting);
-            Supplier<String> msg = () -> "Cannot be used with " + setting.name() + " set. Unset via " + CM.settings.info.cmd.toSlashMention();
+            Supplier<String> msg = () -> "Cannot be used with `" + setting.name() + "` set. Unset via " + CM.settings.info.cmd.toSlashMention();
             return Requirement.of(db -> {
                 if (setting.getOrNull(db, checkDelegate) != null) {
                     throw new IllegalArgumentException(msg.get());
@@ -159,6 +159,7 @@ public abstract class GuildSetting<T> {
         }
     }
 
+    private int ordinal = -1;
     private final Set<GuildSetting> requires = new ObjectLinkedOpenHashSet<>();
     private final Set<String> requiresCoalitionStr = new ObjectLinkedOpenHashSet<>();
     private final Set<String> requiresCoalitionRootStr = new ObjectLinkedOpenHashSet<>();
@@ -171,6 +172,14 @@ public abstract class GuildSetting<T> {
     private final GuildSettingSubgroup subgroup;
     private String name;
 
+    protected void setOrdinal(int i) {
+        this.ordinal = i;
+    }
+
+    public int getOrdinal() {
+        return ordinal;
+    }
+
     @Command
     public GuildSettingSubgroup getSubgroup() {
         return subgroup == null ? GuildSettingSubgroup.NONE : subgroup;
@@ -181,16 +190,16 @@ public abstract class GuildSetting<T> {
     public List<String> getRequirementDesc() {
         List<String> reqListStr = new ArrayList<>();
         for (GuildSetting key : requires) {
-            reqListStr.add("setting:" + key.name());
+            reqListStr.add("setting:`" + key.name() + "`");
         }
         for (String coalition : requiresCoalitionStr) {
-            reqListStr.add("coalition:" + coalition);
+            reqListStr.add("coalition:`" + coalition + "`");
         }
         for (String coalition : requiresCoalitionRootStr) {
-            reqListStr.add("coalition:" + coalition + "(root)");
+            reqListStr.add("coalition:`" + coalition + "`(root)");
         }
         for (Roles role : requiresRole.keySet()) {
-            reqListStr.add("role:" + role.name());
+            reqListStr.add("role:`@" + role.name() + "`");
         }
         for (Supplier<String> valueSup : requiresFunction.values()) {
             String value = valueSup.get();
@@ -382,7 +391,7 @@ public abstract class GuildSetting<T> {
 
     public T parse(GuildDB db, String input) {
         if (type == null) throw new IllegalStateException("Type is null for " + getClass().getSimpleName());
-        LocalValueStore locals = new LocalValueStore<>(getStore());
+        LocalValueStore locals = new LocalValueStore(getStore());
         locals.addProvider(Key.of(GuildDB.class, Me.class), db);
         locals.addProvider(Key.of(Guild.class, Me.class), db.getGuild());
         Parser parser = locals.get(type);
@@ -636,14 +645,14 @@ public abstract class GuildSetting<T> {
 
     private static void checkRegisteredOwnerOrActiveAlliance(GuildDB db) {
         if (db.isValidAlliance()) {
-            if (!db.getAllianceList().getNations(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
+            if (!db.getAllianceList().getNations(Locutus.imp().getNationDB(), f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
                 return;
             }
         }
         GuildDB delegate = db.getDelegateServer();
         if (delegate != null) {
             if (delegate.isValidAlliance()) {
-                if (!delegate.getAllianceList().getNations(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
+                if (!delegate.getAllianceList().getNations(Locutus.imp().getNationDB(), f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
                     return;
                 }
             }
@@ -651,7 +660,7 @@ public abstract class GuildSetting<T> {
         GuildDB faServer = GuildKey.FA_SERVER.getOrNull(db, false);
         if (faServer != null) {
             if (faServer.isValidAlliance()) {
-                if (!faServer.getAllianceList().getNations(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
+                if (!faServer.getAllianceList().getNations(Locutus.imp().getNationDB(), f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
                     return;
                 }
             }
@@ -662,7 +671,7 @@ public abstract class GuildSetting<T> {
                 Guild warServer = GuildKey.WAR_SERVER.getOrNull(otherDb, false);
                 if (warServer == null || warServer.getIdLong() != db.getIdLong()) continue;
                 if (otherDb.isValidAlliance()) {
-                    if (!otherDb.getAllianceList().getNations(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
+                    if (!otherDb.getAllianceList().getNations(Locutus.imp().getNationDB(), f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 43200).isEmpty()) {
                         return;
                     }
                 }
@@ -696,14 +705,14 @@ public abstract class GuildSetting<T> {
 
     public T allowedAndValidate(GuildDB db, User user, T value) {
         DBNation nation = DiscordUtil.getNation(user);
-        if (nation == null && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) {
+        if (nation == null && !Roles.ADMIN.has(user, db.getGuild()) && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) {
             throw new IllegalArgumentException("You are not registered with the bot (see: " + CM.register.cmd.toSlashMention() + ")");
         }
         if (!allowed(db, true)) {
             throw new IllegalArgumentException("This setting is not allowed in this server (you may be missing some prerequisite settings)");
         }
         if (!hasPermission(db, user, value)) {
-            throw new IllegalArgumentException("You do not have permission to set " + name() + " to `" + toReadableString(db, value) + "`");
+            throw new IllegalArgumentException("You do not have permission to set `" + name() + "` to `" + toReadableString(db, value) + "`");
         }
         return validate(db, user, value);
     }

@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomple
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -14,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.MenuLabel;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.db.entities.menu.MenuState;
@@ -29,7 +29,6 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.USER_MENU_STATE;
@@ -44,30 +43,30 @@ public class DiscordCompleter extends BindingHelper {
             {
                 Type type = getClass().getDeclaredField("MEMBERS_KEY").getGenericType();
                 Key<Object> key = Key.of(type, Autocomplete.class);
-                addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                addBinding(store -> store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
 
                     List<Member> options = guild.getMembers();
-                    return StringMan.autocompleteComma(input.toString(), options, s -> DiscordBindings.member(guild, null, s), Member::getEffectiveName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteComma(input, options, s -> DiscordBindings.member(guild, null, s), Member::getEffectiveName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
                 })));
             }
             {
                 Type type = getClass().getDeclaredField("ROLES_KEY").getGenericType();
                 Key<Object> key = Key.of(type, Autocomplete.class);
-                addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                addBinding(store -> store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
 
                     List<Role> options = guild.getRoles();
-                    return StringMan.autocompleteComma(input.toString(), options, s -> DiscordBindings.role(guild, s), Role::getName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteComma(input, options, s -> DiscordBindings.role(guild, s), Role::getName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
                 })));
             }
             {
                 Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
                 Key<Object> key = Key.of(type, Autocomplete.class);
-                addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                addBinding(store -> store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
 
                     List<Project> options = Arrays.asList(Projects.values);
-                    return StringMan.autocompleteComma(input.toString(), options, Projects::get, Project::name, Project::name, OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteComma(input, options, Projects::get, Project::name, Project::name, OptionData.MAX_CHOICES);
                 })));
             }
         } catch (NoSuchFieldException e) {
@@ -114,8 +113,8 @@ public class DiscordCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types = {Guild.class})
-    public List<Map.Entry<String, String>> Guild(@Me User user, String input) {
-        List<Guild> options = new ObjectArrayList<>(Locutus.imp().getDiscordApi().getMutualGuilds(user));
+    public List<Map.Entry<String, String>> Guild(@Me User user, CommandRuntimeLookupContext services, String input) {
+        List<Guild> options = new ObjectArrayList<>(services.getMutualGuilds(user));
         options = StringMan.getClosest(input, options, Guild::getName, OptionData.MAX_CHOICES, true, true);
         return options.stream().map(f -> new KeyValue<>(f.getName(), f.getIdLong() + "")).collect(Collectors.toList());
     }

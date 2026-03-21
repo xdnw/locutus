@@ -2,14 +2,14 @@ package link.locutus.discord.commands.manager.v2.binding;
 
 import java.util.Map;
 
-public class DelegateValueStore<T> implements ValueStore<T> {
-    private final ValueStore<T> parent;
+public class DelegateValueStore implements ValueStore {
+    private final ValueStore parent;
 
-    public DelegateValueStore(ValueStore<T> parent) {
+    public DelegateValueStore(ValueStore parent) {
         this.parent = parent;
     }
 
-    public ValueStore<T> getParent() {
+    public ValueStore getParent() {
         return parent;
     }
 

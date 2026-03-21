@@ -44,7 +44,7 @@ public class FetchDeposit {
 
     private BiConsumer<Transaction2, Long> getExpiring;
 
-    private  boolean fetchLastDeposit;
+    private boolean fetchLastDeposit;
     private Map<Integer, Long> lastDepositMap;
 
     private boolean fetchLastSelfWithdrawal;
@@ -147,7 +147,8 @@ public class FetchDeposit {
     }
 
     public synchronized FetchDeposit execute() {
-        if (this.result != null) return this;
+        if (this.result != null)
+            return this;
         getTracked(); // Init tracked if not already set
 
         // sorted linked hash set fastutil
@@ -160,7 +161,8 @@ public class FetchDeposit {
 
         Future<?> updateFuture = null;
         if (update) {
-            updateFuture = Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecsAuto(nationIds, priority, events));
+            updateFuture = Locutus.imp().runEventsAsync(
+                    events -> Locutus.imp().getBankDB().updateBankRecsAuto(nationIds, priority, events));
         }
 
         Map<Integer, Map<DepositType, double[]>> results = new Int2ObjectOpenHashMap<>();
@@ -169,10 +171,13 @@ public class FetchDeposit {
 
         Function<Integer, BiConsumer<Integer, Transaction2>> getAdder = (nationId) -> {
             BiConsumer<Integer, Transaction2> adder = adderByNation.get(nationId);
-            if (adder != null) return adder;
-            Map<DepositType, double[]> result = results.computeIfAbsent(nationId, k -> new EnumMap<>(DepositType.class));
+            if (adder != null)
+                return adder;
+            Map<DepositType, double[]> result = results.computeIfAbsent(nationId,
+                    k -> new EnumMap<>(DepositType.class));
             DBNation nation = DBNation.getOrCreate(nationId);
-            BiConsumer<Integer, Transaction2> parent = PW.createSumNationTransactions(nation, db, finalTracked, forceIncludeExpired, forceIncludeIgnored, filter, result);
+            BiConsumer<Integer, Transaction2> parent = PW.createSumNationTransactions(nation, db, finalTracked,
+                    forceIncludeExpired, forceIncludeIgnored, filter, result);
             adderByNation.put(nationId, parent);
             return parent;
         };
@@ -191,14 +196,18 @@ public class FetchDeposit {
             }
             BiConsumer<Integer, Transaction2> adder = getAdder.apply(nationId);
             Integer sign = PW.getSign(tx, nationId, finalTracked);
-            if (sign == null) return; // Ignore transactions that are not in a tracked alliance/guild
+            if (sign == null)
+                return; // Ignore transactions that are not in a tracked alliance/guild
             adder.accept(sign, tx);
         };
         if (getExpiring != null) {
             applyAdder = applyAdder.andThen(record -> {
-                if (record.note == null || record.note.isEmpty()) return;
-                boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
-                if (!isOffshoreSender && !record.isInternal()) return;
+                if (!record.hasNoteData())
+                    return;
+                boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3)
+                        && record.receiver_type == 1;
+                if (!isOffshoreSender && !record.isInternal())
+                    return;
                 Map<DepositType, Object> noteMap = record.getNoteMap();
                 Object expireVal = noteMap.get(DepositType.EXPIRE);
                 Object decayVal = noteMap.get(DepositType.DECAY);
@@ -209,7 +218,8 @@ public class FetchDeposit {
                 if (expireVal instanceof Number n) {
                     dateVal = Math.max(dateVal, n.longValue());
                 }
-                if (dateVal == 0) return;
+                if (dateVal == 0)
+                    return;
                 getExpiring.accept(record, dateVal);
             });
         }
@@ -224,24 +234,29 @@ public class FetchDeposit {
         }
 
         if (includeTaxes) { // Taxes
-            int[] guildTaxBase = new int[]{100, 100};
+            int[] guildTaxBase = new int[] { 100, 100 };
             TaxRate defTaxBaseRate = db.getOrNull(GuildKey.TAX_BASE);
             if (defTaxBaseRate != null) {
                 guildTaxBase[0] = defTaxBaseRate.money;
                 guildTaxBase[1] = defTaxBaseRate.resources;
             }
 
-            Set<Integer> trackForTaxes = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());
+            Set<Integer> trackForTaxes = tracked.stream()
+                    .filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue)
+                    .collect(Collectors.toSet());
             DepositType note = DepositType.TAX;
 
             if (start == 0 && end == Long.MAX_VALUE) {
-                Map<Integer, double[]> appliedDeposits = Locutus.imp().getBankDB().getAppliedTaxDeposits(nationIds, trackForTaxes, guildTaxBase, useTaxBase);
+                Map<Integer, double[]> appliedDeposits = Locutus.imp().getBankDB().getAppliedTaxDeposits(nationIds,
+                        trackForTaxes, guildTaxBase, useTaxBase);
                 for (Map.Entry<Integer, double[]> entry : appliedDeposits.entrySet()) {
                     int nationId = entry.getKey();
                     double[] taxAmt = entry.getValue();
-                    if (ResourceType.isZero(taxAmt)) continue;
+                    if (ResourceType.isZero(taxAmt))
+                        continue;
 
-                    double[] depos = results.computeIfAbsent(nationId, k -> new EnumMap<>(DepositType.class)).computeIfAbsent(note, f -> ResourceType.getBuffer());
+                    double[] depos = results.computeIfAbsent(nationId, k -> new EnumMap<>(DepositType.class))
+                            .computeIfAbsent(note, f -> ResourceType.getBuffer());
                     ResourceType.add(depos, taxAmt);
                 }
             } else {
@@ -253,36 +268,41 @@ public class FetchDeposit {
 
                 boolean includeNoInternal = defTaxBase[0] != 100 || defTaxBase[1] != 100;
                 boolean includeMaxInternal = false;
-                Locutus.imp().getBankDB().iterateTaxesPaid(nationIds, trackForTaxes, includeNoInternal, includeMaxInternal, start, end, new Consumer<TaxDeposit>() {
-                    @Override
-                    public void accept(TaxDeposit deposit) {
-                        int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
-                        int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
-                        if (internalMoneyRate < 0 || internalMoneyRate > 100) internalMoneyRate = defTaxBase[0];
-                        if (internalResourceRate < 0 || internalResourceRate > 100) internalResourceRate = defTaxBase[1];
+                Locutus.imp().getBankDB().iterateTaxesPaid(nationIds, trackForTaxes, includeNoInternal,
+                        includeMaxInternal, start, end, new Consumer<TaxDeposit>() {
+                            @Override
+                            public void accept(TaxDeposit deposit) {
+                                int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
+                                int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
+                                if (internalMoneyRate < 0 || internalMoneyRate > 100)
+                                    internalMoneyRate = defTaxBase[0];
+                                if (internalResourceRate < 0 || internalResourceRate > 100)
+                                    internalResourceRate = defTaxBase[1];
 
-                        double pctMoney = (deposit.moneyRate > internalMoneyRate ?
-                                Math.max(0, (deposit.moneyRate - internalMoneyRate) / (double) deposit.moneyRate)
-                                : 0);
-                        double pctRss = (deposit.resourceRate > internalResourceRate ?
-                                Math.max(0, (deposit.resourceRate - internalResourceRate) / (double) deposit.resourceRate)
-                                : 0);
+                                double pctMoney = (deposit.moneyRate > internalMoneyRate
+                                        ? Math.max(0,
+                                                (deposit.moneyRate - internalMoneyRate) / (double) deposit.moneyRate)
+                                        : 0);
+                                double pctRss = (deposit.resourceRate > internalResourceRate
+                                        ? Math.max(0,
+                                                (deposit.resourceRate - internalResourceRate)
+                                                        / (double) deposit.resourceRate)
+                                        : 0);
 
-                        if (pctMoney == 0 && pctRss == 0) {
-                            return;
-                        }
+                                if (pctMoney == 0 && pctRss == 0) {
+                                    return;
+                                }
 
-                        deposit.resources[0] *= pctMoney;
-                        for (int i = 1; i < deposit.resources.length; i++) {
-                            deposit.resources[i] *= pctRss;
-                        }
-                        Transaction2 transaction = new Transaction2(deposit);
-                        applyAdderFinal.accept(transaction);
-                    }
-                });
+                                deposit.resources[0] *= pctMoney;
+                                for (int i = 1; i < deposit.resources.length; i++) {
+                                    deposit.resources[i] *= pctRss;
+                                }
+                                Transaction2 transaction = Transaction2.fromTaxDeposit(deposit);
+                                applyAdderFinal.accept(transaction);
+                            }
+                        });
             }
         }
-
 
         { // Transactions
             if (updateFuture != null) {
@@ -324,11 +344,14 @@ public class FetchDeposit {
                 flowDepositsMap = new Int2ObjectOpenHashMap<>();
 
                 applyNationTransfers = applyNationTransfers.andThen(tx -> {
-                    int nationId = tx.receiver_type == 1 ? Math.toIntExact(tx.receiver_id)  : Math.toIntExact(tx.sender_id);
+                    int nationId = tx.receiver_type == 1 ? Math.toIntExact(tx.receiver_id)
+                            : Math.toIntExact(tx.sender_id);
                     Integer sign = PW.getSign(tx, nationId, finalTracked);
-                    if (sign == null) return; // Ignore transactions that are not in a tracked alliance
+                    if (sign == null)
+                        return; // Ignore transactions that are not in a tracked alliance
 
-                    Map<FlowType, double[]> natFlow = flowDepositsMap.computeIfAbsent(nationId, k -> new EnumMap<>(FlowType.class));
+                    Map<FlowType, double[]> natFlow = flowDepositsMap.computeIfAbsent(nationId,
+                            k -> new EnumMap<>(FlowType.class));
                     for (FlowType flowType : FlowType.VALUES) {
                         double[] total = natFlow.computeIfAbsent(flowType, k -> ResourceType.getBuffer());
                         double[] added = flowType.addTotal(total, sign, tx, nationId);
@@ -361,7 +384,8 @@ public class FetchDeposit {
         return result;
     }
 
-    public NationBalanceRow createRow(DBNation nation, boolean noGrants, boolean noLoans, boolean noTaxes, boolean noDeposits) {
+    public NationBalanceRow createRow(DBNation nation, boolean noGrants, boolean noLoans, boolean noTaxes,
+            boolean noDeposits) {
         List<Object> row = new ObjectArrayList<>();
 
         Map<DepositType, double[]> deposits = getResult().getOrDefault(nation, Collections.emptyMap());
@@ -378,16 +402,20 @@ public class FetchDeposit {
         for (Map.Entry<DepositType, double[]> entry : deposits.entrySet()) {
             switch (entry.getKey()) {
                 case GRANT:
-                    if (noGrants) continue;
+                    if (noGrants)
+                        continue;
                     break;
                 case LOAN:
-                    if (noLoans) continue;
+                    if (noLoans)
+                        continue;
                     break;
                 case TAX:
-                    if (noTaxes) continue;
+                    if (noTaxes)
+                        continue;
                     break;
                 case DEPOSIT:
-                    if (noDeposits) continue;
+                    if (noDeposits)
+                        continue;
                     break;
             }
             double[] value = entry.getValue();
@@ -396,7 +424,8 @@ public class FetchDeposit {
         row.add(String.format("%.2f", ResourceType.convertedTotal(total)));
 
         long lastDeposit = lastDepositMap != null ? lastDepositMap.getOrDefault(nation.getId(), 0L) : 0L;
-        long lastSelfWithdrawal = lastSelfWithdrawalMap != null ? lastSelfWithdrawalMap.getOrDefault(nation.getId(), 0L) : 0L;
+        long lastSelfWithdrawal = lastSelfWithdrawalMap != null ? lastSelfWithdrawalMap.getOrDefault(nation.getId(), 0L)
+                : 0L;
 
         if (lastDeposit == 0) {
             row.add("NEVER");
@@ -411,7 +440,8 @@ public class FetchDeposit {
             row.add(days);
         }
 
-        Map<FlowType, double[]> flowDepositsNation = flowDepositsMap == null ? Collections.emptyMap() : flowDepositsMap.getOrDefault(nation.getId(), Collections.emptyMap());
+        Map<FlowType, double[]> flowDepositsNation = flowDepositsMap == null ? Collections.emptyMap()
+                : flowDepositsMap.getOrDefault(nation.getId(), Collections.emptyMap());
         double[] internal = flowDepositsNation.getOrDefault(FlowType.INTERNAL, ResourceType.getBuffer());
         double[] withdrawal = flowDepositsNation.getOrDefault(FlowType.WITHDRAWAL, ResourceType.getBuffer());
         double[] deposit = flowDepositsNation.getOrDefault(FlowType.DEPOSIT, ResourceType.getBuffer());
@@ -421,7 +451,8 @@ public class FetchDeposit {
         row.add(ResourceType.toString(deposit));
 
         for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) continue;
+            if (type == ResourceType.CREDITS)
+                continue;
             row.add(MathMan.format(total[type.ordinal()]));
         }
         double[] normalized = PW.normalize(total);

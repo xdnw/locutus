@@ -2,10 +2,10 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.LiveAppPlaceholderExtension;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.SheetTemplate;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -29,13 +30,29 @@ import java.security.GeneralSecurityException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
-    public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
+public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> implements LiveAppPlaceholderExtension {
+    private final CommandRuntimeLookupContext runtime;
+
+    public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser,
+            CommandRuntimeLookupContext runtime) {
         super(DBAlliance.class, Long.class, store, validators, permisser);
+        this.runtime = Objects.requireNonNull(runtime, "runtime");
+    }
+
+    @Override
+    public void registerAdditionalLiveAppEntityCommands() {
+        // DBAlliance inherits this legacy NationList surface only in the live app entity bootstrap path.
+        getCommands().registerCommandsClass(NationList.class);
+    }
+
+    @Override
+    public Set<Class<?>> getAdditionalLiveAppEntityCommandTypes() {
+        return Set.of(NationList.class);
     }
 
     @Override
@@ -71,7 +88,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
     @NoFormat
     @Command(desc = "Add columns to a Alliance sheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
+    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate<?> sheet,
                              @Default TypedFunction<DBAlliance, String> a,
                              @Default TypedFunction<DBAlliance, String> b,
                              @Default TypedFunction<DBAlliance, String> c,
@@ -113,7 +130,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
         Set<DBAlliance> selection = PlaceholdersMap.getSelection(this, store, input);
         if (selection != null) return selection;
         if (input.equalsIgnoreCase("*")) {
-            return Locutus.imp().getNationDB().getAlliances();
+            return runtime.getAlliances();
         }
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (SpreadSheet.isSheet(input)) {
@@ -123,7 +140,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
                     default -> null;
                 },
                 (type, str) -> {
-                    return PWBindings.alliance(str);
+                    return PWBindings.alliance(runtime, str);
                 });
 
         }
@@ -136,7 +153,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
             return Predicates.alwaysTrue();
         }
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-        GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
+        GuildDB db = guild == null ? null : runtime.getGuildDb(guild);
         if (SpreadSheet.isSheet(input)) {
             Set<Set<Integer>> setSet = SpreadSheet.parseSheet(input, List.of("alliance", "{name}", "{id}", "{getname}", "{getid}"), true,
                     s -> switch (s.toLowerCase()) {
@@ -173,7 +190,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
         }
         Set<DBAlliance> alliances = new HashSet<>();
         for (Integer aaId : aaIds) {
-            alliances.add(DBAlliance.getOrCreate(aaId));
+            alliances.add(runtime.lookup().getAllianceOrCreate(aaId));
         }
         return alliances;
     }

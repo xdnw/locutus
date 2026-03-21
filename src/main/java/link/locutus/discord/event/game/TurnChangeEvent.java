@@ -28,9 +28,9 @@ public class TurnChangeEvent extends GuildScopeEvent { // todo post to all guild
     protected void postToGuilds() {
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             AllianceList alliances = db.getAllianceList();
-            if (alliances == null || alliances.isEmpty()) continue;
+            if (alliances == null || alliances.isEmpty(Locutus.imp().getNationDB())) continue;
             boolean hasAlliance = false;
-            for (DBAlliance alliance : alliances.getAlliances()) {
+            for (DBAlliance alliance : alliances.getAlliances(Locutus.imp().getNationDB())) {
                 if (alliance
                         .getNations(true, 7200, true)
                         .stream().anyMatch(f -> f.getPositionEnum().id >= Rank.HEIR.id)) {

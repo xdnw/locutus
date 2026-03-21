@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.fun;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -12,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.TransferResult;
 import net.dv8tion.jda.api.entities.Guild;
@@ -80,7 +82,7 @@ public class Borgomas extends Command {
                 } else {
                     reason = "Thats what you get for having " + down + " denouncements.";
                 }
-                message = "You open your present to find a 10kg hunk of coal... " + reason + "\nMerry Borgmas!\n" + img;
+                message = "You open your present to find a 10kg hunk of coal... " + reason + " (check ingame!)\nMerry Borgmas!\n" + img;
                 resources = Collections.singletonMap(ResourceType.COAL, 0.01);
             } else {
                 Set<DBNation> members = DBAlliance.getOrCreate(me.getAlliance_id()).getNations(true, 7200, true);
@@ -103,7 +105,7 @@ public class Borgomas extends Command {
             }
         }
 
-        String note = "Merry Borgmas!";
+        TransactionNote note = TransactionNote.of(DepositType.IGNORE);
         TransferResult result = Locutus.imp().getRootBank().transfer(me, resources, note, null);
         return message;
     }

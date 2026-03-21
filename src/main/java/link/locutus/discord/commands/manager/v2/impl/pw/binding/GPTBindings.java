@@ -2,11 +2,13 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import com.openai.models.ChatModel;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
@@ -46,19 +48,28 @@ public class GPTBindings extends BindingHelper {
         Set<String> sourcesStr = StringMan.split(input, ',').stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
         Set<Long> sourceIds = sourcesStr.stream().filter(MathMan::isInteger).map(Long::parseLong).collect(Collectors.toCollection(LinkedHashSet::new));
         Set<EmbeddingSource> sources = new ObjectLinkedOpenHashSet<>();
-        for (EmbeddingSource source : sources) {
+        for (EmbeddingSource source : handler.getSources(guild, true)) {
             if (sourceIds.contains((long) source.source_id) || sourcesStr.contains(source.source_name.toLowerCase())) {
                 sources.add(source);
-            } else {
-                throw new IllegalArgumentException("No source found with name " + source.source_name + "\nOptions: " + sourcesStr);
             }
+        }
+        if (sources.isEmpty()) {
+            throw new IllegalArgumentException("No source found matching " + input);
         }
         return sources;
     }
 
     @Binding
-    public PWGPTHandler PWGPTHandler() {
-        return Locutus.imp().getCommandManager().getV2().getGptHandler();
+    public PWGPTHandler PWGPTHandler(ValueStore store) {
+        CommandManager2 manager = store.getProvided(Key.of(CommandManager2.class), false);
+        if (manager == null) {
+            throw new IllegalStateException("PWGPTHandler is not available in the current value store");
+        }
+        PWGPTHandler handler = manager.getGptHandler();
+        if (handler == null) {
+            throw new IllegalStateException("PWGPTHandler is not available in the current command manager");
+        }
+        return handler;
     }
 
     @Binding(value = "A comma separated list of embedding types")

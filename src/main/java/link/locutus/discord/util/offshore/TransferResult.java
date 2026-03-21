@@ -1,8 +1,11 @@
 package link.locutus.discord.util.offshore;
 
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TransactionNote;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -19,16 +22,39 @@ public class TransferResult {
     private final double[] amount;
     private final String note;
 
-    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, Map<ResourceType, Double> amount, String note) {
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver,
+            Map<ResourceType, Double> amount, String note) {
         this(status, receiver, ResourceType.resourcesToArray(amount), note);
     }
 
-    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, double[] amount, String note) {
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, double[] amount,
+            String note) {
         this.status = status;
         this.receiver = receiver;
         this.resultMessage = new ArrayList<>();
         this.amount = amount;
         this.note = note;
+    }
+
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, double[] amount, DepositType note) {
+        this(status, receiver, amount, note == null ? null : TransactionNote.of(note).toLegacyString());
+    }
+
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver,
+            Map<ResourceType, Double> amount, DepositType note) {
+        this(status, receiver, amount, note == null ? null : TransactionNote.of(note).toLegacyString());
+    }
+
+    public TransferResult(OffshoreInstance.TransferStatus transferStatus, DBNation nation, Map<ResourceType, Double> transfer, TransactionNote note) {
+        this(transferStatus, nation, transfer, note == null ? null : note.toDisplayString());
+    }
+
+    public TransferResult(OffshoreInstance.TransferStatus transferStatus, NationOrAlliance receiver, double[] amount, TransactionNote ingameNote) {
+        this(transferStatus, receiver, amount, ingameNote == null ? null : ingameNote.toDisplayString());
+    }
+
+    public TransferResult(OffshoreInstance.TransferStatus transferStatus, NationOrAlliance receiver, Map<ResourceType, Double> transfer, TransactionNote note) {
+        this(transferStatus, receiver, transfer, note == null ? null : note.toDisplayString());
     }
 
     public static Map<OffshoreInstance.TransferStatus, Integer> count(Collection<TransferResult> list) {
@@ -41,12 +67,11 @@ public class TransferResult {
 
     public static String toFileString(Collection<TransferResult> list) {
         return "Receiver\tStatus\tNote\tMessage\n" +
-                list.stream().map(f ->
-                        f.getReceiver().getName() + "\t" +
+                list.stream().map(f -> f.getReceiver().getName() + "\t" +
                         f.getStatus().name() + "\t" +
                         f.getNote() + "\t" +
-                        f.getStatus().getMessage() + ". " + StringMan.join(f.resultMessage, ", ").replace("\n", ". ")
-                ).collect(Collectors.joining("\n"));
+                        f.getStatus().getMessage() + ". " + StringMan.join(f.resultMessage, ", ").replace("\n", ". "))
+                        .collect(Collectors.joining("\n"));
     }
 
     public static Map.Entry<String, String> toEmbed(List<TransferResult> results) {
@@ -57,9 +82,11 @@ public class TransferResult {
             body = result.toEmbedString();
         } else {
             int success = results.stream().mapToInt(f -> f.getStatus().isSuccess() ? 1 : 0).sum();
-            int escrowed = results.stream().mapToInt(f -> f.getStatus() == OffshoreInstance.TransferStatus.ESCROWED ? 1 : 0).sum();
+            int escrowed = results.stream()
+                    .mapToInt(f -> f.getStatus() == OffshoreInstance.TransferStatus.ESCROWED ? 1 : 0).sum();
 
-            String mixedStatus = escrowed == success ? escrowed > 0 ? "Escrow" : "Transfer" : escrowed > 0 ? "Escrow/Transfer" : "Transfer";
+            String mixedStatus = escrowed == success ? escrowed > 0 ? "Escrow" : "Transfer"
+                    : escrowed > 0 ? "Escrow/Transfer" : "Transfer";
 
             int failed = results.size() - success;
             title = mixedStatus + (success > 0 ? failed > 0 ? " with Errors" : " Success" : "Aborted");
@@ -139,7 +166,8 @@ public class TransferResult {
     }
 
     public String toLineString() {
-        String msg = "Transfer: `" + status.name() + "` to " + receiver.getMarkdownUrl() + " for `" + ResourceType.toString(amount) + "` using note `" + note + "`";
+        String msg = "Transfer: `" + status.name() + "` to " + receiver.getMarkdownUrl() + " for `"
+                + ResourceType.toString(amount) + "` using note `" + note + "`";
         if (!resultMessage.isEmpty()) {
             msg += "\n" + getMessageJoined(true);
         }

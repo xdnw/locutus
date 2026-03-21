@@ -128,7 +128,7 @@ public class AllianceListener {
                 AllianceList aaList = db.getAllianceList();
                 if (aaList == null) continue;
 
-                Set<DBNation> nations = aaList.getNations(DBNation::isTaxable);
+                Set<DBNation> nations = aaList.getNations(Locutus.imp().getNationDB(), DBNation::isTaxable);
                 if (nations.isEmpty()) continue;
 
                 try {
@@ -149,7 +149,7 @@ public class AllianceListener {
                     if (!messages.isEmpty() && output != null) {
                         StringBuilder footer = new StringBuilder();
                         if (internal != null) {
-                            footer.append("Configure automatic internal taxrate: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.REQUIRED_INTERNAL_TAXRATE.name() + "\n");
+                            footer.append("Configure automatic internal taxrate: " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.REQUIRED_INTERNAL_TAXRATE.name() + "`\n");
                         }
 //                        if (taxrate != null) {
 //                            footer.append("Configure automatic tax bracket: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.REQUIRED_TAX_BRACKET.name() + "\n");

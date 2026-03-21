@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoom;
@@ -25,7 +26,7 @@ public class CounterGenerator {
         Set<Integer> allies = db.getAllies();
         AllianceList alliance = db.getAllianceList();
 
-        if (requireOnDiscord || alliance == null || alliance.isEmpty() || allies.isEmpty()) {
+        if (requireOnDiscord || alliance == null || alliance.isEmpty(Locutus.imp().getNationDB()) || allies.isEmpty()) {
             if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No member role setup");
             for (Member member : Roles.MEMBER.getAll(db)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -34,7 +35,7 @@ public class CounterGenerator {
                 }
             }
         } else {
-            nations.addAll(alliance.getNations(true, 4880, true));
+            nations.addAll(alliance.getNations(Locutus.imp().getNationDB(), true, 4880, true));
         }
 
         return generateCounters(db, enemy, new ArrayList<>(nations), allowAttackersWithMaxOffensives);

@@ -22,6 +22,14 @@ public class NationModifier {
         this.load_snapshot_vm = load_snapshot_vm;
     }
 
+    public INationSnapshot getResolvedSnapshot() {
+        return resolvedSnapshot;
+    }
+
+    public void setResolvedSnapshot(INationSnapshot resolvedSnapshot) {
+        this.resolvedSnapshot = resolvedSnapshot;
+    }
+
     public static NationModifier parse(String modifier) {
         if (modifier == null || modifier.isEmpty()) return null;
         try {

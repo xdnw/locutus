@@ -235,7 +235,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                         throw new IllegalStateException("Byte array length mismatch in file: " + csvFile.getName() + " (expected: " + baos.length + ", actual: " + baos.array.length + ")");
                     }
                     int headerSize = 4 + headers.size() + 4;
-                    int rowSize = columnsInCsv.stream().map(ColumnInfo::getBytes).reduce(0, Integer::sum);
+                    int rowSize = columnsInCsv.stream().mapToInt(ColumnInfo::getBytes).sum();
                     int expectedSize = headerSize + (numRows * rowSize);
                     int remainder = (baos.length - expectedSize) % rowSize;
                     if (baos.length != expectedSize) {
@@ -258,11 +258,15 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         }
     }
 
+    private static <T, V> void cacheColumnValue(ColumnInfo<T, V> column, byte[] decompressed, int rowOffset) throws IOException {
+        column.setCachedValue(column.read(decompressed, rowOffset + column.getOffset()));
+    }
+
     public class Builder {
         private final H header;
         private final Map<String, ColumnInfo<T, Object>> headers;
-        private final List<ColumnInfo<T, Object>> requiredColumns = new ObjectArrayList<>();
-        private final List<ColumnInfo<T, Object>> optionalColumns = new ObjectArrayList<>();
+        private final List<ColumnInfo<T, ?>> requiredColumns = new ObjectArrayList<>();
+        private final List<ColumnInfo<T, ?>> optionalColumns = new ObjectArrayList<>();
 
         public Builder() {
             this.header = createHeader.get();
@@ -284,24 +288,23 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
             return this;
         }
 
-        public Builder required(Function<H, List<ColumnInfo>> columns) {
+        public Builder required(Function<H, ? extends Collection<? extends ColumnInfo<T, ?>>> columns) {
             synchronized (headers) {
-                columns.apply(header).forEach(requiredColumns::add);
+                requiredColumns.addAll(columns.apply(header));
             }
             return this;
         }
 
-        public Builder optional(Function<H, List<ColumnInfo>> columns) {
+        public Builder optional(Function<H, ? extends Collection<? extends ColumnInfo<T, ?>>> columns) {
             synchronized (headers) {
-                columns.apply(header).forEach(optionalColumns::add);
+                optionalColumns.addAll(columns.apply(header));
             }
             return this;
         }
 
-        public Builder required(ColumnInfo... columns) {
-            for (ColumnInfo<T, Object> column : columns) {
-                requiredColumns.add(column);
-            }
+        @SafeVarargs
+        public final Builder required(ColumnInfo<T, ?>... columns) {
+            Collections.addAll(requiredColumns, columns);
             return this;
         }
 
@@ -318,10 +321,9 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
             return this;
         }
 
-        public Builder optional(ColumnInfo... columns) {
-            for (ColumnInfo<T, Object> column : columns) {
-                optionalColumns.add(column);
-            }
+        @SafeVarargs
+        public final Builder optional(ColumnInfo<T, ?>... columns) {
+            Collections.addAll(optionalColumns, columns);
             return this;
         }
 
@@ -351,20 +353,20 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
 //                        System.out.println("Success: Data file " + filePart + " has no remainder, expected multiple of " + colInfo.bytesPerRow + " | Num columns " + colInfo.headers.length + " | Bytes per row " + colInfo.bytesPerRow + " | Total bytes " + decompressed.length);
                     }
 
-                    Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
-                    for (ColumnInfo<T, Object> column : requiredColumns) {
+                    Set<ColumnInfo<T, ?>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
+                    for (ColumnInfo<T, ?> column : requiredColumns) {
                         if (column.getIndex() == -1) {
                             throw new IllegalArgumentException("Required column `" + column.getName() + "` is missing in " + filePart);
                         }
                         presetAndSpecified.add(column);
                     }
-                    for (ColumnInfo<T, Object> column : optionalColumns) {
+                    for (ColumnInfo<T, ?> column : optionalColumns) {
                         if (column.getIndex() != -1) {
                             presetAndSpecified.add(column);
                         }
                     }
-                    ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
-                    Arrays.sort(shouldRead, Comparator.comparingInt(ColumnInfo::getIndex));
+                    List<ColumnInfo<T, ?>> shouldRead = new ArrayList<>(presetAndSpecified);
+                    shouldRead.sort(Comparator.comparingInt(ColumnInfo::getIndex));
 
 
                     int index = colInfo.initialOffset;
@@ -373,8 +375,8 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
 
                     for (int i = 0; i < numLines; i++) {
                         header.setOffset(index);
-                        for (ColumnInfo<T, Object> column : shouldRead) {
-                            column.setCachedValue(column.read(decompressed, index + column.getOffset()));
+                        for (ColumnInfo<T, ?> column : shouldRead) {
+                            cacheColumnValue(column, decompressed, index);
                         }
                         onEachRow.accept(reader);
                         index += rowBytes;

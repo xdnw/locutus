@@ -91,27 +91,27 @@ public class TransferCommand extends Command {
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
-            nationAccount = PWBindings.nation(author, guild, nationAccountStr);
+            nationAccount = PWBindings.parseNation(runtimeServices(), author, guild, nationAccountStr, null);
         }
 
         String ingameBankStr = DiscordUtil.parseArg(args, "alliance");
         if (ingameBankStr != null) {
-            ingameBank = PWBindings.alliance(ingameBankStr);
+            ingameBank = PWBindings.alliance(runtimeServices(), ingameBankStr);
         }
 
         String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
         if (offshoreAccountStr != null) {
-            offshoreAccount = PWBindings.alliance(offshoreAccountStr);
+            offshoreAccount = PWBindings.alliance(runtimeServices(), offshoreAccountStr);
         }
 
         String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
-            tax_account = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+            tax_account = PWBindings.parseBracket(runtimeServices().nationDb(), guildDb, "tax_id=" + taxIdStr, 60000L, true);
         }
 
         if (args.size() < 3) return usage();
-        NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0), guild);
+        NationOrAlliance receiver = PWBindings.parseNationOrAlliance(runtimeServices(), null, args.get(0), false, guild);
         String rssStr = args.size() > 3 ? args.get(1) + " " + args.get(2) : args.get(1);
         Map<ResourceType, Double> transfer = ResourceType.parseResources(rssStr);
         String noteStr = args.get(args.size() - 1);

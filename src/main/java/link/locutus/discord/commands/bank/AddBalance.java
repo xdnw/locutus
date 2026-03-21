@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -61,7 +62,7 @@ public class AddBalance extends Command {
         for (Iterator<String> iter = args.iterator(); iter.hasNext(); ) {
             String arg = iter.next();
             if (arg.startsWith("#")) {
-                note = arg.toLowerCase();
+                note = arg;
                 iter.remove();
                 break;
             }
@@ -72,6 +73,7 @@ public class AddBalance extends Command {
         if (note.equalsIgnoreCase("#ignore") && !flags.contains('f')) {
             throw new IllegalArgumentException("Using `#ignore` will not affect the user's balance, but will add an entry to their bank log. Please use `-f` to confirm");
         }
+        TransactionNote parsedNote = TransactionNote.parseLegacy(note, System.currentTimeMillis());
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         if (guildDb == null) return "No guild.";
 
@@ -83,7 +85,7 @@ public class AddBalance extends Command {
         if (arg.matches(".*tax_id[=:].*")) {
             int taxId = PW.parseTaxId(arg);
             TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
-            builder.add(bracket, ResourceType.parseResources(args.get(1)), note);
+            builder.add(bracket, ResourceType.parseResources(args.get(1)), parsedNote);
         } else if (arg.contains("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             boolean negative = false;
             if (arg.charAt(0) == '-') {
@@ -92,7 +94,7 @@ public class AddBalance extends Command {
             }
             SpreadSheet sheet = SpreadSheet.create(arg);
             List<String> invalid = new ArrayList<>();
-            builder.addSheet(sheet, negative, invalid::add, true, note);
+            builder.addSheet(sheet, negative, invalid::add, true, parsedNote);
         } else {
             boolean isGuild = arg.toLowerCase().startsWith("guild:");
             DBNation nation = DiscordUtil.parseNation(arg, false, guild);
@@ -103,14 +105,14 @@ public class AddBalance extends Command {
                     GuildDB otherGuildDb = Locutus.imp().getGuildDB(Long.parseLong(arg));
                     if (otherGuildDb == null) return "Invalid guild id: `" + arg + "`";
                     Map<ResourceType, Double> transfer = ResourceType.parseResources(args.get(1));
-                    builder.add(otherGuildDb, transfer, note);
+                    builder.add(otherGuildDb, transfer, parsedNote);
                 } else {
                     Integer alliance = PW.parseAllianceId(arg);
                     if (alliance == null) {
                         return "Invalid nation/alliance: `" + arg + "`";
                     }
                     Map<ResourceType, Double> transfer = ResourceType.parseResources(args.get(1));
-                    builder.add(DBAlliance.getOrCreate(alliance), transfer, note);
+                    builder.add(DBAlliance.getOrCreate(alliance), transfer, parsedNote);
                 }
             } else {
                 Map<ResourceType, Double> transfer = new Object2DoubleOpenHashMap<>();
@@ -142,7 +144,7 @@ public class AddBalance extends Command {
                 transfer.entrySet().removeIf(entry -> entry.getValue() == 0);
                 if (transfer.isEmpty()) return "No amount specified.";
 
-                builder.add(nation, transfer, note);
+                builder.add(nation, transfer, parsedNote);
             }
         }
 

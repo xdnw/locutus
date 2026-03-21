@@ -113,8 +113,6 @@ import java.util.stream.Stream;
 import static link.locutus.discord.apiv3.PoliticsAndWarV3.ATTACKS_PER_PAGE;
 
 public class WarDB extends DBMainV2 {
-
-
     private final  ActiveWarHandler activeWars = new ActiveWarHandler(this);
     private final ObjectOpenHashSet<DBWar> warsById = new ObjectOpenHashSet<>();
     private final Int2ObjectOpenHashMap<Object> warsByAllianceId = new Int2ObjectOpenHashMap<>();
@@ -825,71 +823,6 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    private void setWars(List<DBWar> allWars, boolean clear, boolean sync) {
-        if (clear) {
-            synchronized (warsById) {
-                warsById.clear();
-            }
-            synchronized (warsByAllianceId) {
-                warsByAllianceId.clear();
-            }
-            synchronized (warsByNationLock) {
-                warsByNationId.clear();
-            }
-        }
-        Int2IntOpenHashMap numWarsByAlliance = new Int2IntOpenHashMap();
-        Int2IntOpenHashMap numWarsByNation = new Int2IntOpenHashMap();
-        for (DBWar war : allWars) {
-            if (war.getAttacker_aa() != 0) numWarsByAlliance.addTo(war.getAttacker_aa(), 1);
-            if (war.getDefender_aa() != 0) numWarsByAlliance.addTo(war.getDefender_aa(), 1);
-            numWarsByNation.addTo(war.getAttacker_id(), 1);
-            numWarsByNation.addTo(war.getDefender_id(), 1);
-        }
-        synchronized (warsById) {
-            warsById.addAll(allWars);
-        }
-        if (sync) {
-            synchronized (warsByNationLock) {
-                for (DBWar war : allWars) {
-                    setWar(war, war.getAttacker_id(), numWarsByNation.get(war.getAttacker_id()), this.warsByNationId);
-                    setWar(war, war.getDefender_id(), numWarsByNation.get(war.getDefender_id()), this.warsByNationId);
-                }
-            }
-            synchronized (warsByAllianceId) {
-                for (DBWar war : allWars) {
-                    if (war.getAttacker_aa() != 0) setWar(war, war.getAttacker_aa(), numWarsByAlliance.get(war.getAttacker_aa()), this.warsByAllianceId);
-                    if (war.getDefender_aa() != 0) setWar(war, war.getDefender_aa(), numWarsByAlliance.get(war.getDefender_aa()), this.warsByAllianceId);
-                }
-            }
-        } else {
-            for (DBWar war : allWars) {
-                if (war.getAttacker_aa() != 0) setWar(war, war.getAttacker_aa(), numWarsByAlliance.get(war.getAttacker_aa()), this.warsByAllianceId);
-                if (war.getDefender_aa() != 0) setWar(war, war.getDefender_aa(), numWarsByAlliance.get(war.getDefender_aa()), this.warsByAllianceId);
-                setWar(war, war.getAttacker_id(), numWarsByNation.get(war.getAttacker_id()), this.warsByNationId);
-                setWar(war, war.getDefender_id(), numWarsByNation.get(war.getDefender_id()), this.warsByNationId);
-            }
-        }
-    }
-
-    private void setWar(DBWar war, int id, int size, Int2ObjectOpenHashMap<Object> map) {
-        if (size == 1) {
-            map.put(id, war);
-        } else {
-            Object o = map.get(id);
-            if (o instanceof ObjectOpenHashSet set) {
-                set.add(war);
-            } else if (o == null) {
-                ObjectOpenHashSet<Object> set = new ObjectOpenHashSet<>(size);
-                set.add(war);
-                map.put(id, set);
-            } else if (o instanceof DBWar oldWar) {
-                throw new IllegalStateException("Multiple wars for " + id + ": " + oldWar + " and " + war);
-            } else {
-                throw new IllegalStateException("Unknown object for " + id + ": " + o);
-            }
-        }
-    }
-
     public void loadWarCityCountsLegacy() throws IOException, ParseException {
         DataDumpParser parser = Locutus.imp().getDataDumper(true).load();
         Map<Long, Map<Integer, Byte>> counts = parser.getUtil().backCalculateCityCounts();
@@ -1027,7 +960,7 @@ public class WarDB extends DBMainV2 {
             }
         });
         if (!wars.isEmpty()) {
-            setWars(wars, false, false);
+            new WarLoadHelper(warsByAllianceId, warsByNationId, warsById).setWars(wars, false);
         }
         if (!saveWars.isEmpty()) {
             saveWars(saveWars, false);

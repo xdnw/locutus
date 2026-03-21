@@ -230,10 +230,10 @@ public class ConflictCommands {
         }
         CompletableFuture<IMessageBuilder> msgFuture;
         if (reinitialize_wars) {
-            msgFuture = io.send("Initializing wars...");
+            msgFuture = io.sendIfFree("Initializing wars...");
             manager.loadConflictWars(conflicts, true, false, true);
         } else {
-            msgFuture = io.send("Please wait...");
+            msgFuture = io.sendIfFree("Please wait...");
         }
         if (reinitialize_graphs) {
             manager.ensureLoadedFully(conflicts);
@@ -511,7 +511,7 @@ public class ConflictCommands {
                 .append(coalition2.stream().map(DBAlliance::getName).collect(Collectors.joining(","))).append("`");
         String reinitializeGraphsArg = null;
         {
-            CompletableFuture<IMessageBuilder> msgFuture = io.send("Loading conflict stats");
+            CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Loading conflict stats");
             manager.loadVirtualConflict(conflict, false);
             long diff = end - start;
             if (diff < TimeUnit.DAYS.toMillis(90)) {
@@ -924,7 +924,7 @@ public class ConflictCommands {
                 requireConflictWritePerm(conflict, me, user, guild, db);
             }
         }
-        CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
+        CompletableFuture<IMessageBuilder> future = io.sendIfFree("Please wait...");
         return recalculateGraphs2(io, future, manager, conflicts);
     }
 
@@ -949,7 +949,7 @@ public class ConflictCommands {
             @Switch("a") boolean allianceNames,
             @Switch("w") boolean wiki,
             @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
-        CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
 
         boolean loadGraphData = false;
         if (all) {
@@ -1247,7 +1247,7 @@ public class ConflictCommands {
         if (!file.getName().equalsIgnoreCase("war.db")) {
             throw new IllegalArgumentException("File must be named `war.db`");
         }
-        CompletableFuture<IMessageBuilder> msgFuture = io.send("Importing from " + file.getName() + "...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Importing from " + file.getName() + "...");
         manager.importFromExternal(file);
         return "Done! A restart is required to load the new data.";
     }
@@ -1436,7 +1436,7 @@ public class ConflictCommands {
             CloudStorage source = fromS3 ? s3 : r2;
             CloudStorage target = fromS3 ? r2 : s3;
 
-            CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
+            CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
             long start = System.currentTimeMillis();
 
             // Load listings

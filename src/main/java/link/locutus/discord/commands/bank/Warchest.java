@@ -74,23 +74,23 @@ public class Warchest extends Command {
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
-            nationAccount = PWBindings.nation(author, guild, nationAccountStr);
+            nationAccount = PWBindings.parseNation(runtimeServices(), author, guild, nationAccountStr, null);
         }
 
         String ingame_bankStr = DiscordUtil.parseArg(args, "alliance");
         if (ingame_bankStr != null) {
-            ingame_bank = PWBindings.alliance(ingame_bankStr);
+            ingame_bank = PWBindings.alliance(runtimeServices(), ingame_bankStr);
         }
 
         String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
         if (offshoreAccountStr != null) {
-            offshore_account = PWBindings.alliance(offshoreAccountStr);
+            offshore_account = PWBindings.alliance(runtimeServices(), offshoreAccountStr);
         }
 
         String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
-            tax_account = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+            tax_account = PWBindings.parseBracket(runtimeServices().nationDb(), guildDb, "tax_id=" + taxIdStr, 60000L, true);
         }
 
         if (flags.contains('t')) {

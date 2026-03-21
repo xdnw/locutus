@@ -77,7 +77,7 @@ public class IACategory {
         }
         this.guild = db.getGuild();
         this.alliance = db.getAllianceList();
-        if (this.alliance == null || this.alliance.isEmpty()) throw new IllegalArgumentException("No ALLIANCE_ID set. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
+        if (this.alliance == null || this.alliance.isEmpty(Locutus.imp().getNationDB())) throw new IllegalArgumentException("No ALLIANCE_ID set. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
         fetchChannels();
     }
 
@@ -520,7 +520,7 @@ public class IACategory {
             }
         }
 
-        Set<DBNation> nations = alliance.getNations(true, 2880, true);
+        Set<DBNation> nations = alliance.getNations(Locutus.imp().getNationDB(), true, 2880, true);
         for (DBNation nation : nations) {
             if (channelMap.containsKey(nation)) continue;
         }

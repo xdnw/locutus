@@ -1,9 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
-import com.google.common.base.Predicates;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -13,16 +11,21 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeCommandContext;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.Report;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.TaxBracketLookup;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
@@ -58,30 +61,50 @@ import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWCompleter extends BindingHelper {
 
+    private static CommandRuntimeLookupContext lookupContext(ValueStore store) {
+        CommandRuntimeLookupContext services = (CommandRuntimeLookupContext) store.getProvided(Key.of(CommandRuntimeLookupContext.class), false);
+        if (services == null) {
+            throw new IllegalStateException("Command runtime lookup context was not provided in the current value store");
+        }
+        return services;
+    }
+
+    private static Collection<DBNation> nations(CommandRuntimeLookupContext services) {
+        return services.nationSnapshots().resolve(null).getAllNations();
+    }
+
+    private static void markNationDirtyIfSupported(CommandRuntimeLookupContext services, int nationId) {
+        try {
+            services.markNationDirty(nationId);
+        } catch (IllegalStateException ignored) {
+            // Parser/bootstrap contexts may provide read-only snapshots without dirty-tracking.
+        }
+    }
+
     @Autocomplete
     @Binding(types={Set.class, DBNation.class}, multiple = true)
     public List<String> nationCompleter(ValueStore store, String input) {
-        System.out.println("Get nation completer for input: " + input);
         Parser<?> testExist = store.get(Key.of(DBNation.class, Autocomplete.class));
         if (testExist == null) {
             throw new IllegalStateException("No parser for DBNation with Autocomplete found");
         }
 
         // Keep wrapped version for completion processing
-        Placeholders<DBNation, Object> ph = PlaceholdersMap.get().get(DBNation.class);
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            throw new IllegalStateException("No placeholder registry available");
+        }
+        Placeholders<DBNation, Object> ph = registry.get(DBNation.class);
         String wrappedInput = ph.wrapHash(input);
 
-        PredicateDslCompleter<DBNation> predicate = new PredicateDslCompleter<>(store, DBNation.class);
+        PredicateDslCompleter<DBNation> predicate = new PredicateDslCompleter<>(store, DBNation.class, registry);
         PredicateDslCompleter.CompletionResult result = predicate.apply(wrappedInput, wrappedInput.length());
-
-        System.out.println("Found " + result.getItems().size() + " items for input: " + wrappedInput);
 
         // Build full replacement strings
         LinkedHashSet<String> suggestions = new LinkedHashSet<>();
@@ -102,9 +125,12 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @PlaceholderType
     @Binding(types={Class.class, WildcardType.class}, multiple = true)
-    public List<String> PlaceholderType(String input) {
-        PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
-        List<String> options = phMap.getTypes().stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
+    public List<String> PlaceholderType(ValueStore store, String input) {
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            return Collections.emptyList();
+        }
+        List<String> options = registry.getTypes().stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
         return StringMan.getClosest(input, options, true);
     }
     @Autocomplete
@@ -163,8 +189,11 @@ public class PWCompleter extends BindingHelper {
     }
     @Autocomplete
     @Binding(types={Set.class, GuildDB.class}, multiple = true)
-    public List<Map.Entry<String, String>> GuildDB(@Me User user, String input) {
-        List<GuildDB> options = Locutus.imp().getDiscordApi().getMutualGuilds(user).stream().map(Locutus.imp()::getGuildDB).toList();
+    public List<Map.Entry<String, String>> GuildDB(@Me User user, CommandRuntimeLookupContext services, String input) {
+        List<GuildDB> options = services.getMutualGuilds(user).stream()
+                .map(services::getGuildDb)
+                .filter(Objects::nonNull)
+                .toList();
         Map<String, GuildDB> byMap = new HashMap<>();
         for (GuildDB db : options) {
             byMap.put(db.getGuild().getName().toLowerCase(), db);
@@ -193,16 +222,16 @@ public class PWCompleter extends BindingHelper {
     }
     @Autocomplete
     @Binding(types={CommandCallable.class})
-    public List<String> command(String input) {
-        List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
+    public List<String> command(CommandRuntimeCommandContext services, String input) {
+        List<ParametricCallable<?>> options = new ArrayList<>(services.getParametricCommands());
         List<String> optionsStr = options.stream().map(CommandCallable::getFullPath).toList();
         return StringMan.getClosest(input, optionsStr, f -> f, OptionData.MAX_CHOICES, true);
     }
 
     @Autocomplete
     @Binding(types={ICommand.class, WildcardType.class}, multiple = true)
-    public List<String> commandEndpoint(String input) {
-        return command(input);
+    public List<String> commandEndpoint(CommandRuntimeCommandContext services, String input) {
+        return command(services, input);
     }
 
     @Autocomplete
@@ -281,10 +310,10 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={DBAlliancePosition.class})
-    public List<Map.Entry<String, String>> DBAlliancePosition(@Me GuildDB db, String input) {
+    public List<Map.Entry<String, String>> DBAlliancePosition(AllianceLookup lookup, @Me GuildDB db, String input) {
         AllianceList alliances = db.getAllianceList();
-        if (alliances == null || alliances.isEmpty()) return null;
-        List<DBAlliancePosition> options = new ArrayList<>(alliances.getPositions());
+        if (alliances == null || alliances.isEmpty(lookup)) return null;
+        List<DBAlliancePosition> options = new ArrayList<>(alliances.getPositions(lookup));
         options.add(DBAlliancePosition.REMOVE);
         options.add(DBAlliancePosition.APPLICANT);
 
@@ -370,17 +399,18 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={DBNation.class})
-    public List<Map.Entry<String, String>> DBNation(String input, @Me Guild guild) {
+        public List<Map.Entry<String, String>> DBNation(CommandRuntimeLookupContext services, String input,
+            @Default @Me Guild guild) {
         if (input.isEmpty()) return null;
         if (input.charAt(0) == '@') {
             return completeUser(guild, input, true);
         }
 
-        List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
+        List<DBNation> options = new ArrayList<>(nations(services));
         options = StringMan.getClosest(input, options, DBNation::getName, OptionData.MAX_CHOICES, true, true);
         if (options.size() == 1) {
             DBNation nation = options.get(0);
-            Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
+            markNationDirtyIfSupported(services, nation.getNation_id());
         }
 
         return options.stream().map(f -> KeyValue.of(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
@@ -388,10 +418,10 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={DBAlliance.class})
-    public List<Map.Entry<String, String>> DBAlliance(String input) {
+    public List<Map.Entry<String, String>> DBAlliance(CommandRuntimeLookupContext services, String input) {
         if (input.isEmpty()) return null;
 
-        List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
+        List<DBAlliance> options = new ArrayList<>(services.getAlliances());
         options = StringMan.getClosest(input, options, DBAlliance::getName, OptionData.MAX_CHOICES, true, true);
 
         return options.stream().map(f -> KeyValue.of(f.getName(), f.getTypePrefix() + ":" + f.getId())).collect(Collectors.toList());
@@ -399,19 +429,20 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={NationOrAlliance.class})
-    public List<Map.Entry<String, String>> NationOrAlliance(String input, @Me Guild guild) {
+        public List<Map.Entry<String, String>> NationOrAlliance(CommandRuntimeLookupContext services, String input,
+            @Default @Me Guild guild) {
         if (input.isEmpty()) return null;
         if (input.charAt(0) == '@') {
             return completeUser(guild, input, true);
         }
-        List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
-        options.addAll(Locutus.imp().getNationDB().getAlliances());
+        List<NationOrAlliance> options = new ArrayList<>(nations(services));
+        options.addAll(services.getAlliances());
 
         options = StringMan.getClosest(input, options, NationOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
         if (options.size() == 1) {
             NationOrAlliance nation = options.get(0);
             if (nation.isNation()) {
-                Locutus.imp().getNationDB().markNationDirty(nation.getId());
+                markNationDirtyIfSupported(services, nation.getId());
             }
         }
 
@@ -420,13 +451,14 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={GuildOrAlliance.class})
-    public List<Map.Entry<String, String>> GuildOrAlliance(String input, @Me User user, @Me Guild guild) {
+    public List<Map.Entry<String, String>> GuildOrAlliance(CommandRuntimeLookupContext services, String input,
+            @Me User user, @Default @Me Guild guild) {
         if (input.isEmpty()) return null;
         List<GuildOrAlliance> options = new ArrayList<>();
-        options.addAll(Locutus.imp().getNationDB().getAlliances());
+        options.addAll(services.getAlliances());
         if (user != null) {
-            for (Guild other : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
-                GuildDB db = Locutus.imp().getGuildDB(other);
+            for (Guild other : services.getMutualGuilds(user)) {
+                GuildDB db = services.getGuildDb(other);
                 if (db != null) {
                     options.add(db);
                 }
@@ -438,16 +470,17 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={NationOrAllianceOrGuild.class})
-    public List<Map.Entry<String, String>> NationOrAllianceOrGuild(String input, @Me User user, @Me Guild guild) {
+    public List<Map.Entry<String, String>> NationOrAllianceOrGuild(CommandRuntimeLookupContext services, String input,
+            @Me User user, @Default @Me Guild guild) {
         if (input.isEmpty()) return null;
         if (input.charAt(0) == '@') {
             return completeUser(guild, input, true);
         }
-        List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
-        options.addAll(Locutus.imp().getNationDB().getAlliances());
+        List<NationOrAllianceOrGuild> options = new ArrayList<>(nations(services));
+        options.addAll(services.getAlliances());
         if (user != null) {
-            for (Guild other : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
-                GuildDB db = Locutus.imp().getGuildDB(other);
+            for (Guild other : services.getMutualGuilds(user)) {
+                GuildDB db = services.getGuildDb(other);
                 if (db != null) {
                     options.add(db);
                 }
@@ -457,7 +490,7 @@ public class PWCompleter extends BindingHelper {
         if (options.size() == 1) {
             NationOrAllianceOrGuild nation = options.get(0);
             if (nation.isNation()) {
-                Locutus.imp().getNationDB().markNationDirty(nation.getId());
+                markNationDirtyIfSupported(services, nation.getId());
             }
         }
         return options.stream().map(f -> KeyValue.of((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
@@ -483,25 +516,27 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={NationOrAllianceOrGuildOrTaxid.class})
-    public List<Map.Entry<String, String>> NationOrAllianceOrGuildOrTaxid(String input, @Me GuildDB db, @Me User user) {
+        public List<Map.Entry<String, String>> NationOrAllianceOrGuildOrTaxid(CommandRuntimeLookupContext services,
+            AllianceLookup lookup,
+            String input, @Me GuildDB db, @Me User user) {
         if (input.isEmpty()) return null;
         if (input.charAt(0) == '@') {
             return completeUser(db.getGuild(), input, true);
         }
         AllianceList aaList = db.getAllianceList();
 
-        List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
-        options.addAll(Locutus.imp().getNationDB().getAlliances());
+        List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(nations(services));
+        options.addAll(services.getAlliances());
         if (user != null) {
-            for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
-                GuildDB mutual = Locutus.imp().getGuildDB(guild);
+            for (Guild guild : services.getMutualGuilds(user)) {
+                GuildDB mutual = services.getGuildDb(guild);
                 if (mutual != null) {
                     options.add(mutual);
                 }
             }
         }
         if (aaList != null) {
-            for (Map.Entry<Integer, TaxBracket> entry : aaList.getTaxBrackets(Long.MAX_VALUE).entrySet()) {
+            for (Map.Entry<Integer, TaxBracket> entry : aaList.getTaxBrackets(lookup, Long.MAX_VALUE).entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 if (bracket.getName().isEmpty()) {
                     bracket.setName("tax_id:" + bracket.taxId);
@@ -514,7 +549,7 @@ public class PWCompleter extends BindingHelper {
         if (options.size() == 1) {
             NationOrAllianceOrGuildOrTaxid nation = options.get(0);
             if (nation.isNation()) {
-                Locutus.imp().getNationDB().markNationDirty(nation.getId());
+                markNationDirtyIfSupported(services, nation.getId());
             }
         }
         return options.stream().map(f -> KeyValue.of((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
@@ -641,8 +676,8 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={TaxBracket.class})
-    public List<String> TaxBracket(@Me GuildDB db, String input) {
-        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(Long.MAX_VALUE);
+    public List<String> TaxBracket(TaxBracketLookup lookup, @Me GuildDB db, String input) {
+        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(lookup, Long.MAX_VALUE);
         if (brackets.isEmpty()) return null;
 
         List<String> options = brackets.values().stream().map(f -> f.taxId + "").collect(Collectors.toList());
@@ -669,10 +704,10 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types = {GuildDB.class})
-    public List<Map.Entry<String, String>> GuildDBOne(@Me User user, String input) {
+    public List<Map.Entry<String, String>> GuildDBOne(@Me User user, CommandRuntimeLookupContext services, String input) {
         if (user == null) return null;
-        List<GuildDB> options = Locutus.imp().getDiscordApi().getMutualGuilds(user).stream()
-                .map(Locutus.imp()::getGuildDB)
+        List<GuildDB> options = services.getMutualGuilds(user).stream()
+                .map(services::getGuildDb)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
@@ -684,9 +719,9 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types = {Guild.class})
-    public List<Map.Entry<String, String>> Guild(@Me User user, String input) {
+    public List<Map.Entry<String, String>> Guild(@Me User user, CommandRuntimeLookupContext services, String input) {
         if (user == null) return null;
-        List<Guild> options = new ObjectArrayList<>(Locutus.imp().getDiscordApi().getMutualGuilds(user));
+        List<Guild> options = new ObjectArrayList<>(services.getMutualGuilds(user));
         options = StringMan.getClosest(input, options, Guild::getName, OptionData.MAX_CHOICES, true, false);
         return options.stream()
                 .map(g -> KeyValue.of(g.getName(), g.getId()))
@@ -698,10 +733,10 @@ public class PWCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Category.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
                     if (guild == null) return null;
-                    return StringMan.autocompleteComma(input.toString(),
+                    return StringMan.autocompleteComma(input,
                             guild.getCategories(),
                             guild::getCategoryById,
                             Channel::getName,
@@ -714,10 +749,9 @@ public class PWCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
-                    String inputStr = input.toString();
-                    return StringMan.autocompleteComma(inputStr, options, f -> DBAlliance.parse(f, false), DBAlliance::getName, f -> f.getId() + "", OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    List<DBAlliance> options = new ArrayList<>(lookupContext(valueStore).getAlliances());
+                    return StringMan.autocompleteComma(input, options, f -> DBAlliance.parse(f, false), DBAlliance::getName, f -> f.getId() + "", OptionData.MAX_CHOICES);
                 }));
             });
         }
@@ -725,10 +759,9 @@ public class PWCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     List<Project> options = Arrays.asList(Projects.values);
-                    String inputStr = input.toString();
-                    return StringMan.autocompleteComma(inputStr, options, Projects::get, Project::name, Project::name, OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteComma(input, options, Projects::get, Project::name, Project::name, OptionData.MAX_CHOICES);
                 }));
             });
         }
@@ -736,10 +769,9 @@ public class PWCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Building.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     List<Building> options = Arrays.asList(Buildings.values());
-                    String inputStr = input.toString();
-                    return StringMan.autocompleteComma(inputStr, options, Buildings::get, Building::name, Building::name, OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteComma(input, options, Buildings::get, Building::name, Building::name, OptionData.MAX_CHOICES);
                 }));
             });
         }
@@ -747,8 +779,8 @@ public class PWCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Roles.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(Roles.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(Roles.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
@@ -756,8 +788,8 @@ public class PWCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Status.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(Status.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(Status.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
@@ -765,116 +797,116 @@ public class PWCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, BeigeReason.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(BeigeReason.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(BeigeReason.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AutoAuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(AutoAuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(AutoAuditType.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(AuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(AuditType.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Operation.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(Operation.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(Operation.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(AuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(AuditType.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Continent.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(Continent.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(Continent.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, WarStatus.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(WarStatus.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(WarStatus.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, WarType.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(WarType.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(WarType.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AttackType.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(AttackType.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(AttackType.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, MilitaryUnit.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(MilitaryUnit.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(MilitaryUnit.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, OrbisMetric.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(OrbisMetric.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(OrbisMetric.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(List.class, ResourceType.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     List<ResourceType> options = new ArrayList<>(ResourceType.valuesList);
-                    return StringMan.autocompleteComma(input.toString(), options, ResourceType::valueOf, ResourceType::getName, ResourceType::getName, OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteComma(input, options, ResourceType::valueOf, ResourceType::getName, ResourceType::getName, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Map.class, MilitaryUnit.class, Long.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     List<String> options = Arrays.asList(MilitaryUnit.values).stream().map(Enum::name).collect(Collectors.toList());
-                    return StringMan.completeMap(options, null, input.toString());
+                    return StringMan.completeMap(options, null, input);
                 }));
             });
         }
         {
             Type type = TypeToken.getParameterized(Map.class, ResourceType.class, Double.class).getType();
-            Consumer<ValueStore<?>> binding = store -> {
+            Consumer<ValueStore> binding = store -> {
                 Key<Object> key = Key.of(type, Autocomplete.class);
-                FunctionConsumerParser parser = new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                FunctionConsumerParser<Object> parser = new FunctionConsumerParser<>(key, (valueStore, input) -> {
                     List<String> options = ResourceType.valuesList.stream().map(Enum::name).collect(Collectors.toList());
-                    return StringMan.completeMap(options, null, input.toString());
+                    return StringMan.completeMap(options, null, input);
                 });
                 store.addParser(key, parser);
                 store.addParser(Key.of(type, Autocomplete.class, AllianceDepositLimit.class), parser);

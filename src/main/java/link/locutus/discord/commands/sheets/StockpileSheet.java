@@ -49,9 +49,9 @@ public class StockpileSheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         AllianceList alliance = db.getAllianceList();
-        if (alliance == null || alliance.isEmpty()) return "Pleas set " + GuildKey.ALLIANCE_ID.getCommandMention();
+        if (alliance == null || alliance.isEmpty(Locutus.imp().getNationDB())) return "Pleas set " + GuildKey.ALLIANCE_ID.getCommandMention();
 
-        Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
+        Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile(Locutus.imp().getNationDB());
 
         List<String> header = new ArrayList<>();
         header.add("nation");

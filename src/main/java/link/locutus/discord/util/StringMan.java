@@ -26,6 +26,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
@@ -42,6 +43,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -343,6 +346,35 @@ public class StringMan {
 
     public static Map.Entry<String, String> stacktraceToString(Throwable e) {
         return stacktraceToString(e, Integer.MAX_VALUE, Predicates.alwaysTrue());
+    }
+
+    public static Throwable getRootCause(Throwable t) {
+        if (t == null) return null;
+        Throwable root = t;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+
+        // Unwrap a few common wrapper types that sometimes hide the real exception
+        if (root instanceof InvocationTargetException) {
+            Throwable target = ((InvocationTargetException) root).getTargetException();
+            if (target != null && target != root) return getRootCause(target);
+        } else if (root instanceof CompletionException) {
+            Throwable cause = ((CompletionException) root).getCause();
+            if (cause != null && cause != root) return getRootCause(cause);
+        } else if (root instanceof ExecutionException) {
+            Throwable cause = ((ExecutionException) root).getCause();
+            if (cause != null && cause != root) return getRootCause(cause);
+        }
+
+        return root;
+    }
+
+    public static String rootMessage(Throwable t) {
+        Throwable r = getRootCause(t);
+        if (r == null) return null;
+        String m = r.getMessage();
+        return (m == null || m.isEmpty()) ? r.toString() : m;
     }
 
     public static Map.Entry<String, String> stacktraceToString(Throwable e, int maxLines, Predicate<String> allowLine) {

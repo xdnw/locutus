@@ -2,9 +2,7 @@ package link.locutus.discord.web.jooby.adapter;
 
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -14,7 +12,9 @@ import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWAppBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeServices;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.StringMan;
@@ -23,7 +23,6 @@ import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.CacheType;
-import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.jooby.PageHandler;
 
 import javax.annotation.Nullable;
@@ -41,12 +40,8 @@ public class TsEndpointGenerator {
     // ./gradlew -Pts generateTypeScript
     public static void main(String[] args) {
         try {
-            ValueStore<Object> store = PWBindings.createDefaultStore();
-            ValidatorStore validators = PWBindings.createDefaultValidators();
-            PermissionHandler permisser = PWBindings.createDefaultPermisser();
-            PlaceholdersMap placeholders = new PlaceholdersMap(store, validators, permisser).init();
-            PageHandler handler = new PageHandler(placeholders);
-            writeFiles(handler, null, true, false);
+            PageHandler handler = createStandalonePageHandler();
+            writeFiles(handler, null, true, true);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -54,13 +49,34 @@ public class TsEndpointGenerator {
         System.exit(0);
     }
 
+    public static PageHandler createStandalonePageHandler() {
+        ValueStore store = PWBindings.createDefaultStore();
+        new PWAppBindings().register(store);
+        ValidatorStore validators = PWBindings.createDefaultValidators();
+        PermissionHandler permisser = PWBindings.createDefaultPermisser();
+        CommandRuntimeServices services = CommandRuntimeServices.builder(modifier -> {
+            throw new UnsupportedOperationException("Standalone TsEndpointGenerator does not resolve runtime snapshots");
+        }).build();
+        PlaceholdersMap placeholders = new PlaceholdersMap(store, validators, permisser, services).initParsing();
+        return new PageHandler(placeholders);
+    }
+
     public static void writeFiles(PageHandler handler, File outputDir, boolean endpoints, boolean commands) throws IOException {
+        writeFiles(handler, null, outputDir, endpoints, commands);
+    }
+
+    public static void writeFiles(PageHandler handler, @Nullable CommandManager2 commandManager, File outputDir,
+            boolean endpoints, boolean commands) throws IOException {
         if (outputDir == null) {
             outputDir = new File("../lc_cmd_react/src/");
         }
         CommandGroup api = (CommandGroup) handler.getCommands().get("api");
         if (endpoints){
             File endpointFile = new File(outputDir, "lib/endpoints.ts");
+            File endpointParent = endpointFile.getParentFile();
+            if (endpointParent != null) {
+                endpointParent.mkdirs();
+            }
             String header = """
                     import { ApiEndpoint, CommonEndpoint } from "./BulkQuery";
                     import type * as ApiTypes from "@/lib/apitypes.d.ts";
@@ -72,10 +88,10 @@ public class TsEndpointGenerator {
             // generateTsPlaceholderBuilder (unused)
         }
         if (commands) {
-            CommandManager2 cmdInst = Locutus.cmd().getV2();
-            SimpleValueStore<Object> store = new SimpleValueStore<>();
-            new WebOptionBindings().register(store);
-            Map<String, Object> json = cmdInst.toJson(store, cmdInst.getPermisser());
+            if (commandManager == null) {
+                throw new IllegalArgumentException("CommandManager2 is required when generating command metadata");
+            }
+            Map<String, Object> json = commandManager.toJson(handler.getWebOptionStore(), commandManager.getPermisser());
 //            byte[] data = handler.getSerializer().writeValueAsBytes(json);
 //            File commandsFile = new File(outputDir, "assets/commands.msgpack");
 //            if (!commandsFile.exists()) {
@@ -95,6 +111,10 @@ public class TsEndpointGenerator {
             String header = """
                     export const COMMANDS = """;
             File output = new File(outputDir, "lib/commands.ts");
+            File outputParent = output.getParentFile();
+            if (outputParent != null) {
+                outputParent.mkdirs();
+            }
 
             String jsonStr = WebUtil.GSON.toJson(json);
             String suffix = ";"; // " as const;"

@@ -22,14 +22,9 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
-    public static final Index INDEX_RECEIVER = Internal.createIndex(DSL.name("index_receiver"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.RECEIVER_ID, Transactions_2.TRANSACTIONS_2.RECEIVER_TYPE }, false);
-    public static final Index INDEX_RECEIVER_ID = Internal.createIndex(DSL.name("index_receiver_id"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.RECEIVER_ID }, false);
-    public static final Index INDEX_RECEIVER_TYPE = Internal.createIndex(DSL.name("index_receiver_type"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.RECEIVER_TYPE }, false);
-    public static final Index INDEX_SENDER = Internal.createIndex(DSL.name("index_sender"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.SENDER_ID, Transactions_2.TRANSACTIONS_2.SENDER_TYPE }, false);
-    public static final Index INDEX_SENDER_ID = Internal.createIndex(DSL.name("index_sender_id"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.SENDER_ID }, false);
-    public static final Index INDEX_SENDER_RECEIVER = Internal.createIndex(DSL.name("index_sender_receiver"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.SENDER_ID, Transactions_2.TRANSACTIONS_2.SENDER_TYPE, Transactions_2.TRANSACTIONS_2.RECEIVER_ID, Transactions_2.TRANSACTIONS_2.RECEIVER_TYPE }, false);
-    public static final Index INDEX_SENDER_RECEIVER_ID = Internal.createIndex(DSL.name("index_sender_receiver_id"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.RECEIVER_ID, Transactions_2.TRANSACTIONS_2.SENDER_ID }, false);
-    public static final Index INDEX_SENDER_TYPE = Internal.createIndex(DSL.name("index_sender_type"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.SENDER_TYPE }, false);
+    public static final Index INDEX_RECEIVER_KEY = Internal.createIndex(DSL.name("index_receiver_key"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.RECEIVER_KEY }, false);
+    public static final Index INDEX_SENDER_KEY = Internal.createIndex(DSL.name("index_sender_key"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.SENDER_KEY }, false);
+    public static final Index INDEX_SENDER_RECEIVER_KEY = Internal.createIndex(DSL.name("index_sender_receiver_key"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.SENDER_KEY, Transactions_2.TRANSACTIONS_2.RECEIVER_KEY }, false);
     public static final Index INDEX_TAX_DEPOSITS_NATION = Internal.createIndex(DSL.name("index_tax_deposits_nation"), TaxDepositsDate.TAX_DEPOSITS_DATE, new OrderField[] { TaxDepositsDate.TAX_DEPOSITS_DATE.NATION }, false);
     public static final Index INDEX_TAX_DEPOSITS_TAX_ID = Internal.createIndex(DSL.name("index_tax_deposits_tax_id"), TaxDepositsDate.TAX_DEPOSITS_DATE, new OrderField[] { TaxDepositsDate.TAX_DEPOSITS_DATE.TAX_ID }, false);
     public static final Index INDEX_TX_DATETIME = Internal.createIndex(DSL.name("index_tx_datetime"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.TX_DATETIME }, false);

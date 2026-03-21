@@ -3,11 +3,13 @@ package link.locutus.discord.commands.manager.v2.command;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONObject;
 
 import javax.annotation.CheckReturnValue;
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -22,6 +24,13 @@ public interface IMessageIO {
     @CheckReturnValue
     default IModalBuilder modal() {
         return new AModalBuilder(this, null, null);
+    }
+
+    default @Nullable CompletableFuture<IMessageBuilder> sendIfFree(String message) {
+        if (!RateLimitUtil.isCloseToLimit(true)) {
+            return send(message);
+        }
+        return null;
     }
 
     default CompletableFuture<IMessageBuilder> send(String message) {
@@ -69,12 +78,20 @@ public interface IMessageIO {
 
 
     default IMessageBuilder updateOptionally(CompletableFuture<IMessageBuilder> msgFuture, String message) {
-        if (msgFuture == null) return null;
+        if (msgFuture == null || RateLimitUtil.isCloseToLimit(true)) return null;
         IMessageBuilder msg = msgFuture.getNow(null);
         if (msg != null && msg.getId() > 0) {
             msg.clear().append(message).sendIfFree();
         }
         return msg;
+    }
+
+    default void deleteOptionally(CompletableFuture<IMessageBuilder> msgFuture) {
+        if (msgFuture == null || RateLimitUtil.isCloseToLimit(true)) return;
+        IMessageBuilder msg = msgFuture.getNow(null);
+        if (msg != null && msg.getId() > 0) {
+            delete(msg.getId());
+        }
     }
 
     long getIdLong();

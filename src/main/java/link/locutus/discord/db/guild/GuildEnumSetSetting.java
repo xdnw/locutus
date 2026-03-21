@@ -6,7 +6,7 @@ import link.locutus.discord.db.GuildDB;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class GuildEnumSetSetting<T extends Enum> extends GuildSetting<Set<T>> {
+public abstract class GuildEnumSetSetting<T extends Enum<T>> extends GuildSetting<Set<T>> {
     private final Class<T> t;
 
     public GuildEnumSetSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Class<T> t) {

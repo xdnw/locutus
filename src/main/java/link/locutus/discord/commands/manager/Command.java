@@ -3,9 +3,15 @@ package link.locutus.discord.commands.manager;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeServices;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -129,6 +135,27 @@ public abstract class Command {
 
     public String desc() {
         return "Run the " + aliases.get(0) + " command";
+    }
+
+    protected <T, M> Placeholders<T, M> placeholders(ValueStore store, Class<T> type) {
+        PlaceholderRegistry registry = store == null ? null
+                : (PlaceholderRegistry) store.getProvided(Key.of(PlaceholderRegistry.class), false);
+        if (registry == null) {
+            throw new IllegalStateException("PlaceholderRegistry was not provided in the current value store");
+        }
+        Placeholders<T, M> placeholders = registry.get(type);
+        if (placeholders == null) {
+            throw new IllegalStateException("No placeholders registered for type: " + type.getSimpleName());
+        }
+        return placeholders;
+    }
+
+    protected CommandRuntimeServices runtimeServices() {
+        return Locutus.cmd().getV2().getCommandRuntimeServices();
+    }
+
+    protected LocalValueStore placeholderLocals(Guild guild, IMessageIO channel, User author, DBNation me) {
+        return Locutus.cmd().getV2().createExecutionContext(guild, channel, author, me);
     }
 
     public abstract String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception;

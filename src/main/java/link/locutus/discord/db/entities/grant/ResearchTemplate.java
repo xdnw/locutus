@@ -21,12 +21,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public class ResearchTemplate extends AGrantTemplate<Void>{
+public class ResearchTemplate extends AGrantTemplate<Void> {
     private final Map<Research, Integer> research;
     private final boolean from_zero;
 
-    public ResearchTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal,
+    public ResearchTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole,
+            long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay,
+            int maxGranterTotal, ResultSet rs) throws SQLException {
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay,
+                maxGranterDay, maxGranterTotal,
                 rs.getLong("date_created"),
                 rs.getInt("research"),
                 rs.getBoolean("from_zero"),
@@ -35,18 +38,19 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
                 rs.getBoolean("allow_ignore"));
     }
 
-    // create new constructor  with typed parameters instead of resultset
+    // create new constructor with typed parameters instead of resultset
     public ResearchTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole,
-                            long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay,
-                            int maxGranterDay, int maxGranterTotal, long dateCreated,
-                            int researchBits, boolean fromZero, long expiryOrZero, long decayOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, -1);
+            long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay,
+            int maxGranterDay, int maxGranterTotal, long dateCreated,
+            int researchBits, boolean fromZero, long expiryOrZero, long decayOrZero, boolean allowIgnore) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay,
+                maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, -1);
         this.research = Research.fromBits(researchBits);
         this.from_zero = fromZero;
     }
 
     @Override
-    public String toInfoString(DBNation sender, DBNation receiver,  Void parsed) {
+    public String toInfoString(DBNation sender, DBNation receiver, Void parsed) {
         StringBuilder message = new StringBuilder();
         message.append("Research: `" + StringMan.getString(research) + "`");
         if (from_zero) {
@@ -56,22 +60,34 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole,
+            String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay,
+            String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
         return CM.grant_template.create.research.cmd.name(name).allowedRecipients(allowedRecipients)
                 .research(StringMan.getString(research)).econRole(
-                econRole).selfRole(
-                selfRole).bracket(
-                bracket).useReceiverBracket(
-                useReceiverBracket).maxTotal(
-                maxTotal).maxDay(
-                maxDay).from_zero(from_zero ? "true" : null).maxGranterDay(
-                maxGranterDay).maxGranterTotal(
-                maxGranterTotal).expireTime(
-                allowExpire).decayTime(
-                allowDecay).allowIgnore(
-                allowIgnore).toString();
+                        econRole)
+                .selfRole(
+                        selfRole)
+                .bracket(
+                        bracket)
+                .useReceiverBracket(
+                        useReceiverBracket)
+                .maxTotal(
+                        maxTotal)
+                .maxDay(
+                        maxDay)
+                .from_zero(from_zero ? "true" : null).maxGranterDay(
+                        maxGranterDay)
+                .maxGranterTotal(
+                        maxGranterTotal)
+                .expireTime(
+                        allowExpire)
+                .decayTime(
+                        allowDecay)
+                .allowIgnore(
+                        allowIgnore)
+                .toString();
     }
-
 
     @Override
     public String toListString() {
@@ -92,17 +108,20 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Void parsed, boolean confirm) {
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender,
+            @Nullable DBNation receiver, Void parsed, boolean confirm) {
         List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed, confirm);
         list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, ResearchTemplate template, Void parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver,
+            ResearchTemplate template, Void parsed) {
         return getRequirementsResearch(db, sender, receiver, template, template != null ? template.research : null);
     }
 
-    public static List<Grant.Requirement> getRequirementsResearch(GuildDB db, DBNation sender, DBNation receiver, ResearchTemplate template, Map<Research, Integer> research) {
+    public static List<Grant.Requirement> getRequirementsResearch(GuildDB db, DBNation sender, DBNation receiver,
+            ResearchTemplate template, Map<Research, Integer> research) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // has a timer
@@ -113,51 +132,55 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
             }
         }));
         // received project already
-        list.add(new Grant.Requirement("Must not have received a transfer for " + (research == null ? "`{research}`" : research) + " already", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation nation) {
-                outer:
-                for (Transaction2 transaction : nation.getTransactions(-1, true, 0L, Long.MAX_VALUE)) {
-                    if (transaction.note == null) continue;
-                    Map<DepositType, Object> noteMap = transaction.getNoteMap();
-                    Object researchVal = noteMap.get(DepositType.RESEARCH);
-                    if (researchVal instanceof  Number n) {
-                        int researchBits = n.intValue();
-                        Map<Research, Integer> researchMap = Research.fromBits(researchBits);
-                        for (Map.Entry<Research, Integer> entry : research.entrySet()) {
-                            if (researchMap.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
-                                continue outer;
+        list.add(new Grant.Requirement(
+                "Must not have received a transfer for " + (research == null ? "`{research}`" : research) + " already",
+                false, new Function<DBNation, Boolean>() {
+                    @Override
+                    public Boolean apply(DBNation nation) {
+                        outer: for (Transaction2 transaction : nation.getTransactions(-1, true, 0L, Long.MAX_VALUE)) {
+                            Map<DepositType, Object> noteMap = transaction.getNoteMap();
+                            Object researchVal = noteMap.get(DepositType.RESEARCH);
+                            if (researchVal instanceof Number n) {
+                                int researchBits = n.intValue();
+                                Map<Research, Integer> researchMap = Research.fromBits(researchBits);
+                                for (Map.Entry<Research, Integer> entry : research.entrySet()) {
+                                    if (researchMap.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
+                                        continue outer;
+                                    }
+                                }
                             }
                         }
+                        return true;
                     }
-                }
-                return true;
-            }
-        }));
+                }));
 
-        //nation does not have ALA
-        list.add(new Grant.Requirement("Requires the project: `" + Projects.MILITARY_RESEARCH_CENTER + "`", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                return receiver.hasProject(Projects.MILITARY_RESEARCH_CENTER);
-            }
-        }));
+        // nation does not have ALA
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.MILITARY_RESEARCH_CENTER + "`", false,
+                new Function<DBNation, Boolean>() {
+                    @Override
+                    public Boolean apply(DBNation receiver) {
+                        return receiver.hasProject(Projects.MILITARY_RESEARCH_CENTER);
+                    }
+                }));
 
-        //nation does not have AEC
-        list.add(new Grant.Requirement("Requires the project: `" + Projects.MILITARY_DOCTRINE + "`", true, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                return receiver.hasProject(Projects.MILITARY_DOCTRINE);
-            }
-        }));
+        // nation does not have AEC
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.MILITARY_DOCTRINE + "`", true,
+                new Function<DBNation, Boolean>() {
+                    @Override
+                    public Boolean apply(DBNation receiver) {
+                        return receiver.hasProject(Projects.MILITARY_DOCTRINE);
+                    }
+                }));
 
         // domestic policy is technological advancement
-        list.add(new Grant.Requirement("Domestic policy must be `" + DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT.name() + "`", true, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation nation) {
-                return nation.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
-            }
-        }));
+        list.add(new Grant.Requirement(
+                "Domestic policy must be `" + DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT.name() + "`", true,
+                new Function<DBNation, Boolean>() {
+                    @Override
+                    public Boolean apply(DBNation nation) {
+                        return nation.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
+                    }
+                }));
 
         return list;
     }
@@ -185,20 +208,15 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
                 start.put(entry.getKey(), level);
             }
         }
-        String findNote = "#research=";
         for (Transaction2 transaction : receiver.getTransactions(-1, true, 0L, Long.MAX_VALUE)) {
-            if (transaction.note == null) continue;
-            String noteLower = transaction.note.toLowerCase();
-            if (noteLower.contains(findNote)) {
-                Object researchObj = transaction.getNoteMap().get(DepositType.RESEARCH);
-                if (researchObj instanceof Number n) {
-                    int researchBits = n.intValue();
-                    Map<Research, Integer> priorGrants = Research.fromBits(researchBits);
-                    for (Map.Entry<Research, Integer> entry : priorGrants.entrySet()) {
-                        int level = Math.min(entry.getValue(), research.get(entry.getKey()));
-                        if (level > 0) {
-                            start.put(entry.getKey(), Math.max(start.getOrDefault(entry.getKey(), 0), level));
-                        }
+            Object researchObj = transaction.getNoteValue(DepositType.RESEARCH);
+            if (researchObj instanceof Number n) {
+                int researchBits = n.intValue();
+                Map<Research, Integer> priorGrants = Research.fromBits(researchBits);
+                for (Map.Entry<Research, Integer> entry : priorGrants.entrySet()) {
+                    int level = Math.min(entry.getValue(), research.get(entry.getKey()));
+                    if (level > 0) {
+                        start.put(entry.getKey(), Math.max(start.getOrDefault(entry.getKey(), 0), level));
                     }
                 }
             }

@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -36,7 +37,7 @@ import static link.locutus.discord.commands.manager.v2.impl.pw.commands.Unsorted
 
 public class ResetDepositsBuilder {
     public static final class Pending {
-        int sign;               // sign of ALL indices in this bucket
+        int sign; // sign of ALL indices in this bucket
         final IntArrayList idx; // indices into `transactions`
 
         Pending(int sign) {
@@ -45,42 +46,9 @@ public class ResetDepositsBuilder {
         }
     }
 
-    private static boolean isExpireAt(String s, int i) {
-        // "#expire=" length 8
-        return i + 8 <= s.length()
-                && s.charAt(i) == '#'
-                && ((s.charAt(i + 1) | 32) == 'e')
-                && ((s.charAt(i + 2) | 32) == 'x')
-                && ((s.charAt(i + 3) | 32) == 'p')
-                && ((s.charAt(i + 4) | 32) == 'i')
-                && ((s.charAt(i + 5) | 32) == 'r')
-                && ((s.charAt(i + 6) | 32) == 'e')
-                && s.charAt(i + 7) == '=';
-    }
-
-    private static boolean isDecayAt(String s, int i) {
-        // "#decay=" length 7
-        return i + 7 <= s.length()
-                && s.charAt(i) == '#'
-                && ((s.charAt(i + 1) | 32) == 'd')
-                && ((s.charAt(i + 2) | 32) == 'e')
-                && ((s.charAt(i + 3) | 32) == 'c')
-                && ((s.charAt(i + 4) | 32) == 'a')
-                && ((s.charAt(i + 5) | 32) == 'y')
-                && s.charAt(i + 6) == '=';
-    }
-
-    private static int skipTagValue(String s, int i) {
-        // skip until whitespace or next '#'
-        for (int n = s.length(); i < n; i++) {
-            char c = s.charAt(i);
-            if (Character.isWhitespace(c) || c == '#') return i;
-        }
-        return i;
-    }
-
     private static long fnv1a64(long h, long x) {
-        // fold long into hash (byte-perfect FNV isn't necessary here; this is fast and stable)
+        // fold long into hash (byte-perfect FNV isn't necessary here; this is fast and
+        // stable)
         h ^= x;
         return h * 0x100000001b3L;
     }
@@ -95,48 +63,11 @@ public class ResetDepositsBuilder {
         return z;
     }
 
-    /** Hash note with: lowercasing, collapsing whitespace, and removing #expire=... and #decay=... */
-    private static long baseNoteHash(String note) {
-        if (note == null || note.isEmpty()) return 0L;
-
-        long h = 0xcbf29ce484222325L; // FNV offset
-        boolean wroteAny = false;
-        boolean spacePending = false;
-
-        for (int i = 0, n = note.length(); i < n; ) {
-            char c = note.charAt(i);
-
-            if (Character.isWhitespace(c)) {
-                spacePending = wroteAny;
-                i++;
-                continue;
-            }
-
-            if (c == '#') {
-                if (isExpireAt(note, i)) {
-                    i = skipTagValue(note, i + 8);
-                    spacePending = wroteAny;
-                    continue;
-                }
-                if (isDecayAt(note, i)) {
-                    i = skipTagValue(note, i + 7);
-                    spacePending = wroteAny;
-                    continue;
-                }
-            }
-
-            if (spacePending) {
-                h = fnv1a64(h, ' ');
-                spacePending = false;
-            }
-
-            if (c >= 'A' && c <= 'Z') c = (char) (c + 32);
-            h = fnv1a64(h, c);
-            wroteAny = true;
-            i++;
+    private static long baseNoteHash(TransactionNote note) {
+        if (note == null || note.isEmpty()) {
+            return 0L;
         }
-
-        return h;
+        return note.stableHashWithout(DepositType.EXPIRE, DepositType.DECAY);
     }
 
     private static long resourcesHash64(double[] res) {
@@ -153,11 +84,14 @@ public class ResetDepositsBuilder {
         int s = 0;
         for (double v2 : res) {
             long cents = ArrayUtil.toCents(v2);
-            if (cents == 0) continue;
+            if (cents == 0)
+                continue;
 
             int vs = cents > 0 ? 1 : -1;
-            if (s == 0) s = vs;
-            else if (s != vs) return 0; // mixed +/- vector, can't treat as simple negation
+            if (s == 0)
+                s = vs;
+            else if (s != vs)
+                return 0; // mixed +/- vector, can't treat as simple negation
         }
         return (s == 0) ? 1 : s; // all zero -> treat as positive
     }
@@ -166,7 +100,8 @@ public class ResetDepositsBuilder {
         long h = 0xcbf29ce484222325L;
         for (double v2 : res) {
             long v = ArrayUtil.toCents(v2);
-            if (v < 0) v = -v;
+            if (v < 0)
+                v = -v;
             h = fnv1a64(h, v);
             h = fnv1a64(h, v >>> 32);
         }
@@ -177,7 +112,8 @@ public class ResetDepositsBuilder {
         for (double v : res) {
             if (v < 0) {
                 double[] copy = Arrays.copyOf(res, res.length);
-                for (int i = 0; i < copy.length; i++) copy[i] = Math.abs(copy[i]);
+                for (int i = 0; i < copy.length; i++)
+                    copy[i] = Math.abs(copy[i]);
                 return copy;
             }
         }
@@ -195,69 +131,29 @@ public class ResetDepositsBuilder {
         h = fnv1a64(h, expireEpoch);
         h = fnv1a64(h, decayEpoch);
         h = fnv1a64(h, resourcesHashAbs64(tx.resources));
-        h = fnv1a64(h, baseNoteHash(tx.note));
+        h = fnv1a64(h, baseNoteHash(tx.getStructuredNote()));
         return mix64(h);
     }
 
-    private static String canonicalizeNote(String note,
-                                           boolean hasExpire, long expireEpoch,
-                                           boolean hasDecay, long decayEpoch) {
-        // Only called for the tiny set that actually needs resetting.
-        StringBuilder sb = new StringBuilder(note == null ? 32 : note.length() + 32);
-
-        boolean wroteAny = false;
-        boolean spacePending = false;
-
-        if (note != null && !note.isEmpty()) {
-            for (int i = 0, n = note.length(); i < n; ) {
-                char c = note.charAt(i);
-
-                if (Character.isWhitespace(c)) {
-                    spacePending = wroteAny;
-                    i++;
-                    continue;
-                }
-
-                if (c == '#') {
-                    if (isExpireAt(note, i)) {
-                        i = skipTagValue(note, i + 8);
-                        spacePending = wroteAny;
-                        continue;
-                    }
-                    if (isDecayAt(note, i)) {
-                        i = skipTagValue(note, i + 7);
-                        spacePending = wroteAny;
-                        continue;
-                    }
-                }
-
-                if (spacePending) {
-                    sb.append(' ');
-                    spacePending = false;
-                }
-
-                if (c >= 'A' && c <= 'Z') c = (char) (c + 32);
-                sb.append(c);
-                wroteAny = true;
-                i++;
-            }
-        }
-
+    private static TransactionNote canonicalizeNote(TransactionNote note,
+            boolean hasExpire, long expireEpoch,
+            boolean hasDecay, long decayEpoch) {
+        TransactionNote.Builder builder = note == null ? TransactionNote.builder() : note.toBuilder();
+        builder.removeAll(DepositType.EXPIRE, DepositType.DECAY);
         if (hasExpire) {
-            if (sb.length() > 0) sb.append(' ');
-            sb.append("#expire=timestamp:").append(expireEpoch);
+            builder.put(DepositType.EXPIRE, expireEpoch);
         }
         if (hasDecay) {
-            if (sb.length() > 0) sb.append(' ');
-            sb.append("#decay=timestamp:").append(decayEpoch);
+            builder.put(DepositType.DECAY, decayEpoch);
         }
-        return sb.toString();
+        return builder.build();
     }
 
     public interface ProgressCallback {
         void update(String message);
 
-        ProgressCallback NOOP = _msg -> {};
+        ProgressCallback NOOP = _msg -> {
+        };
     }
 
     public static final class Result {
@@ -286,8 +182,7 @@ public class ResetDepositsBuilder {
                 double[] totalTax,
                 double[] totalLoan,
                 double[] totalExpire,
-                double[] totalEscrow
-        ) {
+                double[] totalEscrow) {
             this.filter = filter;
             this.nationCount = nationCount;
             this.force = force;
@@ -301,20 +196,52 @@ public class ResetDepositsBuilder {
             this.totalEscrow = totalEscrow;
         }
 
-        public String getFilter() { return filter; }
-        public int getNationCount() { return nationCount; }
-        public boolean isForce() { return force; }
-        public boolean isUpdateBulk() { return updateBulk; }
-        public boolean hasChanges() { return changed; }
+        public String getFilter() {
+            return filter;
+        }
 
-        /** The long, per-transaction log (what you were attaching as transaction.txt). */
-        public String getDetails() { return details; }
+        public int getNationCount() {
+            return nationCount;
+        }
 
-        public double[] getTotalDeposits() { return Arrays.copyOf(totalDeposits, totalDeposits.length); }
-        public double[] getTotalTax() { return Arrays.copyOf(totalTax, totalTax.length); }
-        public double[] getTotalLoan() { return Arrays.copyOf(totalLoan, totalLoan.length); }
-        public double[] getTotalExpire() { return Arrays.copyOf(totalExpire, totalExpire.length); }
-        public double[] getTotalEscrow() { return Arrays.copyOf(totalEscrow, totalEscrow.length); }
+        public boolean isForce() {
+            return force;
+        }
+
+        public boolean isUpdateBulk() {
+            return updateBulk;
+        }
+
+        public boolean hasChanges() {
+            return changed;
+        }
+
+        /**
+         * The long, per-transaction log (what you were attaching as transaction.txt).
+         */
+        public String getDetails() {
+            return details;
+        }
+
+        public double[] getTotalDeposits() {
+            return Arrays.copyOf(totalDeposits, totalDeposits.length);
+        }
+
+        public double[] getTotalTax() {
+            return Arrays.copyOf(totalTax, totalTax.length);
+        }
+
+        public double[] getTotalLoan() {
+            return Arrays.copyOf(totalLoan, totalLoan.length);
+        }
+
+        public double[] getTotalExpire() {
+            return Arrays.copyOf(totalExpire, totalExpire.length);
+        }
+
+        public double[] getTotalEscrow() {
+            return Arrays.copyOf(totalEscrow, totalEscrow.length);
+        }
 
         public String buildConfirmationTitle() {
             String name = filter;
@@ -404,12 +331,35 @@ public class ResetDepositsBuilder {
         this.nations = Objects.requireNonNull(nations, "nations");
     }
 
-    public ResetDepositsBuilder ignoreGrants(boolean v) { this.ignoreGrants = v; return this; }
-    public ResetDepositsBuilder ignoreLoans(boolean v) { this.ignoreLoans = v; return this; }
-    public ResetDepositsBuilder ignoreTaxes(boolean v) { this.ignoreTaxes = v; return this; }
-    public ResetDepositsBuilder ignoreBankDeposits(boolean v) { this.ignoreBankDeposits = v; return this; }
-    public ResetDepositsBuilder ignoreEscrow(boolean v) { this.ignoreEscrow = v; return this; }
-    public ResetDepositsBuilder force(boolean v) { this.force = v; return this; }
+    public ResetDepositsBuilder ignoreGrants(boolean v) {
+        this.ignoreGrants = v;
+        return this;
+    }
+
+    public ResetDepositsBuilder ignoreLoans(boolean v) {
+        this.ignoreLoans = v;
+        return this;
+    }
+
+    public ResetDepositsBuilder ignoreTaxes(boolean v) {
+        this.ignoreTaxes = v;
+        return this;
+    }
+
+    public ResetDepositsBuilder ignoreBankDeposits(boolean v) {
+        this.ignoreBankDeposits = v;
+        return this;
+    }
+
+    public ResetDepositsBuilder ignoreEscrow(boolean v) {
+        this.ignoreEscrow = v;
+        return this;
+    }
+
+    public ResetDepositsBuilder force(boolean v) {
+        this.force = v;
+        return this;
+    }
 
     /** Optional: hook for your command to update a "please wait" message. */
     public ResetDepositsBuilder onProgress(ProgressCallback cb) {
@@ -451,7 +401,7 @@ public class ResetDepositsBuilder {
         }
 
         Set<DBNation> nationSet = nations.getNations();
-        ValueStore<DBNation> cache = PlaceholderCache.createCache(nationSet, DBNation.class);
+        ValueStore cache = PlaceholderCache.createIsolatedCache(nationSet, DBNation.class);
 
         long lastProgressMs = nowSupplier.getAsLong();
         boolean changed = false;
@@ -468,8 +418,7 @@ public class ResetDepositsBuilder {
                     true, true,
                     force && !updateBulk ? 0L : -1L,
                     0, Long.MAX_VALUE,
-                    true
-            );
+                    true);
 
             changed |= resetSimpleType(now, nation, depoByType, DepositType.DEPOSIT, "#deposit",
                     ignoreBankDeposits, totalDeposits, details);
@@ -496,8 +445,7 @@ public class ResetDepositsBuilder {
                 Arrays.copyOf(totalTax, totalTax.length),
                 Arrays.copyOf(totalLoan, totalLoan.length),
                 Arrays.copyOf(totalExpire, totalExpire.length),
-                Arrays.copyOf(totalEscrow, totalEscrow.length)
-        );
+                Arrays.copyOf(totalEscrow, totalEscrow.length));
     }
 
     private boolean resetSimpleType(
@@ -508,10 +456,10 @@ public class ResetDepositsBuilder {
             String note,
             boolean ignore,
             double[] total,
-            StringBuilder details
-    ) throws IOException {
+            StringBuilder details) throws IOException {
         double[] res = depoByType.get(type);
-        if (res == null || ignore || ResourceType.isZero(res)) return false;
+        if (res == null || ignore || ResourceType.isZero(res))
+            return false;
 
         ResourceType.round(res);
         details.append("Subtracting `")
@@ -523,7 +471,7 @@ public class ResetDepositsBuilder {
         ResourceType.subtract(total, res);
 
         if (force) {
-            db.subBalance(now, nation, me.getNation_id(), note, res);
+            db.subBalance(now, nation, me.getNation_id(), TransactionNote.of(type).asMap(), res);
         }
         return true;
     }
@@ -533,17 +481,18 @@ public class ResetDepositsBuilder {
             DBNation nation,
             Map<DepositType, double[]> depoByType,
             double[] totalExpire,
-            StringBuilder details
-    ) throws IOException {
+            StringBuilder details) throws IOException {
         double[] grant = depoByType.get(DepositType.GRANT);
-        if (grant == null || ignoreGrants || ResourceType.isZero(grant)) return false;
+        if (grant == null || ignoreGrants || ResourceType.isZero(grant))
+            return false;
 
         final int nationId = nation.getNation_id();
 
-        List<Map.Entry<Integer, Transaction2>> transactions =
-                nation.getTransactions(db, null, true, true, true, -1, 0, Long.MAX_VALUE, true);
+        List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, true, -1, 0,
+                Long.MAX_VALUE, true);
 
-        // Iterate newest->oldest if possible (pairs tend to be created later, reduces pending size).
+        // Iterate newest->oldest if possible (pairs tend to be created later, reduces
+        // pending size).
         int start = 0, end = transactions.size(), step = 1;
         if (transactions.size() > 1) {
             long t0 = transactions.get(0).getValue().tx_datetime;
@@ -564,31 +513,31 @@ public class ResetDepositsBuilder {
             int sign = entry.getKey();
             Transaction2 tx = entry.getValue();
 
-            if (tx.note == null) continue;
-            if (tx.receiver_id != nationId && tx.sender_id != nationId) continue;
-
-            // cheap prefilter (avoid parsing notes for most tx)
-            String note = tx.note;
-            if (note.indexOf("#expire") < 0 && note.indexOf("#decay") < 0
-                    && note.indexOf("#EXPIRE") < 0 && note.indexOf("#DECAY") < 0) {
+            if (tx.receiver_id != nationId && tx.sender_id != nationId)
+                continue;
+            if (!tx.hasNoteTag(DepositType.EXPIRE) && !tx.hasNoteTag(DepositType.DECAY)) {
                 continue;
             }
 
             Map<DepositType, Object> noteMap = tx.getNoteMap();
             Object expireObj = noteMap.get(DepositType.EXPIRE);
             Object decayObj = noteMap.get(DepositType.DECAY);
-            if (!(expireObj instanceof Number) && !(decayObj instanceof Number)) continue;
+            if (!(expireObj instanceof Number) && !(decayObj instanceof Number))
+                continue;
 
             long expireEpoch = (expireObj instanceof Number n) ? n.longValue() : Long.MAX_VALUE;
             long decayEpoch = (decayObj instanceof Number n) ? n.longValue() : Long.MAX_VALUE;
 
-            if (expireEpoch == Long.MAX_VALUE && decayEpoch == Long.MAX_VALUE) continue;
-            if (expireEpoch <= now || decayEpoch <= now) continue;
+            if (expireEpoch == Long.MAX_VALUE && decayEpoch == Long.MAX_VALUE)
+                continue;
+            if (expireEpoch <= now || decayEpoch <= now)
+                continue;
 
             int rSign = resourcesVectorSign(tx.resources);
-            if (rSign == 0) continue; // mixed +/-, skip pairing (or handle separately)
+            if (rSign == 0)
+                continue; // mixed +/-, skip pairing (or handle separately)
 
-            int effectiveSign = sign * rSign;  // <- THIS is the important bit
+            int effectiveSign = sign * rSign; // <- THIS is the important bit
 
             long key = resetKey(tx, expireEpoch, decayEpoch);
 
@@ -602,7 +551,8 @@ public class ResetDepositsBuilder {
 
             if (p.sign == -effectiveSign) {
                 p.idx.removeInt(p.idx.size() - 1);
-                if (p.idx.isEmpty()) pending.remove(key);
+                if (p.idx.isEmpty())
+                    pending.remove(key);
             } else {
                 p.idx.add(i);
             }
@@ -625,22 +575,21 @@ public class ResetDepositsBuilder {
                 long expireEpoch = (expireObj instanceof Number n) ? n.longValue() : Long.MAX_VALUE;
                 long decayEpoch = (decayObj instanceof Number n) ? n.longValue() : Long.MAX_VALUE;
 
-                String noteCopy = canonicalizeNote(
-                        tx.note,
+                TransactionNote noteCopy = canonicalizeNote(
+                        tx.getStructuredNote(),
                         expireObj instanceof Number, expireEpoch,
-                        decayObj instanceof Number, decayEpoch
-                );
+                        decayObj instanceof Number, decayEpoch);
 
                 if (sign == 1) {
                     details.append("Subtracting `")
                             .append(nation.getQualifiedId()).append(' ')
                             .append(ResourceType.toString(amt)).append(' ')
-                            .append(noteCopy).append("`\n");
+                            .append(noteCopy.toDisplayString()).append("`\n");
 
                     ResourceType.subtract(totalExpire, amt);
                     if (force) {
-                        db.subBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime,
-                                nation, me.getNation_id(), noteCopy, amt);
+                        long entryTime = decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime;
+                        db.subBalance(entryTime, nation, me.getNation_id(), noteCopy.asMap(), amt);
                     }
                     changed = true;
 
@@ -648,12 +597,12 @@ public class ResetDepositsBuilder {
                     details.append("Adding `")
                             .append(nation.getQualifiedId()).append(' ')
                             .append(ResourceType.toString(amt)).append(' ')
-                            .append(noteCopy).append("`\n");
+                            .append(noteCopy.toDisplayString()).append("`\n");
 
                     ResourceType.add(totalExpire, amt);
                     if (force) {
-                        db.addBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime,
-                                nation, me.getNation_id(), noteCopy, amt);
+                        long entryTime = decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime;
+                        db.addBalance(entryTime, nation, me.getNation_id(), noteCopy.asMap(), amt);
                     }
                     changed = true;
                 } else {
@@ -666,7 +615,8 @@ public class ResetDepositsBuilder {
     }
 
     private boolean resetEscrow(DBNation nation, double[] totalEscrow, StringBuilder details) {
-        if (ignoreEscrow) return false;
+        if (ignoreEscrow)
+            return false;
 
         try {
             Map.Entry<double[], Long> escrowedPair = db.getEscrowed(nation);
@@ -678,7 +628,8 @@ public class ResetDepositsBuilder {
 
                 ResourceType.subtract(totalEscrow, escrowedPair.getKey());
 
-                if (force) db.setEscrowed(nation, null, 0);
+                if (force)
+                    db.setEscrowed(nation, null, 0);
                 return true;
             }
         } catch (IOException e) {

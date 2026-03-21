@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class NationsQuery extends Query {
+public class NationsQuery extends Query<Nations> {
   private final Boolean vm;
   private final Integer maxScore;
   private final Integer minScore;
@@ -23,7 +23,7 @@ public class NationsQuery extends Query {
   }
 
   @Override
-  public ApiQuery build() {
+  public ApiQuery<Nations> build() {
     String url = UrlBuilder.build(QueryURL.NATIONS_URL, args);
     if (vm != null || maxScore != null || minScore != null || allianceId != null) {
       url = url.concat("&");
@@ -42,6 +42,6 @@ public class NationsQuery extends Query {
           .collect(Collectors.joining("&"));
       url = url.concat(s);
     }
-    return new ApiQuery<>(url,new Nations());
+    return new ApiQuery<>(url, new Nations());
   }
 }

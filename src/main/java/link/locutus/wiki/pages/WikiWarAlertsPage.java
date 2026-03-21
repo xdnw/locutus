@@ -19,7 +19,7 @@ public class WikiWarAlertsPage extends BotWikiGen {
     @Override
     public String generateMarkdown() {
 
-        List<GuildSetting> militarizationSettings = new ArrayList<>(Arrays.asList(
+        List<GuildSetting<?>> militarizationSettings = new ArrayList<>(Arrays.asList(
                 GuildKey.ACTIVITY_ALERTS,
                 GuildKey.ORBIS_OFFICER_MMR_CHANGE_ALERTS,
                 GuildKey.AA_GROUND_TOP_X,
@@ -28,7 +28,7 @@ public class WikiWarAlertsPage extends BotWikiGen {
         ));
         // militarization alert role
 
-        List<GuildSetting> enemyAlerts = new ArrayList<>(Arrays.asList(
+        List<GuildSetting<?>> enemyAlerts = new ArrayList<>(Arrays.asList(
 
         ));
 

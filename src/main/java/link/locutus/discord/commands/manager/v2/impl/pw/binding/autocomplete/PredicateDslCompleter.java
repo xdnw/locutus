@@ -7,11 +7,11 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 
 import java.lang.reflect.Type;
 import java.util.*;
@@ -30,11 +30,17 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
     private static final Set<String> COMMON_PREFIXES = new LinkedHashSet<>(Arrays.asList("get", "is", "can", "has"));
 
     private final Class<T> rootType;
-    private final ValueStore<?> completerStore;
+    private final ValueStore completerStore;
+    private final PlaceholderRegistry placeholderRegistry;
 
-    public PredicateDslCompleter(ValueStore<?> completerStore, Class<T> rootType) {
+    public PredicateDslCompleter(ValueStore completerStore, Class<T> rootType) {
+        this(completerStore, rootType, PlaceholderRegistry.resolve(completerStore));
+    }
+
+    public PredicateDslCompleter(ValueStore completerStore, Class<T> rootType, PlaceholderRegistry placeholderRegistry) {
         this.rootType = rootType;
         this.completerStore = completerStore;
+        this.placeholderRegistry = placeholderRegistry;
     }
 
     private static String dropCommonPrefix(String name) {
@@ -178,7 +184,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
 
 
         // Determine LHS type by reusing chain analyzer with cursor at the '}' start
-        ChainTypeAtCursor chain = ChainTypeAtCursor.compute(input, tokens, left.start, rootType);
+        ChainTypeAtCursor chain = ChainTypeAtCursor.compute(input, tokens, left.start, rootType, placeholderRegistry);
         Class<?> lhsType = (chain != null && chain.currentType != null) ? chain.currentType : rootType;
 
         // RHS replace span starts after comparator (skip spaces)
@@ -301,7 +307,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
         boolean afterClosingFilter = prev != null && prev.type == TokenType.RBRACE;
         if (afterClosingFilter) {
             Class<?> filterType = rootType;
-            ChainTypeAtCursor chain = ChainTypeAtCursor.compute(input, tokens, prev.start, rootType);
+            ChainTypeAtCursor chain = ChainTypeAtCursor.compute(input, tokens, prev.start, rootType, placeholderRegistry);
             if (chain != null && chain.currentType != null) {
                 filterType = chain.currentType;
             }
@@ -402,7 +408,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
             return result.build();
         }
 
-        ArgumentContext argCtx = ArgumentContext.find(input, tokens, cursor, rootType);
+        ArgumentContext argCtx = ArgumentContext.find(input, tokens, cursor, rootType, placeholderRegistry);
         if (argCtx != null) {
             boolean canCloseCall = allRequiredParamsProvided(argCtx.function, argCtx.alreadyNamedParams);
 
@@ -426,7 +432,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
             return result.build();
         }
 
-        ChainTypeAtCursor chain = ChainTypeAtCursor.compute(input, tokens, cursor, rootType);
+        ChainTypeAtCursor chain = ChainTypeAtCursor.compute(input, tokens, cursor, rootType, placeholderRegistry);
         Token prev = TokenUtil.tokenBefore(tokens, cursor);
         boolean prevIsDot = prev != null && prev.type == TokenType.DOT && prev.end <= cursor;
         Token currentToken = TokenUtil.tokenAtOrBefore(tokens, cursor);
@@ -481,7 +487,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
                                             boolean atStartOfFilter,
                                             Integer filterOpenBracePos) {
         int startCount = out.size();
-        Placeholders<?, Object> pm = PlaceholdersMap.get().get(onType);
+        Placeholders<?, Object> pm = placeholderRegistry == null ? null : placeholderRegistry.get(onType);
         List<ICommand<?>> cmds;
         if (pm == null) {
             cmds = Collections.emptyList();
@@ -927,7 +933,8 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
             this.rhsReplaceSpan = rhsReplaceSpan;
         }
 
-        static ChainTypeAtCursor compute(String input, List<Token> tokens, int cursor, Class<?> rootType) {
+        static ChainTypeAtCursor compute(String input, List<Token> tokens, int cursor, Class<?> rootType,
+            PlaceholderRegistry placeholderRegistry) {
             // Find the last unmatched '{' before cursor
             int openIdx = -1;
             int depth = 0;
@@ -972,7 +979,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
 
                     if (next != null && next.type == TokenType.LPAREN && next.start < cursor) {
                         // function call; resolve command and its return type
-                        ICommand<?> cmd = resolveCommand(currentType, t.text);
+                        ICommand<?> cmd = resolveCommand(placeholderRegistry, currentType, t.text);
                         // If found, skip ahead to its matching ')' and set currentType
                         int callEnd = findMatchingParen(tokens, i + 1, cursor);
                         if (cmd != null) {
@@ -993,7 +1000,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
                         }
                     } else {
                         // Bare identifier => zero-arg function?
-                        ICommand<?> cmd = resolveZeroArgCommand(currentType, t.text);
+                        ICommand<?> cmd = resolveZeroArgCommand(placeholderRegistry, currentType, t.text);
                         if (cmd != null) {
                             currentType = cmd.getType();
                             i++;
@@ -1055,12 +1062,21 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
         }
     }
 
-    private static ICommand<?> resolveCommand(Class<?> onType, String name) {
-        return resolveCommandFlexible(onType, name);
+    private ICommand<?> resolveCommand(Class<?> onType, String name) {
+        return resolveCommand(placeholderRegistry, onType, name);
     }
 
-    private static ICommand<?> resolveZeroArgCommand(Class<?> onType, String name) {
-        ICommand<?> c = resolveCommandFlexible(onType, name);
+    private ICommand<?> resolveZeroArgCommand(Class<?> onType, String name) {
+        return resolveZeroArgCommand(placeholderRegistry, onType, name);
+    }
+
+    private static ICommand<?> resolveCommand(PlaceholderRegistry placeholderRegistry, Class<?> onType, String name) {
+        return resolveCommandFlexible(placeholderRegistry, onType, name);
+    }
+
+    private static ICommand<?> resolveZeroArgCommand(PlaceholderRegistry placeholderRegistry, Class<?> onType,
+            String name) {
+        ICommand<?> c = resolveCommandFlexible(placeholderRegistry, onType, name);
         if (c == null) return null;
         List<ParameterData> ps = c.getUserParameters();
         if (ps == null || ps.isEmpty()) return c;
@@ -1070,8 +1086,9 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
     }
 
     // Flexible resolver that allows optional prefixes
-    private static ICommand<?> resolveCommandFlexible(Class<?> onType, String typed) {
-        Placeholders<?, Object> ph = PlaceholdersMap.get().get(onType);
+    private static ICommand<?> resolveCommandFlexible(PlaceholderRegistry placeholderRegistry, Class<?> onType,
+            String typed) {
+        Placeholders<?, Object> ph = placeholderRegistry == null ? null : placeholderRegistry.get(onType);
         if (ph == null) return null;
 
         // 1) exact map lookup
@@ -1132,7 +1149,8 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
             this.paramType = paramType;
         }
 
-        static ArgumentContext find(String input, List<Token> tokens, int cursor, Class<?> rootType) {
+        static ArgumentContext find(String input, List<Token> tokens, int cursor, Class<?> rootType,
+            PlaceholderRegistry placeholderRegistry) {
             // Walk back to find the nearest unmatched '(' with a preceding IDENT inside the current filter block
             int braceDepth = 0;
             for (Token t : tokens) {
@@ -1189,11 +1207,11 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
             if (identIdx < 0) return null;
 
             // Compute the onType before this ident by scanning from the start of the filter
-            Class<?> onType = computeOnTypeBeforeIdent(tokens, identIdx, rootType);
+            Class<?> onType = computeOnTypeBeforeIdent(tokens, identIdx, rootType, placeholderRegistry);
 
             // Resolve function by name on onType
             String funcName = tokens.get(identIdx).text;
-            ICommand<?> cmd = resolveCommand(onType, funcName);
+            ICommand<?> cmd = resolveCommand(placeholderRegistry, onType, funcName);
             if (cmd == null) return null;
 
             // Now decide if we are typing a parameter name or value
@@ -1314,7 +1332,8 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
             return s.length() - 1 - i;
         }
 
-        private static Class<?> computeOnTypeBeforeIdent(List<Token> tokens, int identIdx, Class<?> rootType) {
+        private static Class<?> computeOnTypeBeforeIdent(List<Token> tokens, int identIdx, Class<?> rootType,
+            PlaceholderRegistry placeholderRegistry) {
             // Simple forward scan from the nearest '{' up to identIdx to compute chain type
             int openIdx = -1;
             int depth = 0;
@@ -1340,7 +1359,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
                 if (t.type == TokenType.IDENT) {
                     Token next = (i + 1 < tokens.size()) ? tokens.get(i + 1) : null;
                     if (next != null && next.type == TokenType.LPAREN) {
-                        ICommand<?> cmd = resolveCommand(currentType, t.text);
+                        ICommand<?> cmd = resolveCommand(placeholderRegistry, currentType, t.text);
                         if (cmd != null) {
                             int endParen = findMatchingParen(tokens, i + 1);
                             if (endParen >= 0 && endParen < identIdx) {
@@ -1352,7 +1371,7 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
                             }
                         } else break;
                     } else {
-                        ICommand<?> cmd = resolveZeroArgCommand(currentType, t.text);
+                        ICommand<?> cmd = resolveZeroArgCommand(placeholderRegistry, currentType, t.text);
                         if (cmd != null) {
                             currentType = cmd.getType();
                         } else {

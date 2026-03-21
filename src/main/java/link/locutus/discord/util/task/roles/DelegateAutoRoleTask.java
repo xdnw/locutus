@@ -49,7 +49,7 @@ public class DelegateAutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public String syncDB() {
+    public AutoRoleSyncState syncDB() {
         return task.syncDB();
     }
 

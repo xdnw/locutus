@@ -53,14 +53,12 @@ public class WarCategory {
     private final GuildDB db;
 
     private final Map<Integer, WarRoom> warRoomMap;
-    private final Map<Integer, Object> roomLocks;
 
     private final String catPrefix;
     private final Set<Integer> allianceIds = new IntOpenHashSet();
 
     public WarCategory(GuildDB db, String catPrefix) {
         this.warRoomMap = new ConcurrentHashMap<>();
-        this.roomLocks = new ConcurrentHashMap<>();
         this.catPrefix = catPrefix.toLowerCase();
         this.db = db;
 
@@ -223,31 +221,51 @@ public class WarCategory {
         }
     }
 
-    public WarRoom createWarRoom(DBNation target, boolean createRoom, boolean forceCreate, boolean planning, WarCatReason reason) {
-        int targetId = target.getNation_id();
-        Object roomLock = roomLocks.computeIfAbsent(targetId, ignored -> new Object());
-        synchronized (roomLock) {
-            WarRoom existing = warRoomMap.get(targetId);
-            if (existing == null) {
-                if (!(createRoom || forceCreate)) {
-                    return null;
+    public synchronized WarRoom createWarRoom(DBNation target, boolean createRoom, boolean forceCreate, boolean planning, WarCatReason reason) {
+        WarRoom existing = warRoomMap.get(target.getNation_id());
+        if (existing == null) {
+            synchronized (target) {
+                existing = warRoomMap.get(target.getNation_id());
+                if (existing != null) {
+                    if (existing.isChannelValid()) {
+                        return existing;
+                    }
+                    if (forceCreate) {
+                        synchronized (existing) {
+                            long oldChannelId = existing.channelId;
+                            StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning);
+                            if (channel != null) {
+                                existing.addChannel(channel.getIdLong(), channel, reason, oldChannelId != channel.getIdLong());
+                            }
+                        }
+                    }
+                    return existing;
                 }
-                existing = createInMap(target, reason);
-            } else if (existing.isChannelValid()) {
-                return existing;
+                if (createRoom || forceCreate) {
+                    existing = createInMap(target, reason);
+                    if (!existing.isChannelValid()) {
+                        synchronized (existing) {
+                            long oldChannelId = existing.channelId;
+                            StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning);
+                            if (channel != null) {
+                                existing.addChannel(channel.getIdLong(), channel, reason, oldChannelId != channel.getIdLong());
+                            }
+                        }
+                    }
+                }
             }
-
-            if (!shouldCreateChannel(existing, createRoom, forceCreate)) {
-                return existing;
+        } else if (((createRoom || forceCreate) && existing.channelId == 0) || (forceCreate && !existing.isChannelValid())) {
+            synchronized (existing) {
+                if (!existing.isChannelValid()) {
+                    long oldChannelId = existing.channelId;
+                    StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning);
+                    if (channel != null) {
+                        existing.addChannel(channel.getIdLong(), channel, reason, oldChannelId != channel.getIdLong());
+                    }
+                }
             }
-
-            long oldChannelId = existing.channelId;
-            StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning);
-            if (channel != null) {
-                existing.addChannel(channel.getIdLong(), channel, reason, oldChannelId != channel.getIdLong());
-            }
-            return existing;
         }
+        return existing;
     }
 
     public Map<Integer, WarRoom> getWarRoomMap() {
@@ -328,12 +346,15 @@ public class WarCategory {
         }
     }
 
-    private boolean shouldCreateChannel(WarRoom room, boolean createRoom, boolean forceCreate) {
-        return room != null && !room.isChannelValid() && (createRoom || forceCreate);
-    }
-
     private WarRoom createInMap(DBNation target, WarCatReason reason) {
-        return warRoomMap.computeIfAbsent(target.getNation_id(), ignored -> new WarRoom(this, target, reason));
+        synchronized (warRoomMap) {
+            WarRoom room = warRoomMap.get(target.getNation_id());
+            if (room == null) {
+                room = new WarRoom(this, target, reason);
+                warRoomMap.put(target.getNation_id(), room);
+            }
+            return room;
+        }
     }
 
     public WarRoom getWarRoom(StandardGuildMessageChannel channel, WarCatReason createReason) {

@@ -38,7 +38,6 @@ import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.commands.manager.v2.table.imp.*;
-import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.WarCostRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BaseballDB;
@@ -87,6 +86,126 @@ import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class StatCommands {
+    private record WarReimbursement(DBNation nation, Map<ResourceType, Double> total, String type) {
+        private String totalString() {
+            return ResourceType.toString(total);
+        }
+
+        private String title() {
+            return "Reimburse: ~$" + MathMan.format(ResourceType.convertedTotal(total));
+        }
+
+        private String body() {
+            return "Type: " + type + "\nAmt: " + totalString();
+        }
+    }
+
+    private static WarReimbursement getWarReimbursement(GuildDB db, DBWar war, AttackCost cost) {
+        if (db == null || war == null || cost == null) {
+            return null;
+        }
+
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (aaIds.isEmpty()) {
+            return null;
+        }
+
+        DBNation nation = null;
+        if (aaIds.contains(war.getAttacker_aa())) {
+            nation = Locutus.imp().getNationDB().getNationById(war.getAttacker_id());
+        } else if (aaIds.contains(war.getDefender_aa())) {
+            nation = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
+        }
+        if (nation == null) {
+            return null;
+        }
+
+        boolean primary = war.isAttacker(nation);
+        Map<ResourceType, Double> total = cost.getTotal(primary);
+        if (total.isEmpty()) {
+            return null;
+        }
+
+        CounterStat counterStats = Locutus.imp().getWarDb().getCounterStat(war);
+        if (counterStats == null || !counterStats.isActive) {
+            return null;
+        }
+
+        String offDefStr = primary ? "offensive" : "defensive";
+        String type = offDefStr + " counter";
+        switch (counterStats.type) {
+            case UNCONTESTED:
+                type = "Uncontested " + offDefStr + " war";
+                break;
+            case GETS_COUNTERED:
+                if (primary) {
+                    return null;
+                }
+                break;
+            case IS_COUNTER:
+                if (!primary) {
+                    return null;
+                }
+                break;
+            case ESCALATION:
+                type = "Contested " + offDefStr + " war";
+                break;
+        }
+
+        return new WarReimbursement(nation, total, type);
+    }
+
+    private static String getWarReimbursementPermissionError(User author, Guild guild, WarReimbursement reimbursement) {
+        if (author == null || guild == null || reimbursement == null) {
+            return null;
+        }
+        return UnsortedCommands.handleAddbalanceAllianceScope(author, guild, Collections.singleton(reimbursement.nation()));
+    }
+
+    private static String alreadyReimbursedMessage(DBWar war, WarReimbursement reimbursement) {
+        return "Already reimbursed:\n" + reimbursement.totalString() + " to " + war.toUrl();
+    }
+
+    private static void sendWarReimbursementPrompt(IMessageIO channel, DBWar war, WarReimbursement reimbursement) {
+        if (channel == null || war == null || reimbursement == null) {
+            return;
+        }
+        channel.create()
+                .embed(reimbursement.title(), reimbursement.body())
+                .commandButton(CM.stats_war.warCost.cmd.war(Integer.toString(war.warId)).reimburse("true"), "Reimburse")
+                .commandButton(CM.war.card.cmd.warId(Integer.toString(war.warId)), "War Info")
+                .send();
+    }
+
+    private static String executeWarReimbursement(User author, Guild guild, GuildDB db, DBNation bankerNation, DBWar war,
+            AttackCost cost) {
+        if (guild == null || db == null) {
+            return "This command must be run in a guild to reimburse a war.";
+        }
+        WarReimbursement reimbursement = getWarReimbursement(db, war, cost);
+        if (reimbursement == null) {
+            return "This war is not eligible for reimbursement.";
+        }
+
+        String permissionError = getWarReimbursementPermissionError(author, guild, reimbursement);
+        if (permissionError != null) {
+            return permissionError;
+        }
+        if (bankerNation == null) {
+            return "Please register your nation before reimbursing a war.";
+        }
+
+        synchronized (db) {
+            if (db.hasReimbursedWar(war.warId)) {
+                return alreadyReimbursedMessage(war, reimbursement);
+            }
+            String response = db.addBalanceBuilder().add(reimbursement.nation(), reimbursement.total(), DepositType.DEPOSIT)
+                    .buildAndSend(bankerNation, true);
+            db.markWarReimbursed(war.warId);
+            return response;
+        }
+    }
+
     @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period", viewable = true)
     public String warAttacksByDay(@Me IMessageIO io, @Me JSONObject command,
                                   @Default Set<DBNation> nations,
@@ -345,15 +464,35 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)", viewable = true)
-    public static String warCost(@Me @Default User author, @Me @Default Guild guild, @Me IMessageIO channel, DBWar war,
+    public static String warCost(@Me @Default User author, @Me @Default Guild guild, @Me @Default GuildDB db,
+                          @Me @Default DBNation me, @Me IMessageIO channel, DBWar war,
                           @Switch("u") boolean ignoreUnits,
                           @Switch("i") boolean ignoreInfra,
                           @Switch("c") boolean ignoreConsumption,
                           @Switch("l") boolean ignoreLoot,
-                          @Switch("b") boolean ignoreBuildings) {
+                          @Switch("b") boolean ignoreBuildings,
+                          @Arg("Execute reimbursement for this war if eligible") @Switch("r") boolean reimburse) {
         AttackCost cost = war.toCost();
-        if (guild != null && Roles.ECON.has(author, guild)) {
-            WarCostAB.reimburse(cost, war, guild, channel);
+        if (db == null && guild != null) {
+            db = Locutus.imp().getGuildDB(guild);
+        }
+
+        long now = System.currentTimeMillis();
+        long reimburseCutoff = now - TimeUnit.DAYS.toMillis(14);
+        if (reimburse) {
+            if (war.getDate() < reimburseCutoff) {
+                String dateStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, now - war.getDate());
+                throw new IllegalArgumentException("War is too old to reimburse (" + dateStr + " old, cutoff is 14d)");
+            }
+            return executeWarReimbursement(author, guild, db, me, war, cost);
+        }
+        WarReimbursement reimbursement = war.getDate() >= reimburseCutoff ? getWarReimbursement(db, war, cost) : null;
+        if (reimbursement != null) {
+            if (db.hasReimbursedWar(war.warId)) {
+                channel.send(alreadyReimbursedMessage(war, reimbursement));
+            } else if (getWarReimbursementPermissionError(author, guild, reimbursement) == null) {
+                sendWarReimbursementPrompt(channel, war, reimbursement);
+            }
         }
         return cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot, !ignoreBuildings);
     }
@@ -943,7 +1082,7 @@ public class StatCommands {
             Generate a graph of nation military strength by score between two coalitions
             1 tank = 1/32 aircraft for strength calculations
             Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares""", aliases = {"strengthTierGraph"}, viewable = true)
-    public String strengthTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public String strengthTierGraph(ValueStore store, @Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     NationList coalition1,
                                     NationList coalition2,
                                     @Switch("i") boolean includeInactives,
@@ -960,7 +1099,7 @@ public class StatCommands {
         Set<DBNation> allNations = new ObjectOpenHashSet<>();
         allNations.addAll(coalition1Nations);
         allNations.addAll(coalition2Nations);
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, allNations, DBNation.class);
         IMessageBuilder msg = new StrengthTierGraph(cacheStore,
                 coalition1.getFilter(),
                 coalition2.getFilter(),
@@ -2487,7 +2626,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Get nth loot beige graph by score range", viewable = true)
-    public String NthBeigeLootByScoreRange(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
+    public String NthBeigeLootByScoreRange(ValueStore store, @Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
                                            @Default NationList nations, @Default("5") int n, @Default @Timestamp Long snapshotDate,
                                            @Switch("c") boolean attachCsv, @Switch("j") boolean attachJson, @Switch("ss") boolean attach_sheet) throws IOException {
         if (n <= 0) throw new IllegalArgumentException("N must be greater than 0");
@@ -2500,7 +2639,7 @@ public class StatCommands {
                     f.active_m() > 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
         }
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db == null ? null : db.getGuild());
-        IMessageBuilder msg = new NthBeigeLoot(nationsSet, n).writeMsg(io.create(), attachCsv, attachJson, attach_sheet ? db : null, SheetKey.NTH_LOOT_SCORE_RANGE);
+        IMessageBuilder msg = new NthBeigeLoot(store, nationsSet, n).writeMsg(io.create(), attachCsv, attachJson, attach_sheet ? db : null, SheetKey.NTH_LOOT_SCORE_RANGE);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.NthBeigeLootByScoreRange.cmd.getName(), command));
         }
@@ -2576,7 +2715,7 @@ public class StatCommands {
             sheet = SpreadSheet.create(db, SheetKey.MERGES_SHEET);
         }
 
-        CompletableFuture<IMessageBuilder> msg = io.create().append("Please wait...").send();
+        CompletableFuture<IMessageBuilder> msg = io.sendIfFree("Please wait...");
         long currentDay = TimeUtil.getDay() - 1;
 
         Map<Long, Map<Integer, Set<Integer>>> nationsByAAByDay = new Long2ObjectLinkedOpenHashMap<>();

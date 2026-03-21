@@ -8,7 +8,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class TradehistoryQuery extends Query {
+public class TradehistoryQuery extends Query<TradeHistory> {
 
   private final Integer records;
   private final ResourceType[] resources;
@@ -23,7 +23,7 @@ public class TradehistoryQuery extends Query {
   }
 
   @Override
-  public ApiQuery build() {
+  public ApiQuery<TradeHistory> build() {
     String url = UrlBuilder.build(QueryURL.TRADEHISTORY_URL, args);
     if (records != null)
       url = url.concat("&records=").concat(Integer.toString(records));

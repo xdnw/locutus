@@ -86,25 +86,25 @@ public class CustomSheetManager {
         return sheets;
     }
 
-    public SheetTemplate getSheetTemplate(String name) {
+    public SheetTemplate<?> getSheetTemplate(String name) {
         if (name.contains("{")) {
             List<String> columns = StringMan.split(name, " ");
-            return new SheetTemplate(name, null, columns);
+            return new SheetTemplate<>(name, null, columns);
         }
         if (name.contains(":")) name = name.substring(name.indexOf(":") + 1);
-        AtomicReference<SheetTemplate> sheet = new AtomicReference<>();
+        AtomicReference<SheetTemplate<?>> sheet = new AtomicReference<>();
         String finalName = name;
         db.query("SELECT * FROM `SHEET_TEMPLATE` WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, finalName);
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
-                sheet.set(new SheetTemplate(rs));
+                sheet.set(new SheetTemplate<>(rs));
             }
         });
         return sheet.get();
     }
 
-    public void addSheetTemplate(SheetTemplate sheet) {
+    public void addSheetTemplate(SheetTemplate<?> sheet) {
         String query = "CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)";
         db.update("INSERT INTO `SHEET_TEMPLATE`(`name`, `type`, `columns`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, sheet.getName());
@@ -121,7 +121,7 @@ public class CustomSheetManager {
         });
     }
 
-    public void renameSheetTemplate(SheetTemplate sheet, String name) {
+    public void renameSheetTemplate(SheetTemplate<?> sheet, String name) {
         db.update("UPDATE `SHEET_TEMPLATE` SET name = ? WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
             stmt.setString(2, sheet.getName());
@@ -200,8 +200,8 @@ public class CustomSheetManager {
         return names;
     }
 
-    public <T> SelectionAlias<T> getSelectionAlias(String name, boolean allowInline) {
-        Class requiredTypeOrNull = null;
+    public SelectionAlias<?> getSelectionAlias(String name, boolean allowInline) {
+        Class<?> requiredTypeOrNull = null;
 
         String modifier = null;
         if (name.contains(":")) {
@@ -217,9 +217,8 @@ public class CustomSheetManager {
                 name = split[1];
             }
         }
-        Map<Class, Map<String, SelectionAlias>> aliases = getSelectionAliases();
         if (requiredTypeOrNull != null) {
-            SelectionAlias selection = getSelectionAlias(name, requiredTypeOrNull);
+            SelectionAlias<?> selection = getSelectionAlias(name, requiredTypeOrNull);
             if (selection != null) {
                 return selection;
             }
@@ -230,7 +229,6 @@ public class CustomSheetManager {
         } else {
             for (Map.Entry<Class, Map<String, SelectionAlias>> entry : getSelectionAliases().entrySet()) {
                 Map<String, SelectionAlias> selections = entry.getValue();
-                Class type = entry.getKey();
                 SelectionAlias selection = selections.get(name);
                 if (selection != null) {
                     return selection;
@@ -360,7 +358,7 @@ public class CustomSheetManager {
                 String tabName = rs.getString("tab");
                 String selector = rs.getString("selector");
                 String template = rs.getString("template");
-                SelectionAlias<Object> selectionAlias = getSelectionAlias(selector, true);
+                SelectionAlias<?> selectionAlias = getSelectionAlias(selector, true);
                 SheetTemplate sheetTemplate = getSheetTemplate(template);
                 if (sheetTemplate != null && selectionAlias != null) sheetTemplate.resolve(selectionAlias.getType());
                 tabs.put(tabName, new KeyValue<>(selectionAlias, sheetTemplate));

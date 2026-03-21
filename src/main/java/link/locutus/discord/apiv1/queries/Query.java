@@ -1,6 +1,8 @@
 package link.locutus.discord.apiv1.queries;
 
-public abstract class Query {
+import link.locutus.discord.apiv1.domains.Entity;
+
+public abstract class Query<T extends Entity> {
 
   String[] args;
 
@@ -8,5 +10,5 @@ public abstract class Query {
     this.args = objects;
   }
 
-  abstract ApiQuery build();
+  abstract ApiQuery<T> build();
 }

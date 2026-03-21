@@ -280,9 +280,6 @@ public final class FileUtil {
     }
 
     public static <T> T get(Future<T> myFuture) {
-        if (!Settings.INSTANCE.ENABLED_COMPONENTS.USE_API) {
-            throw new IllegalArgumentException("Cannot use get() when USE_API is disabled.");
-        }
         try {
             return myFuture.get();
         } catch (InterruptedException | ExecutionException e) {

@@ -379,7 +379,7 @@ public interface IMessageBuilder {
     }
 
     default void sendIfFree() {
-        if (RateLimitUtil.getCurrentUsed() < RateLimitUtil.getLimitPerMinute()) {
+        if (!RateLimitUtil.isCloseToLimit(true)) {
             send();
         }
     }

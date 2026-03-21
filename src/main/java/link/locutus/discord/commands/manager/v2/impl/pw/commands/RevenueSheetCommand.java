@@ -43,12 +43,13 @@ import java.util.function.ToDoubleFunction;
 public class RevenueSheetCommand {
     @Command(desc = "Get a sheet of nations and their revenue (compared to batch-heuristic city builds)", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String revenueSheet(
+        public String revenueSheet(
+            ValueStore store,
             @Me IMessageIO io,
             @Me @Default GuildDB db,
             NationList nations,
             @Switch("s") SpreadSheet sheet,
-            @Switch("i") boolean includeUntaxable,
+            @Switch("i") boolean include_untaxable,
             @Switch("t") @Timestamp Long snapshotTime
     ) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
 
@@ -98,7 +99,7 @@ public class RevenueSheetCommand {
         }
         before = nationSet.size();
 
-        if (!includeUntaxable) {
+        if (!include_untaxable) {
             nationSet.removeIf(n -> !n.isTaxable());
         }
         int removedUntaxable = before - nationSet.size();
@@ -138,9 +139,9 @@ public class RevenueSheetCommand {
         }
         sheet.setHeader(header);
 
-        CompletableFuture<IMessageBuilder> msg = io.sendMessage("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
         List<DBNation> nationList = new ArrayList<>(nationSet);
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, nationSet, DBNation.class);
 
         ToDoubleFunction<INationCity> valueFunction = INationCity::getRevenueConverted;
 
@@ -200,7 +201,7 @@ public class RevenueSheetCommand {
 
         INationCity[] best = null;
         if (!batch.isEmpty()) {
-            io.updateOptionally(msg, "Running city heuristic for " + batch.size() + " cities across " + data.size() + " nations...");
+            io.updateOptionally(msgFuture, "Running city heuristic for " + batch.size() + " cities across " + data.size() + " nations...");
             try {
                 best = CityFallbackHeuristic.findBestBatch(
                         batch.toArray(new BatchEntry[0]),

@@ -5,13 +5,12 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
-import net.dv8tion.jda.api.components.label.Label;
-import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
@@ -88,7 +87,6 @@ public class DiscordChannelIO implements IMessageIO {
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             if (builder.getId() > 0) {
-                System.out.println("Editing message with ID: " + builder.getId());
                 CompletableFuture<Message> future = RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
@@ -161,8 +159,8 @@ public class DiscordChannelIO implements IMessageIO {
         }
         String cmd = builder.getTitle();
         List<String> argList = new ArrayList<>();
-        for (Label input : record.getInputs()) {
-            String argName = ((TextInput) input.getChild()).getCustomId();
+        for (TextInput input : record.getInputs()) {
+            String argName = input.getId();
             argList.add(argName);
         }
         CM.modal.create cmRef = CM.modal.create.cmd.command(cmd).arguments(StringMan.join(argList, " ")).defaults(defaultsStr);

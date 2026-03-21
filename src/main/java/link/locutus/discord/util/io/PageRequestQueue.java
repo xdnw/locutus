@@ -2,6 +2,7 @@ package link.locutus.discord.util.io;
 
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.RequestTracker;
+import link.locutus.discord.config.Settings;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -250,6 +251,9 @@ public class PageRequestQueue implements AutoCloseable {
     }
 
     public <T> PageRequestTask<T> submit(PageRequestTask<T> request) {
+        if (!Settings.INSTANCE.ENABLED_COMPONENTS.USE_API) {
+            throw new IllegalArgumentException("Cannot use get() when USE_API is disabled.");
+        }
         synchronized (lock) {
             queue.add(request);
             lock.notifyAll();

@@ -77,7 +77,7 @@ public class TaxBracketSheet extends Command {
         try {
             AllianceList aaList = db.getAllianceList();
             if (aaList == null) throw new IllegalArgumentException("No alliance registered to guild. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
-            brackets = aaList.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
+            brackets = aaList.getTaxBrackets(Locutus.imp().getNationDB(), TimeUnit.MINUTES.toMillis(5));
             failedFetch = false;
         } catch (IllegalArgumentException e) {
             brackets = new LinkedHashMap<>();
@@ -101,7 +101,7 @@ public class TaxBracketSheet extends Command {
         db.getAutoRoleTask().updateTaxRoles(nations);
 
         long threshold = flags.contains('f') ? 0 : Long.MAX_VALUE;
-        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations.keySet(), DBNation.class);
+        ValueStore cache = PlaceholderCache.createIsolatedCache(nations.keySet(), DBNation.class);
         for (Map.Entry<DBNation, TaxBracket> entry : nations.entrySet()) {
             TaxBracket bracket = entry.getValue();
             DBNation nation = entry.getKey();

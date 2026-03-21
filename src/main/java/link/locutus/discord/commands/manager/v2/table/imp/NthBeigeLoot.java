@@ -18,7 +18,7 @@ public class NthBeigeLoot extends SimpleTable<PriorityQueue<Double>> {
     private final Map<Integer, PriorityQueue<Double>> lootByScore;
     private final int min, max;
 
-    public NthBeigeLoot(Set<DBNation> nationsSet, @Default("5") int n) {
+    public NthBeigeLoot(ValueStore store, Set<DBNation> nationsSet, @Default("5") int n) {
         this.n = n;
         nationsSet.removeIf(f -> f.getVm_turns() != 0);
         if (nationsSet.isEmpty()) throw new IllegalArgumentException("No nations provided");
@@ -33,7 +33,7 @@ public class NthBeigeLoot extends SimpleTable<PriorityQueue<Double>> {
             }
         };
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationsSet, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, nationsSet, DBNation.class);
         for (DBNation nation : nationsSet) {
             double score = nation.getScore();
             double loot = nation.getBeigeLootTotal(cacheStore);

@@ -50,7 +50,8 @@ public class Inflows extends Command {
     }
 
     @Override
-    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw,
+            List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
             return usage(args.size(), 2, channel);
         }
@@ -110,7 +111,7 @@ public class Inflows extends Command {
                 if (per > 1 && (per < 10000 || (type != ResourceType.FOOD && per < 100000))) {
                     continue;
                 }
-                Transaction2 transfer = new Transaction2(offer);
+                Transaction2 transfer = Transaction2.fromTrade(offer);
                 allTransfers.add(transfer);
             }
         }
@@ -122,7 +123,8 @@ public class Inflows extends Command {
         Map<Integer, List<Transaction2>> nationOutflow = new Int2ObjectOpenHashMap<>();
 
         for (Transaction2 transfer : allTransfers) {
-            if (transfer.note != null && transfer.note.contains("'s nation and captured.")) continue;
+            if (transfer.isLootTransfer())
+                continue;
             int sender = (int) transfer.getSender();
             int receiver = (int) transfer.getReceiver();
 
@@ -162,7 +164,8 @@ public class Inflows extends Command {
         }
     }
 
-    private String send(String selfName, Function<Integer, String> nameFunc, Map<Integer, List<Transaction2>> transferMap, boolean inflow) {
+    private String send(String selfName, Function<Integer, String> nameFunc,
+            Map<Integer, List<Transaction2>> transferMap, boolean inflow) {
         StringBuilder result = new StringBuilder();
         for (Map.Entry<Integer, List<Transaction2>> entry : transferMap.entrySet()) {
             int id = entry.getKey();

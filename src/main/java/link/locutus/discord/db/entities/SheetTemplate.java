@@ -33,7 +33,7 @@ public class SheetTemplate<T> {
         return name;
     }
 
-    public Class getType() {
+    public Class<T> getType() {
         return type;
     }
 

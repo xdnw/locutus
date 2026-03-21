@@ -301,7 +301,7 @@ public class WarCommand extends Command {
                             .stream()
                             .map(Map.Entry::getKey)
                             .toList();
-                    ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
+                    ValueStore cacheStore = PlaceholderCache.createIsolatedCache(viewedNations, DBNation.class);
                     for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
                         if (count++ == num) break;
 

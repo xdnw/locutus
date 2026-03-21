@@ -2,92 +2,9 @@ package link.locutus.discord.util.io;
 
 import link.locutus.discord.util.IOUtil;
 
+import java.nio.charset.StandardCharsets;
+
 public class BitBuffer {
-    static void testReadWriteRandom() {
-        BitBuffer bitBuffer = new BitBuffer(1024 * 1024); // 1 MB buffer
-        for (int i = 0; i < 10_000_000; i++) {
-            bitBuffer.reset();
-            if (i % 100_000 == 0) {
-                System.out.println("Iteration " + i);
-            }
-            int amtBits = (int) (Math.random() * 128);
-            // random between 1 and 16
-            int amtInts = (int) (Math.random() * 64);
-            // random between 1 and 8
-            int amtLongs = (int) (Math.random() * 64);
-
-            // pad to nearest long boundary
-            boolean[] expectedBits = new boolean[amtBits];
-            for (int j = 0; j < amtBits; j++) {
-                boolean bit = Math.random() < 0.5;
-                expectedBits[j] = bit;
-                bitBuffer.writeBit(bit);
-            }
-            int[] expectedInts = new int[amtInts];
-            for (int j = 0; j < amtInts; j++) {
-                int value = (int) (Math.random() * Integer.MAX_VALUE);
-                expectedInts[j] = value;
-                bitBuffer.writeVarInt(value);
-            }
-            long[] expectedLongs = new long[amtLongs];
-            for (int j = 0; j < amtLongs; j++) {
-                long value = (long) (Math.random() * Long.MAX_VALUE);
-                expectedLongs[j] = value;
-                bitBuffer.writeVarLong(value);
-            }
-            byte[] data = bitBuffer.getWrittenBytes();
-            // test reading back
-            bitBuffer.setBytes(data);
-            for (int j = 0; j < amtBits; j++) {
-                boolean bit = bitBuffer.readBit();
-                if (expectedBits[j] != bit) {
-                    String bitsStr = "new boolean[] {";
-                    for (boolean b : expectedBits) {
-                        bitsStr += b + ", ";
-                    }
-                    bitsStr += "}";
-                    System.err.println("Expected bits: " + bitsStr);
-                    throw new AssertionError("Bit " + j + " should match, but " + expectedBits[j] + " != " + bit + " | itertation " + i + " | len " + expectedBits.length);
-                }
-            }
-            for (int j = 0; j < amtInts; j++) {
-                if (expectedInts[j] != bitBuffer.readVarInt()) {
-                    String intsStr = "new int[] {";
-                    for (int value : expectedInts) {
-                        intsStr += value + ", ";
-                    }
-                    intsStr += "} | " + expectedBits.length;
-                    System.err.println("Expected ints: " + intsStr);
-                    throw new AssertionError("Int " + j + " should match");
-                }
-            }
-            for (int j = 0; j < amtLongs; j++) {
-                if (expectedLongs[j] != bitBuffer.readVarLong()) {
-                    String intsStr = "new int[] {";
-                    for (int value : expectedInts) {
-                        intsStr += value + ", ";
-                    }
-                    intsStr += "} | " + expectedBits.length;
-                    System.err.println("Expected ints (correct): " + intsStr);
-                    String longsStr = "new long[] {";
-                    for (long value : expectedLongs) {
-                        longsStr += value + ", ";
-                    }
-                    longsStr += "} | " + expectedBits.length;
-                    System.err.println("Expected longs: " + longsStr);
-                    throw new AssertionError("Long " + j + " should match");
-                }
-            }
-        }
-    }
-
-    public static void main(String[] args) {
-        testReadWriteRandom();
-
-        System.out.println("All tests passed!");
-    }
-
-
     private static final long[] MASK = new long[Long.SIZE + 1];
     static {
         for (int i = 0; i < Long.SIZE; i++) {
@@ -299,6 +216,23 @@ public class BitBuffer {
                 throw new RuntimeException("VarLong too big");
         }
         return value | b << i;
+    }
+
+    public void writeString(String value) {
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        writeVarInt(bytes.length);
+        for (byte current : bytes) {
+            writeByte(Byte.toUnsignedInt(current));
+        }
+    }
+
+    public String readString() {
+        int length = readVarInt();
+        byte[] bytes = new byte[length];
+        for (int i = 0; i < length; i++) {
+            bytes[i] = (byte) readByte();
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
 }

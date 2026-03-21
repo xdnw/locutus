@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
 import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -18,7 +17,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class GPTCompleter extends BindingHelper {
@@ -40,21 +38,20 @@ public class GPTCompleter extends BindingHelper {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, ProviderType.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(ProviderType.class, input.toString(), OptionData.MAX_CHOICES);
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(ProviderType.class, input, OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, EmbeddingSource.class).getType(), Autocomplete.class);
             addBinding(store -> {
-                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    PWGPTHandler handler = Locutus.imp().getCommandManager().getV2().getGptHandler();
+                store.addParser(key, new FunctionConsumerParser<>(key, (valueStore, input) -> {
+                    PWGPTHandler handler = (PWGPTHandler) valueStore.getProvided(Key.of(PWGPTHandler.class), true);
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
                     List<EmbeddingSource> options = new ArrayList<>(handler.getSources(guild, true));
                     Map<String, EmbeddingSource> optionsMap = options.stream().collect(Collectors.toMap(f -> f.source_name.toLowerCase(Locale.ROOT), f -> f));
-                    String inputStr = input.toString();
-                    return StringMan.autocompleteComma(inputStr, options, f -> optionsMap.get(f.toLowerCase(Locale.ROOT)), f -> f.source_name, f -> f.source_name, OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteComma(input, options, f -> optionsMap.get(f.toLowerCase(Locale.ROOT)), f -> f.source_name, f -> f.source_name, OptionData.MAX_CHOICES);
                 }));
             });
         }

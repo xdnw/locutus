@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -538,7 +539,7 @@ public class Auth {
         }, this);
     }
 
-    public String safekeep(boolean login, double[] amountToDeposit, String note) throws Exception {
+    public String safekeep(boolean login, double[] amountToDeposit, TransactionNote note) throws Exception {
         DBNation nation = getNation();
         int fromBank = nation.getAlliance_id();
 
@@ -550,7 +551,7 @@ public class Auth {
             post.put("dep" + type.name().toLowerCase(), MathMan.format(amt).replace(",", ""));
         }
 
-        post.put("depnote", note);
+        post.put("depnote", note.toLegacyString());
         post.put("depsubmit", "Deposit");
 
 
@@ -866,7 +867,7 @@ public class Auth {
         return login ? PW.withLogin(task, auth) : task.call();
     }
 
-    public String withdrawResources(DBAlliance alliance, NationOrAlliance receiver, double[] amount, String note) {
+    public String withdrawResources(DBAlliance alliance, NationOrAlliance receiver, double[] amount, TransactionNote note) {
         Map<String, String> post = ResourceType.resourcesToJson(receiver, ResourceType.resourcesToMap(amount), note);
         int fromBank = alliance.getAlliance_id();
 
@@ -1179,7 +1180,7 @@ public class Auth {
                         }
                     }
                     if (ResourceType.convertedTotal(toDeposit) > 0) {
-                        String safekeepResult = Auth.this.safekeep(false, toDeposit, "#ignore");
+                        String safekeepResult = Auth.this.safekeep(false, toDeposit, DepositType.IGNORE);
                         if (!safekeepResult.contains("You successfully made a deposit into the alliance bank.")) {
                             response.append("\n- " + "Could not safekeep: " + safekeepResult);
                             return ResourceType.getBuffer();
@@ -1192,7 +1193,7 @@ public class Auth {
                         for (int i = 0; i < toDeposit.length; i++) {
                             if (toDeposit[i] < 0) toDeposit[i] = 0;
                         }
-                        TransferResult transferResult = bank.transfer(offshore.getAlliance(), ResourceType.resourcesToMap(toDeposit), "#ignore", null);
+                        TransferResult transferResult = bank.transfer(offshore.getAlliance(), ResourceType.resourcesToMap(toDeposit), TransactionNote.of(DepositType.IGNORE), null);
                         response.append("Offshore " + transferResult.toLineString());
                         if (!transferResult.getStatus().isSuccess()) {
                             return ResourceType.getBuffer();
@@ -1203,7 +1204,7 @@ public class Auth {
 
                     // add balance to guilddb
                     long tx_datetime = System.currentTimeMillis();
-                    String note = "#deposit";
+                    TransactionNote note = TransactionNote.of(DepositType.DEPOSIT);
 
                     response.append("\nAdding deposits:");
 

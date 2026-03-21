@@ -35,7 +35,7 @@
 @param WebStore ws
 @param IACategory iaCat
 @param GuildDB db
-@param ValueStore<DBNation> cacheStore
+@param ValueStore cacheStore
 @param List<Map.Entry<DBNation, List<DBNation>>> mentorsSorted
 @param Map<DBNation, IACategory.AssignedMentor> menteeMentorMap
 @param Map<DBNation, IACategory.SortedCategory> categoryMap

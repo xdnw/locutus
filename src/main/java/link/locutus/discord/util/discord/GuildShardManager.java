@@ -4,9 +4,6 @@ import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import link.locutus.discord.Locutus;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.JDA;
@@ -33,6 +30,8 @@ public class GuildShardManager {
     private ShardManager defaultShardManager;
     private final Set<JDA> instances = new ObjectLinkedOpenHashSet<>();
     private final Map<Long, JDA> discordAPIMap = new ConcurrentHashMap<>();
+    private volatile Supplier<Map<Long, PNWUser>> registeredUsersSupplier;
+    private volatile Supplier<? extends Collection<Guild>> cachedGuildsSupplier;
 
     public GuildShardManager() {
 
@@ -81,6 +80,16 @@ public class GuildShardManager {
         this.discordAPIMap.put(guildId, instance);
     }
 
+    public GuildShardManager setRegisteredUsersSupplier(Supplier<Map<Long, PNWUser>> supplier) {
+        this.registeredUsersSupplier = supplier;
+        return this;
+    }
+
+    public GuildShardManager setCachedGuildsSupplier(Supplier<? extends Collection<Guild>> supplier) {
+        this.cachedGuildsSupplier = supplier;
+        return this;
+    }
+
     public JDA getApiByGuildId(long guildId) {
         JDA jda = discordAPIMap.get(guildId);
         return jda;
@@ -108,14 +117,13 @@ public class GuildShardManager {
         if (member == null) return null;
         User user = member.getUser();
         if (user.isBot() || user.isSystem()) return member;
-        String name = user.getName();
-        long hash = StringMan.hash(name);
+        long hash = usernameHash(user.getName());
 
         String globalName = user.getGlobalName();
-        long globalHash = globalName == null ? 0 : StringMan.hash(globalName.toLowerCase(Locale.ROOT));
+        long globalHash = usernameHash(globalName);
 
         String nickName = member.getNickname();
-        long nickHash = nickName == null ? 0 : StringMan.hash(nickName.toLowerCase(Locale.ROOT));
+        long nickHash = usernameHash(nickName);
 
         synchronized (userIdCache) {
             userIdCache.put(hash, member.getIdLong());
@@ -127,11 +135,10 @@ public class GuildShardManager {
 
     public static User updateUserName(User user) {
         if (user == null || user.isBot() || user.isSystem()) return user;
-        String name = user.getName();
-        long hash = StringMan.hash(name);
+        long hash = usernameHash(user.getName());
 
         String globalName = user.getGlobalName();
-        long globalHash = globalName == null ? 0 : StringMan.hash(globalName.toLowerCase(Locale.ROOT));
+        long globalHash = usernameHash(globalName);
 
         synchronized (userIdCache) {
             userIdCache.put(hash, user.getIdLong());
@@ -141,28 +148,37 @@ public class GuildShardManager {
     }
 
     public User getUserByName(String searchName, boolean forceCheckRegistered, Guild checkGuild) {
-        String usernameLower = searchName.toLowerCase();
-        long searchHash = StringMan.hash(usernameLower);
+        return getUserByName(searchName, forceCheckRegistered, checkGuild, null);
+    }
+
+    public User getUserByName(String searchName, boolean forceCheckRegistered, Guild checkGuild,
+            Supplier<Map<Long, PNWUser>> registeredUsersSupplierOverride) {
+        if (searchName == null || searchName.isBlank()) {
+            return null;
+        }
+        long searchHash = usernameHash(searchName.trim());
         long foundId;
         synchronized (userIdCache) {
             foundId = userIdCache.getOrDefault(searchHash, 0L);
         }
 
         if (foundId != 0) {
-            return getUserById(foundId);
+            User cachedUser = getUserById(foundId);
+            if (cachedUser != null) {
+                return cachedUser;
+            }
         }
 
         if (checkGuild != null) {
             for (Member member : checkGuild.getMembers()) {
                 User user = member.getUser();
-                String otherName = user.getName();
-                long otherHash = StringMan.hash(otherName);
+                long otherHash = usernameHash(user.getName());
 
                 String globalName = user.getGlobalName();
-                long globalHash = globalName == null ? 0 : StringMan.hash(globalName.toLowerCase(Locale.ROOT));
+                long globalHash = usernameHash(globalName);
 
                 String nickName = member.getNickname();
-                long nickHash = nickName == null ? 0 : StringMan.hash(nickName.toLowerCase(Locale.ROOT));
+                long nickHash = usernameHash(nickName);
 
                 synchronized (userIdCache) {
                     userIdCache.put(otherHash, member.getIdLong());
@@ -181,17 +197,20 @@ public class GuildShardManager {
             }
         }
 
-        if (forceCheckRegistered && !initialized) {
+        Supplier<Map<Long, PNWUser>> registeredUsers = registeredUsersSupplierOverride != null
+                ? registeredUsersSupplierOverride
+                : this.registeredUsersSupplier;
+        if (forceCheckRegistered && registeredUsers != null && !initialized) {
             synchronized (userIdCache) {
                 if (!initialized) {
                     initialized = true;
-                    for (Map.Entry<Long, PNWUser> entry : Locutus.imp().getDiscordDB().getRegisteredUsers().entrySet()) {
+                    for (Map.Entry<Long, PNWUser> entry : registeredUsers.get().entrySet()) {
                         long userId = entry.getKey();
                         PNWUser pnwUser = entry.getValue();
                         String userName = pnwUser.getDiscordName();
                         if (userName == null || userName.isEmpty()) continue;
                         userName = userName.split("#")[0];
-                        long hash = StringMan.hash(userName.toLowerCase(Locale.ROOT));
+                        long hash = usernameHash(userName);
                         userIdCache.putIfAbsent(hash, userId);
                     }
                 }
@@ -237,14 +256,12 @@ public class GuildShardManager {
     }
 
     public Collection<Guild> getCachedGuilds() {
-        Collection<GuildDB> dbs = Locutus.imp().getGuildDatabases().values();
-        Set<Guild> guilds = new ObjectLinkedOpenHashSet<>(dbs.size());
-        for (GuildDB db : dbs) {
-            Guild guild = db.getGuild();
-            if (guild.isDetached()) continue;
-            guilds.add(guild);
+        Supplier<? extends Collection<Guild>> supplier = cachedGuildsSupplier;
+        if (supplier != null) {
+            Collection<Guild> guilds = supplier.get();
+            return guilds == null ? List.of() : guilds;
         }
-        return guilds;
+        return getGuilds();
     }
 
     public Collection<JDA> getApis() {
@@ -291,12 +308,15 @@ public class GuildShardManager {
     private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
 
     public Set<Guild> getMutualGuilds(User user) {
-        Collection<GuildDB> dbs = Locutus.imp().getGuildDatabases().values();
-        int total = dbs.size();
+        if (user == null) {
+            return Set.of();
+        }
+        Collection<Guild> guilds = getCachedGuilds();
+        int total = guilds.size();
         if (total < 2000) {
             Set<Guild> mutualGuilds = new ObjectLinkedOpenHashSet<>();
-            for (GuildDB db : dbs) {
-                Guild guild = db.getGuild();
+            for (Guild guild : guilds) {
+                if (guild == null) continue;
                 if (guild.isDetached()) continue;
                 if (guild.isMember(user)) {
                     mutualGuilds.add(guild);
@@ -305,9 +325,7 @@ public class GuildShardManager {
             return mutualGuilds;
         }
         final int estSize = Math.max(16, total / NUM_THREADS);
-        return dbs.parallelStream()
-                .unordered()
-                .map(GuildDB::getGuild)
+        return guilds.parallelStream()
                 .filter(Objects::nonNull)
                 .filter(g -> !g.isDetached() && g.isMember(user))
                 .collect(Collectors.toCollection(() -> new ObjectOpenHashSet<>(estSize)));
@@ -326,13 +344,17 @@ public class GuildShardManager {
     }
 
     public Guild getFirstMutualGuild(User user) {
-        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            Guild guild = db.getGuild();
+        for (Guild guild : getCachedGuilds()) {
+            if (guild == null) continue;
             if (guild.isDetached()) continue;
             if (guild.isMember(user)) {
                 return guild;
             }
         }
         return null;
+    }
+
+    private static long usernameHash(String value) {
+        return value == null ? 0L : StringMan.hash(value.toLowerCase(Locale.ROOT));
     }
 }

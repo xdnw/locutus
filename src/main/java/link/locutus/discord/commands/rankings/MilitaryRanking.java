@@ -15,7 +15,6 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindin
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -122,7 +121,8 @@ public class MilitaryRanking extends Command {
 
     private static Optional<NationList> tryParseNations(String tok, Guild guild, User author, DBNation me) {
         try {
-            NationList parsed = PWBindings.nationList(null, guild, tok, author, me);
+            NationList parsed = new SimpleNationList(DiscordUtil.parseNations(guild, author, me, tok, false, false))
+                    .setFilter(tok);
             return Optional.ofNullable(parsed);
         } catch (IllegalArgumentException ignored) {
             return Optional.empty();

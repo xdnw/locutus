@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.options;
 
-import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -15,12 +14,15 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeCommandContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
@@ -28,7 +30,22 @@ import link.locutus.discord.db.Report;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.CustomSheet;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBAlliancePosition;
+import link.locutus.discord.db.entities.DBBan;
+import link.locutus.discord.db.entities.DBBounty;
+import link.locutus.discord.db.entities.DBLoan;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTreasure;
+import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.db.entities.GrantRequest;
+import link.locutus.discord.db.entities.LoanManager;
+import link.locutus.discord.db.entities.SelectionAlias;
+import link.locutus.discord.db.entities.SheetTemplate;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.menu.AppMenu;
@@ -38,7 +55,11 @@ import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
-import link.locutus.discord.pnw.*;
+import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.GuildOrAlliance;
+import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -57,16 +78,20 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.awt.*;
 import java.lang.reflect.WildcardType;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 
 public class WebOptionBindings extends BindingHelper {
 //Parser
     @Binding(types = Parser.class)
-    public WebOption getParser(PlaceholdersMap map) {
+    public WebOption getParser(ValueStore store) {
         List<String> options = new ArrayList<>();
-        ValueStore<Object> store = map.getStore();
         for (Parser parser : store.getParsers().values()) {
             if (!parser.isConsumer(store)) continue;
             options.add(parser.getKey().toSimpleString());
@@ -153,10 +178,20 @@ public class WebOptionBindings extends BindingHelper {
                 member = db.getGuild().getMember(user);
             }
             if (member == null) member = db.getGuild().getSelfMember();
-            for (TextChannel c : db.getGuild().getTextChannels()) {
-                if (!c.canTalk(member)) continue;
+            Member finalMember = member;
+            BiFunction<TextChannel, WebOptions, WebOptions> adder = (c, options) -> {
+                if (!c.canTalk(finalMember)) return options;
                 Category category = c.getParentCategory();
-                data.add(c.getId(), c.getName(), category == null ? null : category.getName());
+                return options.add(c.getId(), c.getName(), category == null ? null : category.getName());
+            };
+            db.getGuild().getTextChannels().forEach(c -> adder.apply(c, data));
+            GuildDB faServer = db.getOrNull(GuildKey.FA_SERVER);
+            Guild maServer = db.getOrNull(GuildKey.WAR_SERVER);
+            if (faServer != null && faServer.getIdLong() != db.getIdLong()) {
+                faServer.getGuild().getTextChannels().forEach(c -> adder.apply(c, data));
+            }
+            if (maServer != null && maServer.getIdLong() != db.getIdLong()) {
+                maServer.getTextChannels().forEach(c -> adder.apply(c, data));
             }
             return data;
         }, false);
@@ -179,8 +214,8 @@ public class WebOptionBindings extends BindingHelper {
     }
 //CommandCallable
     @Binding(types = {ICommand.class, WildcardType.class}, multiple = true)
-    public WebOption getCommandCallable() {
-        List<ParametricCallable<?>> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
+    public WebOption getCommandCallable(CommandRuntimeCommandContext commands) {
+        List<ParametricCallable<?>> options = new ArrayList<>(commands.getParametricCommands());
         return new WebOption(Key.nested(ICommand.class, WildcardType.class)).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
     }
 
@@ -206,11 +241,13 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(TaxBracket.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             if (db == null) throw new IllegalArgumentException("No guild provided.");
             if (!db.isValidAlliance()) throw new IllegalArgumentException("No alliance is registered. See " + CM.settings_default.registerAlliance.cmd.toSlashMention());
-            Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(120));
+            Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(Locutus.imp().getNationDB(), TimeUnit.MINUTES.toMillis(120));
+            System.out.println("Get tax brackets for alliance " + brackets + " | " + brackets.size());
             WebOptions data = new WebOptions(true).withText().withSubtext();
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 data.add(entry.getKey(), bracket.getName(), bracket.getSubText());
+                System.out.println("Added tax bracket option: " + entry.getKey() + " - " + bracket.getName());
             }
             return data;
         }, false);
@@ -274,9 +311,8 @@ public class WebOptionBindings extends BindingHelper {
     }
     //EmbeddingSource
     @Binding(types = EmbeddingSource.class)
-    public WebOption getEmbeddingSource() {
+    public WebOption getEmbeddingSource(@Default PWGPTHandler gpt) {
         return new WebOption(EmbeddingSource.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            PWGPTHandler gpt = Locutus.cmd().getV2().getGptHandler();
             if (gpt == null) {
                 return new WebOptions(true);
             }
@@ -294,7 +330,7 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(DBAlliancePosition.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             AllianceList aaList = db.getAllianceList();
             WebOptions data = new WebOptions(true).withText();
-            for (DBAlliancePosition position : aaList.getPositions()) {
+            for (DBAlliancePosition position : aaList.getPositions(Locutus.imp().getNationDB())) {
                 data.add(position.getId(), aaList.size() > 1 ? position.getQualifiedName() : position.getName());
             }
             return data;
@@ -318,8 +354,12 @@ public class WebOptionBindings extends BindingHelper {
 
     @PlaceholderType
     @Binding(types = { Class.class, WildcardType.class }, multiple = true)
-    public WebOption getPlaceholderType() {
-        Set<Class<?>> types = PlaceholdersMap.get().getTypes();
+    public WebOption getPlaceholderType(ValueStore store) {
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            throw new IllegalStateException("PlaceholderRegistry was not provided in the current value store");
+        }
+        Set<Class<?>> types = registry.getTypes();
         List<String> options = types.stream().map(PlaceholdersMap::getClassName).toList();
         return new WebOption(Class.class).setOptions(options);
     }
@@ -327,9 +367,9 @@ public class WebOptionBindings extends BindingHelper {
     @GuildCoalition
     @Binding(types = String.class)
     public WebOption guildCoalition() {
-        return new WebOption(String.class).setRequiresGuild().setAllowCustomOption().setQueryMap((db, user, nation) -> {
+        return new WebOption(Key.of(String.class, GuildCoalition.class)).setRequiresGuild().setAllowCustomOption().setQueryMap((db, user, nation) -> {
             Set<String> coalitions = new ObjectLinkedOpenHashSet<>();
-            for (Coalition value : Coalition.values()) coalitions.add(value.name());
+            for (Coalition value : Coalition.values()) coalitions.add(value.name().toLowerCase(Locale.ROOT));
             coalitions.addAll(db.getCoalitionNames());
             WebOptions data = new WebOptions(false).withText();
             for (String coalition : coalitions) {
@@ -496,9 +536,9 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBAlliance.class)
     public WebOption getDBAlliance() {
         return new WebOption(DBAlliance.class).setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions(false).withText();
+            WebOptions data = new WebOptions(true).withText();
             for (DBAlliance aa : Locutus.imp().getNationDB().getAlliances()) {
-                data.add("AA:" + aa.getId(), aa.getName());
+                data.add(aa.getId(), aa.getName());
             }
             return data;
         }, true);

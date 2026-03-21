@@ -1126,7 +1126,7 @@ public class TradeCommands {
 
         OffshoreInstance offshore = db.getOffshore();
         offshore.sync();
-        Map<ResourceType, Double> stockpile = db.getAllianceList().getStockpile();
+        Map<ResourceType, Double> stockpile = db.getAllianceList().getStockpile(Locutus.imp().getNationDB());
 
         Set<Long> coalitions = getOffshoreCoalitions(db);
         String title = "Compare Stockpile to Deposits (" + coalitions.size() + ")";

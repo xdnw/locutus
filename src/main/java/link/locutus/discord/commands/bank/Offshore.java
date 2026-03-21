@@ -73,7 +73,8 @@ public class Offshore extends Command {
         if (args.size() >= 2) warchest = ResourceType.parseResources(args.get(1));
         else warchest = Collections.emptyMap();
         if (args.size() >= 3) {
-            account = PWBindings.nationOrAllianceOrGuild(args.get(2));
+                account = (NationOrAllianceOrGuild) PWBindings.parseNationOrAllianceOrGuildOrTaxId(
+                    runtimeServices(), args.get(2), false, null, null);
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);

@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAllian
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.SphereGenerator;
+import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
@@ -47,10 +48,10 @@ public class FACommands {
         SphereGenerator sphereGen = new SphereGenerator(topX);
         Map.Entry<Integer, List<DBAlliance>> sphere = sphereGen.getSphere(rootAlliance);
         if (sphere == null) {
-            return "No sphere found for " + rootAlliance.getName();
+            throw new IllegalArgumentException("No sphere found for " + rootAlliance.getName());
         }
         if (Coalition.parse(coalition) != null) {
-            return coalition + " is a reserved keyword";
+            throw new IllegalArgumentException(coalition + " is a reserved keyword");
         }
         Set<Long> existing = db.getCoalitionRaw(coalition);
         if (existing != null) {
@@ -93,20 +94,20 @@ public class FACommands {
     @Command(desc = "Send a treaty to an alliance")
     @IsAlliance
     @RolePermission(value = Roles.FOREIGN_AFFAIRS, alliance = true)
-    public static String sendTreaty(@Me User user, @Me GuildDB db, @Arg("The alliance to send a treaty from\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender, @Arg("Alliance to send treaty to") DBAlliance receiver, TreatyType type, int days, @Default String message) {
+    public static String sendTreaty(AllianceLookup lookup, @Me User user, @Me GuildDB db, @Arg("The alliance to send a treaty from\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender, @Arg("Alliance to send treaty to") DBAlliance receiver, TreatyType type, int days, @Default String message) {
         if (message != null && !message.isEmpty() && !Roles.ADMIN.has(user, db.getGuild())) {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
-        Set<Treaty> result = sender.sendTreaty(receiver.getAlliance_id(), type, message, days * 12);
+        Set<Treaty> result = sender.sendTreaty(lookup, receiver.getAlliance_id(), type, message, days * 12);
         return "Sent:\n- " + StringMan.join(result, "\n- ");
     }
 
     @Command(desc = "Approve a pending treaty from an alliance")
     @IsAlliance
     @RolePermission(value = Roles.FOREIGN_AFFAIRS, alliance = true)
-    public static String approveTreaty(@Arg("The alliance to approve a treaty of\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, @Arg("Alliance that sent the treaty") Set<DBAlliance> senders) {
-        List<Treaty> changed = receiver.approveTreaty(senders);
+    public static String approveTreaty(AllianceLookup lookup, @Arg("The alliance to approve a treaty of\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, @Arg("Alliance that sent the treaty") Set<DBAlliance> senders) {
+        List<Treaty> changed = receiver.approveTreaty(lookup, senders);
 
         if (changed.isEmpty()) {
             return "No treaties to approve";
@@ -118,8 +119,8 @@ public class FACommands {
     @Command(desc = "Cancel a treaty in-game")
     @IsAlliance
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public static String cancelTreaty(@Arg("The alliance to cancel a treaty of\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, @Arg("The other alliance the treaty is with") Set<DBAlliance> senders) {
-        List<Treaty> changed = receiver.cancelTreaty(senders);
+    public static String cancelTreaty(AllianceLookup lookup, @Arg("The alliance to cancel a treaty of\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, @Arg("The other alliance the treaty is with") Set<DBAlliance> senders) {
+        List<Treaty> changed = receiver.cancelTreaty(lookup, senders);
 
         if (changed.isEmpty()) {
             return "No treaties to cancel";
@@ -185,15 +186,17 @@ public class FACommands {
         return response.toString().trim();
     }
 
+    private boolean hasCoalitionPermission(User user, GuildDB db, String coalitionName) {
+        Coalition coalition = Coalition.parse(coalitionName);
+        return coalition != null ? coalition.hasPermission(db.getGuild(), user) : Roles.FOREIGN_AFFAIRS.has(user, db.getGuild());
+    }
+
     @Command(desc = "Create a new coalition with the provided alliances")
     @RolePermission(Roles.MEMBER)
     public String createCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances,
-                                  @Filter(value = "^[^!#$^&*()+=\\[\\]{}:?/<>,-]+$", desc = "may not contain any of the following characters: !#$^&*()+=[]{}:?/<>,-")
+                                  @GuildCoalition @Filter(value = "^[^!#$^&*()+=\\[\\]{}:?/<>,-]+$", desc = "may not contain any of the following characters: !#$^&*()+=[]{}:?/<>,-")
                                   String coalitionName) {
-        Coalition coalition = Coalition.parse(coalitionName);
-        if ((coalition != null && !coalition.hasPermission(db.getGuild(), user)) ||
-                (coalition == null && !Roles.FOREIGN_AFFAIRS.has(user, db.getGuild()))
-        ) {
+        if (!hasCoalitionPermission(user, db, coalitionName)) {
             return "You do not have permission to set this coalition";
         }
         StringBuilder response = new StringBuilder();
@@ -221,13 +224,47 @@ public class FACommands {
         return createCoalition(user, db, alliances, coalitionName);
     }
 
+    @Command(desc = "Rename a coalition")
+    @RolePermission(Roles.MEMBER)
+    public String renameCoalition(@Me User user, @Me GuildDB db,
+                                  @GuildCoalition String coalition,
+                                  @GuildCoalition @Filter(value = "^[^!#$^&*()+=\\[\\]{}:?/<>,-]+$", desc = "may not contain any of the following characters: !#$^&*()+=[]{}:?/<>,-")
+                                  String rename_to) {
+        if (!hasCoalitionPermission(user, db, coalition) || !hasCoalitionPermission(user, db, rename_to)) {
+            return "You do not have permission to set this coalition";
+        }
+        if (coalition.equals(rename_to)) {
+            return "Coalition `" + coalition + "` already has that name";
+        }
+
+        Set<Long> sourceMembers = new LongOpenHashSet(db.getCoalitionRaw(coalition));
+        if (sourceMembers.isEmpty()) {
+            return "Coalition `" + coalition + "` is empty";
+        }
+
+        Set<Long> destinationMembers = new LongOpenHashSet(db.getCoalitionRaw(rename_to));
+        for (long memberId : sourceMembers) {
+            db.addCoalition(memberId, rename_to);
+        }
+        db.removeCoalition(coalition);
+
+        if (destinationMembers.isEmpty()) {
+            return "Renamed coalition `" + coalition + "` to `" + rename_to + "` with `" + sourceMembers.size() + "` entries";
+        }
+
+        int addedEntries = 0;
+        for (long memberId : sourceMembers) {
+            if (!destinationMembers.contains(memberId)) {
+                addedEntries++;
+            }
+        }
+        return "Merged coalition `" + coalition + "` into `" + rename_to + "` and added `" + addedEntries + "` new entries";
+    }
+
     @Command(desc = "Delete an entire coalition")
     @RolePermission(Roles.FOREIGN_AFFAIRS)
     public String deleteCoalition(@Me User user, @Me GuildDB db, @GuildCoalition String coalitionName) {
-        Coalition coalition = Coalition.parse(coalitionName);
-        if ((coalition != null && !coalition.hasPermission(db.getGuild(), user)) ||
-                (coalition == null && !Roles.FOREIGN_AFFAIRS.has(user, db.getGuild()))
-        ) {
+        if (!hasCoalitionPermission(user, db, coalitionName)) {
             return "You do not have permission to set this coalition";
         }
         Set<Long> previousValue = db.getCoalitionRaw(coalitionName);
@@ -242,10 +279,7 @@ public class FACommands {
             "Note: Use `{prefix}coalition delete` to delete an entire coalition")
     @RolePermission(Roles.MEMBER)
     public String removeCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances, @GuildCoalition String coalitionName) {
-        Coalition coalition = Coalition.parse(coalitionName);
-        if ((coalition != null && !coalition.hasPermission(db.getGuild(), user)) ||
-                (coalition == null && !Roles.FOREIGN_AFFAIRS.has(user, db.getGuild()))
-        ) {
+        if (!hasCoalitionPermission(user, db, coalitionName)) {
             return "You do not have permission to set this coalition";
         }
         StringBuilder response = new StringBuilder();

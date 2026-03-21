@@ -44,12 +44,10 @@ public class MeCommand extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        System.out.println("START SENDING ME");
+        
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention();
         }
-        String result = who.onCommand(guild, channel, author, me, fullCommandRaw, Collections.singletonList(me.getNation_id() + ""));
-        System.out.println("DONE SENDING ME");
-        return result;
+        return who.onCommand(guild, channel, author, me, fullCommandRaw, Collections.singletonList(me.getNation_id() + ""));
     }
 }

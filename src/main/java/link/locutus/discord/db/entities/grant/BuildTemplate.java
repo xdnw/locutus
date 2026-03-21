@@ -41,8 +41,12 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     private final boolean includeInfra;
     private final int includeLand;
 
-    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getBytes("build"), rs.getBoolean("only_new_cities"),
+    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole,
+            long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay,
+            int maxGranterTotal, ResultSet rs) throws SQLException {
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay,
+                maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getBytes("build"),
+                rs.getBoolean("only_new_cities"),
                 rs.getInt("mmr"),
                 rs.getLong("allow_switch_after_days"),
                 rs.getBoolean("allow_switch_after_offensive"),
@@ -54,21 +58,22 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 rs.getBoolean("allow_ignore"),
                 rs.getLong("repeatable"),
                 rs.getBoolean("include_infra"),
-                rs.getInt("include_land")
-        );
+                rs.getInt("include_land"));
     }
 
-    // create new constructor  with typed parameters instead of resultset
-    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, byte[] build, boolean onlyNewCities, int mmr,
-                         long allow_switch_after_days,
-                         boolean allow_switch_after_offensive,
-                         boolean allow_switch_after_infra,
-                         boolean allow_switch_after_land_or_project,
-                         boolean allow_all, long expiryOrZero, long decayOrZero, boolean allowIgnore,
-                         long repeatable_time,
-                            boolean includeInfra, int includeLand
-    ) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, repeatable_time);
+    // create new constructor with typed parameters instead of resultset
+    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole,
+            long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay,
+            int maxGranterTotal, long dateCreated, byte[] build, boolean onlyNewCities, int mmr,
+            long allow_switch_after_days,
+            boolean allow_switch_after_offensive,
+            boolean allow_switch_after_infra,
+            boolean allow_switch_after_land_or_project,
+            boolean allow_all, long expiryOrZero, long decayOrZero, boolean allowIgnore,
+            long repeatable_time,
+            boolean includeInfra, int includeLand) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay,
+                maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, repeatable_time);
         this.build = build == null || build.length == 0 ? null : build;
         this.onlyNewCities = onlyNewCities;
         this.mmr = mmr <= 0 ? null : MMRInt.fromString(String.format("%04d", mmr));
@@ -82,20 +87,23 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public String toInfoString(DBNation sender, DBNation receiver,  Map<Integer, CityBuild> parsed) {
+    public String toInfoString(DBNation sender, DBNation receiver, Map<Integer, CityBuild> parsed) {
 
         StringBuilder message = new StringBuilder();
 
-        if(build != null)
+        if (build != null)
             message.append("build: ```json\n" + new JavaCity().fromBytes(build).toJson(false) + "\n```\n");
 
         message.append("Only New Cities: `" + onlyNewCities + "`\n");
         if (mmr != null) {
             message.append("MMR: `" + String.format("%04d", mmr) + "`\n");
         }
-        if (allow_switch_after_days > 0) message.append("Allow Switch After Days: `" + allow_switch_after_days + "`\n");
-        if (allow_switch_after_offensive) message.append("Allow Switch After Offensive: `" + allow_switch_after_offensive + "`\n");
-        if (allow_switch_after_infra) message.append("Allow Switch After Infra: `" + allow_switch_after_infra + "`\n");
+        if (allow_switch_after_days > 0)
+            message.append("Allow Switch After Days: `" + allow_switch_after_days + "`\n");
+        if (allow_switch_after_offensive)
+            message.append("Allow Switch After Offensive: `" + allow_switch_after_offensive + "`\n");
+        if (allow_switch_after_infra)
+            message.append("Allow Switch After Infra: `" + allow_switch_after_infra + "`\n");
         message.append("Allow All: `" + allow_all + "`\n");
         if (includeInfra) {
             message.append("Include Infra: `true`\n");
@@ -108,28 +116,48 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole,
+            String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay,
+            String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
         return CM.grant_template.create.build.cmd.name(name).allowedRecipients(allowedRecipients).build(
                 build != null ? JavaCity.fromBytes(build).toJson(false) : null).mmr(
-                mmr == null ? null : mmr.toString()).only_new_cities(
-                onlyNewCities ? "true" : null).allow_after_days(
-                allow_switch_after_days > 0 ? allow_switch_after_days + "" : null).allow_after_offensive(
-                allow_switch_after_offensive ? "true" : null).allow_after_infra(
-                allow_switch_after_infra ? "true" : null).allow_all(
-                allow_all ? "true" : null).allow_after_land_or_project(
-                allow_switch_after_land_or_project ? "true" : null).econRole(
-                econRole).selfRole(
-                selfRole).bracket(
-                bracket).useReceiverBracket(
-                useReceiverBracket).maxTotal(
-                maxTotal).maxDay(
-                maxDay).maxGranterDay(
-                maxGranterDay).maxGranterTotal(
-                maxGranterTotal).expireTime(
-                allowExpire).decayTime(
-                allowDecay).allowIgnore(
-                allowIgnore).repeatable_time(
-                repeatable)
+                        mmr == null ? null : mmr.toString())
+                .only_new_cities(
+                        onlyNewCities ? "true" : null)
+                .allow_after_days(
+                        allow_switch_after_days > 0 ? allow_switch_after_days + "" : null)
+                .allow_after_offensive(
+                        allow_switch_after_offensive ? "true" : null)
+                .allow_after_infra(
+                        allow_switch_after_infra ? "true" : null)
+                .allow_all(
+                        allow_all ? "true" : null)
+                .allow_after_land_or_project(
+                        allow_switch_after_land_or_project ? "true" : null)
+                .econRole(
+                        econRole)
+                .selfRole(
+                        selfRole)
+                .bracket(
+                        bracket)
+                .useReceiverBracket(
+                        useReceiverBracket)
+                .maxTotal(
+                        maxTotal)
+                .maxDay(
+                        maxDay)
+                .maxGranterDay(
+                        maxGranterDay)
+                .maxGranterTotal(
+                        maxGranterTotal)
+                .expireTime(
+                        allowExpire)
+                .decayTime(
+                        allowDecay)
+                .allowIgnore(
+                        allowIgnore)
+                .repeatable_time(
+                        repeatable)
                 .include_infra(includeInfra ? "true" : null)
                 .include_land(includeLand > 0 ? includeLand + "" : null).toString();
     }
@@ -277,7 +305,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         {
             JavaCity jc = new JavaCity(build);
             if (jc.getRequiredInfra() > maxInfra) {
-                throw new IllegalArgumentException("Build requires more infra than the receiver has: " + jc.getRequiredInfra() + " > " + maxInfra);
+                throw new IllegalArgumentException(
+                        "Build requires more infra than the receiver has: " + jc.getRequiredInfra() + " > " + maxInfra);
             }
             // ensure no buildings are negative
             for (Building building : Buildings.values()) {
@@ -286,7 +315,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                     throw new IllegalArgumentException("Build has negative " + building.name() + " buildings");
                 }
                 if (amt > building.getCap(Predicates.alwaysTrue())) {
-                    throw new IllegalArgumentException("Build has more than " + building.getCap(Predicates.alwaysTrue()) + " " + building.name() + " buildings");
+                    throw new IllegalArgumentException("Build has more than " + building.getCap(Predicates.alwaysTrue())
+                            + " " + building.name() + " buildings");
                 }
             }
             // no more than 2 power plants
@@ -304,16 +334,20 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             }
             // 5,5,5,3 max military buildings
             if (jc.getBuilding(Buildings.BARRACKS) > Buildings.BARRACKS.cap(Predicates.alwaysTrue())) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.BARRACKS.cap(Predicates.alwaysTrue()) + " barracks");
+                throw new IllegalArgumentException(
+                        "Build has more than " + Buildings.BARRACKS.cap(Predicates.alwaysTrue()) + " barracks");
             }
             if (jc.getBuilding(Buildings.FACTORY) > Buildings.FACTORY.cap(Predicates.alwaysTrue())) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.FACTORY.cap(Predicates.alwaysTrue()) + " factories");
+                throw new IllegalArgumentException(
+                        "Build has more than " + Buildings.FACTORY.cap(Predicates.alwaysTrue()) + " factories");
             }
             if (jc.getBuilding(Buildings.HANGAR) > Buildings.HANGAR.cap(Predicates.alwaysTrue())) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.HANGAR.cap(Predicates.alwaysTrue()) + " hangars");
+                throw new IllegalArgumentException(
+                        "Build has more than " + Buildings.HANGAR.cap(Predicates.alwaysTrue()) + " hangars");
             }
             if (jc.getBuilding(Buildings.DRYDOCK) > Buildings.DRYDOCK.cap(Predicates.alwaysTrue())) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.DRYDOCK.cap(Predicates.alwaysTrue()) + " drydocks");
+                throw new IllegalArgumentException(
+                        "Build has more than " + Buildings.DRYDOCK.cap(Predicates.alwaysTrue()) + " drydocks");
             }
         }
         // return map of city and build
@@ -325,110 +359,134 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build, boolean confirm) {
-            List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, build, confirm);
-            list.addAll(getRequirements(db, sender, receiver, this, build));
-            return list;
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender,
+            @Nullable DBNation receiver, Map<Integer, CityBuild> build, boolean confirm) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, build, confirm);
+        list.addAll(getRequirements(db, sender, receiver, this, build));
+        return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, BuildTemplate template, Map<Integer, CityBuild> parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver,
+            BuildTemplate template, Map<Integer, CityBuild> parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
         // cap at 4k infra worth of buildings
-        list.add(new Grant.Requirement("Build must NOT have more than 80 buildings (4k infra)", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                for (CityBuild value : parsed.values()) {
-                    if (new JavaCity(value).getNumBuildings() > 80) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }));
-        if (template == null || template.includeLand > 0) {
-            list.add(new Grant.Requirement("Build must NOT have more than 5000 land", false, new Function<DBNation, Boolean>() {
-                @Override
-                public Boolean apply(DBNation receiver) {
-                    for (CityBuild value : parsed.values()) {
-                        if (value.getLand() != null && value.getLand() > 5000) {
-                            return false;
+        list.add(new Grant.Requirement("Build must NOT have more than 80 buildings (4k infra)", false,
+                new Function<DBNation, Boolean>() {
+                    @Override
+                    public Boolean apply(DBNation receiver) {
+                        for (CityBuild value : parsed.values()) {
+                            if (new JavaCity(value).getNumBuildings() > 80) {
+                                return false;
+                            }
                         }
+                        return true;
                     }
-                    return true;
-                }
-            }));
+                }));
+        if (template == null || template.includeLand > 0) {
+            list.add(new Grant.Requirement("Build must NOT have more than 5000 land", false,
+                    new Function<DBNation, Boolean>() {
+                        @Override
+                        public Boolean apply(DBNation receiver) {
+                            for (CityBuild value : parsed.values()) {
+                                if (value.getLand() != null && value.getLand() > 5000) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        }
+                    }));
         }
 
         if (template == null || template.onlyNewCities) {
-            list.add(new Grant.Requirement("Must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
-                @Override
-                public Boolean apply(DBNation receiver) {
-                    return template == null || receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
-                }
-            }));
+            list.add(
+                    new Grant.Requirement("Must have purchased a city in the past 10 days (when `onlyNewCities: True`)",
+                            true, new Function<DBNation, Boolean>() {
+                                @Override
+                                public Boolean apply(DBNation receiver) {
+                                    return template == null || receiver
+                                            .getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
+                                }
+                            }));
         }
 
-        list.add(new Grant.Requirement("Nation must NOT have received a new city build grant (when `repeatable: False`)", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                if (template == null || db == null) return true;
-//                if (template.allow_switch_after_offensive || template.allow_switch_after_infra || template.allow_switch_after_land_or_project) return true;
-                List<GrantTemplateManager.GrantSendRecord> records = db.getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
-                long repeatable = template.getRepeatable();
-                if (repeatable > 0) {
-                    long cutoff = System.currentTimeMillis() - repeatable;
-                    records.removeIf(f -> f.date < cutoff);
-                }
-                long lastLand = 0;
-                long lastProject = 0;
-                long lastInfra = 0;
-                // get transfers
-                List<Map.Entry<Integer, Transaction2>> transactions = receiver.getTransactions(db, null, false, false, false, -1, 0, Long.MAX_VALUE, true);
-                for (Map.Entry<Integer, Transaction2> entry : transactions) {
-                    Transaction2 tx = entry.getValue();
-                    if (tx.receiver_id != receiver.getId()) continue;
-                    String note = tx.note;
-                    if (note == null || note.isEmpty()) continue;
-                    if (note.contains("#project")) lastProject = Math.max(lastProject, tx.tx_datetime);
-                    if (note.contains("#land")) lastLand = Math.max(lastLand, tx.tx_datetime);
-                    if (note.contains("#infra")) lastInfra = Math.max(lastInfra, tx.tx_datetime);
-                }
-                long lastLandOrProject = Math.max(lastLand, lastProject);
+        list.add(
+                new Grant.Requirement("Nation must NOT have received a new city build grant (when `repeatable: False`)",
+                        false, new Function<DBNation, Boolean>() {
+                            @Override
+                            public Boolean apply(DBNation receiver) {
+                                if (template == null || db == null)
+                                    return true;
+                                // if (template.allow_switch_after_offensive ||
+                                // template.allow_switch_after_infra ||
+                                // template.allow_switch_after_land_or_project) return true;
+                                List<GrantTemplateManager.GrantSendRecord> records = db.getGrantTemplateManager()
+                                        .getRecordsByReceiver(receiver.getId());
+                                long repeatable = template.getRepeatable();
+                                if (repeatable > 0) {
+                                    long cutoff = System.currentTimeMillis() - repeatable;
+                                    records.removeIf(f -> f.date < cutoff);
+                                }
+                                long lastLand = 0;
+                                long lastProject = 0;
+                                long lastInfra = 0;
+                                // get transfers
+                                List<Map.Entry<Integer, Transaction2>> transactions = receiver.getTransactions(db, null,
+                                        false, false, false, -1, 0, Long.MAX_VALUE, true);
+                                for (Map.Entry<Integer, Transaction2> entry : transactions) {
+                                    Transaction2 tx = entry.getValue();
+                                    if (tx.receiver_id != receiver.getId())
+                                        continue;
+                                    if (tx.hasNoteTag(DepositType.PROJECT))
+                                        lastProject = Math.max(lastProject, tx.tx_datetime);
+                                    if (tx.hasNoteTag(DepositType.LAND))
+                                        lastLand = Math.max(lastLand, tx.tx_datetime);
+                                    if (tx.hasNoteTag(DepositType.INFRA))
+                                        lastInfra = Math.max(lastInfra, tx.tx_datetime);
+                                }
+                                long lastLandOrProject = Math.max(lastLand, lastProject);
 
-                for(GrantTemplateManager.GrantSendRecord record : records) {
-                    if (template.allow_switch_after_days > 0 && record.date < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(template.allow_switch_after_days)) {
-                        continue;
-                    }
-                    if (receiver.getCitiesSince(record.date) == 0 && record.grant_type == TemplateTypes.BUILD) {
-                        return false;
-                    }
-                    if (template.allow_switch_after_infra && record.grant_type == TemplateTypes.INFRA && record.date > lastInfra) {
-                        return false;
-                    }
-                    if (template.allow_switch_after_land_or_project && (record.grant_type == TemplateTypes.LAND || record.grant_type == TemplateTypes.PROJECT) && record.date > lastLandOrProject) {
-                        return false;
-                    }
-                }
+                                for (GrantTemplateManager.GrantSendRecord record : records) {
+                                    if (template.allow_switch_after_days > 0 && record.date < System.currentTimeMillis()
+                                            - TimeUnit.DAYS.toMillis(template.allow_switch_after_days)) {
+                                        continue;
+                                    }
+                                    if (receiver.getCitiesSince(record.date) == 0
+                                            && record.grant_type == TemplateTypes.BUILD) {
+                                        return false;
+                                    }
+                                    if (template.allow_switch_after_infra && record.grant_type == TemplateTypes.INFRA
+                                            && record.date > lastInfra) {
+                                        return false;
+                                    }
+                                    if (template.allow_switch_after_land_or_project
+                                            && (record.grant_type == TemplateTypes.LAND
+                                                    || record.grant_type == TemplateTypes.PROJECT)
+                                            && record.date > lastLandOrProject) {
+                                        return false;
+                                    }
+                                }
 
-                return true;
-            }
-        }));
+                                return true;
+                            }
+                        }));
 
-        list.add(new Grant.Requirement("Cannot build in " + (receiver == null ? "{continent}" : receiver.getContinent()), false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                for (CityBuild value : parsed.values()) {
-                    JavaCity city = new JavaCity(value);
-                    for (Building building : Buildings.values()) {
-                        int amt = city.getBuilding(building);
-                        if (amt > 0 && !building.canBuild(receiver.getContinent())) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            }
-        }));
+        list.add(
+                new Grant.Requirement("Cannot build in " + (receiver == null ? "{continent}" : receiver.getContinent()),
+                        false, new Function<DBNation, Boolean>() {
+                            @Override
+                            public Boolean apply(DBNation receiver) {
+                                for (CityBuild value : parsed.values()) {
+                                    JavaCity city = new JavaCity(value);
+                                    for (Building building : Buildings.values()) {
+                                        int amt = city.getBuilding(building);
+                                        if (amt > 0 && !building.canBuild(receiver.getContinent())) {
+                                            return false;
+                                        }
+                                    }
+                                }
+                                return true;
+                            }
+                        }));
 
         return list;
     }
@@ -452,7 +510,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         }
 
         // get grants
-        for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId())) {
+        for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager()
+                .getRecordsByReceiver(receiver.getId())) {
             // buildDate = Math.max(buildDate, record.date);
             switch (record.grant_type) {
                 case BUILD -> buildDate = Math.max(buildDate, record.date);
@@ -464,7 +523,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         long cutoff = onlyNewCities ? TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119) : 0;
         for (Map.Entry<Integer, Long> entry : createDate.entrySet()) {
             long date = entry.getValue();
-            if (date < cutoff) continue;
+            if (date < cutoff)
+                continue;
             boolean allowGrant = true;
             if (buildDate > date) {
                 allowGrant = infraDate > buildDate && allow_switch_after_infra;
@@ -492,7 +552,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         for (Map.Entry<Integer, JavaCity> entry : existing.entrySet()) {
             JavaCity from = entry.getValue();
             CityBuild build = builds.get(entry.getKey());
-            if (build == null) continue;
+            if (build == null)
+                continue;
             JavaCity to = new JavaCity(build);
             to.calculateCost(from, cost, includeInfra, includeLand > 0);
         }
@@ -515,12 +576,15 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         StringBuilder instructions = new StringBuilder();
         if (parsed.size() == 1) {
             int id = parsed.keySet().iterator().next();
-            instructions.append("Go to <" + Settings.PNW_URL() + "/city/improvements/import/id=" + id + "> and import the build:\n");
+            instructions.append("Go to <" + Settings.PNW_URL() + "/city/improvements/import/id=" + id
+                    + "> and import the build:\n");
         } else if (parsed.size() == receiver.getCities()) {
-            instructions.append("Go to <" + Settings.PNW_URL() + "/city/improvements/bulk-import/> and import the build:\n");
+            instructions.append(
+                    "Go to <" + Settings.PNW_URL() + "/city/improvements/bulk-import/> and import the build:\n");
         } else {
             Set<Integer> ids = parsed.keySet();
-            instructions.append("Go to <" + Settings.PNW_URL() + "/city/improvements/import/id=> with the following city ids:\n");
+            instructions.append(
+                    "Go to <" + Settings.PNW_URL() + "/city/improvements/import/id=> with the following city ids:\n");
             for (int id : ids) {
                 instructions.append("- ").append(id).append("\n");
             }
@@ -537,6 +601,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public Class<Map<Integer, CityBuild>> getParsedType() {
-        return (Class<Map<Integer, CityBuild>>) TypeToken.getParameterized(Map.class, Integer.class, CityBuild.class).getRawType();
+        return (Class<Map<Integer, CityBuild>>) TypeToken.getParameterized(Map.class, Integer.class, CityBuild.class)
+                .getRawType();
     }
 }

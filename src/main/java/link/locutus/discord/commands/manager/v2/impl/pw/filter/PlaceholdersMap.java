@@ -2,24 +2,39 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.binding.bindings.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.LiveAppPlaceholderExtension;
+import link.locutus.discord.commands.manager.v2.binding.bindings.LiveAppPlaceholderRegistry;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderEngine;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SimplePlaceholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SimpleVoidPlaceholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.StaticPlaceholders;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -27,13 +42,34 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.INationSnapshot;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TaxDeposit;
+import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBBan;
+import link.locutus.discord.db.entities.DBBounty;
+import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.DBTreasure;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.SelectionAlias;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.TextChannelWrapper;
+import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.entities.UserWrapper;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.pnw.*;
+import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -50,25 +86,28 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.commands.manager.v2.binding.BindingHelper.emum;
 import static link.locutus.discord.commands.manager.v2.binding.BindingHelper.emumSet;
 
-public class PlaceholdersMap {
-
-    private static PlaceholdersMap INSTANCE;
+public class PlaceholdersMap extends PlaceholderEngine implements LiveAppPlaceholderRegistry {
 
     public static String getClassName(String simpleName) {
         return simpleName.replace("DB", "").replace("Wrapper", "")
@@ -80,113 +119,48 @@ public class PlaceholdersMap {
         return getClassName(clazz.getSimpleName());
     }
 
-    public static Placeholders<DBNation, NationModifier> NATIONS = null;
-    public static Placeholders<DBAlliance, Void> ALLIANCES = null;
-    public static Placeholders<NationOrAlliance, Void> NATION_OR_ALLIANCE = null;
-    public static Placeholders<Continent, Void> CONTINENTS = null;
-    public static Placeholders<GuildDB, Void> GUILDS = null;
-    public static Placeholders<Project, Void> PROJECTS = null;
-    public static Placeholders<Treaty, Void> TREATIES = null;
-    public static Placeholders<DBBan, Void> BANS = null;
-    public static Placeholders<ResourceType, Void> RESOURCE_TYPES = null;
-    public static Placeholders<AttackType, Void> ATTACK_TYPES = null;
-    public static Placeholders<MilitaryUnit, Void> MILITARY_UNITS = null;
-    public static Placeholders<TreatyType, Void> TREATY_TYPES = null;
-    public static Placeholders<DBTreasure, Void> TREASURES = null;
-    public static Placeholders<NationColor, Void> NATION_COLORS = null;
-    public static Placeholders<Building, Void> BUILDINGS = null;
-    public static Placeholders<AuditType, Void> AUDIT_TYPES = null;
-    public static Placeholders<NationList, Void> NATION_LIST = null;
-    public static Placeholders<DBBounty, Void> BOUNTIES = null;
-    public static Placeholders<DBCity, Void> CITIES = null;
-    public static Placeholders<TaxBracket, Void> TAX_BRACKETS = null;
-    public static Placeholders<UserWrapper, Void> USERS = null;
-    public static Placeholders<Transaction2, Void> TRANSACTIONS = null;
-    public static Placeholders<DBTrade, Void> TRADES = null;
-    public static Placeholders<IAttack, Void> ATTACKS = null;
-    public static Placeholders<DBWar, Void> WARS = null;
-    public static Placeholders<TaxDeposit, Void> TAX_DEPOSITS = null;
-    public static Placeholders<GuildSetting, Void> SETTINGS = null;
-    public static Placeholders<Conflict, Void> CONFLICTS = null;
-    public static Placeholders<TextChannelWrapper, Void> CHANNELS = null;
-
-    // --------------------------------------------------------------------
-
-    private final Map<Class<?>, Placeholders<?, ?>> placeholders = new ConcurrentHashMap<>();
-    private final ValueStore<Object> store;
+    private final ValueStore store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
+    private final CommandRuntimeServices services;
 
-    public Set<Class<?>> getTypes() {
-        return placeholders.keySet();
-    }
-
-    public PlaceholdersMap(ValueStore<Object> store, ValidatorStore validators, PermissionHandler permisser) {
-        if (INSTANCE != null) {
-            throw new IllegalStateException("Already initialized");
-        }
-        INSTANCE = this;
-
+    public PlaceholdersMap(ValueStore store, ValidatorStore validators, PermissionHandler permisser,
+            CommandRuntimeServices services) {
+        super(store, validators, permisser, services);
         this.store = store;
         this.validators = validators;
         this.permisser = permisser;
+        this.services = services;
 
-        this.placeholders.put(DBNation.class, new NationPlaceholders(store, validators, permisser));
-        this.placeholders.put(DBAlliance.class, new AlliancePlaceholders(store, validators, permisser));
-        this.placeholders.put(NationOrAlliance.class, createNationOrAlliances());
-        this.placeholders.put(Continent.class, createContinents());
-        this.placeholders.put(GuildDB.class, createGuildDB());
-        this.placeholders.put(Project.class, createProjects());
-        this.placeholders.put(Treaty.class, createTreaty());
-        this.placeholders.put(DBBan.class, createBans());
-        this.placeholders.put(ResourceType.class, createResourceType());
-        this.placeholders.put(AttackType.class, createAttackTypes());
-        this.placeholders.put(MilitaryUnit.class, createMilitaryUnit());
-        this.placeholders.put(TreatyType.class, createTreatyType());
-        this.placeholders.put(DBTreasure.class, createTreasure());
-        this.placeholders.put(NationColor.class, createNationColor());
-        this.placeholders.put(Building.class, createBuilding());
-        this.placeholders.put(AuditType.class, createAuditType());
-        this.placeholders.put(NationList.class, createNationList());
-        this.placeholders.put(DBBounty.class, createBounties());
-        this.placeholders.put(DBCity.class, createCities());
-        this.placeholders.put(TaxBracket.class, createBrackets());
-        this.placeholders.put(UserWrapper.class, createUsers());
-        this.placeholders.put(TextChannelWrapper.class, createChannels());
-        this.placeholders.put(Transaction2.class, createTransactions());
-        this.placeholders.put(DBTrade.class, createTrades());
-        this.placeholders.put(IAttack.class, createAttacks());
-        this.placeholders.put(DBWar.class, createWars());
-        this.placeholders.put(TaxDeposit.class, createTaxDeposit());
-        this.placeholders.put(GuildSetting.class, createGuildSettings());
-        this.placeholders.put(Conflict.class, createConflicts());
-
-        Map<Class, Field> fields = new HashMap<>();
-        for (Field field : PlaceholdersMap.class.getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                continue;
-            }
-            if (!Placeholders.class.isAssignableFrom(field.getType())) {
-                continue;
-            }
-            field.setAccessible(true);
-            Class enclosedType = (Class) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
-            fields.put(enclosedType, field);
-        }
-
-        for (Map.Entry<Class<?>, Placeholders<?, ?>> entry : this.placeholders.entrySet()) {
-            Class<?> enclosedType = entry.getKey();
-            Field field = fields.get(enclosedType);
-            if (field == null) {
-                throw new IllegalStateException("Missing field for `" + enclosedType + "`. Options:\n- "
-                        + StringMan.join(fields.keySet(), "\n- "));
-            }
-            try {
-                field.set(null, entry.getValue());
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        add(new NationPlaceholders(store, validators, permisser, services));
+        add(new AlliancePlaceholders(store, validators, permisser, services));
+        add(createNationOrAlliances());
+        add(createContinents());
+        add(createGuildDB());
+        add(createProjects());
+        add(createTreaty());
+        add(createBans());
+        add(createResourceType());
+        add(createAttackTypes());
+        add(createMilitaryUnit());
+        add(createTreatyType());
+        add(createTreasure());
+        add(createNationColor());
+        add(createBuilding());
+        add(createAuditType());
+        add(createNationList());
+        add(createBounties());
+        add(createCities());
+        add(createBrackets());
+        add(createUsers());
+        add(createChannels());
+        add(createTransactions());
+        add(createTrades());
+        add(createAttacks());
+        add(createWars());
+        add(createTaxDeposit());
+        add(createGuildSettings());
+        add(createConflicts());
 
         // //-GuildKey
         // this.placeholders.put(GuildSetting.class, createGuildSetting());
@@ -195,43 +169,137 @@ public class PlaceholdersMap {
         // this.placeholders.put(AGrantTemplate.class, createGrantTemplates());
     }
 
-    public static PlaceholdersMap get() {
-        if (INSTANCE == null) {
-            throw new IllegalStateException("Not initialized");
-        }
-        return INSTANCE;
-    }
-
-    public PlaceholdersMap init() {
-        // Register bindings
-        for (Class<?> type : getTypes()) {
-            Placeholders<?, ?> ph = placeholders.get(type);
-            ph.register(store);
-        }
-        // Initialize commands (staged after bindings as there might be cross
-        // dependency)
-        for (Class<?> type : getTypes()) {
-            placeholders.get(type).init();
-        }
-        // Ensure DBAlliance placeholder commands include NationList defaults.
-        Placeholders<DBAlliance, ?> alliancePlaceholders = get(DBAlliance.class);
-        alliancePlaceholders.getCommands().registerCommandsClass(NationList.class);
-        store.addProvider(Key.of(PlaceholdersMap.class), this);
+    @Override
+    public PlaceholdersMap initParsing() {
+        super.initParsing();
         return this;
     }
 
-    public ValueStore<Object> getStore() {
-        return store;
+    @Override
+    public PlaceholdersMap initCommands() {
+        super.initCommands();
+        return this;
     }
 
-    public <T, M> Placeholders<T, M> get(Class<T> type) {
-        return (Placeholders<T, M>) this.placeholders.get(type);
+    public PlaceholdersMap initAppCommands() {
+        initCommands();
+        for (Placeholders<?, ?> placeholders : getAllPlaceholders()) {
+            registerLiveAppEntityCommands(placeholders);
+        }
+        store.addLazyProvider(Key.of(LiveAppPlaceholderRegistry.class), () -> this);
+        return this;
+    }
+
+    @Override
+    public Set<Class<?>> getAppOnlyEntityCommandTypes() {
+        Set<Class<?>> ownerTypes = new LinkedHashSet<>();
+        for (Placeholders<?, ?> placeholders : getAllPlaceholders()) {
+            ownerTypes.add(placeholders.getType());
+            if (placeholders instanceof LiveAppPlaceholderExtension extension) {
+                ownerTypes.addAll(extension.getAdditionalLiveAppEntityCommandTypes());
+            }
+        }
+        return Collections.unmodifiableSet(ownerTypes);
+    }
+
+    private void registerLiveAppEntityCommands(Placeholders<?, ?> placeholders) {
+        placeholders.getCommands().registerCommandsClass(placeholders.getType());
+        if (placeholders instanceof LiveAppPlaceholderExtension extension) {
+            extension.registerAdditionalLiveAppEntityCommands();
+        }
+    }
+
+    private INationSnapshot nationSnapshot() {
+        return services.lookup().currentSnapshot();
+    }
+
+    private NationDB nationDb() {
+        return services.nationDb();
+    }
+
+    private GuildDB guildDb(Guild guild) {
+        return services.getGuildDb(guild);
+    }
+
+    private WarDB warDb() {
+        return services.warDb();
+    }
+
+    private BankDB bankDb() {
+        return services.bankDb();
+    }
+
+    private TradeDB tradeDb() {
+        return services.tradeDb();
+    }
+
+    private DBNation nationById(int nationId) {
+        return nationSnapshot().getNationById(nationId);
+    }
+
+    private DBNation nationOrCreate(int nationId) {
+        return services.lookup().getNationOrCreate(nationId);
+    }
+
+    private DBAlliance allianceById(int allianceId) {
+        return services.lookup().getAllianceById(allianceId);
+    }
+
+    private DBAlliance allianceOrCreate(int allianceId) {
+        return services.lookup().getAllianceOrCreate(allianceId);
+    }
+
+    private NationPlaceholders nationPlaceholders() {
+        return (NationPlaceholders) (Placeholders) get(DBNation.class);
+    }
+
+    private Set<DBNation> parseNations(ValueStore store, String input, boolean allowDeleted) {
+        return nationPlaceholders().parseSet(store, input, new NationModifier(null, allowDeleted, false));
+    }
+
+    private DBBan parseBan(ValueStore store, Guild guild, String input) {
+        if (MathMan.isInteger(input)) {
+            DBBan ban = nationDb().getBanById(Integer.parseInt(input));
+            if (ban == null) {
+                throw new IllegalArgumentException("No ban found for id `" + input + "`");
+            }
+            return ban;
+        }
+        Set<DBNation> nations = nationPlaceholders().parseSingleElem(store, input, false);
+        if (nations.size() != 1) {
+            throw new IllegalArgumentException("Expected exactly one nation for ban input: `" + input + "`");
+        }
+        DBNation nation = nations.iterator().next();
+        List<DBBan> bans = nationDb().getBansForNation(nation.getId());
+        if (bans.isEmpty()) {
+            throw new IllegalArgumentException("No bans found for nation `" + nation.getName() + "`");
+        }
+        return bans.get(0);
+    }
+
+    private DBBounty parseBounty(String input) {
+        int id = PrimitiveBindings.Integer(input);
+        DBBounty bounty = warDb().getBountyById(id);
+        if (bounty == null) {
+            throw new IllegalArgumentException("No bounty found with id: `" + id + "`");
+        }
+        return bounty;
+    }
+
+    private DBTreasure parseTreasure(String input) {
+        Map<String, DBTreasure> treasures = nationDb().getTreasuresByName();
+        DBTreasure treasure = treasures.get(input.toLowerCase(Locale.ROOT));
+        if (treasure == null) {
+            throw new IllegalArgumentException(
+                    "No treasure found with name: `" + input + "`. Options " + StringMan.getString(treasures.keySet()));
+        }
+        return treasure;
     }
 
     public <T> Class<T> parseType(String name) {
         name = getClassName(name);
         String finalName = name;
-        return (Class<T>) this.placeholders.keySet().stream().filter(f -> getClassName(f).equalsIgnoreCase(finalName))
+        return (Class<T>) getTypes().stream().filter(f -> getClassName(f).equalsIgnoreCase(finalName))
                 .findFirst().orElse(null);
     }
 
@@ -314,42 +382,6 @@ public class PlaceholdersMap {
                     Set<Continent> continents) {
                 return _addSelectionAlias(this, command, db, name, continents, "continents");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Continent sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<Continent, String> a,
-                    @Default TypedFunction<Continent, String> b,
-                    @Default TypedFunction<Continent, String> c,
-                    @Default TypedFunction<Continent, String> d,
-                    @Default TypedFunction<Continent, String> e,
-                    @Default TypedFunction<Continent, String> f,
-                    @Default TypedFunction<Continent, String> g,
-                    @Default TypedFunction<Continent, String> h,
-                    @Default TypedFunction<Continent, String> i,
-                    @Default TypedFunction<Continent, String> j,
-                    @Default TypedFunction<Continent, String> k,
-                    @Default TypedFunction<Continent, String> l,
-                    @Default TypedFunction<Continent, String> m,
-                    @Default TypedFunction<Continent, String> n,
-                    @Default TypedFunction<Continent, String> o,
-                    @Default TypedFunction<Continent, String> p,
-                    @Default TypedFunction<Continent, String> q,
-                    @Default TypedFunction<Continent, String> r,
-                    @Default TypedFunction<Continent, String> s,
-                    @Default TypedFunction<Continent, String> t,
-                    @Default TypedFunction<Continent, String> u,
-                    @Default TypedFunction<Continent, String> v,
-                    @Default TypedFunction<Continent, String> w,
-                    @Default TypedFunction<Continent, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -357,24 +389,24 @@ public class PlaceholdersMap {
         input = input.trim();
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
         Guild guild = db == null ? null : db.getGuild();
-        DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+        INationSnapshot snapshot = nationSnapshot();
         if (input.equalsIgnoreCase("*") && allowStar) {
-            return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getAllNations());
+            return new ObjectOpenHashSet<>(snapshot.getAllNations());
         }
         if (MathMan.isInteger(input)) {
             long id = Long.parseLong(input);
             if (id < Integer.MAX_VALUE) {
                 int idInt = (int) id;
-                DBAlliance alliance = DBAlliance.get(idInt);
+                DBAlliance alliance = allianceById(idInt);
                 if (alliance != null)
                     return Set.of(alliance);
-                DBNation nation = DBNation.getById(idInt);
+                DBNation nation = nationById(idInt);
                 if (nation != null)
                     return Set.of(nation);
             } else {
-                User user = Locutus.imp().getDiscordApi().getUserById(id);
+                User user = services.getDiscordUserById(id);
                 if (user != null) {
-                    DBNation nation = DiscordUtil.getNation(user);
+                    DBNation nation = services.lookup().getNationByUser(snapshot, user);
                     if (nation == null) {
                         throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user)
                                 + "` is not registered. See " + CM.register.cmd.toSlashMention());
@@ -384,11 +416,11 @@ public class PlaceholdersMap {
                 if (db != null) {
                     Role role = db.getGuild().getRoleById(id);
                     if (role != null) {
-                        return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role,
-                                Locutus.imp().getNationDB());
+                        return (Set) NationPlaceholders.getByRole(services, db.getGuild(), input, role,
+                                snapshot);
                     }
                 } else {
-                    DBNation nation = DiscordUtil.getNation(id);
+                    DBNation nation = services.lookup().getNationByUser(snapshot, id, false);
                     if (nation != null) {
                         return Set.of(nation);
                     }
@@ -397,19 +429,19 @@ public class PlaceholdersMap {
         }
         Integer aaId = PW.parseAllianceId(input);
         if (aaId != null) {
-            return Set.of(DBAlliance.getOrCreate(aaId));
+            return Set.of(allianceOrCreate(aaId));
         }
-        DBNation argNation = DiscordUtil.parseNation(input, true, false, guild);
+        DBNation argNation = services.lookup().parseNation(input, true, false, guild);
         if (argNation != null) {
             return Set.of(argNation);
         }
         if (input.contains("tax_id=")) {
             int taxId = PW.parseTaxId(input);
-            return (Set) Locutus.imp().getNationDB().getNationsByBracket(taxId);
+            return (Set) snapshot.getNationsByBracket(taxId);
         }
         if (input.startsWith("<@&") && db != null) {
             Role role = db.getGuild().getRoleById(input.substring(3, input.length() - 1));
-            return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role, Locutus.imp().getNationDB());
+            return (Set) NationPlaceholders.getByRole(services, db.getGuild(), input, role, snapshot);
         }
         boolean isCoalition = false;
         String coalitionStr = input;
@@ -435,11 +467,11 @@ public class PlaceholdersMap {
             Role role = db.getGuild().getRoles().stream().filter(f -> f.getName().equalsIgnoreCase(finalInput))
                     .findFirst().orElse(null);
             if (role != null) {
-                return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role, Locutus.imp().getNationDB());
+                return (Set) NationPlaceholders.getByRole(services, db.getGuild(), input, role, snapshot);
             }
             for (Member member : db.getGuild().getMembers()) {
                 User user = member.getUser();
-                DBNation nation = DiscordUtil.getNation(user);
+                DBNation nation = services.lookup().getNationByUser(snapshot, user);
                 if (nation == null)
                     continue;
                 if (member.getEffectiveName().equalsIgnoreCase(input) || user.getName().equalsIgnoreCase(input)
@@ -452,7 +484,7 @@ public class PlaceholdersMap {
             String inputLower = input.toLowerCase(Locale.ROOT);
             String best = null;
             double bestScore = Double.MAX_VALUE;
-            for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
+            for (DBNation nation : snapshot.getAllNations()) {
                 String name = nation.getName();
                 double score = StringMan.distanceWeightedQwertSift4(name.toLowerCase(Locale.ROOT), inputLower);
                 if (score < bestScore) {
@@ -468,7 +500,7 @@ public class PlaceholdersMap {
                     }
                 }
             }
-            for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            for (DBAlliance alliance : services.getAlliances()) {
                 String name = alliance.getName();
                 double score = StringMan.distanceWeightedQwertSift4(name.toLowerCase(Locale.ROOT), inputLower);
                 if (score < bestScore) {
@@ -496,8 +528,8 @@ public class PlaceholdersMap {
 
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                Set<SelectorInfo> selectors = new ObjectLinkedOpenHashSet<>(NATIONS.getSelectorInfo());
-                selectors.addAll(ALLIANCES.getSelectorInfo());
+                Set<SelectorInfo> selectors = new ObjectLinkedOpenHashSet<>(PlaceholdersMap.this.get(DBNation.class).getSelectorInfo());
+                selectors.addAll(PlaceholdersMap.this.get(DBAlliance.class).getSelectorInfo());
                 return selectors;
             }
 
@@ -536,9 +568,9 @@ public class PlaceholdersMap {
                     return SpreadSheet.parseSheet(input, List.of("nation", "alliance"), true, (type, str) -> {
                         switch (type) {
                             case 0:
-                                return PWBindings.nation(null, guild, str);
+                                return PWBindings.parseNation(services, null, guild, str, null);
                             case 1:
-                                return PWBindings.alliance(str);
+                                return PWBindings.alliance(services, str);
                         }
                         return null;
                     });
@@ -571,43 +603,6 @@ public class PlaceholdersMap {
                     Set<NationOrAlliance> nationoralliances) {
                 return _addSelectionAlias(this, command, db, name, nationoralliances, "nationoralliances");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a NationOrAlliance sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<NationOrAlliance, String> a,
-                    @Default TypedFunction<NationOrAlliance, String> b,
-                    @Default TypedFunction<NationOrAlliance, String> c,
-                    @Default TypedFunction<NationOrAlliance, String> d,
-                    @Default TypedFunction<NationOrAlliance, String> e,
-                    @Default TypedFunction<NationOrAlliance, String> f,
-                    @Default TypedFunction<NationOrAlliance, String> g,
-                    @Default TypedFunction<NationOrAlliance, String> h,
-                    @Default TypedFunction<NationOrAlliance, String> i,
-                    @Default TypedFunction<NationOrAlliance, String> j,
-                    @Default TypedFunction<NationOrAlliance, String> k,
-                    @Default TypedFunction<NationOrAlliance, String> l,
-                    @Default TypedFunction<NationOrAlliance, String> m,
-                    @Default TypedFunction<NationOrAlliance, String> n,
-                    @Default TypedFunction<NationOrAlliance, String> o,
-                    @Default TypedFunction<NationOrAlliance, String> p,
-                    @Default TypedFunction<NationOrAlliance, String> q,
-                    @Default TypedFunction<NationOrAlliance, String> r,
-                    @Default TypedFunction<NationOrAlliance, String> s,
-                    @Default TypedFunction<NationOrAlliance, String> t,
-                    @Default TypedFunction<NationOrAlliance, String> u,
-                    @Default TypedFunction<NationOrAlliance, String> v,
-                    @Default TypedFunction<NationOrAlliance, String> w,
-                    @Default TypedFunction<NationOrAlliance, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
-
         };
     }
 
@@ -623,12 +618,12 @@ public class PlaceholdersMap {
                     boolean admin = Roles.ADMIN.hasOnRoot(user);
                     if (input.equalsIgnoreCase("*")) {
                         if (admin) {
-                            return new HashSet<>(Locutus.imp().getGuildDatabases().values());
+                            return new HashSet<>(services.getGuildDatabases());
                         }
-                        Set<Guild> guilds = Locutus.imp().getDiscordApi().getMutualGuilds(user);
+                        Set<Guild> guilds = services.getMutualGuilds(user);
                         Set<GuildDB> dbs = new ObjectOpenHashSet<>();
                         for (Guild guild : guilds) {
-                            GuildDB db = Locutus.imp().getGuildDB(guild);
+                            GuildDB db = services.getGuildDb(guild);
                             if (db != null) {
                                 dbs.add(db);
                             }
@@ -637,10 +632,10 @@ public class PlaceholdersMap {
                     }
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("guild", "guild_id"), true,
-                                (type, str) -> PWBindings.guildDb(PrimitiveBindings.Long(str)));
+                                (type, str) -> PWBindings.resolveGuildDb(services, PrimitiveBindings.Long(str)));
                     }
                     long id = PrimitiveBindings.Long(input);
-                    GuildDB guild = PWBindings.guildDb(id);
+                    GuildDB guild = PWBindings.resolveGuildDb(services, id);
                     if (!admin && guild.getGuild().getMember(user) == null) {
                         throw new IllegalArgumentException(
                                 "You (" + user + ") are not in the guild with id: `" + id + "`");
@@ -683,42 +678,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<GuildDB> guilds) {
                 return _addSelectionAlias(this, command, db, name, guilds, "guilds");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Guild sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<GuildDB, String> a,
-                    @Default TypedFunction<GuildDB, String> b,
-                    @Default TypedFunction<GuildDB, String> c,
-                    @Default TypedFunction<GuildDB, String> d,
-                    @Default TypedFunction<GuildDB, String> e,
-                    @Default TypedFunction<GuildDB, String> f,
-                    @Default TypedFunction<GuildDB, String> g,
-                    @Default TypedFunction<GuildDB, String> h,
-                    @Default TypedFunction<GuildDB, String> i,
-                    @Default TypedFunction<GuildDB, String> j,
-                    @Default TypedFunction<GuildDB, String> k,
-                    @Default TypedFunction<GuildDB, String> l,
-                    @Default TypedFunction<GuildDB, String> m,
-                    @Default TypedFunction<GuildDB, String> n,
-                    @Default TypedFunction<GuildDB, String> o,
-                    @Default TypedFunction<GuildDB, String> p,
-                    @Default TypedFunction<GuildDB, String> q,
-                    @Default TypedFunction<GuildDB, String> r,
-                    @Default TypedFunction<GuildDB, String> s,
-                    @Default TypedFunction<GuildDB, String> t,
-                    @Default TypedFunction<GuildDB, String> u,
-                    @Default TypedFunction<GuildDB, String> v,
-                    @Default TypedFunction<GuildDB, String> w,
-                    @Default TypedFunction<GuildDB, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -731,14 +690,14 @@ public class PlaceholdersMap {
                     if (selection != null)
                         return selection;
                     if (input.equalsIgnoreCase("*")) {
-                        return new HashSet<>(Locutus.imp().getNationDB().getBansByNation().values());
+                        return new HashSet<>(nationDb().getBansByNation().values());
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("bans"), true,
-                                (type, str) -> PWBindings.ban(guild, str));
+                                (type, str) -> parseBan(store, guild, str));
                     }
-                    return Set.of(PWBindings.ban(guild, input));
+                    return Set.of(parseBan(store, guild, input));
                 }, (ThrowingTriFunction<Placeholders<DBBan, Void>, ValueStore, String, Predicate<DBBan>>) (inst, store,
                         input) -> {
                     if (input.equalsIgnoreCase("*"))
@@ -746,7 +705,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bans"), true,
-                                (type, str) -> DiscordUtil.parseNation(str, true, true, guild).getId());
+                            (type, str) -> services.lookup().parseNation(str, true, true, guild).getId());
                         return f -> sheet.contains(f.getNation_id());
                     }
                     if (MathMan.isInteger(input)) {
@@ -756,9 +715,9 @@ public class PlaceholdersMap {
                     NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
                     Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
                     return f -> {
-                        DBNation nation = DBNation.getById(f.nation_id);
+                        DBNation nation = nationById(f.nation_id);
                         if (nation == null && f.discord_id > 0) {
-                            nation = DiscordUtil.getNation(f.discord_id);
+                            nation = services.lookup().getNationByUser(nationSnapshot(), f.discord_id, false);
                         }
                         if (nation == null)
                             return false;
@@ -791,42 +750,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBBan> bans) {
                 return _addSelectionAlias(this, command, db, name, bans, "bans");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Ban sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<DBBan, String> a,
-                    @Default TypedFunction<DBBan, String> b,
-                    @Default TypedFunction<DBBan, String> c,
-                    @Default TypedFunction<DBBan, String> d,
-                    @Default TypedFunction<DBBan, String> e,
-                    @Default TypedFunction<DBBan, String> f,
-                    @Default TypedFunction<DBBan, String> g,
-                    @Default TypedFunction<DBBan, String> h,
-                    @Default TypedFunction<DBBan, String> i,
-                    @Default TypedFunction<DBBan, String> j,
-                    @Default TypedFunction<DBBan, String> k,
-                    @Default TypedFunction<DBBan, String> l,
-                    @Default TypedFunction<DBBan, String> m,
-                    @Default TypedFunction<DBBan, String> n,
-                    @Default TypedFunction<DBBan, String> o,
-                    @Default TypedFunction<DBBan, String> p,
-                    @Default TypedFunction<DBBan, String> q,
-                    @Default TypedFunction<DBBan, String> r,
-                    @Default TypedFunction<DBBan, String> s,
-                    @Default TypedFunction<DBBan, String> t,
-                    @Default TypedFunction<DBBan, String> u,
-                    @Default TypedFunction<DBBan, String> v,
-                    @Default TypedFunction<DBBan, String> w,
-                    @Default TypedFunction<DBBan, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -840,15 +763,13 @@ public class PlaceholdersMap {
                     if (selection != null)
                         return selection;
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
 
                     if (SpreadSheet.isSheet(input)) {
                         Set<String> inputs = SpreadSheet.parseSheet(input, List.of("nations"), true,
                                 (type, str) -> str);
                         Set<NationList> lists = new HashSet<>();
                         for (String str : inputs) {
-                            Set<DBNation> nations = PWBindings.nations(null, guild, str, author, me);
+                            Set<DBNation> nations = parseNations(store, str, false);
                             lists.add(new SimpleNationList(nations).setFilter(str));
                         }
                         return lists;
@@ -867,14 +788,14 @@ public class PlaceholdersMap {
                     List<NationList> lists = new ArrayList<>();
 
                     if (input.isEmpty() || input.equalsIgnoreCase("*")) {
-                        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
+                        Set<DBAlliance> alliances = services.getAlliances();
                         for (DBAlliance alliance : alliances) {
                             lists.add(new SimpleNationList(alliance.getNations(filter)).setFilter(filterName));
                         }
                     } else if (input.equalsIgnoreCase("~")) {
-                        GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
+                        GuildDB db = guild == null ? null : guildDb(guild);
                         if (db == null) {
-                            db = Locutus.imp().getRootCoalitionServer();
+                            db = services.getRootCoalitionServer();
                         }
                         if (db == null) {
                             throw new IllegalArgumentException(
@@ -882,7 +803,7 @@ public class PlaceholdersMap {
                         }
                         for (String coalition : db.getCoalitionNames()) {
                             lists.add(new SimpleNationList(
-                                    Locutus.imp().getNationDB().getNationsByAlliance(db.getCoalition(coalition)))
+                                    nationSnapshot().getNationsByAlliance(db.getCoalition(coalition)))
                                     .setFilter(filterName));
                         }
                     } else {
@@ -942,48 +863,12 @@ public class PlaceholdersMap {
                     Set<NationList> nationlists) {
                 return _addSelectionAlias(this, command, db, name, nationlists, "nationlists");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a NationList sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<NationList, String> a,
-                    @Default TypedFunction<NationList, String> b,
-                    @Default TypedFunction<NationList, String> c,
-                    @Default TypedFunction<NationList, String> d,
-                    @Default TypedFunction<NationList, String> e,
-                    @Default TypedFunction<NationList, String> f,
-                    @Default TypedFunction<NationList, String> g,
-                    @Default TypedFunction<NationList, String> h,
-                    @Default TypedFunction<NationList, String> i,
-                    @Default TypedFunction<NationList, String> j,
-                    @Default TypedFunction<NationList, String> k,
-                    @Default TypedFunction<NationList, String> l,
-                    @Default TypedFunction<NationList, String> m,
-                    @Default TypedFunction<NationList, String> n,
-                    @Default TypedFunction<NationList, String> o,
-                    @Default TypedFunction<NationList, String> p,
-                    @Default TypedFunction<NationList, String> q,
-                    @Default TypedFunction<NationList, String> r,
-                    @Default TypedFunction<NationList, String> s,
-                    @Default TypedFunction<NationList, String> t,
-                    @Default TypedFunction<NationList, String> u,
-                    @Default TypedFunction<NationList, String> v,
-                    @Default TypedFunction<NationList, String> w,
-                    @Default TypedFunction<NationList, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
     private Set<DBCity> parseCitiesSingle(ValueStore store, String input) {
         if (MathMan.isInteger(input) || input.contains("/city/id=")) {
-            return Set.of(PWBindings.cityUrl(input));
+            return Set.of(PWBindings.parseCityUrl(nationDb(), input));
         }
         NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
         Set<DBNation> nations = nationPlaceholders.parseSingleElem(store, input, false);
@@ -1005,7 +890,7 @@ public class PlaceholdersMap {
             return members.stream().map(UserWrapper::new).collect(Collectors.toSet());
         }
         // user id / mention
-        User user = DiscordUtil.getUser(input, guild);
+        User user = services.lookup().getUser(input, guild);
         if (user != null) {
             return new ObjectLinkedOpenHashSet<>(List.of(new UserWrapper(guild, user)));
         }
@@ -1014,7 +899,7 @@ public class PlaceholdersMap {
         if (role != null) {
             return guild.getMembersWithRoles(role).stream().map(UserWrapper::new).collect(Collectors.toSet());
         }
-        NationOrAlliance natOrAA = PWBindings.nationOrAlliance(input, guild);
+        NationOrAlliance natOrAA = PWBindings.parseNationOrAlliance(services, null, input, false, guild);
         if (natOrAA.isNation()) {
             user = natOrAA.asNation().getUser();
             if (user == null) {
@@ -1095,11 +980,11 @@ public class PlaceholdersMap {
                 return false;
             };
         }
-        Long id = DiscordUtil.parseUserId(guild, input);
+        Long id = services.lookup().parseUserId(guild, input);
         if (id != null) {
             return f -> f.getUserId() == id;
         }
-        DBNation argNation = DiscordUtil.parseNation(input, true, false, guild);
+        DBNation argNation = services.lookup().parseNation(input, true, false, guild);
         if (argNation != null) {
             int nationId = argNation.getId();
             return f -> {
@@ -1159,7 +1044,7 @@ public class PlaceholdersMap {
 
                     if (SpreadSheet.isSheet(input)) {
                         Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("user"), true,
-                                (type, str) -> DiscordUtil.parseUserId(guild, str));
+                                (type, str) -> services.lookup().parseUserId(guild, str));
                         return f -> sheet.contains(f.getUserId());
                     }
                     return parseUserPredicate(guild, input);
@@ -1197,42 +1082,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name,
                     Set<UserWrapper> users) {
                 return _addSelectionAlias(this, command, db, name, users, "users");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to a User sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<UserWrapper, String> a,
-                    @Default TypedFunction<UserWrapper, String> b,
-                    @Default TypedFunction<UserWrapper, String> c,
-                    @Default TypedFunction<UserWrapper, String> d,
-                    @Default TypedFunction<UserWrapper, String> e,
-                    @Default TypedFunction<UserWrapper, String> f,
-                    @Default TypedFunction<UserWrapper, String> g,
-                    @Default TypedFunction<UserWrapper, String> h,
-                    @Default TypedFunction<UserWrapper, String> i,
-                    @Default TypedFunction<UserWrapper, String> j,
-                    @Default TypedFunction<UserWrapper, String> k,
-                    @Default TypedFunction<UserWrapper, String> l,
-                    @Default TypedFunction<UserWrapper, String> m,
-                    @Default TypedFunction<UserWrapper, String> n,
-                    @Default TypedFunction<UserWrapper, String> o,
-                    @Default TypedFunction<UserWrapper, String> p,
-                    @Default TypedFunction<UserWrapper, String> q,
-                    @Default TypedFunction<UserWrapper, String> r,
-                    @Default TypedFunction<UserWrapper, String> s,
-                    @Default TypedFunction<UserWrapper, String> t,
-                    @Default TypedFunction<UserWrapper, String> u,
-                    @Default TypedFunction<UserWrapper, String> v,
-                    @Default TypedFunction<UserWrapper, String> w,
-                    @Default TypedFunction<UserWrapper, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
             }
         };
 
@@ -1287,54 +1136,6 @@ public class PlaceholdersMap {
             public Set<String> getSheetColumns() {
                 return Set.of("channel");
             }
-            //
-            // @NoFormat
-            // @Command(desc = "Add an alias for a selection of channels")
-            // @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM,
-            // Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON,
-            // Roles.FOREIGN_AFFAIRS}, any = true)
-            // public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db,
-            // String name, Set<TextChannelWrapper> channels) {
-            // return _addSelectionAlias(this, command, db, name, channels, "channels");
-            // }
-            //
-            // @NoFormat
-            // @Command(desc = "Add columns to a channel sheet")
-            // @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM,
-            // Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON,
-            // Roles.FOREIGN_AFFAIRS}, any = true)
-            // public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me
-            // IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-            // @Default TypedFunction<TextChannelWrapper, String> a,
-            // @Default TypedFunction<TextChannelWrapper, String> b,
-            // @Default TypedFunction<TextChannelWrapper, String> c,
-            // @Default TypedFunction<TextChannelWrapper, String> d,
-            // @Default TypedFunction<TextChannelWrapper, String> e,
-            // @Default TypedFunction<TextChannelWrapper, String> f,
-            // @Default TypedFunction<TextChannelWrapper, String> g,
-            // @Default TypedFunction<TextChannelWrapper, String> h,
-            // @Default TypedFunction<TextChannelWrapper, String> i,
-            // @Default TypedFunction<TextChannelWrapper, String> j,
-            // @Default TypedFunction<TextChannelWrapper, String> k,
-            // @Default TypedFunction<TextChannelWrapper, String> l,
-            // @Default TypedFunction<TextChannelWrapper, String> m,
-            // @Default TypedFunction<TextChannelWrapper, String> n,
-            // @Default TypedFunction<TextChannelWrapper, String> o,
-            // @Default TypedFunction<TextChannelWrapper, String> p,
-            // @Default TypedFunction<TextChannelWrapper, String> q,
-            // @Default TypedFunction<TextChannelWrapper, String> r,
-            // @Default TypedFunction<TextChannelWrapper, String> s,
-            // @Default TypedFunction<TextChannelWrapper, String> t,
-            // @Default TypedFunction<TextChannelWrapper, String> u,
-            // @Default TypedFunction<TextChannelWrapper, String> v,
-            // @Default TypedFunction<TextChannelWrapper, String> w,
-            // @Default TypedFunction<TextChannelWrapper, String> x) throws
-            // GeneralSecurityException, IOException {
-            // return Placeholders._addColumns(this, command,db, io, author, sheet,
-            // a, b, c, d, e, f, g, h, i, j,
-            // k, l, m, n, o, p, q, r, s, t,
-            // u, v, w, x);
-            // }
         };
 
     }
@@ -1348,7 +1149,7 @@ public class PlaceholdersMap {
                     if (selection != null)
                         return selection;
                     if (input.equalsIgnoreCase("*")) {
-                        Locutus.imp().getNationDB().getCities();
+                        nationDb().getCities();
                     }
                     if (SpreadSheet.isSheet(input)) {
                         Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("city", "cities"), true,
@@ -1365,7 +1166,7 @@ public class PlaceholdersMap {
                     if (input.equalsIgnoreCase("*"))
                         return Predicates.alwaysTrue();
                     if (MathMan.isInteger(input) || input.contains("/city/id=")) {
-                        DBCity city = PWBindings.cityUrl(input);
+                        DBCity city = PWBindings.parseCityUrl(nationDb(), input);
                         return f -> f.getId() == city.getId();
                     }
                     if (SpreadSheet.isSheet(input)) {
@@ -1382,7 +1183,7 @@ public class PlaceholdersMap {
                     NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
                     Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
                     return f -> {
-                        DBNation nation = DBNation.getById(f.getNation_id());
+                        DBNation nation = nationById(f.getNation_id());
                         if (nation == null)
                             return false;
                         return filter.test(nation);
@@ -1414,42 +1215,6 @@ public class PlaceholdersMap {
                     Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBCity> cities) {
                 return _addSelectionAlias(this, command, db, name, cities, "cities");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to a City sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<DBCity, String> a,
-                    @Default TypedFunction<DBCity, String> b,
-                    @Default TypedFunction<DBCity, String> c,
-                    @Default TypedFunction<DBCity, String> d,
-                    @Default TypedFunction<DBCity, String> e,
-                    @Default TypedFunction<DBCity, String> f,
-                    @Default TypedFunction<DBCity, String> g,
-                    @Default TypedFunction<DBCity, String> h,
-                    @Default TypedFunction<DBCity, String> i,
-                    @Default TypedFunction<DBCity, String> j,
-                    @Default TypedFunction<DBCity, String> k,
-                    @Default TypedFunction<DBCity, String> l,
-                    @Default TypedFunction<DBCity, String> m,
-                    @Default TypedFunction<DBCity, String> n,
-                    @Default TypedFunction<DBCity, String> o,
-                    @Default TypedFunction<DBCity, String> p,
-                    @Default TypedFunction<DBCity, String> q,
-                    @Default TypedFunction<DBCity, String> r,
-                    @Default TypedFunction<DBCity, String> s,
-                    @Default TypedFunction<DBCity, String> t,
-                    @Default TypedFunction<DBCity, String> u,
-                    @Default TypedFunction<DBCity, String> v,
-                    @Default TypedFunction<DBCity, String> w,
-                    @Default TypedFunction<DBCity, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
             }
         };
     }
@@ -1493,7 +1258,7 @@ public class PlaceholdersMap {
 
     private Set<TaxBracket> bracketSingle(ValueStore store, GuildDB db, String input) {
         if (input.contains("tx_id=") || MathMan.isInteger(input)) {
-            TaxBracket bracket = PWBindings.bracket(db, input);
+            TaxBracket bracket = PWBindings.parseBracket(nationDb(), db, input, TimeUnit.MINUTES.toMillis(1), true);
             return Set.of(bracket);
         }
         NationPlaceholders natFormat = (NationPlaceholders) (Placeholders) get(DBNation.class);
@@ -1504,7 +1269,7 @@ public class PlaceholdersMap {
             if (nation.getPositionEnum().id <= Rank.APPLICANT.id || ids.contains(nation.getTax_id()))
                 continue;
             ids.add(nation.getTax_id());
-            brackets.add(nation.getTaxBracket());
+            brackets.add(nation.getTaxBracket().withLookup(nationDb()));
         }
         return brackets;
     }
@@ -1530,7 +1295,7 @@ public class PlaceholdersMap {
 
     private Set<TaxDeposit> getTaxes(ValueStore store, Set<Integer> ids, Set<Integer> taxIds, Set<Integer> nations,
             Set<Integer> aaIds) {
-        BankDB bankDb = Locutus.imp().getBankDB();
+        BankDB bankDb = bankDb();
         Predicate<TaxDeposit> canView = getCanView(store);
         Set<TaxDeposit> result = new ObjectLinkedOpenHashSet<>();
 
@@ -1574,7 +1339,7 @@ public class PlaceholdersMap {
                             switch (type) {
                                 case 0 -> ids.add(Integer.parseInt(str));
                                 case 1 -> taxIds.add(Integer.parseInt(str));
-                                case 2 -> nations.add(DiscordUtil.parseNation(str, true, true, guild).getId());
+                                case 2 -> nations.add(services.lookup().parseNation(str, true, true, guild).getId());
                             }
                             return null;
                         });
@@ -1587,9 +1352,7 @@ public class PlaceholdersMap {
                         int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
                         return getTaxes(store, null, Set.of(id), null, null);
                     }
-                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-                    Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
+                    Set<DBNation> nations = parseNations(store, input, false);
                     Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
                     return getTaxes(store, null, null, ids, null);
 
@@ -1607,7 +1370,7 @@ public class PlaceholdersMap {
                             switch (type) {
                                 case 0 -> ids.add(Integer.parseInt(str));
                                 case 1 -> taxIds.add(Integer.parseInt(str));
-                                case 2 -> nations.add(DiscordUtil.parseNation(str, true, true, guild).getId());
+                                case 2 -> nations.add(services.lookup().parseNation(str, true, true, guild).getId());
                             }
                             return null;
                         });
@@ -1630,7 +1393,7 @@ public class PlaceholdersMap {
                     NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
                     Predicate<DBNation> nationFilter = nationPlaceholders.parseSingleFilter(store, input);
                     return f -> {
-                        DBNation nation = DBNation.getOrCreate(f.nationId);
+                        DBNation nation = nationOrCreate(f.nationId);
                         return nationFilter.test(nation);
                     };
                 }, new Function<TaxDeposit, String>() {
@@ -1664,42 +1427,6 @@ public class PlaceholdersMap {
                     Set<TaxDeposit> taxes) {
                 return _addSelectionAlias(this, command, db, name, taxes, "taxes");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Bank TaxDeposit sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<TaxDeposit, String> a,
-                    @Default TypedFunction<TaxDeposit, String> b,
-                    @Default TypedFunction<TaxDeposit, String> c,
-                    @Default TypedFunction<TaxDeposit, String> d,
-                    @Default TypedFunction<TaxDeposit, String> e,
-                    @Default TypedFunction<TaxDeposit, String> f,
-                    @Default TypedFunction<TaxDeposit, String> g,
-                    @Default TypedFunction<TaxDeposit, String> h,
-                    @Default TypedFunction<TaxDeposit, String> i,
-                    @Default TypedFunction<TaxDeposit, String> j,
-                    @Default TypedFunction<TaxDeposit, String> k,
-                    @Default TypedFunction<TaxDeposit, String> l,
-                    @Default TypedFunction<TaxDeposit, String> m,
-                    @Default TypedFunction<TaxDeposit, String> n,
-                    @Default TypedFunction<TaxDeposit, String> o,
-                    @Default TypedFunction<TaxDeposit, String> p,
-                    @Default TypedFunction<TaxDeposit, String> q,
-                    @Default TypedFunction<TaxDeposit, String> r,
-                    @Default TypedFunction<TaxDeposit, String> s,
-                    @Default TypedFunction<TaxDeposit, String> t,
-                    @Default TypedFunction<TaxDeposit, String> u,
-                    @Default TypedFunction<TaxDeposit, String> v,
-                    @Default TypedFunction<TaxDeposit, String> w,
-                    @Default TypedFunction<TaxDeposit, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -1712,7 +1439,7 @@ public class PlaceholdersMap {
                     Set<Conflict> selection = getSelection(inst, store, input);
                     if (selection != null)
                         return selection;
-                    ConflictManager manager = Locutus.imp().getWarDb().getConflicts();
+                    ConflictManager manager = warDb().getConflicts();
                     if (input.equalsIgnoreCase("*")) {
                         return new ObjectLinkedOpenHashSet<>(manager.getConflictMap().values());
                     }
@@ -1725,7 +1452,7 @@ public class PlaceholdersMap {
                         store, input) -> {
                     if (input.equalsIgnoreCase("*"))
                         return Predicates.alwaysTrue();
-                    ConflictManager cMan = Locutus.imp().getWarDb().getConflicts();
+                    ConflictManager cMan = warDb().getConflicts();
                     if (SpreadSheet.isSheet(input)) {
                         Set<Conflict> conflicts = SpreadSheet.parseSheet(input, List.of("conflict"), true,
                                 (type, str) -> PWBindings.conflict(cMan, str));
@@ -1753,53 +1480,15 @@ public class PlaceholdersMap {
                 return Set.of("conflict");
             }
 
-            // @NoFormat
-            // @Command(desc = "Add an alias for a selection of conflicts")
-            // @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM,
-            // Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON,
-            // Roles.FOREIGN_AFFAIRS}, any = true)
-            // public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db,
-            // String name, Set<Conflict> conflicts) {
-            // return _addSelectionAlias(this, command, db, name, conflicts, "conflicts");
-            // }
-            //
-            // @NoFormat
-            // @Command(desc = "Add columns to a conflict sheet")
-            // @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM,
-            // Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON,
-            // Roles.FOREIGN_AFFAIRS}, any = true)
-            // public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me
-            // IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-            // @Default TypedFunction<Conflict, String> a,
-            // @Default TypedFunction<Conflict, String> b,
-            // @Default TypedFunction<Conflict, String> c,
-            // @Default TypedFunction<Conflict, String> d,
-            // @Default TypedFunction<Conflict, String> e,
-            // @Default TypedFunction<Conflict, String> f,
-            // @Default TypedFunction<Conflict, String> g,
-            // @Default TypedFunction<Conflict, String> h,
-            // @Default TypedFunction<Conflict, String> i,
-            // @Default TypedFunction<Conflict, String> j,
-            // @Default TypedFunction<Conflict, String> k,
-            // @Default TypedFunction<Conflict, String> l,
-            // @Default TypedFunction<Conflict, String> m,
-            // @Default TypedFunction<Conflict, String> n,
-            // @Default TypedFunction<Conflict, String> o,
-            // @Default TypedFunction<Conflict, String> p,
-            // @Default TypedFunction<Conflict, String> q,
-            // @Default TypedFunction<Conflict, String> r,
-            // @Default TypedFunction<Conflict, String> s,
-            // @Default TypedFunction<Conflict, String> t,
-            // @Default TypedFunction<Conflict, String> u,
-            // @Default TypedFunction<Conflict, String> v,
-            // @Default TypedFunction<Conflict, String> w,
-            // @Default TypedFunction<Conflict, String> x) throws GeneralSecurityException,
-            // IOException {
-            // return Placeholders._addColumns(this, command,db, io, author, sheet,
-            // a, b, c, d, e, f, g, h, i, j,
-            // k, l, m, n, o, p, q, r, s, t,
-            // u, v, w, x);
-            // }
+             @NoFormat
+             @Command(desc = "Add an alias for a selection of conflicts")
+             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM,
+             Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON,
+             Roles.FOREIGN_AFFAIRS}, any = true)
+             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db,
+             String name, Set<Conflict> conflicts) {
+                return _addSelectionAlias(this, command, db, name, conflicts, "conflicts");
+             }
         };
     }
 
@@ -1858,42 +1547,6 @@ public class PlaceholdersMap {
                     Set<GuildSetting> settings) {
                 return _addSelectionAlias(this, command, db, name, settings, "settings");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Guild Setting sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<GuildSetting, String> a,
-                    @Default TypedFunction<GuildSetting, String> b,
-                    @Default TypedFunction<GuildSetting, String> c,
-                    @Default TypedFunction<GuildSetting, String> d,
-                    @Default TypedFunction<GuildSetting, String> e,
-                    @Default TypedFunction<GuildSetting, String> f,
-                    @Default TypedFunction<GuildSetting, String> g,
-                    @Default TypedFunction<GuildSetting, String> h,
-                    @Default TypedFunction<GuildSetting, String> i,
-                    @Default TypedFunction<GuildSetting, String> j,
-                    @Default TypedFunction<GuildSetting, String> k,
-                    @Default TypedFunction<GuildSetting, String> l,
-                    @Default TypedFunction<GuildSetting, String> m,
-                    @Default TypedFunction<GuildSetting, String> n,
-                    @Default TypedFunction<GuildSetting, String> o,
-                    @Default TypedFunction<GuildSetting, String> p,
-                    @Default TypedFunction<GuildSetting, String> q,
-                    @Default TypedFunction<GuildSetting, String> r,
-                    @Default TypedFunction<GuildSetting, String> s,
-                    @Default TypedFunction<GuildSetting, String> t,
-                    @Default TypedFunction<GuildSetting, String> u,
-                    @Default TypedFunction<GuildSetting, String> v,
-                    @Default TypedFunction<GuildSetting, String> w,
-                    @Default TypedFunction<GuildSetting, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -1901,28 +1554,28 @@ public class PlaceholdersMap {
             Set<Integer> alliances) {
         Set<IAttack> attacks = new ObjectOpenHashSet<>();
         if (warIds != null && !warIds.isEmpty()) {
-            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(warIds);
+            Set<DBWar> wars = warDb().getWarsById(warIds);
             if (!wars.isEmpty()) {
-                Locutus.imp().getWarDb().iterateAttacksByWars(wars, (war, attack) -> {
+                warDb().iterateAttacksByWars(wars, (war, attack) -> {
                     attacks.add(attack);
                 });
             }
         }
         if (attackIds != null && !attackIds.isEmpty()) {
-            attacks.addAll(Locutus.imp().getWarDb().getAttacksById(attackIds));
+            attacks.addAll(warDb().getAttacksById(attackIds));
         }
         if ((attackIds == null || attackIds.isEmpty()) && (warIds == null || warIds.isEmpty())) {
             if (nationIds != null && !nationIds.isEmpty()) {
-                Locutus.imp().getWarDb().iterateAttacks(nationIds, 0, (war, attack) -> {
+                warDb().iterateAttacks(nationIds, 0, (war, attack) -> {
                     attacks.add(attack);
                 });
             }
             if (alliances != null && !alliances.isEmpty()) {
                 Set<DBWar> allWars = new ObjectOpenHashSet<>();
                 for (Integer aaId : alliances) {
-                    allWars.addAll(Locutus.imp().getWarDb().getWarsByAlliance(aaId));
+                    allWars.addAll(warDb().getWarsByAlliance(aaId));
                 }
-                Locutus.imp().getWarDb().iterateAttacksByWars(allWars, (war, attack) -> {
+                warDb().iterateAttacksByWars(allWars, (war, attack) -> {
                     attacks.add(attack);
                 });
             }
@@ -1940,7 +1593,7 @@ public class PlaceholdersMap {
                         return selection;
                     if (input.equalsIgnoreCase("*")) {
                         Set<IAttack> attacks = new ObjectLinkedOpenHashSet<>();
-                        Locutus.imp().getWarDb().iterateAttacks(0, Long.MAX_VALUE, Predicates.alwaysTrue(),
+                        warDb().iterateAttacks(0, Long.MAX_VALUE, Predicates.alwaysTrue(),
                                 (war, attack) -> attacks.add(attack));
                         return attacks;
                     }
@@ -1956,20 +1609,20 @@ public class PlaceholdersMap {
                                         case 0 -> attackIds.add(Integer.parseInt(str));
                                         case 1 -> warIds.add(Integer.parseInt(str));
                                         case 2 -> {
-                                            DBNation nation = DiscordUtil.parseNation(str, true, guild);
+                                            DBNation nation = services.lookup().parseNation(str, true, guild);
                                             if (nation == null)
                                                 throw new IllegalArgumentException("Invalid nation: `" + str + "`");
                                             nationIds.add(nation.getId());
                                         }
                                         case 3 -> {
-                                            DBNation nation = Locutus.imp().getNationDB().getNationByLeader(str);
+                                            DBNation nation = nationSnapshot().getNationByLeader(str);
                                             if (nation == null)
                                                 throw new IllegalArgumentException(
                                                         "Invalid nation leader: `" + str + "`");
                                             nationIds.add(nation.getId());
                                         }
                                         case 4 -> {
-                                            DBAlliance alliance = PWBindings.alliance(str);
+                                            DBAlliance alliance = PWBindings.alliance(services, str);
                                             if (alliance == null)
                                                 throw new IllegalArgumentException("Invalid alliance: `" + str + "`");
                                             allianceIds.add(alliance.getId());
@@ -1981,7 +1634,7 @@ public class PlaceholdersMap {
                     }
                     if (MathMan.isInteger(input)) {
                         int id = Integer.parseInt(input);
-                        Set attacks = Locutus.imp().getWarDb().getAttacksById(Set.of(id));
+                        Set attacks = warDb().getAttacksById(Set.of(id));
                         return attacks;
                     }
                     if (input.contains("/war/id=")) {
@@ -2010,20 +1663,20 @@ public class PlaceholdersMap {
                                         case 0 -> attackIds.add(Integer.parseInt(str));
                                         case 1 -> warIds.add(Integer.parseInt(str));
                                         case 2 -> {
-                                            DBNation nation = DiscordUtil.parseNation(str, true, guild);
+                                            DBNation nation = services.lookup().parseNation(str, true, guild);
                                             if (nation == null)
                                                 throw new IllegalArgumentException("Invalid nation: `" + str + "`");
                                             nationIds.add(nation.getId());
                                         }
                                         case 3 -> {
-                                            DBNation nation = Locutus.imp().getNationDB().getNationByLeader(str);
+                                            DBNation nation = nationSnapshot().getNationByLeader(str);
                                             if (nation == null)
                                                 throw new IllegalArgumentException(
                                                         "Invalid nation leader: `" + str + "`");
                                             nationIds.add(nation.getId());
                                         }
                                         case 4 -> {
-                                            DBAlliance alliance = PWBindings.alliance(str);
+                                            DBAlliance alliance = PWBindings.alliance(services, str);
                                             if (alliance == null)
                                                 throw new IllegalArgumentException("Invalid alliance: `" + str + "`");
                                             allianceIds.add(alliance.getId());
@@ -2067,23 +1720,24 @@ public class PlaceholdersMap {
                         int id = Integer.parseInt(input);
                         return f -> f.getWar_attack_id() == id;
                     }
-                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-                    Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(null, guild, input, true, author, me);
+                        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+                        User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                        DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+                        Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(store, null, guild, input, true, author,
+                            me);
                     return f -> {
                         DBWar war = f.getWar();
-                        DBNation attacker = DBNation.getOrCreate(f.getAttacker_id());
-                        DBNation defender = DBNation.getOrCreate(f.getDefender_id());
+                        DBNation attacker = nationOrCreate(f.getAttacker_id());
+                        DBNation defender = nationOrCreate(f.getDefender_id());
                         if (allowed.contains(attacker) || allowed.contains(defender))
                             return true;
                         if (war == null)
                             return false;
-                        DBAlliance attackerAA = war.getAttacker_aa() != 0 ? DBAlliance.getOrCreate(war.getAttacker_aa())
+                        DBAlliance attackerAA = war.getAttacker_aa() != 0 ? allianceOrCreate(war.getAttacker_aa())
                                 : null;
                         if (attackerAA != null && allowed.contains(attackerAA))
                             return true;
-                        DBAlliance defenderAA = war.getDefender_aa() != 0 ? DBAlliance.getOrCreate(war.getDefender_aa())
+                        DBAlliance defenderAA = war.getDefender_aa() != 0 ? allianceOrCreate(war.getDefender_aa())
                                 : null;
                         if (defenderAA != null && allowed.contains(defenderAA))
                             return true;
@@ -2099,7 +1753,7 @@ public class PlaceholdersMap {
             public Set<SelectorInfo> getSelectorInfo() {
                 Set<SelectorInfo> mySet = new ObjectLinkedOpenHashSet<>(
                         List.of(new SelectorInfo("ATTACK_ID", "123456", "Attack ID")));
-                mySet.addAll(WARS.getSelectorInfo());
+                mySet.addAll(PlaceholdersMap.this.get(DBWar.class).getSelectorInfo());
                 return mySet;
             }
 
@@ -2114,42 +1768,6 @@ public class PlaceholdersMap {
                     Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<IAttack> attacks) {
                 return _addSelectionAlias(this, command, db, name, attacks, "attacks");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to an Attack sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<IAttack, String> a,
-                    @Default TypedFunction<IAttack, String> b,
-                    @Default TypedFunction<IAttack, String> c,
-                    @Default TypedFunction<IAttack, String> d,
-                    @Default TypedFunction<IAttack, String> e,
-                    @Default TypedFunction<IAttack, String> f,
-                    @Default TypedFunction<IAttack, String> g,
-                    @Default TypedFunction<IAttack, String> h,
-                    @Default TypedFunction<IAttack, String> i,
-                    @Default TypedFunction<IAttack, String> j,
-                    @Default TypedFunction<IAttack, String> k,
-                    @Default TypedFunction<IAttack, String> l,
-                    @Default TypedFunction<IAttack, String> m,
-                    @Default TypedFunction<IAttack, String> n,
-                    @Default TypedFunction<IAttack, String> o,
-                    @Default TypedFunction<IAttack, String> p,
-                    @Default TypedFunction<IAttack, String> q,
-                    @Default TypedFunction<IAttack, String> r,
-                    @Default TypedFunction<IAttack, String> s,
-                    @Default TypedFunction<IAttack, String> t,
-                    @Default TypedFunction<IAttack, String> u,
-                    @Default TypedFunction<IAttack, String> v,
-                    @Default TypedFunction<IAttack, String> w,
-                    @Default TypedFunction<IAttack, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
             }
         };
     }
@@ -2172,20 +1790,20 @@ public class PlaceholdersMap {
                                     switch (type) {
                                         case 0, 1 -> warIds.add(Integer.parseInt(str));
                                         case 2 -> {
-                                            DBNation nation = DiscordUtil.parseNation(str, true, guild);
+                                            DBNation nation = services.lookup().parseNation(str, true, guild);
                                             if (nation == null)
                                                 throw new IllegalArgumentException("Invalid nation: `" + str + "`");
                                             nationIds.add(nation.getId());
                                         }
                                         case 3 -> {
-                                            DBNation nation = Locutus.imp().getNationDB().getNationByLeader(str);
+                                            DBNation nation = nationSnapshot().getNationByLeader(str);
                                             if (nation == null)
                                                 throw new IllegalArgumentException(
                                                         "Invalid nation leader: `" + str + "`");
                                             nationIds.add(nation.getId());
                                         }
                                         case 4 -> {
-                                            DBAlliance alliance = PWBindings.alliance(str);
+                                            DBAlliance alliance = PWBindings.alliance(services, str);
                                             if (alliance == null)
                                                 throw new IllegalArgumentException("Invalid alliance: `" + str + "`");
                                             allianceIds.add(alliance.getId());
@@ -2194,23 +1812,23 @@ public class PlaceholdersMap {
                                     return null;
                                 });
                         if (!warIds.isEmpty()) {
-                            return Locutus.imp().getWarDb().getWarsById(warIds);
+                            return warDb().getWarsById(warIds);
                         }
                     }
                     if (MathMan.isInteger(input)) {
                         int id = Integer.parseInt(input);
-                        return Locutus.imp().getWarDb().getWarsById(Set.of(id));
+                        return warDb().getWarsById(Set.of(id));
                     }
                     if (input.contains("/war/id=")) {
                         int warId = Integer.parseInt(input.substring(input.indexOf('=') + 1));
-                        return Locutus.imp().getWarDb().getWarsById(Set.of(warId));
+                        return warDb().getWarsById(Set.of(warId));
                     }
                     Set<NationOrAlliance> natOrAA = nationOrAlliancesSingle(store, input, false);
                     Set<Integer> natIds = natOrAA.stream().filter(NationOrAlliance::isNation)
                             .map(NationOrAlliance::getId).collect(Collectors.toSet());
                     Set<Integer> aaIds = natOrAA.stream().filter(NationOrAlliance::isAlliance)
                             .map(NationOrAlliance::getId).collect(Collectors.toSet());
-                    return Locutus.imp().getWarDb().getWarsForNationOrAlliance(natIds, aaIds);
+                    return warDb().getWarsForNationOrAlliance(natIds, aaIds);
                 }, (ThrowingTriFunction<Placeholders<DBWar, Void>, ValueStore, String, Predicate<DBWar>>) (inst, store,
                         input) -> {
                     if (input.equalsIgnoreCase("*"))
@@ -2235,20 +1853,21 @@ public class PlaceholdersMap {
                         int id = Integer.parseInt(input);
                         return f -> f.getWarId() == id;
                     }
-                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-                    Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(null, guild, input, true, author, me);
+                        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+                        User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                        DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+                        Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(store, null, guild, input, true, author,
+                            me);
                     return war -> {
-                        DBNation attacker = DBNation.getOrCreate(war.getAttacker_id());
-                        DBNation defender = DBNation.getOrCreate(war.getDefender_id());
+                        DBNation attacker = nationOrCreate(war.getAttacker_id());
+                        DBNation defender = nationOrCreate(war.getDefender_id());
                         if (allowed.contains(attacker) || allowed.contains(defender))
                             return true;
-                        DBAlliance attackerAA = war.getAttacker_aa() != 0 ? DBAlliance.getOrCreate(war.getAttacker_aa())
+                        DBAlliance attackerAA = war.getAttacker_aa() != 0 ? allianceOrCreate(war.getAttacker_aa())
                                 : null;
                         if (attackerAA != null && allowed.contains(attackerAA))
                             return true;
-                        DBAlliance defenderAA = war.getDefender_aa() != 0 ? DBAlliance.getOrCreate(war.getDefender_aa())
+                        DBAlliance defenderAA = war.getDefender_aa() != 0 ? allianceOrCreate(war.getDefender_aa())
                                 : null;
                         if (defenderAA != null && allowed.contains(defenderAA))
                             return true;
@@ -2283,42 +1902,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBWar> wars) {
                 return _addSelectionAlias(this, command, db, name, wars, "wars");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a War sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<DBWar, String> a,
-                    @Default TypedFunction<DBWar, String> b,
-                    @Default TypedFunction<DBWar, String> c,
-                    @Default TypedFunction<DBWar, String> d,
-                    @Default TypedFunction<DBWar, String> e,
-                    @Default TypedFunction<DBWar, String> f,
-                    @Default TypedFunction<DBWar, String> g,
-                    @Default TypedFunction<DBWar, String> h,
-                    @Default TypedFunction<DBWar, String> i,
-                    @Default TypedFunction<DBWar, String> j,
-                    @Default TypedFunction<DBWar, String> k,
-                    @Default TypedFunction<DBWar, String> l,
-                    @Default TypedFunction<DBWar, String> m,
-                    @Default TypedFunction<DBWar, String> n,
-                    @Default TypedFunction<DBWar, String> o,
-                    @Default TypedFunction<DBWar, String> p,
-                    @Default TypedFunction<DBWar, String> q,
-                    @Default TypedFunction<DBWar, String> r,
-                    @Default TypedFunction<DBWar, String> s,
-                    @Default TypedFunction<DBWar, String> t,
-                    @Default TypedFunction<DBWar, String> u,
-                    @Default TypedFunction<DBWar, String> v,
-                    @Default TypedFunction<DBWar, String> w,
-                    @Default TypedFunction<DBWar, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -2336,11 +1919,13 @@ public class PlaceholdersMap {
                             AllianceList aaList = db.getAllianceList();
                             if (aaList != null) {
                                 return new HashSet<TaxBracket>(
-                                        aaList.getTaxBrackets(TimeUnit.MINUTES.toMillis(5)).values());
+                                        aaList.getTaxBrackets(services.allianceLookup(), TimeUnit.MINUTES.toMillis(5)).values());
                             }
                         }
-                        Map<Integer, Integer> ids = Locutus.imp().getNationDB().getAllianceIdByTaxId();
-                        return ids.entrySet().stream().map(f -> new TaxBracket(f.getKey(), f.getValue(), "", -1, -1, 0))
+                        Map<Integer, Integer> ids = nationDb().getAllianceIdByTaxId();
+                        return ids.entrySet().stream()
+                            .map(f -> new TaxBracket(f.getKey(), f.getValue(), "", -1, -1, 0)
+                                .withLookup(nationDb()))
                                 .collect(Collectors.toSet());
                     }
                     if (SpreadSheet.isSheet(input)) {
@@ -2408,42 +1993,6 @@ public class PlaceholdersMap {
                     Set<TaxBracket> taxbrackets) {
                 return _addSelectionAlias(this, command, db, name, taxbrackets, "taxbrackets");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a TaxBracket sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<TaxBracket, String> a,
-                    @Default TypedFunction<TaxBracket, String> b,
-                    @Default TypedFunction<TaxBracket, String> c,
-                    @Default TypedFunction<TaxBracket, String> d,
-                    @Default TypedFunction<TaxBracket, String> e,
-                    @Default TypedFunction<TaxBracket, String> f,
-                    @Default TypedFunction<TaxBracket, String> g,
-                    @Default TypedFunction<TaxBracket, String> h,
-                    @Default TypedFunction<TaxBracket, String> i,
-                    @Default TypedFunction<TaxBracket, String> j,
-                    @Default TypedFunction<TaxBracket, String> k,
-                    @Default TypedFunction<TaxBracket, String> l,
-                    @Default TypedFunction<TaxBracket, String> m,
-                    @Default TypedFunction<TaxBracket, String> n,
-                    @Default TypedFunction<TaxBracket, String> o,
-                    @Default TypedFunction<TaxBracket, String> p,
-                    @Default TypedFunction<TaxBracket, String> q,
-                    @Default TypedFunction<TaxBracket, String> r,
-                    @Default TypedFunction<TaxBracket, String> s,
-                    @Default TypedFunction<TaxBracket, String> t,
-                    @Default TypedFunction<TaxBracket, String> u,
-                    @Default TypedFunction<TaxBracket, String> v,
-                    @Default TypedFunction<TaxBracket, String> w,
-                    @Default TypedFunction<TaxBracket, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -2461,11 +2010,11 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true,
                                 (type, str) -> Integer.parseInt(str));
-                        return new ObjectOpenHashSet<>(Locutus.imp().getTradeManager().getTradeDb().getTradesById(ids));
+                        return new ObjectOpenHashSet<>(tradeDb().getTradesById(ids));
                     }
                     if (MathMan.isInteger(input)) {
                         int id = Integer.parseInt(input);
-                        return Set.of(Locutus.imp().getTradeManager().getTradeDb().getTradeById(id));
+                        return Set.of(tradeDb().getTradeById(id));
                     }
                     throw new IllegalArgumentException("Only trade ids are supported, not `" + input + "`");
                 }, (ThrowingTriFunction<Placeholders<DBTrade, Void>, ValueStore, String, Predicate<DBTrade>>) (inst,
@@ -2485,8 +2034,8 @@ public class PlaceholdersMap {
                     NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
                     Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
                     return f -> {
-                        DBNation sender = DBNation.getById(f.getSeller());
-                        DBNation receiver = DBNation.getById(f.getBuyer());
+                        DBNation sender = nationById(f.getSeller());
+                        DBNation receiver = nationById(f.getBuyer());
                         if (sender != null && filter.test(sender))
                             return true;
                         if (receiver != null && filter.test(receiver))
@@ -2511,43 +2060,6 @@ public class PlaceholdersMap {
             public Set<String> getSheetColumns() {
                 return new ObjectLinkedOpenHashSet<>(List.of("id"));
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Trade sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<DBTrade, String> a,
-                    @Default TypedFunction<DBTrade, String> b,
-                    @Default TypedFunction<DBTrade, String> c,
-                    @Default TypedFunction<DBTrade, String> d,
-                    @Default TypedFunction<DBTrade, String> e,
-                    @Default TypedFunction<DBTrade, String> f,
-                    @Default TypedFunction<DBTrade, String> g,
-                    @Default TypedFunction<DBTrade, String> h,
-                    @Default TypedFunction<DBTrade, String> i,
-                    @Default TypedFunction<DBTrade, String> j,
-                    @Default TypedFunction<DBTrade, String> k,
-                    @Default TypedFunction<DBTrade, String> l,
-                    @Default TypedFunction<DBTrade, String> m,
-                    @Default TypedFunction<DBTrade, String> n,
-                    @Default TypedFunction<DBTrade, String> o,
-                    @Default TypedFunction<DBTrade, String> p,
-                    @Default TypedFunction<DBTrade, String> q,
-                    @Default TypedFunction<DBTrade, String> r,
-                    @Default TypedFunction<DBTrade, String> s,
-                    @Default TypedFunction<DBTrade, String> t,
-                    @Default TypedFunction<DBTrade, String> u,
-                    @Default TypedFunction<DBTrade, String> v,
-                    @Default TypedFunction<DBTrade, String> w,
-                    @Default TypedFunction<DBTrade, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
-
         };
     }
 
@@ -2570,11 +2082,11 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true,
                                 (type, str) -> Integer.parseInt(str));
-                        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsbyId(ids);
+                        List<Transaction2> transactions = bankDb().getTransactionsbyId(ids);
                         return filterTransactions(nation, user, db, transactions);
                     }
                     if (MathMan.isInteger(input)) {
-                        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsbyId(
+                        List<Transaction2> transactions = bankDb().getTransactionsbyId(
                                 Set.of(Integer.parseInt(input)));
                         return filterTransactions(nation, user, db, transactions);
                     }
@@ -2634,15 +2146,15 @@ public class PlaceholdersMap {
                         try {
                             String sendersStr = json.optString("sender", null);
                             Set<NationOrAlliance> senders = sendersStr == null ? null
-                                    : PWBindings.nationOrAlliance(null, guild, sendersStr, true, author, me);
+                                : PWBindings.nationOrAlliance(store, null, guild, sendersStr, true, author, me);
 
                             String receiversStr = json.optString("receiver", null);
                             Set<NationOrAlliance> receivers = receiversStr == null ? null
-                                    : PWBindings.nationOrAlliance(null, guild, receiversStr, true, author, me);
+                                : PWBindings.nationOrAlliance(store, null, guild, receiversStr, true, author, me);
 
                             String bankersStr = json.optString("banker", null);
                             Set<NationOrAlliance> bankers = bankersStr == null ? null
-                                    : PWBindings.nationOrAlliance(null, guild, bankersStr, true, author, me);
+                                : PWBindings.nationOrAlliance(store, null, guild, bankersStr, true, author, me);
 
                             Predicate<Transaction2> transactionFilter = json.has("transactionFilter")
                                     ? parseFilter(store, json.getString("transactionFilter"))
@@ -2657,7 +2169,7 @@ public class PlaceholdersMap {
 
                             Boolean includeOffset = json.has("includeOffset") ? json.getBoolean("includeOffset") : null;
 
-                            List<Transaction2> transfers = Locutus.imp().getBankDB().getAllTransactions(senders,
+                            List<Transaction2> transfers = bankDb().getAllTransactions(senders,
                                     receivers, bankers, startTime, endTime);
                             return new ObjectLinkedOpenHashSet<>(transfers);
                         } catch (ParseException e) {
@@ -2670,8 +2182,9 @@ public class PlaceholdersMap {
                             // "nationOrAllianceOrGuild", "transactionFilter", "startTime", "endTime",
                             // "startTime", "endTime", "includeOffset"
                             String nationOrAllianceOrGuildStr = json.optString("nationOrAllianceOrGuild", null);
-                            NationOrAllianceOrGuild nationOrAllianceOrGuild = nationOrAllianceOrGuildStr == null ? null
-                                    : PWBindings.nationOrAllianceOrGuild(nationOrAllianceOrGuildStr);
+                                NationOrAllianceOrGuild nationOrAllianceOrGuild = nationOrAllianceOrGuildStr == null ? null
+                                    : (NationOrAllianceOrGuild) PWBindings.parseNationOrAllianceOrGuildOrTaxId(
+                                        services, nationOrAllianceOrGuildStr, false, null, null);
 
                             Predicate<Transaction2> transactionFilter = json.has("transactionFilter")
                                     ? parseFilter(store, json.getString("transactionFilter"))
@@ -2787,42 +2300,6 @@ public class PlaceholdersMap {
                         "transactionFilter", "startTime", "endTime", "startTime", "endTime", "excludeOffset",
                         "excludeTaxes", "includeFullTaxes");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Transaction sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<Transaction2, String> a,
-                    @Default TypedFunction<Transaction2, String> b,
-                    @Default TypedFunction<Transaction2, String> c,
-                    @Default TypedFunction<Transaction2, String> d,
-                    @Default TypedFunction<Transaction2, String> e,
-                    @Default TypedFunction<Transaction2, String> f,
-                    @Default TypedFunction<Transaction2, String> g,
-                    @Default TypedFunction<Transaction2, String> h,
-                    @Default TypedFunction<Transaction2, String> i,
-                    @Default TypedFunction<Transaction2, String> j,
-                    @Default TypedFunction<Transaction2, String> k,
-                    @Default TypedFunction<Transaction2, String> l,
-                    @Default TypedFunction<Transaction2, String> m,
-                    @Default TypedFunction<Transaction2, String> n,
-                    @Default TypedFunction<Transaction2, String> o,
-                    @Default TypedFunction<Transaction2, String> p,
-                    @Default TypedFunction<Transaction2, String> q,
-                    @Default TypedFunction<Transaction2, String> r,
-                    @Default TypedFunction<Transaction2, String> s,
-                    @Default TypedFunction<Transaction2, String> t,
-                    @Default TypedFunction<Transaction2, String> u,
-                    @Default TypedFunction<Transaction2, String> v,
-                    @Default TypedFunction<Transaction2, String> w,
-                    @Default TypedFunction<Transaction2, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -2836,21 +2313,18 @@ public class PlaceholdersMap {
                         return selection;
                     if (input.equalsIgnoreCase("*")) {
                         Set<DBBounty> result = new HashSet<>();
-                        Locutus.imp().getWarDb().getBountiesByNation().values().forEach(result::addAll);
+                        warDb().getBountiesByNation().values().forEach(result::addAll);
                         return result;
                     }
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("bounty"), true,
-                                (type, str) -> PWBindings.bounty(str));
+                                (type, str) -> parseBounty(str));
                     }
                     if (MathMan.isInteger(input)) {
-                        return Set.of(PWBindings.bounty(input));
+                        return Set.of(parseBounty(input));
                     }
-                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-                    Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
-                    Map<Integer, List<DBBounty>> bounties = Locutus.imp().getWarDb().getBountiesByNation();
+                    Set<DBNation> nations = parseNations(store, input, false);
+                    Map<Integer, List<DBBounty>> bounties = warDb().getBountiesByNation();
                     Set<DBBounty> bountySet = new ObjectLinkedOpenHashSet<>();
                     for (DBNation nation : nations) {
                         List<DBBounty> list = bounties.get(nation.getId());
@@ -2875,7 +2349,7 @@ public class PlaceholdersMap {
                     NationPlaceholders natPlac = (NationPlaceholders) (Placeholders) get(DBNation.class);
                     Predicate<DBNation> filter = natPlac.parseSingleFilter(store, input);
                     return f -> {
-                        DBNation nation = DBNation.getById(f.getNationId());
+                        DBNation nation = nationById(f.getNationId());
                         if (nation == null)
                             return false;
                         return filter.test(nation);
@@ -2891,7 +2365,7 @@ public class PlaceholdersMap {
                 Set<SelectorInfo> result = new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("BOUNTY_ID", "12345", "Bounty ID"),
                         new SelectorInfo("*", null, "All bounties")));
-                result.addAll(NATIONS.getSelectorInfo());
+                result.addAll(PlaceholdersMap.this.get(DBNation.class).getSelectorInfo());
                 return result;
             }
 
@@ -2908,42 +2382,6 @@ public class PlaceholdersMap {
                     Set<DBBounty> bounties) {
                 return _addSelectionAlias(this, command, db, name, bounties, "bounties");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a bounty sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<DBBounty, String> a,
-                    @Default TypedFunction<DBBounty, String> b,
-                    @Default TypedFunction<DBBounty, String> c,
-                    @Default TypedFunction<DBBounty, String> d,
-                    @Default TypedFunction<DBBounty, String> e,
-                    @Default TypedFunction<DBBounty, String> f,
-                    @Default TypedFunction<DBBounty, String> g,
-                    @Default TypedFunction<DBBounty, String> h,
-                    @Default TypedFunction<DBBounty, String> i,
-                    @Default TypedFunction<DBBounty, String> j,
-                    @Default TypedFunction<DBBounty, String> k,
-                    @Default TypedFunction<DBBounty, String> l,
-                    @Default TypedFunction<DBBounty, String> m,
-                    @Default TypedFunction<DBBounty, String> n,
-                    @Default TypedFunction<DBBounty, String> o,
-                    @Default TypedFunction<DBBounty, String> p,
-                    @Default TypedFunction<DBBounty, String> q,
-                    @Default TypedFunction<DBBounty, String> r,
-                    @Default TypedFunction<DBBounty, String> s,
-                    @Default TypedFunction<DBBounty, String> t,
-                    @Default TypedFunction<DBBounty, String> u,
-                    @Default TypedFunction<DBBounty, String> v,
-                    @Default TypedFunction<DBBounty, String> w,
-                    @Default TypedFunction<DBBounty, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -2956,14 +2394,14 @@ public class PlaceholdersMap {
                     if (selection != null)
                         return selection;
                     if (input.equalsIgnoreCase("*")) {
-                        return Locutus.imp().getNationDB().getTreaties();
+                        return nationDb().getTreaties();
                     }
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("treaty"), true,
-                                (type, str) -> PWBindings.treaty(str));
+                                (type, str) -> PWBindings.treaty(services, str));
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
+                    GuildDB db = guild == null ? null : guildDb(guild);
                     List<String> split = StringMan.split(input, (s, index) -> switch (s.charAt(index)) {
                         case ':', '>', '<' -> 1;
                         default -> null;
@@ -2977,7 +2415,7 @@ public class PlaceholdersMap {
                         throw new IllegalArgumentException("Invalid alliance or coalition: `" + split.get(0) + "`");
                     if (aa2 == null)
                         throw new IllegalArgumentException("Invalid alliance or coalition: `" + split.get(1) + "`");
-                    return Locutus.imp().getNationDB().getTreatiesMatching(f -> {
+                    return nationDb().getTreatiesMatching(f -> {
                         return (aa1.contains(f.getFromId())) && (aa2.contains(f.getToId()))
                                 || (aa1.contains(f.getToId())) && (aa2.contains(f.getFromId()));
                     });
@@ -2987,7 +2425,7 @@ public class PlaceholdersMap {
                         return Predicates.alwaysTrue();
                     if (SpreadSheet.isSheet(input)) {
                         Set<Treaty> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
-                                (type, str) -> PWBindings.treaty(str));
+                                (type, str) -> PWBindings.treaty(services, str));
 
                         Map<Integer, Set<Integer>> treatyIds = new HashMap<>();
                         for (Treaty treaty : sheet) {
@@ -2999,7 +2437,7 @@ public class PlaceholdersMap {
                         return f -> treatyIds.getOrDefault(f.getFromId(), Collections.emptySet()).contains(f.getToId());
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
+                    GuildDB db = guild == null ? null : guildDb(guild);
                     List<String> split = StringMan.split(input, (s, index) -> switch (s.charAt(index)) {
                         case ':', '>', '<' -> 1;
                         default -> null;
@@ -3068,42 +2506,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<Treaty> treaties) {
                 return _addSelectionAlias(this, command, db, name, treaties, "treaties");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Treaty sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<Treaty, String> a,
-                    @Default TypedFunction<Treaty, String> b,
-                    @Default TypedFunction<Treaty, String> c,
-                    @Default TypedFunction<Treaty, String> d,
-                    @Default TypedFunction<Treaty, String> e,
-                    @Default TypedFunction<Treaty, String> f,
-                    @Default TypedFunction<Treaty, String> g,
-                    @Default TypedFunction<Treaty, String> h,
-                    @Default TypedFunction<Treaty, String> i,
-                    @Default TypedFunction<Treaty, String> j,
-                    @Default TypedFunction<Treaty, String> k,
-                    @Default TypedFunction<Treaty, String> l,
-                    @Default TypedFunction<Treaty, String> m,
-                    @Default TypedFunction<Treaty, String> n,
-                    @Default TypedFunction<Treaty, String> o,
-                    @Default TypedFunction<Treaty, String> p,
-                    @Default TypedFunction<Treaty, String> q,
-                    @Default TypedFunction<Treaty, String> r,
-                    @Default TypedFunction<Treaty, String> s,
-                    @Default TypedFunction<Treaty, String> t,
-                    @Default TypedFunction<Treaty, String> u,
-                    @Default TypedFunction<Treaty, String> v,
-                    @Default TypedFunction<Treaty, String> w,
-                    @Default TypedFunction<Treaty, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -3143,42 +2545,6 @@ public class PlaceholdersMap {
                     Set<Project> projects) {
                 return _addSelectionAlias(this, command, db, name, projects, "projects");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Project sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<Project, String> a,
-                    @Default TypedFunction<Project, String> b,
-                    @Default TypedFunction<Project, String> c,
-                    @Default TypedFunction<Project, String> d,
-                    @Default TypedFunction<Project, String> e,
-                    @Default TypedFunction<Project, String> f,
-                    @Default TypedFunction<Project, String> g,
-                    @Default TypedFunction<Project, String> h,
-                    @Default TypedFunction<Project, String> i,
-                    @Default TypedFunction<Project, String> j,
-                    @Default TypedFunction<Project, String> k,
-                    @Default TypedFunction<Project, String> l,
-                    @Default TypedFunction<Project, String> m,
-                    @Default TypedFunction<Project, String> n,
-                    @Default TypedFunction<Project, String> o,
-                    @Default TypedFunction<Project, String> p,
-                    @Default TypedFunction<Project, String> q,
-                    @Default TypedFunction<Project, String> r,
-                    @Default TypedFunction<Project, String> s,
-                    @Default TypedFunction<Project, String> t,
-                    @Default TypedFunction<Project, String> u,
-                    @Default TypedFunction<Project, String> v,
-                    @Default TypedFunction<Project, String> w,
-                    @Default TypedFunction<Project, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -3187,7 +2553,7 @@ public class PlaceholdersMap {
                 permisser,
                 "A game resource",
                 (ThrowingTriFunction<Placeholders<ResourceType, Void>, ValueStore, String, Set<ResourceType>>) (inst,
-                        store, input) -> {
+                                                                                                                store, input) -> {
                     Set<ResourceType> selection = getSelection(inst, store, input);
                     if (selection != null)
                         return selection;
@@ -3209,44 +2575,8 @@ public class PlaceholdersMap {
             @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
                     Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name,
-                    Set<ResourceType> resources) {
+                                            Set<ResourceType> resources) {
                 return _addSelectionAlias(this, command, db, name, resources, "resources");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Resource sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<ResourceType, String> a,
-                    @Default TypedFunction<ResourceType, String> b,
-                    @Default TypedFunction<ResourceType, String> c,
-                    @Default TypedFunction<ResourceType, String> d,
-                    @Default TypedFunction<ResourceType, String> e,
-                    @Default TypedFunction<ResourceType, String> f,
-                    @Default TypedFunction<ResourceType, String> g,
-                    @Default TypedFunction<ResourceType, String> h,
-                    @Default TypedFunction<ResourceType, String> i,
-                    @Default TypedFunction<ResourceType, String> j,
-                    @Default TypedFunction<ResourceType, String> k,
-                    @Default TypedFunction<ResourceType, String> l,
-                    @Default TypedFunction<ResourceType, String> m,
-                    @Default TypedFunction<ResourceType, String> n,
-                    @Default TypedFunction<ResourceType, String> o,
-                    @Default TypedFunction<ResourceType, String> p,
-                    @Default TypedFunction<ResourceType, String> q,
-                    @Default TypedFunction<ResourceType, String> r,
-                    @Default TypedFunction<ResourceType, String> s,
-                    @Default TypedFunction<ResourceType, String> t,
-                    @Default TypedFunction<ResourceType, String> u,
-                    @Default TypedFunction<ResourceType, String> v,
-                    @Default TypedFunction<ResourceType, String> w,
-                    @Default TypedFunction<ResourceType, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
             }
         };
     }
@@ -3279,42 +2609,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name,
                     Set<AttackType> attack_types) {
                 return _addSelectionAlias(this, command, db, name, attack_types, "attack_types");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to a AttackType sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<AttackType, String> a,
-                    @Default TypedFunction<AttackType, String> b,
-                    @Default TypedFunction<AttackType, String> c,
-                    @Default TypedFunction<AttackType, String> d,
-                    @Default TypedFunction<AttackType, String> e,
-                    @Default TypedFunction<AttackType, String> f,
-                    @Default TypedFunction<AttackType, String> g,
-                    @Default TypedFunction<AttackType, String> h,
-                    @Default TypedFunction<AttackType, String> i,
-                    @Default TypedFunction<AttackType, String> j,
-                    @Default TypedFunction<AttackType, String> k,
-                    @Default TypedFunction<AttackType, String> l,
-                    @Default TypedFunction<AttackType, String> m,
-                    @Default TypedFunction<AttackType, String> n,
-                    @Default TypedFunction<AttackType, String> o,
-                    @Default TypedFunction<AttackType, String> p,
-                    @Default TypedFunction<AttackType, String> q,
-                    @Default TypedFunction<AttackType, String> r,
-                    @Default TypedFunction<AttackType, String> s,
-                    @Default TypedFunction<AttackType, String> t,
-                    @Default TypedFunction<AttackType, String> u,
-                    @Default TypedFunction<AttackType, String> v,
-                    @Default TypedFunction<AttackType, String> w,
-                    @Default TypedFunction<AttackType, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
             }
         };
     }
@@ -3349,42 +2643,6 @@ public class PlaceholdersMap {
                     Set<MilitaryUnit> military_units) {
                 return _addSelectionAlias(this, command, db, name, military_units, "military_units");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Military Unit sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<MilitaryUnit, String> a,
-                    @Default TypedFunction<MilitaryUnit, String> b,
-                    @Default TypedFunction<MilitaryUnit, String> c,
-                    @Default TypedFunction<MilitaryUnit, String> d,
-                    @Default TypedFunction<MilitaryUnit, String> e,
-                    @Default TypedFunction<MilitaryUnit, String> f,
-                    @Default TypedFunction<MilitaryUnit, String> g,
-                    @Default TypedFunction<MilitaryUnit, String> h,
-                    @Default TypedFunction<MilitaryUnit, String> i,
-                    @Default TypedFunction<MilitaryUnit, String> j,
-                    @Default TypedFunction<MilitaryUnit, String> k,
-                    @Default TypedFunction<MilitaryUnit, String> l,
-                    @Default TypedFunction<MilitaryUnit, String> m,
-                    @Default TypedFunction<MilitaryUnit, String> n,
-                    @Default TypedFunction<MilitaryUnit, String> o,
-                    @Default TypedFunction<MilitaryUnit, String> p,
-                    @Default TypedFunction<MilitaryUnit, String> q,
-                    @Default TypedFunction<MilitaryUnit, String> r,
-                    @Default TypedFunction<MilitaryUnit, String> s,
-                    @Default TypedFunction<MilitaryUnit, String> t,
-                    @Default TypedFunction<MilitaryUnit, String> u,
-                    @Default TypedFunction<MilitaryUnit, String> v,
-                    @Default TypedFunction<MilitaryUnit, String> w,
-                    @Default TypedFunction<MilitaryUnit, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -3417,47 +2675,11 @@ public class PlaceholdersMap {
                     Set<TreatyType> treaty_types) {
                 return _addSelectionAlias(this, command, db, name, treaty_types, "treaty_types");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a TreatyType sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<TreatyType, String> a,
-                    @Default TypedFunction<TreatyType, String> b,
-                    @Default TypedFunction<TreatyType, String> c,
-                    @Default TypedFunction<TreatyType, String> d,
-                    @Default TypedFunction<TreatyType, String> e,
-                    @Default TypedFunction<TreatyType, String> f,
-                    @Default TypedFunction<TreatyType, String> g,
-                    @Default TypedFunction<TreatyType, String> h,
-                    @Default TypedFunction<TreatyType, String> i,
-                    @Default TypedFunction<TreatyType, String> j,
-                    @Default TypedFunction<TreatyType, String> k,
-                    @Default TypedFunction<TreatyType, String> l,
-                    @Default TypedFunction<TreatyType, String> m,
-                    @Default TypedFunction<TreatyType, String> n,
-                    @Default TypedFunction<TreatyType, String> o,
-                    @Default TypedFunction<TreatyType, String> p,
-                    @Default TypedFunction<TreatyType, String> q,
-                    @Default TypedFunction<TreatyType, String> r,
-                    @Default TypedFunction<TreatyType, String> s,
-                    @Default TypedFunction<TreatyType, String> t,
-                    @Default TypedFunction<TreatyType, String> u,
-                    @Default TypedFunction<TreatyType, String> v,
-                    @Default TypedFunction<TreatyType, String> w,
-                    @Default TypedFunction<TreatyType, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
     private Placeholders<DBTreasure, Void> createTreasure() {
-        Supplier<DBTreasure[]> treasures = () -> Locutus.imp().getNationDB().getTreasuresByName().values()
+        Supplier<DBTreasure[]> treasures = () -> nationDb().getTreasuresByName().values()
                 .toArray(new DBTreasure[0]);
         return new StaticPlaceholders<DBTreasure>(DBTreasure.class, treasures, store, validators, permisser,
                 "A treasure",
@@ -3467,18 +2689,15 @@ public class PlaceholdersMap {
                     if (selection != null)
                         return selection;
                     if (input.equalsIgnoreCase("*"))
-                        return new HashSet<>(Locutus.imp().getNationDB().getTreasuresByName().values());
+                        return new HashSet<>(nationDb().getTreasuresByName().values());
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("treasure"), true,
-                                (type, str) -> PWBindings.treasure(str));
+                                (type, str) -> parseTreasure(str));
                     }
                     try {
-                        return Set.of(PWBindings.treasure(input));
+                        return Set.of(parseTreasure(input));
                     } catch (IllegalArgumentException e) {
-                        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                        User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                        DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-                        Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
+                        Set<DBNation> nations = parseNations(store, input, false);
                         Set<DBTreasure> result = new ObjectOpenHashSet<>();
                         for (DBNation nation : nations) {
                             result.addAll(nation.getTreasures());
@@ -3494,8 +2713,8 @@ public class PlaceholdersMap {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
                 Set<SelectorInfo> selectors = new ObjectLinkedOpenHashSet<>(super.getSelectorInfo());
-                selectors.addAll(NATIONS.getSelectorInfo());
-                selectors.addAll(ALLIANCES.getSelectorInfo());
+                selectors.addAll(PlaceholdersMap.this.get(DBNation.class).getSelectorInfo());
+                selectors.addAll(PlaceholdersMap.this.get(DBAlliance.class).getSelectorInfo());
                 return selectors;
             }
 
@@ -3506,42 +2725,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name,
                     Set<DBTreasure> treasures) {
                 return _addSelectionAlias(this, command, db, name, treasures, "treasures");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to a treasure sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<DBTreasure, String> a,
-                    @Default TypedFunction<DBTreasure, String> b,
-                    @Default TypedFunction<DBTreasure, String> c,
-                    @Default TypedFunction<DBTreasure, String> d,
-                    @Default TypedFunction<DBTreasure, String> e,
-                    @Default TypedFunction<DBTreasure, String> f,
-                    @Default TypedFunction<DBTreasure, String> g,
-                    @Default TypedFunction<DBTreasure, String> h,
-                    @Default TypedFunction<DBTreasure, String> i,
-                    @Default TypedFunction<DBTreasure, String> j,
-                    @Default TypedFunction<DBTreasure, String> k,
-                    @Default TypedFunction<DBTreasure, String> l,
-                    @Default TypedFunction<DBTreasure, String> m,
-                    @Default TypedFunction<DBTreasure, String> n,
-                    @Default TypedFunction<DBTreasure, String> o,
-                    @Default TypedFunction<DBTreasure, String> p,
-                    @Default TypedFunction<DBTreasure, String> q,
-                    @Default TypedFunction<DBTreasure, String> r,
-                    @Default TypedFunction<DBTreasure, String> s,
-                    @Default TypedFunction<DBTreasure, String> t,
-                    @Default TypedFunction<DBTreasure, String> u,
-                    @Default TypedFunction<DBTreasure, String> v,
-                    @Default TypedFunction<DBTreasure, String> w,
-                    @Default TypedFunction<DBTreasure, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
             }
         };
     }
@@ -3575,42 +2758,6 @@ public class PlaceholdersMap {
                     Set<AuditType> audit_types) {
                 return _addSelectionAlias(this, command, db, name, audit_types, "audit_types");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Audit Type sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<AuditType, String> a,
-                    @Default TypedFunction<AuditType, String> b,
-                    @Default TypedFunction<AuditType, String> c,
-                    @Default TypedFunction<AuditType, String> d,
-                    @Default TypedFunction<AuditType, String> e,
-                    @Default TypedFunction<AuditType, String> f,
-                    @Default TypedFunction<AuditType, String> g,
-                    @Default TypedFunction<AuditType, String> h,
-                    @Default TypedFunction<AuditType, String> i,
-                    @Default TypedFunction<AuditType, String> j,
-                    @Default TypedFunction<AuditType, String> k,
-                    @Default TypedFunction<AuditType, String> l,
-                    @Default TypedFunction<AuditType, String> m,
-                    @Default TypedFunction<AuditType, String> n,
-                    @Default TypedFunction<AuditType, String> o,
-                    @Default TypedFunction<AuditType, String> p,
-                    @Default TypedFunction<AuditType, String> q,
-                    @Default TypedFunction<AuditType, String> r,
-                    @Default TypedFunction<AuditType, String> s,
-                    @Default TypedFunction<AuditType, String> t,
-                    @Default TypedFunction<AuditType, String> u,
-                    @Default TypedFunction<AuditType, String> v,
-                    @Default TypedFunction<AuditType, String> w,
-                    @Default TypedFunction<AuditType, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -3643,42 +2790,6 @@ public class PlaceholdersMap {
                     Set<NationColor> colors) {
                 return _addSelectionAlias(this, command, db, name, colors, "colors");
             }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Nation Color sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<NationColor, String> a,
-                    @Default TypedFunction<NationColor, String> b,
-                    @Default TypedFunction<NationColor, String> c,
-                    @Default TypedFunction<NationColor, String> d,
-                    @Default TypedFunction<NationColor, String> e,
-                    @Default TypedFunction<NationColor, String> f,
-                    @Default TypedFunction<NationColor, String> g,
-                    @Default TypedFunction<NationColor, String> h,
-                    @Default TypedFunction<NationColor, String> i,
-                    @Default TypedFunction<NationColor, String> j,
-                    @Default TypedFunction<NationColor, String> k,
-                    @Default TypedFunction<NationColor, String> l,
-                    @Default TypedFunction<NationColor, String> m,
-                    @Default TypedFunction<NationColor, String> n,
-                    @Default TypedFunction<NationColor, String> o,
-                    @Default TypedFunction<NationColor, String> p,
-                    @Default TypedFunction<NationColor, String> q,
-                    @Default TypedFunction<NationColor, String> r,
-                    @Default TypedFunction<NationColor, String> s,
-                    @Default TypedFunction<NationColor, String> t,
-                    @Default TypedFunction<NationColor, String> u,
-                    @Default TypedFunction<NationColor, String> v,
-                    @Default TypedFunction<NationColor, String> w,
-                    @Default TypedFunction<NationColor, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
         };
     }
 
@@ -3710,42 +2821,6 @@ public class PlaceholdersMap {
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name,
                     Set<Building> Buildings) {
                 return _addSelectionAlias(this, command, db, name, Buildings, "Buildings");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to a Building sheet")
-            @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF,
-                    Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
-                    @Switch("s") SheetTemplate sheet,
-                    @Default TypedFunction<Building, String> a,
-                    @Default TypedFunction<Building, String> b,
-                    @Default TypedFunction<Building, String> c,
-                    @Default TypedFunction<Building, String> d,
-                    @Default TypedFunction<Building, String> e,
-                    @Default TypedFunction<Building, String> f,
-                    @Default TypedFunction<Building, String> g,
-                    @Default TypedFunction<Building, String> h,
-                    @Default TypedFunction<Building, String> i,
-                    @Default TypedFunction<Building, String> j,
-                    @Default TypedFunction<Building, String> k,
-                    @Default TypedFunction<Building, String> l,
-                    @Default TypedFunction<Building, String> m,
-                    @Default TypedFunction<Building, String> n,
-                    @Default TypedFunction<Building, String> o,
-                    @Default TypedFunction<Building, String> p,
-                    @Default TypedFunction<Building, String> q,
-                    @Default TypedFunction<Building, String> r,
-                    @Default TypedFunction<Building, String> s,
-                    @Default TypedFunction<Building, String> t,
-                    @Default TypedFunction<Building, String> u,
-                    @Default TypedFunction<Building, String> v,
-                    @Default TypedFunction<Building, String> w,
-                    @Default TypedFunction<Building, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command, db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
             }
         };
     }

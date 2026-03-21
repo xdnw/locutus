@@ -1,13 +1,12 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.common.base.Predicates;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeCommandContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
@@ -29,10 +28,6 @@ public class HelpCommands {
     public HelpCommands() {
     }
 
-    public PWGPTHandler getGPT() {
-        return Locutus.imp().getCommandManager().getV2().getGptHandler();
-    }
-
 //    @Command
 //    public void use_command(@Me IMessageIO io, ValueStore store, ParametricCallable command, String query) {
 //        StringBuilder prompt = new StringBuilder();
@@ -45,8 +40,8 @@ public class HelpCommands {
 //    }
 
     @Command(desc = "Check a message for moderation to see if it is flagged", viewable = true)
-    public void moderation_check(@Me IMessageIO io, String input) throws IOException {
-        List<ModerationResult> results = getGPT().getModerator().moderate(input);
+    public void moderation_check(@Me IMessageIO io, PWGPTHandler gpt, String input) throws IOException {
+        List<ModerationResult> results = gpt.getModerator().moderate(input);
         IMessageBuilder msg = io.create();
         for (ModerationResult result : results) {
             msg.append("Flagged: " + result.isFlagged() + "\n");
@@ -61,13 +56,15 @@ public class HelpCommands {
     }
 
     @Command(desc = "Display help information for a command argument type", viewable = true)
-    public void argument(@Me IMessageIO io, Parser argument, @Switch("s") boolean skipOptionalArgs) {
+    public void argument(@Me IMessageIO io, CommandRuntimeCommandContext commands, Parser argument,
+            @Switch("s") boolean skipOptionalArgs) {
         Key key = argument.getKey();
         String title = "`" + key.toSimpleString() + "`";
         StringBuilder body = new StringBuilder(argument.getNameDescriptionAndExamples(false, true, true, true));
 
-        CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
-        Set<ParametricCallable<?>> allCommands = cmdManager.getCommands().getParametricCallables(Predicates.alwaysTrue());
+        Set<ParametricCallable<?>> allCommands = commands.getParametricCommands().stream()
+                .filter(Predicates.alwaysTrue())
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
 
         List<ParametricCallable<?>> hasArgument = new ArrayList<>();
         Set<Method> methods = new HashSet<>();
@@ -112,7 +109,7 @@ public class HelpCommands {
 
         IMessageBuilder embed = io.create().embed(title, body);
 
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
+        PWGPTHandler gpt = store.getProvided(Key.of(PWGPTHandler.class), false);
         if (gpt != null && command instanceof ParametricCallable pc) {
             List<ParametricCallable> closest = gpt.getClosest(EmbeddingType.Command, store, pc, 6);
             for (ParametricCallable callable : closest) {
@@ -135,7 +132,7 @@ public class HelpCommands {
             return "#" + title + "\n" + body;
         }
         IMessageBuilder embed = io.create().embed(title, body);
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
+        PWGPTHandler gpt = store.getProvided(Key.of(PWGPTHandler.class), false);
         ParametricCallable commandParametric = (ParametricCallable) command;
 
         if (gpt != null) {
@@ -161,11 +158,15 @@ public class HelpCommands {
             msg.append("- More Info: " + CM.settings.info.cmd.key("YOUR_KEY_HERE") + "\n");
             msg.append("- To Delete: " + CM.settings.delete.cmd.key("YOUR_KEY_HERE") + "\n\n");
 
-            List<GuildSetting> results = getGPT().getClosest(EmbeddingType.Configuration, store, query, num_results, true);
+            PWGPTHandler gpt = store.getProvided(Key.of(PWGPTHandler.class), false);
+            if (gpt == null) {
+                throw new IllegalStateException("GPT support is not enabled");
+            }
+            List<GuildSetting> results = gpt.getClosest(EmbeddingType.Configuration, store, query, num_results, true);
             for (int i = 0; i < results.size(); i++) {
                 GuildSetting obj = results.get(i);
                 msg.append("__**" + (i + 1) + ".**__ ");
-                msg.append("**" + obj.name() + "**: " + obj.getCommandMention() + "\n");
+                msg.append("**`" + obj.name() + "`**: " + obj.getCommandMention() + "\n");
 
                 String desc = obj.help();
                 int tickIndex = desc.indexOf("```");

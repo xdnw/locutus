@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.conflict.ConflictColumn;
@@ -63,7 +64,7 @@ public class WarStatistics {
     }
 
     public void updateTurnChange(ConflictManager manager, long turn, boolean save) {
-        Set<DBNation> nations = new AllianceList(getParent().getAllianceIds()).getNations(true, 0, true);
+        Set<DBNation> nations = new AllianceList(getParent().getAllianceIds()).getNations(Locutus.imp().getNationDB(), true, 0, true);
 
         long day = TimeUtil.getDayFromTurn(turn);
         if (day != TimeUtil.getDayFromTurn(turn - 1)) {

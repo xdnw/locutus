@@ -112,23 +112,23 @@ public class GrantCmd extends Command {
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
-            nationAccount = PWBindings.nation(author, guild, nationAccountStr);
+            nationAccount = PWBindings.parseNation(runtimeServices(), author, guild, nationAccountStr, null);
         }
 
         String ingameBankStr = DiscordUtil.parseArg(args, "alliance");
         if (ingameBankStr != null) {
-            ingameBank = PWBindings.alliance(ingameBankStr);
+            ingameBank = PWBindings.alliance(runtimeServices(), ingameBankStr);
         }
 
         String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
         if (offshoreAccountStr != null) {
-            offshoreAccount = PWBindings.alliance(offshoreAccountStr);
+            offshoreAccount = PWBindings.alliance(runtimeServices(), offshoreAccountStr);
         }
 
         String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
-            tax_account = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+            tax_account = PWBindings.parseBracket(runtimeServices().nationDb(), guildDb, "tax_id=" + taxIdStr, 60000L, true);
         }
         if (flags.contains('t')) {
             if (tax_account != null) return "You can't specify both `tax_id` and `-t`";

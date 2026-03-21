@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 
 import java.util.ArrayList;
@@ -12,7 +11,7 @@ public class AModalBuilder implements IModalBuilder {
     private final IMessageIO parent;
     private UUID id;
     private String title;
-    private final List<Label> inputs = new ArrayList<>();
+    private List<TextInput> inputs = new ArrayList<>();
 
     public AModalBuilder(IMessageIO io, String id, String title) {
         this.parent = io;
@@ -25,8 +24,8 @@ public class AModalBuilder implements IModalBuilder {
         return this;
     }
 
-    public IModalBuilder addInput(String label, String description, TextInput input) {
-        inputs.add(Label.of(label, description, input));
+    public IModalBuilder addInput(TextInput input) {
+        inputs.add(input);
         return this;
     }
 
@@ -53,7 +52,7 @@ public class AModalBuilder implements IModalBuilder {
         return title;
     }
 
-    public List<Label> getInputs() {
+    public List<TextInput> getInputs() {
         return inputs;
     }
 }

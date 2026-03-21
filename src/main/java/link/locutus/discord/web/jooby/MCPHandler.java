@@ -55,12 +55,12 @@ public class MCPHandler {
     private static final Set<String> MCP_ENVELOPE_PARAM_KEYS = Set.of("_meta", "task");
 
     @FunctionalInterface
-    public interface LocalStoreFactory extends BiFunction<LocalValueStore<?>, Context, LocalValueStore<?>> {
+    public interface LocalStoreFactory extends BiFunction<LocalValueStore, Context, LocalValueStore> {
     }
 
-    private final ValueStore<Object> store;
-    private final ValueStore<Object> htmlOptionStore;
-    private final ValueStore<Object> schemaStore;
+    private final ValueStore store;
+    private final ValueStore htmlOptionStore;
+    private final ValueStore schemaStore;
     private final CommandGroup toolCommands;
     private final CommandGroup rpcCommands;
     private final ValidatorStore validators;
@@ -74,8 +74,8 @@ public class MCPHandler {
     private final Object toolCacheLock = new Object();
 
     public MCPHandler(
-            ValueStore<Object> store,
-            ValueStore<Object> htmlOptionStore,
+            ValueStore store,
+            ValueStore htmlOptionStore,
             ValidatorStore validators,
             PermissionHandler permisser,
             LocalStoreFactory localStoreFactory,
@@ -89,7 +89,7 @@ public class MCPHandler {
         this.localStoreFactory = Objects.requireNonNull(localStoreFactory, "localStoreFactory");
         this.schemaDebugObserverFactory = schemaDebugObserverFactory;
 
-        this.schemaStore = new SimpleValueStore<>();
+        this.schemaStore = new SimpleValueStore();
         new SchemaBindings().register(schemaStore);
 
         this.toolCommands = CommandGroup.createRoot(store, validators);
@@ -218,12 +218,12 @@ public class MCPHandler {
         return callable instanceof ParametricCallable<?> parametric ? parametric : null;
     }
 
-    public LocalValueStore<?> createLocals(Context ctx) {
+    public LocalValueStore createLocals(Context ctx) {
         return localStoreFactory.apply(null, ctx);
     }
 
     public ParsedCommand parseCommand(ParametricCallable<?> callable, Map<String, Object> arguments, Context ctx) {
-        LocalValueStore<?> locals = createLocals(ctx);
+        LocalValueStore locals = createLocals(ctx);
         callable.validatePermissions(locals, permisser);
         Object[] parsed = callable.parseArgumentMap2(arguments, locals, validators, permisser, true);
 
@@ -511,7 +511,7 @@ public class MCPHandler {
         return current;
     }
 
-    public record ParsedCommand(LocalValueStore<?> locals, Object[] arguments, Map<String, Object> normalizedArguments) {
+    public record ParsedCommand(LocalValueStore locals, Object[] arguments, Map<String, Object> normalizedArguments) {
     }
 
     private record ResultRefRecord(Object payload, String contentType, int estimatedSize, long expiresAt) {

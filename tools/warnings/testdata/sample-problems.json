@@ -1,0 +1,50 @@
+[
+  {
+    "resource": "h:/Github/locutus3/src/main/java/example/Foo.java",
+    "owner": "_generated_diagnostic_collection_name_#2",
+    "code": "compiler.warn.prob.found.req",
+    "severity": 4,
+    "message": "[unchecked] unchecked conversion\n  required: java.util.Set<link.locutus.discord.db.entities.Project>\n  found:    java.util.Set",
+    "source": "Java",
+    "startLineNumber": 854,
+    "startColumn": 61,
+    "endLineNumber": 854,
+    "endColumn": 82
+  },
+  {
+    "resource": "h:/Github/locutus3/src/main/java/example/Foo.java",
+    "owner": "_generated_diagnostic_collection_name_#2",
+    "code": "compiler.warn.has.been.deprecated",
+    "severity": 4,
+    "message": "[deprecation] oldMethod() in Legacy has been deprecated",
+    "source": "Java",
+    "startLineNumber": 27,
+    "startColumn": 15,
+    "endLineNumber": 27,
+    "endColumn": 30
+  },
+  {
+    "resource": "h:/Github/locutus3/src/main/java/example/Bar.java",
+    "owner": "_generated_diagnostic_collection_name_#2",
+    "code": "compiler.warn.prob.found.req",
+    "severity": 4,
+    "message": "[unchecked] unchecked conversion\n  required: java.util.List<java.lang.String>\n  found:    java.util.List",
+    "source": "Java",
+    "startLineNumber": 8,
+    "startColumn": 27,
+    "endLineNumber": 8,
+    "endColumn": 34
+  },
+  {
+    "resource": "h:/Github/locutus3/build/generated-sources/gg/jte/generated/precompiled/JteheadGenerated.java",
+    "owner": "_generated_diagnostic_collection_name_#2",
+    "code": "compiler.warn.raw.class.use",
+    "severity": 4,
+    "message": "[rawtypes] found raw type: java.util.Map",
+    "source": "Java",
+    "startLineNumber": 12,
+    "startColumn": 1,
+    "endLineNumber": 12,
+    "endColumn": 10
+  }
+]

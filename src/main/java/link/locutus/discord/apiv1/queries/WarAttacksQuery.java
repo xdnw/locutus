@@ -4,7 +4,7 @@ import link.locutus.discord.apiv1.core.UrlBuilder;
 import link.locutus.discord.apiv1.domains.WarAttacks;
 import link.locutus.discord.apiv1.enums.QueryURL;
 
-public class WarAttacksQuery extends Query {
+public class WarAttacksQuery extends Query<WarAttacks> {
     private final Integer war_id;
     private final Integer min_war_attack_id;
     private final Integer max_war_attack_id;
@@ -16,7 +16,8 @@ public class WarAttacksQuery extends Query {
         this.max_war_attack_id = max_war_attack_id;
     }
 
-    public ApiQuery build() {
+    @Override
+    public ApiQuery<WarAttacks> build() {
         String url = UrlBuilder.build(QueryURL.WAR_ATTACKS_URL, this.args);
         if (this.war_id != null) {
             url = url.concat("&war_id=").concat(Integer.toString(this.war_id));
@@ -30,6 +31,6 @@ public class WarAttacksQuery extends Query {
             }
         }
 
-        return new ApiQuery(url, new WarAttacks());
+        return new ApiQuery<>(url, new WarAttacks());
     }
 }

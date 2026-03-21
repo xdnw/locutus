@@ -4,9 +4,9 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
@@ -21,11 +21,10 @@ import java.util.UUID;
 
 public class ToolBindings extends BindingHelper {
 
-    public ToolBindings(PWGPTHandler gpt, PlaceholdersMap pm) {
+        public ToolBindings(PWGPTHandler gpt, PlaceholderRegistry registry) {
         addBinding(store -> {
-            int numFilters = 25;
-            for (Class<?> type : pm.getTypes()) {
-                Placeholders<?, Object> ph = pm.get(type);
+                        for (Class<?> type : registry.getTypes()) {
+                                Placeholders<?, Object> ph = registry.get(type);
                 ph.registerTools(store, gpt);
             }
         });

@@ -59,9 +59,10 @@ public class WarCostByResourceSheet extends Command {
         if (args.size() != 3) return usage(args.size(), 3, channel);
         if (guild == null) return "not in guild";
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
+        var store = placeholderLocals(guild, channel, author, me);
 
-        Set<NationOrAlliance> attackers = PWBindings.nationOrAlliance(null, guild, args.get(0), author, me);
-        Set<NationOrAlliance> defenders = PWBindings.nationOrAlliance(null, guild, args.get(1), author, me);
+        Set<NationOrAlliance> attackers = PWBindings.nationOrAlliance(store, null, guild, args.get(0), false, author, me);
+        Set<NationOrAlliance> defenders = PWBindings.nationOrAlliance(store, null, guild, args.get(1), false, author, me);
 
         long timeRel = TimeUtil.timeToSec(args.get(2));
         if (timeRel < 60) {

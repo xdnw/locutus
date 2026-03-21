@@ -60,6 +60,18 @@ public interface CommandCallable {
         return getCallable(new ArrayList<>(args), false);
     }
 
+    default CommandCallable getRoot() {
+        CommandCallable root = this;
+        while (root.getParent() != null) {
+            root = root.getParent();
+        }
+        return root;
+    }
+
+    default Map<String, String> validateSlashCommand(String input, boolean strict) {
+        return CommandTextParser.validateSlashCommand(this, input, strict);
+    }
+
     default CommandCallable getCallable(String fullCommand, StringBuilder remainder) {
         if (!(this instanceof CommandGroup)) {
             remainder.append(fullCommand);
@@ -197,31 +209,9 @@ public interface CommandCallable {
             Method method = callable.getMethod();
             List<String> params = callable.getUserParameterMap().values().stream().map(ParameterData::getName).toList();
 
-            Class<?> clazz = method.getDeclaringClass();
-            String className = clazz.getName();
-            String fieldExt = "";
-            if (className.contains("$")) {
-                String[] split = className.split("\\$");
-                try {
-                    for (Field field : Class.forName(split[0]).getDeclaredFields()) {
-                        if (!Modifier.isStatic(field.getModifiers())) {
-                            continue;
-                        }
-                        field.setAccessible(true);
-                        Object instance = instance = field.get(null);
-                        if (instance == callable.getObject()) {
-                            fieldExt = ", field=\"" + field.getName() + "\"";
-                            className = split[0];
-                            break;
-                        }
-                    }
-                } catch (IllegalAccessException | ClassNotFoundException e) {
-                    throw new RuntimeException(e);
-                }
-                if (fieldExt.isEmpty()) {
-                    throw new IllegalArgumentException("Cannot find class " + className + " for " + method.getName() + " in " + clazz.getName());
-                }
-            }
+            AutoRegisterSupport.OwnerReference owner = AutoRegisterSupport.describeOwner(method, callable.getObject());
+            String className = owner.ownerClassName();
+            String fieldExt = owner.fieldValue().isEmpty() ? "" : ", field=\"" + owner.fieldValue() + "\"";
 
             List<String> argMethods = new ArrayList<>();
             for (String arg : params) {

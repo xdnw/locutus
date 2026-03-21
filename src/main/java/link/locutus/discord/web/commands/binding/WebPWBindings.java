@@ -16,12 +16,13 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -82,6 +83,18 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class WebPWBindings extends WebBindingHelper {
+
+    private static NationPlaceholders requireNationPlaceholders(ValueStore store) {
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            throw new IllegalStateException("PlaceholderRegistry was not provided in the current value store");
+        }
+        Placeholders<DBNation, ?> placeholders = registry.get(DBNation.class);
+        if (!(placeholders instanceof NationPlaceholders nationPlaceholders)) {
+            throw new IllegalStateException("Registered DBNation placeholders are not NationPlaceholders");
+        }
+        return nationPlaceholders;
+    }
 
 
 
@@ -208,8 +221,8 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @PlaceholderType
     @Binding(types = {Class.class, WildcardType.class}, multiple = true)
-    public String clazz(ParameterData param) {
-        Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
+    public String clazz(ParameterData param, PlaceholderRegistry registry) {
+        Set<Class<?>> types = registry.getTypes();
         List<String> options = types.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
         return multipleSelect(param, options, f -> KeyValue.of(f, f));
     }
@@ -507,6 +520,7 @@ public class WebPWBindings extends WebBindingHelper {
         Collection<DBNation> options;
         Filter filter = param.getAnnotation(Filter.class);
         if (filter != null) {
+            NationPlaceholders nationPlaceholders = requireNationPlaceholders(valueStore);
             String filterStr = filter.value();
 
             MessageChannel channel = (MessageChannel) valueStore.getProvided(Key.of(MessageChannel.class, Me.class));
@@ -522,8 +536,8 @@ public class WebPWBindings extends WebBindingHelper {
                     filterStr = filterStr.replace("{guild_alliance_id}", "AA:" + StringMan.join(aaIds, ",AA:"));
                 }
             }
-            filterStr = Locutus.cmd().getV2().getNationPlaceholders().format2(guild, me, user, filterStr, me, true);
-            options = Locutus.cmd().getV2().getNationPlaceholders().parseSet(valueStore, filterStr);
+            filterStr = nationPlaceholders.format2(guild, me, user, filterStr, me, true);
+            options = nationPlaceholders.parseSet(valueStore, filterStr);
         } else {
             options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
             options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
@@ -1002,7 +1016,7 @@ public class WebPWBindings extends WebBindingHelper {
     @Binding(types=DBAlliancePosition.class)
     public String position(@Me GuildDB db, ParameterData param) {
         AllianceList alliances = db.getAllianceList();
-        Set<DBAlliancePosition> positions = new HashSet<>(alliances.getPositions());
+        Set<DBAlliancePosition> positions = new HashSet<>(alliances.getPositions(Locutus.imp().getNationDB()));
         positions.add(DBAlliancePosition.REMOVE);
         positions.add(DBAlliancePosition.APPLICANT);
         return multipleSelect(param, positions, rank -> new KeyValue<>(alliances.size() > 1 ? rank.getQualifiedName() : rank.getName(), rank.getInputName()));
@@ -1198,7 +1212,7 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     public String bracket(@Me GuildDB db, ParameterData param, boolean multiple) {
-        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
+        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(Locutus.imp().getNationDB(), TimeUnit.MINUTES.toMillis(1));
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             DBAlliance alliance = obj.getAlliance();
@@ -1211,8 +1225,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= NationPlaceholder.class)
     public String natPlaceholder(ParameterData param, ArgumentStack stack) {
-        CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
-        NationPlaceholders placeholders = v2.getNationPlaceholders();
+        NationPlaceholders placeholders = requireNationPlaceholders(stack.getStore());
         List<ParametricCallable> options = placeholders.getParametricCallables();
         options.removeIf(f -> {
             try {

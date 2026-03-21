@@ -1,19 +1,37 @@
- package link.locutus.discord.commands.manager.v2.impl;
+package link.locutus.discord.commands.manager.v2.impl;
 
 import com.google.common.base.Predicates;
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Autoparse;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Ephemeral;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.MessageCommand;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Step;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.UserCommand;
 import link.locutus.discord.commands.manager.v2.binding.bindings.autocomplete.PrimitiveCompleter;
-import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.CommandGroup;
+import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete.DiscordCompleter;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.GPTCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
@@ -22,22 +40,37 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.menu.AppMenu;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.GuildShardManager;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.IMentionable;
+import net.dv8tion.jda.api.entities.ISnowflake;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.ThreadMember;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
-import net.dv8tion.jda.api.entities.channel.concrete.*;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.StageChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.entities.sticker.Sticker;
-import net.dv8tion.jda.api.events.interaction.command.*;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.GenericContextInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
 import net.dv8tion.jda.api.events.user.update.UserUpdateNameEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
@@ -46,7 +79,12 @@ import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.dv8tion.jda.api.interactions.commands.build.*;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
+import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandGroupData;
 import net.dv8tion.jda.api.utils.data.SerializableData;
 import org.jetbrains.annotations.NotNull;
 
@@ -55,19 +93,24 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -949,7 +992,7 @@ public class SlashCommandManager extends ListenerAdapter {
                     }
                     System.out.println("Found parser: " + parserKey + " | " + key);
 
-                    LocalValueStore<Object> locals = new LocalValueStore<>(manager.getStore());
+                    LocalValueStore locals = new LocalValueStore(manager.getStore());
                     locals.addProvider(Key.of(User.class, Me.class), user);
                     if (event.isFromGuild()) {
                         locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
@@ -1018,7 +1061,6 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
-        Locutus.JdaEventTrace trace = Locutus.imp().beginJdaEvent("SlashCommandInteraction `" + event.getFullCommandName() + "`");
         try {
             long start = System.currentTimeMillis();
             User user = GuildShardManager.updateUserName(event.getUser());
@@ -1027,17 +1069,17 @@ public class SlashCommandManager extends ListenerAdapter {
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();
 
-            boolean async = true;
+            boolean isModal = true;
 
             String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
             if (!path.contains("modal")) {
-                boolean ephemeral = isEphemeral(path);
-                RateLimitUtil.complete(event.deferReply(ephemeral));
-                if (ephemeral) {
+                isModal = false;
+                if (isEphemeral(path)) {
+                    RateLimitUtil.complete(event.deferReply(true));
                     hook.setEphemeral(true);
+                } else {
+                    RateLimitUtil.queue(event.deferReply(false));
                 }
-            } else {
-                async = false;
             }
 
             Map<String, String> combined = new HashMap<>();
@@ -1047,16 +1089,17 @@ public class SlashCommandManager extends ListenerAdapter {
             }
 
             DiscordHookIO io = new DiscordHookIO(hook, event);
+            if (isModal) {
+                io.setIsModal(event);
+            }
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
-            Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, path, combined, async);
+            Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, path, combined, true);
             long end = System.currentTimeMillis();
             if (end - start > 15) {
                 Logg.text("[Slash Command] Slash interaction `" + path + "` | `" + combined + "` took " + (end - start) + "ms");
             }
         } catch (Throwable e) {
             e.printStackTrace();
-        } finally {
-            Locutus.imp().endJdaEvent(trace);
         }
     }
 
@@ -1075,45 +1118,41 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     public <T extends ISnowflake> void handleContext(GenericContextInteractionEvent event, T target, String mention, Supplier<String> getMsg, boolean isUser) {
-        Locutus.JdaEventTrace trace = Locutus.imp().beginJdaEvent((isUser ? "UserContextInteraction `" : "MessageContextInteraction `") + event.getFullCommandName() + "`");
-        try {
-            String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
-            MessageChannel channel = event.getMessageChannel();
-            InteractionHook hook = event.getHook();
-            Guild guild = event.isFromGuild() ? event.getGuild() : null;
+        String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
+        MessageChannel channel = event.getMessageChannel();
+        InteractionHook hook = event.getHook();
+        Guild guild = event.isFromGuild() ? event.getGuild() : null;
 
-            DiscordHookIO io = new DiscordHookIO(hook, event);
-            RateLimitUtil.complete(event.deferReply(true));
-            hook.setEphemeral(true);
+        DiscordHookIO io = new DiscordHookIO(hook, event);
+        RateLimitUtil.complete(event.deferReply(true));
+        hook.setEphemeral(true);
 
-            User user = GuildShardManager.updateUserName(event.getUser());
+        User user = GuildShardManager.updateUserName(event.getUser());
 
-            String fullCmdStr;
-            if (guild == null) {
-                fullCmdStr = path + " " + mention;
-            } else {
-                GuildDB db = Locutus.imp().getGuildDB(guild);
-                AppMenu menu = DiscordBindings.menu(io, db, user, isUser ? "user" : "message");
+        String fullCmdStr;
+        if (guild == null) {
+            fullCmdStr = path + " " + mention;
+        } else {
+            GuildDB db = Locutus.imp().getGuildDB(guild);
+            AppMenu menu = DiscordBindings.menu(io, db, user, isUser ? "user" : "message");
 
-                if (isUser) {
-                    menu.targetUser = target.getIdLong();
-                } else {
-                    menu.targetMessage = mention;
-                    menu.targetContent = getMsg.get();
-                }
-                fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
-                Logg.info("Modal interaction at " + path + " | " + fullCmdStr + " | " + menu.buttons);
-                if ((path.equalsIgnoreCase("...more") && fullCmdStr == null) || "...more".equalsIgnoreCase(fullCmdStr)) {
-                    fullCmdStr = menu.formatCommand(guild, user, CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
-                } else if (fullCmdStr == null) {
-                    fullCmdStr = path + " " + mention;
-                }
-                fullCmdStr = menu.formatCommand(guild, user, fullCmdStr);
+            if (isUser) {
+                menu.targetUser = target.getIdLong();
             }
-            Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, fullCmdStr, true, true);
-        } finally {
-            Locutus.imp().endJdaEvent(trace);
+            else {
+                menu.targetMessage = mention;
+                menu.targetContent = getMsg.get();
+            }
+            fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
+            Logg.info("Modal interaction at " + path + " | " + fullCmdStr + " | " + menu.buttons);
+            if ((path.equalsIgnoreCase("...more") && fullCmdStr == null) || "...more".equalsIgnoreCase(fullCmdStr)) {
+                fullCmdStr = menu.formatCommand(guild, user, CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
+            } else if (fullCmdStr == null) {
+                fullCmdStr = path + " " + mention;
+            }
+            fullCmdStr = menu.formatCommand(guild, user, fullCmdStr);
         }
+        Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, fullCmdStr, true, true);
     }
 
     @Override

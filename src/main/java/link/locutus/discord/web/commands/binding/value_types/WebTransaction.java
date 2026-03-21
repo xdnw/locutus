@@ -10,8 +10,7 @@ public class WebTransaction {
     public final long receiver_id;
     public final int receiver_type;
     public final int banker_nation;
-    public final String note;
-    public final double[] resources;
+    public final byte[] note;
 
     public WebTransaction(Transaction2 tx) {
         this.tx_id = tx.tx_id;
@@ -21,7 +20,6 @@ public class WebTransaction {
         this.receiver_id = tx.receiver_id;
         this.receiver_type = tx.receiver_type;
         this.banker_nation = tx.banker_nation;
-        this.note = tx.note;
-        this.resources = tx.resources;
+        this.note = tx.getNoteBytes();
     }
 }

@@ -93,7 +93,7 @@ public class MailListener {
     }
 
     private LocalValueStore createLocals(GuildDB db, Guild guild, IMessageIO io, MailReceivedEvent event, String input) {
-        LocalValueStore locals = new LocalValueStore<>(store);
+        LocalValueStore locals = new LocalValueStore(store);
         locals.addProvider(Key.of(GuildDB.class, Me.class), db);
         locals.addProvider(Key.of(Guild.class, Me.class), guild);
         locals.addProvider(Key.of(DBNation.class, Me.class), event.getNation());

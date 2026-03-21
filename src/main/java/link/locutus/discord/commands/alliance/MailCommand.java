@@ -16,8 +16,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.MailRespondTask;
 import net.dv8tion.jda.api.entities.Guild;
@@ -27,7 +27,6 @@ import org.json.JSONObject;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public class MailCommand extends Command implements Noformat {
     public MailCommand() {
@@ -141,27 +140,15 @@ public class MailCommand extends Command implements Noformat {
             }
             if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
 
-            CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending to...");
-            IMessageBuilder msg = null;
+            CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Sending to...");
             StringBuilder response = new StringBuilder();
             long start = System.currentTimeMillis();
             for (DBNation nation : nations) {
                 if (System.currentTimeMillis() - start > 10000) {
-                    try {
-                        msg = msgFuture.get();
-                        if (msg != null && msg.getId() > 0) {
-                            msg.clear().append("Sending to " + nation.getNation()).sendIfFree();
-                        }
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
-                    }
+                    channel.updateOptionally(msgFuture, "Sending to " + nation.getNation());
                     start = System.currentTimeMillis();
                 }
                 response.append(nation.sendMail(key, subject, message, nations.size() == 1)).append("\n");
-            }
-
-            if (msg != null && msg.getId() > 0) {
-                channel.delete(msg.getId());
             }
             return response.toString();
         } catch (Throwable e) {

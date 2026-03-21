@@ -92,8 +92,8 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         else if (isGuild()) {
             GuildDB db = asGuild();
             AllianceList aaList = db.getAllianceList();
-            if (aaList != null && !aaList.isEmpty()) {
-                nations.addAll(aaList.getNations(true, 0, true));
+            if (aaList != null && !aaList.isEmpty(Locutus.imp().getNationDB())) {
+                nations.addAll(aaList.getNations(Locutus.imp().getNationDB(), true, 0, true));
             } else {
                 Set<Member> membersWithRole = Roles.MEMBER.getAll(db);
                 for (Member member : membersWithRole) {

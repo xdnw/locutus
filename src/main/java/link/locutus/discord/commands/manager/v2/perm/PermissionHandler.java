@@ -15,9 +15,8 @@ public class PermissionHandler extends SimpleValueStore {
         Key<Object> key = Key.of(boolean.class, annotation);
         Parser parser = get(key);
         if (parser != null) {
-            LocalValueStore locals = new LocalValueStore<>(store);
+            LocalValueStore locals = new LocalValueStore(store);
             locals.addProvider(Key.of(annotation.annotationType()), annotation);
-
             boolean hasPerm = (Boolean) parser.apply(locals, null);
             if (!hasPerm) {
                 User userOrNull = (User) store.getProvided(Key.of(User.class, Me.class), false);

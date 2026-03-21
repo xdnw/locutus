@@ -30,7 +30,7 @@ public class FunctionConsumerParser<R> implements Parser<R> {
     }
 
     @Override
-    public Key getKey() {
+    public Key<R> getKey() {
         return key;
     }
 
@@ -46,7 +46,7 @@ public class FunctionConsumerParser<R> implements Parser<R> {
 
     @Override
     public Class<?>[] getWebType() {
-        return new Class[0];
+        return new Class<?>[0];
     }
 
     @Override

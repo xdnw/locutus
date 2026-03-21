@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 
 public class BindingHelper {
 
-    private final Queue<Consumer<ValueStore<?>>> tasks;
+    private final Queue<Consumer<ValueStore>> tasks;
 
     public BindingHelper() {
         this.tasks = new ArrayDeque<>();
@@ -44,11 +44,11 @@ public class BindingHelper {
         throw new IllegalArgumentException("Invalid category: `" + input + "`. Options: " + StringMan.getString(constants));
     }
 
-    public void addBinding(Consumer<ValueStore<?>> task) {
+    public void addBinding(Consumer<ValueStore> task) {
         this.tasks.add(task);
     }
 
-    public void register(ValueStore<Object> store) {
+    public void register(ValueStore store) {
         Class<? extends BindingHelper> thisClass = getClass();
         Method[] methods = thisClass.getMethods();
         for (Method method : methods) {
@@ -60,7 +60,7 @@ public class BindingHelper {
         }
     }
 
-    private boolean register(Method method, ValueStore<Object> store) {
+    private boolean register(Method method, ValueStore store) {
         Binding binding = method.getAnnotation(Binding.class);
         if (binding == null) {
             return false;

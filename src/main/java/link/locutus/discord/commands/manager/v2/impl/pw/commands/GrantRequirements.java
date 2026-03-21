@@ -105,7 +105,7 @@ public class GrantRequirements {
 
     @Command
     public Grant.Requirement mmr_correct() {
-        return new Grant.Requirement("Requires the correct MMR (see " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.REQUIRED_MMR.name(), false,
+        return new Grant.Requirement("Requires the correct MMR (see " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.REQUIRED_MMR.name() + "`", false,
                 f -> f.correctAllianceMMR(f.getGuildDB())
         );
     }

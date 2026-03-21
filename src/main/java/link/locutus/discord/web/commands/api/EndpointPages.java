@@ -14,7 +14,9 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -262,16 +264,46 @@ public class EndpointPages extends PageHelper {
 
     @Command(desc = "Retrieve the current web session information", viewable = true)
     @ReturnType(value = WebSession.class, cache = CacheType.LocalStorage)
-    public Object session(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
+    public Object session(WebStore ws, Context context, NationDB nationDb, @Me @Default GuildDB db, @Me @Default DBAuthRecord auth) throws IOException {
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
         if (auth != null) {
             WebSession data = auth.toMap();
             if (guild != null) {
                 data.setGuild(guild);
+                if (db != null) {
+                    populateSessionGuildContext(data, db, nationDb);
+                }
             }
             return data;
         } else {
             return error("No session record found");
+        }
+    }
+
+    private static void populateSessionGuildContext(WebSession data, GuildDB db, NationDB nationDb) {
+        Set<Integer> allianceIds = db.getAllianceIds();
+        data.guild_alliances = new ObjectArrayList<>(allianceIds);
+        data.guild_alliances_names = new ObjectArrayList<>(allianceIds.size());
+        for (Integer allianceId : data.guild_alliances) {
+            data.guild_alliances_names.add(nationDb.getAllianceName(allianceId));
+        }
+
+        GuildDB delegateServer = db.getDelegateServer();
+        if (delegateServer != null) {
+            data.delegates_to = delegateServer.getIdLong();
+            data.delegate_server_name = delegateServer.getGuild().getName();
+        }
+
+        GuildDB faServer = GuildKey.FA_SERVER.getOrNull(db);
+        if (faServer != null) {
+            data.fa_server = faServer.getIdLong();
+            data.fa_server_name = faServer.getGuild().getName();
+        }
+
+        Guild maServer = GuildKey.WAR_SERVER.getOrNull(db);
+        if (maServer != null) {
+            data.ma_server = maServer.getIdLong();
+            data.ma_server_name = maServer.getName();
         }
     }
 

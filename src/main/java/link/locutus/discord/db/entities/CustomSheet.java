@@ -212,7 +212,7 @@ public class CustomSheet {
         rows.add(new ArrayList<>(header));
 
         PlaceholderCache<?> cache = new PlaceholderCache<>(selection);
-        LocalValueStore tabStore = new LocalValueStore<>(store);
+        LocalValueStore tabStore = new LocalValueStore(store);
         tabStore.addProvider(Key.nested(PlaceholderCache.class, ph.getType()), cache);
 
         List<Function<Object, String>> functions = new ArrayList<>();

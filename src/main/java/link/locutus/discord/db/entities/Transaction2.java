@@ -1,10 +1,10 @@
 package link.locutus.discord.db.entities;
 
 import com.google.common.hash.Hashing;
-import com.google.gson.JsonElement;
 import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
@@ -13,9 +13,9 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import com.google.gson.JsonObject;
-import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
@@ -26,32 +26,36 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.text.ParseException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import link.locutus.discord.util.scheduler.KeyValue;
-
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
-import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
-import static link.locutus.discord.apiv1.enums.ResourceType.COAL;
-import static link.locutus.discord.apiv1.enums.ResourceType.FOOD;
-
-import static link.locutus.discord.apiv1.enums.ResourceType.GASOLINE;
-import static link.locutus.discord.apiv1.enums.ResourceType.IRON;
-import static link.locutus.discord.apiv1.enums.ResourceType.LEAD;
-import static link.locutus.discord.apiv1.enums.ResourceType.MONEY;
-import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
-import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
-import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
-import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
+import static link.locutus.discord.apiv1.enums.ResourceType.*;
 import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
 
 public class Transaction2 {
+    private static final int NOTE_BUFFER_SIZE = 512;
+    private static final int NOTE_DB_FORMAT_MAGIC = 0x54;
+    private static final int NOTE_DB_FORMAT_VERSION = 1;
+
+    private static boolean hasLegacyRootAccountTag(DepositType type) {
+        return switch (type) {
+            case DEPOSIT, TAX, LOAN, GRANT, IGNORE, TRADE -> true;
+            default -> false;
+        };
+    }
+
+    private static final ThreadLocal<BitBuffer> NOTE_BUFFER = ThreadLocal
+            .withInitial(() -> new BitBuffer(NOTE_BUFFER_SIZE));
+    private static final Pattern LOOT_CAPTURE = Pattern
+            .compile("^(.+?) defeated (.+?)'s nation and captured(?:\\.|\\b).*$");
+    private static final Pattern ALLIANCE_BANK_LOOT = Pattern.compile("of the alliance bank inventory\\.");
+
     public int original_id;
 
     public int tx_id;
@@ -62,12 +66,11 @@ public class Transaction2 {
     public int receiver_type;
     public int banker_nation;
     public double[] resources;
-    public String note;
 
-    private Map<DepositType, Object> parsed;
-    private boolean validHash;
+    private final NoteState noteData;
 
-    public Transaction2(int tx_id, long tx_datetime, long sender_id, int sender_type, long receiver_id, int receiver_type, int banker_nation, String note, double[] resources) {
+    private Transaction2(int tx_id, long tx_datetime, long sender_id, int sender_type, long receiver_id,
+            int receiver_type, int banker_nation, String note, double[] resources) {
         this.tx_id = tx_id;
         this.tx_datetime = tx_datetime;
         this.sender_id = sender_id;
@@ -75,109 +78,182 @@ public class Transaction2 {
         this.receiver_id = receiver_id;
         this.receiver_type = receiver_type;
         this.banker_nation = banker_nation;
-        this.note = note;
         this.resources = resources;
+        this.noteData = NoteState.fromRaw(note, tx_datetime, tx_id, receiver_type);
     }
 
-    private static final Pattern MD5_HASH = Pattern.compile("#([a-fA-F0-9]{32})");
-
-    public Map<DepositType, Object> getNoteMap() {
-        if (parsed == null) {
-            if (note != null && !note.isEmpty()) {
-                parsed = parseTransferHashNotes(note, tx_datetime);
-                if (parsed.containsKey(DepositType.CASH) && receiver_type != 1) {
-                    Matcher matcher = MD5_HASH.matcher(note);
-                    if (matcher.find()) {
-                        String md5Hash = matcher.group(1);
-                        String expected = Hashing.md5()
-                                .hashString(Settings.INSTANCE.CONVERSION_SECRET + tx_id, StandardCharsets.UTF_8)
-                                .toString();
-                        validHash = md5Hash.equalsIgnoreCase(expected);
-                    }
-                }
-            } else {
-                parsed = Collections.emptyMap();
-            }
-        }
-        return parsed;
+    private Transaction2(int tx_id, long tx_datetime, long sender_id, int sender_type, long receiver_id,
+            int receiver_type, int banker_nation, Map<DepositType, Object> parsed, boolean validHash,
+            boolean isLootTransfer, double[] resources) {
+        this.tx_id = tx_id;
+        this.tx_datetime = tx_datetime;
+        this.sender_id = sender_id;
+        this.sender_type = sender_type;
+        this.receiver_id = receiver_id;
+        this.receiver_type = receiver_type;
+        this.banker_nation = banker_nation;
+        this.resources = resources;
+        this.noteData = NoteState.fromParsed(parsed, validHash, isLootTransfer);
     }
 
-    public static Map<DepositType, Object> parseTransferHashNotes(String note, long date) {
-        if (note == null || note.isEmpty()) return Collections.emptyMap();
-        Map<DepositType, Object> result = new LinkedHashMap<>();
-
-        int i = 0;
-        final int length = note.length();
-
-        while (i < length) {
-            // Find next hashtag
-            while (i < length && note.charAt(i) != '#') i++;
-            if (i >= length) break;
-
-            int hashtagStart = i++;
-
-            // Find the end of this hashtag segment (next hashtag or end of string)
-            while (i < length && note.charAt(i) != '#') i++;
-
-            // Process the segment directly
-            processHashtagSegment(note, hashtagStart, i, result, date);
-        }
-
-        return result.isEmpty() ? Collections.emptyMap() : result;
+    private Transaction2(BankRecord transfer) {
+        tx_id = transfer.getTxId();
+        tx_datetime = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, transfer.getTxDatetime());
+        sender_id = transfer.getSenderId();
+        sender_type = transfer.getSenderType();
+        receiver_id = transfer.getReceiverId();
+        receiver_type = transfer.getReceiverType();
+        banker_nation = transfer.getBankerNationId();
+        noteData = NoteState.fromRaw(transfer.getNote(), tx_datetime, tx_id, receiver_type);
+        resources = new double[ResourceType.values.length];
+        resources = transfer.toMap();
     }
 
-    private static void processHashtagSegment(String note, int start, int end, Map<DepositType, Object> result, long date) {
-        // Skip empty segments
-        if (end <= start + 1) return;
-
-        // Find separator (= or space)
-        int separatorIdx = -1;
-        for (int i = start + 1; i < end; i++) {
-            char c = note.charAt(i);
-            if (c == '=' || c == ' ') {
-                separatorIdx = i;
-                break;
-            }
-        }
-
-        // Extract tag and value
-        String tag;
-        String value = null;
-
-        if (separatorIdx != -1) {
-            tag = note.substring(start, separatorIdx).toLowerCase();
-
-            // Extract value if present
-            if (separatorIdx < end - 1) {
-                String remainder = note.substring(separatorIdx + 1, end).trim();
-                if (!remainder.isEmpty()) {
-                    int spaceIdx = remainder.indexOf(' ');
-                    value = (spaceIdx != -1) ? remainder.substring(0, spaceIdx).trim() : remainder;
-                }
-            }
-        } else {
-            tag = note.substring(start, end).toLowerCase();
-        }
-
-        // Parse and resolve
-        DepositType type = DepositType.parse(tag);
-        if (type != null) {
-            Object resolved = type.resolve(value, date);
-            result.put(type, resolved);
-        }
+    private Transaction2(TaxDeposit tax) {
+        this.tx_id = tax.index;
+        this.tx_datetime = tax.date;
+        this.sender_id = tax.nationId;
+        this.sender_type = 1;
+        this.receiver_id = tax.allianceId;
+        this.receiver_type = 2;
+        this.banker_nation = tax.nationId;
+        this.noteData = NoteState.fromParsed(DepositType.TAX.toParsedNote(), false, false);
+        this.resources = tax.resources;
     }
 
-    public boolean isValidHash() {
-        getNoteMap();
-        return validHash;
+    private Transaction2(DBTrade offer) {
+        tx_id = offer.getTradeId();
+        tx_datetime = offer.getDate();
+        sender_id = offer.getSeller();
+        receiver_id = offer.getBuyer();
+        receiver_type = 1;
+        sender_type = 1;
+        banker_nation = 0;
+        noteData = NoteState.fromRaw(null, tx_datetime, tx_id, receiver_type);
+        resources = new double[ResourceType.values.length];
+        int ordinal = offer.getResource().ordinal();
+        resources[ordinal] += offer.getQuantity();
+        resources[0] -= offer.getTotal();
     }
 
-    public void setValidHash(boolean validHash) {
-        this.validHash = validHash;
+    private Transaction2(Transfer transfer) {
+        tx_id = 0;
+        tx_datetime = transfer.getDate();
+        sender_id = transfer.getSender();
+        sender_type = transfer.isSenderAA() ? 2 : 1;
+        receiver_id = transfer.getReceiver();
+        receiver_type = transfer.isReceiverAA() ? 2 : 1;
+        banker_nation = transfer.getBanker();
+        noteData = NoteState.fromRaw(transfer.getNote(), tx_datetime, tx_id, receiver_type);
+        resources = new double[ResourceType.values.length];
+
+        resources[transfer.getRss().ordinal()] = transfer.getAmount();
+    }
+
+    private Transaction2(Transaction2 other) {
+        this.original_id = other.original_id;
+        this.tx_id = other.tx_id;
+        this.tx_datetime = other.tx_datetime;
+        this.sender_id = other.sender_id;
+        this.sender_type = other.sender_type;
+        this.receiver_id = other.receiver_id;
+        this.receiver_type = other.receiver_type;
+        this.banker_nation = other.banker_nation;
+        this.resources = other.resources;
+        this.noteData = other.noteData;
+    }
+
+    public static Transaction2 constructLegacy(int tx_id, long tx_datetime, long sender_id, int sender_type,
+            long receiver_id, int receiver_type, int banker_nation, String note, double[] resources) {
+        return new Transaction2(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type,
+                banker_nation, note, resources);
+    }
+
+    public static Transaction2 construct(int tx_id, long tx_datetime, long sender_id, int sender_type,
+            long receiver_id, int receiver_type, int banker_nation, Map<DepositType, Object> parsed,
+            boolean validHash, boolean isLootTransfer, double[] resources) {
+        return new Transaction2(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type,
+                banker_nation, parsed, validHash, isLootTransfer, resources);
+    }
+
+    public static Transaction2 construct(int tx_id, long tx_datetime, long sender_id, int sender_type,
+            long receiver_id, int receiver_type, int banker_nation, TransactionNote note,
+            boolean validHash, boolean isLootTransfer, double[] resources) {
+        return new Transaction2(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type,
+                banker_nation, note == null ? Collections.emptyMap() : note.asMap(), validHash, isLootTransfer,
+                resources);
+    }
+
+    public static Transaction2 fromBankRecord(BankRecord transfer) {
+        return new Transaction2(transfer);
+    }
+
+    public static Transaction2 fromTaxDeposit(TaxDeposit tax) {
+        return new Transaction2(tax);
+    }
+
+    public static Transaction2 fromTrade(DBTrade offer) {
+        return new Transaction2(offer);
+    }
+
+    public static Transaction2 fromTransfer(Transfer transfer) {
+        return new Transaction2(transfer);
+    }
+
+    public static Transaction2 loadLegacy(ResultSet rs) throws SQLException {
+        int tx_id = rs.getInt("tx_id");
+        long tx_datetime = rs.getLong("tx_datetime");
+        long sender_id = rs.getLong("sender_id");
+        int sender_type = rs.getInt("sender_type");
+        long receiver_id = rs.getLong("receiver_id");
+        int receiver_type = rs.getInt("receiver_type");
+        int banker_nation = rs.getInt("banker_nation_id");
+        String note = rs.getString("note");
+        double[] resources = new double[ResourceType.values.length];
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.CREDITS)
+                continue;
+            resources[type.ordinal()] = ArrayUtil.fromCents(rs.getLong(type.name()));
+        }
+        Transaction2 tx = new Transaction2(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type,
+                banker_nation, note, resources);
+        tx.original_id = tx_id;
+        return tx;
+    }
+
+    public static Transaction2 load(ResultSet rs) throws SQLException {
+        return load(rs, noteBuffer());
+    }
+
+    public static Transaction2 load(ResultSet rs, BitBuffer buffer) throws SQLException {
+        int tx_id = rs.getInt("tx_id");
+        long tx_datetime = rs.getLong("tx_datetime");
+        long sender_key = rs.getLong("sender_key");
+        long receiver_key = rs.getLong("receiver_key");
+        int banker_nation = rs.getInt("banker_nation_id");
+        byte[] data = rs.getBytes("note");
+        return fromPayload(tx_id, tx_datetime,
+                TransactionEndpointKey.idFromKey(sender_key), TransactionEndpointKey.typeFromKey(sender_key),
+                TransactionEndpointKey.idFromKey(receiver_key), TransactionEndpointKey.typeFromKey(receiver_key),
+                banker_nation, data, buffer);
+    }
+
+    public static Transaction2 loadSplit(ResultSet rs, BitBuffer buffer) throws SQLException {
+        int tx_id = rs.getInt("tx_id");
+        long tx_datetime = rs.getLong("tx_datetime");
+        long sender_id = rs.getLong("sender_id");
+        int sender_type = rs.getInt("sender_type");
+        long receiver_id = rs.getLong("receiver_id");
+        int receiver_type = rs.getInt("receiver_type");
+        int banker_nation = rs.getInt("banker_nation_id");
+        byte[] data = rs.getBytes("note");
+        return fromPayload(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation,
+                data, buffer);
     }
 
     public static Transaction2 fromApiV3(Bankrec rec) {
-        Transaction2 tx = new Transaction2(
+        double[] resources = ResourceType.fromApiV3(rec, getBuffer());
+        return constructLegacy(
                 rec.getId(),
                 rec.getDate().toEpochMilli(),
                 rec.getSender_id(),
@@ -186,46 +262,139 @@ public class Transaction2 {
                 rec.getReceiver_type(),
                 rec.getBanker_id(),
                 rec.getNote(),
-                ResourceType.getBuffer()
-        );
-        tx.resources = ResourceType.fromApiV3(rec, tx.resources);
-        return tx;
+                resources);
+    }
+
+    private static final Pattern MD5_HASH = Pattern.compile("#([a-fA-F0-9]{32})");
+
+    public static boolean isValidHash(String note, int tx_id) {
+        if (note == null || note.isEmpty()) {
+            return false;
+        }
+        Matcher matcher = MD5_HASH.matcher(note);
+        if (matcher.find()) {
+            String md5Hash = matcher.group(1);
+            String expected = Hashing.md5()
+                    .hashString(Settings.INSTANCE.CONVERSION_SECRET + tx_id, StandardCharsets.UTF_8)
+                    .toString();
+            return md5Hash.equalsIgnoreCase(expected);
+        }
+        return false;
+    }
+
+    public static boolean isLootTransfer(String note) {
+        return note != null && (LOOT_CAPTURE.matcher(note).matches() || isAllianceBankLoot(note));
+    }
+
+    public boolean isLootTransfer() {
+        return noteData.isLootTransfer();
+    }
+
+    public static BitBuffer reusableNoteBuffer() {
+        return noteBuffer();
+    }
+
+    public static TransactionNote noteOf(DepositType type) {
+        return TransactionNote.of(type);
+    }
+
+    public static TransactionNote noteOf(Map<DepositType, Object> parsed) {
+        return TransactionNote.of(parsed);
+    }
+
+    public static TransactionNote.Builder noteBuilder() {
+        return TransactionNote.builder();
+    }
+
+    public static TransactionNote.Builder noteBuilder(Map<DepositType, Object> parsed) {
+        return TransactionNote.builder(parsed);
+    }
+
+    public Map<DepositType, Object> getNoteMap() {
+        return noteData.getParsed();
+    }
+
+    public TransactionNote getStructuredNote() {
+        return noteData.getNote();
+    }
+
+    public TransactionNote.Builder editNote() {
+        return getStructuredNote().toBuilder();
+    }
+
+    public Transaction2 withStructuredNote(TransactionNote note, boolean validHash) {
+        Transaction2 copy = construct(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type,
+                banker_nation, note, validHash, isLootTransfer(), resources);
+        copy.original_id = original_id;
+        return copy;
+    }
+
+    public NoteState note() {
+        return noteData;
+    }
+
+    public boolean hasNoteData() {
+        return noteData.hasData();
+    }
+
+    public boolean hasNoteTag(DepositType type) {
+        return noteData.hasTag(type);
+    }
+
+    public Object getNoteValue(DepositType type) {
+        return noteData.get(type);
+    }
+
+    public long getTaggedAccountId() {
+        return getTaggedAccountId(getNoteMap());
+    }
+
+    public String getLegacyNote() {
+        return noteData.toLegacyString();
+    }
+
+    public byte[] getNoteBytes() {
+        return PayloadState.toBytes(noteData, resources, noteBuffer());
+    }
+
+    public static int noteDbFormatMagic() {
+        return NOTE_DB_FORMAT_MAGIC;
+    }
+
+    public static int noteDbFormatVersion() {
+        return NOTE_DB_FORMAT_VERSION;
+    }
+
+    public String getNoteSummary() {
+        return noteData.toSummaryString();
     }
 
     @Deprecated
-    public static Transaction2 fromAPiv3(JsonObject json) throws ParseException {
-        int id = Integer.parseInt(json.get("id").getAsString());
-        long date = Instant.parse(json.get("date").getAsString()).toEpochMilli();
-        int sid = json.get("sid").getAsInt();
-        int stype = json.get("stype").getAsInt();
-        int rid = json.get("rid").getAsInt();
-        int rtype = json.get("rtype").getAsInt();
-        int pid = json.get("pid").getAsInt();
-        JsonElement noteObj = json.get("note");
-        String note = noteObj.isJsonNull() ? "" : noteObj.getAsString();
-        Transaction2 tx = new Transaction2(id, date, sid, stype, rid, rtype, pid, note, ResourceType.getBuffer());
+    public static Map<DepositType, Object> parseTransferHashNotes(String note, long date) {
+        return TransactionNote.parseLegacy(note, date).asMap();
+    }
 
-        tx.resources[ResourceType.MONEY.ordinal()] = json.get("money").getAsDouble();
-        tx.resources[ResourceType.COAL.ordinal()] = json.get("coal").getAsDouble();
-        tx.resources[ResourceType.OIL.ordinal()] = json.get("oil").getAsDouble();
-        tx.resources[ResourceType.URANIUM.ordinal()] = json.get("uranium").getAsDouble();
-        tx.resources[ResourceType.IRON.ordinal()] = json.get("iron").getAsDouble();
-        tx.resources[ResourceType.BAUXITE.ordinal()] = json.get("bauxite").getAsDouble();
-        tx.resources[ResourceType.LEAD.ordinal()] = json.get("lead").getAsDouble();
-        tx.resources[ResourceType.GASOLINE.ordinal()] = json.get("gasoline").getAsDouble();
-        tx.resources[ResourceType.MUNITIONS.ordinal()] = json.get("munitions").getAsDouble();
-        tx.resources[ResourceType.STEEL.ordinal()] = json.get("steel").getAsDouble();
-        tx.resources[ResourceType.ALUMINUM.ordinal()] = json.get("aluminum").getAsDouble();
-        tx.resources[ResourceType.FOOD.ordinal()] = json.get("food").getAsDouble();
+    public static Map<DepositType, Object> parseTransferHashNotes(DepositType note, long date) {
+        if (note == null) {
+            return Collections.emptyMap();
+        }
+        return note.toParsedNote();
+    }
 
-        return tx;
+    public boolean isValidHash() {
+        return noteData.isValidHash();
+    }
+
+    public void setValidHash(boolean validHash) {
+        this.noteData.setValidHash(validHash);
     }
 
     public boolean isSelfWithdrawal(int nationId) {
-        if (this.isSenderAA() && this.note != null) {
+        if (this.isSenderAA()) {
             Map<DepositType, Object> noteMap = getNoteMap();
             if (noteMap.containsKey(DepositType.DEPOSIT)) {
                 Object banker = noteMap.get(DepositType.BANKER);
+                if (banker == null) banker = noteMap.get(DepositType.RECEIVER_ID);
                 if (banker instanceof Number n) {
                     return n.intValue() == nationId;
                 }
@@ -235,32 +404,13 @@ public class Transaction2 {
     }
 
     public long getAccountId(Set<Integer> offshoreAlliances, boolean ignoreIgnore) {
-        if (this.note != null) {
-            Map<DepositType, Object> notes2 = getNoteMap();
-
-            if (!notes2.isEmpty()) {
-                if (ignoreIgnore && notes2.containsKey(DepositType.IGNORE)) return 0;
-
-                Object aaAccount = (Object) notes2.get(DepositType.ALLIANCE);
-                Object guildAccount = (Object) notes2.get(DepositType.GUILD);
-                if (aaAccount != null && guildAccount != null) {
-                    // invalid, cannot use both
-                    return 0;
-                }
-                if (aaAccount != null && aaAccount instanceof Number n) {
-                    return n.longValue();
-                }
-                if (guildAccount != null && guildAccount instanceof Number n) {
-                    return n.longValue();
-                }
-                for (Map.Entry<DepositType, Object> entry : notes2.entrySet()) {
-                    DepositType type = entry.getKey();
-                    Object value = entry.getValue();
-                    if (value == null || type.getParent() != null || type.isReserved()) continue;
-                    if (value instanceof Number n) {
-                        return n.longValue();
-                    }
-                }
+        Map<DepositType, Object> notes2 = getNoteMap();
+        if (!notes2.isEmpty()) {
+            if (ignoreIgnore && notes2.containsKey(DepositType.IGNORE))
+                return 0;
+            long taggedAccountId = getTaggedAccountId(notes2);
+            if (taggedAccountId != 0) {
+                return taggedAccountId;
             }
         }
         if (!isReceiverAA()) {
@@ -278,56 +428,73 @@ public class Transaction2 {
         return 0;
     }
 
+    private static long getTaggedAccountId(Map<DepositType, Object> notes) {
+        Object allianceAccount = notes.get(DepositType.ALLIANCE);
+        Object guildAccount = notes.get(DepositType.GUILD);
+        if (allianceAccount != null && guildAccount != null) {
+            return 0;
+        }
+        if (allianceAccount instanceof Number n) {
+            return n.longValue();
+        }
+        if (guildAccount instanceof Number n) {
+            return n.longValue();
+        }
+        for (Map.Entry<DepositType, Object> entry : notes.entrySet()) {
+            DepositType type = entry.getKey();
+            Object value = entry.getValue();
+            // Preserve historical root-level account ownership markers, but keep the
+            // supported tag set explicit instead of inferring it from generic note shape.
+            if (hasLegacyRootAccountTag(type) && value instanceof Number n) {
+                return n.longValue();
+            }
+        }
+        return 0;
+    }
+
     public boolean isTrackedForGuild(GuildDB db, Set<Integer> aaIds, Set<Integer> offshoreAAs) {
-        if (aaIds.contains((int) sender_id) || aaIds.contains((int) receiver_id)) return true;
+        if (aaIds.contains((int) sender_id) || aaIds.contains((int) receiver_id))
+            return true;
         long accountId = getAccountId(offshoreAAs, false);
         return (accountId == 0 || accountId == db.getIdLong() || aaIds.contains((int) accountId));
     }
 
     public static Transaction2 fromTX2Table(Transactions_2Record record) {
-        Transaction2 tx = new Transaction2(
-                record.getTxId(),
-                record.getTxDatetime(),
-                record.getSenderId(),
-                record.getSenderType(),
-                record.getReceiverId(),
-                record.getReceiverType(),
-                record.getBankerNationId(),
-                record.getNote(),
-                ResourceType.getBuffer()
-        );
-        tx.original_id = record.getTxId();
-        tx.resources[ResourceType.MONEY.ordinal()] = ArrayUtil.fromCents(record.getMoney());
-        tx.resources[ResourceType.FOOD.ordinal()] = ArrayUtil.fromCents(record.getFood());
-        tx.resources[ResourceType.COAL.ordinal()] = ArrayUtil.fromCents(record.getCoal());
-        tx.resources[ResourceType.OIL.ordinal()] = ArrayUtil.fromCents(record.getOil());
-        tx.resources[ResourceType.URANIUM.ordinal()] = ArrayUtil.fromCents(record.getUranium());
-        tx.resources[ResourceType.LEAD.ordinal()] = ArrayUtil.fromCents(record.getLead());
-        tx.resources[ResourceType.IRON.ordinal()] = ArrayUtil.fromCents(record.getIron());
-        tx.resources[ResourceType.BAUXITE.ordinal()] = ArrayUtil.fromCents(record.getBauxite());
-        tx.resources[ResourceType.GASOLINE.ordinal()] = ArrayUtil.fromCents(record.getGasoline());
-        tx.resources[ResourceType.MUNITIONS.ordinal()] = ArrayUtil.fromCents(record.getMunitions());
-        tx.resources[ResourceType.STEEL.ordinal()] = ArrayUtil.fromCents(record.getSteel());
-        tx.resources[ResourceType.ALUMINUM.ordinal()] = ArrayUtil.fromCents(record.getAluminum());
-        return tx;
+        return fromTX2Table(record, noteBuffer());
     }
 
-    public Transaction2(ResultSet rs) throws SQLException {
-        tx_id = rs.getInt("tx_id");
-        original_id = tx_id;
+    public static Transaction2 fromTX2Table(Transactions_2Record record, BitBuffer buffer) {
+        long senderKey = record.getSenderKey();
+        long receiverKey = record.getReceiverKey();
+        return fromPayload(
+                record.getTxId(),
+                record.getTxDatetime(),
+                TransactionEndpointKey.idFromKey(senderKey),
+                TransactionEndpointKey.typeFromKey(senderKey),
+                TransactionEndpointKey.idFromKey(receiverKey),
+                TransactionEndpointKey.typeFromKey(receiverKey),
+                record.getBankerNationId(),
+                record.getNote(),
+                buffer);
+    }
 
-        tx_datetime = rs.getLong("tx_datetime");
-        sender_id = rs.getLong("sender_id");
-        sender_type = rs.getInt("sender_type");
-        receiver_id = rs.getLong("receiver_id");
-        receiver_type = rs.getInt("receiver_type");
-        banker_nation = rs.getInt("banker_nation_id");
-        note = rs.getString("note");
-        resources = new double[ResourceType.values.length];
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) continue;
-            resources[type.ordinal()] = ArrayUtil.fromCents(rs.getLong(type.name()));
-        }
+    private static Transaction2 fromPayload(int tx_id, long tx_datetime, long sender_id, int sender_type,
+            long receiver_id, int receiver_type, int banker_nation, byte[] data, BitBuffer buffer) {
+        PayloadState payload = PayloadState.fromBytes(data, buffer);
+        Transaction2 tx = construct(
+                tx_id,
+                tx_datetime,
+                sender_id,
+                sender_type,
+                receiver_id,
+                receiver_type,
+                banker_nation,
+                payload.noteState().getParsed(),
+                payload.noteState().isValidHash(),
+                payload.noteState().isLootTransfer(),
+                payload.resources());
+        tx.original_id = tx_id;
+        return tx;
     }
 
     private static Map.Entry<Long, Integer> idIsAlliance(Element td) {
@@ -368,7 +535,8 @@ public class Transaction2 {
         Map.Entry<Long, Integer> receiver = idIsAlliance(columns.get(3));
         Map.Entry<Long, Integer> banker = idIsAlliance(columns.get(4));
 
-        ResourceType[] resources = {MONEY, FOOD, COAL, OIL, URANIUM, LEAD, IRON, BAUXITE, GASOLINE, MUNITIONS, STEEL, ALUMINUM};
+        ResourceType[] resources = { MONEY, FOOD, COAL, OIL, URANIUM, LEAD, IRON, BAUXITE, GASOLINE, MUNITIONS, STEEL,
+                ALUMINUM };
 
         double[] amounts = ResourceType.getBuffer();
 
@@ -379,76 +547,8 @@ public class Transaction2 {
                 amounts[resource.ordinal()] = DOUBLE_ADD.applyAsDouble(amounts[resource.ordinal()], amt);
             }
         }
-        return new Transaction2(-1, date, sender.getKey(), sender.getValue(), receiver.getKey(), receiver.getValue(), banker.getKey().intValue(), note, amounts);
-    }
-
-    public Transaction2(BankRecord transfer) {
-        tx_id = transfer.getTxId();
-        tx_datetime = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, transfer.getTxDatetime());
-        sender_id = transfer.getSenderId();
-        sender_type = transfer.getSenderType();
-        receiver_id = transfer.getReceiverId();
-        receiver_type = transfer.getReceiverType();
-        banker_nation = transfer.getBankerNationId();
-        note = transfer.getNote();
-        resources = new double[ResourceType.values.length];
-
-        resources = transfer.toMap();
-    }
-
-    public Transaction2(TaxDeposit tax) {
-        this.tx_id = tax.index;
-        this.tx_datetime = tax.date;
-        this.sender_id = tax.nationId;
-        this.sender_type = 1;
-        this.receiver_id = tax.allianceId;
-        this.receiver_type = 2;
-        this.banker_nation = tax.nationId;
-        this.note = "#tax";
-        this.resources = tax.resources;
-    }
-
-    public Transaction2(DBTrade offer) {
-        tx_id = offer.getTradeId();
-        tx_datetime = offer.getDate();
-        sender_id = offer.getSeller();
-        receiver_id = offer.getBuyer();
-        receiver_type = 1;
-        sender_type = 1;
-        banker_nation = 0;
-        resources = new double[ResourceType.values.length];
-        int ordinal = offer.getResource().ordinal();
-        resources[ordinal] += offer.getQuantity();
-        resources[0] -= offer.getTotal();
-    }
-
-    public Transaction2(Transfer transfer) {
-        tx_id = 0;
-        tx_datetime = transfer.getDate();
-        sender_id = transfer.getSender();
-        sender_type = transfer.isSenderAA() ? 2 : 1;
-        receiver_id = transfer.getReceiver();
-        receiver_type = transfer.isReceiverAA() ? 2 : 1;
-        banker_nation = transfer.getBanker();
-        note = transfer.getNote();
-        resources = new double[ResourceType.values.length];
-
-        resources[transfer.getRss().ordinal()] = transfer.getAmount();
-    }
-
-    public boolean combine(Transfer other) {
-        Transaction2 tx = new Transaction2(other);
-        if (tx.tx_datetime != tx_datetime) return false;
-        if (tx.sender_id != sender_id) return false;
-        if (tx.sender_type != sender_type) return false;
-        if (tx.receiver_id != receiver_id) return false;
-        if (tx.receiver_type != receiver_type) return false;
-        if (tx.banker_nation != banker_nation) return false;
-        if (!Objects.equals(tx.note,note)) return false;
-        if (resources[other.getRss().ordinal()] != 0) return false;
-        int ordinal = other.getRss().ordinal();
-        resources[ordinal] = DOUBLE_ADD.applyAsDouble(resources[ordinal], other.getAmount());
-        return true;
+        return constructLegacy(-1, date, sender.getKey(), sender.getValue(), receiver.getKey(), receiver.getValue(),
+                banker.getKey().intValue(), note, amounts);
     }
 
     @Override
@@ -465,13 +565,10 @@ public class Transaction2 {
     }
 
     public String createInsert(String table, boolean id, boolean ignore) {
-        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR " + (ignore ? "IGNORE" : "REPLACE") + " " : "") + "INTO `" + table + "` (" + (id ? "tx_id, " : "") + "tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, note");
-        int fieldCount = id ? 8 : 7;
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) continue;
-            sql.append(", " + type.name());
-            fieldCount++;
-        }
+        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR " + (ignore ? "IGNORE" : "REPLACE") + " " : "")
+                + "INTO `" + table + "` (" + (id ? "tx_id, " : "")
+                + "tx_datetime, sender_key, receiver_key, banker_nation_id, note");
+        int fieldCount = id ? 6 : 5;
         sql.append(") VALUES(" + StringMan.repeat("?,", fieldCount - 1) + "?" + ")");
         return sql.toString();
     }
@@ -479,42 +576,27 @@ public class Transaction2 {
     public void set(PreparedStatement stmt) throws SQLException {
         stmt.setInt(1, tx_id);
         stmt.setLong(2, tx_datetime);
-        stmt.setLong(3, sender_id);
-        stmt.setInt(4, sender_type);
-        stmt.setLong(5, receiver_id);
-        stmt.setInt(6, receiver_type);
-        stmt.setInt(7, banker_nation);
-        if (note == null) {
-            stmt.setNull(8, Types.VARCHAR);
-        }
-        else {
-            stmt.setString(8, note);
-        }
-        int i = 9;
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) continue;
-            stmt.setLong(i, ArrayUtil.toCents(resources[type.ordinal()]));
-            i++;
+        stmt.setLong(3, getSenderKey());
+        stmt.setLong(4, getReceiverKey());
+        stmt.setInt(5, banker_nation);
+        byte[] noteBytes = getNoteBytes();
+        if (noteBytes == null) {
+            stmt.setNull(6, Types.BLOB);
+        } else {
+            stmt.setBytes(6, noteBytes);
         }
     }
 
     public void setNoID(PreparedStatement stmt) throws SQLException {
         stmt.setLong(1, tx_datetime);
-        stmt.setLong(2, sender_id);
-        stmt.setInt(3, sender_type);
-        stmt.setLong(4, receiver_id);
-        stmt.setInt(5, receiver_type);
-        stmt.setInt(6, banker_nation);
-        if (note == null) {
-            stmt.setNull(7, Types.VARCHAR);
+        stmt.setLong(2, getSenderKey());
+        stmt.setLong(3, getReceiverKey());
+        stmt.setInt(4, banker_nation);
+        byte[] noteBytes = getNoteBytes();
+        if (noteBytes == null) {
+            stmt.setNull(5, Types.BLOB);
         } else {
-            stmt.setString(7, note);
-        }
-        int i = 8;
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) continue;
-            stmt.setLong(i, ArrayUtil.toCents(resources[type.ordinal()]));
-            i++;
+            stmt.setBytes(5, noteBytes);
         }
     }
 
@@ -530,13 +612,21 @@ public class Transaction2 {
         return sender_id;
     }
 
+    public long getSenderKey() {
+        return TransactionEndpointKey.encode(sender_id, sender_type);
+    }
+
+    public long getReceiverKey() {
+        return TransactionEndpointKey.encode(receiver_id, receiver_type);
+    }
+
     public double convertedTotal() {
         return ResourceType.convertedTotal(resources);
     }
 
     public String toSimpleString() {
         return ZonedDateTime.ofInstant(Instant.ofEpochMilli(tx_datetime), ZoneOffset.UTC).toLocalDate() +
-                " | " + note +
+                " | " + getNoteSummary() +
                 " | sender: " + PW.getName(sender_id, sender_type == 2) +
                 " | receiver: " + PW.getName(receiver_id, receiver_type == 2) +
                 " | banker: " + PW.getName(banker_nation, false) +
@@ -583,28 +673,190 @@ public class Transaction2 {
     public void set(Transactions_2Record record) {
         record.setTxId(tx_id);
         record.setTxDatetime(tx_datetime);
-        record.setSenderId(sender_id);
-        record.setSenderType(sender_type);
-        record.setReceiverId(receiver_id);
-        record.setReceiverType(receiver_type);
+        record.setSenderKey(getSenderKey());
+        record.setReceiverKey(getReceiverKey());
         record.setBankerNationId(banker_nation);
-        record.setNote(note);
-        record.setMoney(ArrayUtil.toCents(resources[ResourceType.MONEY.ordinal()]));
-        record.setFood(ArrayUtil.toCents(resources[ResourceType.FOOD.ordinal()]));
-        record.setCoal(ArrayUtil.toCents(resources[ResourceType.COAL.ordinal()]));
-        record.setOil(ArrayUtil.toCents(resources[ResourceType.OIL.ordinal()]));
-        record.setUranium(ArrayUtil.toCents(resources[ResourceType.URANIUM.ordinal()]));
-        record.setLead(ArrayUtil.toCents(resources[ResourceType.LEAD.ordinal()]));
-        record.setIron(ArrayUtil.toCents(resources[ResourceType.IRON.ordinal()]));
-        record.setBauxite(ArrayUtil.toCents(resources[ResourceType.BAUXITE.ordinal()]));
-        record.setGasoline(ArrayUtil.toCents(resources[ResourceType.GASOLINE.ordinal()]));
-        record.setMunitions(ArrayUtil.toCents(resources[ResourceType.MUNITIONS.ordinal()]));
-        record.setSteel(ArrayUtil.toCents(resources[ResourceType.STEEL.ordinal()]));
-        record.setAluminum(ArrayUtil.toCents(resources[ResourceType.ALUMINUM.ordinal()]));
+        record.setNote(getNoteBytes());
 
     }
 
     public boolean isInternal() {
         return tx_id == -1 && original_id != -1;
+    }
+
+    public static final class NoteState {
+        private final TransactionNote note;
+        private boolean validHash;
+        private final boolean lootTransfer;
+
+        private NoteState(TransactionNote note, boolean validHash, boolean lootTransfer) {
+            this.note = note == null ? TransactionNote.empty() : note;
+            this.validHash = validHash;
+            this.lootTransfer = lootTransfer;
+        }
+
+        private static NoteState fromRaw(String rawNote, long date, int txId, int receiverType) {
+            TransactionNote note = TransactionNote.parseLegacy(rawNote, date);
+            boolean validHash = rawNote != null && note.hasTag(DepositType.CASH) && receiverType != 1
+                    && Transaction2.isValidHash(rawNote, txId);
+            return new NoteState(note, validHash, Transaction2.isLootTransfer(rawNote));
+        }
+
+        private static NoteState fromParsed(Map<DepositType, Object> parsed, boolean validHash, boolean lootTransfer) {
+            return new NoteState(TransactionNote.of(parsed), validHash, lootTransfer);
+        }
+
+        public boolean hasData() {
+            return lootTransfer || !note.isEmpty();
+        }
+
+        public boolean hasTag(DepositType type) {
+            return note.hasTag(type);
+        }
+
+        public Object get(DepositType type) {
+            return note.get(type);
+        }
+
+        public Map<DepositType, Object> getParsed() {
+            return note.asMap();
+        }
+
+        public TransactionNote getNote() {
+            return note;
+        }
+
+        public boolean isValidHash() {
+            return validHash;
+        }
+
+        public void setValidHash(boolean validHash) {
+            this.validHash = validHash;
+        }
+
+        public boolean isLootTransfer() {
+            return lootTransfer;
+        }
+
+        public String toLegacyString() {
+            return note.toLegacyString();
+        }
+
+        public String toSummaryString() {
+            if (!note.isEmpty()) {
+                return note.toDisplayString();
+            }
+            if (lootTransfer) {
+                return "[loot-transfer]";
+            }
+            return null;
+        }
+    }
+
+    private static final class PayloadState {
+        private final NoteState noteState;
+        private final double[] resources;
+
+        private PayloadState(NoteState noteState, double[] resources) {
+            this.noteState = noteState;
+            this.resources = resources == null ? ResourceType.getBuffer() : resources;
+        }
+
+        private static PayloadState fromBytes(byte[] bytes, BitBuffer buffer) {
+            if (bytes == null || bytes.length == 0) {
+                return new PayloadState(NoteState.fromParsed(Collections.emptyMap(), false, false), ResourceType.getBuffer());
+            }
+            buffer.setBytes(bytes);
+            boolean validHash = buffer.readBit();
+            boolean lootTransfer = buffer.readBit();
+            double[] resources = readResources(buffer);
+            TransactionNote note = TransactionNote.of(DepositType.readMap(buffer));
+            return new PayloadState(new NoteState(note, validHash, lootTransfer), resources);
+        }
+
+        private static byte[] toBytes(NoteState noteState, double[] resources, BitBuffer buffer) {
+            if ((noteState == null || !noteState.hasData()) && isEmptyResources(resources)) {
+                return null;
+            }
+            buffer.reset();
+            buffer.writeBit(noteState != null && noteState.isValidHash());
+            buffer.writeBit(noteState != null && noteState.isLootTransfer());
+            writeResources(buffer, resources);
+            DepositType.serialize(noteState == null ? Collections.emptyMap() : noteState.getParsed(), buffer);
+            return buffer.getWrittenBytes();
+        }
+
+        private NoteState noteState() {
+            return noteState;
+        }
+
+        private double[] resources() {
+            return resources;
+        }
+    }
+
+    private static boolean isAllianceBankLoot(String note) {
+        return note != null && ALLIANCE_BANK_LOOT.matcher(note).find();
+    }
+
+    private static boolean isEmptyResources(double[] resources) {
+        if (resources == null) {
+            return true;
+        }
+        for (ResourceType type : ResourceType.values) {
+            if (type != ResourceType.CREDITS && resources[type.ordinal()] != 0d) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void writeResources(BitBuffer buffer, double[] resources) {
+        int count = 0;
+        if (resources != null) {
+            for (ResourceType type : ResourceType.values) {
+                if (type != ResourceType.CREDITS && resources[type.ordinal()] != 0d) {
+                    count++;
+                }
+            }
+        }
+        buffer.writeVarInt(count);
+        if (resources == null) {
+            return;
+        }
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.CREDITS) {
+                continue;
+            }
+            long amountCents = ArrayUtil.toCents(resources[type.ordinal()]);
+            if (amountCents == 0L) {
+                continue;
+            }
+            buffer.writeVarInt(type.ordinal());
+            buffer.writeVarLong(zigZagEncode(amountCents));
+        }
+    }
+
+    private static double[] readResources(BitBuffer buffer) {
+        double[] resources = ResourceType.getBuffer();
+        int count = buffer.readVarInt();
+        for (int i = 0; i < count; i++) {
+            int ordinal = buffer.readVarInt();
+            long amountCents = zigZagDecode(buffer.readVarLong());
+            resources[ordinal] = ArrayUtil.fromCents(amountCents);
+        }
+        return resources;
+    }
+
+    private static long zigZagEncode(long value) {
+        return (value << 1) ^ (value >> 63);
+    }
+
+    private static long zigZagDecode(long value) {
+        return (value >>> 1) ^ -(value & 1L);
+    }
+
+    private static BitBuffer noteBuffer() {
+        return NOTE_BUFFER.get().reset();
     }
 }

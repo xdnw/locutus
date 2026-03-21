@@ -1,11 +1,12 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.db.TaxBracketLookup;
+import link.locutus.discord.db.TaxBracketLookups;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -19,6 +20,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     public long dateFetched;
     private int allianceId;
     private String name;
+    private transient TaxBracketLookup lookup;
 
     public int moneyRate;
     public int rssRate;
@@ -59,6 +61,17 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         this.dateFetched = System.currentTimeMillis();
     }
 
+    public TaxBracket withLookup(TaxBracketLookup lookup) {
+        if (lookup != null) {
+            this.lookup = lookup;
+        }
+        return this;
+    }
+
+    private TaxBracketLookup lookup() {
+        return lookup != null ? lookup : TaxBracketLookups.liveNationDb();
+    }
+
     @Command(desc = "Id of the tax bracket")
     @Override
     public int getId() {
@@ -93,24 +106,16 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     @Command(desc = "The alliance id this bracket belongs to, else 0")
     public int getAlliance_id() {
         if (this.allianceId < 0) {
-            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() == taxId);
-            if (!nations.isEmpty()) {
-                allianceId = nations.iterator().next().getAlliance_id();
-            } else {
-                allianceId = 0;
-            }
+            allianceId = lookup().getAllianceIdByTaxId(taxId);
         }
         return allianceId;
     }
 
     public Set<DBNation> getNations() {
-        if (taxId == 0) return Collections.emptySet();
-        if (getAlliance_id() != 0) {
-            DBAlliance alliance = DBAlliance.get(allianceId);
-            if (alliance != null) return alliance.getNations(f -> f.getTax_id() == taxId);
+        if (taxId == 0) {
             return Collections.emptySet();
         }
-        return Locutus.imp().getNationDB().getNationsByBracket(taxId);
+        return new LinkedHashSet<>(lookup().getNationsByBracket(taxId));
     }
 
     @Command(desc = "Url of this tax bracket in-game")
@@ -120,11 +125,21 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
 
     @Override
     public String toString() {
-        return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedId() + "- " : "") + ((name != null && !name.isEmpty()) ? (name + "- ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
+        return alliancePrefix() + ((name != null && !name.isEmpty()) ? (name + "- ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
     }
 
     public String getSubText() {
-        return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedId() + "- " : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
+        return alliancePrefix() + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
+    }
+
+    private String alliancePrefix() {
+        int resolvedAllianceId = getAlliance_id(false);
+        if (resolvedAllianceId <= 0) {
+            return "";
+        }
+        DBAlliance alliance = getAlliance();
+        String label = alliance != null ? alliance.getQualifiedId() : "AA:" + resolvedAllianceId;
+        return label + "- ";
     }
 
 
@@ -143,7 +158,8 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
 
     @Command(desc = "The alliance object for this bracket")
     public DBAlliance getAlliance() {
-        return DBAlliance.getOrCreate(allianceId);
+        int resolvedAllianceId = getAlliance_id();
+        return resolvedAllianceId <= 0 ? null : lookup().getAlliance(resolvedAllianceId);
     }
 
     @Command(desc = "The list of nations currently in this bracket")

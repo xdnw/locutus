@@ -20,6 +20,7 @@ import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -30,11 +31,15 @@ import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWAppBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeServices;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeStoreBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -48,6 +53,7 @@ import link.locutus.discord.web.commands.api.EndpointPages;
 import link.locutus.discord.web.commands.api.GraphEndpoints;
 import link.locutus.discord.web.commands.api.IAEndpoints;
 import link.locutus.discord.web.commands.api.MultiEndpoints;
+import link.locutus.discord.web.commands.api.RoleEndpoints;
 import link.locutus.discord.web.commands.api.StatEndpoints;
 import link.locutus.discord.web.commands.api.TaxEndpoints;
 import link.locutus.discord.web.commands.api.CoalitionEndpoints;
@@ -101,20 +107,42 @@ public class PageHandler implements Handler {
     private final Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
 
     private final CommandGroup commands;
-    private final ValueStore<Object> store;
-   private final ValueStore<Object> webOptionStore; 
+    private final ValueStore store;
+    private final ValueStore webOptionStore;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final ObjectMapper serializer;
-    private final PlaceholdersMap placeholders;
+    public PageHandler(CommandManager2 commandManager) {
+        this(commandManager.getPlaceholders(), commandManager);
+    }
 
     public PageHandler(PlaceholdersMap placeholders) {
-        this.placeholders = placeholders;
+        this(placeholders, null);
+    }
+
+    private PageHandler(PlaceholdersMap placeholders, CommandManager2 commandManager) {
         this.store = PWBindings.createDefaultStore();
+        new PWAppBindings().register(this.store);
+        CommandRuntimeServices runtimeServices = placeholders.getRuntimeServices();
+        CommandRuntimeStoreBindings.register(this.store, runtimeServices);
+        if (commandManager != null) {
+            this.store.addLazyProvider(Key.of(CommandManager2.class), () -> commandManager);
+            PWGPTHandler gptHandler = commandManager.getGptHandler();
+            if (gptHandler != null) {
+                this.store.addDynamicProvider(Key.of(PWGPTHandler.class), valueStore -> {
+                    PWGPTHandler handler = commandManager.getGptHandler();
+                    if (handler == null) {
+                        throw new IllegalStateException("PWGPTHandler is not available in the current page handler");
+                    }
+                    return handler;
+                });
+            }
+        }
         for (Class<?> type : placeholders.getTypes()) {
             Placeholders<?, ?> ph = placeholders.get(type);
             ph.register(store);
         }
+        store.addLazyProvider(Key.of(PlaceholderRegistry.class), () -> placeholders);
 
         new JavalinBindings().register(store);
         new AuthBindings().register(store);
@@ -148,6 +176,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
         this.commands.registerSubCommands(new TaxEndpoints(), "api");
         this.commands.registerSubCommands(new CoalitionEndpoints(), "api");
+        this.commands.registerSubCommands(new RoleEndpoints(), "api");
         this.commands.registerSubCommands(new MultiEndpoints(), "api");
         this.commands.registerSubCommands(new TreatyEndpoints(), "api");
 
@@ -156,10 +185,9 @@ public class PageHandler implements Handler {
 
         this.serializer = new ObjectMapper(new MessagePackFactory());
 
-        this.webOptionStore = new SimpleValueStore<>();
+        this.webOptionStore = new SimpleValueStore();
+        webOptionStore.addLazyProvider(Key.of(PlaceholderRegistry.class), () -> placeholders);
         new WebOptionBindings().register(webOptionStore);
-        
-        store.addProvider(Key.of(PlaceholdersMap.class), placeholders);
     }
 
     public MCPHandler createMCP() {
@@ -224,11 +252,11 @@ public class PageHandler implements Handler {
         return commands;
     }
 
-    public ValueStore<Object> getStore() {
+    public ValueStore getStore() {
         return store;
     }
 
-    public ValueStore<Object> getWebOptionStore() {
+    public ValueStore getWebOptionStore() {
         return webOptionStore;
     }
 
@@ -288,7 +316,7 @@ public class PageHandler implements Handler {
                 }
 
                 if (cmd instanceof ParametricCallable) {
-                    LocalValueStore<?> locals = stack.getStore();
+                    LocalValueStore locals = stack.getStore();
                     Map<String, Object> fullCmdStr = parseQueryMap(queryMap, null);
                     locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr).put("", cmd.getFullPath()));
                     locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
@@ -677,10 +705,10 @@ public class PageHandler implements Handler {
         return call;
     }
 
-    private LocalValueStore setupLocals(LocalValueStore<?> locals, Context ctx) {
+    private LocalValueStore setupLocals(LocalValueStore locals, Context ctx) {
         WebStore ws;
         if (locals == null) {
-            locals = new LocalValueStore<>(store);
+            locals = new LocalValueStore(store);
             ws = new WebStore(locals, ctx);
             locals.addProvider(Key.of(WebStore.class), ws);
         } else {
@@ -724,7 +752,7 @@ public class PageHandler implements Handler {
         return locals;
     }
 
-    public LocalValueStore<?> createLocals(Context ctx) {
+    public LocalValueStore createLocals(Context ctx) {
         return setupLocals(null, ctx);
     }
 
@@ -771,7 +799,7 @@ public class PageHandler implements Handler {
     }
 
     private Object call(ParametricCallable cmd, WebStore ws, Context context, List<String> values) {
-        ArgumentStack stack = new ArgumentStack(values, (LocalValueStore<?>) ws.store(), validators, permisser);
+        ArgumentStack stack = new ArgumentStack(values, (LocalValueStore) ws.store(), validators, permisser);
         Object[] parsed = cmd.parseArguments(stack);
         return cmd.call(null, ws.store(), parsed);
     }

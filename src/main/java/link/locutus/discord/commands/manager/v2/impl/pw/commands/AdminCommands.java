@@ -36,8 +36,10 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.LiveAppCommandSurface;
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
@@ -87,6 +89,7 @@ import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.task.multi.SnapshotMultiData;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
+import link.locutus.discord.util.task.roles.AutoRoleTextFormatter;
 import link.locutus.discord.util.update.AllianceListener;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.commands.WM;
@@ -131,6 +134,7 @@ import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.binding.annotation.Kw.*;
 
+@LiveAppCommandSurface("Admin and sync commands still orchestrate raw app services and maintenance flows outside the neutral runtime seam.")
 public class AdminCommands {
     @Command(desc = "Generate a sheet of inactive guilds and optionally leave them\n" +
             "The following disqualify a guild:\n" +
@@ -378,7 +382,7 @@ public class AdminCommands {
                     "Offshore alliance has no stockpile (send $1 to it for the purposes of this command)");
         }
         io.send("Checked stockpile");
-        TransferResult result = offshore.transferUnsafe(offshoreAuth, alliance, stockpile, "#ignore");
+        TransferResult result = offshore.transferUnsafe(offshoreAuth, alliance, stockpile, TransactionNote.of(DepositType.IGNORE));
         io.send("Sent stockpile " + result.toLineString());
         if (!result.getStatus().isSuccess()) {
             throw new IllegalArgumentException(
@@ -470,7 +474,7 @@ public class AdminCommands {
     @Command(desc = "Force update of research data")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String updateResearch(@Me IMessageIO io, Set<DBNation> nations) throws IOException, ParseException {
-        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Updating research. Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Updating research. Please wait...");
         long start = System.currentTimeMillis();
         List<DBNation> nationList = new ArrayList<>(nations);
         int backoff = 1000;
@@ -832,7 +836,7 @@ public class AdminCommands {
                 continue;
             }
 
-            String successMsg = otherDb.getGuild().toString() + ": Unset " + setting.name() + " from "
+            String successMsg = otherDb.getGuild().toString() + ": Unset `" + setting.name() + "` from "
                     + channel.getAsMention();
             if (!force) {
                 infoMsgs.add(successMsg);
@@ -913,7 +917,8 @@ public class AdminCommands {
 
                     otherDb.deleteInfo(setting);
 
-                    String message = setting.name() + ": " + reason + ": " + (unsetMessage == null ? "" : unsetMessage)
+                    String message = "`" + setting.name() + "`: " + reason + ": "
+                            + (unsetMessage == null ? "" : unsetMessage)
                             + "\nPrevious value: `" + previousValue + "`";
                     TextChannel sendTo = null;
                     if (value instanceof TextChannel tc && tc.canTalk())
@@ -1022,7 +1027,8 @@ public class AdminCommands {
             for (Map.Entry<GuildSetting, Set<String>> reason : reasons.entrySet()) {
                 GuildSetting setting = reason.getKey();
                 Set<String> reasonSet = reason.getValue();
-                msg.append("- ").append(setting.name()).append(": ").append(String.join(", ", reasonSet)).append("\n");
+                msg.append("- `").append(setting.name()).append("`: ").append(String.join(", ", reasonSet))
+                        .append("\n");
             }
         }
 
@@ -1104,7 +1110,8 @@ public class AdminCommands {
             header.set(10, aaIds == null ? "" : aaIds.toString());
             header.set(11, otherDb.isValidAlliance() ? "true" : "false");
             AllianceList aaList = otherDb.getAllianceList();
-            int activeMembers = aaList == null ? -1 : aaList.getNations(true, 7200, true).size();
+            int activeMembers = aaList == null ? -1
+                    : aaList.getNations(Locutus.imp().getNationDB(), true, 7200, true).size();
             header.set(12, activeMembers + "");
 
             sheet.addRow(header);
@@ -1266,44 +1273,6 @@ public class AdminCommands {
         }
     }
 
-    @Ephemeral
-    @Command(desc = "Show the current Discord rate-limit usage and queue state")
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String showRateLimit(
-            @Me GuildDB db,
-            @Me IMessageIO io,
-            @Arg("The number of request classes to include inline\n" +
-                    "Default: 10") @Switch("r") Integer numResults) {
-        if (db != Locutus.imp().getRootDb()) {
-            throw new IllegalArgumentException("This command is only available in the root server");
-        }
-        if (numResults == null) {
-            numResults = 10;
-        }
-
-        RateLimitUtil.DebugSnapshot snapshot = RateLimitUtil.getDebugSnapshot(true);
-        String summary = RateLimitUtil.formatDebugSummary(snapshot, numResults);
-
-        int shown = Math.min(Math.max(numResults, 0), snapshot.requestsByClass().size());
-        int hidden = snapshot.requestsByClass().size() - shown;
-        boolean hasLastReport = snapshot.lastRateLimitReport() != null && !snapshot.lastRateLimitReport().isBlank();
-
-        if (hidden > 0 || hasLastReport) {
-            io.create().file("rate_limit.txt", RateLimitUtil.formatDebugDetails(snapshot)).send();
-
-            StringBuilder response = new StringBuilder(summary);
-            response.append("\nAttached `rate_limit.txt` with the full class breakdown");
-            if (hasLastReport) {
-                response.append(" and last recorded over-limit details");
-            }
-            response.append('.');
-            System.err.println(response.toString());
-            return "See console";
-        }
-        System.err.println(summary);
-        return "See console";
-    }
-
     @Command(desc = "Generate and save the wiki pages for the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String dumpWiki(@Default String pathRelative)
@@ -1319,10 +1288,12 @@ public class AdminCommands {
 
     @Command(desc = "Generate and save the wiki pages for the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String saveWebPojos(@Default String pathRelative, @Switch("e") boolean skipEndpoints,
+    public String saveWebPojos(CommandManager2 manager, @Default String pathRelative,
+            @Switch("e") boolean skipEndpoints,
             @Switch("c") boolean skipCommands) throws IOException, InvocationTargetException, IllegalAccessException {
         File pathRelativeFile = pathRelative == null ? null : new File(pathRelative);
-        TsEndpointGenerator.writeFiles(WebRoot.getInstance().getPageHandler(), pathRelativeFile, !skipEndpoints,
+        TsEndpointGenerator.writeFiles(WebRoot.getInstance().getPageHandler(), manager, pathRelativeFile,
+                !skipEndpoints,
                 !skipCommands);
         return "Done!";
     }
@@ -1453,8 +1424,8 @@ public class AdminCommands {
         for (Map.Entry<GuildDB, List<GuildSetting>> entry : toUnset.entrySet()) {
             response.append(entry.getKey().getGuild().toString() + ":\n");
             List<String> keys = entry.getValue().stream().map(GuildSetting::name).collect(Collectors.toList());
-            response.append("- " + StringMan.join(keys, "\n- "));
-            response.append("\n");
+            response.append("- `" + StringMan.join(keys, "`\n- `"));
+            response.append("`\n");
         }
         String footer = "Rerun the command with `-f` to confirm";
         return response + footer;
@@ -1481,7 +1452,7 @@ public class AdminCommands {
     public String syncReferrals(@Me GuildDB db) {
         if (!db.isValidAlliance())
             return "Not in an alliance";
-        Collection<DBNation> nations = db.getAllianceList().getNations(true, 10000, true);
+        Collection<DBNation> nations = db.getAllianceList().getNations(Locutus.imp().getNationDB(), true, 10000, true);
         for (DBNation nation : nations) {
             db.getHandler().onRefer(nation);
         }
@@ -1770,7 +1741,8 @@ public class AdminCommands {
             - `nation`, `leader`, `user`, `member` (at least one)
             - `role`, `role1`, `roleN` (multiple, or use comma separated values in one cell)""")
     @RolePermission(value = Roles.ADMIN)
-    public String maskSheet(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me JSONObject command,
+    public String maskSheet(CommandRuntimeLookupContext services, @Me IMessageIO io, @Me GuildDB db, @Me Guild guild,
+            @Me JSONObject command,
             SpreadSheet sheet,
             @Arg("Remove these roles from users not assigned the role in the sheet") @Switch("u") Set<Role> removeRoles,
             @Arg("Remove all roles mentioned in the sheet") @Switch("ra") boolean removeAll,
@@ -1847,7 +1819,7 @@ public class AdminCommands {
                 if (userStr != null) {
                     user = DiscordBindings.user(null, db.getGuild(), userStr);
                 } else if (nationStr != null) {
-                    DBNation nation = PWBindings.nation(null, db.getGuild(), nationStr);
+                    DBNation nation = PWBindings.parseNation(services, null, db.getGuild(), nationStr, null);
                     if (nation != null) {
                         user = nation.getUser();
                         if (user == null) {
@@ -1857,7 +1829,8 @@ public class AdminCommands {
                         errors.add("[Row:" + (i + 2) + "] Nation not found: `" + nationStr + "`");
                     }
                 } else if (leaderStr != null) {
-                    DBNation nation = Locutus.imp().getNationDB().getNationByLeader(leaderStr);
+                    DBNation nation = PWBindings.parseNation(services, null, db.getGuild(), "leader:" + leaderStr,
+                            null);
                     if (nation != null) {
                         user = nation.getUser();
                         if (user == null) {
@@ -1873,7 +1846,7 @@ public class AdminCommands {
             if (user == null)
                 continue;
             if (listMissing != null) {
-                DBNation nation = DBNation.getByUser(user);
+                DBNation nation = services.lookup().getNationByUser(user);
                 if (nation != null) {
                     nationsInSheet.add(nation);
                 }
@@ -1977,7 +1950,7 @@ public class AdminCommands {
             return null;
         }
 
-        AutoRoleInfo info = new AutoRoleInfo(db, body.toString());
+        AutoRoleInfo info = new AutoRoleInfo(db);
         for (Map.Entry<Member, Set<Role>> entry : rolesAdded.entrySet()) {
             Member member = entry.getKey();
             for (Role role : entry.getValue()) {
@@ -1991,7 +1964,7 @@ public class AdminCommands {
             }
         }
         if (!force) {
-            String changeStr = info.toString();
+            String changeStr = AutoRoleTextFormatter.formatPlan(info);
             String separator = "\n\n------------\n\n";
             if (body.length() + changeStr.length() + separator.length() > MessageEmbed.DESCRIPTION_MAX_LENGTH) {
                 msg = msg.file("role_changes.txt", changeStr);
@@ -2003,7 +1976,7 @@ public class AdminCommands {
         }
         io.send("Please wait...");
         info.execute();
-        return info.getChangesAndErrorMessage();
+        return AutoRoleTextFormatter.formatExecution(info);
     }
 
     @Command(desc = "Add or remove a role from a set of members on discord")
@@ -2095,7 +2068,7 @@ public class AdminCommands {
         }
         if (!Roles.MAIL.hasOnRoot(author))
             GPTUtil.checkThrowModeration(message);
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage(
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree(
                 "Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"));
         for (User mention : users) {
             mention.openPrivateChannel().queue(f -> RateLimitUtil
@@ -2114,7 +2087,7 @@ public class AdminCommands {
             @Default @WYSIWYG String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: "
-                    + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
+                    + CM.settings.info.cmd.toSlashMention() + " with key: `" + GuildKey.ALLIANCE_ID.name() + "`";
         }
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
@@ -2173,8 +2146,8 @@ public class AdminCommands {
         if (alliance != null && !removeRole && discordRole != null) {
             if (!db.isAllianceId(alliance.getAlliance_id())) {
                 return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild()
-                        + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: "
-                        + GuildKey.ALLIANCE_ID.name();
+                        + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: `"
+                        + GuildKey.ALLIANCE_ID.name() + "`";
             }
             if (locutusRole != null && !locutusRole.allowAlliance()) {
                 throw new IllegalArgumentException("The role `" + locutusRole.name()
@@ -2674,7 +2647,7 @@ public class AdminCommands {
 
             if (!aaIds.isEmpty()) {
                 AllianceList alliance = new AllianceList(aaIds);
-                Set<DBNation> nations = new HashSet<>(alliance.getNations());
+                Set<DBNation> nations = new HashSet<>(alliance.getNations(Locutus.imp().getNationDB()));
                 nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                 long minActiveM = Long.MAX_VALUE;
                 DBNation latestNation = null;
@@ -2933,7 +2906,7 @@ public class AdminCommands {
 
     @Command(desc = "Generate a sheet of nation customization (or lack thereof), and mark specific nation ids in the sheet with the ids provided", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+    public String multiInfoSheet(ValueStore store, @Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
             @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark)
             throws IOException, ParseException, GeneralSecurityException {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
@@ -3008,7 +2981,7 @@ public class AdminCommands {
         }
         sheet.setHeader(header);
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, nations, DBNation.class);
 
         for (DBNation nation : nations) {
             SnapshotMultiData.MultiData data = orbisMultiData.data.get(nation.getNation_id());
@@ -3121,7 +3094,7 @@ public class AdminCommands {
             }
         }
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Updating...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Updating...");
         IMessageBuilder msg = null;
         long start = System.currentTimeMillis();
 
@@ -3553,16 +3526,18 @@ public class AdminCommands {
 
             // add a rss entry for money only
             long rssBits = 1L << ResourceType.MONEY.ordinal();
-            String baseNote = tx.note == null ? "" : tx.note.trim();
-            String newNote = baseNote.isEmpty() ? "#rss=" + rssBits : baseNote + " #rss=" + rssBits;
+            TransactionNote updatedNote = tx.editNote()
+                    .put(DepositType.RSS, rssBits)
+                    .build();
+            Transaction2 updatedTx = tx.withStructuredNote(updatedNote, tx.isValidHash());
 
             numFixed++;
             System.out.println(
-                    "Fixing tx " + tx.tx_id + " for nation " + tx.sender_id + " | " + tx.note + " -> " + newNote);
+                    "Fixing tx " + tx.tx_id + " for nation " + tx.sender_id + " | " + tx.getNoteSummary() + " -> "
+                            + updatedTx.getNoteSummary());
 
             // apply change and persist
-            tx.note = newNote;
-            Locutus.imp().getBankDB().addTransaction(tx, false);
+            Locutus.imp().getBankDB().addTransaction(updatedTx, false);
         }
 
         return "Fixed " + numFixed + " transactions";
@@ -3774,14 +3749,11 @@ public class AdminCommands {
                 throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + aaId);
             }
             CompletableFuture<IMessageBuilder> msgFuture = (io
-                    .sendMessage("Syncing taxes for " + aaId + ". Please wait..."));
+                    .sendIfFree("Syncing taxes for " + aaId + ". Please wait..."));
 
             int taxesCount = aa.updateTaxesLegacy(timestamp);
 
-            IMessageBuilder msg = msgFuture.get();
-            if (msg != null && msg.getId() > 0) {
-                io.delete(msg.getId());
-            }
+            io.deleteOptionally(msgFuture);
             return "Updated " + taxesCount + " records.\n"
                     + "<" + SyncTaxes.updateTurnGraph(db, aaId) + ">";
         }
@@ -3789,7 +3761,8 @@ public class AdminCommands {
         if (aaList == null) {
             return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
         }
-        List<TaxDeposit> taxes = aaList.updateTaxes(timestamp);
+        List<TaxDeposit> taxes = aaList.updateTaxes(Locutus.imp().getNationDB(), timestamp,
+                Locutus.imp().getBankDB()::addTaxDeposits);
         return "Updated " + taxes.size() + " records.";
     }
 

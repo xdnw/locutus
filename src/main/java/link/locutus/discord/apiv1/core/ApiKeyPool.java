@@ -94,8 +94,8 @@ public class ApiKeyPool {
             List<String> apiKeys = GuildKey.API_KEY.getOrNull(db);
             if (apiKeys == null || !apiKeys.contains(key)) return;
             db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-            AlertUtil.alertGuild(db, "The `RECRUIT_MESSAGE_OUTPUT` has been unset because the `API_KEY` set does NOT support sending game mail. You MUST use a DIFFERENT key.\n" +
-                    CM.settings.delete.cmd.key(GuildKey.API_KEY.name()) + "\n" +
+            AlertUtil.alertGuild(db, "The `RECRUIT_MESSAGE_OUTPUT` has been unset because the `API_KEY` set does NOT support sending game mail. You MUST use a DIFFERENT key.\n`" +
+                    CM.settings.delete.cmd.key(GuildKey.API_KEY.name()) + "`\n" +
                     CM.settings_default.registerApiKey.cmd.toSlashMention());
         }
 

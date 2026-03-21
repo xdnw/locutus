@@ -53,12 +53,13 @@ public class ModifyTreaty extends Command {
         if (args.size() != 1) return usage(args.size(), 1, channel);
         GuildDB db = Locutus.imp().getGuildDB(guild);
         AllianceList aaList = Roles.FOREIGN_AFFAIRS.getAllianceList(author, db);
-        if (aaList.isEmpty()) return "Missing roles: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
-        Set<DBAlliance> senders = PWBindings.alliances(guild, args.get(0), author, me);
+        if (aaList.isEmpty(runtimeServices().allianceLookup())) return "Missing roles: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
+        var store = placeholderLocals(guild, channel, author, me);
+        Set<DBAlliance> senders = PWBindings.alliances(store, guild, args.get(0), author, me);
         if (value) {
-            return FACommands.approveTreaty(aaList, senders);
+            return FACommands.approveTreaty(runtimeServices().allianceLookup(), aaList, senders);
         } else {
-            return FACommands.cancelTreaty(aaList, senders);
+            return FACommands.cancelTreaty(runtimeServices().allianceLookup(), aaList, senders);
         }
     }
 }

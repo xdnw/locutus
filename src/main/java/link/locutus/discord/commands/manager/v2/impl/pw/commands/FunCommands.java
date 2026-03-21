@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -11,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.offshore.Auth;
@@ -91,7 +93,7 @@ public class FunCommands {
             resources = Collections.singletonMap(ResourceType.COAL, 0.01);
         }
 
-        String note = "Merry Borgmas!";
+        TransactionNote note = TransactionNote.of(DepositType.IGNORE);
         TransferResult result = Locutus.imp().getRootBank().transfer(me, resources, note, null);
         return message;
     }

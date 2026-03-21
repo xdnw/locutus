@@ -42,7 +42,7 @@ public class BankPages {
 
     @Command
     @RolePermission(Roles.ECON)
-    public Object memberDeposits(WebStore ws, @Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch("f") boolean force, @Switch("b") boolean noTaxBase, @Switch("o") boolean ignoreOffset) {
+    public Object memberDeposits(WebStore ws, ValueStore store, @Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch("f") boolean force, @Switch("b") boolean noTaxBase, @Switch("o") boolean ignoreOffset) {
         Set<Long> tracked = db.getTrackedBanks();
 
         List<String> header = new ArrayList<>(Arrays.asList(
@@ -81,7 +81,7 @@ public class BankPages {
         }
 
         double[] buffer = ResourceType.getBuffer();
-        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations, DBNation.class);
+        ValueStore cache = PlaceholderCache.createCache(store, nations, DBNation.class);
         List<List<String>> rows = new ArrayList<>();
         for (DBNation nation : nations) {
             List<String> row = new ArrayList<>(header);

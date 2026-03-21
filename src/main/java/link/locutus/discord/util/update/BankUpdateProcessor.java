@@ -4,7 +4,6 @@ import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -19,28 +18,25 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.nio.ByteBuffer;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.db.guild.GuildKey.DEPOSIT_ALERT_CHANNEL;
-import static link.locutus.discord.db.guild.GuildKey.LARGE_TRANSFERS_CHANNEL;
-import static link.locutus.discord.db.guild.GuildKey.WITHDRAW_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildKey.*;
 
 public class BankUpdateProcessor {
     @Subscribe
@@ -50,9 +46,11 @@ public class BankUpdateProcessor {
             return;
         }
 
-        boolean isLoot = transfer.note != null && transfer.note.contains("of the alliance bank inventory.");
-        if (!transfer.isReceiverNation() && !transfer.isSenderNation()) return;
-        if (!transfer.isReceiverAA() && !transfer.isSenderAA()) return;
+        boolean isLoot = transfer.isLootTransfer();
+        if (!transfer.isReceiverNation() && !transfer.isSenderNation())
+            return;
+        if (!transfer.isReceiverAA() && !transfer.isSenderAA())
+            return;
         int nationId = (int) (transfer.isSenderNation() ? transfer.getSender() : transfer.getReceiver());
         int aaId = (int) (transfer.isSenderAA() ? transfer.getSender() : transfer.getReceiver());
 
@@ -60,16 +58,13 @@ public class BankUpdateProcessor {
             boolean hasValidNote = false;
             Set<Integer> trackedAlliances = new IntOpenHashSet();
             trackedAlliances.add(aaId);
-            if (transfer.note != null) {
-                Map<DepositType, Object> noteMap = transfer.getNoteMap();
-                hasValidNote = !noteMap.isEmpty();
-                for (Map.Entry<DepositType, Object> entry : noteMap.entrySet()) {
-                    if (entry.getKey().getParent() != null) continue;
-                    if (entry.getValue() instanceof Number n) {
-                        try {
-                            trackedAlliances.add(Math.toIntExact(n.longValue()));
-                        } catch (ArithmeticException ignore) {
-                        }
+            if (transfer.hasNoteData()) {
+                hasValidNote = !transfer.getNoteMap().isEmpty();
+                long taggedAccountId = transfer.getTaggedAccountId();
+                if (taggedAccountId != 0) {
+                    try {
+                        trackedAlliances.add(Math.toIntExact(taggedAccountId));
+                    } catch (ArithmeticException ignore) {
                     }
                 }
             }
@@ -94,7 +89,8 @@ public class BankUpdateProcessor {
                         if (guild != null) {
                             Map.Entry<String, String> card = createCard(transfer, nationId);
                             try {
-                                IMessageBuilder msg = new DiscordChannelIO(channel).create().embed(card.getKey(), card.getValue());
+                                IMessageBuilder msg = new DiscordChannelIO(channel).create().embed(card.getKey(),
+                                        card.getValue());
                                 Map.Entry<GuildDB, Integer> offshore = guildDb.getOffshoreDB();
                                 if (isDeposit && offshore != null) {
                                     msg = msg.commandButton(CM.offshore.send.cmd, "offshore");
@@ -103,7 +99,8 @@ public class BankUpdateProcessor {
                                 if (role != null) {
                                     msg.append(role.getAsMention());
                                 }
-                                Role invalidNote = invalidNoteRole == null ? null : invalidNoteRole.toRole(aaId, guildDb);
+                                Role invalidNote = invalidNoteRole == null ? null
+                                        : invalidNoteRole.toRole(aaId, guildDb);
                                 if (invalidNote != null) {
                                     msg.append(invalidNote.getAsMention() + "(no valid note)");
                                 }
@@ -131,8 +128,10 @@ public class BankUpdateProcessor {
             subs.addAll(Locutus.imp().getBankDB().getSubscriptions(0, BankDB.BankSubType.ALL, true, longValue));
             subs.addAll(Locutus.imp().getBankDB().getSubscriptions(0, BankDB.BankSubType.ALL, false, longValue));
 
-            subs.addAll(Locutus.imp().getBankDB().getSubscriptions((int) transfer.getSender(), BankDB.BankSubType.of(transfer.isSenderAA()), false, longValue));
-            subs.addAll(Locutus.imp().getBankDB().getSubscriptions((int) transfer.getReceiver(), BankDB.BankSubType.of(transfer.isReceiverAA()), true, longValue));
+            subs.addAll(Locutus.imp().getBankDB().getSubscriptions((int) transfer.getSender(),
+                    BankDB.BankSubType.of(transfer.isSenderAA()), false, longValue));
+            subs.addAll(Locutus.imp().getBankDB().getSubscriptions((int) transfer.getReceiver(),
+                    BankDB.BankSubType.of(transfer.isReceiverAA()), true, longValue));
 
             for (BankDB.Subscription sub : subs) {
                 DBNation nation = DiscordUtil.getNation(sub.user);
@@ -167,7 +166,8 @@ public class BankUpdateProcessor {
                             mentions.add(member.getAsMention());
                         }
                     }
-                    if (mentions.isEmpty() && value < Settings.INSTANCE.UPDATE_PROCESSOR.THRESHOLD_ALL_BANK_ALERT) continue;
+                    if (mentions.isEmpty() && value < Settings.INSTANCE.UPDATE_PROCESSOR.THRESHOLD_ALL_BANK_ALERT)
+                        continue;
 
                     DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
                     AlertUtil.bufferPing(channel, mentions.toArray(new String[0]));
@@ -177,17 +177,19 @@ public class BankUpdateProcessor {
     }
 
     public static Map.Entry<String, String> createCard(Transaction2 transfer, int nationid) {
-        String fromName = (transfer.isSenderAA() ? "AA:" : "") + PW.getName(transfer.getSender(), transfer.isSenderAA());
-        String toName = (transfer.isReceiverAA() ? "AA:" : "") + PW.getName(transfer.getReceiver(), transfer.isReceiverAA());
-        String title = "#" + transfer.tx_id + " worth $" + MathMan.format(transfer.convertedTotal()) + " | " + fromName + " > " + toName;
+        String fromName = (transfer.isSenderAA() ? "AA:" : "")
+                + PW.getName(transfer.getSender(), transfer.isSenderAA());
+        String toName = (transfer.isReceiverAA() ? "AA:" : "")
+                + PW.getName(transfer.getReceiver(), transfer.isReceiverAA());
+        String title = "#" + transfer.tx_id + " worth $" + MathMan.format(transfer.convertedTotal()) + " | " + fromName
+                + " > " + toName;
         StringBuilder body = new StringBuilder();
-        body.append(PW.getMarkdownUrl((int) transfer.getSender(), transfer.isSenderAA()) + " > " + PW.getMarkdownUrl((int) transfer.getReceiver(), transfer.isReceiverAA()));
+        body.append(PW.getMarkdownUrl((int) transfer.getSender(), transfer.isSenderAA()) + " > "
+                + PW.getMarkdownUrl((int) transfer.getReceiver(), transfer.isReceiverAA()));
 
-        String note = transfer.note == null ? "~~NO NOTE~~" : transfer.note;
-        String url = PW.getMarkdownUrl(nationid, false) + "&display=bank";
-
-        if (transfer.note != null) {
-            body.append(transfer.note);
+        String note = transfer.getStructuredNote().toDisplayString();
+        if (note != null) {
+            body.append("\n").append(note);
         }
         body.append("\n").append("From: " + PW.getMarkdownUrl((int) transfer.sender_id, transfer.isSenderAA()));
         body.append("\n").append("To: " + PW.getMarkdownUrl((int) transfer.receiver_id, transfer.isReceiverAA()));

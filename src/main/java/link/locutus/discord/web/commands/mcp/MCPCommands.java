@@ -1,7 +1,6 @@
 package link.locutus.discord.web.commands.mcp;
 
 import io.javalin.http.Context;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -12,12 +11,12 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderTy
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -172,6 +171,7 @@ public class MCPCommands {
 
     @Command(desc = "Query placeholder-backed data tables with plan/sample/full modes", aliases = {"data_query"})
     public Object data_query(Context context,
+                             PlaceholderRegistry placeholders,
                              @PlaceholderType Class<?> type,
                              @Default String selection,
                              @TextArea List<String> columns,
@@ -190,13 +190,12 @@ public class MCPCommands {
             pageLimit = Math.min(pageLimit, 50);
         }
 
-        PlaceholdersMap placeholders = Locutus.cmd().getV2().getPlaceholders();
         Placeholders<Object, Object> ph = (Placeholders<Object, Object>) placeholders.get(type);
         if (ph == null) {
             throw new IllegalArgumentException("Unknown placeholder type: " + type.getName());
         }
 
-        LocalValueStore<?> locals = handler.createLocals(context);
+        LocalValueStore locals = handler.createLocals(context);
         Object modifier = null;
         if (querySelection.startsWith("{") && querySelection.endsWith("}")) {
             Map<String, Object> map = WebUtil.GSON.fromJson(querySelection, Map.class);
@@ -210,7 +209,7 @@ public class MCPCommands {
         Set<Object> resolved = ph.parseSet(locals, querySelection, modifier);
         List<Object> entities = new ArrayList<>(resolved);
 
-        var cacheStore = PlaceholderCache.createCache(resolved, (Class<Object>) type);
+        var cacheStore = PlaceholderCache.createCache(locals, resolved, (Class<Object>) type);
         List<TypedFunction<Object, ?>> formatters = new ArrayList<>();
         List<String> typeNames = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
@@ -319,7 +318,7 @@ public class MCPCommands {
 
     @Command(desc = "Get a setting value and metadata", aliases = {"settings_get"})
     public Object settings_get(Context context, GuildSetting<?> setting) {
-        LocalValueStore<?> locals = handler.createLocals(context);
+        LocalValueStore locals = handler.createLocals(context);
         GuildDB db = (GuildDB) locals.getProvided(Key.of(GuildDB.class, Me.class), false);
         if (db == null) {
             throw new IllegalArgumentException("settings_get requires guild context");
@@ -344,7 +343,7 @@ public class MCPCommands {
                                @Default UUID idempotency_key) {
         clearExpiredValidations();
 
-        LocalValueStore<?> locals = handler.createLocals(context);
+        LocalValueStore locals = handler.createLocals(context);
         GuildDB db = (GuildDB) locals.getProvided(Key.of(GuildDB.class, Me.class), false);
         User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
         if (db == null) {

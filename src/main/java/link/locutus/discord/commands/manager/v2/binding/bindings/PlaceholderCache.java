@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PlaceholderCache<T> {
     private static final Key<ScopeIndex> SCOPE_INDEX_KEY = Key.nested(PlaceholderCache.class, ScopeIndex.class);
@@ -27,17 +28,17 @@ public class PlaceholderCache<T> {
     protected final Map<MethodIdentity, Map<T, Object>> cacheInstance = new Object2ObjectOpenHashMap<>();
     protected final Map<MethodIdentity, Object> cacheGlobal = new Object2ObjectOpenHashMap<>();
 
-    public static <T> ValueStore<T> createCache(Collection<T> selection, Class<T> type) {
+    public static <T> ValueStore createIsolatedCache(Collection<T> selection, Class<T> type) {
         ValueStore store = new SimpleValueStore();
         return createCache(store, selection, type);
     }
 
-    public static <T> ValueStore<T> createCache(ValueStore store, Collection<T> selection, Class<T> type) {
+    public static <T> ValueStore createCache(ValueStore store, Collection<T> selection, Class<T> type) {
         if (selection == null || selection.isEmpty())
             return store;
-        PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
         if (type == null)
             return store;
+        PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
         addScope(store, type, cache);
         return store;
     }
@@ -103,7 +104,11 @@ public class PlaceholderCache<T> {
     }
 
     public PlaceholderCache(Collection<T> set) {
-        this.list = new ObjectArrayList<>(new ObjectOpenHashSet<>(set));
+        if (set instanceof Set) {
+            this.list = new ObjectArrayList<>(set);
+        } else {
+            this.list = new ObjectArrayList<>(new ObjectOpenHashSet<>(set));
+        }
     }
 
     public List<T> getList() {

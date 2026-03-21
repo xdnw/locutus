@@ -1,13 +1,12 @@
 package link.locutus.discord.web.commands.api;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
@@ -26,15 +25,15 @@ public class StatEndpoints {
     // TODO validate permissions
     @Command(desc = "Render a custom WebTable using a placeholder type and specified columns", viewable = true)
     @ReturnType(WebTable.class)
-    public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class<?> type,
+    public <T> WebTable table(ValueStore store, PlaceholderRegistry registry, @Me @Default User user,
+                              @PlaceholderType Class<?> type,
                               String selection_str,
                               @TextArea List<String> columns) {
         Class<T> typeCasted = (Class<T>) type;
         Map<Integer, List<WebTableError>> errors = new LinkedHashMap<>();
-        int maxPerCol = 3;
+        int maxPerCol = 500;
 
-        PlaceholdersMap map = Locutus.cmd().getV2().getPlaceholders();
-        Placeholders<T, Object> ph = map.get(typeCasted);
+        Placeholders<T, Object> ph = registry.get(typeCasted);
         Object modifier = null;
         if (selection_str.startsWith("{") && selection_str.endsWith("}")) {
             JSONObject json = new JSONObject(selection_str);
@@ -47,7 +46,7 @@ public class StatEndpoints {
         }
 
         Set<T> selection = ph.parseSet(store, selection_str, modifier);
-        ValueStore<T> cacheStore = PlaceholderCache.createCache(store, selection, typeCasted);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, selection, typeCasted);
 
         List<String> renderers = new ObjectArrayList<>(columns.size());
         List<TypedFunction<T, ?>> formatters = new ObjectArrayList<>(columns.size());
@@ -123,9 +122,15 @@ public class StatEndpoints {
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
+                        String msg = StringMan.rootMessage(e);
+                        if (msg.isEmpty()) {
+                            System.out.println("Error with no message for column " + columns.get(i) + " for object " + obj);
+                        } else {
+                            System.out.println("Error for column " + columns.get(i) + " for object " + obj + ": `" + msg + "`");
+                        }
                         List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
                         if (errList.size() < maxPerCol) {
-                            errList.add(new WebTableError(i, rowI, e.getMessage()));
+                            errList.add(new WebTableError(i, rowI, StringMan.stripApiKey(msg)));
                         }
                         row.add(null);
                     }

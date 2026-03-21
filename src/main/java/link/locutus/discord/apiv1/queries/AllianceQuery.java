@@ -4,14 +4,14 @@ import link.locutus.discord.apiv1.core.UrlBuilder;
 import link.locutus.discord.apiv1.domains.Alliance;
 import link.locutus.discord.apiv1.enums.QueryURL;
 
-public class AllianceQuery extends Query {
+public class AllianceQuery extends Query<Alliance> {
 
   public AllianceQuery(int aid, String apiKey) {
     super(Integer.toString(aid), apiKey);
   }
 
   @Override
-  public ApiQuery build() {
+  public ApiQuery<Alliance> build() {
     return new ApiQuery<>(UrlBuilder.build(QueryURL.ALLIANCE_URL, args), new Alliance());
   }
 }

@@ -263,7 +263,7 @@ public class LeavingBeigeAlert {
             }
         }
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(leavingBeige, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createIsolatedCache(leavingBeige, DBNation.class);
 
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {

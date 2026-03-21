@@ -25,7 +25,7 @@ public class WebMyWars {
     public int ship_cap;
     public int spy_cap;
 
-    public WebMyWars(GuildDB db, DBNation nation, List<DBWar> offensives, List<DBWar> defensives, boolean isFightingActives) {
+    public WebMyWars(ValueStore store, GuildDB db, DBNation nation, List<DBWar> offensives, List<DBWar> defensives, boolean isFightingActives) {
         me = new WebTarget(nation, 0, 0, nation.getGroundStrength(true, false));
         this.isFightingActives = isFightingActives;
         soldier_cap = nation.getUnitCap(MilitaryUnit.SOLDIER, true);
@@ -46,7 +46,7 @@ public class WebMyWars {
         for (DBWar war : defensives) {
             enemies.add(war.getNation(true));
         }
-        ValueStore<DBNation> cache = PlaceholderCache.createCache(enemies, DBNation.class);
+        ValueStore cache = PlaceholderCache.createCache(store, enemies, DBNation.class);
 
         if (!offensives.isEmpty()) {
             for (DBWar war : offensives) {

@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
@@ -25,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
+import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -233,10 +235,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command
-    public double getCostConverted() {
+    public double getCostConverted(ValueStore store) {
         double total = 0;
         Set<DBNation> memberNations = getMemberDBNations();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(memberNations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, memberNations, DBNation.class);
         for (DBNation nation : memberNations) {
             total += nation.costConverted(cacheStore);
         }
@@ -458,10 +460,19 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command
     public double exponentialCityStrength(@Default Double power) {
+        return exponentialCityStrength(power, true, true, true);
+    }
+
+    @Command
+    public double exponentialCityStrength(@Default Double power,
+                                          @Switch("vm") boolean removeVm,
+                                          @Switch("i") boolean removeInactive,
+                                          @Switch("a") boolean removeApplicants) {
         if (power == null)
             power = 3d;
         double total = 0;
-        for (DBNation nation : getNations(true, 10000, true)) {
+        int inactiveMinutes = removeInactive ? 10000 : 0;
+        for (DBNation nation : getNations(removeVm, inactiveMinutes, removeApplicants)) {
             total += Math.pow(nation.getCities(), power);
         }
         return total;
@@ -948,25 +959,15 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public Set<DBAlliance> getSphere() {
-        return getSphereCached(new HashMap<>());
+        return SphereGenerator.cached().getSphereAllianceSet(allianceId, null);
     }
 
     public Set<DBAlliance> getSphereCached(Map<Integer, DBAlliance> aaCache) {
-        Set<DBAlliance> result = getTreaties(this, new HashMap<>(), aaCache);
-
-        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
-            DBAlliance parent = alliance.getCachedParentOfThisOffshore();
-            if (parent != null && (result.contains(parent) || parent == this)) {
-                result.add(alliance);
-            }
-        }
-        return result;
+        return SphereGenerator.cached().getSphereAllianceSet(allianceId, aaCache);
     }
 
     public List<DBAlliance> getSphereRankedCached(Map<Integer, DBAlliance> aaCache) {
-        ArrayList<DBAlliance> list = new ArrayList<>(getSphereCached(aaCache));
-        Collections.sort(list, (o1, o2) -> Double.compare(o2.getScore(), o1.getScore()));
-        return list;
+        return SphereGenerator.cached().getSphereAllianceList(allianceId, aaCache);
     }
 
     public List<DBAlliance> getSphereRanked() {
@@ -1027,55 +1028,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command
     public int getAlliance_id() {
         return allianceId;
-    }
-
-    private static Set<DBAlliance> getTreaties(DBAlliance currentAA, Map<DBAlliance, Double> currentWeb,
-            Map<Integer, DBAlliance> aaCache) {
-        if (!currentWeb.containsKey(currentAA))
-            currentWeb.put(currentAA, currentAA.getScore());
-        aaCache.put(currentAA.allianceId, currentAA);
-
-        Map<Integer, Treaty> treaties = currentAA.getTreaties();
-
-        DBAlliance protector = null;
-        double protectorScore = 0;
-        for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
-            int otherId = entry.getKey();
-            DBAlliance otherAA = aaCache.computeIfAbsent(otherId, f -> DBAlliance.getOrCreate(otherId));
-            if (currentWeb.containsKey(otherAA))
-                continue;
-            if (otherAA.getAlliance_id() == 4150 || currentAA.allianceId == 4150)
-                continue;
-            // if (otherAA.getAlliance_id() == 770 || currentAA.allianceId == 770) continue;
-            switch (entry.getValue().getType()) {
-                case NAP:
-                    if (otherAA.getAlliance_id() != 3339 && currentAA.getAlliance_id() != 3339)
-                        continue;
-                case MDP:
-                    if (otherAA.getAlliance_id() == 3669 || currentAA.getAlliance_id() == 3669)
-                        continue;
-                case MDOAP:
-                    if (protector != null)
-                        continue;
-                    getTreaties(otherAA, currentWeb, aaCache);
-                    continue;
-                case EXTENSION:
-                case PROTECTORATE:
-                    double score = otherAA.getScore();
-                    double currentScore = 0;
-                    for (double value : currentWeb.values())
-                        currentScore = Math.max(currentScore, value);
-                    if (score > currentScore && score > protectorScore) {
-                        protectorScore = score;
-                        protector = otherAA;
-                    }
-            }
-        }
-        if (protector != null) {
-            return getTreaties(protector, currentWeb, aaCache);
-        }
-
-        return new HashSet<>(currentWeb.keySet());
     }
 
     public DBNation getAverage() {

@@ -3,14 +3,15 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import com.vdurmont.emoji.EmojiParser;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeCommandContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
@@ -445,9 +446,10 @@ public class GPTCommands {
     @Command(desc = "Locate a command you are looking for.\n" +
             "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String find_command2(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
+    public String find_command2(PWGPTHandler pwGpt, CommandRuntimeCommandContext commands, @Me IMessageIO io, ValueStore store,
+            @Me GuildDB db, @Me User user, String search, @Default String instructions,
+            @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
-            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
             return pwGpt.getClosest(EmbeddingType.Command, store, search, 100, true);
         };
 
@@ -456,7 +458,7 @@ public class GPTCommands {
         };
 
         Function<String, ParametricCallable> getCommand = strings -> {
-            CommandCallable callable = Locutus.imp().getCommandManager().getV2().getCommands().get(StringMan.split(strings, " "));
+            CommandCallable callable = commands.getCommand(CommandTextParser.splitPath(strings));
             return callable instanceof ParametricCallable ? (ParametricCallable) callable : null;
         };
 
@@ -472,14 +474,19 @@ public class GPTCommands {
     @Command(desc = "Locate a placeholder you are looking for.\n" +
             "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String find_placeholder(@PlaceholderType Class<?> type, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
-        PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
+    public String find_placeholder(PWGPTHandler pwGpt, @PlaceholderType Class<?> type, @Me IMessageIO io,
+            ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions,
+            @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         EmbeddingSource source = pwGpt.getClassSource(type);
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
             return pwGpt.getClosest(source, store, search, 100, true);
         };
 
-        Placeholders<?, Object> placeholders = Locutus.cmd().getV2().getPlaceholders().get(type);
+        PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+        if (registry == null) {
+            throw new IllegalStateException("PlaceholderRegistry was not provided in the current value store");
+        }
+        Placeholders<?, Object> placeholders = registry.get(type);
 
         Function<String, ParametricCallable> getCommand = arg -> {
             return placeholders.get(arg);
@@ -501,16 +508,16 @@ public class GPTCommands {
     @Command(desc = "Locate a nation placeholder you are looking for.\n" +
             "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String find_argument(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
+    public String find_argument(PWGPTHandler pwGpt, @Me IMessageIO io, ValueStore store, @Me GuildDB db,
+            @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT,
+            @Switch("n") Integer numResults) {
         Function<Integer, List<Parser>> getClosest = integer -> {
-            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
             return pwGpt.getClosest(EmbeddingType.Argument, store, search, 100, true);
         };
 
         Function<String, Parser> getCommand = arg -> {
             arg = arg.replaceFirst("[1-8]\\.[ ]", "").trim();
             arg = arg.replace("`", "");
-            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
             ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) pwGpt.getAdapter(EmbeddingType.Argument);
             Parser parser = adapter.getParser(arg);
             if (parser == null) {
@@ -600,7 +607,11 @@ public class GPTCommands {
             The sheet expects columns `id`, `name` and optionally `description`
             If you do not provide a sheet, emojis and descriptions will be generated from the channel names""")
     @RolePermission(Roles.ADMIN)
-    public void emojifyChannels(@Me JSONObject command, @Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me User user, @Me DBNation me, @Default SpreadSheet sheet, @Switch("e") Set<Category> excludeCategories, @Switch("c") Set<Category> includeCategories, @Switch("f") boolean force, @Switch("j") boolean popCultureQuotes) throws GeneralSecurityException, IOException {
+    public void emojifyChannels(PWGPTHandler gpt, @Me JSONObject command, @Me GuildDB db, @Me Guild guild,
+            @Me IMessageIO io, @Me User user, @Me DBNation me, @Default SpreadSheet sheet,
+            @Switch("e") Set<Category> excludeCategories, @Switch("c") Set<Category> includeCategories,
+            @Switch("f") boolean force, @Switch("j") boolean popCultureQuotes)
+            throws GeneralSecurityException, IOException {
         if (sheet != null && (excludeCategories != null || includeCategories != null)) {
             throw new IllegalArgumentException("Cannot specify both a sheet and categories");
         }
@@ -653,11 +664,6 @@ public class GPTCommands {
             }
             if (channels.size() > 100) {
                 throw new IllegalArgumentException("Too many channels to emojify (" + channels.size() + " > 100). Please specify fewer categories with `includeCategories` or `excludeCategories`");
-            }
-
-            PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
-            if (gpt == null) {
-                throw new IllegalStateException("No GPT instance found. Please have the bot owner enable it in the `config.yaml` or specify a `sheet` instead");
             }
 
             GptLimitTracker provider = gpt.getLimitManager().getDefaultProvider(db, user, me);

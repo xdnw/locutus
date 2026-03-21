@@ -278,7 +278,7 @@ public class ROI extends Command {
             sheet.setHeader(header);
 
             Set<DBNation> nationsInResult = roiMap.stream().map(f -> f.nation).collect(Collectors.toSet());
-            ValueStore<DBNation> cache = PlaceholderCache.createCache(nationsInResult, DBNation.class);
+            ValueStore cache = PlaceholderCache.createIsolatedCache(nationsInResult, DBNation.class);
 
             for (ROIResult result : roiMap) {
                 DBNation nation = result.nation;

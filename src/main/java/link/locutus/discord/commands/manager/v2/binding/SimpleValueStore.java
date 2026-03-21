@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import java.lang.reflect.Type;
 import java.util.*;
 
-public class SimpleValueStore<T> implements ValueStore<T> {
+public class SimpleValueStore implements ValueStore {
     public Map<Type, Map<Key, Parser>> bindings = new LinkedHashMap<>();
     public Set<Type> allowedAnnotations = new ObjectLinkedOpenHashSet<>();
 

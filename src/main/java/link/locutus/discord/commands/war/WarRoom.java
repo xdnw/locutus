@@ -33,8 +33,6 @@ public class WarRoom {
     public long channelId;
     public StandardGuildMessageChannel channel;
 
-    public static boolean SET_SYMBOLS = false;
-
     public WarRoom(WarCategory warCategory, DBNation target, WarCatReason reason) {
         this.warCategory = warCategory;
         checkNotNull(target);
@@ -48,53 +46,44 @@ public class WarRoom {
         }
     }
 
-    public WarRoom addChannel(long channelId, StandardGuildMessageChannel channel, WarCatReason reason, boolean updateUsers) {
-        MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
-        StandardGuildMessageChannel oldChannel;
-        long oldChannelId;
-        boolean initializeUsers = false;
-
-        synchronized (this) {
-            if (this.channelId == channelId) {
-                if (this.channel != channel) {
-                    this.channel = channel;
-                }
-                return this;
-            }
-
-            oldChannel = this.channel;
-            oldChannelId = this.channelId;
-            this.channelId = channelId;
-            this.channel = channel;
-            initializeUsers = oldChannelId == 0 && channel != null && updateUsers;
-        }
-
-        if (logChan != null) {
-            String msg = "Adding channel " + channel.getAsMention() + " to " + target.getMarkdownUrl() + " due to " + reason.name() + ": " + reason.getReason();
-            RateLimitUtil.queueMessage(logChan, msg, true, 60);
-        }
-
-        if (initializeUsers) {
-            if (!channel.canTalk()) {
-                if (logChan != null) {
-                    RateLimitUtil.queueMessage(logChan, "Cannot talk in channel: " + channel.getAsMention(), true, 60);
-                }
-            } else {
-                updatePin(true);
-                addInitialParticipants(isPlanning());
-            }
-        }
-
-        if (oldChannel != null) {
+    public synchronized WarRoom addChannel(long channelId, StandardGuildMessageChannel channel, WarCatReason reason, boolean updateUsers) {
+        if (this.channelId != channelId) {
+            MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
             if (logChan != null) {
-                String msg = "Deleting old channel " + oldChannel.getAsMention() + " for " + target.getMarkdownUrl();
+                String msg = "Adding channel " + channel.getAsMention() + " to " + target.getMarkdownUrl() + " due to " + reason.name() + ": " + reason.getReason();
                 RateLimitUtil.queueMessage(logChan, msg, true, 60);
             }
-            DiscordUtil.deleteChannelSafe(oldChannel);
-            warCategory.getGuildDb().deleteWarRoomChannelCache(Set.of(oldChannel.getIdLong()));
-        }
-        if (reason == WarCatReason.CACHE) {
-            warCategory.getGuildDb().addWarRoomCache(target.getId(), channelId);
+
+            StandardGuildMessageChannel oldChannel = this.channel;
+            long oldChannelId = this.channelId;
+
+            this.channelId = channelId;
+            this.channel = channel;
+
+            if (oldChannelId == 0 && channel != null && updateUsers) {
+                if (!channel.canTalk()) {
+                    if (logChan != null) {
+                        RateLimitUtil.queueMessage(logChan, "Cannot talk in channel: " + channel.getAsMention(), true, 60);
+                    }
+                } else {
+                    updatePin(true);
+                    addInitialParticipants(isPlanning());
+                }
+            }
+
+            if (oldChannel != null) {
+                if (logChan != null) {
+                    String msg = "Deleting old channel " + oldChannel.getAsMention() + " for " + target.getMarkdownUrl();
+                    RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                }
+                DiscordUtil.deleteChannelSafe(oldChannel);
+                warCategory.getGuildDb().deleteWarRoomChannelCache(Set.of(oldChannel.getIdLong()));
+            }
+            if (reason == WarCatReason.CACHE) {
+                warCategory.getGuildDb().addWarRoomCache(target.getId(), channelId);
+            }
+        } else if (this.channel != channel) {
+            this.channel = channel;
         }
         return this;
     }
@@ -125,7 +114,7 @@ public class WarRoom {
     }
 
     public boolean setGC(boolean value) {
-        if (value == enemyGc || !SET_SYMBOLS) return false;
+        if (value == enemyGc) return false;
         enemyGc = value;
         return setSymbol(channel,"\uD83D\uDC82", value);
     }
@@ -136,7 +125,7 @@ public class WarRoom {
     }
 
     public boolean setAC(boolean value) {
-        if (value == enemyAc || !SET_SYMBOLS) return false;
+        if (value == enemyAc) return false;
         enemyAc = value;
         return setSymbol(channel, "\u2708", value);
     }
@@ -147,7 +136,7 @@ public class WarRoom {
     }
 
     public boolean setBlockade(boolean value) {
-        if (enemyBlockade == value || !SET_SYMBOLS) return false;
+        if (enemyBlockade == value) return false;
         enemyBlockade = value;
         return setSymbol(channel, "\u26F5", value);
     }

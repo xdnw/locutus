@@ -618,7 +618,7 @@ public abstract class AGrantTemplate<T> {
     public static <K> K parse(GuildDB db, DBNation receiver, String value, Class<K> parsedType) {
         if (value == null) return null;
         CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
-        LocalValueStore<Object> store = new LocalValueStore<>(cmdManager.getStore());
+        LocalValueStore store = new LocalValueStore(cmdManager.getStore());
         store.addProvider(Key.of(DBNation.class, Me.class), receiver);
         store.addProvider(Key.of(GuildDB.class, Me.class), db);
         return (K) store.get(Key.of(parsedType)).apply(store, value);
@@ -639,7 +639,8 @@ public abstract class AGrantTemplate<T> {
             return receiver.getTaxBracket();
         }
         if (this.fromBracket > 0) {
-            return PWBindings.bracket(db, "tax_id=" + fromBracket);
+                return PWBindings.parseBracket(Locutus.cmd().getV2().getCommandRuntimeServices().nationDb(), db,
+                    "tax_id=" + fromBracket, 60000L, true);
         }
         return null;
     }

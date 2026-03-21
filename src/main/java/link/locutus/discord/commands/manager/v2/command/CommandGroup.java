@@ -339,7 +339,7 @@ public class CommandGroup implements ICommandGroup {
         }
     }
 
-    public void registerCommandsWithMapping(Class<CM> remapping) {
+    public void registerCommandsWithMapping(Class<?> remapping) {
         Map<Class<?>, Object> instanceCache = new HashMap<>();
         register(remapping, new ArrayList<>(), instanceCache, true);
 
@@ -375,11 +375,17 @@ public class CommandGroup implements ICommandGroup {
             Object instance;
             if (!field.isEmpty()) {
                 try {
-                    Class<?> infoClazz = Class.forName(methodInfo.clazz().getName());
-                    Field declaredField = infoClazz.getDeclaredField(field);
+                    Field declaredField = methodInfo.clazz().getDeclaredField(field);
                     declaredField.setAccessible(true);
                     instance = declaredField.get(null);
-                } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
+                } catch (NoSuchFieldException e) {
+                    Object dynamicOwner = AutoRegisterSupport.resolveDynamicOwner(store, methodInfo, clazz);
+                    if (dynamicOwner != null) {
+                        instance = dynamicOwner;
+                    } else {
+                        throw new RuntimeException(e);
+                    }
+                } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
             } else {

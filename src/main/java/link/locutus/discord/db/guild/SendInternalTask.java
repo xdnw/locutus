@@ -7,9 +7,11 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.BankerWithdrawUsageTracker;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -27,7 +29,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -35,8 +36,10 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static link.locutus.discord.util.offshore.OffshoreInstance.DISABLED_MESSAGE;
+
 public class SendInternalTask {
-    private static final String NOTE = "#" + DepositType.DEPOSIT.name().toLowerCase(Locale.ROOT);
+    private static final DepositType NOTE = DepositType.DEPOSIT;
+    private static final TransactionNote STRUCTURED_NOTE = TransactionNote.of(NOTE);
 
     private final User banker;
     private final double[] amount;
@@ -71,8 +74,7 @@ public class SendInternalTask {
                 boolean creditReceiverBacking,
                 boolean creditReceiverNation,
                 boolean movesBacking,
-                boolean crossesOffshore
-        ) {
+                boolean crossesOffshore) {
             this.senderBacking = senderBacking;
             this.receiverBacking = receiverBacking;
             this.sameBacking = sameBacking;
@@ -94,11 +96,10 @@ public class SendInternalTask {
             GuildDB receiverDB,
             DBAlliance receiverAlliance,
             DBNation receiverNation,
-            double[] amount
-    ) throws IOException {
+            double[] amount) throws IOException {
         if (OffshoreInstance.DISABLE_TRANSFERS
                 && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN
-                || banker.getIdLong() != Locutus.loader().getAdminUserId())) {
+                        || banker.getIdLong() != Locutus.loader().getAdminUserId())) {
             throw new IllegalArgumentException(DISABLED_MESSAGE);
         }
 
@@ -122,7 +123,8 @@ public class SendInternalTask {
         boolean canWithdrawSelf = hasEcon || Roles.ECON_WITHDRAW_SELF.has(banker, senderDB.getGuild(), roleAA);
 
         if (!hasEcon && Roles.TEMP.has(banker, senderDB.getGuild())) {
-            throw new IllegalArgumentException("Banker " + banker.getName() + " has the TEMP role. Please remove that role and try again.");
+            throw new IllegalArgumentException(
+                    "Banker " + banker.getName() + " has the TEMP role. Please remove that role and try again.");
         }
 
         checkWithdrawPerms(roleAA, hasEcon, canWithdrawSelf, senderDB, senderNation, bankerNation, banker);
@@ -130,14 +132,14 @@ public class SendInternalTask {
         this.senderOffshore = senderDB.getOffshore();
         this.receiverOffshore = receiverDB.getOffshore();
 
-        checkOffshores(senderOffshore, senderDB, senderAlliance, senderNation, receiverOffshore, receiverDB, receiverAlliance, receiverNation);
+        checkOffshores(senderOffshore, senderDB, senderAlliance, senderNation, receiverOffshore, receiverDB,
+                receiverAlliance, receiverNation);
 
         this.receiverChannel = receiverDB.getResourceChannel(receiverAlliance != null ? receiverAlliance.getId() : 0);
         checkNotNull(
                 receiverChannel,
                 "Please have an admin set: " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention()
-                        + " in receiving " + receiverDB.getGuild()
-        );
+                        + " in receiving " + receiverDB.getGuild());
 
         checkChange(senderDB, senderAlliance, senderNation, receiverDB, receiverAlliance, receiverNation);
 
@@ -154,11 +156,33 @@ public class SendInternalTask {
         checkTransferLimits(senderOffshore, senderDB, bankerNation, amount, 6_000_000_000D);
     }
 
-    private void checkTransferLimits(OffshoreInstance senderOffshore, GuildDB senderDB, DBNation senderNation, double[] amount, double defaultCap) {
+    private void checkTransferLimits(OffshoreInstance senderOffshore, GuildDB senderDB, DBNation senderNation,
+            double[] amount, double defaultCap) {
         TransferResult result = senderOffshore.checkLimit(senderDB, senderNation, null, amount, NOTE, defaultCap);
         if (result != null) {
             throw new IllegalArgumentException(result.getMessageJoined(true));
         }
+    }
+
+    private BankerWithdrawUsageTracker.Reservation reserveTransferLimitUsage(double defaultCap) {
+        Double withdrawLimit = senderDB.getHandler().getWithdrawLimit(bankerNation.getNation_id());
+        if (withdrawLimit == null) {
+            withdrawLimit = defaultCap;
+        }
+        if (withdrawLimit == null || withdrawLimit >= Long.MAX_VALUE) {
+            return null;
+        }
+        BankerWithdrawUsageTracker.Reservation reservation = senderDB.getHandler().reserveBankerWithdrawUsage(
+                bankerNation.getNation_id(),
+                ResourceType.convertedTotal(amount),
+                withdrawLimit,
+                System.currentTimeMillis());
+        if (reservation == null) {
+            TransferResult result = senderOffshore.checkLimit(senderDB, bankerNation, null, amount, NOTE, defaultCap);
+            throw new IllegalArgumentException(
+                    result == null ? "Unable to reserve banker withdraw limit" : result.getMessageJoined(true));
+        }
+        return reservation;
     }
 
     ////////////////////////////////////////////////////////////////
@@ -173,12 +197,16 @@ public class SendInternalTask {
 
         TransferPlan plan = createTransferPlan();
 
-        double[] senderNationBalanceBefore = plan.debitSenderNation ? getSenderNationBalance(requireConfirmation) : null;
-        double[] senderBackingBalanceBefore = plan.debitSenderBacking ? getSenderBackingBalance(requireConfirmation) : null;
+        double[] senderNationBalanceBefore = plan.debitSenderNation ? getSenderNationBalance(requireConfirmation)
+                : null;
+        double[] senderBackingBalanceBefore = plan.debitSenderBacking ? getSenderBackingBalance(requireConfirmation)
+                : null;
 
         if (requireConfirmation) {
             return List.of(createConfirmation(plan));
         }
+
+        BankerWithdrawUsageTracker.Reservation bankerWithdrawReservation = reserveTransferLimitUsage(6_000_000_000D);
 
         double[] receiverBackingBalanceBefore = plan.creditReceiverBacking
                 ? getBackingBalance(receiverOffshore, receiverDB, receiverAlliance, true)
@@ -208,7 +236,7 @@ public class SendInternalTask {
                 lockNation(senderOffshore, senderNation, now);
                 senderNationLocked = true;
 
-                senderDB.subtractBalance(now, senderNation, bankerNation.getNation_id(), NOTE, amount);
+                senderDB.subtractBalance(now, senderNation, bankerNation.getNation_id(), STRUCTURED_NOTE, amount);
 
                 double[] newBalance = getCurrentNationBalance(senderNation, senderDB);
                 TransferResult error = checkExpectedDelta(
@@ -216,8 +244,7 @@ public class SendInternalTask {
                         newBalance,
                         senderNation,
                         false,
-                        senderOffshore
-                );
+                        senderOffshore);
                 if (error != null) {
                     results.add(error);
                     return results;
@@ -239,8 +266,7 @@ public class SendInternalTask {
                         newBalance,
                         plan.senderBacking,
                         false,
-                        senderOffshore
-                );
+                        senderOffshore);
                 if (error != null) {
                     results.add(error);
                     return results;
@@ -249,11 +275,11 @@ public class SendInternalTask {
                 didDebitSenderBacking = true;
             }
 
-            // Hard invariant: receiver backing must never be credited unless sender backing was actually debited
+            // Hard invariant: receiver backing must never be credited unless sender backing
+            // was actually debited
             if (plan.creditReceiverBacking && !didDebitSenderBacking) {
                 throw new IllegalStateException(
-                        "Invariant violation: refusing to credit receiver backing account without a prior sender backing debit"
-                );
+                        "Invariant violation: refusing to credit receiver backing account without a prior sender backing debit");
             }
 
             // 3) External offshore-to-offshore in-game transfer, if needed
@@ -262,8 +288,7 @@ public class SendInternalTask {
                         null,
                         receiverOffshore.getAlliance(),
                         ResourceType.resourcesToMap(amount),
-                        "#ignore"
-                );
+                        TransactionNote.of(DepositType.IGNORE));
                 results.add(transfer);
 
                 if (!transfer.getStatus().isSuccess()) {
@@ -271,11 +296,11 @@ public class SendInternalTask {
                             "Failed to transfer to " + receiverOffshore.getAlliance().getMarkdownUrl()
                                     + " in-game. See "
                                     + CM.offshore.unlockTransfers.cmd.nationOrAllianceOrGuild(senderDB.getIdLong() + "")
-                                    + " in " + senderOffshore.getGuild()
-                    );
+                                    + " in " + senderOffshore.getGuild());
                     return results;
                 } else {
-                    transfer.addMessage("Transferred to " + receiverOffshore.getAlliance().getMarkdownUrl() + " in-game");
+                    transfer.addMessage(
+                            "Transferred to " + receiverOffshore.getAlliance().getMarkdownUrl() + " in-game");
                     didExternalTransfer = true;
                 }
             }
@@ -293,8 +318,7 @@ public class SendInternalTask {
                         newBalance,
                         plan.receiverBacking,
                         true,
-                        receiverOffshore
-                );
+                        receiverOffshore);
                 if (error != null) {
                     results.add(error);
                     return results;
@@ -304,8 +328,9 @@ public class SendInternalTask {
                     results.add(new TransferResult(OffshoreInstance.TransferStatus.SUCCESS, receiverDB, amount, NOTE)
                             .addMessage("Added to guild account: " + receiverDB.getGuild().toString()));
                 } else {
-                    results.add(new TransferResult(OffshoreInstance.TransferStatus.SUCCESS, receiverAlliance, amount, NOTE)
-                            .addMessage("Added to alliance account " + receiverAlliance.getMarkdownUrl()));
+                    results.add(
+                            new TransferResult(OffshoreInstance.TransferStatus.SUCCESS, receiverAlliance, amount, NOTE)
+                                    .addMessage("Added to alliance account " + receiverAlliance.getMarkdownUrl()));
                 }
 
                 didCreditReceiverBacking = true;
@@ -316,7 +341,7 @@ public class SendInternalTask {
                 lockNation(receiverOffshore, receiverNation, now);
                 receiverNationLocked = true;
 
-                receiverDB.addBalance(now, receiverNation, bankerNation.getId(), NOTE, amount);
+                receiverDB.addBalance(now, receiverNation, bankerNation.getId(), STRUCTURED_NOTE, amount);
 
                 double[] newBalance = getCurrentNationBalance(receiverNation, receiverDB);
                 TransferResult error = checkExpectedDelta(
@@ -324,8 +349,7 @@ public class SendInternalTask {
                         newBalance,
                         receiverNation,
                         true,
-                        receiverOffshore
-                );
+                        receiverOffshore);
                 if (error != null) {
                     results.add(error);
                     return results;
@@ -340,13 +364,14 @@ public class SendInternalTask {
             // 6) Donation-only path (same backing nation -> backing account)
             if (isDonationOnly(plan)) {
                 if (!results.isEmpty()) {
-                    throw new IllegalStateException("Invariant violation: donation-only path should not have intermediate results");
+                    throw new IllegalStateException(
+                            "Invariant violation: donation-only path should not have intermediate results");
                 }
 
-                results.add(new TransferResult(OffshoreInstance.TransferStatus.SUCCESS, plan.receiverBacking, amount, NOTE)
+                results.add(new TransferResult(OffshoreInstance.TransferStatus.SUCCESS, plan.receiverBacking, amount,
+                        NOTE)
                         .addMessage(
-                                "Donation completed. Deducted from nation balance only; sender and receiver share the same backing account, so no offshore/backing account was credited."
-                        ));
+                                "Donation completed. Deducted from nation balance only; sender and receiver share the same backing account, so no offshore/backing account was credited."));
             } else if (results.isEmpty()) {
                 throw new IllegalStateException("Invariant violation: successful transfer produced no result entries");
             }
@@ -365,28 +390,31 @@ public class SendInternalTask {
                 unlockNation(receiverOffshore, receiverNation);
             }
 
-            // Track banker usage against banker, not sender nation
-            senderOffshore.addInternalTransfer(bankerNation.getNation_id(), ResourceType.convertedTotal(amount));
-
             try {
                 if (receiverChannel.canTalk()) {
                     StringBuilder message = new StringBuilder("Internal Transfer ");
-                    if (senderDB != receiverDB) message.append(senderDB.getGuild()).append(" ");
+                    if (senderDB != receiverDB)
+                        message.append(senderDB.getGuild()).append(" ");
                     if (senderAlliance != null && !Objects.equals(senderAlliance, receiverAlliance))
                         message.append(" AA:").append(senderAlliance.getName());
-                    if (senderNation != null) message.append(" ").append(senderNation.getName());
+                    if (senderNation != null)
+                        message.append(" ").append(senderNation.getName());
                     message.append(" -> ");
-                    if (receiverDB != senderDB) message.append(receiverDB.getGuild()).append(" ");
+                    if (receiverDB != senderDB)
+                        message.append(receiverDB.getGuild()).append(" ");
                     if (receiverAlliance != null && !Objects.equals(senderAlliance, receiverAlliance))
                         message.append(" AA:").append(receiverAlliance.getName());
-                    if (receiverNation != null) message.append(" ").append(receiverNation.getName());
-                    message.append(": ").append(ResourceType.toString(amount)).append(", note: `").append(NOTE).append("`");
+                    if (receiverNation != null)
+                        message.append(" ").append(receiverNation.getName());
+                    message.append(": ").append(ResourceType.toString(amount)).append(", note: `").append(NOTE)
+                            .append("`");
                     RateLimitUtil.queueMessage(receiverChannel, message.toString(), true);
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
             }
 
+            bankerWithdrawReservation = null;
             return results;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -410,6 +438,13 @@ public class SendInternalTask {
             results.add(new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiverDB, amount, NOTE)
                     .addMessage(msg.toString()));
             return results;
+        } finally {
+            if (bankerWithdrawReservation != null) {
+                senderDB.getHandler().rollbackBankerWithdrawUsage(
+                        bankerNation.getNation_id(),
+                        bankerWithdrawReservation,
+                        System.currentTimeMillis());
+            }
         }
     }
 
@@ -430,9 +465,7 @@ public class SendInternalTask {
                         receiverAlliance,
                         receiverNation,
                         senderOffshore.getAllianceId(),
-                        receiverOffshore.getAllianceId()
-                )
-        );
+                        receiverOffshore.getAllianceId()));
 
         return new TransferPlan(
                 senderBacking,
@@ -443,8 +476,7 @@ public class SendInternalTask {
                 p.creditReceiverBacking,
                 p.creditReceiverNation,
                 p.movesBacking,
-                p.crossesOffshore
-        );
+                p.crossesOffshore);
     }
 
     private void lockNation(OffshoreInstance offshore, DBNation nation, long now) {
@@ -476,8 +508,7 @@ public class SendInternalTask {
                 account.getIdLong(), account.getReceiverType(),
                 bankerNation.getId(),
                 NOTE,
-                amount
-        );
+                amount);
     }
 
     private void creditReceiverBackingAccount(long now) {
@@ -487,27 +518,25 @@ public class SendInternalTask {
                     receiverDB.getIdLong(), receiverDB.getReceiverType(),
                     0, 0,
                     bankerNation.getId(),
-                    NOTE,
-                    amount
-            );
+                    STRUCTURED_NOTE,
+                    amount);
         } else {
             receiverOffshore.getGuildDB().addBalance(
                     now,
                     receiverAlliance,
                     bankerNation.getId(),
-                    NOTE,
-                    amount
-            );
+                    STRUCTURED_NOTE,
+                    amount);
         }
     }
 
     private double[] getSenderNationBalance(boolean requireConfirmation) throws IOException {
-        if (senderNation == null) return null;
+        if (senderNation == null)
+            return null;
 
         double[] nationBalance = checkNotNull(
                 senderNation.getNetDeposits(null, senderDB, requireConfirmation ? 0 : -1, true),
-                "Sender nation balance cannot be null"
-        );
+                "Sender nation balance cannot be null");
         checkDeposits(nationBalance, amount, "nation", senderNation.getMarkdownUrl());
         return nationBalance;
     }
@@ -515,8 +544,7 @@ public class SendInternalTask {
     private double[] getCurrentNationBalance(DBNation nation, GuildDB guildDB) throws IOException {
         return checkNotNull(
                 nation.getNetDeposits(null, guildDB, -1, true),
-                "Nation balance cannot be null"
-        );
+                "Nation balance cannot be null");
     }
 
     private double[] getSenderBackingBalance(boolean requireConfirmation) throws IOException {
@@ -526,7 +554,8 @@ public class SendInternalTask {
         return balance;
     }
 
-    private double[] getBackingBalance(OffshoreInstance offshore, GuildDB guildDB, DBAlliance alliance, boolean force) throws IOException {
+    private double[] getBackingBalance(OffshoreInstance offshore, GuildDB guildDB, DBAlliance alliance, boolean force)
+            throws IOException {
         Map<ResourceType, Double> balance = alliance != null
                 ? offshore.getDeposits(alliance.getAlliance_id(), force)
                 : offshore.getDeposits(guildDB.getIdLong(), force);
@@ -539,8 +568,7 @@ public class SendInternalTask {
             double[] after,
             NationOrAllianceOrGuild account,
             boolean increase,
-            OffshoreInstance unlockOffshore
-    ) {
+            OffshoreInstance unlockOffshore) {
         double[] diff = ResourceType.getBuffer();
         for (int i = 0; i < after.length; i++) {
             diff[i] = increase ? after[i] - before[i] : before[i] - after[i];
@@ -569,8 +597,10 @@ public class SendInternalTask {
     }
 
     private String accountName(NationOrAllianceOrGuild account) {
-        if (account.isGuild()) return account.asGuild().getGuild().toString();
-        if (account.isAlliance()) return account.asAlliance().getMarkdownUrl();
+        if (account.isGuild())
+            return account.asGuild().getGuild().toString();
+        if (account.isAlliance())
+            return account.asAlliance().getMarkdownUrl();
         return account.asNation().getMarkdownUrl();
     }
 
@@ -583,8 +613,10 @@ public class SendInternalTask {
             return isSender ? "[Add Balance]" : "[Donate]";
         }
         return senderOrReceiver.stream().map(f -> {
-            if (f.isGuild()) return f.asGuild().getGuild().toString();
-            if (f.isAlliance()) return f.asAlliance().getMarkdownUrl();
+            if (f.isGuild())
+                return f.asGuild().getGuild().toString();
+            if (f.isAlliance())
+                return f.asAlliance().getMarkdownUrl();
             return f.asNation().getMarkdownUrl();
         }).collect(Collectors.joining(" | "));
     }
@@ -617,7 +649,8 @@ public class SendInternalTask {
 
         List<String> actions = new ArrayList<>();
         if (plan.crossesOffshore) {
-            actions.add("Funds will be sent in-game to the offshore: " + receiverOffshore.getAlliance().getMarkdownUrl());
+            actions.add(
+                    "Funds will be sent in-game to the offshore: " + receiverOffshore.getAlliance().getMarkdownUrl());
         } else if (plan.movesBacking) {
             actions.add("Backing/offshore funds will move internally within the same offshore");
         } else {
@@ -651,7 +684,8 @@ public class SendInternalTask {
         }
 
         String type = plan.crossesOffshore ? "Account" : "Internal";
-        String title = type + " transfer ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + " to " + receiverName;
+        String title = type + " transfer ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + " to "
+                + receiverName;
 
         body.append("**").append(title).append("**\n");
         actions.forEach(f -> body.append("- ").append(f).append("\n"));
@@ -663,8 +697,10 @@ public class SendInternalTask {
         body.append("**Receiver**: ").append(receiverName).append("\n");
         body.append("**Note**: `").append(NOTE).append("`\n");
         body.append("**Banker**: ");
-        if (banker != null) body.append(banker.getAsMention()).append(" ");
-        if (bankerNation != null) body.append(bankerNation.getMarkdownUrl());
+        if (banker != null)
+            body.append(banker.getAsMention()).append(" ");
+        if (bankerNation != null)
+            body.append(bankerNation.getMarkdownUrl());
         body.append("\n");
 
         return new TransferResult(OffshoreInstance.TransferStatus.CONFIRMATION, receiverDB, amount, NOTE)
@@ -689,8 +725,7 @@ public class SendInternalTask {
             DBNation senderNation,
             GuildDB receiverDB,
             DBAlliance receiverAlliance,
-            DBNation receiverNation
-    ) {
+            DBNation receiverNation) {
         if (senderDB == null && senderNation == null && senderAlliance == null) {
             throw new IllegalArgumentException("Sender cannot be null");
         }
@@ -703,7 +738,8 @@ public class SendInternalTask {
     }
 
     private void checkNationInGuild(GuildDB guildDB, DBNation nation, String side) {
-        if (guildDB == null || nation == null) return;
+        if (guildDB == null || nation == null)
+            return;
 
         Set<Integer> aaIds = guildDB.getAllianceIds();
         if (!aaIds.isEmpty() && !aaIds.contains(nation.getAlliance_id())) {
@@ -745,21 +781,26 @@ public class SendInternalTask {
             if (receiverAlliance != null) {
                 receiverDB = receiverAlliance.getGuildDB();
                 if (receiverDB == null) {
-                    throw new IllegalArgumentException("No guild found for alliance: " + receiverAlliance.getMarkdownUrl()
-                            + ". Register to a guild using " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+                    throw new IllegalArgumentException(
+                            "No guild found for alliance: " + receiverAlliance.getMarkdownUrl()
+                                    + ". Register to a guild using "
+                                    + CM.settings_default.registerAlliance.cmd.toSlashMention());
                 }
             } else if (receiverNation != null) {
                 DBAlliance nationAlliance = receiverNation.getAlliance();
                 if (nationAlliance == null) {
-                    throw new IllegalArgumentException("No alliance found for nation: " + receiverNation.getMarkdownUrl());
+                    throw new IllegalArgumentException(
+                            "No alliance found for nation: " + receiverNation.getMarkdownUrl());
                 }
                 receiverDB = nationAlliance.getGuildDB();
                 if (receiverDB == null) {
                     throw new IllegalArgumentException("No guild found for alliance: " + nationAlliance.getMarkdownUrl()
-                            + ". Register to a guild using " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+                            + ". Register to a guild using "
+                            + CM.settings_default.registerAlliance.cmd.toSlashMention());
                 }
             } else {
-                throw new IllegalArgumentException("No receiver guild or alliance specified. Please specify a guild using the `receiver_account` argument, or the alliance with `receiver_account`");
+                throw new IllegalArgumentException(
+                        "No receiver guild or alliance specified. Please specify a guild using the `receiver_account` argument, or the alliance with `receiver_account`");
             }
         }
 
@@ -775,31 +816,41 @@ public class SendInternalTask {
         boolean isActive = false;
         if (receiverAlliance != null) {
             if (!receiverDB.isAllianceId(receiverAlliance.getId())) {
-                throw new IllegalArgumentException("Receiver alliance: " + receiverAlliance.getAlliance_id() + " is not registered to receiver: " + receiverDB.getGuild());
+                throw new IllegalArgumentException("Receiver alliance: " + receiverAlliance.getAlliance_id()
+                        + " is not registered to receiver: " + receiverDB.getGuild());
             }
             if (receiverNation != null && receiverAlliance.getAlliance_id() != receiverNation.getAlliance_id()) {
-                throw new IllegalArgumentException("Receiver alliance: " + receiverAlliance.getAlliance_id() + " does not match nation: " + receiverNation.getNation());
+                throw new IllegalArgumentException("Receiver alliance: " + receiverAlliance.getAlliance_id()
+                        + " does not match nation: " + receiverNation.getNation());
             }
-            if (receiverAlliance.getNations(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 10080 && f.getVm_turns() == 0).isEmpty()) {
-                throw new IllegalArgumentException("The alliance: " + receiverAlliance.getMarkdownUrl() + " has no active leaders or heirs (<7d, no Vacation Mode)");
+            if (receiverAlliance
+                    .getNations(
+                            f -> f.getPositionEnum().id >= Rank.HEIR.id && f.active_m() < 10080 && f.getVm_turns() == 0)
+                    .isEmpty()) {
+                throw new IllegalArgumentException("The alliance: " + receiverAlliance.getMarkdownUrl()
+                        + " has no active leaders or heirs (<7d, no Vacation Mode)");
             } else {
                 isActive = true;
             }
             Set<Integer> aaIds = receiverDB.getAllianceIds();
             if (!aaIds.isEmpty() && !aaIds.contains(receiverAlliance.getAlliance_id())) {
-                throw new IllegalArgumentException("Receiver alliance: " + receiverAlliance.getAlliance_id() + " does not match guild AA: " + StringMan.getString(aaIds));
+                throw new IllegalArgumentException("Receiver alliance: " + receiverAlliance.getAlliance_id()
+                        + " does not match guild AA: " + StringMan.getString(aaIds));
             }
         }
         if (!isActive) {
             if (!receiverDB.isOwnerActive()) {
-                throw new IllegalArgumentException("Receiver guild owner has no registered active nation (" + receiverDB.getGuild().getOwner() + ") Are they registered or in vacation mode?");
+                throw new IllegalArgumentException("Receiver guild owner has no registered active nation ("
+                        + receiverDB.getGuild().getOwner() + ") Are they registered or in vacation mode?");
             }
         }
         if (receiverNation != null) {
             if (receiverNation.getVm_turns() > 0)
-                throw new IllegalArgumentException("Receiver nation (" + receiverNation.getMarkdownUrl() + ") is in VM");
+                throw new IllegalArgumentException(
+                        "Receiver nation (" + receiverNation.getMarkdownUrl() + ") is in VM");
             if (receiverNation.active_m() > 10000)
-                throw new IllegalArgumentException("Receiver nation (" + receiverNation.getMarkdownUrl() + ") is inactive in-game");
+                throw new IllegalArgumentException(
+                        "Receiver nation (" + receiverNation.getMarkdownUrl() + ") is inactive in-game");
         }
     }
 
@@ -808,7 +859,8 @@ public class SendInternalTask {
             throw new IllegalArgumentException("Sender Nation " + senderNation.getNation() + " is not member in-game");
         }
         if (receiverNation != null && receiverNation.getPositionEnum().id < Rank.MEMBER.id) {
-            throw new IllegalArgumentException("Receiver Nation " + receiverNation.getNation() + " is not member in-game");
+            throw new IllegalArgumentException(
+                    "Receiver Nation " + receiverNation.getNation() + " is not member in-game");
         }
     }
 
@@ -819,13 +871,13 @@ public class SendInternalTask {
             GuildDB senderDB,
             DBNation senderNation,
             DBNation bankerNation,
-            User banker
-    ) {
+            User banker) {
         if (!canWithdrawSelf) {
             Map<Long, Role> roles = Roles.ECON_WITHDRAW_SELF.toRoleMap(senderDB);
             Role role = roles.getOrDefault((long) allianceId, roles.get(0L));
             if (role != null) {
-                throw new IllegalArgumentException("Missing " + role.getName() + " to withdraw from the sender guild: " + senderDB.getGuild());
+                throw new IllegalArgumentException(
+                        "Missing " + role.getName() + " to withdraw from the sender guild: " + senderDB.getGuild());
             } else {
                 throw new IllegalArgumentException("No permission to withdraw from: " + senderDB.getGuild()
                         + " see: " + CM.role.setAlias.cmd.toSlashMention()
@@ -833,26 +885,33 @@ public class SendInternalTask {
             }
         }
         if (!hasEcon && !Roles.MEMBER.has(banker, senderDB.getGuild())) {
-            throw new IllegalArgumentException("Banker " + banker.getName() + " does not have the member role in " + senderDB.getGuild()
-                    + ". See: " + CM.role.setAlias.cmd.toSlashMention());
+            throw new IllegalArgumentException(
+                    "Banker " + banker.getName() + " does not have the member role in " + senderDB.getGuild()
+                            + ". See: " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (senderNation == null && !hasEcon) {
             Map<Long, Role> roles = Roles.ECON.toRoleMap(senderDB);
             Role role = roles.getOrDefault((long) allianceId, roles.get(0L));
             if (role == null) {
-                throw new IllegalArgumentException("You cannot send from the alliance account (Did you instead mean to send from your deposits?). See: "
-                        + CM.role.setAlias.cmd.toSlashMention() + " with role " + Roles.ECON);
+                throw new IllegalArgumentException(
+                        "You cannot send from the alliance account (Did you instead mean to send from your deposits?). See: "
+                                + CM.role.setAlias.cmd.toSlashMention() + " with role " + Roles.ECON);
             } else {
-                throw new IllegalArgumentException("You cannot send from the alliance account (Did you instead mean to send from your deposits?). Missing role " + role.getName());
+                throw new IllegalArgumentException(
+                        "You cannot send from the alliance account (Did you instead mean to send from your deposits?). Missing role "
+                                + role.getName());
             }
         }
         if (!hasEcon && senderNation.getNation_id() != bankerNation.getNation_id()) {
-            throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention()
-                    + "). You do not have permission to send from other nations");
+            throw new IllegalArgumentException(
+                    "Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention()
+                            + "). You do not have permission to send from other nations");
         }
         if (!hasEcon && senderDB.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) != Boolean.TRUE) {
-            throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention()
-                    + "). Member withdrawals are not enabled, see: " + GuildKey.MEMBER_CAN_WITHDRAW.getCommandMention());
+            throw new IllegalArgumentException(
+                    "Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention()
+                            + "). Member withdrawals are not enabled, see: "
+                            + GuildKey.MEMBER_CAN_WITHDRAW.getCommandMention());
         }
     }
 
@@ -862,8 +921,7 @@ public class SendInternalTask {
             DBNation senderNation,
             GuildDB receiverDB,
             DBAlliance receiverAlliance,
-            DBNation receiverNation
-    ) {
+            DBNation receiverNation) {
         InternalTransferPlanner.plan(
                 buildPlannerRequest(
                         senderDB,
@@ -873,9 +931,7 @@ public class SendInternalTask {
                         receiverAlliance,
                         receiverNation,
                         0L,
-                        0L
-                )
-        );
+                        0L));
     }
 
     private void checkNotGreater(double[] amount, long maxValue) {
@@ -895,13 +951,14 @@ public class SendInternalTask {
             OffshoreInstance receiverOffshore,
             GuildDB receiverDB,
             DBAlliance receiverAlliance,
-            DBNation receiverNation
-    ) {
+            DBNation receiverNation) {
         if (senderOffshore == null) {
-            throw new IllegalArgumentException("Sender Guild: " + senderDB.getGuild() + " has no offshore. See: " + CM.offshore.add.cmd.toSlashMention());
+            throw new IllegalArgumentException("Sender Guild: " + senderDB.getGuild() + " has no offshore. See: "
+                    + CM.offshore.add.cmd.toSlashMention());
         }
         if (receiverOffshore == null) {
-            throw new IllegalArgumentException("Receiver Guild: " + receiverDB.getGuild() + " has no offshore. See: " + CM.offshore.add.cmd.toSlashMention());
+            throw new IllegalArgumentException("Receiver Guild: " + receiverDB.getGuild() + " has no offshore. See: "
+                    + CM.offshore.add.cmd.toSlashMention());
         }
 
         checkValidOffshore(senderOffshore, senderDB, "Sender");
@@ -922,10 +979,11 @@ public class SendInternalTask {
     private void checkHasAccount(OffshoreInstance offshore, GuildDB guildDB, DBAlliance alliance, String side) {
         if (alliance != null) {
             if (!offshore.hasAccount(alliance)) {
-                throw new IllegalArgumentException("Offshore does not have account for " + side.toLowerCase() + " alliance: "
-                        + alliance.getMarkdownUrl() + ". Please use: "
-                        + CM.offshore.add.cmd.offshoreAlliance(offshore.getAlliance().getQualifiedId())
-                        + " in " + guildDB.getGuild());
+                throw new IllegalArgumentException(
+                        "Offshore does not have account for " + side.toLowerCase() + " alliance: "
+                                + alliance.getMarkdownUrl() + ". Please use: "
+                                + CM.offshore.add.cmd.offshoreAlliance(offshore.getAlliance().getQualifiedId())
+                                + " in " + guildDB.getGuild());
             }
         } else if (!offshore.hasAccount(guildDB)) {
             throw new IllegalArgumentException("Offshore does not have account for " + side.toLowerCase() + " guild: "
@@ -935,15 +993,18 @@ public class SendInternalTask {
         }
     }
 
-    private void checkOffshoreDisabled(OffshoreInstance offshore, GuildDB server, DBAlliance alliance, DBNation nation) {
+    private void checkOffshoreDisabled(OffshoreInstance offshore, GuildDB server, DBAlliance alliance,
+            DBNation nation) {
         if (offshore.isDisabled(server.getIdLong())) {
             throw new IllegalArgumentException("Error sending to " + server.getGuild()
-                    + ". Please use: " + CM.offshore.unlockTransfers.cmd.nationOrAllianceOrGuild(server.getIdLong() + "")
+                    + ". Please use: "
+                    + CM.offshore.unlockTransfers.cmd.nationOrAllianceOrGuild(server.getIdLong() + "")
                     + " in " + offshore.getGuild());
         }
         if (alliance != null && offshore.isDisabled(alliance.getId())) {
             throw new IllegalArgumentException("Error with account " + alliance.getMarkdownUrl()
-                    + ". Please use: " + CM.offshore.unlockTransfers.cmd.nationOrAllianceOrGuild(alliance.getQualifiedId())
+                    + ". Please use: "
+                    + CM.offshore.unlockTransfers.cmd.nationOrAllianceOrGuild(alliance.getQualifiedId())
                     + " in " + offshore.getGuild());
         }
         if (nation != null && offshore.disabledNations.containsKey(nation.getId())) {
@@ -957,7 +1018,8 @@ public class SendInternalTask {
         double[] normalized = PW.normalize(deposits);
 
         if (ResourceType.convertedTotal(deposits) <= 0) {
-            throw new IllegalArgumentException("Sender " + senderTypeStr + " (" + senderName + ") does not have any deposits");
+            throw new IllegalArgumentException(
+                    "Sender " + senderTypeStr + " (" + senderName + ") does not have any deposits");
         }
 
         for (int i = 0; i < deposits.length; i++) {
@@ -968,7 +1030,8 @@ public class SendInternalTask {
                 if (ArrayUtil.toCents(amount[i]) > ArrayUtil.toCents(deposits[i])) {
                     throw new IllegalArgumentException(msg);
                 } else {
-                    throw new IllegalArgumentException(msg + "\nNote: Transfer limit is reduced by negative resources in deposits");
+                    throw new IllegalArgumentException(
+                            msg + "\nNote: Transfer limit is reduced by negative resources in deposits");
                 }
             }
         }
@@ -986,8 +1049,7 @@ public class SendInternalTask {
         if (offshore.getAllianceId() <= 0 || offshore.getAlliance() == null) {
             throw new IllegalArgumentException(
                     side + " offshore for " + guildDB.getGuild()
-                            + " is invalid. Please reconfigure the offshore."
-            );
+                            + " is invalid. Please reconfigure the offshore.");
         }
     }
 
@@ -1002,7 +1064,8 @@ public class SendInternalTask {
         if (account.isGuild()) {
             return InternalTransferPlanner.BackingAccount.guild(account.asGuild().getIdLong());
         }
-        throw new IllegalArgumentException("Backing account must be a guild or alliance: " + account.getQualifiedName());
+        throw new IllegalArgumentException(
+                "Backing account must be a guild or alliance: " + account.getQualifiedName());
     }
 
     private static InternalTransferPlanner.Request buildPlannerRequest(
@@ -1013,8 +1076,7 @@ public class SendInternalTask {
             DBAlliance receiverAlliance,
             DBNation receiverNation,
             long senderOffshoreId,
-            long receiverOffshoreId
-    ) {
+            long receiverOffshoreId) {
         NationOrAllianceOrGuild senderBacking = resolveBackingAccount(senderDB, senderAlliance);
         NationOrAllianceOrGuild receiverBacking = resolveBackingAccount(receiverDB, receiverAlliance);
 
@@ -1028,7 +1090,6 @@ public class SendInternalTask {
                 toPlannerBacking(receiverBacking),
 
                 senderOffshoreId,
-                receiverOffshoreId
-        );
+                receiverOffshoreId);
     }
 }

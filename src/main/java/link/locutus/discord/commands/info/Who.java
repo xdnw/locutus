@@ -63,7 +63,8 @@ public class Who extends Command {
         Long date = DiscordUtil.parseArgFunc(args, "date", (ThrowingFunction<String, Long>) PrimitiveBindings::timestamp);
         Integer page = DiscordUtil.parseArgInt(args, "page");
         String arg0 = StringMan.join(args, " ");
-        Set<NationOrAlliance> nations = PWBindings.nationOrAlliance(null, guild, arg0, author, me);
+        var store = placeholderLocals(guild, channel, author, me);
+        Set<NationOrAlliance> nations = PWBindings.nationOrAlliance(store, null, guild, arg0, false, author, me);
         if (args.isEmpty()) {
             return "Usage: `" + Settings.commandPrefix(true) + "pnw-who <discord-user>`";
         }

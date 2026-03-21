@@ -25,9 +25,13 @@ import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.roles.AutoRoleBulkResult;
+import link.locutus.discord.util.task.roles.AutoRoleResult;
+import link.locutus.discord.util.task.roles.AutoRoleService;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
 import link.locutus.discord.web.commands.page.PageHelper;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
@@ -144,6 +148,21 @@ public class IAEndpoints extends PageHelper {
     public WebInt unread_count(@Me GuildDB db, @Me DBNation nation) {
         return new WebInt(db.getPlayerAnnouncementsByNation(nation.getNation_id(), true).size());
     }
+
+    @Command(desc = "Preview or execute autorole for a guild member")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, alliance = true, any = true)
+    @ReturnType(AutoRoleResult.class)
+    public AutoRoleResult autorole(@Me GuildDB db, Member member, @Switch("f") boolean force) {
+        return AutoRoleService.autorole(db, member, force);
+    }
+
+    @Command(desc = "Preview or execute autorole for all guild members")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, alliance = true, any = true)
+    @ReturnType(AutoRoleBulkResult.class)
+    public AutoRoleBulkResult autoroleall(@Me GuildDB db, @Switch("f") boolean force) {
+        return AutoRoleService.autoroleall(db, force);
+    }
+
     @Command(desc = "Retrieve allowed bank accounts and access types", viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebBankAccess.class)
@@ -254,10 +273,10 @@ public class IAEndpoints extends PageHelper {
         if (nation == null) {
             throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
         }
+        if (db == null) db = nation.getGuildDB();
         if (db != null) {
-            checkMembership(db, null, user, me);
+            if (!checkMembership(db, null, user, me, false)) db = null;
         }
-        if (db == null && nation != null) db = nation.getGuildDB();
 
         List<Map.Entry<DBNation, Map.Entry<Double, Double>>> raidResult = RaidCommand.getNations(
                 db,
@@ -290,6 +309,7 @@ public class IAEndpoints extends PageHelper {
     @Command(desc = "List unprotected counter targets with various filters", viewable = true)
     @ReturnType(WebTargets.class)
     public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me, @Default @Me User user,
+                           ValueStore store,
                            @Default DBNation nation,
                            @Default("*") Set<DBNation> nations,
                            @Switch("a") boolean includeAllies,
@@ -305,15 +325,15 @@ public class IAEndpoints extends PageHelper {
         if (nation == null) {
             throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
         }
+        if (db == null) db = nation.getGuildDB();
         if (db != null) {
-            checkMembership(db, null, user, me);
+            if (!checkMembership(db, null, user, me, false)) db = null;
         }
-        if (db == null && nation != null) db = nation.getGuildDB();
 
         Set<DBNation> nationsToBlitzWith = Set.of(nation);
         List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, nations, num_results, ignore_dnr, includeAllies, Set.of(nation), maxRelativeTargetStrength, maxRelativeCounterStrength, false, ignoreODP, true);
         List<DBNation> counterNations = counterChance.stream().map(Map.Entry::getKey).collect(Collectors.toList());
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(counterNations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, counterNations, DBNation.class);
 
         double myStrength = nationsToBlitzWith.stream().mapToDouble(f -> Math.pow(f.getStrength(), 3)).sum();
 
@@ -356,7 +376,7 @@ public class IAEndpoints extends PageHelper {
     @Command(desc = "Retrieve summary of nation presently involved in the most wars", viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebMyWars.class)
-    public WebMyWars my_wars(@Me GuildDB db, @Me DBNation nation) {
+    public WebMyWars my_wars(ValueStore store, @Me GuildDB db, @Me DBNation nation) {
         int myWars = nation.getNumWars();
         for (DBNation other : Locutus.imp().getNationDB().getAllNations()) {
             int otherWars = other.getNumWars();
@@ -381,7 +401,7 @@ public class IAEndpoints extends PageHelper {
             }
             isFightingActives |= enemy != null && enemy.active_m() < 1440;
         }
-        return new WebMyWars(db, nation, offensives, defensives, isFightingActives);
+        return new WebMyWars(store, db, nation, offensives, defensives, isFightingActives);
     }
 
 //    public WebTargets war(@Me GuildDB db, @Me DBNation me,

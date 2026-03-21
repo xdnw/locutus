@@ -58,7 +58,7 @@ public class WebCommands {
                 }
             }
         } else {
-            nations = db.getAllianceList().getNations(true, 0, true);;
+            nations = db.getAllianceList().getNations(Locutus.imp().getNationDB(), true, 0, true);;
         }
 
         if (!force) {
@@ -78,7 +78,7 @@ public class WebCommands {
         int success = 0;
         int i = 0;
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {

@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.ResearchGroup;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -25,12 +24,17 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -93,7 +97,8 @@ public class ResearchCommands {
     // research sheet
     @Command(desc = "Get the research sheet")
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String researchSheet(
+        public String researchSheet(
+            ValueStore store,
             @Me IMessageIO io, @Me @Default GuildDB db,
             NationList nations, @Switch("s") SpreadSheet sheet,
             @Switch("t") @Timestamp Long snapshotDate) throws GeneralSecurityException, IOException {
@@ -114,9 +119,9 @@ public class ResearchCommands {
 
         sheet.setHeader(header);
 
-        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
         long start = System.currentTimeMillis();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationsFinal, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, nationsFinal, DBNation.class);
         for (DBNation nation : nationsFinal) {
             if (start + 10000 < System.currentTimeMillis()) {
                 start = System.currentTimeMillis();

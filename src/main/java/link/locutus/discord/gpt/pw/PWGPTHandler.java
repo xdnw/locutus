@@ -220,7 +220,7 @@ public class PWGPTHandler extends GptHandler {
 
     private void registerArgumentBindings() {
         EmbeddingSource source = baseSources.get(EmbeddingType.Argument);
-        ValueStore<Object> store = this.cmdManager.getStore();
+        ValueStore store = this.cmdManager.getStore();
         Map<Key, Parser> parsers = store.getParsers();
 
         Map<Key, Parser> consumeParsers = new HashMap<>();
@@ -236,21 +236,21 @@ public class PWGPTHandler extends GptHandler {
         adapterMap2.put(source, adapter);
     }
 
-    public <T> List<T> getClosest(EmbeddingSource source, ValueStore<?> store, T input, int top) {
+    public <T> List<T> getClosest(EmbeddingSource source, ValueStore store, T input, int top) {
         return getClosest(source, store, f -> f.getDescription(input), top, false);
     }
 
-    public List<ParametricCallable> getClosestPlaceholder(Class<?> classSource, ValueStore<?> store, String input, int top, boolean moderate) {
+    public List<ParametricCallable> getClosestPlaceholder(Class<?> classSource, ValueStore store, String input, int top, boolean moderate) {
         EmbeddingSource source = classSources.get(classSource);
         if (source == null) throw new IllegalArgumentException("No source found for class " + classSource);
         return getClosest(source, store, _ -> input, top, false);
     }
 
-    public <T> List<T> getClosest(EmbeddingSource source, ValueStore<?> store, String input, int top, boolean moderate) {
+    public <T> List<T> getClosest(EmbeddingSource source, ValueStore store, String input, int top, boolean moderate) {
         return getClosest(source, store, _ -> input, top, moderate);
     }
 
-    public <T> List<T> getClosest(EmbeddingSource source, ValueStore<?> store, Function<IEmbeddingAdapter<T>, String> func, int top, boolean moderate) {
+    public <T> List<T> getClosest(EmbeddingSource source, ValueStore store, Function<IEmbeddingAdapter<T>, String> func, int top, boolean moderate) {
         IEmbeddingAdapter<T> adapter = (IEmbeddingAdapter<T>) this.adapterMap2.get(source);
         if (adapter == null) throw new IllegalArgumentException("No adapter found for source " + source);
         String text = func.apply(adapter);
@@ -263,13 +263,13 @@ public class PWGPTHandler extends GptHandler {
         return adapted;
     }
 
-    public <T> List<T> getClosest(EmbeddingType type, ValueStore<?> store, String input, int top, boolean moderate) {
+    public <T> List<T> getClosest(EmbeddingType type, ValueStore store, String input, int top, boolean moderate) {
         EmbeddingSource source = baseSources.get(type);
         if (source == null) throw new IllegalArgumentException("No source found for type " + type);
         return getClosest(source, store, input, top, moderate);
     }
 
-    public <T> List<T> getClosest(EmbeddingType type, ValueStore<?> store, T input, int top) {
+    public <T> List<T> getClosest(EmbeddingType type, ValueStore store, T input, int top) {
         EmbeddingSource source = baseSources.get(type);
         if (source == null) throw new IllegalArgumentException("No source found for type " + type);
         return getClosest(source, store, input, top);

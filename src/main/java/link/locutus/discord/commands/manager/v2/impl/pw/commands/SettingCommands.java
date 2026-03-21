@@ -37,22 +37,25 @@ public class SettingCommands {
         return map;
     }
 
-    private static Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> getKeys(GuildDB db, boolean listAll) {
+    private static Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> getKeys(GuildDB db,
+            boolean listAll) {
         Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> map = new LinkedHashMap<>();
         for (GuildSetting key : GuildKey.values()) {
-            if (!key.allowed(db) && !listAll) continue;
+            if (!key.allowed(db) && !listAll)
+                continue;
             GuildSettingCategory cat = key.getCategory();
             GuildSettingSubgroup sub = key.getSubgroup();
             map.computeIfAbsent(cat, c -> new LinkedHashMap<>())
-               .computeIfAbsent(sub, s -> new LinkedHashMap<>())
-               .put(key, db.getOrNull(key, false));
+                    .computeIfAbsent(sub, s -> new LinkedHashMap<>())
+                    .put(key, db.getOrNull(key, false));
         }
         return map;
     }
 
     @Command(desc = "Delete an alliance or guild setting")
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String delete( @Me GuildDB db, @Me User author, GuildSetting<?> key) {
+    @RolePermission(any = true, value = { Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM,
+            Roles.FOREIGN_AFFAIRS })
+    public String delete(@Me GuildDB db, @Me User author, GuildSetting<?> key) {
         if (!key.hasPermission(db, author, null)) {
             return "You do not have permission to delete the key `" + key.name() + "`";
         }
@@ -72,21 +75,21 @@ public class SettingCommands {
     }
 
     @Command(desc = "Configure any alliance or guild settings")
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
+    @RolePermission(any = true, value = { Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM,
+            Roles.FOREIGN_AFFAIRS })
     @NoFormat
     public static String info(@Me Guild guild, @Me User author,
-                           @Arg("The setting to change or view")
-                           @Default GuildSetting<?> key,
-                           @Arg("The value to set the setting to")
-                           @Default @TextArea String value,
-                           @Switch("a") boolean listAll) throws Exception {
+            @Arg("The setting to change or view") @Default GuildSetting<?> key,
+            @Arg("The value to set the setting to") @Default @TextArea String value,
+            @Switch("a") boolean listAll) throws Exception {
         GuildSetting keyGeneric = key;
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        if (db == null) return "Command must run in a guild.";
+        if (db == null)
+            return "Command must run in a guild.";
         if (value == null) {
             if (key != null) {
                 StringBuilder response = new StringBuilder();
-                response.append("# **__").append(key.name()).append("__**\n");
+                response.append("# **__`").append(key.name()).append("`__**\n");
                 response.append("> " + key.help().replaceAll("\n", "\n> ") + "\n\n");
                 response.append("**category**: `" + key.getCategory() + "`\n");
                 response.append("**type**: `" + key.getType().toSimpleString() + "`\n");
@@ -115,15 +118,18 @@ public class SettingCommands {
                     } else {
                         response.append("**current value**: `" + keyGeneric.toReadableString(db, valueObj) + "`\n\n");
                     }
-                    response.append("`note: to delete, use: " + CM.settings.delete.cmd.key(key.name()).toSlashCommand(false) + "`\n");
+                    response.append("`note: to delete, use: "
+                            + CM.settings.delete.cmd.key(key.name()).toSlashCommand(false) + "`\n");
                 } else {
                     response.append("`no value is set`\n");
                 }
                 return response.toString();
             } else {
                 StringBuilder response = new StringBuilder();
-                Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> keys = getKeys(db, listAll);
-                for (Map.Entry<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> entry : keys.entrySet()) {
+                Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> keys = getKeys(db,
+                        listAll);
+                for (Map.Entry<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> entry : keys
+                        .entrySet()) {
                     GuildSettingCategory category = entry.getKey();
                     response.append("# **__").append(category.name()).append(":__**\n");
                     Map<GuildSettingSubgroup, Map<GuildSetting, Object>> subGroupMap = entry.getValue();
@@ -137,14 +143,15 @@ public class SettingCommands {
                         Map<GuildSetting, Object> catKeys = entry2.getValue();
                         for (Map.Entry<GuildSetting, Object> keyObjectEntry : catKeys.entrySet()) {
                             GuildSetting currKey = keyObjectEntry.getKey();
-                            if (!currKey.hasPermission(db, author, null)) continue;
+                            if (!currKey.hasPermission(db, author, null))
+                                continue;
 
                             String hide = "";
                             if (!currKey.allowed(db, false)) {
                                 hide = "~~";
                             }
                             response.append("- ").append(hide + "`" + currKey.name() + "`" + hide);
-//                        response.append(" (" + currKey.getCommandMention() + ")");
+                            // response.append(" (" + currKey.getCommandMention() + ")");
 
                             Object setValue = keyObjectEntry.getValue();
                             if (setValue != null) {
@@ -166,7 +173,8 @@ public class SettingCommands {
                 if (!listAll) {
                     response.append("To list all setting: " + CM.settings.info.cmd.listAll("true") + "\n");
                 }
-                response.append("For info/usage: " + CM.settings.info.cmd.key("YOUR_KEY_HERE").toSlashCommand(false) + "\n");
+                response.append(
+                        "For info/usage: " + CM.settings.info.cmd.key("YOUR_KEY_HERE").toSlashCommand(false) + "\n");
                 response.append("To delete: " + CM.settings.delete.cmd.toSlashMention() + "\n");
                 response.append("Find a setting: " + CM.help.find_setting.cmd.toSlashMention());
 
@@ -175,8 +183,10 @@ public class SettingCommands {
         } else if (key == null) {
             throw new IllegalArgumentException("Please set a value for `key`");
         }
-        if (!key.hasPermission(db, author, null)) return "No permission for modify that key.";
-        if (!key.allowed(db, true)) return "This guild does not have permission to set this key.";
+        if (!key.hasPermission(db, author, null))
+            return "No permission for modify that key.";
+        if (!key.allowed(db, true))
+            return "This guild does not have permission to set this key.";
 
         Object valueObj;
         if (value.equalsIgnoreCase("null")) {
@@ -188,7 +198,9 @@ public class SettingCommands {
             if (valueObj == null) {
                 return "Invalid value for key `" + key.name() + "`";
             }
-            if (!keyGeneric.hasPermission(db, author, valueObj)) return "No permission to set `" + key.name() + "` to `" + keyGeneric.toReadableString(db, valueObj) + "`";
+            if (!keyGeneric.hasPermission(db, author, valueObj))
+                return "No permission to set `" + key.name() + "` to `" + keyGeneric.toReadableString(db, valueObj)
+                        + "`";
         }
         if (valueObj == null) {
             if (!key.has(db, false)) {
@@ -201,7 +213,8 @@ public class SettingCommands {
     }
 
     @Command(desc = "View set or delete alliance or guild google sheets")
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
+    @RolePermission(any = true, value = { Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM,
+            Roles.FOREIGN_AFFAIRS })
     public String sheets(@Me GuildDB db) throws Exception {
         Map<SheetKey, String> sheets = getSheets(db);
         if (sheets.isEmpty()) {
@@ -218,12 +231,13 @@ public class SettingCommands {
     @Command(desc = "Import internal transactions from another guild, i.e. from balances that have been manually adjusted")
     @RolePermission(Roles.ADMIN)
     public String importTransactions(@Me GuildDB db, @Me User user, @Me JSONObject command, @Me IMessageIO io,
-                                     Guild server, Set<DBNation> nations, @Switch("f") boolean force) {
+            Guild server, Set<DBNation> nations, @Switch("f") boolean force) {
         if (nations.size() > 1000) {
             throw new IllegalArgumentException("Too many nations to import. Max 1000");
         }
         if (!Roles.ADMIN.has(user, server)) {
-            throw new IllegalArgumentException("No permission to import from " + server + ". Missing " + Roles.ADMIN.toDiscordRoleNameElseInstructions(db.getGuild()));
+            throw new IllegalArgumentException("No permission to import from " + server + ". Missing "
+                    + Roles.ADMIN.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         GuildDB other = Locutus.imp().getGuildDB(server);
         Set<Integer> nationIds = new IntOpenHashSet();
@@ -232,13 +246,14 @@ public class SettingCommands {
         }
         if (!force) {
             String title = "Overwrite Existing Transactions?";
-            String body = "Are you sure you want to import and overwrite the transactions for " + nationIds.size() + " nations?";
+            String body = "Are you sure you want to import and overwrite the transactions for " + nationIds.size()
+                    + " nations?";
             io.create().confirmation(title, body, command).send();
             return null;
         }
         StringBuilder tsv = new StringBuilder();
-        tsv.append("tx_id\ttx_datetime\tsender_id\tsender_type\treceiver_id\treceiver_type\tbanker_nation_id\tnote\n");
-
+        tsv.append(
+                "tx_id\ttx_datetime\tsender_id\tsender_type\treceiver_id\treceiver_type\tbanker_nation_id\tnote_text\tnote_data\n");
         db.iterateTransactionsByIds(nationIds, 2, 0L, Long.MAX_VALUE, new Consumer<Transaction2>() {
             @Override
             public void accept(Transaction2 transaction) {
@@ -249,10 +264,10 @@ public class SettingCommands {
                 tsv.append(transaction.receiver_id).append("\t");
                 tsv.append(transaction.receiver_type).append("\t");
                 tsv.append(transaction.banker_nation).append("\t");
-                tsv.append(transaction.note).append("\n");
+                tsv.append(transaction.getStructuredNote().toDisplayString()).append("\t");
+                tsv.append(transaction.getStructuredNote().toDataMap()).append("\n");
             }
         });
-
         io.create().append("Please wait...\nSee attached, the list of transactions being overwritten")
                 .file("transactions.tsv", tsv.toString()).send();
         int numAdded = db.importNationTransactions(other, nationIds);

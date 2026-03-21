@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -8,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -54,7 +54,7 @@ public class PermissionBinding extends BindingHelper {
 
     @Binding(value = "Must be used in a Guild with a valid Locutus managed offshore setup")
     @HasOffshore
-    public static boolean hasOffshore(@Me GuildDB db, HasOffshore perm) {
+    public static boolean hasOffshore(@Me GuildDB db, CommandRuntimeLookupContext services, HasOffshore perm) {
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) {
             StringBuilder response = new StringBuilder("No offshore is set.");
@@ -65,7 +65,7 @@ public class PermissionBinding extends BindingHelper {
                 response.append("\nNote: Set the alliance for this guild using: " + GuildKey.ALLIANCE_ID.getCommandMention());
             }
             Set<String> publicOffshores = new HashSet<>();
-            for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
+            for (GuildDB otherDB : services.getGuildDatabases()) {
                 if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                     Map.Entry<GuildDB, Integer> offshoreInfo = otherDB.getOffshoreDB();
                     if (offshoreInfo.getValue() == Settings.INSTANCE.ALLIANCE_ID()) {
@@ -121,10 +121,10 @@ public class PermissionBinding extends BindingHelper {
             GuildSetting key = GuildKey.valueOf(keyName.toUpperCase());
             Object value = key.getOrNull(db);
             if (value == null) {
-                throw new IllegalArgumentException("Key " + key.name() + " is not set in " + db.getGuild());
+                throw new IllegalArgumentException("Key `" + key.name() + "` is not set in " + db.getGuild());
             }
             if (perm.checkPermission() && !key.hasPermission(db, author, value)) {
-                throw new IllegalCallerException("Key " + key.name() + " does not have permission in " + db.getGuild());
+                throw new IllegalCallerException("Key `" + key.name() + "` does not have permission in " + db.getGuild());
             }
         }
         return true;
@@ -144,11 +144,11 @@ public class PermissionBinding extends BindingHelper {
 
     @Binding("Must be run in a guild added to a coalition by the bot developer")
     @CoalitionPermission(Coalition.ALLIES)
-    public boolean checkWhitelistPermission(@Me GuildDB db, CoalitionPermission perm) {
+    public boolean checkWhitelistPermission(@Me GuildDB db, CoalitionPermission perm,
+            CommandRuntimeLookupContext services) {
         if (db.getIdLong() == Settings.INSTANCE.ROOT_SERVER) return true;
         Coalition requiredCoalition = perm.value();
-        Guild root = Locutus.imp().getServer();
-        GuildDB rootDb = Locutus.imp().getGuildDB(root);
+        GuildDB rootDb = services.getRootCoalitionServer();
         Set<Long> coalitionMembers = rootDb.getCoalitionRaw(requiredCoalition);
         if (coalitionMembers.contains(db.getIdLong())) return true;
         Set<Integer> aaIds = db.getAllianceIds();
@@ -201,13 +201,18 @@ public class PermissionBinding extends BindingHelper {
             `alliance` = has role on alliance's guild."""
             )
     @RolePermission
-    public static boolean checkRole(@Me @Default Guild guild, RolePermission perm, @Me @Default User user) {
-        return checkRole(guild, perm, user, null);
+    public static boolean checkRole(@Me @Default Guild guild, RolePermission perm, @Me @Default User user,
+            CommandRuntimeLookupContext services) {
+        return checkRole(guild, perm, user, null, services);
     }
 
     @Binding("Has membership ingame, or on discord")
     @IsMemberIngameOrDiscord
     public static boolean checkMembership(@Me GuildDB db, IsMemberIngameOrDiscord perm, @Me @Default User user, @Me @Default DBNation me) {
+        return checkMembership(db, perm, user, me, true);
+    }
+
+    public static boolean checkMembership(@Me GuildDB db, IsMemberIngameOrDiscord perm, @Me @Default User user, @Me @Default DBNation me, boolean throwError) {
         if (me != null) {
             if (me.getPositionEnum().id > Rank.APPLICANT.id && db.isAllianceId(me.getAlliance_id())) {
                 return true;
@@ -218,15 +223,18 @@ public class PermissionBinding extends BindingHelper {
                 return true;
             }
         }
-        throw new IllegalCallerException("You are not a member of " + db.getGuild() + " or its in-game alliance");
+        if (throwError) throw new IllegalCallerException("You are not a member of " + db.getGuild() + " or its in-game alliance");
+        return false;
     }
 
 
-    public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user, Integer allianceId) {
+    public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user, Integer allianceId,
+            CommandRuntimeLookupContext services) {
         if (perm.root()) {
-            guild = Locutus.imp().getServer();
+            GuildDB root = services.getRootCoalitionServer();
+            guild = root == null ? null : root.getGuild();
         } else if (perm.guild() > 0) {
-            guild = Locutus.imp().getDiscordApi().getGuildById(perm.guild());
+            guild = services.getGuild(perm.guild());
             if (guild == null) {
                 throw new IllegalCallerException("Guild " + perm.guild() + " does not exist " +
                         (user == null ? "<no user>" : user.getAsMention()));
@@ -235,7 +243,7 @@ public class PermissionBinding extends BindingHelper {
             return true;
         }
 
-        if (perm.onlyInGuildAlliance() && guild != null && !Locutus.imp().getGuildDB(guild).hasAlliance()) {
+        if (perm.onlyInGuildAlliance() && guild != null && !services.getGuildDb(guild).hasAlliance()) {
             return true;
         }
 

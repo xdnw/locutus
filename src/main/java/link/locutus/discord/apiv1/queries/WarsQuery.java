@@ -7,7 +7,7 @@ import link.locutus.discord.apiv1.enums.QueryURL;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class WarsQuery extends Query {
+public class WarsQuery extends Query<Wars> {
 
   private final Integer warCount;
   private final Integer[] aids;
@@ -22,7 +22,7 @@ public class WarsQuery extends Query {
   }
 
   @Override
-  public ApiQuery build() {
+  public ApiQuery<Wars> build() {
     String url = UrlBuilder.build(QueryURL.WARS_URL, args);
     if (aids != null) {
       url = url.concat("&alliance_id=")

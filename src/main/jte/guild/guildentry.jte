@@ -1,3 +1,4 @@
+@import link.locutus.discord.Locutus
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
@@ -28,7 +29,7 @@
                     <button type="submit" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">Set Guild</button>
                 </form>
             @if(db.isValidAlliance())
-                @for (DBAlliance alliance : db.getAllianceList().getAlliances())
+                @for (DBAlliance alliance : db.getAllianceList().getAlliances(Locutus.imp().getNationDB()))
                     <a href="https://politicsandwar.com/alliance/id=${alliance.getAlliance_id()}" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View ${alliance.getQualifiedName()} 🡕</a>
                 @endfor
             @endif

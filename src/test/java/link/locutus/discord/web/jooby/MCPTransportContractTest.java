@@ -84,8 +84,8 @@ class MCPTransportContractTest {
     }
 
     private void setUpWithTools(boolean registerDefaultToolCommands) {
-        ValueStore<Object> store = new SimpleValueStore<>();
-        ValueStore<Object> htmlOptionStore = new SimpleValueStore<>();
+        ValueStore store = new SimpleValueStore();
+        ValueStore htmlOptionStore = new SimpleValueStore();
         ValidatorStore validators = new ValidatorStore();
         PermissionHandler permisser = new PermissionHandler();
         new PrimitiveBindings().register(store);
@@ -103,9 +103,9 @@ class MCPTransportContractTest {
                 validators,
                 permisser,
                 (locals, ctx) -> {
-                    LocalValueStore<Object> resolved = locals == null
-                            ? new LocalValueStore<>(store)
-                            : (LocalValueStore<Object>) locals;
+                    LocalValueStore resolved = locals == null
+                            ? new LocalValueStore(store)
+                            : (LocalValueStore) locals;
                     resolved.addProvider(Context.class, ctx);
                     resolved.addProvider(Key.of(Context.class, Me.class), ctx);
                     return resolved;

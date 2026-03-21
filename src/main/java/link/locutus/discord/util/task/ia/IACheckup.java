@@ -97,7 +97,7 @@ public class IACheckup {
         this.alliance = alliance;
         memberStockpile = new HashMap<>();
         if (!useCache) {
-            memberStockpile = alliance.getMemberStockpile();
+            memberStockpile = alliance.getMemberStockpile(Locutus.imp().getNationDB());
         }
         this.memberTransfers = new HashMap<>();
     }
@@ -107,7 +107,7 @@ public class IACheckup {
     }
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        List<DBNation> nations = new ArrayList<>(alliance.getNations(true, 0, true));
+        List<DBNation> nations = new ArrayList<>(alliance.getNations(Locutus.imp().getNationDB(), true, 0, true));
         return checkup(nations, onEach, fast);
     }
 
@@ -117,7 +117,7 @@ public class IACheckup {
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Collection<DBNation> nations, Consumer<DBNation> onEach, AuditType[] auditTypes, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result = new LinkedHashMap<>();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createIsolatedCache(nations, DBNation.class);
         for (DBNation nation : nations) {
             if (nation.getVm_turns() != 0) continue;
             if (onEach != null) onEach.accept(nation);

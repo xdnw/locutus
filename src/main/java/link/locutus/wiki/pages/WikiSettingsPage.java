@@ -26,9 +26,9 @@ public class WikiSettingsPage extends BotWikiGen {
 
     @Override
     public String generateMarkdown() {
-        List<GuildSetting> settings = new ArrayList<>(Arrays.asList(GuildKey.values()));
+        List<GuildSetting<?>> settings = new ArrayList<>(Arrays.asList(GuildKey.values()));
         // sort by category, then by name
-        settings.sort(Comparator.comparing((GuildSetting a) -> a.getCategory()).thenComparing(GuildSetting::name));
+        settings.sort(Comparator.comparing((GuildSetting<?> a) -> a.getCategory()).thenComparing(GuildSetting::name));
         StringBuilder categoryLinks = new StringBuilder("### Categories\n");
         for (GuildSettingCategory cat : GuildSettingCategory.values()) {
             categoryLinks.append("- ").append(MarkupUtil.markdownUrl(cat.name(), "#category-" + cat.name().toLowerCase())).append("\n");

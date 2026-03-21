@@ -116,7 +116,7 @@ public class GuildKey {
             for (DBAlliance alliance : alliances) {
                 if (existing.contains(alliance.getId())) {
                     throw new IllegalArgumentException("Alliance " + alliance.getName() + " (id: " + alliance.getId() + ") is already registered (registered: " + StringMan.join(existing, ",") + ")\n" +
-                            "To set multiple alliances, first delete the currently set alliance ids: " + CM.settings.delete.cmd.key(GuildKey.ALLIANCE_ID.name()));
+                            "To set multiple alliances, first delete the currently set alliance ids: `" + CM.settings.delete.cmd.key(GuildKey.ALLIANCE_ID.name()) + "`");
                 }
             }
             toAdd = ALLIANCE_ID.allowedAndValidate(db, user, toAdd);
@@ -808,7 +808,8 @@ public class GuildKey {
                     throw new IllegalArgumentException("Invalid format for entry: " + s + ". Expected format: `filter:bracket`");
                 }
                 NationFilter filter = new NationFilterString(split2.get(0), db.getGuild(), null, null);
-                TaxBracket bracket = PWBindings.bracket(db, split2.get(1).trim(), 0, false);
+                TaxBracket bracket = PWBindings.parseBracket(Locutus.cmd().getV2().getCommandRuntimeServices().nationDb(), db,
+                    split2.get(1).trim(), 0, false);
                 result.put(filter, bracket);
             }
             return result;
@@ -821,7 +822,7 @@ public class GuildKey {
                 AllianceList aaList = db.getAllianceList();
                 if (aaList != null) {
                     try {
-                        Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Long.MAX_VALUE);
+                        Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Locutus.imp().getNationDB(), Long.MAX_VALUE);
                         for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                             TaxBracket bracket = entry.getValue();
                             if (bracket.moneyRate != -1) {
@@ -872,10 +873,10 @@ public class GuildKey {
         @Override
         public Map<NationFilter, TaxBracket> validate(GuildDB db, User user, Map<NationFilter, TaxBracket> parsed) {
             AllianceList alliance = db.getAllianceList();
-            if (alliance == null || alliance.isEmpty())
+            if (alliance == null || alliance.isEmpty(Locutus.imp().getNationDB()))
                 throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
 
-            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
+            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(Locutus.imp().getNationDB(), TimeUnit.MINUTES.toMillis(1));
             if (brackets.isEmpty())
                 throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
 
@@ -931,8 +932,8 @@ public class GuildKey {
                         return;
                     }
                 }
-                throw new IllegalArgumentException("Missing required setting " + ALLIANCE_ID.name() + " " + ALLIANCE_ID.getCommandMention() + "\n" +
-                        "(Or set this server as an " + FA_SERVER.name() + " from another guild)");
+                throw new IllegalArgumentException("Missing required setting `" + ALLIANCE_ID.name() + "` " + ALLIANCE_ID.getCommandMention() + "\n" +
+                        "(Or set this server as an `" + FA_SERVER.name() + "` from another guild)");
 
             }
         }
@@ -1394,7 +1395,7 @@ public class GuildKey {
         public void accept(GuildSetting<Boolean> f) {
             f.requireFunction(d -> {
                 d.getOrThrow(GuildKey.ALLIANCE_ID);
-            }, "Requires " + GuildKey.ALLIANCE_ID.name() + " to be set").requiresNot(AUTOROLE_ALLY_GOV, false);
+            }, "Requires `" + GuildKey.ALLIANCE_ID.name() + "` to be set").requiresNot(AUTOROLE_ALLY_GOV, false);
         }
     });
     public static final GuildSetting<Rank> AUTOROLE_ALLIANCE_RANK = new GuildEnumSetting<Rank>(GuildSettingCategory.AUTO_ROLE, ALLIANCE_ROLE, Rank.class) {
@@ -1494,7 +1495,7 @@ public class GuildKey {
         if (!d.isWarServer()) {
             d.getOrThrow(GuildKey.ALLIANCE_ID);
         }
-    }, "Requires " + GuildKey.ALLIANCE_ID.name() + " to be set"));
+    }, "Requires `" + GuildKey.ALLIANCE_ID.name() + "` to be set"));
 
     public static final GuildSetting<Guild> WAR_SERVER = new GuildSetting<Guild>(GuildSettingCategory.WAR_ROOM, null, Guild.class) {
         @NoFormat
@@ -1519,7 +1520,7 @@ public class GuildKey {
         public Guild validate(GuildDB db, User user, Guild guild) {
             GuildDB otherDb = Locutus.imp().getGuildDB(guild);
             if (guild.getIdLong() == db.getGuild().getIdLong())
-                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()) + " to unset the war server");
+                throw new IllegalArgumentException("Use `" + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()) + "` to unset the war server");
             if (otherDb.getOrNull(GuildKey.WAR_SERVER, false) != null)
                 throw new IllegalArgumentException("Circular reference. The server you have set already defers its war room");
             return guild;
@@ -1616,7 +1617,7 @@ public class GuildKey {
         @Override
         public GuildDB validate(GuildDB db, User user, GuildDB otherDb) {
             if (otherDb.getIdLong() == db.getGuild().getIdLong())
-                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.key(FA_SERVER.name()) + " to unset the FA_SERVER");
+                throw new IllegalArgumentException("Use `" + CM.settings.delete.cmd.key(FA_SERVER.name()) + "` to unset the FA_SERVER");
             if (FA_SERVER.has(otherDb, false))
                 throw new IllegalArgumentException("Circular reference. The server you have set already defers its FA_SERVER");
             return otherDb;
@@ -2242,21 +2243,6 @@ public class GuildKey {
             return "The name or id of the CATEGORY you would like to use for new interviews";
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
-
-    public static final GuildSetting<Boolean> INTERVIEW_CREATE_AUTOMATIC = new GuildBooleanSetting(GuildSettingCategory.INTERVIEW, null) {
-
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String INTERVIEW_CREATE_AUTOMATIC(@Me GuildDB db, @Me User user, boolean value) {
-            return INTERVIEW_CREATE_AUTOMATIC.setAndValidate(db, user, value);
-        }
-
-        @Override
-        public String help() {
-            return "Create interviews automatically when someone is given the discord role bound to `" + Roles.APPLICANT.name() + "`";
-        }
-    }.setupRequirements(f -> f.requires(INTERVIEW_PENDING_ALERTS).requireValidAlliance());
 
     public static final GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, null, Map.class, Long.class, MessageChannel.class) {
 
@@ -2904,7 +2890,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "The timeframe the " + GRANT_TEMPLATE_LIMITS.name() + " is for, which restricts max funds that a user can grant using templates over this timeframe.";
+            return "The timeframe the `" + GRANT_TEMPLATE_LIMITS.name() + "` is for, which restricts max funds that a user can grant using templates over this timeframe.";
         }
 
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
@@ -3041,8 +3027,8 @@ public class GuildKey {
                         .toList();
 
                 if (filteredMessages.isEmpty()) {
-                    return "No messages found for: `" + trigger.name() + "` at delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. To list all messages, use: " +
-                            CM.settings.info.cmd.key(GuildKey.TIMED_MESSAGES.name());
+                    return "No messages found for: `" + trigger.name() + "` at delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. To list all messages, use: `" +
+                            CM.settings.info.cmd.key(GuildKey.TIMED_MESSAGES.name()) + "`";
                 }
                 StringBuilder messageSignatures = new StringBuilder("No message found with delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. Did you mean?:\n");
                 for (CustomConditionMessage msg : filteredMessages) {
@@ -3232,7 +3218,8 @@ public class GuildKey {
             String[] split = input.split(",");
             for (String s : split) {
                 s = s.trim();
-                TaxBracket bracket = PWBindings.bracket(db, s, 0, false);
+                TaxBracket bracket = PWBindings.parseBracket(Locutus.cmd().getV2().getCommandRuntimeServices().nationDb(), db,
+                    s, 0, false);
                 result.add(bracket);
             }
             return result;
@@ -3245,7 +3232,7 @@ public class GuildKey {
                 AllianceList aaList = db.getAllianceList();
                 if (aaList != null) {
                     try {
-                        Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Long.MAX_VALUE);
+                        Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Locutus.imp().getNationDB(), Long.MAX_VALUE);
                         for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                             TaxBracket bracket = entry.getValue();
                             if (bracket.moneyRate != -1) {
@@ -3274,15 +3261,17 @@ public class GuildKey {
 
     }.setupRequirements(f -> f.requires(API_KEY).requires(MEMBER_CAN_SET_BRACKET).requireValidAlliance());
 
-    private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
+    private static final Map<String, GuildSetting<?>> BY_NAME = new Object2ObjectLinkedOpenHashMap<>();
 
     static {
         // add by field names
+        int ordinal = 0;
         for (Field field : GuildKey.class.getFields()) {
             if (!Modifier.isStatic(field.getModifiers())) continue;
             if (!GuildSetting.class.isAssignableFrom(field.getType())) continue;
             try {
-                GuildSetting setting = (GuildSetting) field.get(null);
+                GuildSetting<?> setting = (GuildSetting<?>) field.get(null);
+                setting.setOrdinal(ordinal++);
                 BY_NAME.put(field.getName(), setting);
                 setting.setName(field.getName());
             } catch (IllegalAccessException e) {
@@ -3291,12 +3280,12 @@ public class GuildKey {
         }
     }
 
-    public static final GuildSetting[] values() {
-        return BY_NAME.values().toArray(new GuildSetting[0]);
+    public static final GuildSetting<?>[] values() {
+        return BY_NAME.values().toArray(new GuildSetting<?>[0]);
     }
 
-    public static final GuildSetting valueOf(String name) {
-        GuildSetting result = BY_NAME.get(name);
+    public static final GuildSetting<?> valueOf(String name) {
+        GuildSetting<?> result = BY_NAME.get(name);
         if (result == null) {
             throw new IllegalArgumentException("No such setting: " + name + ". Options:\n- " + StringMan.join(BY_NAME.keySet(), "\n- "));
         }

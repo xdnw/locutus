@@ -5,29 +5,56 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllowAttachment;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.ImageUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.IMentionable;
+import net.dv8tion.jda.api.entities.IPermissionHolder;
+import net.dv8tion.jda.api.entities.Icon;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.PermissionOverride;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -39,8 +66,13 @@ import org.json.JSONObject;
 
 import java.awt.*;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.*;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -49,15 +81,15 @@ import java.util.function.Function;
 public class DiscordCommands {
     @Command(desc = "Modify the permissions for a list of nations in a channel.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public static String channelPermissions(@Me Member author, @Me Guild guild, TextChannel channel, Set<DBNation> nations, Permission permission,
-                                            @Arg("Negate the permission") @Switch("n") boolean negate,
-                                            @Arg("Remove the permission from all other users")
-                                            @Switch("r") boolean removeOthers,
-                                            @Arg("Log the changes to user permissions that are made")
-                                            @Switch("l") boolean listChanges,
-                                            @Switch("p") boolean pingAddedUsers) throws ExecutionException, InterruptedException {
+    public static String channelPermissions(@Me Member author, @Me Guild guild, TextChannel channel,
+            Set<DBNation> nations, Permission permission,
+            @Arg("Negate the permission") @Switch("n") boolean negate,
+            @Arg("Remove the permission from all other users") @Switch("r") boolean removeOthers,
+            @Arg("Log the changes to user permissions that are made") @Switch("l") boolean listChanges,
+            @Switch("p") boolean pingAddedUsers) throws ExecutionException, InterruptedException {
         if (!author.hasPermission(channel, Permission.MANAGE_PERMISSIONS))
-            throw new IllegalArgumentException("You do not have " + Permission.MANAGE_PERMISSIONS + " in " + channel.getAsMention());
+            throw new IllegalArgumentException(
+                    "You do not have " + Permission.MANAGE_PERMISSIONS + " in " + channel.getAsMention());
 
         Set<Member> members = new HashSet<>();
         for (DBNation nation : nations) {
@@ -76,7 +108,8 @@ public class DiscordCommands {
 
         for (PermissionOverride override : channel.getMemberPermissionOverrides()) {
             Member member = override.getMember();
-            if (member == null || member.getUser().isBot()) continue;
+            if (member == null || member.getUser().isBot())
+                continue;
 
             boolean allowed = (override.getAllowedRaw() & permission.getRawValue()) > 0;
             boolean denied = (override.getDeniedRaw() & permission.getRawValue()) > 0;
@@ -126,12 +159,14 @@ public class DiscordCommands {
 
     @Command(desc = "Have the bot say the provided message, with placeholders replaced.")
     @NoFormat
-    public String say(NationPlaceholders placeholders, ValueStore store, @Me User author, @Me @Default DBNation me, @AllowAttachment @TextArea String msg) {
+    public String say(NationPlaceholders placeholders, ValueStore store, @Me User author, @Me @Default DBNation me,
+            @AllowAttachment @TextArea String msg) {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
 
-        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(msg);
+        if (!Roles.MAIL.hasOnRoot(author))
+            GPTUtil.checkThrowModeration(msg);
 
         msg = msg + "\n\n- " + author.getAsMention();
 
@@ -141,14 +176,16 @@ public class DiscordCommands {
         return msg;
     }
 
-    @Command(desc = "Import all emojis from another guild", aliases = {"importEmoji", "importEmojis"})
+    @Command(desc = "Import all emojis from another guild", aliases = { "importEmoji", "importEmojis" })
     @RolePermission(Roles.ADMIN)
     public String importEmojis(@Me IMessageIO channel, Guild guild) throws ExecutionException, InterruptedException {
         if (!Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
-            throw new IllegalStateException("Please enable DISCORD.CACHE.EMOTE in " + Settings.INSTANCE.getDefaultFile());
+            throw new IllegalStateException(
+                    "Please enable DISCORD.CACHE.EMOTE in " + Settings.INSTANCE.getDefaultFile());
         }
         if (!Settings.INSTANCE.DISCORD.INTENTS.EMOJI) {
-            throw new IllegalStateException("Please enable DISCORD.INTENTS.EMOJI in " + Settings.INSTANCE.getDefaultFile());
+            throw new IllegalStateException(
+                    "Please enable DISCORD.INTENTS.EMOJI in " + Settings.INSTANCE.getDefaultFile());
         }
         List<RichCustomEmoji> emotes = guild.getEmojis();
 
@@ -184,8 +221,8 @@ public class DiscordCommands {
             `.{prefix}command` to keep the card upon use
 
             Example:
-            `{prefix}embed 'Some Title' 'My First Embed' '~{prefix}fun say Hello {nation}' '{prefix}fun say "Goodbye {nation}"'`""",
-            aliases = {"card", "embed"})
+            `{prefix}embed 'Some Title' 'My First Embed' '~{prefix}fun say Hello {nation}' '{prefix}fun say "Goodbye {nation}"'`""", aliases = {
+            "card", "embed" })
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     @NoFormat
     public String card(@Me IMessageIO channel, String title, String body, @TextArea List<String> commands) {
@@ -214,14 +251,15 @@ public class DiscordCommands {
 
     @Command(desc = "Create a channel with name in a specified category and ping the specified roles upon creation.")
     @NoFormat
-    public String channel(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me User author, @Me Guild guild, @Me IMessageIO output, @Me DBNation nation,
-                          String channelName, Category category, @Default String copypasta,
-                          @Switch("i") boolean addInternalAffairsRole,
-                          @Switch("m") boolean addMilcom,
-                          @Switch("f") boolean addForeignAffairs,
-                          @Switch("e") boolean addEcon,
-                          @Switch("p") boolean pingRoles,
-                          @Switch("a") boolean pingAuthor
+    public String channel(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me User author,
+            @Me Guild guild, @Me IMessageIO output, @Me DBNation nation,
+            String channelName, Category category, @Default String copypasta,
+            @Switch("i") boolean addInternalAffairsRole,
+            @Switch("m") boolean addMilcom,
+            @Switch("f") boolean addForeignAffairs,
+            @Switch("e") boolean addEcon,
+            @Switch("p") boolean pingRoles,
+            @Switch("a") boolean pingAuthor
 
     ) throws ExecutionException, InterruptedException {
         if (category.getGuild().getIdLong() != db.getGuild().getIdLong()) {
@@ -241,7 +279,8 @@ public class DiscordCommands {
         boolean hasOverride = msg != null && msg.getAuthor().getIdLong() == Settings.INSTANCE.APPLICATION_ID;
         for (IPermissionHolder holder : holders) {
             PermissionOverride overrides = category.getPermissionOverride(holder);
-            if (overrides == null) continue;
+            if (overrides == null)
+                continue;
             if (overrides.getAllowed().contains(Permission.MANAGE_CHANNEL)) {
                 hasOverride = true;
                 break;
@@ -253,11 +292,16 @@ public class DiscordCommands {
         }
 
         Set<Roles> roles = new HashSet<>();
-        if (addInternalAffairsRole) roles.add(Roles.INTERNAL_AFFAIRS);
-        if (addMilcom) roles.add(Roles.MILCOM);
-        if (addForeignAffairs) roles.add(Roles.FOREIGN_AFFAIRS);
-        if (addEcon) roles.add(Roles.ECON);
-        if (roles.isEmpty()) roles.add(Roles.INTERNAL_AFFAIRS);
+        if (addInternalAffairsRole)
+            roles.add(Roles.INTERNAL_AFFAIRS);
+        if (addMilcom)
+            roles.add(Roles.MILCOM);
+        if (addForeignAffairs)
+            roles.add(Roles.FOREIGN_AFFAIRS);
+        if (addEcon)
+            roles.add(Roles.ECON);
+        if (roles.isEmpty())
+            roles.add(Roles.INTERNAL_AFFAIRS);
 
         GuildMessageChannel createdChannel = null;
         List<TextChannel> channels = category.getTextChannels();
@@ -268,13 +312,15 @@ public class DiscordCommands {
             }
         }
         if (createdChannel == null) {
-            createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName)), member, roles);
+            createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName)), member,
+                    roles);
             DiscordChannelIO io = new DiscordChannelIO(createdChannel);
             IMessageBuilder toSend = null;
             if (copypasta != null && !copypasta.isEmpty()) {
                 String copyPasta = db.getCopyPasta(copypasta, true);
                 if (copyPasta != null) {
-                    if (toSend == null) toSend = io.create();
+                    if (toSend == null)
+                        toSend = io.create();
                     toSend.append(copyPasta);
                 }
             }
@@ -282,24 +328,28 @@ public class DiscordCommands {
                 for (Roles dept : roles) {
                     Role role = dept.toRole2(guild);
                     if (role != null) {
-                        if (toSend == null) toSend = io.create();
+                        if (toSend == null)
+                            toSend = io.create();
                         toSend.append("\n" + role.getAsMention());
                     }
                 }
             }
             if (pingAuthor) {
-                if (toSend == null) toSend = io.create();
+                if (toSend == null)
+                    toSend = io.create();
                 toSend.append("\n" + author.getAsMention());
             }
-            if (toSend != null) toSend.send();
+            if (toSend != null)
+                toSend.send();
         }
 
         return "Channel: " + createdChannel.getAsMention();
     }
 
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
-        RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                .deny(Permission.VIEW_CHANNEL));
+        RateLimitUtil
+                .complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
+                        .deny(Permission.VIEW_CHANNEL));
         RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
 
         for (Roles dept : depts) {
@@ -312,16 +362,19 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Show the title, description and commands for a bot embed", viewable = true)
-    public String embedInfo(Message embedMessage, @Arg("Show commands to update`copyToMessage` with the info from the `embedMessage`") @Default Message copyToMessage) {
+    public String embedInfo(Message embedMessage,
+            @Arg("Show commands to update`copyToMessage` with the info from the `embedMessage`") @Default Message copyToMessage) {
         List<MessageEmbed> embeds = embedMessage.getEmbeds();
-        if (embeds.size() != 1) return "No embed found.";
+        if (embeds.size() != 1)
+            return "No embed found.";
 
         MessageEmbed embed = embeds.get(0);
         String title = embed.getTitle();
         String desc = embed.getDescription();
 
-
-        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, DiscordUtil.getButtonsFromMessage(embedMessage), embedMessage.getJumpUrl(), true);
+        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(
+                embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, embedMessage.getButtons(),
+                embedMessage.getJumpUrl(), true);
         List<String> commands = new ArrayList<>();
 
         commands.add(CM.embed.create.cmd.title(title).description(desc).toSlashCommand(false));
@@ -344,7 +397,9 @@ public class DiscordCommands {
             String label = entry.getKey();
 
             String behaviorStr = (behavior == null ? CommandBehavior.DELETE_MESSAGE : behavior).name();
-            String cmdStr = CM.embed.add.raw.cmd.message(url).label(label).behavior(behaviorStr).command(StringMan.join(current, "\n")).channel(channelId == null ? null : channelId.toString()).toSlashCommand(false);
+            String cmdStr = CM.embed.add.raw.cmd.message(url).label(label).behavior(behaviorStr)
+                    .command(StringMan.join(current, "\n")).channel(channelId == null ? null : channelId.toString())
+                    .toSlashCommand(false);
             commands.add(cmdStr);
         }
 
@@ -355,7 +410,9 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Update a bot embed")
-    public String updateEmbed(@Me Guild guild, @Me User user, @Me IMessageIO io, @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title, @Switch("d") String desc) {
+    public String updateEmbed(@Me Guild guild, @Me User user, @Me IMessageIO io,
+            @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title,
+            @Switch("d") String desc) {
         IMessageBuilder message = io.getMessage();
 
         if (message == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID)
@@ -370,7 +427,8 @@ public class DiscordCommands {
         }
 
         List<EmbedShrink> embeds = message.getEmbeds();
-        if (embeds.size() != 1) return "No embeds found";
+        if (embeds.size() != 1)
+            return "No embeds found";
         EmbedShrink embed = embeds.get(0);
 
         EmbedShrink builder = new EmbedShrink(embed);
@@ -380,11 +438,14 @@ public class DiscordCommands {
         }
 
         if (title != null) {
-            builder.setTitle(parse(title.replace(("{title}"), Objects.requireNonNull(embed.getTitle().get())), embed, message));
+            builder.setTitle(
+                    parse(title.replace(("{title}"), Objects.requireNonNull(embed.getTitle().get())), embed, message));
         }
 
         if (desc != null) {
-            builder.setDescription(parse(desc.replace(("{description}"), Objects.requireNonNull(embed.getDescription().get())), embed, message));
+            builder.setDescription(
+                    parse(desc.replace(("{description}"), Objects.requireNonNull(embed.getDescription().get())), embed,
+                            message));
         }
 
         message.clearEmbeds();
@@ -407,12 +468,15 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Unregister a nation to a discord user")
-    public String unregister(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Default("%user%") DBNation nation, @Switch("f") boolean force) {
+    public String unregister(@Me IMessageIO io, @Me JSONObject command, @Me User user,
+            @Default("%user%") DBNation nation, @Switch("f") boolean force) {
         DBNation originalNation = nation;
-        if (nation == null) nation = DiscordUtil.getNation(user);
+        if (nation == null)
+            nation = DiscordUtil.getNation(user);
         Long nationUserId = nation == null ? user.getIdLong() : nation.getUserId();
         DBNation userNation = DiscordUtil.getNation(user);
-        if (force && !Roles.INTERNAL_AFFAIRS.hasOnRoot(user)) return "You do not have permission to force un-register.";
+        if (force && !Roles.INTERNAL_AFFAIRS.hasOnRoot(user))
+            return "You do not have permission to force un-register.";
         if (originalNation != null && (userNation == null || !userNation.equals(originalNation)) && !force) {
             String title = "Unregister another user.";
             String body = nation.getNationUrlMarkup() + " | " + "<@" + nationUserId + ">";
@@ -429,7 +493,8 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Register your discord user with your Politics And War nation.")
-    public String register(@Me @Default GuildDB db, @Me User user, /* @Default("%user%")  */ @AllowDeleted DBNation nation) throws IOException {
+    public String register(@Me @Default GuildDB db, @Me User user,
+            /* @Default("%user%") */ @AllowDeleted DBNation nation) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
         String fullDiscriminator = DiscordUtil.getFullUsername(user);
 
@@ -445,10 +510,12 @@ public class DiscordCommands {
         PNWUser existingUser = Locutus.imp().getDiscordDB().getUser(null, user.getName(), fullDiscriminator);
 
         /*
-        Using register
-         - If the discord user/discriminator is registered to another nation, require using the discord id
-         - If the nation is registered to another user, require using the discord id
-         (have message that they can change the discord setting afterwards to their username)
+         * Using register
+         * - If the discord user/discriminator is registered to another nation, require
+         * using the discord id
+         * - If the nation is registered to another user, require using the discord id
+         * (have message that they can change the discord setting afterwards to their
+         * username)
          */
 
         String discordIdErrorMsg = "That nation is already registered to another user!" +
@@ -506,7 +573,8 @@ public class DiscordCommands {
         StringBuilder response = new StringBuilder();
         for (Guild other : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
             if (role.has(user, other)) {
-                response.append(user.getName()).append(" has ").append(role.name()).append(" on ").append(other).append("\n");
+                response.append(user.getName()).append(" has ").append(role.name()).append(" on ").append(other)
+                        .append("\n");
             }
         }
         return response.toString();
@@ -524,7 +592,8 @@ public class DiscordCommands {
     public String deleteChannel(@Me Guild guild, @Me User user, @Me Member member, MessageChannel channel) {
         GuildMessageChannel text = (GuildMessageChannel) channel;
         String[] split = text.getName().split("-");
-        if (((split.length >= 2 && MathMan.isInteger(split[split.length - 1])) || Roles.ADMIN.has(user, guild)) && text.canTalk(member)) {
+        if (((split.length >= 2 && MathMan.isInteger(split[split.length - 1])) || Roles.ADMIN.has(user, guild))
+                && text.canTalk(member)) {
             RateLimitUtil.queue(text.delete());
             return null;
         } else {
@@ -542,12 +611,14 @@ public class DiscordCommands {
 
     @Command(desc = "Send a message to the interview channels of the nations specified")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public String interviewMessage(@Me GuildDB db, Set<DBNation> nations, String message, @Switch("p") boolean pingMentee) {
+    public String interviewMessage(@Me GuildDB db, Set<DBNation> nations, String message,
+            @Switch("p") boolean pingMentee) {
         Map<DBNation, IAChannel> map = db.getIACategory().getChannelMap();
         int num = 0;
         for (DBNation nation : nations) {
             IAChannel iaChan = map.get(nation);
-            if (iaChan == null) continue;
+            if (iaChan == null)
+                continue;
             GuildMessageChannel channel = iaChan.getChannel();
             if (channel != null) {
                 try {
@@ -573,7 +644,8 @@ public class DiscordCommands {
             return "Channel is already in category: " + category;
         }
         String[] split = channel.getName().split("-");
-        if (((split.length >= 2 && MathMan.isInteger(split[split.length - 1])) || Roles.ADMIN.has(member)) && channel.canTalk(member)) {
+        if (((split.length >= 2 && MathMan.isInteger(split[split.length - 1])) || Roles.ADMIN.has(member))
+                && channel.canTalk(member)) {
             RateLimitUtil.queue(channel.getManager().setParent(category));
             return null;
         } else {
@@ -586,10 +658,9 @@ public class DiscordCommands {
             This will make a popup prompting for the command arguments you specify and submit any defaults you provide
             Note: This is intended to be used in conjuction with the card command""")
     public String modal(@Me IMessageIO io, ICommand<?> command,
-                        @Arg("A comma separated list of the command arguments to prompt for") String arguments,
-                        @Arg("The default arguments and values you want to submit to the command\n" +
-                                "Example: `myarg1:myvalue1 myarg2:myvalue2`")
-                        @Default String defaults) {
+            @Arg("A comma separated list of the command arguments to prompt for") String arguments,
+            @Arg("The default arguments and values you want to submit to the command\n" +
+                    "Example: `myarg1:myvalue1 myarg2:myvalue2`") @Default String defaults) {
         Map<String, String> args;
         if (defaults == null) {
             args = new HashMap<>();
@@ -606,7 +677,7 @@ public class DiscordCommands {
             "It is recommended to crop the image first", viewable = true)
     public String ocr(String discordImageUrl) {
         String text = ImageUtil.getText(discordImageUrl);
-        return "```\n" +text + "\n```\n";
+        return "```\n" + text + "\n```\n";
     }
 
     @Command(desc = """
@@ -615,34 +686,41 @@ public class DiscordCommands {
             Does not change overall or note balance unless it is shifted to `#ignore`""")
     @RolePermission(value = Roles.ECON)
     public String shiftFlow(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, @Me User author,
-                            DBNation nation,
-                            DepositType noteFrom,
-                            FlowType flowType,
-                            Map<ResourceType, Double> amount,
-                            @Default DepositType noteTo,
-                            @Switch("a") DBAlliance alliance,
-                            @Switch("f") boolean force) {
-        if (noteTo == null) noteTo = DepositType.DEPOSIT;
+            DBNation nation,
+            DepositType noteFrom,
+            FlowType flowType,
+            Map<ResourceType, Double> amount,
+            @Default DepositType noteTo,
+            @Switch("a") DBAlliance alliance,
+            @Switch("f") boolean force) {
+        if (noteTo == null)
+            noteTo = DepositType.DEPOSIT;
         if (noteFrom == noteTo) {
-            return "Cannot shift flow from `" + noteFrom.name() + "` to `" + noteTo.name() + "` please specify another `noteTo`";
+            return "Cannot shift flow from `" + noteFrom.name() + "` to `" + noteTo.name()
+                    + "` please specify another `noteTo`";
         }
         long date = System.currentTimeMillis();
-        String fromStr = "#" + noteFrom.name().toLowerCase(Locale.ROOT);
-        String toStr = "#" + noteTo.name().toLowerCase(Locale.ROOT);
+        TransactionNote fromNote = TransactionNote.of(noteFrom);
+        TransactionNote toNote = TransactionNote.of(noteTo);
+        String fromStr = fromNote.toLegacyString();
+        String toStr = toNote.toLegacyString();
         long fromId;
         int fromType;
         String fromUrl;
         Set<Integer> ids = db.getAllianceIds();
         if (alliance != null && !ids.contains(alliance.getId())) {
-            throw new IllegalArgumentException("Alliance " + alliance.getName() + " is not registered to this guild: " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+            throw new IllegalArgumentException("Alliance " + alliance.getName() + " is not registered to this guild: "
+                    + CM.settings_default.registerAlliance.cmd.toSlashMention());
         }
         if (force) {
             Long allowedAllianceId = Roles.ECON.hasAlliance(author, db.getGuild());
             if (allowedAllianceId == null) {
-                throw new IllegalArgumentException("Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+                throw new IllegalArgumentException(
+                        "Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
             }
             if (allowedAllianceId != 0L && allowedAllianceId != nation.getAlliance_id()) {
-                throw new IllegalArgumentException("You can only shift deposit flow for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
+                throw new IllegalArgumentException("You can only shift deposit flow for nations in your alliance ("
+                        + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
             }
         }
 
@@ -668,25 +746,28 @@ public class DiscordCommands {
         List<Runnable> tasks = new ArrayList<>();
         List<String> messages = new ArrayList<>();
 
-
         switch (flowType) {
             case INTERNAL -> {
-                tasks.add(() -> db.addBalance(date, nation, me.getId(), fromStr, amtPos));
-                tasks.add(() -> db.addBalance(date, nation, me.getId(), toStr, amtNeg));
+                tasks.add(() -> db.addBalance(date, nation, me.getId(), fromNote, amtPos));
+                tasks.add(() -> db.addBalance(date, nation, me.getId(), toNote, amtNeg));
                 messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr + "`");
                 messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr + "`");
             }
             case WITHDRAWAL -> {
-                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), fromStr, amtPos));
-                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), toStr, amtNeg));
-                messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr + "` sender: " + fromUrl);
-                messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr + "` sender: " + fromUrl);
+                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), fromNote, amtPos));
+                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), toNote, amtNeg));
+                messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr
+                        + "` sender: " + fromUrl);
+                messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr + "` sender: "
+                        + fromUrl);
             }
             case DEPOSIT -> {
-                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), fromStr, amtPos));
-                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), toStr, amtNeg));
-                messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr + "` receiver: " + fromUrl);
-                messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr + "` receiver: " + fromUrl);
+                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), fromNote, amtPos));
+                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), toNote, amtNeg));
+                messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr
+                        + "` receiver: " + fromUrl);
+                messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr
+                        + "` receiver: " + fromUrl);
             }
             default -> throw new IllegalArgumentException("Unexpected value: " + flowType);
         }
@@ -712,26 +793,34 @@ public class DiscordCommands {
     @RolePermission(value = Roles.ECON_STAFF)
     public String viewFlow(@Me GuildDB db, DBNation nation, DepositType note) {
 
-        // public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
-        List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, false, true, 0, 0, Long.MAX_VALUE, true);
+        // public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db,
+        // Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold,
+        // long cutOff, boolean priority) {
+        List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, false, true, 0, 0,
+                Long.MAX_VALUE, true);
 
         if (note != null) {
             transfers.removeIf(f -> !f.getValue().getNoteMap().containsKey(note));
         }
         double[] manual = FlowType.INTERNAL.getTotal(transfers, nation.getNation_id());
-//      - Amount withdrawn via a # note
+        // - Amount withdrawn via a # note
         double[] withdrawn = FlowType.WITHDRAWAL.getTotal(transfers, nation.getNation_id());
-//      - Amount deposit via a # note
+        // - Amount deposit via a # note
         double[] deposited = FlowType.DEPOSIT.getTotal(transfers, nation.getNation_id());
 
         StringBuilder response = new StringBuilder();
-        response.append("**" + FlowType.INTERNAL + "**: worth `$" + MathMan.format(ResourceType.convertedTotal(manual)) + "`\n");
+        response.append("**" + FlowType.INTERNAL + "**: worth `$" + MathMan.format(ResourceType.convertedTotal(manual))
+                + "`\n");
         response.append("```json\n" + ResourceType.toString(manual) + "\n```\n");
-//        response.append("Withrawal:\n```json\n" + ResourceType.toString(withdrawn) + "\n```\n");
-        response.append("**" + FlowType.WITHDRAWAL + "**: worth `$" + MathMan.format(ResourceType.convertedTotal(withdrawn)) + "`\n");
+        // response.append("Withrawal:\n```json\n" + ResourceType.toString(withdrawn) +
+        // "\n```\n");
+        response.append("**" + FlowType.WITHDRAWAL + "**: worth `$"
+                + MathMan.format(ResourceType.convertedTotal(withdrawn)) + "`\n");
         response.append("```json\n" + ResourceType.toString(withdrawn) + "\n```\n");
-//        response.append("Deposits:\n```json\n" + ResourceType.toString(deposited) + "\n```\n");
-        response.append("**" + FlowType.DEPOSIT + "**: worth `$" + MathMan.format(ResourceType.convertedTotal(deposited)) + "`\n");
+        // response.append("Deposits:\n```json\n" + ResourceType.toString(deposited) +
+        // "\n```\n");
+        response.append("**" + FlowType.DEPOSIT + "**: worth `$"
+                + MathMan.format(ResourceType.convertedTotal(deposited)) + "`\n");
         response.append("```json\n" + ResourceType.toString(deposited) + "\n```\n");
         return response.toString();
     }

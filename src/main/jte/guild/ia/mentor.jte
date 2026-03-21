@@ -42,7 +42,7 @@
 @param Map<Integer, Long> lastMentorTxByNationId
 @param List<DBNation> mentorsWithRole
 @param Map<DBNation, Integer> numPassedMap
-@param ValueStore<DBNation> cacheStore
+@param ValueStore cacheStore
 @param IACheckup checkup2
 
 <h2>Mentor: <a href="${mentor.getUrl()}">${mentor.getNation()}</a> | <a href="discord://discordapp.com/users/${mentor.getUserId()}">@${mentor.getUserDiscriminator()}</a></h2>

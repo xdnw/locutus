@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums;
 
-import java.util.Locale;
+import link.locutus.discord.db.entities.TransactionNote;
+
 import java.util.Map;
 
 public class DepositTypeInfo {
@@ -42,43 +43,56 @@ public class DepositTypeInfo {
     }
 
     public String toString(long accountId) {
-        String result = toString();
+        String legacy = toTransactionNote(accountId).toLegacyString();
+        return legacy == null ? "" : legacy;
+    }
+
+    public TransactionNote toTransactionNote() {
+        return toTransactionNote(0);
+    }
+
+    public TransactionNote toTransactionNote(long accountId) {
+        TransactionNote.Builder builder = TransactionNote.builder();
+
+        Object typeValue = amount == 0 ? null : amount;
         if (accountId != 0) {
             if (type.getParent() == null) {
-                if (result.contains("=")) {
+                if (typeValue != null) {
                     throw new IllegalArgumentException("Deposit type " + type.name() + " already has a value");
                 }
-                if (result.contains("#ignore")) {
-                    String typeName = type.name().toLowerCase(Locale.ROOT);
-                    result = result.replace(typeName, typeName + "=" + accountId);
-                } else {
-                    result += "=" + accountId;
-                }
-            } else if (result.contains("#ignore")) {
-                result += "=" + accountId;
+                typeValue = accountId;
+            } else if (ignore && type != DepositType.IGNORE) {
+                builder.put(DepositType.IGNORE, accountId);
             } else {
-                result = "#" + type.getParent().name().toLowerCase(Locale.ROOT) + "=" + accountId + " " + result;
+                builder.put(type.getParent(), accountId);
             }
         }
-        return result;
+
+        builder.put(type, typeValue);
+        if (city != 0) {
+            builder.put(DepositType.CITY, city);
+        }
+        if (ignore && type != DepositType.IGNORE && (accountId == 0 || type.getParent() == null)) {
+            builder.put(DepositType.IGNORE);
+        }
+        return builder.build();
+    }
+
+    public Map<DepositType, Object> toParsedNote() {
+        return toTransactionNote().asMap();
+    }
+
+    public Map<DepositType, Object> toParsedNote(long accountId) {
+        return toTransactionNote(accountId).asMap();
     }
 
     @Override
     public String toString() {
-        String note = "#" + type.name().toLowerCase(Locale.ROOT);
-        if (amount != 0) {
-            note += "=" + amount;
-        }
-        if (city != 0) {
-            note += " #city=" + city;
-        }
-        if (ignore && type != DepositType.IGNORE) {
-            note += " #ignore";
-        }
-        return note.trim();
+        String legacy = toTransactionNote().toLegacyString();
+        return legacy == null ? "" : legacy;
     }
 
-    public boolean isDeposits() {
+    public boolean isIncludedInDeposits() {
         return (type == DepositType.DEPOSIT || type == DepositType.TRADE || type == DepositType.TAX) && !isIgnored();
     }
 

@@ -128,7 +128,7 @@ public class SyncTaxes extends Command {
                     if (aaList == null) {
                         return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
                     }
-                    List<TaxDeposit> taxes = aaList.updateTaxes(startDate);
+                    List<TaxDeposit> taxes = aaList.updateTaxes(Locutus.imp().getNationDB(), startDate, Locutus.imp().getBankDB()::addTaxDeposits);
                     return "Updated " + taxes.size() + " records.";
                 }
             }

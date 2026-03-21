@@ -13,6 +13,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -52,14 +54,15 @@ public class LeftAA extends Command {
         if (args.isEmpty()) {
             return usage(args.size(), 1, channel);
         }
-        NationOrAlliance target = PWBindings.nationOrAlliance(args.get(0), guild);
+        NationOrAlliance target = PWBindings.parseNationOrAlliance(runtimeServices(), null, args.get(0), false, guild);
         long time = 0;
         if (args.size() >= 2) {
             time = PrimitiveBindings.timestamp(args.get(1));
         }
         NationList filter = null;
         if (args.size() >= 3) {
-            filter = PWBindings.nationList(null, guild, args.get(2), author, me);
+            filter = new SimpleNationList(DiscordUtil.parseNations(guild, author, me, args.get(2), false, false))
+                    .setFilter(args.get(2));
         }
         boolean ignoreInactive = flags.contains('a');
         boolean ignoreVM = flags.contains('v');

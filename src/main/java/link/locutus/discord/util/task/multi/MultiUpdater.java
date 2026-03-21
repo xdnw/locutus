@@ -435,7 +435,7 @@ public class MultiUpdater {
             updatesPerDay += 1d / days;
         }
         Logg.info("Multi check. Updates per day: " + updatesPerDay + " | " + nations.size());
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+        ValueStore cacheStore = PlaceholderCache.createIsolatedCache(nations, DBNation.class);
 
         for (Map.Entry<DBNation, Double> entry : getQueue()) {
             DBNation nation = entry.getKey();

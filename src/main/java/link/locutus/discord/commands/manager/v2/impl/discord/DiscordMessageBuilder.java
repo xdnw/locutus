@@ -13,7 +13,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
-import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -64,22 +63,14 @@ public class DiscordMessageBuilder extends AMessageBuilder {
 
     public DiscordMessageBuilder appendMessage(Message message) {
         contentShrink.append(message.getContentRaw());
-        // Extract buttons from action rows (JDA 6: Message#getComponents)
-        for (var topComp : message.getComponents()) {
-            if (topComp instanceof ActionRow row) {
-                for (ActionRowChildComponentUnion child : row.getComponents()) {
-                    if (child instanceof Button b) {
-                        String url = b.getUrl();
-                        if (url != null && !url.isEmpty()) {
-                            links.put(b.getUrl(), b.getLabel());
-                        } else {
-                            // JDA 6: use getCustomId() on Button
-                            buttons.put(b.getCustomId(), b.getLabel());
-                        }
-                    }
-                }
+        message.getButtons().forEach(b -> {
+            String url = b.getUrl();
+            if (url != null && !url.isEmpty()) {
+                links.put(b.getUrl(), b.getLabel());
+            } else {
+                buttons.put(b.getId(), b.getLabel());
             }
-        }
+        });
         for (MessageEmbed embed : message.getEmbeds()) {
             embed(embed);
         }

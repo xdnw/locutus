@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 public class CoalitionEndpoints {
 	@Command(desc = "List the bot coalitions", viewable = true)
@@ -75,18 +74,18 @@ public class CoalitionEndpoints {
 		if (allianceOrGuildId > Integer.MAX_VALUE) {
 			GuildDB guildDb = Locutus.imp().getGuildDB(allianceOrGuildId);
 			if (guildDb == null) {
-				return ignoreDeleted ? null : new WebCoalitionMember(allianceOrGuildId, "guild:" + allianceOrGuildId, "guild", true);
+				return ignoreDeleted ? null : new WebCoalitionMember(allianceOrGuildId, "guild:" + allianceOrGuildId, true);
 			}
-			return new WebCoalitionMember(allianceOrGuildId, guildDb.getGuild().toString(), "guild", false);
+			return new WebCoalitionMember(allianceOrGuildId, guildDb.getGuild().toString(), false);
 		}
 
 		int allianceId = (int) allianceOrGuildId;
 		String allianceName = Locutus.imp().getNationDB().getAllianceName(allianceId);
 		boolean deleted = allianceName == null || DBAlliance.get(allianceId) == null;
 		if (deleted) {
-			return ignoreDeleted ? null : new WebCoalitionMember(allianceOrGuildId, "AA:" + allianceId, "alliance", true);
+			return ignoreDeleted ? null : new WebCoalitionMember(allianceOrGuildId, "AA:" + allianceId, true);
 		}
 
-		return new WebCoalitionMember(allianceOrGuildId, allianceName, "alliance", false);
+		return new WebCoalitionMember(allianceOrGuildId, allianceName, false);
 	}
 }

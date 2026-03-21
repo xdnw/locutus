@@ -12,14 +12,14 @@ import java.util.*;
 
 public class ArgumentStack {
     private final List<String> args;
-    private final LocalValueStore<Object> store;
+    private final LocalValueStore store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private int index;
 
-    public ArgumentStack(List<String> args, LocalValueStore<?> store, ValidatorStore validators, PermissionHandler permisser) {
+    public ArgumentStack(List<String> args, LocalValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         this.args = args;
-        this.store = (LocalValueStore<Object>) store;
+        this.store = store;
         this.validators = validators;
         this.permisser = permisser;
     }
@@ -99,7 +99,7 @@ public class ArgumentStack {
         return (T) parser.apply(this);
     }
 
-    public LocalValueStore<?> getStore() {
+    public LocalValueStore getStore() {
         return store;
     }
 

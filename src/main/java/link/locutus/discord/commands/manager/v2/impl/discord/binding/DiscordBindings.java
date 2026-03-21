@@ -3,12 +3,15 @@ package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 import cn.easyproject.easyocr.ImageType;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeCommandContext;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -194,7 +197,15 @@ public class DiscordBindings extends BindingHelper {
                     }
                 }
             } else {
-                Predicate<DBNation> filter = Locutus.cmd().getV2().getNationPlaceholders().parseFilter(store, arg);
+                PlaceholderRegistry registry = PlaceholderRegistry.resolve(store);
+                if (registry == null) {
+                    throw new IllegalStateException("No placeholder registry available");
+                }
+                Placeholders<DBNation, ?> nationPlaceholders = registry.get(DBNation.class);
+                if (nationPlaceholders == null) {
+                    throw new IllegalStateException("No nation placeholders registered");
+                }
+                Predicate<DBNation> filter = nationPlaceholders.parseFilter(store, arg);
                 for (Member member : guild.getMembers()) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null && filter.test(nation)) {
@@ -207,13 +218,13 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding
-    public GuildShardManager shardManager() {
-        return Locutus.imp().getDiscordApi();
+    public GuildShardManager shardManager(CommandRuntimeLookupContext services) {
+        return services.shardManager();
     }
 
     @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
-    public Guild guild(long guildId) {
-        Guild guild = Locutus.imp().getDiscordApi().getGuildById(guildId);
+    public Guild guild(CommandRuntimeLookupContext services, long guildId) {
+        Guild guild = services.getGuild(guildId);
         if (guild == null) throw new IllegalArgumentException("No guild found for: " + guildId);
         return guild;
     }
@@ -344,18 +355,17 @@ public class DiscordBindings extends BindingHelper {
     @Binding(value = "A bot command in either JSON or slash command format",
             examples = "{ \"\": \"register\", \"nation\": \"Borg\" }\n" +
                         "/register nation=Borg")
-    public JSONObject cmd(String input) {
+    public JSONObject cmd(CommandRuntimeCommandContext services, String input) {
         if (input.isEmpty()) {
             throw new IllegalArgumentException("No command input provided.");
         }
-        CommandManager2 v2 = Locutus.cmd().getV2();
         if (input.startsWith("{") && input.endsWith("}")) {
             JSONObject json = new JSONObject(input);
             String cmdName = json.optString("", null);
             if (cmdName == null || cmdName.isEmpty()) {
                 throw new IllegalArgumentException("No command name found in JSON: `" + input + "`");
             }
-            CommandCallable callable = v2.getCallable(Arrays.asList(cmdName.split(" ")));
+            CommandCallable callable = services.getCommand(Arrays.asList(cmdName.split(" ")));
             if (callable == null) {
                 throw new IllegalArgumentException("No command found for " + cmdName);
             }
@@ -375,7 +385,7 @@ public class DiscordBindings extends BindingHelper {
         if (!Character.isLetterOrDigit(input.charAt(0))) {
             input = input.substring(1);
         }
-        Map<String, String> slash = v2.validateSlashCommand(input, true);
+        Map<String, String> slash = services.validateSlashCommand(input, true);
         return new JSONObject(slash);
     }
 
@@ -386,8 +396,14 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(webType = {ICommand.class, WildcardType.class})
-    public CommandCallable command(String input) {
-        CommandCallable callable = Locutus.imp().getCommandManager().getV2().getCommands().get(input);
+    public CommandCallable command(CommandRuntimeCommandContext services, String input) {
+        List<String> path = Arrays.stream(input.trim().split(" +"))
+                .filter(part -> !part.isBlank())
+                .toList();
+        if (path.isEmpty()) {
+            throw new IllegalArgumentException("No command found for " + input);
+        }
+        CommandCallable callable = services.getCommand(path);
         if (callable == null) {
             throw new IllegalArgumentException("No command found for " + input);
         }
@@ -395,8 +411,8 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding
-    public PermissionHandler permissionHandler() {
-        return Locutus.imp().getCommandManager().getV2().getPermisser();
+    public PermissionHandler permissionHandler(ValueStore store) {
+        return (PermissionHandler) store.getProvided(Key.of(PermissionHandler.class), true);
     }
 
     @Binding(value = "An image or captcha type for Optical Character Recognition (OCR)",

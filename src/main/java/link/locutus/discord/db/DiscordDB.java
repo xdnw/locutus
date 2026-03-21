@@ -55,12 +55,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.LongFunction;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DiscordDB extends DBMainV2 implements SyncableDatabase {
+    private volatile LongFunction<User> discordUserByIdResolver;
 
     public DiscordDB() throws SQLException, ClassNotFoundException {
         this("locutus");
@@ -68,6 +70,11 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     public DiscordDB(String name) throws SQLException, ClassNotFoundException {
         super(name);
         if (tableExists("credentials")) migrateCredentials();
+    }
+
+    public DiscordDB setDiscordUserByIdResolver(LongFunction<User> resolver) {
+        this.discordUserByIdResolver = resolver;
+        return this;
     }
 
     @Override
@@ -969,10 +976,12 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public PNWUser getUserFromNationId(int nationId) {
+        return getUserFromNationId(nationId, null);
+    }
+
+    public PNWUser getUserFromNationId(int nationId, LongFunction<User> userResolver) {
         if (nationId == Settings.INSTANCE.NATION_ID && nationId > 0 && Settings.INSTANCE.ADMIN_USER_ID > 0) {
-            long userId = Settings.INSTANCE.ADMIN_USER_ID;
-            User user = Locutus.imp().getDiscordApi().getUserById(userId);
-            return new PNWUser(nationId, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
+            return getConfiguredAdminUser(userResolver);
         }
         updateUserCache();
         synchronized (userCache2) {
@@ -981,9 +990,12 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public PNWUser getUserFromDiscordId(long discordId) {
+        return getUserFromDiscordId(discordId, null);
+    }
+
+    public PNWUser getUserFromDiscordId(long discordId, LongFunction<User> userResolver) {
         if (discordId == Settings.INSTANCE.ADMIN_USER_ID && Settings.INSTANCE.NATION_ID > 0 && discordId > 0) {
-            User user = Locutus.imp().getDiscordApi().getUserById(discordId);
-            return new PNWUser(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
+            return getConfiguredAdminUser(userResolver);
         }
         updateUserCache();
         synchronized (userCache2) {
@@ -1002,6 +1014,14 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
         if (user == null) return null;
         return user.getNationId();
+    }
+
+    private PNWUser getConfiguredAdminUser(LongFunction<User> userResolver) {
+        LongFunction<User> effectiveResolver = userResolver != null ? userResolver : discordUserByIdResolver;
+        long discordId = Settings.INSTANCE.ADMIN_USER_ID;
+        int nationId = Settings.INSTANCE.NATION_ID;
+        User user = effectiveResolver == null ? null : effectiveResolver.apply(discordId);
+        return new PNWUser(nationId, discordId, user == null ? null : DiscordUtil.getFullUsername(user));
     }
 
     private final Long2ObjectOpenHashMap<PNWUser> userCache2 = new Long2ObjectOpenHashMap<>();
