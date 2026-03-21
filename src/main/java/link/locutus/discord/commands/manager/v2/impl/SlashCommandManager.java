@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.manager.v2.impl;
+ package link.locutus.discord.commands.manager.v2.impl;
 
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.*;
@@ -1018,6 +1018,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
+        Locutus.JdaEventTrace trace = Locutus.imp().beginJdaEvent("SlashCommandInteraction `" + event.getFullCommandName() + "`");
         try {
             long start = System.currentTimeMillis();
             User user = GuildShardManager.updateUserName(event.getUser());
@@ -1026,17 +1027,17 @@ public class SlashCommandManager extends ListenerAdapter {
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();
 
-            boolean isModal = true;
+            boolean async = true;
 
             String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
             if (!path.contains("modal")) {
-                isModal = false;
-                if (isEphemeral(path)) {
-                    RateLimitUtil.complete(event.deferReply(true));
+                boolean ephemeral = isEphemeral(path);
+                RateLimitUtil.complete(event.deferReply(ephemeral));
+                if (ephemeral) {
                     hook.setEphemeral(true);
-                } else {
-                    RateLimitUtil.queue(event.deferReply(false));
                 }
+            } else {
+                async = false;
             }
 
             Map<String, String> combined = new HashMap<>();
@@ -1046,17 +1047,16 @@ public class SlashCommandManager extends ListenerAdapter {
             }
 
             DiscordHookIO io = new DiscordHookIO(hook, event);
-            if (isModal) {
-                io.setIsModal(event);
-            }
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
-            Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, path, combined, true);
+            Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, path, combined, async);
             long end = System.currentTimeMillis();
             if (end - start > 15) {
                 Logg.text("[Slash Command] Slash interaction `" + path + "` | `" + combined + "` took " + (end - start) + "ms");
             }
         } catch (Throwable e) {
             e.printStackTrace();
+        } finally {
+            Locutus.imp().endJdaEvent(trace);
         }
     }
 
@@ -1075,41 +1075,45 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     public <T extends ISnowflake> void handleContext(GenericContextInteractionEvent event, T target, String mention, Supplier<String> getMsg, boolean isUser) {
-        String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
-        MessageChannel channel = event.getMessageChannel();
-        InteractionHook hook = event.getHook();
-        Guild guild = event.isFromGuild() ? event.getGuild() : null;
+        Locutus.JdaEventTrace trace = Locutus.imp().beginJdaEvent((isUser ? "UserContextInteraction `" : "MessageContextInteraction `") + event.getFullCommandName() + "`");
+        try {
+            String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
+            MessageChannel channel = event.getMessageChannel();
+            InteractionHook hook = event.getHook();
+            Guild guild = event.isFromGuild() ? event.getGuild() : null;
 
-        DiscordHookIO io = new DiscordHookIO(hook, event);
-        RateLimitUtil.complete(event.deferReply(true));
-        hook.setEphemeral(true);
+            DiscordHookIO io = new DiscordHookIO(hook, event);
+            RateLimitUtil.complete(event.deferReply(true));
+            hook.setEphemeral(true);
 
-        User user = GuildShardManager.updateUserName(event.getUser());
+            User user = GuildShardManager.updateUserName(event.getUser());
 
-        String fullCmdStr;
-        if (guild == null) {
-            fullCmdStr = path + " " + mention;
-        } else {
-            GuildDB db = Locutus.imp().getGuildDB(guild);
-            AppMenu menu = DiscordBindings.menu(io, db, user, isUser ? "user" : "message");
-
-            if (isUser) {
-                menu.targetUser = target.getIdLong();
-            }
-            else {
-                menu.targetMessage = mention;
-                menu.targetContent = getMsg.get();
-            }
-            fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
-            Logg.info("Modal interaction at " + path + " | " + fullCmdStr + " | " + menu.buttons);
-            if ((path.equalsIgnoreCase("...more") && fullCmdStr == null) || "...more".equalsIgnoreCase(fullCmdStr)) {
-                fullCmdStr = menu.formatCommand(guild, user, CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
-            } else if (fullCmdStr == null) {
+            String fullCmdStr;
+            if (guild == null) {
                 fullCmdStr = path + " " + mention;
+            } else {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
+                AppMenu menu = DiscordBindings.menu(io, db, user, isUser ? "user" : "message");
+
+                if (isUser) {
+                    menu.targetUser = target.getIdLong();
+                } else {
+                    menu.targetMessage = mention;
+                    menu.targetContent = getMsg.get();
+                }
+                fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
+                Logg.info("Modal interaction at " + path + " | " + fullCmdStr + " | " + menu.buttons);
+                if ((path.equalsIgnoreCase("...more") && fullCmdStr == null) || "...more".equalsIgnoreCase(fullCmdStr)) {
+                    fullCmdStr = menu.formatCommand(guild, user, CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
+                } else if (fullCmdStr == null) {
+                    fullCmdStr = path + " " + mention;
+                }
+                fullCmdStr = menu.formatCommand(guild, user, fullCmdStr);
             }
-            fullCmdStr = menu.formatCommand(guild, user, fullCmdStr);
+            Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, fullCmdStr, true, true);
+        } finally {
+            Locutus.imp().endJdaEvent(trace);
         }
-        Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, fullCmdStr, true, true);
     }
 
     @Override

@@ -32,6 +32,10 @@ public class RateLimitUtil {
     private static volatile int lastLimitTotal = 0;
     private static volatile String lastRateLimitReport;
 
+    private static final Map<Long, List<Function<IMessageBuilder, Boolean>>> messageQueue = new ConcurrentHashMap<>();
+    private static final Map<Long, Long> messageQueueLastSent = new ConcurrentHashMap<>();
+
+    private static final ThreadLocal<CallerContext> CALLER_CONTEXT_OVERRIDE = new ThreadLocal<>();
     private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
 
     private static final Set<Class<?>> FORWARDING_CALLERS = Set.of(
@@ -50,6 +54,8 @@ public class RateLimitUtil {
             "java.lang.reflect.",
             "jdk.internal.reflect."
     );
+
+    private record CallerContext(Class<?> owner, Exception trace) {}
 
     public record RateLimitClassStat(String className, int requestsThisMinute) {
     }
@@ -81,8 +87,39 @@ public class RateLimitUtil {
     }
 
     private static String getActionClassName(Class<?> clazz) {
-        String simpleName = clazz.getSimpleName();
-        return simpleName.isBlank() ? clazz.getName() : simpleName;
+        Class<?> normalized = normalizeCallerClass(clazz);
+        String simpleName = normalized.getSimpleName();
+        return simpleName.isBlank() ? normalized.getName() : simpleName;
+    }
+
+    private static Class<?> normalizeCallerClass(Class<?> clazz) {
+        if (clazz == null) {
+            return RateLimitUtil.class;
+        }
+        Class<?> current = clazz;
+        while (current != null && (current.isAnonymousClass() || current.isLocalClass() || current.isSynthetic())) {
+            Class<?> enclosing = current.getEnclosingClass();
+            if (enclosing == null) {
+                break;
+            }
+            current = enclosing;
+        }
+        return current == null ? RateLimitUtil.class : current;
+    }
+
+    private static boolean isForwardingCaller(Class<?> clazz) {
+        for (Class<?> current = clazz; current != null; current = current.getEnclosingClass()) {
+            if (FORWARDING_CALLERS.contains(current)) {
+                return true;
+            }
+        }
+        String name = clazz.getName();
+        for (String prefix : FORWARDING_CALLER_PREFIXES) {
+            if (name.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int getQueuedMessageCount() {
@@ -93,16 +130,7 @@ public class RateLimitUtil {
         if (clazz == null) {
             return true;
         }
-        if (FORWARDING_CALLERS.contains(clazz)) {
-            return true;
-        }
-        String name = clazz.getName();
-        for (String prefix : FORWARDING_CALLER_PREFIXES) {
-            if (name.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
+        return isForwardingCaller(clazz);
     }
 
     private static List<Map.Entry<Class<?>, Map<Long, Exception>>> getSortedRateLimitEntries(long cutoff) {
@@ -280,7 +308,7 @@ public class RateLimitUtil {
     }
 
     public static int getLimitPerMinute() {
-        return 50;
+        return 3000;
     }
 
     private static String getRateLimitMessage(long cutoff) {
@@ -318,7 +346,7 @@ public class RateLimitUtil {
         return response.toString();
     }
 
-    private static <T> Map.Entry<Class<?>, Exception> getClass(RestAction<T> action) {
+    private static CallerContext captureCallerContext(RestAction<?> action) {
         Class<?> callerClass = null;
         List<StackTraceElement> filteredFrames = new ArrayList<>();
 
@@ -329,14 +357,14 @@ public class RateLimitUtil {
             }
 
             if (callerClass == null) {
-                callerClass = declaringClass;
+                callerClass = normalizeCallerClass(declaringClass);
             }
 
             filteredFrames.add(frame.toStackTraceElement());
         }
 
         if (callerClass == null) {
-            callerClass = action != null ? action.getClass() : RateLimitUtil.class;
+            callerClass = normalizeCallerClass(action != null ? action.getClass() : RateLimitUtil.class);
         }
 
         if (filteredFrames.isEmpty()) {
@@ -345,18 +373,41 @@ public class RateLimitUtil {
 
         Exception trace = new Exception();
         trace.setStackTrace(filteredFrames.toArray(StackTraceElement[]::new));
-        return new AbstractMap.SimpleEntry<>(callerClass, trace);
+        return new CallerContext(callerClass, trace);
+    }
+
+    private static CallerContext getEffectiveCallerContext(RestAction<?> action) {
+        CallerContext override = CALLER_CONTEXT_OVERRIDE.get();
+        return override != null ? override : captureCallerContext(action);
+    }
+
+    private static void withCallerContext(CallerContext caller, Runnable action) {
+        if (caller == null) {
+            action.run();
+            return;
+        }
+        CallerContext previous = CALLER_CONTEXT_OVERRIDE.get();
+        CALLER_CONTEXT_OVERRIDE.set(caller);
+        try {
+            action.run();
+        } finally {
+            if (previous != null) {
+                CALLER_CONTEXT_OVERRIDE.set(previous);
+            } else {
+                CALLER_CONTEXT_OVERRIDE.remove();
+            }
+        }
     }
 
     private static <T> RestAction<T> addRequest(RestAction<T> action) {
         long now = System.currentTimeMillis();
         long cutoff = getWindowCutoff(now);
 
-        Map.Entry<Class<?>, Exception> caller = getClass(action);
+        CallerContext caller = getEffectiveCallerContext(action);
 
         requestsThisMinute.add(now);
-        rateLimitByClass.computeIfAbsent(caller.getKey(), f -> new ConcurrentHashMap<>())
-                .put(now, caller.getValue());
+        rateLimitByClass.computeIfAbsent(caller.owner(), f -> new ConcurrentHashMap<>())
+                .put(now, caller.trace());
 
         pruneExpiredRequests(cutoff);
 
@@ -372,9 +423,6 @@ public class RateLimitUtil {
 
         return action;
     }
-
-    private static final Map<Long, List<Function<IMessageBuilder, Boolean>>> messageQueue = new ConcurrentHashMap<>();
-    private static final Map<Long, Long> messageQueueLastSent = new ConcurrentHashMap<>();
 
     public static void queueMessage(MessageChannel channel, String message, boolean condense) {
         queueMessage(channel, message, condense, null);
@@ -399,12 +447,22 @@ public class RateLimitUtil {
             }
             return;
         }
+        CallerContext caller = captureCallerContext(null);
+        if (io.isInteraction()) {
+            IMessageBuilder msg = io.create();
+            if (apply.apply(msg)) {
+                withCallerContext(caller, () -> {
+                    msg.send();
+                });
+            }
+            return;
+        }
         long channelId = io.getIdLong();
         int requests = getCurrentUsed(true);
         if (!condense || requests < 10 || channelId <= 0) {
             IMessageBuilder msg = io.create();
             if (apply.apply(msg)) {
-                msg.send();
+                withCallerContext(caller, msg::send);
             }
             return;
         }
@@ -454,7 +512,7 @@ public class RateLimitUtil {
                         }
                     }
                     if (modified) {
-                        msg.send();
+                        withCallerContext(caller, msg::send);
                     }
                 }
             }
@@ -505,10 +563,20 @@ public class RateLimitUtil {
     }
 
     public static void queueWhenFree(RestAction<?> action) {
-        queueWhenFree(() -> queue(action));
+        if (action == null) return;
+        CallerContext caller = captureCallerContext(action);
+        queueWhenFreeInternal(() -> withCallerContext(caller, () -> {
+            queue(action);
+        }));
     }
 
     public static void queueWhenFree(Runnable action) {
+        if (action == null) return;
+        CallerContext caller = captureCallerContext(null);
+        queueWhenFreeInternal(() -> withCallerContext(caller, action));
+    }
+
+    private static void queueWhenFreeInternal(Runnable action) {
         if (getCurrentUsed(true) < getLimitPerMinute()) {
             action.run();
             return;
@@ -541,3 +609,4 @@ public class RateLimitUtil {
         return future;
     }
 }
+

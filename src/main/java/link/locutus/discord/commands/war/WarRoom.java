@@ -33,6 +33,8 @@ public class WarRoom {
     public long channelId;
     public StandardGuildMessageChannel channel;
 
+    public static boolean SET_SYMBOLS = false;
+
     public WarRoom(WarCategory warCategory, DBNation target, WarCatReason reason) {
         this.warCategory = warCategory;
         checkNotNull(target);
@@ -123,7 +125,7 @@ public class WarRoom {
     }
 
     public boolean setGC(boolean value) {
-        if (value == enemyGc) return false;
+        if (value == enemyGc || !SET_SYMBOLS) return false;
         enemyGc = value;
         return setSymbol(channel,"\uD83D\uDC82", value);
     }
@@ -134,7 +136,7 @@ public class WarRoom {
     }
 
     public boolean setAC(boolean value) {
-        if (value == enemyAc) return false;
+        if (value == enemyAc || !SET_SYMBOLS) return false;
         enemyAc = value;
         return setSymbol(channel, "\u2708", value);
     }
@@ -145,7 +147,7 @@ public class WarRoom {
     }
 
     public boolean setBlockade(boolean value) {
-        if (enemyBlockade == value) return false;
+        if (enemyBlockade == value || !SET_SYMBOLS) return false;
         enemyBlockade = value;
         return setSymbol(channel, "\u26F5", value);
     }

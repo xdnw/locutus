@@ -103,6 +103,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public final class Locutus extends ListenerAdapter {
+    private static final long SLOW_JDA_EVENT_THRESHOLD_MS = 3000;
+
     private static Locutus INSTANCE;
     private final RepeatingTasks taskTrack;
     private ILoader loader;
@@ -123,6 +125,16 @@ public final class Locutus extends ListenerAdapter {
     private ProxyHandler proxyHandler;
     private Guild server;
     private MultiUpdater multiUpdater;
+    private final Map<Long, ActiveJdaEvent> activeJdaEvents = new ConcurrentHashMap<>();
+    private final Set<Long> reportedSlowJdaEvents = ConcurrentHashMap.newKeySet();
+    private final AtomicLong nextJdaEventId = new AtomicLong();
+    private volatile boolean jdaEventMonitorStarted;
+
+    private record ActiveJdaEvent(long id, String name, long startTime, Thread thread) {
+    }
+
+    public record JdaEventTrace(long id) {
+    }
 
     public static synchronized Locutus create() {
         if (INSTANCE != null) throw new IllegalStateException("Already initialized");
@@ -988,6 +1000,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onModalInteraction(@NotNull ModalInteractionEvent event) {
+        JdaEventTrace trace = beginJdaEvent("ModalInteraction `" + event.getModalId() + "`");
         try {
             String id = event.getModalId();
             User user = GuildShardManager.updateUserName(event.getUser());
@@ -1039,17 +1052,23 @@ public final class Locutus extends ListenerAdapter {
             DiscordHookIO io = new DiscordHookIO(hook, null).setInteraction(true);
             String path = pair[1];
             boolean ephemeral = getSlashCommands().isEphemeral(path);
-            event.deferReply(ephemeral).queue();
+            RateLimitUtil.complete(event.deferReply(ephemeral));
+            if (ephemeral) {
+                hook.setEphemeral(true);
+            }
             Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), user, event.getMessage(), io, path, args, true);
         } catch (Throwable e) {
             e.printStackTrace();
+        } finally {
+            endJdaEvent(trace);
         }
     }
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
-        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getUser().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+        JdaEventTrace trace = beginJdaEvent("ButtonInteraction `" + event.getButton().getCustomId() + "`");
         try {
+            if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getUser().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
             Message message = event.getMessage();
 
             Button button = event.getButton();
@@ -1104,17 +1123,16 @@ public final class Locutus extends ListenerAdapter {
                     }
 
                     String id = info.command;
-                    if (!deferred && !id.contains("modal create")) {
+                    boolean runAsync = !id.contains("modal create");
+                    if (!deferred && runAsync) {
                         deferred = true;
                         if (forceEphemeral || info.behavior == CommandBehavior.EPHEMERAL) {
-                            event.deferReply(true).queue();
+                            RateLimitUtil.complete(event.deferReply(true));
                             hook.setEphemeral(true);
                             isEphemeral = true;
                         } else {
-                            RateLimitUtil.queue(event.deferEdit());
+                            RateLimitUtil.complete(event.deferEdit());
                         }
-                        DiscordHookIO hookIO = (DiscordHookIO) io;
-                        hookIO.setIsModal(event);
                     }
 
                     if (info.channelId != null && !isEphemeral) {
@@ -1130,10 +1148,10 @@ public final class Locutus extends ListenerAdapter {
                     }
 
                     if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || getCommandManager().isModernPrefix(id.charAt(0)))) {
-                        success |= handleCommandReaction(id, message, ioToUse, user, true);
+                        success |= handleCommandReaction(id, message, ioToUse, user, runAsync);
                         hasLegacyCommand = true;
                     } else if (id.startsWith("{")) {
-                        getCommandManager().getV2().run(guild, channel, user, message, ioToUse, id, true, true);
+                        getCommandManager().getV2().run(guild, channel, user, message, ioToUse, id, runAsync, true);
                     } else if (!id.isEmpty()) {
                         RateLimitUtil.queue(event.reply("Unknown command (2): `" + id + "`"));
                         return;
@@ -1178,6 +1196,8 @@ public final class Locutus extends ListenerAdapter {
             }
         } catch (Throwable e) {
             e.printStackTrace();
+        } finally {
+            endJdaEvent(trace);
         }
     }
 
@@ -1219,8 +1239,9 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getAuthor().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+        JdaEventTrace trace = beginJdaEvent("MessageReceived `" + event.getMessageId() + "`");
         try {
+            if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getAuthor().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             if (guild != null) {
                 GuildDB db = getGuildDB(guild);
@@ -1257,6 +1278,8 @@ public final class Locutus extends ListenerAdapter {
             }
         } catch (Throwable e) {
             e.printStackTrace();
+        } finally {
+            endJdaEvent(trace);
         }
     }
 
@@ -1282,26 +1305,31 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onMessageReactionAdd(@Nonnull MessageReactionAddEvent event) {
-        User author = event.getUser();
-        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && author.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
-        if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
-            return;
-        }
-        if (author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
-            return;
-        }
-        Message message = isMessageLocutus(event.getMessageIdLong(), event.getGuildChannel());
-        if (message == null) return;
-        EmojiUnion emote;
-        if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
-            emote = event.getEmoji();
-            if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
-                link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()));
+        JdaEventTrace trace = beginJdaEvent("MessageReactionAdd `" + event.getMessageId() + "`");
+        try {
+            User author = event.getUser();
+            if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && author.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+            if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
                 return;
             }
+            if (author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
+                return;
+            }
+            Message message = isMessageLocutus(event.getMessageIdLong(), event.getGuildChannel());
+            if (message == null) return;
+            EmojiUnion emote;
+            if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
+                emote = event.getEmoji();
+                if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
+                    link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()));
+                    return;
+                }
+            }
+            emote = event.getEmoji();
+            onMessageReact(message, event.getUser(), emote, event.getResponseNumber());
+        } finally {
+            endJdaEvent(trace);
         }
-        emote = event.getEmoji();
-        onMessageReact(message, event.getUser(), emote, event.getResponseNumber());
     }
 
     public void onMessageReact(Message message, User user, EmojiUnion emote, long responseId) {
@@ -1422,6 +1450,49 @@ public final class Locutus extends ListenerAdapter {
 
     public ThreadPoolExecutor getExecutor() {
         return executor;
+    }
+
+    private void ensureJdaEventMonitorStarted() {
+        if (jdaEventMonitorStarted) {
+            return;
+        }
+        synchronized (this) {
+            if (jdaEventMonitorStarted) {
+                return;
+            }
+            scheduler.scheduleAtFixedRate(new CaughtRunnable() {
+                @Override
+                public void runUnsafe() {
+                    long now = System.currentTimeMillis();
+                    for (ActiveJdaEvent event : activeJdaEvents.values()) {
+                        long duration = now - event.startTime();
+                        if (duration < SLOW_JDA_EVENT_THRESHOLD_MS || !reportedSlowJdaEvents.add(event.id())) {
+                            continue;
+                        }
+                        System.err.println("[Slow JDA Event] `" + event.name() + "` has been running for " + duration + "ms on thread `" + event.thread().getName() + "`");
+                        for (StackTraceElement ste : event.thread().getStackTrace()) {
+                            System.err.println("\tat " + ste);
+                        }
+                    }
+                }
+            }, 1, 1, TimeUnit.SECONDS);
+            jdaEventMonitorStarted = true;
+        }
+    }
+
+    public JdaEventTrace beginJdaEvent(String name) {
+        ensureJdaEventMonitorStarted();
+        long id = nextJdaEventId.incrementAndGet();
+        activeJdaEvents.put(id, new ActiveJdaEvent(id, name, System.currentTimeMillis(), Thread.currentThread()));
+        return new JdaEventTrace(id);
+    }
+
+    public void endJdaEvent(JdaEventTrace trace) {
+        if (trace == null) {
+            return;
+        }
+        activeJdaEvents.remove(trace.id());
+        reportedSlowJdaEvents.remove(trace.id());
     }
 
     public void stop() {

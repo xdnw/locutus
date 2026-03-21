@@ -1297,10 +1297,11 @@ public class AdminCommands {
                 response.append(" and last recorded over-limit details");
             }
             response.append('.');
-            return response.toString();
+            System.err.println(response.toString());
+            return "See console";
         }
-
-        return summary;
+        System.err.println(summary);
+        return "See console";
     }
 
     @Command(desc = "Generate and save the wiki pages for the bot")

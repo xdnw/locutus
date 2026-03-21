@@ -2013,7 +2013,9 @@ public class UtilityCommands {
                 CM.unit.history history = CM.unit.history.cmd.nation(nation.getUrl()).unit("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, history, "Unit History");
 
-                msg.send();
+                System.out.println("SENDING MSG");
+                FileUtil.get(msg.send());
+                System.out.println("MSG SENT");
             } else {
                 if (snapshotDate != null) {
                     throw new IllegalArgumentException("You specified a `snapshotDate`, but alliance snapshots are not currently supported.");
@@ -2074,8 +2076,9 @@ public class UtilityCommands {
                 CM.offshore.find.for_coalition findOffshore =
                         CM.offshore.find.for_coalition.cmd.alliance(alliance.getQualifiedId()).cutoffMs("200d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
-
-                msg.send();
+                System.out.println("SENDING MSG");
+                FileUtil.get(msg.send());
+                System.out.println("MSG SENT");
             }
         } else {
             NationList nationList = new SimpleNationList(nations);
