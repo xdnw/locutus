@@ -96,6 +96,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -1007,7 +1008,7 @@ public final class Locutus extends ListenerAdapter {
 
             Map<String, String> keyPairs = new LinkedHashMap<>();
             for (ModalMapping value : values) {
-                keyPairs.put(value.getId(), value.getAsString());
+                keyPairs.put(value.getCustomId(), value.getAsString());
             }
             Set<String> ignoreKeys = new ObjectLinkedOpenHashSet<>();
 
@@ -1053,7 +1054,7 @@ public final class Locutus extends ListenerAdapter {
 
             Button button = event.getButton();
 
-            if (button.getId().equalsIgnoreCase("")) {
+            if (button.getCustomId().equalsIgnoreCase("")) {
                 RateLimitUtil.queue(message.delete());
                 return;
             }
@@ -1151,12 +1152,15 @@ public final class Locutus extends ListenerAdapter {
                             // unsupported
                         }
                         case DELETE_PRESSED_BUTTON -> {
-                            List<ActionRow> rows = new ArrayList<>(message.getActionRows());
+                            // JDA 6: extract ActionRow instances from Message#getComponents and compare Button.getCustomId()
+                            List<ActionRow> rows = message.getComponents().stream()
+                                    .filter(c -> c instanceof ActionRow)
+                                    .map(c -> (ActionRow) c)
+                                    .collect(Collectors.toList());
                             for (int i = 0; i < rows.size(); i++) {
                                 ActionRow row = rows.get(i);
                                 List<ActionRowChildComponentUnion> components = new ArrayList<>(row.getComponents());
-                                if (components.removeIf(f -> f instanceof Button && ((Button) f).getId().equals(button.getId()))) {
-//                                if (components.remove(button)) {
+                                if (components.removeIf(f -> f instanceof Button && ((Button) f).getCustomId().equals(button.getCustomId()))) {
                                     rows.set(i, ActionRow.of(components));
                                 }
                             }

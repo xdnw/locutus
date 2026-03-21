@@ -302,6 +302,14 @@ public class CM {
                 }
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="showRateLimit")
+                public static class rate_limit extends CommandRef {
+                    public static final rate_limit cmd = new rate_limit();
+                public rate_limit numResults(String value) {
+                    return set("numResults", value);
+                }
+
+                }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="setV2")
             public static class set_v2 extends CommandRef {

@@ -5,6 +5,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.util.RateLimitUtil;
+import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 
@@ -19,7 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public interface IModalBuilder {
-    IModalBuilder addInput(TextInput input);
+    IModalBuilder addInput(String label, String description, TextInput input);
     UUID getId();
 
     IModalBuilder setId(UUID id);
@@ -80,14 +81,13 @@ public interface IModalBuilder {
         for (String key : promptForArguments) {
             ParameterData param = paramMap.get(key);
             if (param != null) {
-                String desc = param.getName() + ": " + param.getExpandedDescription(false, false, true);
-                if (desc.length() > 45) {
-                    // 3 dots unicode char
-                    desc = desc.substring(0, 44) + "\u2026";
+                String desc = param.getExpandedDescription(false, false, true);
+                if (desc.length() > Label.DESCRIPTION_MAX_LENGTH) {
+                    desc = desc.substring(0, Label.DESCRIPTION_MAX_LENGTH - 1) + "\u2026";
                 }
 
                 String name = param.getName();
-                TextInput.Builder builder = TextInput.create(param.getName(), desc, TextInputStyle.PARAGRAPH);
+                TextInput.Builder builder = TextInput.create(param.getName(), TextInputStyle.PARAGRAPH);
                 String[] examples = param.getBinding().getExamples();
                 if (examples != null && examples.length > 0) {
                     builder.setPlaceholder(examples[0]);
@@ -108,7 +108,7 @@ public interface IModalBuilder {
                 }
 
                 TextInput input = builder.build();
-                addInput(input);
+                addInput(name, desc.isBlank() ? null : desc, input);
                 continue;
             }
 
@@ -121,14 +121,17 @@ public interface IModalBuilder {
                     continue;
                 }
                 String label = "Placeholder " + key + " in " + defEntry.getKey();
-                TextInput.Builder builder = TextInput.create(key, label, TextInputStyle.PARAGRAPH);
+                if (label.length() > Label.LABEL_MAX_LENGTH) {
+                    label = label.substring(0, Label.LABEL_MAX_LENGTH - 1) + "\u2026";
+                }
+                TextInput.Builder builder = TextInput.create(key, TextInputStyle.PARAGRAPH);
 
                 if (defValue != null) {
                     builder = builder.setPlaceholder(defValue);
                     builder = builder.setValue(defValue);
                 }
                 builder.setRequired(true);
-                addInput(builder.build());
+                addInput(label, null, builder.build());
                 continue outer;
             }
             throw new IllegalArgumentException("Argument " + key + " is not a valid argument for command " + command.getFullPath(" ") + "\n" +

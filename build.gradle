@@ -246,7 +246,7 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.21.1'
     implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
 
-    implementation ('net.dv8tion:JDA:6.0.0-rc.2') {
+    implementation ('net.dv8tion:JDA:6.3.2') {
         exclude module: 'opus-java'
     }
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.8.4'

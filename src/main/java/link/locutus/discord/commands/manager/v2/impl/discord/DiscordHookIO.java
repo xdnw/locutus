@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.util.RateLimitUtil;
-import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.Channel;
@@ -15,8 +15,7 @@ import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IModalCallback;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
-import net.dv8tion.jda.api.components.textinput.TextInput;
-import net.dv8tion.jda.api.interactions.modals.Modal;
+import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
@@ -167,14 +166,14 @@ public class DiscordHookIO implements IMessageIO {
             return DiscordChannelIO.send(this, builder);
         }
         AModalBuilder casted = (AModalBuilder) builder;
-        List<TextInput> inputs = casted.getInputs();
+        List<Label> inputs = casted.getInputs();
         if (casted.getId() == null) {
             casted.setId(UUID.randomUUID());
         }
         UUID id = casted.getId();
         String idPair = id + " " + casted.getTitle();
         Modal modal = Modal.create(idPair, casted.getTitle())
-                .addComponents(ActionRow.partitionOf(inputs))
+                .addComponents(inputs)
                 .build();
 
 //        modalCallback.replyModal(modal).complete();

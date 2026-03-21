@@ -146,6 +146,10 @@ public class RateLimitUtil {
         return response.toString();
     }
 
+    private static <T> Map.Entry<Class<?>, Exception> getClass(RestAction<T> action) {
+
+    }
+
     private static <T> RestAction<T> addRequest(RestAction<T> action) {
         long now = System.currentTimeMillis();
         long cutoff = getWindowCutoff(now);

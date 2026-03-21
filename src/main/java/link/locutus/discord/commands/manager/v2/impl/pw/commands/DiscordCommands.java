@@ -1,4 +1,4 @@
-odapackage link.locutus.discord.commands.manager.v2.impl.pw.commands;
+package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;

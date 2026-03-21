@@ -29,6 +29,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.jooby.JteUtil;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -691,6 +692,19 @@ public class DiscordUtil {
         Map<String, String> combined = new LinkedHashMap<>(data1);
         combined.putAll(data2);
         return combined;
+    }
+
+    public static List<Button> getButtonsFromMessage(Message message) {
+        if (message == null) return Collections.emptyList();
+        List<Button> buttons = new ArrayList<>();
+        for (var topComp : message.getComponents()) {
+            if (topComp instanceof ActionRow row) {
+                for (var child : row.getComponents()) {
+                    if (child instanceof Button b) buttons.add(b);
+                }
+            }
+        }
+        return buttons;
     }
 
     public static Map.Entry<Integer, Integer> getCityRange(String name) {
