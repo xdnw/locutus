@@ -92,7 +92,7 @@ public class GuildHandler {
         this.guild = guild;
         this.db = db;
         Locutus.imp().getExecutor().submit(() -> {
-            if (db.isWhitelisted()) setupApplicants();
+            if (db.isWhitelisted() || GuildKey.INTERVIEW_CREATE_AUTOMATIC.getOrNull(db) == Boolean.TRUE) setupApplicants();
         });
         this.trackInvites = trackInvites;
         if (trackInvites) {
@@ -371,7 +371,6 @@ public class GuildHandler {
 
         if (!db.isWhitelisted()) return;
 
-//        long date = event.getMessage().getTimeCreated().toInstant().toEpochMilli();
         db.addInterviewMessage(event.getMessage(), false);
     }
 

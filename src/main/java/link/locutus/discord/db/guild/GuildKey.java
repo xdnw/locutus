@@ -2243,6 +2243,21 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
 
+    public static final GuildSetting<Boolean> INTERVIEW_CREATE_AUTOMATIC = new GuildBooleanSetting(GuildSettingCategory.INTERVIEW, null) {
+
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String INTERVIEW_CREATE_AUTOMATIC(@Me GuildDB db, @Me User user, boolean value) {
+            return INTERVIEW_CREATE_AUTOMATIC.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String help() {
+            return "Create interviews automatically when someone is given the discord role bound to `" + Roles.APPLICANT.name() + "`";
+        }
+    }.setupRequirements(f -> f.requires(INTERVIEW_PENDING_ALERTS).requireValidAlliance());
+
     public static final GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, null, Map.class, Long.class, MessageChannel.class) {
 
         @Override

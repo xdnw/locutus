@@ -177,7 +177,12 @@ public class EmbedCommands {
                 }
                 return false;
             });
-            rows.set(i, ActionRow.of(components));
+            if (components.isEmpty()) {
+                rows.remove(i);
+                i--;
+            } else {
+                rows.set(i, ActionRow.of(components));
+            }
         }
         if (!invalidLabels.isEmpty()) {
             throw new IllegalArgumentException("Invalid labels: `" + StringMan.join(invalidLabels, ", ") + "`. Valid labels: `" + StringMan.join(validLabels, ", ") + "`");

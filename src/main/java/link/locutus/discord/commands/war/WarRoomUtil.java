@@ -52,83 +52,82 @@ public class WarRoomUtil {
         Guild guild = warCategory2.getGuild();
 
         StandardGuildMessageChannel foundChannel = null;
-        synchronized (target.getName()) {
-            for (Category category : guild.getCategories()) {
-                String catName = category.getName().toLowerCase();
-                if (catName.startsWith(catPrefix)) {
-                    for (TextChannel channel : category.getTextChannels()) {
-                        String channelName = channel.getName();
-                        String[] split = channelName.split("-");
-                        if (MathMan.isInteger(split[split.length - 1])) {
-                            int targetId = Integer.parseInt(split[split.length - 1]);
-                            if (targetId == target.getNation_id()) {
-                                foundChannel = channel;
-                            }
+        for (Category category : guild.getCategories()) {
+            String catName = category.getName().toLowerCase();
+            if (catName.startsWith(catPrefix)) {
+                for (TextChannel channel : category.getTextChannels()) {
+                    String channelName = channel.getName();
+                    String[] split = channelName.split("-");
+                    if (MathMan.isInteger(split[split.length - 1])) {
+                        int targetId = Integer.parseInt(split[split.length - 1]);
+                        if (targetId == target.getNation_id()) {
+                            foundChannel = channel;
                         }
                     }
                 }
             }
+        }
 
-            if (!create || foundChannel != null) {
-                return foundChannel;
-            }
+        if (!create || foundChannel != null) {
+            return foundChannel;
+        }
 
-            Category useCat = null;
-            for (Category category : guild.getCategories()) {
-                String catName = category.getName().toLowerCase();
-                if (!catName.startsWith(catPrefix)) continue;
-                List<GuildChannel> channels = category.getChannels();
-                if (channels.size() >= 49) continue;
+        Category useCat = null;
+        for (Category category : guild.getCategories()) {
+            String catName = category.getName().toLowerCase();
+            if (!catName.startsWith(catPrefix)) continue;
+            List<GuildChannel> channels = category.getChannels();
+            if (channels.size() >= 49) continue;
 
-                CityRanges range = getRangeFromCategory(category);
-                if (range != null) {
-                    if (range.contains(target.getCities())) {
-                        useCat = category;
-                        break;
-                    } else if (useCat == null) {
-                        useCat = category;
-                    }
-                } else {
+            CityRanges range = getRangeFromCategory(category);
+            if (range != null) {
+                if (range.contains(target.getCities())) {
+                    useCat = category;
+                    break;
+                } else if (useCat == null) {
                     useCat = category;
                 }
+            } else {
+                useCat = category;
             }
+        }
 
-            if (useCat == null) {
-                for (int i = 0; ; i++) {
-                    String name = catPrefix + "-" + i;
-                    List<Category> existingCat = guild.getCategoriesByName(name, true);
-                    if (existingCat.isEmpty()) {
-                        useCat = RateLimitUtil.complete(guild.createCategory(name));
-                        PermissionOverrideAction upsert = useCat.upsertPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID));
-                        for (Permission perm : CATEGORY_PERMISSIONS) {
-                            upsert = upsert.setAllowed(perm);
-                        }
-                        RateLimitUtil.queue(upsert);
-                        RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
-
-                        List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
-
-                        for (Role role : Roles.MILCOM.toRoles(db)) {
-                            futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                    .setAllowed(Permission.VIEW_CHANNEL)));
-                        }
-                        for (Role role : Roles.MILCOM_NO_PINGS.toRoles(db)) {
-                            futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                    .setAllowed(Permission.VIEW_CHANNEL)));
-                        }
-                        if (!futures.isEmpty()) {
-                            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-                        }
-                        break;
+        if (useCat == null) {
+            for (int i = 0; ; i++) {
+                String name = catPrefix + "-" + i;
+                List<Category> existingCat = guild.getCategoriesByName(name, true);
+                if (existingCat.isEmpty()) {
+                    useCat = RateLimitUtil.complete(guild.createCategory(name));
+                    PermissionOverrideAction upsert = useCat.upsertPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID));
+                    for (Permission perm : CATEGORY_PERMISSIONS) {
+                        upsert = upsert.setAllowed(perm);
                     }
+                    RateLimitUtil.queue(upsert);
+                    RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
+
+                    List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
+
+                    for (Role role : Roles.MILCOM.toRoles(db)) {
+                        futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
+                                .setAllowed(Permission.VIEW_CHANNEL)));
+                    }
+                    for (Role role : Roles.MILCOM_NO_PINGS.toRoles(db)) {
+                        futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
+                                .setAllowed(Permission.VIEW_CHANNEL)));
+                    }
+                    if (!futures.isEmpty()) {
+                        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+                    }
+                    break;
                 }
             }
-            String name = target.getNation() + "-" + target.getNation_id();
-            if (planning) name = "\uD83D\uDCC5" + name;
-            foundChannel = RateLimitUtil.complete(useCat.createTextChannel(name));
-
-            warCategory2.processChannelCreation(room, foundChannel, planning);
         }
+
+        String name = target.getNation() + "-" + target.getNation_id();
+        if (planning) name = "\uD83D\uDCC5" + name;
+        foundChannel = RateLimitUtil.complete(useCat.createTextChannel(name));
+
+        warCategory2.processChannelCreation(room, foundChannel, planning);
         return foundChannel;
     }
 
