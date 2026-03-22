@@ -92,7 +92,11 @@ public class RateLimitUtil {
     // -------------------------------------------------------------------------
 
     private static <T> CompletableFuture<T> submitNow(RestAction<T> action) {
-        return handleNews(action.submit());
+        try {
+            return handleNews(action.submit());
+        } catch (Throwable e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     /** Priority queue — submits immediately unless the priority threshold is breached. */
@@ -113,11 +117,13 @@ public class RateLimitUtil {
         }
 
         CompletableFuture<T> future = new CompletableFuture<>();
-        queueWhenFree(priority, () -> {
-            submitNow(action).whenComplete((v, e) -> {
-                if (e != null) future.completeExceptionally(e);
-                else future.complete(v);
-            });
+        queueWhenFree(priority, () ->
+                submitNow(action).whenComplete((v, e) -> {
+                    if (e != null) future.completeExceptionally(e);
+                    else future.complete(v);
+                })
+        ).whenComplete((v, e) -> {
+            if (e != null) future.completeExceptionally(e);
         });
         return future;
     }
@@ -156,7 +162,7 @@ public class RateLimitUtil {
 
     public static CompletableFuture<Void> queueWhenFree(RestAction<?> action) {
         if (action == null) return CompletableFuture.completedFuture(null);
-        return queueWhenFree(false, () -> handleNews(action.submit()));
+        return queueWhenFree(false, () -> submitNow(action));
     }
 
     public static CompletableFuture<Void> queueWhenFree(Runnable action) {
@@ -212,6 +218,8 @@ public class RateLimitUtil {
             } catch (Throwable e) {
                 result.completeExceptionally(e);
             }
+        }).whenComplete((v, e) -> {
+            if (e != null) result.completeExceptionally(e);
         });
 
         try {
