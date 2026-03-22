@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.requests.SequentialRestRateLimiter;
 import okhttp3.Response;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -154,11 +155,11 @@ public class InstrumentedRateLimiter implements RestRateLimiter {
     private static final class ObservingWork implements Work {
         private final Work delegate;
         private final String routeKey;
+        private final AtomicBoolean counted = new AtomicBoolean(true);
 
         ObservingWork(Work delegate) {
             this.delegate = delegate;
             Route.CompiledRoute route = delegate.getRoute();
-            // e.g. "POST/channels/123456789/messages"
             this.routeKey = route.getMethod().name() + "/" + route.getCompiledRoute();
         }
 
@@ -171,14 +172,29 @@ public class InstrumentedRateLimiter implements RestRateLimiter {
                 }
                 return response;
             } finally {
+                releaseInflight();
+            }
+        }
+
+        @Override
+        public void cancel() {
+            try {
+                delegate.cancel();
+            } finally {
+                releaseInflight();
+            }
+        }
+
+        private void releaseInflight() {
+            if (counted.compareAndSet(true, false)) {
                 inflightCount.decrementAndGet();
             }
         }
 
         private void observeHeaders(Response response) {
-            String remainingStr  = response.header(REMAINING_HEADER);    // X-RateLimit-Remaining
-            String limitStr      = response.header(LIMIT_HEADER);        // X-RateLimit-Limit
-            String resetAfterStr = response.header(RESET_AFTER_HEADER);  // X-RateLimit-Reset-After
+            String remainingStr  = response.header(REMAINING_HEADER);
+            String limitStr      = response.header(LIMIT_HEADER);
+            String resetAfterStr = response.header(RESET_AFTER_HEADER);
             if (remainingStr == null || limitStr == null || resetAfterStr == null) return;
             try {
                 int remaining  = Integer.parseInt(remainingStr);
@@ -195,6 +211,5 @@ public class InstrumentedRateLimiter implements RestRateLimiter {
         @Override public boolean isDone() { return delegate.isDone(); }
         @Override public boolean isPriority() { return delegate.isPriority(); }
         @Override public boolean isCancelled() { return delegate.isCancelled(); }
-        @Override public void cancel() { delegate.cancel(); }
     }
 }
