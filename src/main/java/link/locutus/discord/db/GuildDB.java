@@ -2783,9 +2783,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         List<Transaction2> records = getDepositOffsetTransactionsForTaxId(tax_id, 0, Long.MAX_VALUE);
         List<Map.Entry<Integer, Transaction2>> result = new ArrayList<>(records.size());
         for (Transaction2 record : records) {
-            if (record.sender_id != tax_id && record.receiver_id != tax_id)
+            int sign = record.endpointDirection(tax_id, TransactionEndpointKey.TAX_TYPE);
+            if (sign == 0) {
                 continue;
-            int sign = record.sender_id == tax_id ? 1 : -1;
+            }
             result.add(new KeyValue<>(sign, record));
         }
         return result;

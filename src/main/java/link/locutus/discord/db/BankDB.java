@@ -132,6 +132,16 @@ public class BankDB extends DBMainV3 {
         return TransactionEndpointKey.hasType(TRANSACTIONS_2.RECEIVER_KEY, type);
     }
 
+    static Condition latestDepositCondition(long id, int type) {
+        return senderEquals(id, type)
+                .and(receiverType(TransactionEndpointKey.ALLIANCE_TYPE));
+    }
+
+    static Condition latestWithdrawalCondition(long id, int type) {
+        return receiverEquals(id, type)
+                .and(senderType(TransactionEndpointKey.ALLIANCE_TYPE));
+    }
+
     private static List<Long> bankEndpointKeys(Collection<Long> ids) {
         return TransactionEndpointKey.expand(ids, TransactionEndpointKey.NATION_TYPE, TransactionEndpointKey.ALLIANCE_TYPE);
     }
@@ -1173,15 +1183,13 @@ public class BankDB extends DBMainV3 {
     }
 
     public Transaction2 getLatestDeposit(int id, int type) {
-        Condition condition = senderEquals(id, type)
-                .and(receiverType(2));
+        Condition condition = latestDepositCondition(id, type);
         List<Transaction2> transactions = getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), 1);
         return transactions.isEmpty() ? null : transactions.getFirst();
     }
 
     public Transaction2 getLatestWithdrawal(int id, int type) {
-        Condition condition = receiverEquals(id, type)
-                .and(senderType(2));
+        Condition condition = latestWithdrawalCondition(id, type);
         List<Transaction2> transactions = getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), 1);
         return transactions.isEmpty() ? null : transactions.getFirst();
     }

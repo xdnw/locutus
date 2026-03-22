@@ -46,6 +46,24 @@ class TransactionEndpointKeyTest {
         assertEquals("#tax", restored.getLegacyNote());
     }
 
+    @Test
+    void typedDirectionHelpersDistinguishRawIdCollisionsAcrossEndpointKinds() {
+        Transaction2 tx = Transaction2.construct(7, 9L, 11L, TransactionEndpointKey.TAX_TYPE,
+                11L, TransactionEndpointKey.NATION_TYPE, 17, TransactionNote.of(DepositType.TAX), false, false,
+                new double[ResourceType.values.length]);
+
+        assertEquals(1, tx.endpointDirection(11L, TransactionEndpointKey.TAX_TYPE));
+        assertEquals(-1, tx.endpointDirection(11L, TransactionEndpointKey.NATION_TYPE));
+        assertEquals(0, tx.endpointDirection(11L, TransactionEndpointKey.ALLIANCE_TYPE));
+    }
+
+    @Test
+    void sqlEncodeProducesCanonicalPackedKeyExpression() {
+        assertEquals("0", TransactionEndpointKey.sqlEncode("banker_nation_id", TransactionEndpointKey.NONE_TYPE));
+        assertEquals("((CAST(banker_nation_id AS BIGINT) << 3) | 1)",
+                TransactionEndpointKey.sqlEncode("banker_nation_id", TransactionEndpointKey.NATION_TYPE));
+    }
+
     private static void assertRoundTrip(long id, int type, long expectedKey) {
         long key = TransactionEndpointKey.encode(id, type);
         assertEquals(expectedKey, key);

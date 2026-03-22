@@ -209,16 +209,13 @@ public final class InternalTxPurger {
                 .append(" WHERE sender_key != receiver_key");
 
         if (REQUIRE_BANKER_ENDPOINT) {
-            sql.append("   AND ((sender_key = ((CAST(banker_nation_id AS BIGINT) << ")
-                    .append(TransactionEndpointKey.TYPE_BITS)
-                    .append(") | ")
-                    .append(TransactionEndpointKey.NATION_TYPE)
-                    .append("))")
-                    .append("     OR (receiver_key = ((CAST(banker_nation_id AS BIGINT) << ")
-                    .append(TransactionEndpointKey.TYPE_BITS)
-                    .append(") | ")
-                    .append(TransactionEndpointKey.NATION_TYPE)
-                    .append(")))");
+            String bankerNationKeySql = TransactionEndpointKey.sqlEncode("banker_nation_id",
+                    TransactionEndpointKey.NATION_TYPE);
+            sql.append("   AND ((sender_key = ")
+                    .append(bankerNationKeySql)
+                    .append(") OR (receiver_key = ")
+                    .append(bankerNationKeySql)
+                    .append("))");
         }
 
         sql.append(" ORDER BY tx_datetime, tx_id");

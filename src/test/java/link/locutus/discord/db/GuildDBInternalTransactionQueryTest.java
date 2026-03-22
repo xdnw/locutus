@@ -67,6 +67,29 @@ class GuildDBInternalTransactionQueryTest {
         }
     }
 
+    @Test
+    void keyedLookupDistinguishesTaxEndpointFromNationWithSameRawId() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            createInternalTransactionsTable(conn);
+            long taxKey = TransactionEndpointKey.encode(77L, TransactionEndpointKey.TAX_TYPE);
+            long nationKey = TransactionEndpointKey.encode(77L, TransactionEndpointKey.NATION_TYPE);
+            long otherKey = TransactionEndpointKey.encode(88L, TransactionEndpointKey.ALLIANCE_TYPE);
+
+            insert(conn, 1, 1_000L, nationKey, otherKey);
+            insert(conn, 2, 2_000L, taxKey, otherKey);
+            insert(conn, 3, 3_000L, otherKey, nationKey);
+
+            String query = GuildDB.buildInternalTransactionLookupQuery("sender_key = ? OR receiver_key = ?", 0L,
+                    Long.MAX_VALUE);
+            List<Integer> txIds = queryTxIds(conn, query, stmt -> {
+                stmt.setLong(1, taxKey);
+                stmt.setLong(2, taxKey);
+            });
+
+            assertEquals(List.of(2), txIds);
+        }
+    }
+
     private static void createInternalTransactionsTable(Connection conn) throws Exception {
         try (Statement statement = conn.createStatement()) {
             statement.execute("""

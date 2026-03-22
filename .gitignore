@@ -58,3 +58,4 @@ lastBackup.txt
 .vscode/settings.json
 docs/
 AGENTS.md
+/repro-out

@@ -53,8 +53,30 @@ public final class TransactionEndpointKey {
         return key == encode(id, type);
     }
 
+    public static boolean matches(long endpointId, int endpointType, long id, int type) {
+        return endpointId == id && endpointType == type;
+    }
+
+    public static int direction(long senderId, int senderType, long receiverId, int receiverType, long endpointId,
+            int endpointType) {
+        boolean senderMatches = matches(senderId, senderType, endpointId, endpointType);
+        boolean receiverMatches = matches(receiverId, receiverType, endpointId, endpointType);
+        if (senderMatches == receiverMatches) {
+            return 0;
+        }
+        return senderMatches ? 1 : -1;
+    }
+
     public static boolean hasType(long key, int type) {
         return typeFromKey(key) == type;
+    }
+
+    public static String sqlEncode(String idExpression, int type) {
+        validateType(type);
+        if (type == NONE_TYPE) {
+            return Long.toString(NONE);
+        }
+        return "((CAST(" + idExpression + " AS BIGINT) << " + TYPE_BITS + ") | " + (type & TYPE_MASK) + ")";
     }
 
     public static Condition eq(Field<Long> field, long id, int type) {
@@ -83,9 +105,7 @@ public final class TransactionEndpointKey {
     }
 
     public static void validate(long id, int type) {
-        if (type < NONE_TYPE || type > TAX_TYPE) {
-            throw new IllegalArgumentException("Unsupported transaction endpoint type: " + type);
-        }
+        validateType(type);
         if (type == NONE_TYPE) {
             if (id != 0L) {
                 throw new IllegalArgumentException("Transaction endpoint NONE type requires id 0, got: " + id);
@@ -97,6 +117,12 @@ public final class TransactionEndpointKey {
         }
         if (id > MAX_ID) {
             throw new IllegalArgumentException("Transaction endpoint id exceeds encodable range: " + id);
+        }
+    }
+
+    private static void validateType(int type) {
+        if (type < NONE_TYPE || type > TAX_TYPE) {
+            throw new IllegalArgumentException("Unsupported transaction endpoint type: " + type);
         }
     }
 }

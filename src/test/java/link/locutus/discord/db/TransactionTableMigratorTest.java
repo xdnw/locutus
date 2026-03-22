@@ -69,6 +69,30 @@ class TransactionTableMigratorTest {
     }
 
     @Test
+    void migratesSplitRowsWithTaxAndNoneEndpointsLosslessly() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            createSplitSourceTable(conn, SPLIT_SOURCE);
+            createCanonicalTargetTable(conn, TARGET);
+
+            Transaction2 expected = Transaction2.construct(7, 1_700_000_007_000L,
+                    44L, TransactionEndpointKey.TAX_TYPE,
+                    0L, TransactionEndpointKey.NONE_TYPE,
+                    901,
+                    TransactionNote.of(DepositType.TAX),
+                    false,
+                    false,
+                    money(12.5));
+            insertSplitSourceRow(conn, SPLIT_SOURCE, expected);
+
+            TransactionTableMigrator.migrate(conn, SPLIT_SOURCE, TARGET, true, 10,
+                    batch -> writeCanonicalBatch(conn, TARGET, batch));
+
+            assertCanonicalRows(conn, TARGET, List.of(expected));
+            assertProgress(conn, TARGET, SPLIT_SOURCE, 7L, 10, true);
+        }
+    }
+
+    @Test
     void resumesFromPersistedProgressAfterInterruptedRun() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
             createLegacySourceTable(conn, LEGACY_SOURCE);

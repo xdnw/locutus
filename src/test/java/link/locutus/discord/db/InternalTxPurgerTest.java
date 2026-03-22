@@ -12,6 +12,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,13 +47,16 @@ class InternalTxPurgerTest {
                     matchedNote, false, false, money(10.0)));
             insert(conn, Transaction2.construct(3, txDatetime, 11L, 1, 22L, 2, 33,
                     unmatchedNote, false, false, money(5.0)));
+            insert(conn, Transaction2.construct(4, txDatetime, 11L, TransactionEndpointKey.TAX_TYPE, 22L,
+                    TransactionEndpointKey.ALLIANCE_TYPE, 33,
+                    matchedNote, false, false, money(10.0)));
 
             StringBuilder details = new StringBuilder();
             int deleted = InternalTxPurger.purgeAllOppositeExpireDecayPairs(conn, true, details);
 
             assertEquals(2, deleted);
-            assertEquals(1, countRows(conn));
-            assertEquals(3L, remainingTxId(conn));
+            assertEquals(2, countRows(conn));
+            assertEquals(List.of(3L, 4L), remainingTxIds(conn));
             assertTrue(details.toString().contains("matched 1 cancelling pairs"));
             assertTrue(details.toString().contains("Deleted 2 rows."));
         }
@@ -103,11 +108,14 @@ class InternalTxPurgerTest {
         }
     }
 
-    private static long remainingTxId(Connection conn) throws Exception {
+    private static List<Long> remainingTxIds(Connection conn) throws Exception {
         try (Statement statement = conn.createStatement();
-                ResultSet rs = statement.executeQuery("SELECT tx_id FROM INTERNAL_TRANSACTIONS2")) {
-            rs.next();
-            return rs.getLong(1);
+                ResultSet rs = statement.executeQuery("SELECT tx_id FROM INTERNAL_TRANSACTIONS2 ORDER BY tx_id")) {
+            List<Long> ids = new ArrayList<>();
+            while (rs.next()) {
+                ids.add(rs.getLong(1));
+            }
+            return ids;
         }
     }
 }

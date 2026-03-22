@@ -612,6 +612,23 @@ public class Transaction2 {
         return sender_id;
     }
 
+    public boolean matchesSender(long endpointId, int endpointType) {
+        return TransactionEndpointKey.matches(sender_id, sender_type, endpointId, endpointType);
+    }
+
+    public boolean matchesReceiver(long endpointId, int endpointType) {
+        return TransactionEndpointKey.matches(receiver_id, receiver_type, endpointId, endpointType);
+    }
+
+    public boolean matchesEndpoint(long endpointId, int endpointType) {
+        return matchesSender(endpointId, endpointType) || matchesReceiver(endpointId, endpointType);
+    }
+
+    public int endpointDirection(long endpointId, int endpointType) {
+        return TransactionEndpointKey.direction(sender_id, sender_type, receiver_id, receiver_type, endpointId,
+                endpointType);
+    }
+
     public long getSenderKey() {
         return TransactionEndpointKey.encode(sender_id, sender_type);
     }

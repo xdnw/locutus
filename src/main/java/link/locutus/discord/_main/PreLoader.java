@@ -16,6 +16,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.InstrumentedRateLimiter;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.offshore.Auth;
@@ -24,6 +25,7 @@ import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.requests.RestConfig;
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
@@ -453,6 +455,7 @@ public class PreLoader implements ILoader {
         if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
             builder.enableCache(CacheFlag.EMOJI);
         }
+        builder.setRestConfig(new RestConfig().setRateLimiterFactory(InstrumentedRateLimiter::new));
         return builder.build();
     }
 
@@ -505,6 +508,7 @@ public class PreLoader implements ILoader {
         if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
             builder.enableCache(CacheFlag.EMOJI);
         }
+        builder.setRestConfig(new RestConfig().setRateLimiterFactory(InstrumentedRateLimiter::new));
         return builder
                 .setShardsTotal(Settings.INSTANCE.SHARDS)
                 .setShards(0, Settings.INSTANCE.SHARDS - 1)
