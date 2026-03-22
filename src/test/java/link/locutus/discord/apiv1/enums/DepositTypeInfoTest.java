@@ -46,21 +46,23 @@ class DepositTypeInfoTest {
     void typedRenderingMatchesLegacyStringForChildAccountNote() {
         DepositTypeInfo info = new DepositTypeInfo(DepositType.CITY, 3, 0, false);
 
-        assertEquals(info.toString(42), info.toTransactionNote(42).toLegacyString());
+        assertEquals(info.toLegacyString(42), info.toTransactionNote(42).toLegacyString());
+        assertEquals(info.toLegacyString(42), info.toString(42));
     }
 
     @Test
     void typedRenderingMatchesLegacyStringForIgnoredChildAccountNote() {
         DepositTypeInfo info = new DepositTypeInfo(DepositType.CITY, 3, 0, true);
 
-        assertEquals(info.toString(42), info.toTransactionNote(42).toLegacyString());
+        assertEquals(info.toLegacyString(42), info.toTransactionNote(42).toLegacyString());
+        assertEquals(info.toLegacyString(42), info.toString(42));
     }
 
     @Test
     void legacyRoundTripPreservesParentAccountSemantics() {
         DepositTypeInfo info = new DepositTypeInfo(DepositType.CITY, 3, 0, false);
 
-        TransactionNote reparsed = TransactionNote.parseLegacy(info.toString(42), 0L);
+        TransactionNote reparsed = TransactionNote.parseLegacy(info.toLegacyString(42), 0L);
 
         assertEquals(info.toTransactionNote(42), reparsed);
         assertEquals(42L, ((Number) reparsed.get(DepositType.GRANT)).longValue());
@@ -72,7 +74,7 @@ class DepositTypeInfoTest {
     void legacyRoundTripPreservesIgnoredChildAccountSemantics() {
         DepositTypeInfo info = new DepositTypeInfo(DepositType.CITY, 3, 0, true);
 
-        TransactionNote reparsed = TransactionNote.parseLegacy(info.toString(42), 0L);
+        TransactionNote reparsed = TransactionNote.parseLegacy(info.toLegacyString(42), 0L);
 
         assertEquals(info.toTransactionNote(42), reparsed);
         assertEquals(42L, ((Number) reparsed.get(DepositType.IGNORE)).longValue());

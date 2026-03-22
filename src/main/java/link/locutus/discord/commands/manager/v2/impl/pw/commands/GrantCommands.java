@@ -3132,7 +3132,9 @@ public class GrantCommands {
             Set<Long> allowedIds = db.getAllianceIds().stream().map(f -> (long) f).collect(Collectors.toSet());
             if (allowedIds.isEmpty()) allowedIds = Set.of(db.getIdLong());
             long accountId = offshore.getAccountId(allowedIds, me, receiver);
-            TransferResult result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, DepositType.IGNORE.name() + "=" + accountId);
+            TransactionNote note = TransactionNote.builder().put(DepositType.IGNORE, accountId).build();
+            TransferResult result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr,
+                    note);
             switch (result.getStatus()) {
                 case ESCROWED:
                 case SENT_TO_ALLIANCE_BANK:
@@ -3611,9 +3613,9 @@ public class GrantCommands {
         }
         DepositTypeInfo bankNote = GuildKey.GRANT_REQUEST_NOTE.getOrNull(db);
         if (bankNote != null) {
-            command.put("bank_note", bankNote.toString());
+            command.put("bank_note", bankNote.toLegacyString());
         } else {
-            command.put("bank_note", "#" + DepositType.GRANT.name().toLowerCase(Locale.ROOT));
+            command.put("bank_note", TransactionNote.of(DepositType.GRANT).toLegacyString());
         }
         Long decay = GuildKey.GRANT_REQUEST_DECAY.getOrNull(db);
         if (decay != null && decay > 0) {

@@ -620,6 +620,8 @@ public class BankCommands {
             return null;
         }
 
+        String renderedNote = note == null ? null : note.toLegacyString();
+        String defaultDepositNote = TransactionNote.of(DepositType.DEPOSIT).toLegacyString();
         StringBuilder result = new StringBuilder();
         for (Map.Entry<DBNation, double[]> entry : toDepositMap.entrySet()) {
             DBNation nation = entry.getKey();
@@ -632,7 +634,7 @@ public class BankCommands {
             boolean sentApi = false;
 
             double[] resources = entry.getValue();
-            String url = toBankUrl.apply(resources, nation.getAlliance_id(), note == null ? null : note.toString());
+            String url = toBankUrl.apply(resources, nation.getAlliance_id(), renderedNote);
             result.append("__**# " + nation.getNation() + "**__:\n");
             // +"\t" + nation.getNationUrl()).append(" Can deposit:
             // `").append(url).append(">");
@@ -693,7 +695,7 @@ public class BankCommands {
                         result.append(
                                 "\n- **api**: No `API_KEY` set. See " + CM.credentials.addApiKey.cmd.toSlashMention());
                     } else {
-                        String noteStr = note != null ? note.toString() : "#deposit";
+                        String noteStr = renderedNote != null ? renderedNote : defaultDepositNote;
                         new PoliticsAndWarV3(ApiKeyPool.create(api)).depositIntoBank(resources, noteStr);
                         sentApi = true;
                         result.append("\n- **api**: Deposited `" + ResourceType.toString(resources) + "` | `" + noteStr
@@ -952,13 +954,11 @@ public class BankCommands {
                 }
             }
             OffshoreInstance bank = from.getBank();
-            TransactionNote note;
-//            if (account != null) {
-//                note = account.isAlliance() ? "#alliance=" + account.getId() : "#guild=" + account.getIdLong();
-//            } else {
-//                note = "#alliance=" + from.getAlliance_id();
-//            }
-//            note += " #tx_id=" + UUID.randomUUID().toString(); // TX_ID is redundant, can be dropped
+            TransactionNote note = account != null
+                    ? TransactionNote.builder()
+                            .put(account.isAlliance() ? DepositType.ALLIANCE : DepositType.GUILD, account.getIdLong())
+                            .build()
+                    : TransactionNote.builder().put(DepositType.ALLIANCE, from.getAlliance_id()).build();
             Auth auth = bank.getAlliance().getAuth(AlliancePermission.WITHDRAW_BANK);
             TransferResult response = bank.transferWithRoute(auth, to, resources, note, null);
             results.add(response);
@@ -3099,7 +3099,8 @@ public class BankCommands {
 
         TransferSheet txSheet = new TransferSheet(sheet).write(toAddMap).build();
 
-        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(txSheet.getSheet().getURL()).note(note)
+        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(txSheet.getSheet().getURL())
+                .note(note == null ? null : note.toLegacyString())
                 .force(force ? "true" : null);
 
         channel.create().embed(title, body.toString())

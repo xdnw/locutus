@@ -868,7 +868,8 @@ public class Auth {
     }
 
     public String withdrawResources(DBAlliance alliance, NationOrAlliance receiver, double[] amount, TransactionNote note) {
-        Map<String, String> post = ResourceType.resourcesToJson(receiver, ResourceType.resourcesToMap(amount), note);
+        Map<String, String> post = ResourceType.resourcesToJson(receiver, ResourceType.resourcesToMap(amount),
+                note == null ? null : note.toLegacyString());
         int fromBank = alliance.getAlliance_id();
 
         return PW.withLogin(() -> {
@@ -1180,7 +1181,7 @@ public class Auth {
                         }
                     }
                     if (ResourceType.convertedTotal(toDeposit) > 0) {
-                        String safekeepResult = Auth.this.safekeep(false, toDeposit, DepositType.IGNORE);
+                        String safekeepResult = Auth.this.safekeep(false, toDeposit, TransactionNote.of(DepositType.IGNORE));
                         if (!safekeepResult.contains("You successfully made a deposit into the alliance bank.")) {
                             response.append("\n- " + "Could not safekeep: " + safekeepResult);
                             return ResourceType.getBuffer();

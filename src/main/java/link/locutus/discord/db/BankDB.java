@@ -163,7 +163,7 @@ public class BankDB extends DBMainV3 {
             String sourceTable = tableExists(TRANSACTIONS_LEGACY_TABLE) ? TRANSACTIONS_LEGACY_TABLE : null;
             createTableWithIndexes(TRANSACTIONS_2);
             ensureTransactionPayloadFormat(true);
-            if (sourceTable != null && countRows(TRANSACTIONS_TABLE) == 0) {
+            if (sourceTable != null) {
                 migrateTransactions(sourceTable);
             }
         } catch (SQLException e) {
@@ -172,23 +172,14 @@ public class BankDB extends DBMainV3 {
     }
 
     private void migrateTransactions(String sourceTable) {
-        List<Transaction2> legacy = new ArrayList<>();
         boolean splitEndpointTable;
         try {
             splitEndpointTable = isSplitEndpointTransactionsTable(sourceTable);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to inspect bank transaction table schema: " + sourceTable, e);
         }
-        queryLegacy("select * FROM `" + sourceTable + "` ORDER BY tx_id ASC", f -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            BitBuffer noteBuffer = splitEndpointTable ? Transaction2.reusableNoteBuffer() : null;
-            while (rs.next()) {
-                legacy.add(splitEndpointTable ? Transaction2.loadSplit(rs, noteBuffer) : Transaction2.loadLegacy(rs));
-            }
-        });
-        if (!legacy.isEmpty()) {
-            addTransactions(legacy, false);
-        }
+        TransactionTableMigrator.migrate(getConnection(), sourceTable, TRANSACTIONS_TABLE, splitEndpointTable,
+                TransactionTableMigrator.defaultBatchSize(), batch -> addTransactions(batch, false));
     }
 
     private String renameTable(String currentName, String preferredName) throws SQLException {
@@ -292,16 +283,6 @@ public class BankDB extends DBMainV3 {
         return null;
     }
 
-    private long countRows(String tableName) throws SQLException {
-        try (PreparedStatement stmt = getConnection().prepareStatement("select count(*) FROM `" + tableName + "`")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
-                }
-            }
-        }
-        return 0;
-    }
 
     public synchronized void addTaxEstimate(int taxId, int minCash, int maxCash, int minRss, int maxRss) {
         ctx().insertInto(TAX_ESTIMATE, TAX_ESTIMATE.TAX_ID, TAX_ESTIMATE.MIN_CASH, TAX_ESTIMATE.MAX_CASH,

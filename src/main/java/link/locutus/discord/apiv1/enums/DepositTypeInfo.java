@@ -42,9 +42,13 @@ public class DepositTypeInfo {
         return city;
     }
 
-    public String toString(long accountId) {
+    public String toLegacyString(long accountId) {
         String legacy = toTransactionNote(accountId).toLegacyString();
         return legacy == null ? "" : legacy;
+    }
+
+    public String toString(long accountId) {
+        return toLegacyString(accountId);
     }
 
     public TransactionNote toTransactionNote() {
@@ -86,10 +90,14 @@ public class DepositTypeInfo {
         return toTransactionNote(accountId).asMap();
     }
 
-    @Override
-    public String toString() {
+    public String toLegacyString() {
         String legacy = toTransactionNote().toLegacyString();
         return legacy == null ? "" : legacy;
+    }
+
+    @Override
+    public String toString() {
+        return toLegacyString();
     }
 
     public boolean isIncludedInDeposits() {

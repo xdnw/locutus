@@ -1184,7 +1184,7 @@ public class OffshoreInstance {
 
     public Map<Long, Boolean> disabledGuilds = new ConcurrentHashMap<>();
 
-    private TransferResult transferFromAllianceDeposits(DBNation banker, GuildDB senderDB,
+    public TransferResult transferFromAllianceDeposits(DBNation banker, GuildDB senderDB,
             Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, TransactionNote structuredNote) {
         if (banker != null) {
             structuredNote = TransactionNote.builder(structuredNote).put(DepositType.BANKER, banker.getId()).build();

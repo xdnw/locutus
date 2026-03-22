@@ -1095,13 +1095,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         List<Transaction2> list = new ObjectArrayList<>();
         long endpointKey = TransactionEndpointKey.encode(senderOrReceiverId, type);
 
-        String query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE (sender_key = ? OR receiver_key = ?)";
-        if (start > 0) {
-            query += " AND tx_datetime >= ?";
-        }
-        if (end < Long.MAX_VALUE) {
-            query += " AND tx_datetime <= ?";
-        }
+        String query = buildInternalTransactionLookupQuery("sender_key = ? OR receiver_key = ?", start, end);
 
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
@@ -1141,16 +1135,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         } else {
             inStr = "IN " + StringMan.getString(endpointKeys);
         }
-        StringBuilder query = new StringBuilder("select * FROM INTERNAL_TRANSACTIONS2 WHERE " +
-                "(sender_key " + inStr + ") OR " +
-                "(receiver_key " + inStr + ")");
-        if (start > 0) {
-            query.append(" AND tx_datetime >= ?");
-        }
-        if (end < Long.MAX_VALUE) {
-            query.append(" AND tx_datetime <= ?");
-        }
-        query(query.toString(), new ThrowingConsumer<PreparedStatement>() {
+        String query = buildInternalTransactionLookupQuery("sender_key " + inStr + " OR receiver_key " + inStr, start,
+                end);
+        query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws Exception {
                 int i = 1;
@@ -1168,6 +1155,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         });
         return;
+    }
+
+    static String buildInternalTransactionLookupQuery(String endpointPredicate, long start, long end) {
+        StringBuilder query = new StringBuilder("select * FROM " + INTERNAL_TRANSACTIONS_TABLE + " WHERE (")
+                .append(endpointPredicate)
+                .append(")");
+        if (start > 0) {
+            query.append(" AND tx_datetime >= ?");
+        }
+        if (end < Long.MAX_VALUE) {
+            query.append(" AND tx_datetime <= ?");
+        }
+        return query.toString();
     }
 
     public void deleteTransactionsByIds(Set<Integer> ids, int type) {
@@ -1226,7 +1226,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             String sourceTable = tableExists(INTERNAL_TRANSACTIONS_LEGACY_TABLE) ? INTERNAL_TRANSACTIONS_LEGACY_TABLE : null;
             createInternalTransactionsTable();
             ensureTransactionPayloadFormat(true);
-            if (sourceTable != null && countRows(INTERNAL_TRANSACTIONS_TABLE) == 0) {
+            if (sourceTable != null) {
                 migrateInternalTransactions(sourceTable);
             }
         } catch (SQLException e) {
@@ -1250,25 +1250,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     private void migrateInternalTransactions(String sourceTable) {
-        List<Transaction2> legacy = new ArrayList<>();
         boolean splitEndpointTable;
         try {
             splitEndpointTable = isSplitEndpointTransactionsTable(sourceTable);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to inspect guild transaction table schema: " + sourceTable, e);
         }
-        query("select * FROM `" + sourceTable + "` ORDER BY tx_id ASC", f -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            BitBuffer noteBuffer = splitEndpointTable ? Transaction2.reusableNoteBuffer() : null;
-            while (rs.next()) {
-                legacy.add(splitEndpointTable ? Transaction2.loadSplit(rs, noteBuffer) : Transaction2.loadLegacy(rs));
-            }
-        });
-        if (legacy.isEmpty()) {
-            return;
-        }
-        String query = legacy.get(0).createInsert(INTERNAL_TRANSACTIONS_TABLE, true, false);
-        executeBatch(legacy, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::set);
+        TransactionTableMigrator.migrate(getConnection(), sourceTable, INTERNAL_TRANSACTIONS_TABLE, splitEndpointTable,
+                TransactionTableMigrator.defaultBatchSize(), batch -> {
+                    if (batch.isEmpty()) {
+                        return;
+                    }
+                    String query = batch.get(0).createInsert(INTERNAL_TRANSACTIONS_TABLE, true, false);
+                    executeBatch(batch, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::set);
+                });
     }
 
     private String renameTable(String currentName, String preferredName) throws SQLException {
@@ -1371,16 +1366,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return null;
     }
 
-    private long countRows(String tableName) throws SQLException {
-        try (PreparedStatement stmt = prepareQuery("select count(*) FROM `" + tableName + "`")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
-                }
-            }
-        }
-        return 0;
-    }
 
     @Override
     public void createTables() {
@@ -2790,6 +2775,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
+    /**
+     * Compatibility helper for older call sites that inferred endpoint type from raw id shape.
+     * Prefer {@link #getDepositOffsetTransactions(long, int, long, long)} at typed call sites.
+     */
+    @Deprecated(forRemoval = false)
     public List<Transaction2> getDepositOffsetTransactions(long id, long start, long end) {
         if (id > Integer.MAX_VALUE) {
             return getDepositOffsetTransactions(id, 3, start, end);
