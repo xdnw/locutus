@@ -177,9 +177,6 @@ public class OffshoreInstance {
                     Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
 
                     if (!bankRecs.isEmpty()) {
-                        // delete legacy transactions for alliance id after date
-                        Locutus.imp().getBankDB().deleteLegacyAllianceTransactions(allianceId, minDate - 1000);
-
                         // set bank update timestamp
                         alliance.setMeta(AllianceMeta.BANK_UPDATE_INDEX, minDate);
                     }
@@ -260,7 +257,7 @@ public class OffshoreInstance {
         transactions.addAll(getOffshoreTransactions(guildId, 3, start, end));
 
         GuildDB db = getGuildDB();
-        List<Transaction2> offset = db.getDepositOffsetTransactions(guildId, 3, start, end);
+        List<Transaction2> offset = db.getDepositOffsetTransactionsForGuild(guildId, start, end);
         transactions.addAll(offset);
 
         return transactions;
@@ -341,7 +338,7 @@ public class OffshoreInstance {
         List<Transaction2> toProcess = new ObjectArrayList<>();
         for (int id : allianceId) {
             toProcess.addAll(getOffshoreTransactions((long) id, 2, start, end));
-            toProcess.addAll(db.getDepositOffsetTransactions(id, 2, start, end));
+            toProcess.addAll(db.getDepositOffsetTransactionsForAlliance(id, start, end));
         }
         return toProcess;
     }

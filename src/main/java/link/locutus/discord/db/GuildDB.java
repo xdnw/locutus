@@ -1119,6 +1119,22 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return list;
     }
 
+    public List<Transaction2> getTransactionsByNationId(long nationId, long start, long end) {
+        return getTransactionsById(nationId, TransactionEndpointKey.NATION_TYPE, start, end);
+    }
+
+    public List<Transaction2> getTransactionsByAllianceId(long allianceId, long start, long end) {
+        return getTransactionsById(allianceId, TransactionEndpointKey.ALLIANCE_TYPE, start, end);
+    }
+
+    public List<Transaction2> getTransactionsByGuildId(long guildId, long start, long end) {
+        return getTransactionsById(guildId, TransactionEndpointKey.GUILD_TYPE, start, end);
+    }
+
+    public List<Transaction2> getTransactionsByTaxId(long taxId, long start, long end) {
+        return getTransactionsById(taxId, TransactionEndpointKey.TAX_TYPE, start, end);
+    }
+
     public void iterateTransactionsByIds(Set<Integer> ids, int type, long start, long end,
             Consumer<Transaction2> consumer) {
         if (ids.isEmpty())
@@ -2764,7 +2780,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public List<Map.Entry<Integer, Transaction2>> getDepositOffsetTransactionsTaxId(int tax_id) {
-        List<Transaction2> records = getDepositOffsetTransactions(tax_id, 4, 0, Long.MAX_VALUE);
+        List<Transaction2> records = getDepositOffsetTransactionsForTaxId(tax_id, 0, Long.MAX_VALUE);
         List<Map.Entry<Integer, Transaction2>> result = new ArrayList<>(records.size());
         for (Transaction2 record : records) {
             if (record.sender_id != tax_id && record.receiver_id != tax_id)
@@ -2775,23 +2791,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
-    /**
-     * Compatibility helper for older call sites that inferred endpoint type from raw id shape.
-     * Prefer {@link #getDepositOffsetTransactions(long, int, long, long)} at typed call sites.
-     */
-    @Deprecated(forRemoval = false)
-    public List<Transaction2> getDepositOffsetTransactions(long id, long start, long end) {
-        if (id > Integer.MAX_VALUE) {
-            return getDepositOffsetTransactions(id, 3, start, end);
-        }
-        if (id < 0) {
-            return getDepositOffsetTransactions(Math.abs(id), 2, start, end);
-        }
-        return getDepositOffsetTransactions(id, 1, start, end);
+    public List<Transaction2> getDepositOffsetTransactionsForNation(long nationId, long start, long end) {
+        return getDepositOffsetTransactions(nationId, TransactionEndpointKey.NATION_TYPE, start, end);
     }
 
-    public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type, long start, long end) {
-        List<Transaction2> transfers = getTransactionsById(sender_id, sender_type, start, end);
+    public List<Transaction2> getDepositOffsetTransactionsForAlliance(long allianceId, long start, long end) {
+        return getDepositOffsetTransactions(allianceId, TransactionEndpointKey.ALLIANCE_TYPE, start, end);
+    }
+
+    public List<Transaction2> getDepositOffsetTransactionsForGuild(long guildId, long start, long end) {
+        return getDepositOffsetTransactions(guildId, TransactionEndpointKey.GUILD_TYPE, start, end);
+    }
+
+    public List<Transaction2> getDepositOffsetTransactionsForTaxId(long taxId, long start, long end) {
+        return getDepositOffsetTransactions(taxId, TransactionEndpointKey.TAX_TYPE, start, end);
+    }
+
+    public List<Transaction2> getDepositOffsetTransactions(long endpointId, int endpointType, long start, long end) {
+        List<Transaction2> transfers = getTransactionsById(endpointId, endpointType, start, end);
 
         for (Transaction2 transfer : transfers) {
             transfer.tx_id = -1;

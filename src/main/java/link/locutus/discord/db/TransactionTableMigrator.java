@@ -28,13 +28,20 @@ public final class TransactionTableMigrator {
 
     public static void migrate(Connection connection, String sourceTable, String targetTable, boolean splitEndpointTable,
             int batchSize, BatchWriter batchWriter) {
+        migrate(connection, sourceTable, targetTable, targetTable, splitEndpointTable, batchSize, true, batchWriter);
+    }
+
+    public static void migrate(Connection connection, String sourceTable, String targetTable, String progressKey,
+            boolean splitEndpointTable, int batchSize, boolean resumeFromTargetMaxTxId, BatchWriter batchWriter) {
         if (batchSize <= 0) {
             throw new IllegalArgumentException("Transaction migration batch size must be positive, got: " + batchSize);
         }
         try {
             ensureProgressTable(connection);
-            MigrationState state = beginOrResume(connection, sourceTable, targetTable, batchSize);
-            LOG.info(() -> "Migrating `" + sourceTable + "` -> `" + targetTable + "` from tx_id > " + state.lastTxId
+            MigrationState state = beginOrResume(connection, sourceTable, targetTable, progressKey, batchSize,
+                    resumeFromTargetMaxTxId);
+            LOG.info(() -> "Migrating `" + sourceTable + "` -> `" + targetTable + "` [progressKey=" + progressKey
+                    + "] from tx_id > " + state.lastTxId
                     + " in batches of " + batchSize);
 
             long lastTxId = state.lastTxId;
@@ -42,7 +49,7 @@ public final class TransactionTableMigrator {
             while (true) {
                 List<Transaction2> batch = loadBatch(connection, sourceTable, splitEndpointTable, lastTxId, batchSize);
                 if (batch.isEmpty()) {
-                    markComplete(connection, sourceTable, targetTable, lastTxId, batchSize, state.startedAt);
+                    markComplete(connection, sourceTable, progressKey, lastTxId, batchSize, state.startedAt);
                     long totalMigrated = countRows(connection, targetTable);
                     long finalLastTxId = lastTxId;
                     long finalMigratedThisRun = migratedThisRun;
@@ -55,7 +62,7 @@ public final class TransactionTableMigrator {
                 batchWriter.write(batch);
                 lastTxId = batch.get(batch.size() - 1).tx_id;
                 migratedThisRun += batch.size();
-                saveProgress(connection, sourceTable, targetTable, lastTxId, batchSize, state.startedAt, null);
+                saveProgress(connection, sourceTable, progressKey, lastTxId, batchSize, state.startedAt, null);
 
                 long batchEndTxId = lastTxId;
                 long batchMigratedThisRun = migratedThisRun;
@@ -81,21 +88,21 @@ public final class TransactionTableMigrator {
         }
     }
 
-    private static MigrationState beginOrResume(Connection connection, String sourceTable, String targetTable, int batchSize)
-            throws SQLException {
-        MigrationState existing = loadProgress(connection, targetTable);
-        long targetMaxTxId = maxTxId(connection, targetTable);
+    private static MigrationState beginOrResume(Connection connection, String sourceTable, String targetTable,
+            String progressKey, int batchSize, boolean resumeFromTargetMaxTxId) throws SQLException {
+        MigrationState existing = loadProgress(connection, progressKey);
+        long targetMaxTxId = resumeFromTargetMaxTxId ? maxTxId(connection, targetTable) : 0L;
         long resumeTxId = existing == null ? targetMaxTxId : Math.max(existing.lastTxId, targetMaxTxId);
         long startedAt = existing != null && sourceTable.equals(existing.sourceTable) ? existing.startedAt
                 : System.currentTimeMillis();
-        saveProgress(connection, sourceTable, targetTable, resumeTxId, batchSize, startedAt, null);
+        saveProgress(connection, sourceTable, progressKey, resumeTxId, batchSize, startedAt, null);
         return new MigrationState(sourceTable, resumeTxId, startedAt);
     }
 
-    private static MigrationState loadProgress(Connection connection, String targetTable) throws SQLException {
+    private static MigrationState loadProgress(Connection connection, String progressKey) throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement(
                 "SELECT source_table, last_tx_id, started_at FROM `" + PROGRESS_TABLE + "` WHERE target_table = ?")) {
-            stmt.setString(1, targetTable);
+            stmt.setString(1, progressKey);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (!rs.next()) {
                     return null;
@@ -105,7 +112,7 @@ public final class TransactionTableMigrator {
         }
     }
 
-    private static void saveProgress(Connection connection, String sourceTable, String targetTable, long lastTxId,
+    private static void saveProgress(Connection connection, String sourceTable, String progressKey, long lastTxId,
             int batchSize, long startedAt, Long completedAt) throws SQLException {
         long updatedAt = System.currentTimeMillis();
         try (PreparedStatement stmt = connection.prepareStatement(
@@ -118,7 +125,7 @@ public final class TransactionTableMigrator {
                         + "started_at = excluded.started_at, "
                         + "updated_at = excluded.updated_at, "
                         + "completed_at = excluded.completed_at")) {
-            stmt.setString(1, targetTable);
+            stmt.setString(1, progressKey);
             stmt.setString(2, sourceTable);
             stmt.setLong(3, lastTxId);
             stmt.setInt(4, batchSize);
@@ -133,9 +140,9 @@ public final class TransactionTableMigrator {
         }
     }
 
-    private static void markComplete(Connection connection, String sourceTable, String targetTable, long lastTxId,
+    private static void markComplete(Connection connection, String sourceTable, String progressKey, long lastTxId,
             int batchSize, long startedAt) throws SQLException {
-        saveProgress(connection, sourceTable, targetTable, lastTxId, batchSize, startedAt, System.currentTimeMillis());
+        saveProgress(connection, sourceTable, progressKey, lastTxId, batchSize, startedAt, System.currentTimeMillis());
     }
 
     private static List<Transaction2> loadBatch(Connection connection, String sourceTable, boolean splitEndpointTable,

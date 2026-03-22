@@ -2745,7 +2745,7 @@ public abstract class DBNation implements NationOrAlliance {
 
         List<Transaction2> transactions = new ObjectArrayList<>();
         if (offset) {
-            List<Transaction2> offsets = db.getDepositOffsetTransactions(getNation_id(), 1, start, end);
+            List<Transaction2> offsets = db.getDepositOffsetTransactionsForNation(getNation_id(), start, end);
             transactions.addAll(offsets);
         }
 

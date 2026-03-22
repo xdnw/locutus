@@ -3129,7 +3129,7 @@ public class BankCommands {
 
         List<Transaction2> transactions = new ArrayList<>();
         for (DBNation nation : nations) {
-            List<Transaction2> offsets = db.getDepositOffsetTransactions((long) nation.getNation_id(), 1, startTime,
+            List<Transaction2> offsets = db.getDepositOffsetTransactionsForNation(nation.getNation_id(), startTime,
                     endTime);
             transactions.addAll(offsets);
         }
@@ -3197,7 +3197,7 @@ public class BankCommands {
                     && offshore != null) {
                 transactions.addAll(offshore.getTransactionsAA(alliance.getAlliance_id(), true, start, end));
             } else {
-                List<Transaction2> txToAdd = (db.getTransactionsById(alliance.getAlliance_id(), 2, start, end));
+                List<Transaction2> txToAdd = db.getTransactionsByAllianceId(alliance.getAlliance_id(), start, end);
                 Set<Integer> hasAdmin = new IntOpenHashSet();
                 boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(user);
                 if (user != null && db != null) {
@@ -3236,7 +3236,7 @@ public class BankCommands {
                 OffshoreInstance offshore = db.getOffshore();
                 transactions.addAll(offshore.getTransactionsGuild(otherDB.getIdLong(), true, start, end));
             } else {
-                transactions.addAll(db.getTransactionsById(otherDB.getGuild().getIdLong(), 3, start, end));
+                transactions.addAll(db.getTransactionsByGuildId(otherDB.getGuild().getIdLong(), start, end));
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             throw new IllegalArgumentException("Not implemented");

@@ -4,8 +4,9 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.TransactionEndpointKey;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
 
@@ -15,7 +16,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Locale;
 
 public final class InternalTxPurger {
 
@@ -209,8 +209,16 @@ public final class InternalTxPurger {
                 .append(" WHERE sender_key != receiver_key");
 
         if (REQUIRE_BANKER_ENDPOINT) {
-            sql.append("   AND ((sender_key = ((CAST(banker_nation_id AS BIGINT) << 3) | 1))")
-                    .append("     OR (receiver_key = ((CAST(banker_nation_id AS BIGINT) << 3) | 1)))");
+            sql.append("   AND ((sender_key = ((CAST(banker_nation_id AS BIGINT) << ")
+                    .append(TransactionEndpointKey.TYPE_BITS)
+                    .append(") | ")
+                    .append(TransactionEndpointKey.NATION_TYPE)
+                    .append("))")
+                    .append("     OR (receiver_key = ((CAST(banker_nation_id AS BIGINT) << ")
+                    .append(TransactionEndpointKey.TYPE_BITS)
+                    .append(") | ")
+                    .append(TransactionEndpointKey.NATION_TYPE)
+                    .append(")))");
         }
 
         sql.append(" ORDER BY tx_datetime, tx_id");

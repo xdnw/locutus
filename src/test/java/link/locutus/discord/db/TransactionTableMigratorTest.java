@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TransactionTableMigratorTest {
     private static final String LEGACY_SOURCE = "LEGACY_TX";
+    private static final String LEGACY_ALLIANCE_SOURCE = "LEGACY_ALLIANCE_TX";
     private static final String SPLIT_SOURCE = "SPLIT_TX";
     private static final String TARGET = "TRANSACTIONS_2";
 
@@ -125,18 +126,52 @@ class TransactionTableMigratorTest {
         }
     }
 
+    @Test
+    void migratesSecondLegacySourceIntoSameTargetWithoutSkippingLowerUnmigratedIds() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            createLegacySourceTable(conn, LEGACY_SOURCE);
+            createLegacySourceTable(conn, LEGACY_ALLIANCE_SOURCE);
+            createCanonicalTargetTable(conn, TARGET);
+
+            List<Transaction2> primary = List.of(sampleTransaction(1), sampleTransaction(3));
+            List<Transaction2> alliance = List.of(sampleTransaction(2), sampleTransaction(4));
+            for (Transaction2 tx : primary) {
+                insertLegacySourceRow(conn, LEGACY_SOURCE, tx);
+            }
+            for (Transaction2 tx : alliance) {
+                insertLegacySourceRow(conn, LEGACY_ALLIANCE_SOURCE, tx);
+            }
+
+            TransactionTableMigrator.migrate(conn, LEGACY_SOURCE, TARGET, false, 2,
+                    batch -> writeCanonicalBatch(conn, TARGET, batch));
+            TransactionTableMigrator.migrate(conn, LEGACY_ALLIANCE_SOURCE, TARGET, TARGET + "::" + LEGACY_ALLIANCE_SOURCE,
+                    false, 2, false, batch -> writeCanonicalBatch(conn, TARGET, batch));
+
+            List<Transaction2> expected = List.of(sampleTransaction(1), sampleTransaction(2), sampleTransaction(3),
+                    sampleTransaction(4));
+            assertCanonicalRows(conn, TARGET, expected);
+            assertProgress(conn, TARGET, LEGACY_SOURCE, 3L, 2, true);
+            assertProgress(conn, TARGET + "::" + LEGACY_ALLIANCE_SOURCE, LEGACY_ALLIANCE_SOURCE, 4L, 2, true);
+        }
+    }
+
     private static List<Transaction2> sampleTransactions(int count) {
         List<Transaction2> list = new ArrayList<>(count);
         long baseDate = 1_700_000_000_000L;
         for (int i = 1; i <= count; i++) {
-            TransactionNote note = TransactionNote.builder()
-                    .put(DepositType.DEPOSIT)
-                    .put(DepositType.CITY, (long) i)
-                    .build();
-            list.add(Transaction2.construct(i, baseDate + (i * 1_000L), 100L + i, i % 2 == 0 ? 2 : 1,
-                    200L + i, i % 3 == 0 ? 4 : 2, 900 + i, note, false, false, money(i * 10.25)));
+            list.add(sampleTransaction(i));
         }
         return list;
+    }
+
+    private static Transaction2 sampleTransaction(int i) {
+        long baseDate = 1_700_000_000_000L;
+        TransactionNote note = TransactionNote.builder()
+                .put(DepositType.DEPOSIT)
+                .put(DepositType.CITY, (long) i)
+                .build();
+        return Transaction2.construct(i, baseDate + (i * 1_000L), 100L + i, i % 2 == 0 ? 2 : 1,
+                200L + i, i % 3 == 0 ? 4 : 2, 900 + i, note, false, false, money(i * 10.25));
     }
 
     private static void createLegacySourceTable(Connection conn, String tableName) throws Exception {
