@@ -717,7 +717,6 @@ public class GuildKey {
         // fix legacy
         @Override
         public Long parse(GuildDB db, String input) {
-            // if info contains letters
             if (input.matches(".*[a-zA-Z]+.*")) {
                 input = "" + (TimeUtil.timeToSec(input) * 1000);
             }

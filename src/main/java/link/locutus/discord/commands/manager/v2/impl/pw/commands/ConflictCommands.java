@@ -220,8 +220,10 @@ public class ConflictCommands {
             if (conflicts == null) {
                 throw new IllegalArgumentException("You do not have permission to sync all conflicts");
             }
-            for (Conflict conflict : conflicts) {
-                requireConflictWritePerm(conflict, me, user, guild, db);
+            if (conflicts.size() > 1 || conflicts.iterator().next().isVirtual()) {
+                for (Conflict conflict : conflicts) {
+                    requireConflictWritePerm(conflict, me, user, guild, db);
+                }
             }
         }
         CloudStorage aws = manager.getCloud();
@@ -586,7 +588,7 @@ public class ConflictCommands {
 
     @Command(desc = "Add a set of alliances to a conflict\n" +
             "This does NOT update conflict stats")
-    public String addCoalition(ConflictManager manager, @Me DBNation me, @Me User user, @Me Guild guild, @Me GuildDB db,
+    public void addCoalition(@Me IMessageIO io, ConflictManager manager, @Me DBNation me, @Me User user, @Me Guild guild, @Me GuildDB db,
             Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1,
             @Switch("col2") boolean isCoalition2) {
         requireConflictWritePerm(conflict, me, user, guild, db);
@@ -736,9 +738,13 @@ public class ConflictCommands {
             manager.flagGraphRecalc(conflict.getId());
             manager.invalidateConflictSnapshot();
         }
-        return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size()
+        String msg = "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size()
                 + " alliances to coalition 2\n" +
                 "Note: this does NOT update conflict stats";
+        CM.conflict.sync.website cm = CM.conflict.sync.website.cmd.conflicts(conflict.getId() + "").reinitialize_wars("true").reinitialize_wars("true").upload_graph("true");
+        io.create().embed("Updated conflict coalitions", msg)
+                .commandButton(cm, "update")
+                .send();
     }
 
     @Command(desc = "Import ctowned conflicts into the database\n" +
