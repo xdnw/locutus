@@ -94,6 +94,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
 
@@ -1993,61 +1994,160 @@ public final class PW {
         return aaIds;
     }
 
-    public static <E extends Enum<E>, V extends Number> Map<E, V> parseEnumMap(String arg, Class<E> enumClass,
-            Class<V> valueClass) {
-        if (arg.endsWith("},")) {
-            arg = arg.substring(0, arg.length() - 1);
-        }
-        if (arg.endsWith(",}")) {
-            arg = arg.substring(0, arg.length() - 2) + "}";
-        } else if (arg.endsWith(",")) {
-            arg = arg.substring(0, arg.length() - 1);
-        }
-        arg = arg.trim();
-        if (!arg.contains(":") && !arg.contains("="))
-            arg = arg.replaceAll("[ ]+", ":");
-        arg = arg.replace('=', ':').toUpperCase();
-        arg = arg.replaceAll("([A-Z]+:[0-9.]+) ([A-Z]+:[0-9.]+)", "$1,$2");
-        arg = arg.replace(" ", "");
-        arg = arg.replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
-        for (E unit : enumClass.getEnumConstants()) {
-            String name = unit.name();
-            arg = arg.replace(name.toUpperCase() + ":", name + ":");
+    private static <E extends Enum<E>> String enumExampleKeys(Class<E> enumClass, int max) {
+        E[] values = enumClass.getEnumConstants();
+        return Arrays.stream(values)
+                .limit(max)
+                .map(Enum::name)
+                .collect(Collectors.joining(","));
+    }
+
+    private static <E extends Enum<E>> IllegalArgumentException enumMapParseException(
+            String arg, Class<E> enumClass, Exception cause) {
+
+        E[] values = enumClass.getEnumConstants();
+        String validKeys = StringMan.join(values, ", ");
+
+        String k1 = values.length > 0 ? values[0].name() : "KEY1";
+        String k2 = values.length > 1 ? values[1].name() : k1;
+
+        String msg = "Failed to parse " + enumClass.getSimpleName() + " map: `" + arg + "`.\n"
+                + "Expected syntax: `KEY:VALUE[,KEY:VALUE...]`, `KEY=VALUE`, or `*:VALUE` / `*=VALUE`.\n"
+                + "Examples: `" + k1 + ":1," + k2 + ":2`, `{" + k1 + "=1," + k2 + "=2}`, `*=1234`, `*:1234," + k1 + ":5`.\n"
+                + "Valid keys: " + validKeys + ", *.";
+
+        if (cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()) {
+            msg += "\n" + cause.getMessage();
         }
 
-        double sign = 1;
-        if (arg.charAt(0) == '-') {
-            sign = -1;
-            arg = arg.substring(1);
-        }
-        int preMultiply = arg.indexOf("*{");
-        int postMultiply = arg.indexOf("}*");
-        if (preMultiply != -1) {
-            String[] split = arg.split("\\*\\{", 2);
-            arg = "{" + split[1];
-            sign *= Double.parseDouble(split[0]);
-        }
-        if (postMultiply != -1) {
-            String[] split = arg.split("\\}\\*", 2);
-            arg = split[0] + "}";
-            sign *= Double.parseDouble(split[1]);
-        }
+        return new IllegalArgumentException(msg);
+    }
 
-        Type type = com.google.gson.reflect.TypeToken.getParameterized(Map.class, enumClass, valueClass).getType();
-        if (arg.charAt(0) != '{' && arg.charAt(arg.length() - 1) != '}') {
-            arg = "{" + arg + "}";
-        }
-        Map<E, V> result = WebUtil.GSON.fromJson(arg, type);
-        if (result.containsKey(null)) {
-            throw new IllegalArgumentException("Invalid type specified in map: `" + arg + "`. Options: "
-                    + StringMan.join(enumClass.getEnumConstants(), ", ") + " or `{}`");
-        }
-        if (sign != 1) {
-            for (Map.Entry<E, V> entry : result.entrySet()) {
-                entry.setValue(multiply(entry.getValue(), sign, valueClass));
+    public static <E extends Enum<E>, V extends Number> Map<E, V> parseEnumMap(
+            String arg, Class<E> enumClass, Class<V> valueClass) {
+
+        String originalArg = arg;
+
+        try {
+            if (arg.endsWith("},")) {
+                arg = arg.substring(0, arg.length() - 1);
             }
+            if (arg.endsWith(",}")) {
+                arg = arg.substring(0, arg.length() - 2) + "}";
+            } else if (arg.endsWith(",")) {
+                arg = arg.substring(0, arg.length() - 1);
+            }
+
+            arg = arg.trim();
+            if (!arg.contains(":") && !arg.contains("=")) {
+                arg = arg.replaceAll("[ ]+", ":");
+            }
+
+            arg = arg.replace('=', ':').toUpperCase();
+            arg = arg.replaceAll("([A-Z]+:[0-9.]+) ([A-Z]+:[0-9.]+)", "$1,$2");
+            arg = arg.replace(" ", "");
+            arg = arg.replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
+
+            for (E unit : enumClass.getEnumConstants()) {
+                String name = unit.name();
+                arg = arg.replace(name.toUpperCase() + ":", name + ":");
+            }
+
+            double sign = 1;
+            if (!arg.isEmpty() && arg.charAt(0) == '-') {
+                sign = -1;
+                arg = arg.substring(1);
+            }
+
+            int preMultiply = arg.indexOf("*{");
+            int postMultiply = arg.indexOf("}*");
+            if (preMultiply != -1) {
+                String[] split = arg.split("\\*\\{", 2);
+                arg = "{" + split[1];
+                sign *= Double.parseDouble(split[0]);
+            }
+            if (postMultiply != -1) {
+                String[] split = arg.split("\\}\\*", 2);
+                arg = split[0] + "}";
+                sign *= Double.parseDouble(split[1]);
+            }
+
+            if (arg.charAt(0) != '{' || arg.charAt(arg.length() - 1) != '}') {
+                arg = "{" + arg + "}";
+            }
+
+            String body = arg.substring(1, arg.length() - 1).trim();
+            if (body.contains("*:")) {
+                Map<E, V> result = new EnumMap<>(enumClass);
+                Map<E, V> explicit = new EnumMap<>(enumClass);
+                V wildcardValue = null;
+
+                if (!body.isEmpty()) {
+                    for (String pair : body.split(",")) {
+                        if (pair.isEmpty()) {
+                            continue;
+                        }
+
+                        String[] kv = pair.split(":", 2);
+                        if (kv.length != 2) {
+                            throw new IllegalArgumentException("Invalid entry `" + pair + "`");
+                        }
+
+                        String key = kv[0].trim();
+                        String value = kv[1].trim();
+
+                        if ("*".equals(key)) {
+                            wildcardValue = WebUtil.GSON.fromJson(value, valueClass);
+                            continue;
+                        }
+
+                        E enumKey = Enum.valueOf(enumClass, key);
+                        explicit.put(enumKey, WebUtil.GSON.fromJson(value, valueClass));
+                    }
+                }
+
+                if (wildcardValue != null) {
+                    for (E unit : enumClass.getEnumConstants()) {
+                        result.put(unit, wildcardValue);
+                    }
+                }
+
+                result.putAll(explicit);
+
+                if (sign != 1) {
+                    for (Map.Entry<E, V> entry : result.entrySet()) {
+                        entry.setValue(multiply(entry.getValue(), sign, valueClass));
+                    }
+                }
+
+                return result;
+            }
+
+            Type type = com.google.gson.reflect.TypeToken
+                    .getParameterized(Map.class, enumClass, valueClass)
+                    .getType();
+
+            Map<E, V> result = WebUtil.GSON.fromJson(arg, type);
+
+            if (result == null) {
+                return new EnumMap<>(enumClass);
+            }
+
+            if (result.containsKey(null)) {
+                throw new IllegalArgumentException("Invalid enum key");
+            }
+
+            if (sign != 1) {
+                for (Map.Entry<E, V> entry : result.entrySet()) {
+                    entry.setValue(multiply(entry.getValue(), sign, valueClass));
+                }
+            }
+
+            return result;
+
+        } catch (RuntimeException e) {
+            throw enumMapParseException(originalArg, enumClass, e);
         }
-        return result;
     }
 
     private static <V extends Number> V multiply(V value, double factor, Class<V> valueClass) {

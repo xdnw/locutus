@@ -1068,17 +1068,19 @@ public class SlashCommandManager extends ListenerAdapter {
 
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();
-
             boolean isModal = true;
-
             String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
             if (!path.contains("modal")) {
                 isModal = false;
-                if (isEphemeral(path)) {
-                    RateLimitUtil.complete(event.deferReply(true));
-                    hook.setEphemeral(true);
-                } else {
-                    RateLimitUtil.queue(event.deferReply(false));
+                try {
+                    if (isEphemeral(path)) {
+                        RateLimitUtil.queue(event.deferReply(true));
+                        hook.setEphemeral(true);
+                    } else {
+                        RateLimitUtil.queue(event.deferReply(false));
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
             }
 

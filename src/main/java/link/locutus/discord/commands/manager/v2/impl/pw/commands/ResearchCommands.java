@@ -41,7 +41,11 @@ import java.util.stream.Collectors;
 public class ResearchCommands {
 
     @Command(desc = "Get the cost of a research upgrade", viewable = true)
-    public String researchCost(Map<Research, Integer> end_level, @Default Map<Research, Integer> start_level, @Default Boolean military_doctrine) {
+    public String researchCost(Map<Research, Integer> end_level, @Default Map<Research, Integer> start_level, @Default Boolean military_doctrine, @Default DBNation nation) {
+        if (nation != null && start_level != null) throw new IllegalArgumentException("Cannot specify both nation and start_level");
+        if (nation != null) {
+            start_level = nation.getResearchLevels(null);
+        }
         if (start_level == null) start_level = new Object2IntOpenHashMap<>();
         double factor = military_doctrine == Boolean.TRUE ? 0.95 : 1;
 

@@ -277,9 +277,9 @@ public class Settings extends Config {
         public boolean CUSTOM_MESSAGE_HANDLER = false;
 
         @Comment({"Interval for pushing to the war stats site",
-        "In seconds, default to 15m",
+        "In minutes, default to 15m",
         "This is ignored if the setting is not enabled"})
-        public int WAR_STATS_PUSH_INTERVAL = 15 * 60;
+        public int WAR_STATS_PUSH_INTERVAL = 15;
 
         @Create
         public TURN_TASKS TURN_TASKS;

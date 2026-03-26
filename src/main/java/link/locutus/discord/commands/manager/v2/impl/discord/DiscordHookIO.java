@@ -71,7 +71,7 @@ public class DiscordHookIO implements IMessageIO {
         this.originalDeleted = true;
         if (!originalDeleted) {
             try {
-                RateLimitUtil.complete(hook.deleteOriginal());
+                RateLimitUtil.queue(hook.deleteOriginal());
             } catch (ErrorResponseException | IllegalArgumentException ignore) {
                 ignore.printStackTrace();
             }
