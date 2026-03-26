@@ -85,11 +85,11 @@ public class WarCat extends Command {
             List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
             for (Role milcomRole : milcomRoles) {
                 futures.add(RateLimitUtil.queue(category.upsertPermissionOverride(milcomRole)
-                        .grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE)));
+                        .grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE), CommandMessagePriority.RESULT));
             }
             if (!futures.isEmpty()) CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
             RateLimitUtil.queue(category.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
-                    .deny(net.dv8tion.jda.api.Permission.VIEW_CHANNEL));
+                    .deny(net.dv8tion.jda.api.Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
         } else {
             category = categories.get(0);
         }

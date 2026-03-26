@@ -154,7 +154,7 @@ public class AllianceListener {
 //                        if (taxrate != null) {
 //                            footer.append("Configure automatic tax bracket: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.REQUIRED_TAX_BRACKET.name() + "\n");
 //                        }
-                        DiscordUtil.sendMessage(output, StringMan.join(messages, "\n") + "\n" + footer);
+                        DiscordUtil.sendMessage(output, StringMan.join(messages, "\n") + "\n" + footer, RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -343,7 +343,7 @@ public class AllianceListener {
                     msg.append(role.getAsMention());
                 }
 
-                msg.send();
+                msg.send(RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
             }
         });
     }
@@ -401,7 +401,7 @@ public class AllianceListener {
         AlertUtil.forEachChannel(f -> true, GuildKey.ALLIANCE_CREATE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
-                DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                DiscordUtil.createEmbedCommand(channel, title, body.toString(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
             }
         });
     }

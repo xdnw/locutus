@@ -310,7 +310,7 @@ public class Exchange {
                 String channelName = channel.getName();
                 channelName = channelName.split("-")[0];
                 if (channelName.equalsIgnoreCase(id + "")) {
-                    tasks.add(RateLimitUtil.queue(channel.getManager().setParent(jdaCategory)), CommandMessagePriority.RESULT);
+                    tasks.add(RateLimitUtil.queue(channel.getManager().setParent(jdaCategory), CommandMessagePriority.RESULT));
                     return channel;
                 }
             }
@@ -331,7 +331,7 @@ public class Exchange {
     public void setChannelInvite() {
         Invite invite = getInvite();
         if (invite != null) {
-            getChannel().getManager().setTopic(invite.getUrl());
+            RateLimitUtil.queue(getChannel().getManager().setTopic(invite.getUrl()), CommandMessagePriority.RESULT);
         }
     }
 
@@ -340,7 +340,7 @@ public class Exchange {
     }
 
     public void alert(String title, String message) {
-        DiscordUtil.createEmbedCommand(getChannel(), title, message);
+        DiscordUtil.createEmbedCommand(getChannel(), title, message, CommandMessagePriority.RESULT);
     }
 
     public String alert(String message) {
@@ -473,7 +473,7 @@ public class Exchange {
                     .setName(name)
                     .setMentionable(false)
                     .setHoisted(true)
-                    );
+                    , CommandMessagePriority.RESULT);
 
             if (positionRole == null) positionRole = guild.getRoleById(807944560176529440L);
             if (positionRole != null) {

@@ -29,6 +29,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -230,7 +231,7 @@ public class WarCategory {
     }
 
     public synchronized WarRoom createWarRoom(DBNation target, boolean createRoom, boolean forceCreate, boolean planning, WarCatReason reason) {
-        WarRoomRateLimit creationSource = WarRoomRateLimit.forRoomCreation(reason);
+        RateLimitedSource creationSource = WarRoomRateLimit.forRoomCreation(reason);
         WarRoom existing = warRoomMap.get(target.getNation_id());
         if (existing == null) {
             synchronized (target) {
@@ -631,7 +632,7 @@ public class WarCategory {
         }
     }
 
-    public void processChannelCreation(WarRoom room, StandardGuildMessageChannel channel, boolean planning, WarRoomRateLimit source) {
+    public void processChannelCreation(WarRoom room, StandardGuildMessageChannel channel, boolean planning, RateLimitedSource source) {
         room.updatePin(false);
         RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(getGuild().getMemberById(Settings.INSTANCE.APPLICATION_ID))
                 .setAllowed(Permission.VIEW_CHANNEL, Permission.MANAGE_CHANNEL, Permission.MANAGE_PERMISSIONS), source);

@@ -23,6 +23,9 @@ public final class RateLimitedSources {
 
     public static final RateLimitedSource PNW_PUSHER_INVALID_KEY_ALERT = source(SendPolicy.DEFER, DeferredPriority.PNW_PUSHER_INVALID_KEY_ALERT);
     public static final RateLimitedSource REPORT_COMMAND_ALERT = source(SendPolicy.DEFER, DeferredPriority.REPORT_COMMAND_ALERT);
+    public static final RateLimitedSource COMMAND_RESULT = source(SendPolicy.IMMEDIATE, DeferredPriority.COMMAND_RESULT);
+    public static final RateLimitedSource COMMAND_STATUS = source(SendPolicy.DROP, DeferredPriority.COMMAND_STATUS);
+    public static final RateLimitedSource COMMAND_PROGRESS = source(SendPolicy.DROP, DeferredPriority.COMMAND_PROGRESS);
     public static final RateLimitedSource GUILD_DB_ADD_BALANCE_ALERT = source(SendPolicy.DEFER, DeferredPriority.GUILD_DB_ADD_BALANCE_ALERT);
     public static final RateLimitedSource GUILD_DB_DISCORD_SYNC = source(SendPolicy.DEFER, DeferredPriority.GUILD_DB_DISCORD_SYNC);
     public static final RateLimitedSource GUILD_HANDLER_MEMBER_LEAVE_ALERT = source(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_MEMBER_LEAVE_ALERT);
@@ -62,6 +65,15 @@ public final class RateLimitedSources {
     public static final RateLimitedSource TREATY_UPDATE_ALERT = source(SendPolicy.DEFER, DeferredPriority.TREATY_UPDATE_ALERT);
     public static final RateLimitedSource WAR_UPDATE_BOUNTY_MENTIONS = source(SendPolicy.DEFER, DeferredPriority.WAR_UPDATE_BOUNTY_MENTIONS);
     public static final RateLimitedSource COMMAND_MANAGER_WAR_ROOM_RELAY = source(SendPolicy.DEFER, DeferredPriority.COMMAND_MANAGER_WAR_ROOM_RELAY);
+    public static final RateLimitedSource WAR_ROOM_MANUAL_ROOM_CREATE = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_MANUAL_ROOM_CREATE);
+    public static final RateLimitedSource WAR_ROOM_AUTO_ROOM_CREATE = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_AUTO_ROOM_CREATE);
+    public static final RateLimitedSource WAR_ROOM_INITIAL_PIN = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_INITIAL_PIN);
+    public static final RateLimitedSource WAR_ROOM_PIN_REFRESH = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_PIN_REFRESH);
+    public static final RateLimitedSource WAR_ROOM_ATTACK_MESSAGE = source(SendPolicy.CONDENSE, DeferredPriority.WAR_ROOM_ATTACK_MESSAGE);
+    public static final RateLimitedSource WAR_ROOM_STATUS_UPDATE = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_STATUS_UPDATE);
+    public static final RateLimitedSource WAR_ROOM_ROOM_CLEANUP = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_ROOM_CLEANUP);
+    public static final RateLimitedSource WAR_ROOM_ROOM_LOG = source(SendPolicy.CONDENSE, DeferredPriority.WAR_ROOM_ROOM_LOG);
+    public static final RateLimitedSource WAR_ROOM_ROOM_INFO = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_ROOM_INFO);
 
     private RateLimitedSources() {
     }

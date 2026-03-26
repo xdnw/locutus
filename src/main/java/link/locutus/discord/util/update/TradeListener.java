@@ -70,7 +70,7 @@ public class TradeListener {
         AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
-                DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                DiscordUtil.createEmbedCommand(channel, title, body.toString(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
             }
         });
     }
@@ -234,7 +234,7 @@ public class TradeListener {
                     }
                 }
 
-                DiscordUtil.sendMessage(channel, aaMessage.toString());
+                DiscordUtil.sendMessage(channel, aaMessage.toString(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
             }
         });
 
@@ -340,7 +340,7 @@ public class TradeListener {
 
                 msg.append("**__## " + title + " ##__**\n" + body + "\n- " + StringMan.join(pings, "\n- ") + "\n---------\n");
             }
-            msg.send();
+            msg.send(RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
         }
     }
 

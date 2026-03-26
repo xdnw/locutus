@@ -137,13 +137,13 @@ public class DiscordCommands {
             } else {
                 action = override.grant(permission);
             }
-            tasks.add(RateLimitUtil.queue(action), CommandMessagePriority.RESULT);
+            tasks.add(RateLimitUtil.queue(action, CommandMessagePriority.RESULT));
 
             changes.add("Set " + permission + "=" + !negate + " for " + nameFuc.apply(member));
         }
 
         for (Member member : toRemove) {
-            tasks.add(RateLimitUtil.queue(channel.upsertPermissionOverride(member).clear(permission)), CommandMessagePriority.RESULT);
+            tasks.add(RateLimitUtil.queue(channel.upsertPermissionOverride(member).clear(permission), CommandMessagePriority.RESULT));
             changes.add("Clear " + permission + " for " + nameFuc.apply(member));
         }
 
@@ -203,7 +203,7 @@ public class DiscordCommands {
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon)), CommandMessagePriority.RESULT);
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon), CommandMessagePriority.RESULT));
             }
         }
         for (Future<?> task : tasks) {
@@ -313,7 +313,7 @@ public class DiscordCommands {
             }
         }
         if (createdChannel == null) {
-            createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName)), member,
+            createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName), CommandMessagePriority.RESULT), member,
                     roles);
             DiscordChannelIO io = new DiscordChannelIO(createdChannel);
             IMessageBuilder toSend = null;
@@ -350,7 +350,7 @@ public class DiscordCommands {
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
         RateLimitUtil
                 .complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                        .deny(Permission.VIEW_CHANNEL));
+                        .deny(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
         RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
 
         for (Roles dept : depts) {

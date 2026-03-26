@@ -852,7 +852,7 @@ public class UnsortedCommands {
                     Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
                     for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                         if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
-                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete(), CommandMessagePriority.RESULT));
                             log.add("Removed " + entry.getValue().getName());
                         }
                     }
@@ -871,7 +871,7 @@ public class UnsortedCommands {
                     List<String> log = new ArrayList<>();
                     for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                         if (!allowed.apply(entry.getKey())) {
-                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete(), CommandMessagePriority.RESULT));
                             log.add("Removed " + entry.getValue().getName());
                         }
                     }
@@ -896,7 +896,7 @@ public class UnsortedCommands {
                                     && f.getVm_turns() == 0 && f.active_m() < TimeUnit.DAYS.toMinutes(7)).isEmpty();
                         }
                         if (!active) {
-                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete(), CommandMessagePriority.RESULT));
                             String reason = alliance != null ? "Inactive" : "Deleted";
                             log.add("Removed " + entry.getValue().getName() + "(" + reason + ")");
                         }
@@ -968,7 +968,7 @@ public class UnsortedCommands {
                                 }
                             }
                             if (reason != null) {
-                                tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role)), CommandMessagePriority.RESULT);
+                                tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), CommandMessagePriority.RESULT));
                                 log.add("Removed " + role.getName() + " from " + member.getEffectiveName() + "("
                                         + reason + ")");
                             }
@@ -992,7 +992,7 @@ public class UnsortedCommands {
                     Map<Integer, Set<Role>> aaRoles = DiscordUtil.getAARolesIncDuplicates(guild.getRoles());
                     for (Map.Entry<Integer, Set<Role>> entry : aaRoles.entrySet()) {
                         for (Role role : entry.getValue()) {
-                            tasks.add(RateLimitUtil.queue(role.delete()), CommandMessagePriority.RESULT);
+                            tasks.add(RateLimitUtil.queue(role.delete(), CommandMessagePriority.RESULT));
                         }
                     }
                     return "Cleared all AA roles!";
@@ -1041,7 +1041,7 @@ public class UnsortedCommands {
                         // nick = nick.substring(nick.indexOf(' ') + 1);
                         // }
                     }
-                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)), CommandMessagePriority.RESULT);
+                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick), CommandMessagePriority.RESULT));
                 } catch (Throwable e) {
                     msg = e.getMessage();
                     failed++;

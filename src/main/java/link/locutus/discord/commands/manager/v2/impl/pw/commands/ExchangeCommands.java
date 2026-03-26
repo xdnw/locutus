@@ -68,7 +68,7 @@ public class ExchangeCommands {
                 "Charter: `" + Settings.commandPrefix(false) + "exchange charter <doc-url>`\n" +
                 "Website: `" + Settings.commandPrefix(false) + "exchange website <url>`\n" +
                 "Color Roles: `" + Settings.commandPrefix(false) + "exchange color <rank> <color>`\n"
-        ));
+        ), CommandMessagePriority.RESULT);
 
         String help = "Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n" + "- Join " + StockDB.INVITE + "\n" +
                 "- Visit your channel and read the setup documentation: " + exchangeChannel.getAsMention() + "\n";

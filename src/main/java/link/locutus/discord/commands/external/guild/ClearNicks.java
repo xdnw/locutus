@@ -63,7 +63,7 @@ public class ClearNicks extends Command {
                             nick = nick.substring(nick.indexOf(' ') + 1);
                         }
                     }
-                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)), CommandMessagePriority.RESULT);
+                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick), CommandMessagePriority.RESULT));
                 } catch (Throwable e) {
                     msg = e.getMessage();
                     failed++;

@@ -62,6 +62,7 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -164,7 +165,7 @@ public class GuildKey {
                         if (!isValid) {
                             try {
                                 try {
-                                    List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites());
+                                    List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites(), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
                                     for (Invite invite : invites) {
                                         String inviteCode = invite.getCode();
                                         inviteCodes.add(inviteCode);

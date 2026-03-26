@@ -18,6 +18,7 @@ import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.mail.MailApiResponse;
@@ -55,7 +56,7 @@ public class WarRoomUtil {
             Permission.MANAGE_PERMISSIONS
     };
 
-    public static StandardGuildMessageChannel createChannel2(WarCategory warCategory2, WarRoom room, DBNation target, boolean create, boolean planning, WarRoomRateLimit source) {
+    public static StandardGuildMessageChannel createChannel2(WarCategory warCategory2, WarRoom room, DBNation target, boolean create, boolean planning, RateLimitedSource source) {
         String catPrefix = warCategory2.getCatPrefix();
         GuildDB db = warCategory2.getGuildDb();
         Guild guild = warCategory2.getGuild();
@@ -236,7 +237,7 @@ public class WarRoomUtil {
                 .commandButton(CommandBehavior.UNPRESS, CM.war.room.pin.cmd, "Update");
     }
 
-    private static void queuePinnedMessageMetadata(StandardGuildMessageChannel channel, long messageId, WarRoomRateLimit source) {
+    private static void queuePinnedMessageMetadata(StandardGuildMessageChannel channel, long messageId, RateLimitedSource source) {
         String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + messageId + " " + CM.war.room.pin.cmd.toSlashMention();
         RateLimitUtil.queueLatest(channelTopicKey(channel), source,
                 () -> RateLimitUtil.queue(channel.getManager().setTopic(newTopic), source));
@@ -244,7 +245,7 @@ public class WarRoomUtil {
                 () -> RateLimitUtil.queue(channel.pinMessageById(messageId), source));
     }
 
-    public static boolean queueRoomStateSync(WarRoom room, WarRoomRateLimit source) {
+    public static boolean queueRoomStateSync(WarRoom room, RateLimitedSource source) {
         StandardGuildMessageChannel channel = room.channel;
         if (channel == null) {
             return false;

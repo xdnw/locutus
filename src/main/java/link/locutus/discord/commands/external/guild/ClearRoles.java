@@ -49,7 +49,7 @@ public class ClearRoles extends Command {
             
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                 if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
-                    tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
+                    tasks.add(RateLimitUtil.queue(entry.getValue().delete(), CommandMessagePriority.RESULT));
                 }
             }
             // complete tasks
@@ -61,7 +61,7 @@ public class ClearRoles extends Command {
         if (args.get(0).equalsIgnoreCase("ALLIANCE")) {
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
-                tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
+                tasks.add(RateLimitUtil.queue(entry.getValue().delete(), CommandMessagePriority.RESULT));
             }
             for (Future<?> task : tasks) {
                 task.get();

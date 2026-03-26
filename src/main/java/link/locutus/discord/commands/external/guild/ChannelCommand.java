@@ -123,7 +123,7 @@ public class ChannelCommand extends Command {
                 }
             }
 
-            createdChannel = updateChannel(RateLimitUtil.complete(freeCategory.createTextChannel(channelName)), member, roles, CommandMessagePriority.RESULT);
+            createdChannel = updateChannel(RateLimitUtil.complete(freeCategory.createTextChannel(channelName), CommandMessagePriority.RESULT), member, roles);
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
@@ -158,7 +158,7 @@ public class ChannelCommand extends Command {
 
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
         RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                .deny(Permission.VIEW_CHANNEL));
+                .deny(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
         RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
 
         for (Roles dept : depts) {

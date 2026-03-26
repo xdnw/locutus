@@ -17,6 +17,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.nation.NationChangeActiveEvent;
 import link.locutus.discord.event.nation.NationChangeAllianceEvent;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -76,7 +77,7 @@ public class GuildCustomMessageHandler implements Runnable {
             ApiKeyPool mailkey = db.getMailKey();
             if (mailkey == null) {
                 try {
-                    RateLimitUtil.queue(output.sendMessage("No mail key set with " + CM.settings_default.registerApiKey.cmd.toSlashMention() + ". Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`" + " <@" + db.getGuild().getOwnerId() + ">"));
+                    RateLimitUtil.queue(output.sendMessage("No mail key set with " + CM.settings_default.registerApiKey.cmd.toSlashMention() + ". Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`" + " <@" + db.getGuild().getOwnerId() + ">"), RateLimitedSources.GUILD_HANDLER_RECRUIT_MESSAGE_ERROR);
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                 }
@@ -88,7 +89,7 @@ public class GuildCustomMessageHandler implements Runnable {
                     RateLimitUtil.queue(output.sendMessage("No permission. Disabling `" + GuildKey.TIMED_MESSAGES.name() + "`. Previous value:\n" +
                             "```json\n" +
                             GuildKey.TIMED_MESSAGES.toReadableString(db, messages) +
-                            "\n```" + "\n<@" + db.getGuild().getOwnerId() + ">"));
+                            "\n```" + "\n<@" + db.getGuild().getOwnerId() + ">"), RateLimitedSources.GUILD_HANDLER_RECRUIT_MESSAGE_ERROR);
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                 }

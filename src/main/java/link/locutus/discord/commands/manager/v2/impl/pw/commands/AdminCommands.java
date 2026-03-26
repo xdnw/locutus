@@ -169,7 +169,7 @@ public class AdminCommands {
                                         +
                                         "<https://discord.com/api/oauth2/authorize?client_id="
                                         + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
-                                        "- <https://github.com/xdnw/locutus/wiki>"));
+                                        "- <https://github.com/xdnw/locutus/wiki>"), CommandMessagePriority.RESULT);
                     }
                     RateLimitUtil.queue(db.getGuild().leave(), CommandMessagePriority.RESULT);
                 }, delay, TimeUnit.SECONDS);

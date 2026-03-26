@@ -431,20 +431,34 @@ public class DiscordUtil {
     }
 
     public static void createEmbedCommand(long chanelId, String title, String message, String... reactionArguments) {
+        createEmbedCommand(chanelId, title, message, RateLimitedSources.DISCORD_UTIL_EMBED_COMMAND, reactionArguments);
+    }
+
+    public static void createEmbedCommand(long chanelId, String title, String message, RateLimitedSource source, String... reactionArguments) {
         MessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(chanelId);
         if (channel == null) {
             throw new IllegalArgumentException("Invalid channel " + chanelId);
         }
-        createEmbedCommand(channel, title, message, reactionArguments);
+        createEmbedCommand(channel, title, message, source, reactionArguments);
     }
 
     public static void createEmbedCommand(MessageChannel channel, String title, String message,
             String... reactionArguments) {
-        createEmbedCommandWithFooter(channel, title, message, null, reactionArguments);
+        createEmbedCommand(channel, title, message, RateLimitedSources.DISCORD_UTIL_EMBED_COMMAND, reactionArguments);
+    }
+
+    public static void createEmbedCommand(MessageChannel channel, String title, String message,
+            RateLimitedSource source, String... reactionArguments) {
+        createEmbedCommandWithFooter(channel, title, message, null, source, reactionArguments);
     }
 
     public static void createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer,
             String... reactionArguments) {
+        createEmbedCommandWithFooter(channel, title, message, footer, RateLimitedSources.DISCORD_UTIL_EMBED_COMMAND, reactionArguments);
+    }
+
+    public static void createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer,
+            RateLimitedSource source, String... reactionArguments) {
         if (message.length() + (footer == null ? 0 : footer.length()) > MessageEmbed.DESCRIPTION_MAX_LENGTH
                 && reactionArguments.length == 0) {
             if (title.length() > MessageEmbed.TITLE_MAX_LENGTH)
@@ -466,11 +480,16 @@ public class DiscordUtil {
                     builder.setFooter(footer);
                 builder.shrinkDefault();
             }
-        }, reactionArguments);
+        }, source, reactionArguments);
     }
 
     public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> builder,
             String... reactionArguments) {
+        createEmbedCommand(channel, builder, RateLimitedSources.DISCORD_UTIL_EMBED_COMMAND, reactionArguments);
+    }
+
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> builder,
+            RateLimitedSource source, String... reactionArguments) {
         if (reactionArguments.length % 2 != 0) {
             throw new IllegalArgumentException("invalid pairs: " + StringMan.getString(reactionArguments));
         }
@@ -478,7 +497,7 @@ public class DiscordUtil {
         for (int i = 0; i < reactionArguments.length; i += 2) {
             map.put(reactionArguments[i], reactionArguments[i + 1]);
         }
-        createEmbedCommand(channel, builder, map);
+        createEmbedCommand(channel, builder, source, map);
     }
 
     public static Message getMessage(String url) {
@@ -504,10 +523,15 @@ public class DiscordUtil {
 
     public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> consumer,
             Map<String, String> reactionArguments) {
+        createEmbedCommand(channel, consumer, RateLimitedSources.DISCORD_UTIL_EMBED_COMMAND, reactionArguments);
+    }
+
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> consumer,
+            RateLimitedSource source, Map<String, String> reactionArguments) {
         EmbedShrink builder = new EmbedShrink();
         consumer.accept(builder);
 
-        new DiscordChannelIO(channel, null).create().embed(builder).addCommands(reactionArguments).send(RateLimitedSources.DISCORD_UTIL_EMBED_COMMAND);
+        new DiscordChannelIO(channel, null).create().embed(builder).addCommands(reactionArguments).send(source);
     }
 
     public static class CommandInfo {
@@ -1290,10 +1314,14 @@ public class DiscordUtil {
     }
 
     public static CompletableFuture<Message> sendMessage(InteractionHook hook, String message) {
+        return sendMessage(hook, message, RateLimitedSources.DISCORD_UTIL_MESSAGE_IO);
+    }
+
+    public static CompletableFuture<Message> sendMessage(InteractionHook hook, String message, RateLimitedSource source) {
         if (message.length() > 20000) {
             if (message.length() < 2000000) {
                 return RateLimitUtil.queue(hook
-                        .sendFiles(FileUpload.fromData(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt")), RateLimitedSources.DISCORD_UTIL_MESSAGE_IO);
+                        .sendFiles(FileUpload.fromData(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt")), source);
             }
             new Exception().printStackTrace();
             throw new IllegalArgumentException("Cannot send message of this length: " + message.length());
@@ -1308,15 +1336,19 @@ public class DiscordUtil {
         CompletableFuture<Message> last = null;
         for (String line : lines) {
             if (last == null) {
-                last = RateLimitUtil.queue(hook.sendMessage(line), RateLimitedSources.DISCORD_UTIL_MESSAGE_IO);
+                last = RateLimitUtil.queue(hook.sendMessage(line), source);
             } else {
-                last = last.thenCompose(previousMessage -> RateLimitUtil.queue(hook.sendMessage(line), RateLimitedSources.DISCORD_UTIL_MESSAGE_IO));
+                last = last.thenCompose(previousMessage -> RateLimitUtil.queue(hook.sendMessage(line), source));
             }
         }
         return last;
     }
 
     public static CompletableFuture<List<Message>> sendMessage(MessageChannel channel, String message) {
+        return sendMessage(channel, message, RateLimitedSources.DISCORD_UTIL_MESSAGE_IO);
+    }
+
+    public static CompletableFuture<List<Message>> sendMessage(MessageChannel channel, String message, RateLimitedSource source) {
         if (message.length() > 20000) {
             if (message.length() < 200000) {
                 return DiscordUtil.upload(channel, "message.txt", message).thenApply(List::of);
@@ -1333,7 +1365,7 @@ public class DiscordUtil {
         List<String> lines = DiscordUtil.wrap(message, Message.MAX_CONTENT_LENGTH);
         // If the message fits into one message, send it directly.
         if (lines.size() == 1) {
-            return RateLimitUtil.queue(channel.sendMessage(message), RateLimitedSources.DISCORD_UTIL_MESSAGE_IO).thenApply(List::of);
+            return RateLimitUtil.queue(channel.sendMessage(message), source).thenApply(List::of);
         }
 
         // Otherwise, send each line sequentially and collect the results.
@@ -1341,7 +1373,7 @@ public class DiscordUtil {
         CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
 
         for (String line : lines) {
-            chain = chain.thenCompose(ignored -> RateLimitUtil.queue(channel.sendMessage(line), RateLimitedSources.DISCORD_UTIL_MESSAGE_IO)
+            chain = chain.thenCompose(ignored -> RateLimitUtil.queue(channel.sendMessage(line), source)
                     .thenAccept(sentMessages::add));
         }
 

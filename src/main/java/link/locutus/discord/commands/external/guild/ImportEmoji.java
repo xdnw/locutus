@@ -56,7 +56,7 @@ public class ImportEmoji extends Command {
                 if (name.lastIndexOf('.') != -1) {
                     name = name.substring(0, name.lastIndexOf('.'));
                 }
-                tasks.add(RateLimitUtil.queue(guild.createEmoji(name, icon)), CommandMessagePriority.RESULT);
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(name, icon), CommandMessagePriority.RESULT));
             }
             for (Future<?> task : tasks) {
                 task.get();
@@ -81,7 +81,7 @@ public class ImportEmoji extends Command {
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon)), CommandMessagePriority.RESULT);
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon), CommandMessagePriority.RESULT));
             }
         }
         for (Future<?> task : tasks) {

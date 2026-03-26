@@ -441,13 +441,13 @@ public class FACommands {
 
     public static void updateEmbassyPerms(TextChannel channel, Role role, User user, boolean mention) {
         RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                .deny(Permission.VIEW_CHANNEL));
+                .deny(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
         RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
 
         Set<Role> roles = Roles.FOREIGN_AFFAIRS.toRoles(Locutus.imp().getGuildDB(channel.getGuild()));
         List<CompletableFuture< PermissionOverride>> futures = new ArrayList<>();
         for (Role r : roles) {
-            futures.add(RateLimitUtil.queue(channel.upsertPermissionOverride(r).grant(Permission.VIEW_CHANNEL)), CommandMessagePriority.RESULT);
+            futures.add(RateLimitUtil.queue(channel.upsertPermissionOverride(r).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT));
         }
         if (!futures.isEmpty()) CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         if (mention) {

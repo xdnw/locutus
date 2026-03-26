@@ -9,6 +9,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.AuditType;
@@ -56,12 +57,12 @@ public class IAChannel {
         if (user == null) return;
         Member member = db.getGuild().getMember(user);
         if (member == null) return;
-        RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), RateLimitedSources.IA_CATEGORY_DISCORD_SYNC);
 
         String expected = DiscordUtil.toDiscordChannelString(nation.getNation()) + "-" + nation.getNation_id();
         String name = channel.getName();
         if (!name.equalsIgnoreCase(expected)) {
-            RateLimitUtil.queue(channel.getManager().setName(expected));
+            RateLimitUtil.queue(channel.getManager().setName(expected), RateLimitedSources.IA_CATEGORY_DISCORD_SYNC);
         }
     }
 
@@ -104,7 +105,7 @@ public class IAChannel {
     public DBNation getLastActiveGov(boolean rankChange) {
         GuildMessageChannel channel = getChannel();
         if (channel != null) {
-            List<Message> history = RateLimitUtil.complete(channel.getHistory().retrievePast(20));
+            List<Message> history = RateLimitUtil.complete(channel.getHistory().retrievePast(20), RateLimitedSources.IA_CATEGORY_DISCORD_SYNC);
 
             Map<DBNation, Double> numMessage = new HashMap<>();
             DBNation lastGov = null;

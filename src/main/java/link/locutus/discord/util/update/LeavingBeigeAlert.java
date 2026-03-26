@@ -334,7 +334,7 @@ public class LeavingBeigeAlert {
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override
                 public void run() {
-                    PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
+                    PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
                     DiscordChannelIO io = new DiscordChannelIO(channel);
                     IMessageBuilder msg = io.create();
 
@@ -359,7 +359,7 @@ public class LeavingBeigeAlert {
                         msg.embed(title, body);
                     }
                     msg.append(footer);
-                    msg.send();
+                    msg.send(RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
                 }
             });
 

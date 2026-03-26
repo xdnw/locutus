@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.DBComment;
 import link.locutus.discord.db.entities.DBTopic;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
@@ -75,14 +76,14 @@ public class ForumDB extends DBMain {
                     List<TextChannel> channels = guild.getTextChannelsByName(requiredChannelName, true);
                     TextChannel channel = channels.isEmpty() ? null : channels.get(0);
                     if (channel == null) {
-                        channel = RateLimitUtil.complete(category.createTextChannel(requiredChannelName));
-                        RateLimitUtil.queue(channel.getManager().setTopic(comment.topicUrl()));
+                        channel = RateLimitUtil.complete(category.createTextChannel(requiredChannelName), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
+                        RateLimitUtil.queue(channel.getManager().setTopic(comment.topicUrl()), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
                     }
 
                     String title = comment.poster_name;
                     String body = comment.content;
                     String footer = "[link](" + comment.commentUrl() + ")";
-                    DiscordUtil.createEmbedCommand(channel, title, footer + "\n" + body, new String[0]);
+                    DiscordUtil.createEmbedCommand(channel, title, footer + "\n" + body, RateLimitedSources.GUILD_DB_DISCORD_SYNC, new String[0]);
                 }
             }
 
@@ -91,14 +92,14 @@ public class ForumDB extends DBMain {
                     if (GuildMessageChannel.getLatestMessageIdLong() > 0) {
                         long message = GuildMessageChannel.getLatestMessageIdLong();
                         try {
-                            Message msg = RateLimitUtil.complete(GuildMessageChannel.retrieveMessageById(message));
+                            Message msg = RateLimitUtil.complete(GuildMessageChannel.retrieveMessageById(message), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
                             long created = msg.getTimeCreated().toEpochSecond() * 1000L;
                             if (created > cutoff) {
                                 continue;
                             }
                         } catch (Throwable ignore) {}
                     }
-                    RateLimitUtil.queue(GuildMessageChannel.delete());
+                    RateLimitUtil.queue(GuildMessageChannel.delete(), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
                 }
             }
 

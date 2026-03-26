@@ -475,7 +475,7 @@ public class WarCard {
             if (condense) {
                 msg.sendWhenFree(RateLimitedSources.WAR_CARD_CONDENSED_EMBED);
             } else {
-                msg.send();
+                msg.send(RateLimitedSources.WAR_CARD_CONDENSED_EMBED);
             }
         }
         return msg;

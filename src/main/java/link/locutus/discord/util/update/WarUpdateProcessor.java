@@ -314,8 +314,8 @@ public class WarUpdateProcessor {
                 toUpdate.addAll(warCatsByRoom.getOrDefault(current.getAttacker_id(), Collections.emptySet()));
                 toUpdate.addAll(warCatsByRoom.getOrDefault(current.getDefender_id(), Collections.emptySet()));
                 if (!toUpdate.isEmpty()) {
-                    if (wars.size() > 25 && RateLimitUtil.getCurrentUsed() > 55) {
-                        while (RateLimitUtil.getCurrentUsed(true) > 55) {
+                    if (wars.size() > 25 && RateLimitUtil.isCloseToLimit(RateLimitedSources.GUILD_HANDLER_WAR_ALERT_BATCH)) {
+                        while (RateLimitUtil.isCloseToLimit(RateLimitedSources.GUILD_HANDLER_WAR_ALERT_BATCH)) {
                             try {
                                 Thread.sleep(1000);
                             } catch (InterruptedException e) {
@@ -400,7 +400,7 @@ public class WarUpdateProcessor {
             }
         }
 
-        int free = (RateLimitUtil.getLimitPerMinute() - RateLimitUtil.getCurrentUsed());
+        int free = Math.max(0, 50 - RateLimitUtil.getDebugSnapshot().inflightCount());
         boolean rateLimit = toCreate < (free + 10) * 3;
 
         for (Map.Entry<GuildHandler, List<Map.Entry<DBWar, DBWar>>> entry : defWarsByGuild.entrySet()) {

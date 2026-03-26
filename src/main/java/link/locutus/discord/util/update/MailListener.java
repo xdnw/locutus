@@ -28,6 +28,7 @@ import link.locutus.discord.event.mail.MailReceivedEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.mail.Mail;
 import net.dv8tion.jda.api.entities.Guild;
@@ -87,7 +88,7 @@ public class MailListener {
         }
 
         builder.commandButton(CommandBehavior.UNPRESS, CM.mail.read.cmd.message_id(event.getMail().id + "").account(authId + ""), "Read");
-        builder.send();
+        builder.send(RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
 
         processCommands(db, guild, outputBuilder, event);
     }
@@ -129,7 +130,7 @@ public class MailListener {
             ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
             Object response = callable.call(stack);
             if (response != null) {
-                io.sendMessage(response.toString());
+                io.sendMessage(response.toString(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                 String html = MarkupUtil.markdownToHTML(response.toString());
                 try {
                     event.reply(html);

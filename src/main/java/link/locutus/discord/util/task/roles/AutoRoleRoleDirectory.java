@@ -5,6 +5,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -571,7 +572,7 @@ public final class AutoRoleRoleDirectory {
             return;
         }
         try {
-            RateLimitUtil.complete(role.getManager().setName(expectedName));
+            RateLimitUtil.complete(role.getManager().setName(expectedName), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
@@ -596,7 +597,7 @@ public final class AutoRoleRoleDirectory {
                 continue;
             }
             try {
-                RateLimitUtil.complete(guild.modifyMemberRoles(member, add, remove));
+                RateLimitUtil.complete(guild.modifyMemberRoles(member, add, remove), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
             } catch (Throwable throwable) {
                 throwable.printStackTrace();
             }
@@ -606,7 +607,7 @@ public final class AutoRoleRoleDirectory {
     private static void deleteDuplicateAllianceRoles(List<Role> duplicateRolesToDelete) {
         for (Role duplicateRole : duplicateRolesToDelete) {
             try {
-                RateLimitUtil.complete(duplicateRole.delete());
+                RateLimitUtil.complete(duplicateRole.delete(), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
             } catch (Throwable throwable) {
                 throwable.printStackTrace();
             }
@@ -650,7 +651,7 @@ public final class AutoRoleRoleDirectory {
             }
 
             try {
-                RateLimitUtil.complete(role.delete());
+                RateLimitUtil.complete(role.delete(), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
             } catch (Throwable throwable) {
                 throw actionError("delete", role.getName(), throwable);
             }
@@ -670,7 +671,7 @@ public final class AutoRoleRoleDirectory {
             return RateLimitUtil.complete(guild.createRole()
                     .setName(roleName)
                     .setMentionable(false)
-                    .setHoisted(true));
+                    .setHoisted(true), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
         } catch (Throwable throwable) {
             throw actionError("create", roleName, throwable);
         }

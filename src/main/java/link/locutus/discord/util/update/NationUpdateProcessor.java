@@ -206,7 +206,7 @@ public class NationUpdateProcessor {
                     AlertUtil.forEachChannel(f -> true, GuildKey.ACTIVITY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
                         public void accept(MessageChannel channel, GuildDB guildDB) {
-                            DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                            DiscordUtil.createEmbedCommand(channel, title, body.toString(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                         }
                     });
 
@@ -254,8 +254,8 @@ public class NationUpdateProcessor {
                     }
 
                     try {
-                        DiscordChannelIO channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel()), null);
-                        channel.send(messageCustom);
+                        DiscordChannelIO channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE), null);
+                        channel.send(messageCustom, RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
@@ -297,7 +297,7 @@ public class NationUpdateProcessor {
                 AlertUtil.forEachChannel(f -> true, GuildKey.REROLL_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
-                        DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                        DiscordUtil.createEmbedCommand(channel, title, body.toString(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                     }
                 });
             }
@@ -327,7 +327,7 @@ public class NationUpdateProcessor {
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
-                    DiscordUtil.createEmbedCommand(channel, title, body);
+                    DiscordUtil.createEmbedCommand(channel, title, body, RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                 }
             });
         }
@@ -407,11 +407,11 @@ public class NationUpdateProcessor {
                 String newBody = body + "\n" +
                         "See " + CM.offshore.unlockTransfers.cmd.toSlashMention() + "\n" +
                         "See `!coalitions FROZEN_FUNDS`";
-                new DiscordChannelIO(channel).create().embed(title, newBody).append("<@217897994375266304> <@664156861033086987>").send();
+                new DiscordChannelIO(channel).create().embed(title, newBody).append("<@217897994375266304> <@664156861033086987>").send(RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
             }
         }
 
-        AlertUtil.forEachChannel(f -> true, BAN_ALERT_CHANNEL, (channel, guildDB) -> DiscordUtil.createEmbedCommand(channel, title, body.toString()));
+        AlertUtil.forEachChannel(f -> true, BAN_ALERT_CHANNEL, (channel, guildDB) -> DiscordUtil.createEmbedCommand(channel, title, body.toString(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT));
     }
 
     @Subscribe
@@ -526,7 +526,7 @@ public class NationUpdateProcessor {
                         checkDiscord = false;
                     }
                     if (bountyRole == null) {
-                        msg.send();
+                        msg.send(RateLimitedSources.GUILD_HANDLER_WAR_ALERT_BATCH);
                         return;
                     }
 
@@ -615,7 +615,7 @@ public class NationUpdateProcessor {
                     } else if (mode.pingRole()) {
                         msg.append(bountyRole.getAsMention());
                     }
-                    msg.send();
+                    msg.send(RateLimitedSources.GUILD_HANDLER_WAR_ALERT_BATCH);
                 }
             }
         });
@@ -698,7 +698,7 @@ public class NationUpdateProcessor {
                     pingFlag.put(pair, true);
                 }
                 if (membersInRange > 0) {
-                    DiscordUtil.createEmbedCommand(channel, title, finalMsg);
+                    DiscordUtil.createEmbedCommand(channel, title, finalMsg, RateLimitedSources.GUILD_HANDLER_WAR_ALERT_BATCH);
                     if (mentions.length() != 0) {
                         RateLimitUtil.queueWhenFree(channel.sendMessage("^ " + mentions + " (Opt out via: " + CM.alerts.beige.beigeAlertOptOut.cmd.toSlashMention() + ")"), RateLimitedSources.NATION_UPDATE_BEIGE_ALERT_MENTIONS);
                     }
@@ -721,7 +721,7 @@ public class NationUpdateProcessor {
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
-                    DiscordUtil.createEmbedCommand(channel, title, body);
+                    DiscordUtil.createEmbedCommand(channel, title, body, RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                 }
             });
         }
@@ -991,7 +991,7 @@ public class NationUpdateProcessor {
                     if (channel == null) {
                         continue;
                     }
-                    DiscordUtil.createEmbedCommand(channel, title, body.substring(0, Math.min(body.length(), 2000)));
+                    DiscordUtil.createEmbedCommand(channel, title, body.substring(0, Math.min(body.length(), 2000)), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                 }
 
             } catch (Throwable e) {
@@ -1020,7 +1020,7 @@ public class NationUpdateProcessor {
                             "From: " + previous.getAllianceUrlMarkup() + " | " + Rank.byId(previous.getPosition()) + "\n" +
                             "To: " + current.getAllianceUrlMarkup() + " | " + Rank.byId(current.getPosition());
 
-                    DiscordUtil.createEmbedCommand(channel, title, body);
+                    DiscordUtil.createEmbedCommand(channel, title, body, RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                 }
             });
         }

@@ -108,7 +108,7 @@ public class BankUpdateProcessor {
                                 }
 
                                 if (isDeposit) {
-                                    msg.send();
+                                    msg.send(RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                                 } else {
                                     msg.sendWhenFree(RateLimitedSources.BANK_UPDATE_WITHDRAW_ALERT);
                                 }
@@ -171,7 +171,7 @@ public class BankUpdateProcessor {
                     if (mentions.isEmpty() && value < Settings.INSTANCE.UPDATE_PROCESSOR.THRESHOLD_ALL_BANK_ALERT)
                         continue;
 
-                    DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
+                    DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue(), RateLimitedSources.GUILD_HANDLER_DISCORD_ALERT);
                     AlertUtil.bufferPing(channel, mentions.toArray(new String[0]));
                 }
             }

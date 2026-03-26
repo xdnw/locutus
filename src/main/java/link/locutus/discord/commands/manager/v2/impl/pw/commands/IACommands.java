@@ -2624,7 +2624,7 @@ public class IACommands {
                     RateLimitUtil.queue(tc.getManager().setParent(archiveCategory), CommandMessagePriority.RESULT);
                     for (PermissionOverride perm : tc.getMemberPermissionOverrides()) {
                         RateLimitUtil.queue(tc.upsertPermissionOverride(perm.getMember())
-                                .setAllowed(Permission.VIEW_CHANNEL).setDenied(Permission.MESSAGE_SEND));
+                                .setAllowed(Permission.VIEW_CHANNEL).setDenied(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
                     }
                     return "This channel is archived and marked for deletion after 2 days. Do not reply here";
                 }

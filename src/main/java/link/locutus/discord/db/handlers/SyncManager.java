@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -142,7 +143,7 @@ public class SyncManager {
     }
 
     private void sendData(User user, DataOutputStream out, long bufferTime) throws IOException {
-        PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
+        PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
         Set<Long> guildIds = Locutus.imp().getDiscordApi().getMutualGuilds(user).stream().map(ISnowflake::getIdLong).collect(Collectors.toSet());
         sendData(guildIds, out, new Consumer<Runnable>() {
             @Override

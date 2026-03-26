@@ -2,6 +2,7 @@ package link.locutus.discord.util.task.roles;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.CIEDE2000;
@@ -256,7 +257,7 @@ public class AutoRoleInfo {
                 }
                 try {
                     Role roleToRemove = java.util.Objects.requireNonNull(role);
-                    tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, roleToRemove)).thenAccept(v -> recordRemovedRole(member, roleToRemove)));
+                    tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, roleToRemove), RateLimitedSources.DB_NATION_ROLE_ASSIGN).thenAccept(v -> recordRemovedRole(member, roleToRemove)));
                 } catch (PermissionException e) {
                     addExecutionIssue(member, issue(AutoRoleIssueType.REMOVE_ROLE_FAILED, role.getIdLong(), null, null,
                             e.getClass().getSimpleName(), e.getMessage()));
@@ -274,7 +275,7 @@ public class AutoRoleInfo {
             try {
                 Role roleToRename = role;
                 String targetName = java.util.Objects.requireNonNull(newName);
-                tasks.add(RateLimitUtil.queue(roleToRename.getManager().setName(targetName)).thenAccept(v -> recordRenamedRole(roleToRename, targetName)));
+                tasks.add(RateLimitUtil.queue(roleToRename.getManager().setName(targetName), RateLimitedSources.DB_NATION_ROLE_ASSIGN).thenAccept(v -> recordRenamedRole(roleToRename, targetName)));
             } catch (PermissionException e) {
                 addExecutionIssue(null, issue(AutoRoleIssueType.RENAME_ROLE_FAILED, role.getIdLong(), null, null,
                         e.getClass().getSimpleName(), e.getMessage()));
@@ -290,7 +291,7 @@ public class AutoRoleInfo {
                     continue;
                 }
                 try {
-                    tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, null)).thenAccept(v -> recordClearedNickname(member)));
+                    tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, null), RateLimitedSources.DB_NATION_ROLE_ASSIGN).thenAccept(v -> recordClearedNickname(member)));
                 } catch (PermissionException e) {
                     addExecutionIssue(member, issue(AutoRoleIssueType.CLEAR_NICKNAME_FAILED, null, null, null,
                             e.getClass().getSimpleName(), e.getMessage()));
@@ -302,7 +303,7 @@ public class AutoRoleInfo {
                     continue;
                 }
                 try {
-                    tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, nickname.nickname))
+                    tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, nickname.nickname), RateLimitedSources.DB_NATION_ROLE_ASSIGN)
                             .thenAccept(v -> recordAppliedNickname(member, nickname.nickname)));
                 } catch (PermissionException e) {
                     addExecutionIssue(member, issue(AutoRoleIssueType.SET_NICKNAME_FAILED, null, null, nickname.nickname,
@@ -432,7 +433,7 @@ public class AutoRoleInfo {
                     return false;
                 }
                 createdRole = this.role.wasCreatedNewRole();
-                RateLimitUtil.queue(guild.addRoleToMember(member.getUser(), role)).thenAccept(v -> success = true).exceptionally(throwable -> {
+                RateLimitUtil.queue(guild.addRoleToMember(member.getUser(), role), RateLimitedSources.DB_NATION_ROLE_ASSIGN).thenAccept(v -> success = true).exceptionally(throwable -> {
                     Throwable error = unwrap(throwable);
                     success = false;
                     failureIssue = issue(AutoRoleIssueType.ADD_ROLE_FAILED, role.getIdLong(), null, null,
@@ -501,11 +502,11 @@ public class AutoRoleInfo {
                 }
                 fetched = true;
                 try {
-                    future = RateLimitUtil.queue(create).thenApply(created -> {
+                    future = RateLimitUtil.queue(create, RateLimitedSources.DB_NATION_ROLE_ASSIGN).thenApply(created -> {
                         role = created;
                         createdNewRole = true;
                         if (created != null && position >= 0) {
-                            RateLimitUtil.queue(guild.modifyRolePositions().selectPosition(created).moveTo(position));
+                            RateLimitUtil.queue(guild.modifyRolePositions().selectPosition(created).moveTo(position), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
                         }
                         return created;
                     }).exceptionally(throwable -> {

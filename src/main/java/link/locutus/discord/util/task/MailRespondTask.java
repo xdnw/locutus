@@ -2,14 +2,12 @@ package link.locutus.discord.util.task;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.DeferredPriority;
-import link.locutus.discord.util.RateLimitedSource;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.SendPolicy;
-import link.locutus.discord.util.io.PagePriority;
-import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.RateLimitedSources;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.scheduler.CaughtRunnable;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.jsoup.Jsoup;

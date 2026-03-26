@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.mail.MailApiResponse;
@@ -85,7 +86,7 @@ public class CustomConditionMessage {
                 if (output == null) return;
                 ApiKeyPool mailKey = db.getMailKey();
                 if (mailKey == null) {
-                    RateLimitUtil.queue(output.sendMessage("No mail key set. See: " + CM.settings_default.registerApiKey.cmd.toSlashMention()));
+                    RateLimitUtil.queue(output.sendMessage("No mail key set. See: " + CM.settings_default.registerApiKey.cmd.toSlashMention()), RateLimitedSources.GUILD_HANDLER_RECRUIT_MESSAGE_ERROR);
                     return;
                 }
                 NationPlaceholders ph = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
@@ -106,7 +107,7 @@ public class CustomConditionMessage {
                 } else {
                     message += "\n- Sending disabled. `/admin queue custom_messages setmeta:True sendmessages:True run:true`";
                 }
-                RateLimitUtil.queue(output.sendMessage(message));
+                RateLimitUtil.queue(output.sendMessage(message), RateLimitedSources.GUILD_HANDLER_RECRUIT_MESSAGE_STATUS);
             }
         });
     }
