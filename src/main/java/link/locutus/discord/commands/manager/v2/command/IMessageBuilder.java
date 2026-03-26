@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
@@ -373,6 +374,11 @@ public interface IMessageBuilder {
     IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate);
 
     CompletableFuture<IMessageBuilder> send();
+
+    RateLimitedSource getRateLimitSource();
+
+    @CheckReturnValue
+    IMessageBuilder rateLimitSource(RateLimitedSource source);
 
     default void sendWhenFree() {
         send();

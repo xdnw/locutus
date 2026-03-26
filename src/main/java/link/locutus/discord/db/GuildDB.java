@@ -155,6 +155,28 @@ import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_SUBTRACT;
  * guild-specific operations.
  */
 public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrAlliance, SyncableDatabase {
+    private enum GuildDbRateLimit implements RateLimitedSource {
+        ADD_BALANCE_ALERT(SendPolicy.DEFER, DeferredPriority.GUILD_DB_ADD_BALANCE_ALERT);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        GuildDbRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private static final String INTERNAL_TRANSACTIONS_TABLE = "INTERNAL_TRANSACTIONS2";
     private static final String INTERNAL_TRANSACTIONS_LEGACY_TABLE = "INTERNAL_TRANSACTIONS2_LEGACY";
     private static final String TRANSACTION_FORMAT_TABLE = "TRANSACTION_PAYLOAD_FORMAT";
@@ -921,7 +943,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         MessageChannel output = getOrNull(GuildKey.ADDBALANCE_ALERT_CHANNEL);
         if (output != null) {
             try {
-                RateLimitUtil.queueWhenFree(output.sendMessage(tx.toString()));
+                RateLimitUtil.queueWhenFree(output.sendMessage(tx.toString()), GuildDbRateLimit.ADD_BALANCE_ALERT);
             } catch (Throwable ignore) {
                 ignore.printStackTrace();
             }

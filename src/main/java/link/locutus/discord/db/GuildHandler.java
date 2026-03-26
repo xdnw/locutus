@@ -76,6 +76,36 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.pnw.BeigeReason.BEIGE_CYCLE;
 
 public class GuildHandler {
+    private enum GuildHandlerRateLimit implements RateLimitedSource {
+        MEMBER_LEAVE_ALERT(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_MEMBER_LEAVE_ALERT),
+        NEW_APPLICANT_ALERT(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_NEW_APPLICANT_ALERT),
+        APPLICANT_MAIL_FAILURE(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_APPLICANT_MAIL_FAILURE),
+        MEMBER_LEAVE_EMBED(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_MEMBER_LEAVE_EMBED),
+        WAR_ALERT_BATCH(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_WAR_ALERT_BATCH),
+        INCENTIVE_LOG(SendPolicy.DEFER, DeferredPriority.GUILD_HANDLER_INCENTIVE_LOG),
+        RECRUIT_INELIGIBLE_NOTICE(SendPolicy.DEFER, DeferredPriority.GUILD_HANDLER_RECRUIT_INELIGIBLE_NOTICE),
+        RECRUIT_MESSAGE_STATUS(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_RECRUIT_MESSAGE_STATUS),
+        RECRUIT_MESSAGE_ERROR(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_RECRUIT_MESSAGE_ERROR);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        GuildHandlerRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private final Guild guild;
     private final GuildDB db;
     private final boolean trackInvites;
@@ -480,7 +510,7 @@ public class GuildHandler {
                             + current.getNation_id() + " | " + current.getAllianceName();
                 }
                 String message = "**" + title + "**\n" + current.toString() + "\n";
-                RateLimitUtil.queueMessage(channel, message, true, 60);
+                RateLimitUtil.queueMessage(channel, message, GuildHandlerRateLimit.MEMBER_LEAVE_ALERT);
             }
         }
     }
@@ -587,7 +617,7 @@ public class GuildHandler {
                             + current.getNation_id() + " | " + current.getAllianceName();
 
                     String message = "**" + title + "**" + "\n" + current.toString() + "\n";
-                    RateLimitUtil.queueMessage(channel, message, true, 60);
+                    RateLimitUtil.queueMessage(channel, message, GuildHandlerRateLimit.NEW_APPLICANT_ALERT);
                 }
             }
         }
@@ -667,7 +697,7 @@ public class GuildHandler {
             if (finalChannl != null && result.status() == MailApiSuccess.NON_MAIL_KEY) {
                 String msg = result.status() + " " + result.error() + ". Disabling `"
                         + GuildKey.MAIL_NEW_APPLICANTS.name() + "`. <@" + db.getGuild().getOwnerId() + ">";
-                RateLimitUtil.queueMessage(finalChannl, msg, true, 60);
+                RateLimitUtil.queueMessage(finalChannl, msg, GuildHandlerRateLimit.APPLICANT_MAIL_FAILURE);
 
             }
         });
@@ -793,7 +823,7 @@ public class GuildHandler {
                     msg.embed(title, body.toString());
                     return true;
                 }
-            }, true, 60);
+            }, GuildHandlerRateLimit.MEMBER_LEAVE_EMBED);
         }
     }
 
@@ -2190,7 +2220,7 @@ public class GuildHandler {
                                         }
                                         return true;
                                     }
-                                }, true, null);
+                                }, GuildHandlerRateLimit.WAR_ALERT_BATCH);
                     } else {
                         for (Map.Entry<DBWar, DBWar> entry : wars) {
                             DBWar war = entry.getValue();
@@ -2746,7 +2776,7 @@ public class GuildHandler {
             MessageChannel output = getDb().getResourceChannel(0);
             if (output != null) {
                 message += "\n" + referrerUser.getAsMention();
-                RateLimitUtil.queueWhenFree(output.sendMessage(message));
+                RateLimitUtil.queueWhenFree(output.sendMessage(message), GuildHandlerRateLimit.INCENTIVE_LOG);
             }
         }
     }
@@ -3017,7 +3047,7 @@ public class GuildHandler {
                                         + "`: enable again with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()
                                         + " <@" + db.getGuild().getOwnerId() + ">");
                             }
-                            RateLimitUtil.queueWhenFree(output.sendMessage(StringMan.join(message, "\n")));
+                            RateLimitUtil.queueWhenFree(output.sendMessage(StringMan.join(message, "\n")), GuildHandlerRateLimit.RECRUIT_INELIGIBLE_NOTICE);
                         } catch (Throwable e) {
                             e.printStackTrace();
                         }
@@ -3063,23 +3093,23 @@ public class GuildHandler {
                     MailApiResponse response = db.sendRecruitMessage(current);
                     if (response.status() == MailApiSuccess.SUCCESS) {
                         sentNoIAMessage = false;
-                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + response), true, 5 * 60);
+                        RateLimitUtil.queueMessage(finalOutput, current.getNation() + ": " + response, GuildHandlerRateLimit.RECRUIT_MESSAGE_STATUS);
                     } else if (response.status() == MailApiSuccess.NON_MAIL_KEY) {
                         String msg = response.error() + "\nDisabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name()
                                 + "`. Set a new key and enable with "
                                 + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention();
-                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + msg), true, 5 * 60);
+                        RateLimitUtil.queueMessage(finalOutput, current.getNation() + ": " + msg, GuildHandlerRateLimit.RECRUIT_MESSAGE_ERROR);
                         db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     } else {
-                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + response), true, 5 * 60);
+                        RateLimitUtil.queueMessage(finalOutput, current.getNation() + ": " + response, GuildHandlerRateLimit.RECRUIT_MESSAGE_STATUS);
                     }
                 } catch (Throwable e) {
                     try {
                         if (!guildsFailedMailSend.contains(db.getIdLong())) {
                             guildsFailedMailSend.add(db.getIdLong());
                             RateLimitUtil.queueMessage(finalOutput,
-                                    (current.getNation() + " (error): " + StringMan.stripApiKey(e.getMessage())), true,
-                                    5 * 60);
+                                    current.getNation() + " (error): " + StringMan.stripApiKey(e.getMessage()),
+                                    GuildHandlerRateLimit.RECRUIT_MESSAGE_ERROR);
                         }
                     } catch (Throwable e2) {
                         db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);

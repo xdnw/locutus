@@ -22,11 +22,11 @@ import java.util.function.Supplier;
 public class RateLimitUtil {
 
     // -------------------------------------------------------------------------
-// Priority thresholds — inflight counts at which each tier pauses submission.
+// Priority thresholds — inflight counts at which each source pauses submission.
 //
-// "Priority" requests (user interactions) are allowed to eat into the margin
-// that non-priority sends are blocked at. This reserves headroom for interaction
-// responses even when the bot is busy with alerts/bulk sends.
+// Sources marked reserveHeadroom=true are allowed to eat into the margin that
+// background sources are blocked at. This reserves headroom for interaction-like
+// work even when the bot is busy with alerts/bulk sends.
 //
 // Discord's global limit is 50 req/s. These thresholds are conservative enough
 // that we stay well clear of it without stalling user-facing responses.
@@ -129,7 +129,7 @@ public class RateLimitUtil {
 
     /** Priority queue — submits immediately unless the priority threshold is breached. */
     public static <T> CompletableFuture<T> queue(RestAction<T> action) {
-        return queue(action, DeferredPriority.USER_INTERACTION);
+        return queue(action, DeferredPriority.COMMAND_RESULT);
     }
 
     /**
@@ -138,10 +138,14 @@ public class RateLimitUtil {
      *                 and is routed through the deferred queue automatically.
      */
     public static <T> CompletableFuture<T> queue(RestAction<T> action, boolean priority) {
-        return queue(action, priority ? DeferredPriority.USER_INTERACTION : DeferredPriority.NORMAL);
+        return queue(action, priority ? DeferredPriority.COMMAND_RESULT : DeferredPriority.COMMAND_STATUS);
     }
 
-    public static <T> CompletableFuture<T> queue(RestAction<T> action, DeferredPriority priority) {
+    public static <T> CompletableFuture<T> queue(RestAction<T> action, RateLimitedSource source) {
+        return queue(action, source.deferredPriority());
+    }
+
+    static <T> CompletableFuture<T> queue(RestAction<T> action, DeferredPriority priority) {
         if (action == null) return CompletableFuture.completedFuture(null);
 
         if (!shouldPause(priority)) {
@@ -162,14 +166,18 @@ public class RateLimitUtil {
 
     /** Priority complete — blocks the calling thread. Must not be called from a JDA thread. */
     public static <T> T complete(RestAction<T> action) {
-        return complete(action, DeferredPriority.USER_INTERACTION);
+        return complete(action, DeferredPriority.COMMAND_RESULT);
     }
 
     public static <T> T complete(RestAction<T> action, boolean priority) {
-        return complete(action, priority ? DeferredPriority.USER_INTERACTION : DeferredPriority.NORMAL);
+        return complete(action, priority ? DeferredPriority.COMMAND_RESULT : DeferredPriority.COMMAND_STATUS);
     }
 
-    public static <T> T complete(RestAction<T> action, DeferredPriority priority) {
+    public static <T> T complete(RestAction<T> action, RateLimitedSource source) {
+        return complete(action, source.deferredPriority());
+    }
+
+    static <T> T complete(RestAction<T> action, DeferredPriority priority) {
         if (action == null) return null;
         assertNotJdaThread();
 
@@ -196,21 +204,16 @@ public class RateLimitUtil {
 // Must not be called from JDA event threads or the main thread.
 // -------------------------------------------------------------------------
 
-    public static CompletableFuture<Void> queueWhenFree(RestAction<?> action) {
+    public static CompletableFuture<Void> queueWhenFree(RestAction<?> action, RateLimitedSource source) {
         if (action == null) return CompletableFuture.completedFuture(null);
-        return queueWhenFree(action, DeferredPriority.NORMAL);
+        return queueWhenFree(source.deferredPriority(), () -> submitNow(action));
     }
 
-    public static CompletableFuture<Void> queueWhenFree(RestAction<?> action, DeferredPriority priority) {
-        if (action == null) return CompletableFuture.completedFuture(null);
-        return queueWhenFree(priority, () -> submitNow(action));
+    public static CompletableFuture<Void> queueWhenFree(RateLimitedSource source, Runnable action) {
+        return queueWhenFree(source.deferredPriority(), action);
     }
 
-    public static CompletableFuture<Void> queueWhenFree(Runnable action) {
-        return queueWhenFree(DeferredPriority.NORMAL, action);
-    }
-
-    public static CompletableFuture<Void> queueWhenFree(DeferredPriority priority, Runnable action) {
+    private static CompletableFuture<Void> queueWhenFree(DeferredPriority priority, Runnable action) {
         if (!shouldPause(priority)) {
             try {
                 action.run();
@@ -231,8 +234,8 @@ public class RateLimitUtil {
      * Blocks until the action can be submitted and JDA has responded.
      * Must not be called from a JDA thread or the main thread.
      */
-    public static <T> T completeWhenFree(RestAction<T> action) throws InterruptedException {
-        return completeWhenFree(action, DeferredPriority.NORMAL);
+    public static <T> T completeWhenFree(RestAction<T> action, RateLimitedSource source) throws InterruptedException {
+        return completeWhenFree(action, source.deferredPriority());
     }
 
     private static <T> T completeWhenFree(RestAction<T> action, DeferredPriority priority) throws InterruptedException {
@@ -304,20 +307,26 @@ public class RateLimitUtil {
         }
     }
 
-    public static CompletableFuture<Void> queueLatest(String key, DeferredPriority priority, Runnable action) {
-        return queueLatest(key, priority, () -> {
+    public static CompletableFuture<Void> queueLatest(String key, RateLimitedSource source, Runnable action) {
+        return queueLatest(key, source.deferredPriority(), () -> {
             action.run();
             return CompletableFuture.completedFuture(null);
         });
     }
 
-    public static <T> CompletableFuture<T> queueLatest(String key, DeferredPriority priority, RestAction<T> action) {
-        return queueLatest(key, priority, () -> submitNow(action));
+    public static <T> CompletableFuture<T> queueLatest(String key, RateLimitedSource source, RestAction<T> action) {
+        return queueLatest(key, source.deferredPriority(), () -> submitNow(action));
     }
 
     public static <T> CompletableFuture<T> queueLatest(String key,
-                                                       DeferredPriority priority,
+                                                       RateLimitedSource source,
                                                        Supplier<CompletableFuture<T>> supplier) {
+        return queueLatest(key, source.deferredPriority(), supplier);
+    }
+
+    private static <T> CompletableFuture<T> queueLatest(String key,
+                                                        DeferredPriority priority,
+                                                        Supplier<CompletableFuture<T>> supplier) {
         if (key == null || key.isBlank()) {
             try {
                 return supplier.get();
@@ -521,22 +530,12 @@ public class RateLimitUtil {
 // -------------------------------------------------------------------------
 // queueMessage
 //
-// API surface simplified: condense boolean + bufferSeconds replaced by SendPolicy.
+// Callers must provide a source-owned RateLimitedSource. RateLimitUtil schedules work but
+// does not infer where that work came from.
 // Returns a CompletableFuture<Void> that completes once the message has been sent
 // (or dropped). The future does not carry a Message reference since batched sends
 // produce a single message from multiple applies.
 // -------------------------------------------------------------------------
-
-    private record InlineSource(SendPolicy sendPolicy, DeferredPriority deferredPriority) implements RateLimitedSource {}
-
-    public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, SendPolicy policy) {
-        if (message.isBlank()) return CompletableFuture.completedFuture(null);
-        DiscordChannelIO io = new DiscordChannelIO(channel);
-        return queueMessage(io, msg -> {
-            msg.append(message).append("\n");
-            return true;
-        }, new InlineSource(policy, DeferredPriority.NORMAL));
-    }
 
     public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, RateLimitedSource source) {
         if (message.isBlank()) return CompletableFuture.completedFuture(null);
@@ -545,30 +544,6 @@ public class RateLimitUtil {
             msg.append(message).append("\n");
             return true;
         }, source);
-    }
-
-    @Deprecated
-    public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, boolean condense) {
-        return queueMessage(channel, message, condense ? SendPolicy.CONDENSE : SendPolicy.DEFER);
-    }
-
-    @Deprecated
-    public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, boolean condense, Integer bufferSeconds) {
-        return queueMessage(channel, message, condense);
-    }
-
-    @Deprecated
-    public static CompletableFuture<Void> queueMessage(IMessageIO io,
-                                                       Function<IMessageBuilder, Boolean> apply,
-                                                       boolean condense,
-                                                       Integer bufferSeconds) {
-        return queueMessage(io, apply, new InlineSource(condense ? SendPolicy.CONDENSE : SendPolicy.DEFER, DeferredPriority.NORMAL));
-    }
-
-    public static CompletableFuture<Void> queueMessage(IMessageIO io,
-                                                       Function<IMessageBuilder, Boolean> apply,
-                                                       SendPolicy policy) {
-        return queueMessage(io, apply, new InlineSource(policy, DeferredPriority.NORMAL));
     }
 
     public static CompletableFuture<Void> queueMessage(IMessageIO io,
@@ -699,7 +674,8 @@ public class RateLimitUtil {
                     List<PendingMessage> batch = toSend;
                     DeferredPriority batchPriority = batch.stream()
                             .map(PendingMessage::priority)
-                            .reduce(DeferredPriority.LOW, DeferredPriority::highest);
+                            .min(Comparator.naturalOrder())
+                            .orElseThrow();
 
                     queueWhenFree(batchPriority, () ->
                             sendNow(io, msg -> {

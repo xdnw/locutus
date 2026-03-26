@@ -1,5 +1,7 @@
 package link.locutus.discord.util;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
@@ -9,33 +11,26 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.GuildShardManager;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
-import java.awt.Desktop;
-import java.awt.Image;
-import java.awt.SystemTray;
-import java.awt.Toolkit;
-import java.awt.TrayIcon;
+import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import link.locutus.discord.util.scheduler.KeyValue;
-
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +38,30 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class AlertUtil {
+    private enum AlertRateLimit implements RateLimitedSource {
+        AUDIT(SendPolicy.DEFER, DeferredPriority.ALERT_AUDIT),
+        DISPLAY_CHANNEL(SendPolicy.DEFER, DeferredPriority.ALERT_DISPLAY_CHANNEL),
+        BUFFER_PING(SendPolicy.DEFER, DeferredPriority.ALERT_BUFFER_PING);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        AlertRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     public static void forEachChannel(Function<GuildDB, Boolean> hasPerm, GuildSetting<MessageChannel> key, BiConsumer<MessageChannel, GuildDB> channelConsumer) {
         for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
             try {
@@ -100,7 +119,7 @@ public class AlertUtil {
         } else {
             message = member.getAsMention() + "(opt out: " + CM.alerts.audit.optout.cmd.toSlashMention() + "):\n" + message;
         }
-        RateLimitUtil.queueWhenFree(channel.sendMessage(message));
+        RateLimitUtil.queueWhenFree(channel.sendMessage(message), AlertRateLimit.AUDIT);
     }
 
     public static void alertNation(Function<GuildDB, Boolean> hasPerm, GuildSetting<MessageChannel> channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
@@ -142,7 +161,7 @@ public class AlertUtil {
             if(channel !=null) {
                 MessageEmbed msg = new EmbedBuilder().setTitle(title).setDescription(body).build();
                 try {
-                    RateLimitUtil.queueWhenFree(channel.sendMessageEmbeds(msg));
+                    RateLimitUtil.queueWhenFree(channel.sendMessageEmbeds(msg), AlertRateLimit.DISPLAY_CHANNEL);
                 } catch (InsufficientPermissionException ignore) {
                     Logg.text("Insufficient Permission error in " + channel.getName() + " | " + channel.getGuild().getName() + " | " + ignore.getMessage());
                 }
@@ -198,7 +217,7 @@ public class AlertUtil {
                 PING_BUFFER.put(ping, true);
             }
         }
-        RateLimitUtil.queueWhenFree(channel.sendMessage(StringMan.join(pings, " ")));
+        RateLimitUtil.queueWhenFree(channel.sendMessage(StringMan.join(pings, " ")), AlertRateLimit.BUFFER_PING);
     }
 
     public static void error(String title, String body) {

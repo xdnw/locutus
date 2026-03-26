@@ -18,7 +18,10 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.DeferredPriority;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.SpyTracker;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
@@ -28,6 +31,28 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class PnwPusherShardManager {
+    private enum PnwPusherRateLimit implements RateLimitedSource {
+        INVALID_KEY_ALERT(SendPolicy.DEFER, DeferredPriority.PNW_PUSHER_INVALID_KEY_ALERT);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        PnwPusherRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private PnwPusherHandler root;
     private SpyTracker spyTracker;
 
@@ -90,7 +115,7 @@ public class PnwPusherShardManager {
                                 "- " + CM.settings.delete.cmd.key(GuildKey.API_KEY.name()) + "\n" +
                                 "- " + CM.settings_default.registerApiKey.cmd.toSlashMention() + "\n" +
                                 "- " + CM.settings_war_alerts.ESPIONAGE_ALERT_CHANNEL.cmd.toSlashMention();
-                        RateLimitUtil.queueMessage(channel, msg, false);
+                        RateLimitUtil.queueMessage(channel, msg, PnwPusherRateLimit.INVALID_KEY_ALERT);
                     } catch (Throwable ignore2) {}
                 }
                 db.deleteInfo(GuildKey.ESPIONAGE_ALERT_CHANNEL);

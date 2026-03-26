@@ -5,9 +5,9 @@ import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.SendPolicy;
 
 public enum CommandMessagePriority implements RateLimitedSource {
-    RESULT(SendPolicy.IMMEDIATE, DeferredPriority.USER_INTERACTION),
-    STATUS(SendPolicy.DROP, DeferredPriority.LOW),
-    PROGRESS(SendPolicy.DROP, DeferredPriority.LOW);
+    RESULT(SendPolicy.IMMEDIATE, DeferredPriority.COMMAND_RESULT),
+    STATUS(SendPolicy.DROP, DeferredPriority.COMMAND_STATUS),
+    PROGRESS(SendPolicy.DROP, DeferredPriority.COMMAND_PROGRESS);
 
     private final SendPolicy sendPolicy;
     private final DeferredPriority deferredPriority;

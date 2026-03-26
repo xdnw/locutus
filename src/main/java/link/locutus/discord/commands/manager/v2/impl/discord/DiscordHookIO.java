@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.command.AModalBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.entities.Guild;
@@ -105,8 +106,9 @@ public class DiscordHookIO implements IMessageIO {
             event = null;
         }
         if (builder instanceof DiscordMessageBuilder discMsg) {
+            RateLimitedSource source = builder.getRateLimitSource();
             if (builder.getId() > 0) {
-                CompletableFuture<Message> future = RateLimitUtil.queue(hook.editMessageById(builder.getId(), discMsg.buildEdit(true)));
+                CompletableFuture<Message> future = RateLimitUtil.queue(hook.editMessageById(builder.getId(), discMsg.buildEdit(true)), source);
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
             if (discMsg.isEmpty()) return CompletableFuture.completedFuture(builder);
@@ -114,7 +116,7 @@ public class DiscordHookIO implements IMessageIO {
             List<MessageCreateData> messages = discMsg.build(true);
             List<Future<Message>> futures = new ArrayList<>();
             for (MessageCreateData message : messages) {
-                CompletableFuture<Message> future = RateLimitUtil.queue(hook.sendMessage(message));
+                CompletableFuture<Message> future = RateLimitUtil.queue(hook.sendMessage(message), source);
                 futures.add(future);
             }
             return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
@@ -140,7 +142,7 @@ public class DiscordHookIO implements IMessageIO {
     public IMessageIO update(IMessageBuilder builder, long id) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             MessageEditData message = discMsg.buildEdit(true);
-            RateLimitUtil.queue(hook.editMessageById(id, message));
+            RateLimitUtil.queue(hook.editMessageById(id, message), builder.getRateLimitSource());
             return this;
         } else {
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");

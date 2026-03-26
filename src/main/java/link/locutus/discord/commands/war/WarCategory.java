@@ -506,7 +506,7 @@ public class WarCategory {
         if (change) {
             switch (attack.getAttack_type()) {
                 case GROUND:
-                    RateLimitUtil.queueWhenFree(() -> room.setGC(value));
+                    RateLimitUtil.queueWhenFree(WarRoomRateLimit.STATUS_UPDATE, () -> room.setGC(value));
                     break;
                 case AIRSTRIKE_INFRA:
                 case AIRSTRIKE_SOLDIER:
@@ -514,10 +514,10 @@ public class WarCategory {
                 case AIRSTRIKE_MONEY:
                 case AIRSTRIKE_SHIP:
                 case AIRSTRIKE_AIRCRAFT:
-                    RateLimitUtil.queueWhenFree(() -> room.setAC(value));
+                    RateLimitUtil.queueWhenFree(WarRoomRateLimit.STATUS_UPDATE, () -> room.setAC(value));
                     break;
                 case NAVAL:
-                    RateLimitUtil.queueWhenFree(() -> room.setBlockade(value));
+                    RateLimitUtil.queueWhenFree(WarRoomRateLimit.STATUS_UPDATE, () -> room.setBlockade(value));
                     break;
             }
         }
@@ -626,8 +626,8 @@ public class WarCategory {
     public void processChannelCreation(WarRoom room, StandardGuildMessageChannel channel, boolean planning, WarRoomRateLimit source) {
         room.updatePin(false);
         RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(getGuild().getMemberById(Settings.INSTANCE.APPLICATION_ID))
-                .setAllowed(Permission.VIEW_CHANNEL, Permission.MANAGE_CHANNEL, Permission.MANAGE_PERMISSIONS), source.deferredPriority());
-        RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(getGuild().getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL), source.deferredPriority());
+                .setAllowed(Permission.VIEW_CHANNEL, Permission.MANAGE_CHANNEL, Permission.MANAGE_PERMISSIONS), source);
+        RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(getGuild().getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL), source);
 
         room.addInitialParticipants(planning);
     }
@@ -812,7 +812,7 @@ public class WarCategory {
                     if (!duplicateChannels.add(targetId)) {
                         if (duplicates != null) duplicates.computeIfAbsent(targetId, f -> new ObjectLinkedOpenHashSet<>()).add(channel);
                         if (create) {
-                            RateLimitUtil.queueWhenFree(channel.delete());
+                            RateLimitUtil.queueWhenFree(channel.delete(), WarRoomRateLimit.ROOM_CLEANUP);
                         }
                     } else {
                         WarRoom existing = warRoomMap.get(targetId);
@@ -842,7 +842,7 @@ public class WarCategory {
                     } else {
                         if (toDelete != null) toDelete.put(targetId, WarCatReason.NO_WARS_CHANNEL);
                         if (create) {
-                            RateLimitUtil.queueWhenFree(channel.delete());
+                            RateLimitUtil.queueWhenFree(channel.delete(), WarRoomRateLimit.ROOM_CLEANUP);
                         }
                     }
                 }

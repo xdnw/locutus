@@ -32,9 +32,12 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -69,6 +72,31 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class OffshoreInstance {
+    private enum OffshoreRateLimit implements RateLimitedSource {
+        CROSS_GUILD_LOG(SendPolicy.CONDENSE, DeferredPriority.OFFSHORE_CROSS_GUILD_LOG),
+        WITHDRAW_LIMIT_ALERT(SendPolicy.CONDENSE, DeferredPriority.OFFSHORE_WITHDRAW_LIMIT_ALERT),
+        TRANSFER_LOG(SendPolicy.CONDENSE, DeferredPriority.OFFSHORE_TRANSFER_LOG),
+        ALLIANCE_TRANSFER_LOG(SendPolicy.CONDENSE, DeferredPriority.OFFSHORE_ALLIANCE_TRANSFER_LOG);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        OffshoreRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     public static final Object BANK_LOCK = new Object();
     public static final ConcurrentHashMap<Integer, Object> NATION_LOCKS = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<Integer, Boolean> FROZEN_ESCROW = new ConcurrentHashMap<>();
@@ -1175,7 +1203,7 @@ public class OffshoreInstance {
             name += "/" + StringMan.join(ids, ",");
         }
         msg = "**" + name + "**: " + "Banker:" + banker.getName() + " -> " + receiver.getUrl() + ":\n" + msg;
-        RateLimitUtil.queueMessage(channel, msg, true);
+        RateLimitUtil.queueMessage(channel, msg, OffshoreRateLimit.CROSS_GUILD_LOG);
         return true;
     }
 
@@ -1573,7 +1601,7 @@ public class OffshoreInstance {
                             msg.append(("^ " + adminRole.getAsMention()));
                         }
                         return true;
-                    }, true, null);
+                    }, OffshoreRateLimit.WITHDRAW_LIMIT_ALERT);
                 }
                 // return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, "You (" +
                 // banker.getNation() + ") have hit your transfer limit ($" +
@@ -1774,7 +1802,7 @@ public class OffshoreInstance {
 
             MessageChannel logChannel = getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
-                RateLimitUtil.queueMessage(logChannel, msg, true);
+                RateLimitUtil.queueMessage(logChannel, msg, OffshoreRateLimit.TRANSFER_LOG);
             }
             return result;
         }
@@ -2012,7 +2040,7 @@ public class OffshoreInstance {
 
             MessageChannel logChannel = getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
-                RateLimitUtil.queueMessage(logChannel, (msg), true);
+                RateLimitUtil.queueMessage(logChannel, msg, OffshoreRateLimit.ALLIANCE_TRANSFER_LOG);
             }
             return result;
         }

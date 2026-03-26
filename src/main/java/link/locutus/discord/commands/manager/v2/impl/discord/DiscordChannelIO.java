@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.discord;
 
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
@@ -86,10 +87,11 @@ public class DiscordChannelIO implements IMessageIO {
     @Override
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
+            RateLimitedSource source = builder.getRateLimitSource();
             if (builder.getId() > 0) {
                 String key = "message-edit:" + channel.getIdLong() + ":" + builder.getId();
-                CompletableFuture<Message> future = RateLimitUtil.queueLatest(key, link.locutus.discord.util.DeferredPriority.NORMAL,
-                        () -> RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)), link.locutus.discord.util.DeferredPriority.NORMAL));
+                CompletableFuture<Message> future = RateLimitUtil.queueLatest(key, source,
+                        () -> RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)), source));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
             if (discMsg.isEmpty()) return CompletableFuture.completedFuture(builder);
@@ -97,7 +99,7 @@ public class DiscordChannelIO implements IMessageIO {
             List<MessageCreateData> messages = discMsg.build(true);
             List<Future<Message>> futures = new ArrayList<>();
             for (MessageCreateData message : messages) {
-                CompletableFuture<Message> future = RateLimitUtil.queue(channel.sendMessage(message));
+                CompletableFuture<Message> future = RateLimitUtil.queue(channel.sendMessage(message), source);
                 futures.add(future);
             }
             return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
@@ -123,8 +125,9 @@ public class DiscordChannelIO implements IMessageIO {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             MessageEditData message = discMsg.buildEdit(true);
             String key = "message-edit:" + channel.getIdLong() + ":" + id;
-            RateLimitUtil.queueLatest(key, link.locutus.discord.util.DeferredPriority.NORMAL,
-                    () -> RateLimitUtil.queue(channel.editMessageById(id, message), link.locutus.discord.util.DeferredPriority.NORMAL));
+            RateLimitedSource source = builder.getRateLimitSource();
+            RateLimitUtil.queueLatest(key, source,
+                    () -> RateLimitUtil.queue(channel.editMessageById(id, message), source));
             return this;
         } else {
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");

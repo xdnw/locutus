@@ -73,6 +73,28 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import static link.locutus.discord.util.discord.DiscordUtil.threadDump;
 
 public class CommandManager {
+    private enum CommandManagerRateLimit implements RateLimitedSource {
+        WAR_ROOM_RELAY(SendPolicy.DEFER, DeferredPriority.COMMAND_MANAGER_WAR_ROOM_RELAY);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        CommandManagerRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private final char prefix1;
     private final Map<String, Command> commandMap;
     private final CommandManager2 modernized;
@@ -362,7 +384,7 @@ public class CommandManager {
             msg = msg.replaceAll("@everyone", "@ everyone");
             msg = msg.replaceAll("@here", "@ here");
             msg = msg.replaceAll("<@&", "<@ &");
-            RateLimitUtil.queueWhenFree(other.channel.sendMessage(msg));
+            RateLimitUtil.queueWhenFree(other.channel.sendMessage(msg), CommandManagerRateLimit.WAR_ROOM_RELAY);
         }
     }
 

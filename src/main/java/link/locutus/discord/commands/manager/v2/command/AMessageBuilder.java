@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.command.shrink.ShrinkableField;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
@@ -37,6 +38,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     public final Map<String, byte[]> files = new HashMap<>();
 
     private final IMessageIO parent;
+    private RateLimitedSource rateLimitSource = CommandMessagePriority.RESULT;
     public long id;
     public long timeCreated;
     public User author;
@@ -434,6 +436,17 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     @Override
     public CompletableFuture<IMessageBuilder> send() {
         return parent.send(this);
+    }
+
+    @Override
+    public RateLimitedSource getRateLimitSource() {
+        return rateLimitSource;
+    }
+
+    @Override
+    public IMessageBuilder rateLimitSource(RateLimitedSource source) {
+        this.rateLimitSource = Objects.requireNonNull(source, "source");
+        return this;
     }
 
     @Override

@@ -3,7 +3,10 @@ package link.locutus.discord.util.task;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.DeferredPriority;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.PW;
@@ -19,6 +22,28 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 public class MailTask implements Callable<String> {
+    private enum MailTaskRateLimit implements RateLimitedSource {
+        RETRY_STATUS(SendPolicy.DEFER, DeferredPriority.MAIL_TASK_RETRY_STATUS);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        MailTaskRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private final DBNation nation;
     private final String subject;
     private final String message;
@@ -56,7 +81,7 @@ public class MailTask implements Callable<String> {
                         String result = MailTask.this.call();
                         Guild server = Locutus.imp().getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER);
                         if (output != null) {
-                            RateLimitUtil.queueWhenFree(output.sendMessage(result));
+                            RateLimitUtil.queueWhenFree(output.sendMessage(result), MailTaskRateLimit.RETRY_STATUS);
                         }
                         return result;
                     }), 3, TimeUnit.MINUTES);

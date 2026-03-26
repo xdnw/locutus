@@ -14,9 +14,12 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -38,6 +41,28 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static link.locutus.discord.util.offshore.OffshoreInstance.DISABLED_MESSAGE;
 
 public class SendInternalTask {
+    private enum SendInternalRateLimit implements RateLimitedSource {
+        TRANSFER_LOG(SendPolicy.CONDENSE, DeferredPriority.SEND_INTERNAL_TRANSFER_LOG);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        SendInternalRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private static final DepositType NOTE = DepositType.DEPOSIT;
     private static final TransactionNote STRUCTURED_NOTE = TransactionNote.of(NOTE);
 
@@ -408,7 +433,7 @@ public class SendInternalTask {
                         message.append(" ").append(receiverNation.getName());
                     message.append(": ").append(ResourceType.toString(amount)).append(", note: `").append(NOTE)
                             .append("`");
-                    RateLimitUtil.queueMessage(receiverChannel, message.toString(), true);
+                    RateLimitUtil.queueMessage(receiverChannel, message.toString(), SendInternalRateLimit.TRANSFER_LOG);
                 }
             } catch (Throwable e) {
                 e.printStackTrace();

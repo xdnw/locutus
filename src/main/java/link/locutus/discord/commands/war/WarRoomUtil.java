@@ -107,26 +107,26 @@ public class WarRoomUtil {
                     String name = catPrefix + "-" + i;
                     List<Category> existingCat = guild.getCategoriesByName(name, true);
                     if (existingCat.isEmpty()) {
-                        useCat = RateLimitUtil.complete(guild.createCategory(name), source.deferredPriority());
+                        useCat = RateLimitUtil.complete(guild.createCategory(name), source);
                         Member botMember = guild.getMemberById(Settings.INSTANCE.APPLICATION_ID);
                         if (botMember != null) {
                             PermissionOverrideAction upsert = useCat.upsertPermissionOverride(botMember);
                             for (Permission perm : CATEGORY_PERMISSIONS) {
                                 upsert = upsert.setAllowed(perm);
                             }
-                            RateLimitUtil.queue(upsert, source.deferredPriority());
+                            RateLimitUtil.queue(upsert, source);
                         }
-                        RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL), source.deferredPriority());
+                        RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL), source);
 
                         List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
 
                         for (Role role : Roles.MILCOM.toRoles(db)) {
                             futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                    .setAllowed(Permission.VIEW_CHANNEL), source.deferredPriority()));
+                                    .setAllowed(Permission.VIEW_CHANNEL), source));
                         }
                         for (Role role : Roles.MILCOM_NO_PINGS.toRoles(db)) {
                             futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                    .setAllowed(Permission.VIEW_CHANNEL), source.deferredPriority()));
+                                    .setAllowed(Permission.VIEW_CHANNEL), source));
                         }
                         if (!futures.isEmpty()) {
                             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
@@ -137,7 +137,7 @@ public class WarRoomUtil {
             }
             String name = target.getNation() + "-" + target.getNation_id();
             if (planning) name = "\uD83D\uDCC5" + name;
-            foundChannel = RateLimitUtil.complete(useCat.createTextChannel(name), source.deferredPriority());
+            foundChannel = RateLimitUtil.complete(useCat.createTextChannel(name), source);
 
             warCategory2.processChannelCreation(room, foundChannel, planning, source);
         }
@@ -188,8 +188,8 @@ public class WarRoomUtil {
         long messageId = existingMessageId;
         MessageEditData editData = msg.buildEdit(true);
         String key = messageEditKey(channel, messageId);
-        return RateLimitUtil.queueLatest(key, WarRoomRateLimit.PIN_REFRESH.deferredPriority(),
-                () -> RateLimitUtil.queue(channel.editMessageById(messageId, editData), WarRoomRateLimit.PIN_REFRESH.deferredPriority()))
+        return RateLimitUtil.queueLatest(key, WarRoomRateLimit.PIN_REFRESH,
+                () -> RateLimitUtil.queue(channel.editMessageById(messageId, editData), WarRoomRateLimit.PIN_REFRESH))
                 .thenApply(Message::getIdLong);
     }
 
@@ -238,10 +238,10 @@ public class WarRoomUtil {
 
     private static void queuePinnedMessageMetadata(StandardGuildMessageChannel channel, long messageId, WarRoomRateLimit source) {
         String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + messageId + " " + CM.war.room.pin.cmd.toSlashMention();
-        RateLimitUtil.queueLatest(channelTopicKey(channel), source.deferredPriority(),
-                () -> RateLimitUtil.queue(channel.getManager().setTopic(newTopic), source.deferredPriority()));
-        RateLimitUtil.queueLatest(channelPinKey(channel), source.deferredPriority(),
-                () -> RateLimitUtil.queue(channel.pinMessageById(messageId), source.deferredPriority()));
+        RateLimitUtil.queueLatest(channelTopicKey(channel), source,
+                () -> RateLimitUtil.queue(channel.getManager().setTopic(newTopic), source));
+        RateLimitUtil.queueLatest(channelPinKey(channel), source,
+                () -> RateLimitUtil.queue(channel.pinMessageById(messageId), source));
     }
 
     public static boolean queueRoomStateSync(WarRoom room, WarRoomRateLimit source) {
@@ -253,8 +253,8 @@ public class WarRoomUtil {
         if (expectedName.equals(channel.getName())) {
             return false;
         }
-        RateLimitUtil.queueLatest(channelNameKey(channel), source.deferredPriority(),
-                () -> RateLimitUtil.queue(channel.getManager().setName(expectedName), source.deferredPriority()));
+        RateLimitUtil.queueLatest(channelNameKey(channel), source,
+                () -> RateLimitUtil.queue(channel.getManager().setName(expectedName), source));
         return true;
     }
 
@@ -322,7 +322,7 @@ public class WarRoomUtil {
                 }
 
                 if (!contains) {
-                    RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), WarRoomRateLimit.MANUAL_ROOM_CREATE.deferredPriority());
+                    RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), WarRoomRateLimit.MANUAL_ROOM_CREATE);
                     if (ping) {
                         String msg = author.getName() + " added " + user.getAsMention();
 

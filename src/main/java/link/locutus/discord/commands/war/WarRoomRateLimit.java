@@ -8,14 +8,15 @@ import java.util.EnumSet;
 import java.util.Set;
 
 public enum WarRoomRateLimit implements RateLimitedSource {
-    MANUAL_ROOM_CREATE(SendPolicy.DEFER, DeferredPriority.HIGH),
-    AUTO_ROOM_CREATE(SendPolicy.DEFER, DeferredPriority.NORMAL),
-    INITIAL_PIN(SendPolicy.DEFER, DeferredPriority.HIGH),
-    PIN_REFRESH(SendPolicy.DEFER, DeferredPriority.NORMAL),
-    ATTACK_MESSAGE(SendPolicy.CONDENSE, DeferredPriority.LOW),
-    STATUS_UPDATE(SendPolicy.DEFER, DeferredPriority.LOW),
-    ROOM_LOG(SendPolicy.CONDENSE, DeferredPriority.LOW),
-    ROOM_INFO(SendPolicy.DEFER, DeferredPriority.NORMAL);
+    MANUAL_ROOM_CREATE(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_MANUAL_ROOM_CREATE),
+    AUTO_ROOM_CREATE(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_AUTO_ROOM_CREATE),
+    INITIAL_PIN(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_INITIAL_PIN),
+    PIN_REFRESH(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_PIN_REFRESH),
+    ATTACK_MESSAGE(SendPolicy.CONDENSE, DeferredPriority.WAR_ROOM_ATTACK_MESSAGE),
+    STATUS_UPDATE(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_STATUS_UPDATE),
+    ROOM_CLEANUP(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_ROOM_CLEANUP),
+    ROOM_LOG(SendPolicy.CONDENSE, DeferredPriority.WAR_ROOM_ROOM_LOG),
+    ROOM_INFO(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_ROOM_INFO);
 
     private static final Set<WarCatReason> MANUAL_REASONS = EnumSet.of(
             WarCatReason.WARCAT_COMMAND,
