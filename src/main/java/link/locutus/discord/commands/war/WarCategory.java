@@ -8,12 +8,15 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -41,7 +44,12 @@ import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChanne
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -654,7 +662,7 @@ public class WarCategory {
                     if (rangeEntry.getKey().contains(room.target.getCities())) {
                         for (Category newCat : rangeEntry.getValue()) {
                             if (newCat.getChannels().size() > 49) continue;
-                            RateLimitUtil.queue(room.channel.getManager().setParent(newCat));
+                            RateLimitUtil.queue(room.channel.getManager().setParent(newCat), WarRoomRateLimit.STATUS_UPDATE);
                             moved++;
                             continue outer;
                         }
@@ -664,7 +672,7 @@ public class WarCategory {
                 if (range != null && !noRange.isEmpty()) {
                     for (Category newCat : noRange) {
                         if (newCat.getChannels().size() > 49) continue;
-                        RateLimitUtil.queue(room.channel.getManager().setParent(newCat));
+                        RateLimitUtil.queue(room.channel.getManager().setParent(newCat), WarRoomRateLimit.STATUS_UPDATE);
                         moved++;
                         continue outer;
                     }

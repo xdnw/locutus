@@ -116,12 +116,15 @@ import link.locutus.discord.pnw.NationScoreMap;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.FetchDeposit;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.RateLimitedSource;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -191,6 +194,30 @@ import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEn
 import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
 
 public abstract class DBNation implements NationOrAlliance {
+    private enum DbNationRateLimit implements RateLimitedSource {
+        ROLE_ASSIGN(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_ROLE_ASSIGN),
+        OFFSHORE_LOG(SendPolicy.DEFER, DeferredPriority.DB_NATION_OFFSHORE_LOG),
+        DIRECT_MESSAGE(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_DIRECT_MESSAGE);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        DbNationRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     public static DBNation getByUser(User user) {
         return DiscordUtil.getNation(user);
     }
@@ -380,7 +407,7 @@ public abstract class DBNation implements NationOrAlliance {
                             member = db.getGuild().retrieveMember(user).complete();
                         }
                         if (member != null) {
-                            RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role));
+                            RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role), DbNationRateLimit.ROLE_ASSIGN);
                             output.append("You have been assigned the role: " + role.getName());
                             AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this);
                             task.execute();
@@ -4585,7 +4612,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
-                RateLimitUtil.queue(logChannel.sendMessage(response));
+                RateLimitUtil.queue(logChannel.sendMessage(response), DbNationRateLimit.OFFSHORE_LOG);
             }
 
             return new KeyValue<>(toDeposit, response.toString());
@@ -6494,7 +6521,8 @@ public abstract class DBNation implements NationOrAlliance {
             return false;
 
         try {
-            RateLimitUtil.queue(RateLimitUtil.complete(user.openPrivateChannel()).sendMessage(msg));
+            MessageChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), DbNationRateLimit.DIRECT_MESSAGE);
+            RateLimitUtil.queue(channel.sendMessage(msg), DbNationRateLimit.DIRECT_MESSAGE);
         } catch (Throwable e) {
             if (errors != null) {
                 errors.accept(e.getMessage());

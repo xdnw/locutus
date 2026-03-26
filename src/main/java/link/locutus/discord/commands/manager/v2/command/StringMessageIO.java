@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import link.locutus.discord.util.RateLimitedSource;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -48,7 +49,7 @@ public class StringMessageIO implements IMessageIO {
     }
 
     @Override
-    public IMessageBuilder getMessage() {
+    public IMessageBuilder getMessage(RateLimitedSource source) {
         return null;
     }
 
@@ -58,23 +59,23 @@ public class StringMessageIO implements IMessageIO {
     }
 
     @Override
-    public void setMessageDeleted() {
+    public void setMessageDeleted(RateLimitedSource source) {
 
     }
 
     @Override
-    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
+    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder, RateLimitedSource source) {
         messages.put(builder.getId(), ((StringMessageBuilder) builder));
         return CompletableFuture.completedFuture(builder);
     }
 
     @Override
-    public IMessageIO update(IMessageBuilder builder, long id) {
+    public IMessageIO update(IMessageBuilder builder, long id, RateLimitedSource source) {
         return null;
     }
 
     @Override
-    public IMessageIO delete(long id) {
+    public IMessageIO delete(long id, RateLimitedSource source) {
         messages.remove(id);
         return this;
     }
@@ -85,7 +86,7 @@ public class StringMessageIO implements IMessageIO {
     }
 
     @Override
-    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
+    public CompletableFuture<IModalBuilder> send(IModalBuilder modal, RateLimitedSource source) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

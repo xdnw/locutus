@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.web.commands.binding.value_types.DiscordRole;
 import net.dv8tion.jda.api.entities.Guild;
 
@@ -64,10 +65,10 @@ public class WebMessage extends AMessageBuilder {
     }
 
     @Override
-    public CompletableFuture<IMessageBuilder> send() {
+    public CompletableFuture<IMessageBuilder> send(RateLimitedSource source) {
         author = Locutus.imp().getDiscordApi().getUserById(Settings.INSTANCE.APPLICATION_ID);
         timeCreated = System.currentTimeMillis();
-        return getParent().send(this);
+        return getParent().send(this, source);
     }
 
 //    private List<Map.Entry<String, File>> diskFiles = null;

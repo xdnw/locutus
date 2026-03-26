@@ -42,9 +42,12 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSource;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -78,6 +81,28 @@ import static link.locutus.discord.util.PW.*;
 import static link.locutus.discord.util.discord.DiscordUtil.*;
 
 public class ReportCommands {
+    private enum ReportCommandRateLimit implements RateLimitedSource {
+        ALERT(SendPolicy.DEFER, DeferredPriority.REPORT_COMMAND_ALERT);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        ReportCommandRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     @Command(desc=  "Generate a sheet of all the community reports for players", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String reportSheet(@Me IMessageIO io, @Me @Default GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
@@ -1024,7 +1049,7 @@ public class ReportCommands {
             public void accept(MessageChannel channel, GuildDB db) {
                 String title = (finalExisting != null ? "Updating" : "New") + " " + report.getTitle();
                 String body = report.toMarkdown(false);
-                new DiscordChannelIO(channel).create().embed(title, body).sendWhenFree();
+                new DiscordChannelIO(channel).create().embed(title, body).sendWhenFree(ReportCommandRateLimit.ALERT);
             }
         });
 
@@ -1124,7 +1149,7 @@ public class ReportCommands {
             public void accept(MessageChannel channel, GuildDB db) {
                 String title = (isNewComment ? "New " : "Updating ") + " comment";
                 String body = "Report: #" + report.reportId + " " + report.getTitle() + "\n\n" + finalExisting.toMarkdown();
-                new DiscordChannelIO(channel).create().embed(title, body).sendWhenFree();
+                new DiscordChannelIO(channel).create().embed(title, body).sendWhenFree(ReportCommandRateLimit.ALERT);
             }
         });
 

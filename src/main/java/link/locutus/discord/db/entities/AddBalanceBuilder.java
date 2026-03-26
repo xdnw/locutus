@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
@@ -19,7 +20,14 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -339,7 +347,7 @@ public class AddBalanceBuilder {
 
         body.append("\n\nPress `" + emoji + "` to confirm");
 
-        io.create().embed(title.toString(), body.toString()).commandButton(command, "Confirm").send();
+        io.create().embed(title.toString(), body.toString()).commandButton(command, "Confirm").send(CommandMessagePriority.RESULT);
     }
 
     public Set<String> getNotes(Predicate<NationOrAllianceOrGuildOrTaxid> consumer) {

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import link.locutus.discord.util.RateLimitedSource;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 
 import java.util.ArrayList;
@@ -33,8 +34,8 @@ public class AModalBuilder implements IModalBuilder {
         return parent;
     }
 
-    public CompletableFuture<IModalBuilder> send() {
-        return parent.send(this);
+    public CompletableFuture<IModalBuilder> send(RateLimitedSource source) {
+        return parent.send(this, source);
     }
 
     public UUID getId() {

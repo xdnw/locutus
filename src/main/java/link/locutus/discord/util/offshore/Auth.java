@@ -37,6 +37,28 @@ import java.util.concurrent.locks.ReentrantLock;
 import static java.util.Collections.emptyMap;
 
 public class Auth {
+    private enum AuthRateLimit implements RateLimitedSource {
+        OFFSHORE_LOG(SendPolicy.DEFER, DeferredPriority.AUTH_OFFSHORE_LOG);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        AuthRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private final String password;
     private final String username;
     private String apiKey;
@@ -1217,7 +1239,7 @@ public class Auth {
 
                     MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
                     if (logChannel != null) {
-                        RateLimitUtil.queue(logChannel.sendMessage(response));
+                        RateLimitUtil.queue(logChannel.sendMessage(response), AuthRateLimit.OFFSHORE_LOG);
                     }
 
                     return toDeposit;

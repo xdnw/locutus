@@ -1,9 +1,9 @@
 package link.locutus.discord.web.commands;
 
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.web.jooby.handler.IMessageOutput;
 import net.dv8tion.jda.api.entities.Guild;
 
@@ -27,7 +27,7 @@ public class WebIO implements IMessageIO {
     }
 
     @Override
-    public IMessageBuilder getMessage() {
+    public IMessageBuilder getMessage(RateLimitedSource source) {
         return null;
     }
 
@@ -37,26 +37,26 @@ public class WebIO implements IMessageIO {
     }
 
     @Override
-    public void setMessageDeleted() {
+    public void setMessageDeleted(RateLimitedSource source) {
 
     }
 
     @Override
-    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
+    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder, RateLimitedSource source) {
         Map<String, Object> obj = ((WebMessage) builder).build();
         sse.sendEvent(obj);
         return CompletableFuture.completedFuture(builder);
     }
 
     @Override
-    public IMessageIO update(IMessageBuilder builder, long id) {
+    public IMessageIO update(IMessageBuilder builder, long id, RateLimitedSource source) {
         (( WebMessage)builder).id = id;
-        send(builder);
+        send(builder, source);
         return this;
     }
 
     @Override
-    public IMessageIO delete(long id) {
+    public IMessageIO delete(long id, RateLimitedSource source) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("action", "deleteByIds");
         data.put("value", List.of(id + ""));
@@ -70,7 +70,7 @@ public class WebIO implements IMessageIO {
     }
 
     @Override
-    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
+    public CompletableFuture<IModalBuilder> send(IModalBuilder modal, RateLimitedSource source) {
         throw new UnsupportedOperationException("Modals not implemented for web");
     }
 }

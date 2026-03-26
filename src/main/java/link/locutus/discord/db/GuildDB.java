@@ -156,7 +156,8 @@ import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_SUBTRACT;
  */
 public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrAlliance, SyncableDatabase {
     private enum GuildDbRateLimit implements RateLimitedSource {
-        ADD_BALANCE_ALERT(SendPolicy.DEFER, DeferredPriority.GUILD_DB_ADD_BALANCE_ALERT);
+        ADD_BALANCE_ALERT(SendPolicy.DEFER, DeferredPriority.GUILD_DB_ADD_BALANCE_ALERT),
+        DISCORD_SYNC(SendPolicy.DEFER, DeferredPriority.GUILD_DB_DISCORD_SYNC);
 
         private final SendPolicy sendPolicy;
         private final DeferredPriority deferredPriority;
@@ -383,7 +384,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             iaCat = delegate.getIACategory(false, false, throwError);
         }
         if (iaCat == null && create) {
-            Category category = RateLimitUtil.complete(guild.createCategory("interview"));
+            Category category = RateLimitUtil.complete(guild.createCategory("interview"), GuildDbRateLimit.DISCORD_SYNC);
             this.iaCat = new IACategory(this);
             this.iaCat.load();
         }
@@ -903,7 +904,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public Invite getInvite(boolean create) {
-        List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites());
+        List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites(), GuildDbRateLimit.DISCORD_SYNC);
         for (Invite invite : invites) {
             if (invite.getMaxUses() == 0) {
                 return invite;
@@ -914,7 +915,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             if (defChannel == null)
                 return null;
             return RateLimitUtil
-                    .complete(defChannel.createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0));
+                    .complete(defChannel.createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0), GuildDbRateLimit.DISCORD_SYNC);
         }
         return null;
     }

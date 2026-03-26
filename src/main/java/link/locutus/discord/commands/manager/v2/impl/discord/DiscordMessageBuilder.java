@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -117,7 +118,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
     }
 
     @Override
-    public void sendWhenFree() {
+    public void sendWhenFree(RateLimitedSource source) {
         RateLimitUtil.queueMessage(getParent(), new Function<IMessageBuilder, Boolean>() {
             @Override
             public Boolean apply(IMessageBuilder msg) {
@@ -125,7 +126,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
                 writeTo(msg);
                 return true;
             }
-        }, CommandMessagePriority.PROGRESS);
+        }, source);
     }
 
     public MessageEditData buildEdit(boolean includeContent) {

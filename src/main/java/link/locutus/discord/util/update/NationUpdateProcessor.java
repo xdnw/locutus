@@ -100,7 +100,8 @@ import static link.locutus.discord.db.guild.GuildKey.BAN_ALERT_CHANNEL;
 
 public class NationUpdateProcessor {
     private enum NationUpdateRateLimit implements RateLimitedSource {
-        BEIGE_ALERT_MENTIONS(SendPolicy.DEFER, DeferredPriority.NATION_UPDATE_BEIGE_ALERT_MENTIONS);
+        BEIGE_ALERT_MENTIONS(SendPolicy.DEFER, DeferredPriority.NATION_UPDATE_BEIGE_ALERT_MENTIONS),
+        EXODUS_ALERT(SendPolicy.DEFER, DeferredPriority.NATION_UPDATE_EXODUS_ALERT);
 
         private final SendPolicy sendPolicy;
         private final DeferredPriority deferredPriority;
@@ -933,7 +934,7 @@ public class NationUpdateProcessor {
                     if (finalGraphData != null) {
                         msg = msg.image("members.png", finalGraphData);
                     }
-                    msg.sendWhenFree();
+                    msg.sendWhenFree(NationUpdateRateLimit.EXODUS_ALERT);
                 }
             });
         }

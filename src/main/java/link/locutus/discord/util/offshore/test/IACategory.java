@@ -43,6 +43,28 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public class IACategory {
+    private enum IACategoryRateLimit implements RateLimitedSource {
+        DISCORD_SYNC(SendPolicy.DEFER, DeferredPriority.IA_CATEGORY_DISCORD_SYNC);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        IACategoryRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private final GuildDB db;
     private final AllianceList alliance;
     private final Map<DBNation, IAChannel> channelMap = new HashMap<>();
@@ -153,7 +175,7 @@ public class IACategory {
 
             long channelId = channel.getIdLong();
             if (currentMessage == null || created > Math.max(currentMessage.date_created, currentMessage.date_updated)) {
-                CompletableFuture<List<Message>> future = RateLimitUtil.queue(channel.getHistory().retrievePast(15));
+                CompletableFuture<List<Message>> future = RateLimitUtil.queue(channel.getHistory().retrievePast(15), IACategoryRateLimit.DISCORD_SYNC);
                 CompletableFuture<List<Message>> whenComplete = future.whenComplete(new BiConsumer<List<Message>, Throwable>() {
                     @Override
                     public void accept(List<Message> messages, Throwable throwable) {
@@ -181,7 +203,7 @@ public class IACategory {
         Member member = guild.getMember(user);
         if (member == null) {
             try {
-                member = RateLimitUtil.complete(guild.retrieveMember(user));
+                member = RateLimitUtil.complete(guild.retrieveMember(user), IACategoryRateLimit.DISCORD_SYNC);
                 if (member == null) {
                     if (throwError) throw new IllegalArgumentException("Member is null");
                     return null;
@@ -235,7 +257,7 @@ public class IACategory {
 
         TextChannel channel;
         try {
-            channel = RateLimitUtil.complete(category.createTextChannel(channelName));
+            channel = RateLimitUtil.complete(category.createTextChannel(channelName), IACategoryRateLimit.DISCORD_SYNC);
         } catch (InsufficientPermissionException e) {
             throw new InsufficientPermissionException(guild, Permission.VIEW_CHANNEL, "Cannot create channel in " + category.getName());
         }
@@ -247,35 +269,35 @@ public class IACategory {
                     if (throwError) throw new IllegalArgumentException("Interview category was deleted or is inaccessible");
                     return null;
                 }
-                channel = RateLimitUtil.complete(category.createTextChannel(user.getName()));
+                channel = RateLimitUtil.complete(category.createTextChannel(user.getName()), IACategoryRateLimit.DISCORD_SYNC);
             }
             if (channel == null) {
                 if (throwError) throw new IllegalArgumentException("Error creating channel");
                 return null;
             }
         }
-        RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), IACategoryRateLimit.DISCORD_SYNC);
 
         StringBuilder mentions = new StringBuilder(user.getAsMention());
 
         Role interviewer = Roles.INTERVIEWER.toRole(user, db);
         if (interviewer != null) {
-            RateLimitUtil.queue(channel.upsertPermissionOverride(interviewer).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.queue(channel.upsertPermissionOverride(interviewer).grant(Permission.VIEW_CHANNEL), IACategoryRateLimit.DISCORD_SYNC);
             mentions.append(interviewer.getAsMention());
         }
         Role iaRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(user, db);
         if (iaRole != null && interviewer == null) {
-            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL), IACategoryRateLimit.DISCORD_SYNC);
             mentions.append(iaRole.getAsMention());
         }
 
         Role iaRole2 = Roles.INTERNAL_AFFAIRS.toRole(user, db);
         if (iaRole2 != null && interviewer == null && iaRole2 != iaRole) {
-            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole2).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole2).grant(Permission.VIEW_CHANNEL), IACategoryRateLimit.DISCORD_SYNC);
             mentions.append(iaRole2.getAsMention());
         }
 
-        RateLimitUtil.queue(channel.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
+        RateLimitUtil.queue(channel.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL), IACategoryRateLimit.DISCORD_SYNC);
 
         if (nation != null) {
             IAChannel iaChannel = new IAChannel(nation, db, channel.getParentCategory(), channel);
@@ -292,7 +314,7 @@ public class IACategory {
             msg.embed(title, body);
         }
 
-        msg.append(mentions.toString()).send();
+        msg.append(mentions.toString()).send(IACategoryRateLimit.DISCORD_SYNC);
 
         return channel;
     }
@@ -375,30 +397,30 @@ public class IACategory {
                 if (member == null) {
                     if (force) {
                         if (output != null)
-                            output.send("Deleted channel " + channel.getName() + " (no member was found)");
-                        RateLimitUtil.queue(channel.delete());
+                            output.send("Deleted channel " + channel.getName() + " (no member was found)", IACategoryRateLimit.DISCORD_SYNC);
+                        RateLimitUtil.queue(channel.delete(), IACategoryRateLimit.DISCORD_SYNC);
                     } else {
                         // just prompt to use CM.interview.sync
                         if (output != null) {
-                            output.send("Channel " + channel.getName() + " has no member assigned. Use " + CM.interview.syncInterviews.cmd.toSlashMention() + " to delete unused channels.");
+                            output.send("Channel " + channel.getName() + " has no member assigned. Use " + CM.interview.syncInterviews.cmd.toSlashMention() + " to delete unused channels.", IACategoryRateLimit.DISCORD_SYNC);
                         }
                     }
                     continue;
                 }
                 GuildMessageChannel tc = (GuildMessageChannel) channel;
                 try {
-                    Message latest = RateLimitUtil.complete(tc.retrieveMessageById(tc.getLatestMessageIdLong()));
+                    Message latest = RateLimitUtil.complete(tc.retrieveMessageById(tc.getLatestMessageIdLong()), IACategoryRateLimit.DISCORD_SYNC);
                     long created = latest.getTimeCreated().toEpochSecond() * 1000L;
                     if (System.currentTimeMillis() - created > TimeUnit.DAYS.toMillis(10)) {
-                        if (output != null) output.send("Deleted channel " + channel.getName() + " (no recent message- no nation (found)");
-                        RateLimitUtil.queue(tc.delete());
+                        if (output != null) output.send("Deleted channel " + channel.getName() + " (no recent message- no nation (found)", IACategoryRateLimit.DISCORD_SYNC);
+                        RateLimitUtil.queue(tc.delete(), IACategoryRateLimit.DISCORD_SYNC);
                     }
                 } catch (Exception e) {}
             } else {
                 DBNation nation = iaChannel.getNation();
                 if (nation.active_m() > 20000 || (nation.active_m() > 10000) && !alliance.isInAlliance(nation)) {
-                   if (output != null) output.send("Deleted channel " + channel.getName() + " (nation is (inactive)");
-                    RateLimitUtil.queue(channel.delete());
+                   if (output != null) output.send("Deleted channel " + channel.getName() + " (nation is (inactive)", IACategoryRateLimit.DISCORD_SYNC);
+                    RateLimitUtil.queue(channel.delete(), IACategoryRateLimit.DISCORD_SYNC);
                 }
             }
         }
@@ -440,7 +462,7 @@ public class IACategory {
                     }
                     if (channel.getLatestMessageIdLong() > 0) {
                         long latestMessage = channel.getLatestMessageIdLong();
-                        Message message = RateLimitUtil.complete(channel.retrieveMessageById(latestMessage));
+                        Message message = RateLimitUtil.complete(channel.retrieveMessageById(latestMessage), IACategoryRateLimit.DISCORD_SYNC);
                         if (message != null) {
                             long diff = System.currentTimeMillis() - message.getTimeCreated().toEpochSecond() * 1000L;
                             body.append("\n\nLast message: ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
@@ -452,11 +474,11 @@ public class IACategory {
                     body.append("\n\nPress `" + emoji + "` to delete");
                     output.create().embed( "Interview not assigned to a member", body.toString())
                                     .commandButton(CM.channel.delete.current.cmd.channel(channel.getAsMention()), emoji)
-                                            .send();
+                                            .send(IACategoryRateLimit.DISCORD_SYNC);
 
                     if (nation != null && ((nation.active_m() > 7200) || (nation.active_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !alliance.contains(nation.getAlliance_id()))))) {
                         if (getFreeCategory(inactiveCategories) != null && !inactiveCategories.contains(channel.getParentCategory())) {
-                            RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(inactiveCategories)));
+                            RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(inactiveCategories)), IACategoryRateLimit.DISCORD_SYNC);
                         }
                     }
                 } catch (Throwable ignore) {
@@ -501,7 +523,7 @@ public class IACategory {
             if (iaChannel != null) {
                 DBNation nation = iaChannel.getNation();
                 if (!duplicates.add(nation.getNation_id())) {
-                    RateLimitUtil.queue(iaChannel.getChannel().delete());
+                    RateLimitUtil.queue(iaChannel.getChannel().delete(), IACategoryRateLimit.DISCORD_SYNC);
                     continue;
                 }
                 channelMap.put(iaChannel.getNation(), iaChannel);
@@ -511,10 +533,10 @@ public class IACategory {
                             (nation.active_m() > 2880 && inactiveCategories.contains(channel.getParentCategory()))
                     ) {
                         if (!inactiveCategories.contains(channel.getParentCategory())) {
-                            RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(inactiveCategories)));
+                            RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(inactiveCategories)), IACategoryRateLimit.DISCORD_SYNC);
                         }
                     } else if (inactiveCategories.contains(channel.getParentCategory())) {
-                        RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(activeCategories)));
+                        RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(activeCategories)), IACategoryRateLimit.DISCORD_SYNC);
                     }
                 }
             }
@@ -558,7 +580,7 @@ public class IACategory {
             if (audit.isEmpty() && archived != null) {
                 TextChannel channel = iaChannel.getChannel();
                 if (activeCategories.contains(channel.getParentCategory())) {
-                    RateLimitUtil.queue(channel.getManager().setParent(archived));
+                    RateLimitUtil.queue(channel.getManager().setParent(archived), IACategoryRateLimit.DISCORD_SYNC);
                 }
             }
 
@@ -662,15 +684,15 @@ public class IACategory {
                         fullCategories.add(sort);
                         continue outer;
                     }
-                    output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName());
-                    RateLimitUtil.complete(channel.getManager().setParent(parent));
+                    output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName(), IACategoryRateLimit.DISCORD_SYNC);
+                    RateLimitUtil.complete(channel.getManager().setParent(parent), IACategoryRateLimit.DISCORD_SYNC);
                     continue outer;
                 }
             }
             Category parent = getFreeCategory(passedCategories);
             if (parent != null && !channel.getParentCategory().equals(parent)) {
-                output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName());
-                RateLimitUtil.complete(channel.getManager().setParent(parent));
+                output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName(), IACategoryRateLimit.DISCORD_SYNC);
+                RateLimitUtil.complete(channel.getManager().setParent(parent), IACategoryRateLimit.DISCORD_SYNC);
             }
         }
 

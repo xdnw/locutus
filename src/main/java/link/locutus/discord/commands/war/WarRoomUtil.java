@@ -173,7 +173,7 @@ public class WarRoomUtil {
 
         if (existingMessageId == null) {
             CompletableFuture<Long> future = new CompletableFuture<>();
-            msg.send().whenComplete((sent, error) -> {
+            msg.send(WarRoomRateLimit.INITIAL_PIN).whenComplete((sent, error) -> {
                 if (error != null) {
                     future.completeExceptionally(error);
                     return;

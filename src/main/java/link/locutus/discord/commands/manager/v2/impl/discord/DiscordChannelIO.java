@@ -58,13 +58,13 @@ public class DiscordChannelIO implements IMessageIO {
     }
 
     @Override
-    public void setMessageDeleted() {
+    public void setMessageDeleted(RateLimitedSource source) {
         userMessage = null;
     }
 
     @Override
     @Deprecated
-    public IMessageBuilder getMessage() {
+    public IMessageBuilder getMessage(RateLimitedSource source) {
         if (userMessage == null) {
             return null;
         }
@@ -79,15 +79,14 @@ public class DiscordChannelIO implements IMessageIO {
     }
 
     @Deprecated
-    public IMessageBuilder getMessage(long id) {
-        Message message = RateLimitUtil.complete(channel.retrieveMessageById(id));
+    public IMessageBuilder getMessage(long id, RateLimitedSource source) {
+        Message message = RateLimitUtil.complete(channel.retrieveMessageById(id), source);
         return new DiscordMessageBuilder(this, message);
     }
 
     @Override
-    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
+    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder, RateLimitedSource source) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
-            RateLimitedSource source = builder.getRateLimitSource();
             if (builder.getId() > 0) {
                 String key = "message-edit:" + channel.getIdLong() + ":" + builder.getId();
                 CompletableFuture<Message> future = RateLimitUtil.queueLatest(key, source,
@@ -121,11 +120,10 @@ public class DiscordChannelIO implements IMessageIO {
     }
 
     @Override
-    public IMessageIO update(IMessageBuilder builder, long id) {
+    public IMessageIO update(IMessageBuilder builder, long id, RateLimitedSource source) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             MessageEditData message = discMsg.buildEdit(true);
             String key = "message-edit:" + channel.getIdLong() + ":" + id;
-            RateLimitedSource source = builder.getRateLimitSource();
             RateLimitUtil.queueLatest(key, source,
                     () -> RateLimitUtil.queue(channel.editMessageById(id, message), source));
             return this;
@@ -135,8 +133,8 @@ public class DiscordChannelIO implements IMessageIO {
     }
 
     @Override
-    public IMessageIO delete(long id) {
-        RateLimitUtil.queue(channel.deleteMessageById(id));
+    public IMessageIO delete(long id, RateLimitedSource source) {
+        RateLimitUtil.queue(channel.deleteMessageById(id), source);
         return this;
     }
 
@@ -146,11 +144,11 @@ public class DiscordChannelIO implements IMessageIO {
     }
 
     @Override
-    public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
-        return send(this, builder);
+    public CompletableFuture<IModalBuilder> send(IModalBuilder builder, RateLimitedSource source) {
+        return send(this, builder, source);
     }
 
-    public static CompletableFuture<IModalBuilder> send(IMessageIO io, IModalBuilder builder) {
+    public static CompletableFuture<IModalBuilder> send(IMessageIO io, IModalBuilder builder, RateLimitedSource source) {
         AModalBuilder record = (AModalBuilder) builder;
         UUID id = builder.getId();
         String defaultsStr = null;
@@ -173,7 +171,7 @@ public class DiscordChannelIO implements IMessageIO {
         CM.modal.create cmRef = CM.modal.create.cmd.command(cmd).arguments(StringMan.join(argList, " ")).defaults(defaultsStr);
         io.create().embed("Form: `" + cmd + "`", cmRef.toSlashCommand(true))
                 .commandButton(cmRef, "Open")
-                .send();
+                .send(source);
         return CompletableFuture.completedFuture(builder);
     }
 }

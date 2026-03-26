@@ -4,7 +4,10 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.util.DeferredPriority;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
@@ -15,6 +18,28 @@ import java.sql.ResultSet;
 import java.util.*;
 
 public class MenuManager {
+    private enum MenuManagerRateLimit implements RateLimitedSource {
+        COMMAND_SYNC(SendPolicy.DEFER, DeferredPriority.MENU_MANAGER_COMMAND_SYNC);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        MenuManagerRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private final GuildDB db;
 
     public MenuManager(GuildDB db) {
@@ -66,7 +91,7 @@ public class MenuManager {
                     commands.add(Commands.message(label));
                 }
             }
-            RateLimitUtil.queue(db.getGuild().updateCommands().addCommands(commands));
+            RateLimitUtil.queue(db.getGuild().updateCommands().addCommands(commands), MenuManagerRateLimit.COMMAND_SYNC);
         }
     }
 

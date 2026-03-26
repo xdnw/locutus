@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.CommandTextParser;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
@@ -631,13 +632,13 @@ public class CommandManager2 {
                         run(existingLocals, io, pathStr, stringArguments, async);
                         return;
                     } catch (JSONException e) {
-                        io.send("Invalid JSON command input: " + e.getMessage());
+                        sendResult(io, "Invalid JSON command input: " + e.getMessage());
                         return;
                     }
                 }
                 if (fullCmdStr.isEmpty()) {
                     if (returnNotFound) {
-                        io.send("You did not enter a command");
+                        sendResult(io, "You did not enter a command");
                         return;
                     }
                     return;
@@ -656,12 +657,12 @@ public class CommandManager2 {
                             if (closest.size() > 5)
                                 closest = closest.subList(0, 5);
 
-                            io.send("No subcommand found for `" + lastCommandId + "`\n" +
+                            sendResult(io, "No subcommand found for `" + lastCommandId + "`\n" +
                                     "Did you mean:\n- `" + prefix + StringMan.join(closest, "`\n- `" + prefix) +
                                     "`\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
                         } else {
                             Set<String> options = group.primarySubCommandIds();
-                            io.send("No subcommand found for `" + prefix.trim() + "`. Options:\n" +
+                            sendResult(io, "No subcommand found for `" + prefix.trim() + "`. Options:\n" +
                                     "`" + prefix + StringMan.join(options, "`\n`" + prefix) + "`");
                         }
                     }
@@ -795,6 +796,10 @@ public class CommandManager2 {
             task.run();
     }
 
+    private void sendResult(IMessageIO io, String message) {
+        io.send(message, CommandMessagePriority.RESULT);
+    }
+
     private boolean handleMenu(IMessageIO io, User user, Guild guild, Map<String, String> argsAndCmd) {
         if (guild == null || user == null)
             return false;
@@ -804,7 +809,7 @@ public class CommandManager2 {
         try {
             long channelId = io.getIdLong();
             if (channelId == 0 || channelId != menu.lastUsedChannel) {
-                io.send("Aborted command. You had a menu open in a different channel. The menu is no longer in ADD BUTTON mode. Please enter BUTTON ADD mode and try again.");
+                sendResult(io, "Aborted command. You had a menu open in a different channel. The menu is no longer in ADD BUTTON mode. Please enter BUTTON ADD mode and try again.");
                 return true;
             }
             if (!Roles.ADMIN.has(user, guild)) {

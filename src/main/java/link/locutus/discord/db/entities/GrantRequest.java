@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -105,13 +106,13 @@ public class GrantRequest {
         this.message_id = id;
     }
 
-    public void deleteMessage(GuildDB db) {
+    public void deleteMessage(GuildDB db, RateLimitedSource source) {
         GuildDB delegate = db.getDelegateServer();
         if (delegate == null) delegate = db;
         Guild guild = db.getGuild();
         GuildMessageChannel reqChannel = guild.getTextChannelById(getChannel());
         if (reqChannel != null) {
-            RateLimitUtil.queue(reqChannel.deleteMessageById(getMessageId()));
+            RateLimitUtil.queue(reqChannel.deleteMessageById(getMessageId()), source);
         }
     }
 
@@ -123,7 +124,7 @@ public class GrantRequest {
         return "#" + id + ": " + PW.getName(nationId, false) + getCommandName() + " | " + getReason();
     }
 
-    public boolean updateMessage(IMessageIO io, String s) {
-        return io.appendToEmbed(s);
+    public boolean updateMessage(IMessageIO io, String s, RateLimitedSource source) {
+        return io.appendToEmbed(s, source);
     }
 }

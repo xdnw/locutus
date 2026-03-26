@@ -226,10 +226,10 @@ public class WarRoom {
             participants.add(nation);
 
             if (channel != null && member != null && channel.getPermissionOverride(member) == null) {
-                RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), WarRoomRateLimit.STATUS_UPDATE);
                 if (ping && channel != null) {
                     String msg = member.getAsMention() + " joined the fray";
-                    RateLimitUtil.queue(channel.sendMessage(msg));
+                    RateLimitUtil.queue(channel.sendMessage(msg), WarRoomRateLimit.ATTACK_MESSAGE);
                 }
             }
         } else if (channel != null && (to.getStatus() == WarStatus.EXPIRED || to.getStatus() == WarStatus.ATTACKER_VICTORY || to.getStatus() == WarStatus.DEFENDER_VICTORY)) {
@@ -238,7 +238,7 @@ public class WarRoom {
             if (member != null) {
                 PermissionOverride override = channel.getPermissionOverride(member);
                 if (override != null) {
-                    RateLimitUtil.queue(override.delete());
+                    RateLimitUtil.queue(override.delete(), WarRoomRateLimit.STATUS_UPDATE);
                 }
             }
         }
@@ -267,7 +267,7 @@ public class WarRoom {
                     .grant(Permission.VIEW_CHANNEL)
                     .grant(Permission.MANAGE_CHANNEL)
                     .grant(Permission.MANAGE_PERMISSIONS)
-            );
+            , WarRoomRateLimit.STATUS_UPDATE);
         }
 
         Set<DBNation> added = new HashSet<>();

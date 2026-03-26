@@ -68,11 +68,11 @@ public class DiscordHookIO implements IMessageIO {
     }
 
     @Override
-    public void setMessageDeleted() {
+    public void setMessageDeleted(RateLimitedSource source) {
         this.originalDeleted = true;
         if (!originalDeleted) {
             try {
-                RateLimitUtil.queue(hook.deleteOriginal());
+                RateLimitUtil.queue(hook.deleteOriginal(), source);
             } catch (ErrorResponseException | IllegalArgumentException ignore) {
                 ignore.printStackTrace();
             }
@@ -85,10 +85,10 @@ public class DiscordHookIO implements IMessageIO {
 
     @Override
     @Deprecated
-    public IMessageBuilder getMessage() {
+    public IMessageBuilder getMessage(RateLimitedSource source) {
         if (originalDeleted) return null;
         try {
-            return new DiscordMessageBuilder(this, RateLimitUtil.complete(hook.retrieveOriginal()));
+            return new DiscordMessageBuilder(this, RateLimitUtil.complete(hook.retrieveOriginal(), source));
         } catch (ErrorResponseException ignore) {
             return null;
         }
@@ -100,13 +100,12 @@ public class DiscordHookIO implements IMessageIO {
     }
 
     @Override
-    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
+    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder, RateLimitedSource source) {
         if (event != null) {
-            RateLimitUtil.queue(event.deferReply());
+            RateLimitUtil.queue(event.deferReply(), source);
             event = null;
         }
         if (builder instanceof DiscordMessageBuilder discMsg) {
-            RateLimitedSource source = builder.getRateLimitSource();
             if (builder.getId() > 0) {
                 CompletableFuture<Message> future = RateLimitUtil.queue(hook.editMessageById(builder.getId(), discMsg.buildEdit(true)), source);
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
@@ -139,10 +138,10 @@ public class DiscordHookIO implements IMessageIO {
     }
 
     @Override
-    public IMessageIO update(IMessageBuilder builder, long id) {
+    public IMessageIO update(IMessageBuilder builder, long id, RateLimitedSource source) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             MessageEditData message = discMsg.buildEdit(true);
-            RateLimitUtil.queue(hook.editMessageById(id, message), builder.getRateLimitSource());
+            RateLimitUtil.queue(hook.editMessageById(id, message), source);
             return this;
         } else {
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
@@ -150,8 +149,8 @@ public class DiscordHookIO implements IMessageIO {
     }
 
     @Override
-    public IMessageIO delete(long id) {
-        RateLimitUtil.queue(hook.deleteMessageById(id));
+    public IMessageIO delete(long id, RateLimitedSource source) {
+        RateLimitUtil.queue(hook.deleteMessageById(id), source);
         return this;
     }
 
@@ -164,9 +163,9 @@ public class DiscordHookIO implements IMessageIO {
     }
 
     @Override
-    public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
+    public CompletableFuture<IModalBuilder> send(IModalBuilder builder, RateLimitedSource source) {
         if (modalCallback == null) {
-            return DiscordChannelIO.send(this, builder);
+            return DiscordChannelIO.send(this, builder, source);
         }
         AModalBuilder casted = (AModalBuilder) builder;
         List<TextInput> inputs = casted.getInputs();
@@ -181,7 +180,7 @@ public class DiscordHookIO implements IMessageIO {
 
 //        modalCallback.replyModal(modal).complete();
 //        return null;
-        return RateLimitUtil.queue(modalCallback.replyModal(modal)).thenApply(f -> casted);
+        return RateLimitUtil.queue(modalCallback.replyModal(modal), source).thenApply(f -> casted);
     }
 
     public void setIsModal(IReplyCallback event) {

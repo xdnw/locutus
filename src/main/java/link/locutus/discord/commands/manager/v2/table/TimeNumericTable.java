@@ -2,7 +2,11 @@ package link.locutus.discord.commands.manager.v2.table;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import de.erichseifert.gral.data.*;
+import de.erichseifert.gral.data.Column;
+import de.erichseifert.gral.data.DataSeries;
+import de.erichseifert.gral.data.DataSource;
+import de.erichseifert.gral.data.DataTable;
+import de.erichseifert.gral.data.Row;
 import de.erichseifert.gral.data.statistics.Statistics;
 import de.erichseifert.gral.graphics.Drawable;
 import de.erichseifert.gral.graphics.Insets2D;
@@ -18,6 +22,7 @@ import de.erichseifert.gral.plots.legends.AbstractLegend;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
@@ -35,8 +40,11 @@ import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.*;
+import java.util.Locale;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -465,7 +473,7 @@ public abstract class TimeNumericTable<T> {
     }
     public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv, GuildDB db, SheetKey attachSheet) throws IOException {
         IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, type, originDate, attachJson, attachCsv, db, attachSheet);
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv, GuildDB db, SheetKey attachSheet) throws IOException {

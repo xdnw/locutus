@@ -13,7 +13,10 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSource;
+import link.locutus.discord.util.SendPolicy;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.WarNation;
@@ -26,6 +29,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class WarCard {
+    private enum WarCardRateLimit implements RateLimitedSource {
+        CONDENSED_EMBED(SendPolicy.CONDENSE, DeferredPriority.WAR_CARD_CONDENSED_EMBED);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        WarCardRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
+
     private final int warId;
     public CounterStat counterStat;
     public int airSuperiority;
@@ -467,7 +492,7 @@ public class WarCard {
         }
         if (send) {
             if (condense) {
-                msg.sendWhenFree();
+                msg.sendWhenFree(WarCardRateLimit.CONDENSED_EMBED);
             } else {
                 msg.send();
             }

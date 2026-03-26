@@ -4,7 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.RateLimitedSource;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 
@@ -141,14 +141,7 @@ public interface IModalBuilder {
         return this;
     }
 
-    CompletableFuture<IModalBuilder> send();
-
-    default CompletableFuture<IModalBuilder> sendIfFree() {
-        if (!RateLimitUtil.isCloseToLimit(CommandMessagePriority.STATUS)) {
-            return send();
-        }
-        return null;
-    }
+    CompletableFuture<IModalBuilder> send(RateLimitedSource source);
 
     String getTitle();
 }

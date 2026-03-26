@@ -18,7 +18,6 @@ import com.google.api.services.sheets.v4.model.RowData;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.api.services.sheets.v4.model.SheetProperties;
 import com.google.api.services.sheets.v4.model.Spreadsheet;
-import link.locutus.discord.apiv1.enums.DepositType;
 import com.google.api.services.sheets.v4.model.SpreadsheetProperties;
 import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
 import com.google.api.services.sheets.v4.model.ValueRange;
@@ -26,14 +25,16 @@ import com.opencsv.CSVWriter;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
-import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.MarkupUtil;
@@ -280,7 +281,7 @@ public class SpreadSheet {
         this.updateClearTab(null);
         try {
             this.updateWrite();
-            return attach(channel.create(), "transactions").send();
+            return attach(channel.create(), "transactions").send(CommandMessagePriority.RESULT);
         } catch (Throwable e) {
             e.printStackTrace();
             IMessageBuilder msg = channel.create();
@@ -292,7 +293,7 @@ public class SpreadSheet {
                     msg.file(entry.getKey() + ".csv", entry.getValue());
                 }
             }
-            return msg.append(e.getMessage()).send();
+            return msg.append(e.getMessage()).send(CommandMessagePriority.RESULT);
         }
     }
 

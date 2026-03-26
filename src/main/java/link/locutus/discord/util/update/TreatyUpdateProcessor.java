@@ -9,8 +9,11 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSource;
+import link.locutus.discord.util.SendPolicy;
 import com.google.common.eventbus.Subscribe;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
@@ -21,6 +24,27 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public class TreatyUpdateProcessor {
+    private enum TreatyUpdateRateLimit implements RateLimitedSource {
+        ALERT(SendPolicy.DEFER, DeferredPriority.TREATY_UPDATE_ALERT);
+
+        private final SendPolicy sendPolicy;
+        private final DeferredPriority deferredPriority;
+
+        TreatyUpdateRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
+            this.sendPolicy = sendPolicy;
+            this.deferredPriority = deferredPriority;
+        }
+
+        @Override
+        public SendPolicy sendPolicy() {
+            return sendPolicy;
+        }
+
+        @Override
+        public DeferredPriority deferredPriority() {
+            return deferredPriority;
+        }
+    }
 
     @Subscribe
     public void onTreatyCreate(TreatyCreateEvent event) {
@@ -129,7 +153,7 @@ public class TreatyUpdateProcessor {
                 if (img != null) {
                     msg.image("treaties.png", img);
                 }
-                msg.sendWhenFree();
+                msg.sendWhenFree(TreatyUpdateRateLimit.ALERT);
             }
         });
     }

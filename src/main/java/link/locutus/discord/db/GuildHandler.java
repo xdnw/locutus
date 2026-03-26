@@ -85,7 +85,8 @@ public class GuildHandler {
         INCENTIVE_LOG(SendPolicy.DEFER, DeferredPriority.GUILD_HANDLER_INCENTIVE_LOG),
         RECRUIT_INELIGIBLE_NOTICE(SendPolicy.DEFER, DeferredPriority.GUILD_HANDLER_RECRUIT_INELIGIBLE_NOTICE),
         RECRUIT_MESSAGE_STATUS(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_RECRUIT_MESSAGE_STATUS),
-        RECRUIT_MESSAGE_ERROR(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_RECRUIT_MESSAGE_ERROR);
+        RECRUIT_MESSAGE_ERROR(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_RECRUIT_MESSAGE_ERROR),
+        DISCORD_ALERT(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_DISCORD_ALERT);
 
         private final SendPolicy sendPolicy;
         private final DeferredPriority deferredPriority;
@@ -360,12 +361,12 @@ public class GuildHandler {
                 if (nation.getAlliance_id() != 0 && !aaIds.contains(nation.getAlliance_id())) {
                     body.append("\n\n**Already member of AA: " + nation.getAllianceName() + "**\n\n");
                     mentionInterviewer = false;
-                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel())
+                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel(), GuildHandlerRateLimit.NEW_APPLICANT_ALERT)
                             .sendMessage("As you're already a member of another alliance, message or ping @"
-                                    + interviewerRole.getName() + " to (proceed"));
+                                    + interviewerRole.getName() + " to (proceed"), GuildHandlerRateLimit.NEW_APPLICANT_ALERT);
                 } else {
-                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel()).sendMessage(
-                            "Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are able."));
+                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel(), GuildHandlerRateLimit.NEW_APPLICANT_ALERT).sendMessage(
+                            "Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are able."), GuildHandlerRateLimit.NEW_APPLICANT_ALERT);
                 }
             }
         }
@@ -382,7 +383,7 @@ public class GuildHandler {
         if (mentionInterviewer) {
             msg.append("^ " + interviewerRole.getAsMention());
         }
-        msg.send();
+        msg.send(GuildHandlerRateLimit.NEW_APPLICANT_ALERT);
 
         {
             IACategory iaCat = getDb().getIACategory();
@@ -395,12 +396,12 @@ public class GuildHandler {
                 GuildMessageChannel channel = iaCat.getOrCreate(author, true);
                 if (alertChannel != null) {
                     RateLimitUtil
-                            .queue(alertChannel.sendMessage("Created interview channel: " + channel.getAsMention()));
+                            .queue(alertChannel.sendMessage("Created interview channel: " + channel.getAsMention()), GuildHandlerRateLimit.NEW_APPLICANT_ALERT);
                 }
             } catch (IllegalArgumentException e) {
                 if (alertChannel != null) {
                     RateLimitUtil
-                            .queue(alertChannel.sendMessage("Failed to create interview channel: " + e.getMessage()));
+                            .queue(alertChannel.sendMessage("Failed to create interview channel: " + e.getMessage()), GuildHandlerRateLimit.NEW_APPLICANT_ALERT);
                 }
             }
         }
@@ -815,7 +816,7 @@ public class GuildHandler {
             CM.embed.update cmd = CM.embed.update.cmd.desc("{description}\nAssigned to {usermention} in {timediff}");
 
             io.create().embed(title, body.toString())
-                    .commandButton(CommandBehavior.DELETE_BUTTONS, cmd, emoji).send();
+                    .commandButton(CommandBehavior.DELETE_BUTTONS, cmd, emoji).send(GuildHandlerRateLimit.MEMBER_LEAVE_EMBED);
         } else {
             RateLimitUtil.queueMessage(io, new Function<IMessageBuilder, Boolean>() {
                 @Override
@@ -1858,7 +1859,7 @@ public class GuildHandler {
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, costCommand, costEmoji);
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, assignCmd, assignEmoji);
         msg.cancelButton();
-        msg.send();
+        msg.send(GuildHandlerRateLimit.WAR_ALERT_BATCH);
     }
 
     public void onDefensiveWarAlert(List<Map.Entry<DBWar, DBWar>> wars, boolean rateLimit) {
@@ -2313,7 +2314,7 @@ public class GuildHandler {
                                 }
                                 msg.append(footerMsg);
                             }
-                            msg.send();
+                            msg.send(GuildHandlerRateLimit.WAR_ALERT_BATCH);
                         }
                     }
                 } catch (InsufficientPermissionException e) {
@@ -2705,7 +2706,7 @@ public class GuildHandler {
                 }
             }
         }
-        msg.send();
+        msg.send(GuildHandlerRateLimit.DISCORD_ALERT);
 
         // if (!allowed) {
         // User user = attacker.getUser();
@@ -3231,7 +3232,7 @@ public class GuildHandler {
                 e.printStackTrace();
             }
         }
-        msg.send();
+        msg.send(GuildHandlerRateLimit.DISCORD_ALERT);
     }
 
     @Subscribe
@@ -3311,7 +3312,7 @@ public class GuildHandler {
                     if (!mentions.isEmpty()) {
                         msg = msg.append(StringMan.join(mentions, ", "));
                     }
-                    msg.send();
+                    msg.send(GuildHandlerRateLimit.DISCORD_ALERT);
                 }
 
             } catch (IOException e) {

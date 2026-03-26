@@ -373,21 +373,10 @@ public interface IMessageBuilder {
     @CheckReturnValue
     IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate);
 
-    CompletableFuture<IMessageBuilder> send();
+    CompletableFuture<IMessageBuilder> send(RateLimitedSource source);
 
-    RateLimitedSource getRateLimitSource();
-
-    @CheckReturnValue
-    IMessageBuilder rateLimitSource(RateLimitedSource source);
-
-    default void sendWhenFree() {
-        send();
-    }
-
-    default void sendIfFree() {
-        if (!RateLimitUtil.isCloseToLimit(CommandMessagePriority.STATUS)) {
-            send();
-        }
+    default void sendWhenFree(RateLimitedSource source) {
+        RateLimitUtil.queueWhenFree(source, () -> send(source));
     }
 
     User getAuthor();
