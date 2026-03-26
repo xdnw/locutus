@@ -1050,7 +1050,11 @@ public final class Locutus extends ListenerAdapter {
             DiscordHookIO io = new DiscordHookIO(hook, null).setInteraction(true);
             String path = pair[1];
             boolean ephemeral = getSlashCommands().isEphemeral(path);
-            event.deferReply(ephemeral).queue();
+            try {
+                RateLimitUtil.queue(event.deferReply(ephemeral));
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
             Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), user, event.getMessage(), io, path, args, true);
         } catch (Throwable e) {
             e.printStackTrace();
@@ -1118,7 +1122,7 @@ public final class Locutus extends ListenerAdapter {
                     if (!deferred && !id.contains("modal create")) {
                         deferred = true;
                         if (forceEphemeral || info.behavior == CommandBehavior.EPHEMERAL) {
-                            event.deferReply(true).queue();
+                            RateLimitUtil.queue(event.deferReply(true));
                             hook.setEphemeral(true);
                             isEphemeral = true;
                         } else {
