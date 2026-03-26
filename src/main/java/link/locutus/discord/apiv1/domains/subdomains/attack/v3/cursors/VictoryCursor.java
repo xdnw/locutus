@@ -25,7 +25,7 @@ public class VictoryCursor extends FailedCursor {
     public boolean hasLoot = false;
     public double[] looted = null;
     private int loot_percent_cents;
-    private Map<Integer, Integer> city_infra_before_cents = new Int2IntOpenHashMap();
+    private final Map<Integer, Integer> city_infra_before_cents = new Int2IntOpenHashMap();
     private int infra_percent_decimal; // * 0.001
     private int infra_destroyed_cents;
     private long infra_destroyed_value_cents;
