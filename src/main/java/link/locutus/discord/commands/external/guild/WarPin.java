@@ -4,13 +4,13 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoom;
+import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -52,10 +52,12 @@ public class WarPin extends Command {
         WarRoom warRoom = warChannels.getWarRoom((StandardGuildMessageChannel) textChannel, WarCatReason.WARPIN_COMMAND);
         if (warRoom == null) return "This command must be run in a war room.";
 
-        IMessageBuilder message = warRoom.updatePin(true);
-        if (message == null) return "No war pin found.";
         StandardGuildMessageChannel wChannel = warRoom.channel;
-        String url = DiscordUtil.getChannelUrl(wChannel) + "/" + message.getId();
-        return "Updated: " + url;
+        Long messageId = WarRoomUtil.getPinnedMessageId(wChannel.getTopic());
+        warRoom.updatePin(true);
+        if (messageId != null) {
+            return "Queued pin refresh: " + DiscordUtil.getChannelUrl(wChannel) + "/" + messageId;
+        }
+        return "Queued initial pin refresh for " + wChannel.getAsMention();
     }
 }

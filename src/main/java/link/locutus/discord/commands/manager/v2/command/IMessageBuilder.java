@@ -379,7 +379,7 @@ public interface IMessageBuilder {
     }
 
     default void sendIfFree() {
-        if (!RateLimitUtil.isCloseToLimit(true)) {
+        if (!RateLimitUtil.isCloseToLimit(CommandMessagePriority.STATUS)) {
             send();
         }
     }

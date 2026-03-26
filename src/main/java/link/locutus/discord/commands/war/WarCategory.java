@@ -110,7 +110,7 @@ public class WarCategory {
                 if (pretty.length() > 0) {
                     String msg = "(startup) Synced war rooms. To confirm these changes, run:" +
                             CM.admin.sync.warrooms.cmd.toSlashMention() + "\n" + pretty;
-                    RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                    RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
                 }
             }
         }
@@ -222,6 +222,7 @@ public class WarCategory {
     }
 
     public synchronized WarRoom createWarRoom(DBNation target, boolean createRoom, boolean forceCreate, boolean planning, WarCatReason reason) {
+        WarRoomRateLimit creationSource = WarRoomRateLimit.forRoomCreation(reason);
         WarRoom existing = warRoomMap.get(target.getNation_id());
         if (existing == null) {
             synchronized (target) {
@@ -233,7 +234,7 @@ public class WarCategory {
                     if (forceCreate) {
                         synchronized (existing) {
                             long oldChannelId = existing.channelId;
-                            StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning);
+                            StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning, creationSource);
                             if (channel != null) {
                                 existing.addChannel(channel.getIdLong(), channel, reason, oldChannelId != channel.getIdLong());
                             }
@@ -246,7 +247,7 @@ public class WarCategory {
                     if (!existing.isChannelValid()) {
                         synchronized (existing) {
                             long oldChannelId = existing.channelId;
-                            StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning);
+                            StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning, creationSource);
                             if (channel != null) {
                                 existing.addChannel(channel.getIdLong(), channel, reason, oldChannelId != channel.getIdLong());
                             }
@@ -258,7 +259,7 @@ public class WarCategory {
             synchronized (existing) {
                 if (!existing.isChannelValid()) {
                     long oldChannelId = existing.channelId;
-                    StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning);
+                    StandardGuildMessageChannel channel = WarRoomUtil.createChannel2(this, existing, target, true, planning, creationSource);
                     if (channel != null) {
                         existing.addChannel(channel.getIdLong(), channel, reason, oldChannelId != channel.getIdLong());
                     }
@@ -341,7 +342,7 @@ public class WarCategory {
             MessageChannel logChan = GuildKey.WAR_ROOM_LOG.getOrNull(getGuildDb());
             if (logChan != null) {
                 String msg = "Error with war war room for target-id: " + (targetId) + ":\n```java\n" + StringMan.stacktraceToString(e.getStackTrace()) + "```";
-                RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
             }
         }
     }
@@ -539,15 +540,8 @@ public class WarCategory {
                 Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses2(false);
                 if (!defLosses.isEmpty()) message += "\nDefender unit losses: " + StringMan.getString(defLosses);
             }
-
-            if (RateLimitUtil.getCurrentUsed() > 10) {
-                new DiscordChannelIO(channel).create().embed(attack.getAttack_type().toString(), message).sendWhenFree();
-            } else {
-                String emoji = "War Info";
-                String cmd = "_" + Settings.commandPrefix(true) + "WarInfo " + attack.getWar_id();
-                message += "\n\nPress `" + emoji + "` to view the war card";
-                DiscordUtil.createEmbedCommand(channel, attack.getAttack_type().toString(), message, emoji, cmd);
-            }
+            message = "**" + attack.getAttack_type() + "**\n" + message;
+            RateLimitUtil.queueMessage(channel, message, WarRoomRateLimit.ATTACK_MESSAGE);
         }
     }
 
@@ -629,12 +623,11 @@ public class WarCategory {
         }
     }
 
-    public void processChannelCreation(WarRoom room, StandardGuildMessageChannel channel, boolean planning) {
+    public void processChannelCreation(WarRoom room, StandardGuildMessageChannel channel, boolean planning, WarRoomRateLimit source) {
         room.updatePin(false);
         RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(getGuild().getMemberById(Settings.INSTANCE.APPLICATION_ID))
-                .setAllowed(Permission.VIEW_CHANNEL, Permission.MANAGE_CHANNEL, Permission.MANAGE_PERMISSIONS)
-        );
-        RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(getGuild().getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
+                .setAllowed(Permission.VIEW_CHANNEL, Permission.MANAGE_CHANNEL, Permission.MANAGE_PERMISSIONS), source.deferredPriority());
+        RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(getGuild().getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL), source.deferredPriority());
 
         room.addInitialParticipants(planning);
     }

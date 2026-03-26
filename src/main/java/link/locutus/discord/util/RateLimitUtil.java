@@ -17,6 +17,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class RateLimitUtil {
 
@@ -52,12 +53,39 @@ public class RateLimitUtil {
         return inflight >= (priority ? INFLIGHT_PRIORITY_PAUSE : INFLIGHT_NONPRIORITY_PAUSE);
     }
 
+    private static boolean shouldPause(DeferredPriority priority) {
+        return shouldPause(priority.reserveHeadroom());
+    }
+
     /**
      * True if we are close enough to the rate limit that non-priority sends should
      * be deferred or dropped.
      */
-    private static boolean isCloseToLimit() {
+    public static boolean isCloseToLimit() {
         return shouldPause(false);
+    }
+
+    public static boolean isCloseToLimit(boolean priority) {
+        return shouldPause(priority);
+    }
+
+    public static boolean isCloseToLimit(RateLimitedSource source) {
+        return shouldPause(source.deferredPriority());
+    }
+
+    /** Compatibility shim for older heuristics that only need a rough pressure signal. */
+    public static int getCurrentUsed() {
+        return InstrumentedRateLimiter.getInflightCount();
+    }
+
+    /** Compatibility shim for older heuristics that only need a rough pressure signal. */
+    public static int getCurrentUsed(boolean includeQueued) {
+        return getCurrentUsed() + (includeQueued ? totalQueuedActionCount() : 0);
+    }
+
+    /** Compatibility shim for older heuristics; preserved until all call sites are source-aware. */
+    public static int getLimitPerMinute() {
+        return 60;
     }
 
     private static long globalResetDelayMs() {
@@ -101,7 +129,7 @@ public class RateLimitUtil {
 
     /** Priority queue — submits immediately unless the priority threshold is breached. */
     public static <T> CompletableFuture<T> queue(RestAction<T> action) {
-        return queue(action, true);
+        return queue(action, DeferredPriority.USER_INTERACTION);
     }
 
     /**
@@ -110,6 +138,10 @@ public class RateLimitUtil {
      *                 and is routed through the deferred queue automatically.
      */
     public static <T> CompletableFuture<T> queue(RestAction<T> action, boolean priority) {
+        return queue(action, priority ? DeferredPriority.USER_INTERACTION : DeferredPriority.NORMAL);
+    }
+
+    public static <T> CompletableFuture<T> queue(RestAction<T> action, DeferredPriority priority) {
         if (action == null) return CompletableFuture.completedFuture(null);
 
         if (!shouldPause(priority)) {
@@ -130,10 +162,14 @@ public class RateLimitUtil {
 
     /** Priority complete — blocks the calling thread. Must not be called from a JDA thread. */
     public static <T> T complete(RestAction<T> action) {
-        return complete(action, true);
+        return complete(action, DeferredPriority.USER_INTERACTION);
     }
 
     public static <T> T complete(RestAction<T> action, boolean priority) {
+        return complete(action, priority ? DeferredPriority.USER_INTERACTION : DeferredPriority.NORMAL);
+    }
+
+    public static <T> T complete(RestAction<T> action, DeferredPriority priority) {
         if (action == null) return null;
         assertNotJdaThread();
 
@@ -162,14 +198,19 @@ public class RateLimitUtil {
 
     public static CompletableFuture<Void> queueWhenFree(RestAction<?> action) {
         if (action == null) return CompletableFuture.completedFuture(null);
-        return queueWhenFree(false, () -> submitNow(action));
+        return queueWhenFree(action, DeferredPriority.NORMAL);
+    }
+
+    public static CompletableFuture<Void> queueWhenFree(RestAction<?> action, DeferredPriority priority) {
+        if (action == null) return CompletableFuture.completedFuture(null);
+        return queueWhenFree(priority, () -> submitNow(action));
     }
 
     public static CompletableFuture<Void> queueWhenFree(Runnable action) {
-        return queueWhenFree(false, action);
+        return queueWhenFree(DeferredPriority.NORMAL, action);
     }
 
-    private static CompletableFuture<Void> queueWhenFree(boolean priority, Runnable action) {
+    public static CompletableFuture<Void> queueWhenFree(DeferredPriority priority, Runnable action) {
         if (!shouldPause(priority)) {
             try {
                 action.run();
@@ -180,13 +221,7 @@ public class RateLimitUtil {
         }
 
         CompletableFuture<Void> future = new CompletableFuture<>();
-        QueuedAction queued = new QueuedAction(action, future);
-
-        if (priority) {
-            queuedPriorityActions.add(queued);
-        } else {
-            queuedActions.add(queued);
-        }
+        queuedActions.get(priority).add(new QueuedAction(action, future));
 
         startQueueWorkerIfNeeded();
         return future;
@@ -197,10 +232,10 @@ public class RateLimitUtil {
      * Must not be called from a JDA thread or the main thread.
      */
     public static <T> T completeWhenFree(RestAction<T> action) throws InterruptedException {
-        return completeWhenFree(action, false);
+        return completeWhenFree(action, DeferredPriority.NORMAL);
     }
 
-    private static <T> T completeWhenFree(RestAction<T> action, boolean priority) throws InterruptedException {
+    private static <T> T completeWhenFree(RestAction<T> action, DeferredPriority priority) throws InterruptedException {
         assertNotJdaThread();
 
         CompletableFuture<T> result = new CompletableFuture<>();
@@ -230,29 +265,125 @@ public class RateLimitUtil {
 
     private record QueuedAction(Runnable runnable, CompletableFuture<Void> future) {}
 
-    private static final ConcurrentLinkedQueue<QueuedAction> queuedPriorityActions = new ConcurrentLinkedQueue<>();
-    private static final ConcurrentLinkedQueue<QueuedAction> queuedActions = new ConcurrentLinkedQueue<>();
+    private static final DeferredPriority[] DEFERRED_PRIORITY_ORDER = DeferredPriority.values();
+    private static final EnumMap<DeferredPriority, ConcurrentLinkedQueue<QueuedAction>> queuedActions = new EnumMap<>(DeferredPriority.class);
+    private static final EnumMap<DeferredPriority, ConcurrentLinkedQueue<String>> queuedReplaceableKeys = new EnumMap<>(DeferredPriority.class);
+    private static final ConcurrentHashMap<String, ReplaceableAction> replaceableActions = new ConcurrentHashMap<>();
     private static final AtomicBoolean runningTask = new AtomicBoolean(false);
+
+    static {
+        for (DeferredPriority priority : DEFERRED_PRIORITY_ORDER) {
+            queuedActions.put(priority, new ConcurrentLinkedQueue<>());
+            queuedReplaceableKeys.put(priority, new ConcurrentLinkedQueue<>());
+        }
+    }
+
+    private static final class ReplaceableAction {
+        private volatile DeferredPriority priority;
+        private volatile Supplier<CompletableFuture<?>> supplier;
+        private final List<CompletableFuture<Object>> futures = new CopyOnWriteArrayList<>();
+
+        private <T> void replace(DeferredPriority priority,
+                                 Supplier<CompletableFuture<T>> supplier,
+                                 CompletableFuture<T> future) {
+            this.priority = priority;
+            this.supplier = (Supplier<CompletableFuture<?>>) (Supplier<?>) supplier;
+            this.futures.add((CompletableFuture<Object>) (CompletableFuture<?>) future);
+        }
+
+        private DeferredPriority priority() {
+            return priority;
+        }
+
+        private Supplier<CompletableFuture<?>> supplier() {
+            return supplier;
+        }
+
+        private List<CompletableFuture<Object>> futures() {
+            return futures;
+        }
+    }
+
+    public static CompletableFuture<Void> queueLatest(String key, DeferredPriority priority, Runnable action) {
+        return queueLatest(key, priority, () -> {
+            action.run();
+            return CompletableFuture.completedFuture(null);
+        });
+    }
+
+    public static <T> CompletableFuture<T> queueLatest(String key, DeferredPriority priority, RestAction<T> action) {
+        return queueLatest(key, priority, () -> submitNow(action));
+    }
+
+    public static <T> CompletableFuture<T> queueLatest(String key,
+                                                       DeferredPriority priority,
+                                                       Supplier<CompletableFuture<T>> supplier) {
+        if (key == null || key.isBlank()) {
+            try {
+                return supplier.get();
+            } catch (Throwable e) {
+                return CompletableFuture.failedFuture(e);
+            }
+        }
+
+        if (!shouldPause(priority) && !replaceableActions.containsKey(key)) {
+            try {
+                return supplier.get();
+            } catch (Throwable e) {
+                return CompletableFuture.failedFuture(e);
+            }
+        }
+
+        CompletableFuture<T> future = new CompletableFuture<>();
+        replaceableActions.compute(key, (ignored, existing) -> {
+            ReplaceableAction next = existing != null ? existing : new ReplaceableAction();
+            DeferredPriority previousPriority = existing != null ? existing.priority() : null;
+            next.replace(priority, supplier, future);
+            if (existing == null || priority.ordinal() < previousPriority.ordinal()) {
+                queuedReplaceableKeys.get(priority).add(key);
+            }
+            return next;
+        });
+
+        startQueueWorkerIfNeeded();
+        return future;
+    }
 
     private static final CaughtRunnable QUEUE_WORKER = new CaughtRunnable() {
         @Override
         public void runUnsafe() throws InterruptedException {
             try {
                 while (true) {
-                    QueuedAction current = pollNextAction();
-                    if (current == null) break;
-
-                    try {
-                        current.runnable().run();
-                        current.future().complete(null);
-                    } catch (Throwable e) {
-                        current.future().completeExceptionally(e);
-                        AlertUtil.error("Error with queued action", e);
+                    boolean hadWork = hasAnyQueuedWork();
+                    QueuedAction current = pollNextQueuedAction();
+                    if (current != null) {
+                        try {
+                            current.runnable().run();
+                            current.future().complete(null);
+                        } catch (Throwable e) {
+                            current.future().completeExceptionally(e);
+                            AlertUtil.error("Error with queued action", e);
+                        }
+                        continue;
                     }
+
+                    Map.Entry<String, ReplaceableAction> replaceable = pollNextReplaceableAction();
+                    if (replaceable != null) {
+                        runReplaceableAction(replaceable.getKey(), replaceable.getValue());
+                        continue;
+                    }
+
+                    if (!hadWork) {
+                        break;
+                    }
+
+                    long sleep = Math.min(globalResetDelayMs() + 50, 5000);
+                    if (sleep <= 0) sleep = 250;
+                    Thread.sleep(sleep);
                 }
             } finally {
                 runningTask.set(false);
-                if ((!queuedPriorityActions.isEmpty() || !queuedActions.isEmpty())
+                if (hasAnyQueuedWork()
                         && runningTask.compareAndSet(false, true)) {
                     try {
                         Locutus.imp().getExecutor().submit(this);
@@ -263,29 +394,101 @@ public class RateLimitUtil {
                 }
             }
         }
+    };
 
-        private QueuedAction pollNextAction() throws InterruptedException {
-            while (true) {
-                if (queuedPriorityActions.isEmpty() && queuedActions.isEmpty()) {
-                    return null;
-                }
+    private static boolean hasAnyQueuedWork() {
+        return hasQueuedActions() || hasQueuedReplaceableActions();
+    }
 
-                if (!shouldPause(true)) {
-                    QueuedAction priority = queuedPriorityActions.poll();
-                    if (priority != null) return priority;
-                }
-
-                if (!shouldPause(false)) {
-                    QueuedAction normal = queuedActions.poll();
-                    if (normal != null) return normal;
-                }
-
-                long sleep = Math.min(globalResetDelayMs() + 50, 5000);
-                if (sleep <= 0) sleep = 250;
-                Thread.sleep(sleep);
+    private static boolean hasQueuedActions() {
+        for (ConcurrentLinkedQueue<QueuedAction> queue : queuedActions.values()) {
+            if (!queue.isEmpty()) {
+                return true;
             }
         }
-    };
+        return false;
+    }
+
+    private static boolean hasQueuedReplaceableActions() {
+        if (!replaceableActions.isEmpty()) {
+            return true;
+        }
+        for (ConcurrentLinkedQueue<String> queue : queuedReplaceableKeys.values()) {
+            if (!queue.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int totalQueuedActionCount() {
+        int count = 0;
+        for (ConcurrentLinkedQueue<QueuedAction> queue : queuedActions.values()) {
+            count += queue.size();
+        }
+        return count + replaceableActions.size();
+    }
+
+    private static QueuedAction pollNextQueuedAction() {
+        for (DeferredPriority priority : DEFERRED_PRIORITY_ORDER) {
+            if (shouldPause(priority)) {
+                continue;
+            }
+            QueuedAction queued = queuedActions.get(priority).poll();
+            if (queued != null) {
+                return queued;
+            }
+        }
+        return null;
+    }
+
+    private static Map.Entry<String, ReplaceableAction> pollNextReplaceableAction() {
+        for (DeferredPriority priority : DEFERRED_PRIORITY_ORDER) {
+            if (shouldPause(priority)) {
+                continue;
+            }
+            ConcurrentLinkedQueue<String> queue = queuedReplaceableKeys.get(priority);
+            while (true) {
+                String key = queue.poll();
+                if (key == null) {
+                    break;
+                }
+                ReplaceableAction action = replaceableActions.remove(key);
+                if (action != null) {
+                    return Map.entry(key, action);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void runReplaceableAction(String key, ReplaceableAction action) {
+        CompletableFuture<?> submitted;
+        try {
+            submitted = action.supplier().get();
+        } catch (Throwable e) {
+            completeReplaceableFutures(action, null, e);
+            AlertUtil.error("Error with replaceable queued action: " + key, e);
+            return;
+        }
+
+        submitted.whenComplete((value, error) -> {
+            completeReplaceableFutures(action, value, error);
+            if (error != null) {
+                AlertUtil.error("Error with replaceable queued action: " + key, error);
+            }
+        });
+    }
+
+    private static void completeReplaceableFutures(ReplaceableAction action, Object value, Throwable error) {
+        for (CompletableFuture<Object> future : action.futures()) {
+            if (error != null) {
+                future.completeExceptionally(error);
+            } else {
+                future.complete(value);
+            }
+        }
+    }
 
     private static void startQueueWorkerIfNeeded() {
         if (!runningTask.compareAndSet(false, true)) return;
@@ -299,12 +502,18 @@ public class RateLimitUtil {
     }
 
     private static void failQueuedActions(Throwable e) {
-        QueuedAction q;
-        while ((q = queuedPriorityActions.poll()) != null) {
-            q.future().completeExceptionally(e);
+        for (ConcurrentLinkedQueue<QueuedAction> queue : queuedActions.values()) {
+            QueuedAction q;
+            while ((q = queue.poll()) != null) {
+                q.future().completeExceptionally(e);
+            }
         }
-        while ((q = queuedActions.poll()) != null) {
-            q.future().completeExceptionally(e);
+        for (ReplaceableAction action : replaceableActions.values()) {
+            completeReplaceableFutures(action, null, e);
+        }
+        replaceableActions.clear();
+        for (ConcurrentLinkedQueue<String> queue : queuedReplaceableKeys.values()) {
+            queue.clear();
         }
         AlertUtil.error("Failed to run rate-limit queue worker", e);
     }
@@ -318,15 +527,54 @@ public class RateLimitUtil {
 // produce a single message from multiple applies.
 // -------------------------------------------------------------------------
 
+    private record InlineSource(SendPolicy sendPolicy, DeferredPriority deferredPriority) implements RateLimitedSource {}
+
     public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, SendPolicy policy) {
         if (message.isBlank()) return CompletableFuture.completedFuture(null);
         DiscordChannelIO io = new DiscordChannelIO(channel);
-        return queueMessage(io, msg -> { msg.append(message).append("\n"); return true; }, policy);
+        return queueMessage(io, msg -> {
+            msg.append(message).append("\n");
+            return true;
+        }, new InlineSource(policy, DeferredPriority.NORMAL));
+    }
+
+    public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, RateLimitedSource source) {
+        if (message.isBlank()) return CompletableFuture.completedFuture(null);
+        DiscordChannelIO io = new DiscordChannelIO(channel);
+        return queueMessage(io, msg -> {
+            msg.append(message).append("\n");
+            return true;
+        }, source);
+    }
+
+    @Deprecated
+    public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, boolean condense) {
+        return queueMessage(channel, message, condense ? SendPolicy.CONDENSE : SendPolicy.DEFER);
+    }
+
+    @Deprecated
+    public static CompletableFuture<Void> queueMessage(MessageChannel channel, String message, boolean condense, Integer bufferSeconds) {
+        return queueMessage(channel, message, condense);
+    }
+
+    @Deprecated
+    public static CompletableFuture<Void> queueMessage(IMessageIO io,
+                                                       Function<IMessageBuilder, Boolean> apply,
+                                                       boolean condense,
+                                                       Integer bufferSeconds) {
+        return queueMessage(io, apply, new InlineSource(condense ? SendPolicy.CONDENSE : SendPolicy.DEFER, DeferredPriority.NORMAL));
     }
 
     public static CompletableFuture<Void> queueMessage(IMessageIO io,
                                                        Function<IMessageBuilder, Boolean> apply,
                                                        SendPolicy policy) {
+        return queueMessage(io, apply, new InlineSource(policy, DeferredPriority.NORMAL));
+    }
+
+    public static CompletableFuture<Void> queueMessage(IMessageIO io,
+                                                       Function<IMessageBuilder, Boolean> apply,
+                                                       RateLimitedSource source) {
+        SendPolicy policy = source.sendPolicy();
 // WebIO is synchronous and has no Discord limits.
         if (io instanceof WebIO) {
             try {
@@ -348,18 +596,20 @@ public class RateLimitUtil {
         return switch (policy) {
             case IMMEDIATE -> sendNow(io, apply);
             case DROP -> {
-                if (isCloseToLimit()) yield CompletableFuture.completedFuture(null);
+                if (isCloseToLimit(source)) yield CompletableFuture.completedFuture(null);
                 yield sendNow(io, apply);
             }
-            case DEFER -> deferSend(io, apply);
-            case CONDENSE -> condenseAndSend(io, apply);
+            case DEFER -> deferSend(io, apply, source.deferredPriority());
+            case CONDENSE -> condenseAndSend(io, apply, source.deferredPriority());
         };
     }
 
-    private static CompletableFuture<Void> deferSend(IMessageIO io, Function<IMessageBuilder, Boolean> apply) {
+    private static CompletableFuture<Void> deferSend(IMessageIO io,
+                                                     Function<IMessageBuilder, Boolean> apply,
+                                                     DeferredPriority priority) {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
-        queueWhenFree(() ->
+        queueWhenFree(priority, () ->
                 sendNow(io, apply).whenComplete((v, e) -> {
                     if (e != null) future.completeExceptionally(e);
                     else future.complete(null);
@@ -387,18 +637,24 @@ public class RateLimitUtil {
 // CONDENSE implementation — batches per-channel, flushes when bucket resets
 // -------------------------------------------------------------------------
 
-    private record PendingMessage(Function<IMessageBuilder, Boolean> apply, CompletableFuture<Void> future) {}
+    private record PendingMessage(Function<IMessageBuilder, Boolean> apply,
+                                  CompletableFuture<Void> future,
+                                  DeferredPriority priority) {}
 
     private static final Map<Long, List<PendingMessage>> messageQueue = new ConcurrentHashMap<>();
     private static final Map<Long, Long> messageQueueLastSent = new ConcurrentHashMap<>();
     private static final Object messageQueueLock = new Object();
 
     private static CompletableFuture<Void> condenseAndSend(IMessageIO io,
-                                                           Function<IMessageBuilder, Boolean> apply) {
+                                                           Function<IMessageBuilder, Boolean> apply,
+                                                           DeferredPriority priority) {
         long channelId = io.getIdLong();
 
 // If the channel has capacity (or is unknown), no need to batch — send now.
-        if (channelId <= 0 || InstrumentedRateLimiter.channelHasCapacity(channelId)) {
+        if (channelId <= 0) {
+            return deferSend(io, apply, priority);
+        }
+        if (InstrumentedRateLimiter.channelHasCapacity(channelId) && !shouldPause(priority)) {
             return sendNow(io, apply);
         }
 
@@ -407,7 +663,7 @@ public class RateLimitUtil {
         int bufferSeconds = (int) Math.min(65, (resetDelay + 200) / 1000L + 1);
 
         CompletableFuture<Void> future = new CompletableFuture<>();
-        PendingMessage pending = new PendingMessage(apply, future);
+        PendingMessage pending = new PendingMessage(apply, future, priority);
 
         synchronized (messageQueueLock) {
             messageQueue.computeIfAbsent(channelId, f -> new ArrayList<>()).add(pending);
@@ -441,21 +697,29 @@ public class RateLimitUtil {
                     }
 
                     List<PendingMessage> batch = toSend;
-                    sendNow(io, msg -> {
-                        boolean modified = false;
-                        for (int i = 0; i < batch.size(); i++) {
-                            if (batch.get(i).apply().apply(msg)) {
-                                modified = true;
-                                if (i < batch.size() - 1) msg.append("\n");
-                            }
-                        }
-                        return modified;
-                    }).whenComplete((v, e) -> {
-                        for (PendingMessage item : batch) {
-                            if (e != null) item.future().completeExceptionally(e);
-                            else item.future().complete(null);
-                        }
-                    });
+                    DeferredPriority batchPriority = batch.stream()
+                            .map(PendingMessage::priority)
+                            .reduce(DeferredPriority.LOW, DeferredPriority::highest);
+
+                    queueWhenFree(batchPriority, () ->
+                            sendNow(io, msg -> {
+                                boolean modified = false;
+                                for (int i = 0; i < batch.size(); i++) {
+                                    if (batch.get(i).apply().apply(msg)) {
+                                        modified = true;
+                                        if (i < batch.size() - 1) {
+                                            IMessageBuilder ignored = msg.append("\n");
+                                        }
+                                    }
+                                }
+                                return modified;
+                            }).whenComplete((v, e) -> {
+                                for (PendingMessage item : batch) {
+                                    if (e != null) item.future().completeExceptionally(e);
+                                    else item.future().complete(null);
+                                }
+                            })
+                    );
                 }
             }, bufferSeconds, TimeUnit.SECONDS);
         } catch (Throwable e) {
@@ -519,7 +783,7 @@ public class RateLimitUtil {
                 inst != null && inst.isGloballyLimited(),
                 inst != null ? inst.globalResetAtMs() : 0L,
                 InstrumentedRateLimiter.getInflightCount(),
-                queuedPriorityActions.size() + queuedActions.size(),
+                totalQueuedActionCount(),
                 runningTask.get(),
                 channelCount,
                 msgCount

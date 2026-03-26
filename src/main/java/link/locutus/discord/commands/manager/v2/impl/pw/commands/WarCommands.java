@@ -4956,8 +4956,12 @@ public class WarCommands {
     @RolePermission(value = Roles.MEMBER)
     @Command(desc = "Update the pin in the current war room channel", viewable = true)
     public String warpin(@Me WarRoom warRoom) {
-        IMessageBuilder message = warRoom.updatePin(true);
-        return "Updated: " + DiscordUtil.getChannelUrl(warRoom.channel) + "/" + message.getId();
+        Long messageId = WarRoomUtil.getPinnedMessageId(warRoom.channel.getTopic());
+        warRoom.updatePin(true);
+        if (messageId != null) {
+            return "Queued pin refresh: " + DiscordUtil.getChannelUrl(warRoom.channel) + "/" + messageId;
+        }
+        return "Queued initial pin refresh for " + warRoom.channel.getAsMention();
     }
 
     @RolePermission(value = Roles.MILCOM)

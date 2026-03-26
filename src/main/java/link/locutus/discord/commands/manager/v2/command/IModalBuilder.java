@@ -144,7 +144,7 @@ public interface IModalBuilder {
     CompletableFuture<IModalBuilder> send();
 
     default CompletableFuture<IModalBuilder> sendIfFree() {
-        if (RateLimitUtil.getCurrentUsed() < RateLimitUtil.getLimitPerMinute()) {
+        if (!RateLimitUtil.isCloseToLimit(CommandMessagePriority.STATUS)) {
             return send();
         }
         return null;

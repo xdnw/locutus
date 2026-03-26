@@ -4,9 +4,9 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -24,20 +24,29 @@ import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.war.WarCard;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.PermissionOverride;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
+import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-
-import static link.locutus.discord.util.discord.DiscordUtil.setSymbol;
 
 public class WarRoomUtil {
     public static final Permission[] CATEGORY_PERMISSIONS = new Permission[]{
@@ -46,7 +55,7 @@ public class WarRoomUtil {
             Permission.MANAGE_PERMISSIONS
     };
 
-    public static StandardGuildMessageChannel createChannel2(WarCategory warCategory2, WarRoom room, DBNation target, boolean create, boolean planning) {
+    public static StandardGuildMessageChannel createChannel2(WarCategory warCategory2, WarRoom room, DBNation target, boolean create, boolean planning, WarRoomRateLimit source) {
         String catPrefix = warCategory2.getCatPrefix();
         GuildDB db = warCategory2.getGuildDb();
         Guild guild = warCategory2.getGuild();
@@ -98,23 +107,26 @@ public class WarRoomUtil {
                     String name = catPrefix + "-" + i;
                     List<Category> existingCat = guild.getCategoriesByName(name, true);
                     if (existingCat.isEmpty()) {
-                        useCat = RateLimitUtil.complete(guild.createCategory(name));
-                        PermissionOverrideAction upsert = useCat.upsertPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID));
-                        for (Permission perm : CATEGORY_PERMISSIONS) {
-                            upsert = upsert.setAllowed(perm);
+                        useCat = RateLimitUtil.complete(guild.createCategory(name), source.deferredPriority());
+                        Member botMember = guild.getMemberById(Settings.INSTANCE.APPLICATION_ID);
+                        if (botMember != null) {
+                            PermissionOverrideAction upsert = useCat.upsertPermissionOverride(botMember);
+                            for (Permission perm : CATEGORY_PERMISSIONS) {
+                                upsert = upsert.setAllowed(perm);
+                            }
+                            RateLimitUtil.queue(upsert, source.deferredPriority());
                         }
-                        RateLimitUtil.queue(upsert);
-                        RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
+                        RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL), source.deferredPriority());
 
                         List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
 
                         for (Role role : Roles.MILCOM.toRoles(db)) {
                             futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                    .setAllowed(Permission.VIEW_CHANNEL)));
+                                    .setAllowed(Permission.VIEW_CHANNEL), source.deferredPriority()));
                         }
                         for (Role role : Roles.MILCOM_NO_PINGS.toRoles(db)) {
                             futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                    .setAllowed(Permission.VIEW_CHANNEL)));
+                                    .setAllowed(Permission.VIEW_CHANNEL), source.deferredPriority()));
                         }
                         if (!futures.isEmpty()) {
                             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
@@ -125,14 +137,14 @@ public class WarRoomUtil {
             }
             String name = target.getNation() + "-" + target.getNation_id();
             if (planning) name = "\uD83D\uDCC5" + name;
-            foundChannel = RateLimitUtil.complete(useCat.createTextChannel(name));
+            foundChannel = RateLimitUtil.complete(useCat.createTextChannel(name), source.deferredPriority());
 
-            warCategory2.processChannelCreation(room, foundChannel, planning);
+            warCategory2.processChannelCreation(room, foundChannel, planning, source);
         }
         return foundChannel;
     }
 
-    public static Message getMessage(StandardGuildMessageChannel channel, String topic) {
+    public static Long getPinnedMessageId(String topic) {
         if (topic == null || topic.isEmpty()) return null;
         try {
             topic = topic.split(" ")[0];
@@ -140,84 +152,136 @@ public class WarRoomUtil {
                 String[] split = topic.split("/");
                 topic = split[split.length - 1];
             }
-            return RateLimitUtil.complete(channel.retrieveMessageById(topic));
+            return Long.parseLong(topic);
         } catch (Exception e) {
             return null;
         }
     }
 
-    public static IMessageBuilder updatePin(StandardGuildMessageChannel channel, DBNation target, Set<DBNation> participants, boolean update) {
+    public static CompletableFuture<Long> updatePin(StandardGuildMessageChannel channel, DBNation target, Set<DBNation> participants, boolean update) {
         if (channel == null || channel.getGuild().getTextChannelById(channel.getIdLong()) == null) {
-            return null;
+            return CompletableFuture.completedFuture(null);
         }
 
-        String topic = channel.getTopic();
-
-        boolean updatePin = false;
-        DiscordChannelIO io = new DiscordChannelIO(channel, () -> getMessage(channel, topic));
-        IMessageBuilder msg = io.getMessage();
-        if (msg == null) {
-            msg = io.create();
-            updatePin = true;
-            update = true;
+        Long existingMessageId = getPinnedMessageId(channel.getTopic());
+        if (existingMessageId != null && !update) {
+            return CompletableFuture.completedFuture(existingMessageId);
         }
 
-        if (update) {
-            StringBuilder body = new StringBuilder();
+        DiscordMessageBuilder msg = (DiscordMessageBuilder) new DiscordChannelIO(channel).create();
+        buildPinMessage(msg, target, participants);
 
-            body.append(target.getNationUrlMarkup())
-                    .append(" | ").append(target.getAllianceUrlMarkup());
-            body.append(target.toMarkdown(true, true, false, false, true, false));
-            body.append("\n");
-
-            Set<DBWar> wars = target.getActiveWars();
-            for (DBWar war : wars) {
-                boolean defensive = war.getAttacker_id() == target.getNation_id();
-                DBNation participant = Locutus.imp().getNationDB().getNationById(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
-
-                if (participant != null && (participants.contains(participant) || participant.active_m() < 2880)) {
-                    String typeStr = defensive ? "\uD83D\uDEE1 " : "\uD83D\uDD2A ";
-                    body.append(typeStr).append("`" + participant.getNation() + "`")
-                            .append(" | ").append(participant.getAllianceName());
-
-                    WarCard card = new WarCard(war, false);
-                    if (card.blockaded == participant.getNation_id()) body.append("\u26F5");
-                    if (card.airSuperiority != 0 && card.airSuperiority == participant.getNation_id())
-                        body.append("\u2708");
-                    if (card.groundControl != 0 && card.groundControl == participant.getNation_id())
-                        body.append("\uD83D\uDC82");
-
-                    body.append(participant.toMarkdown(true, false, false, true, false));
+        if (existingMessageId == null) {
+            CompletableFuture<Long> future = new CompletableFuture<>();
+            msg.send().whenComplete((sent, error) -> {
+                if (error != null) {
+                    future.completeExceptionally(error);
+                    return;
                 }
-            }
-            body.append("\n");
-            body.append("Note: These figures are only updated every 5m");
-
-            EmbedShrink builder = new EmbedShrink();
-
-            builder.title("**Enemy:** ");
-            builder.setDescription(body.toString().replaceAll(" \\| ", "|"));
-
-
-            msg.clearEmbeds();
-            msg.clearButtons();
-            msg.embed(builder);
-            msg.commandButton(CommandBehavior.UNPRESS, CM.war.room.pin.cmd, "Update");
-            try {
-                CompletableFuture<IMessageBuilder> sent = msg.send();
-                if (sent != null) msg = sent.get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
+                long messageId = sent.getId();
+                queuePinnedMessageMetadata(channel, messageId, WarRoomRateLimit.INITIAL_PIN);
+                future.complete(messageId);
+            });
+            return future;
         }
 
-        if (updatePin) {
-            String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + msg.getId() + " " + CM.war.room.pin.cmd.toSlashMention();
-            RateLimitUtil.queue(channel.getManager().setTopic(newTopic));
-            RateLimitUtil.queue(channel.pinMessageById(msg.getId()));
-        }
+        long messageId = existingMessageId;
+        MessageEditData editData = msg.buildEdit(true);
+        String key = messageEditKey(channel, messageId);
+        return RateLimitUtil.queueLatest(key, WarRoomRateLimit.PIN_REFRESH.deferredPriority(),
+                () -> RateLimitUtil.queue(channel.editMessageById(messageId, editData), WarRoomRateLimit.PIN_REFRESH.deferredPriority()))
+                .thenApply(Message::getIdLong);
+    }
 
-        return msg;
+    private static void buildPinMessage(DiscordMessageBuilder msg, DBNation target, Set<DBNation> participants) {
+        StringBuilder body = new StringBuilder();
+
+        body.append(target.getNationUrlMarkup())
+                .append(" | ").append(target.getAllianceUrlMarkup());
+        body.append(target.toMarkdown(true, true, false, false, true, false));
+        body.append("\n");
+
+        Set<DBWar> wars = target.getActiveWars();
+        for (DBWar war : wars) {
+            boolean defensive = war.getAttacker_id() == target.getNation_id();
+            DBNation participant = Locutus.imp().getNationDB().getNationById(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
+
+            if (participant != null && (participants.contains(participant) || participant.active_m() < 2880)) {
+                String typeStr = defensive ? "\uD83D\uDEE1 " : "\uD83D\uDD2A ";
+                body.append(typeStr).append('`').append(participant.getNation()).append('`')
+                        .append(" | ").append(participant.getAllianceName());
+
+                WarCard card = new WarCard(war, false);
+                if (card.blockaded == participant.getNation_id()) body.append("\u26F5");
+                if (card.airSuperiority != 0 && card.airSuperiority == participant.getNation_id()) {
+                    body.append("\u2708");
+                }
+                if (card.groundControl != 0 && card.groundControl == participant.getNation_id()) {
+                    body.append("\uD83D\uDC82");
+                }
+
+                body.append(participant.toMarkdown(true, false, false, true, false));
+            }
+        }
+        body.append("\n");
+        body.append("Note: These figures are only updated every 5m");
+
+        EmbedShrink builder = new EmbedShrink();
+        builder.title("**Enemy:** ");
+        builder.setDescription(body.toString().replaceAll(" \\| ", "|"));
+
+        msg.clearEmbeds()
+                .clearButtons()
+                .embed(builder)
+                .commandButton(CommandBehavior.UNPRESS, CM.war.room.pin.cmd, "Update");
+    }
+
+    private static void queuePinnedMessageMetadata(StandardGuildMessageChannel channel, long messageId, WarRoomRateLimit source) {
+        String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + messageId + " " + CM.war.room.pin.cmd.toSlashMention();
+        RateLimitUtil.queueLatest(channelTopicKey(channel), source.deferredPriority(),
+                () -> RateLimitUtil.queue(channel.getManager().setTopic(newTopic), source.deferredPriority()));
+        RateLimitUtil.queueLatest(channelPinKey(channel), source.deferredPriority(),
+                () -> RateLimitUtil.queue(channel.pinMessageById(messageId), source.deferredPriority()));
+    }
+
+    public static boolean queueRoomStateSync(WarRoom room, WarRoomRateLimit source) {
+        StandardGuildMessageChannel channel = room.channel;
+        if (channel == null) {
+            return false;
+        }
+        String expectedName = buildRoomChannelName(room);
+        if (expectedName.equals(channel.getName())) {
+            return false;
+        }
+        RateLimitUtil.queueLatest(channelNameKey(channel), source.deferredPriority(),
+                () -> RateLimitUtil.queue(channel.getManager().setName(expectedName), source.deferredPriority()));
+        return true;
+    }
+
+    public static String buildRoomChannelName(WarRoom room) {
+        StringBuilder name = new StringBuilder();
+        if (room.planning) name.append("\uD83D\uDCC5");
+        if (room.enemyGc) name.append("\uD83D\uDC82");
+        if (room.enemyAc) name.append("\u2708");
+        if (room.enemyBlockade) name.append("\u26F5");
+        name.append(room.target.getNation()).append('-').append(room.target.getNation_id());
+        return name.toString();
+    }
+
+    private static String messageEditKey(StandardGuildMessageChannel channel, long messageId) {
+        return "message-edit:" + channel.getIdLong() + ':' + messageId;
+    }
+
+    private static String channelTopicKey(StandardGuildMessageChannel channel) {
+        return "channel-topic:" + channel.getIdLong();
+    }
+
+    private static String channelPinKey(StandardGuildMessageChannel channel) {
+        return "channel-pin:" + channel.getIdLong();
+    }
+
+    private static String channelNameKey(StandardGuildMessageChannel channel) {
+        return "channel-name:" + channel.getIdLong();
     }
 
     public static void handleRoomCreation(WarRoom room, User author, GuildDB db, Consumer<String> errorOutput, boolean ping, boolean addMember, boolean addMessage, DBNation target, Collection<DBNation> attackers) {
@@ -230,8 +294,8 @@ public class WarRoomUtil {
         String info = "> A counter is when an alliance declares a war on a nation for attacking one of its members/applicants. We usually only order counters for unprovoked attacks on members.\n" +
                 "About Counters: https://docs.google.com/document/d/1eJfgNRk6L72G6N3MT01xjfn0CzQtYibwnTg9ARFknRg";
 
-        if (addMessage && channel != null) {
-            RateLimitUtil.queue(channel.sendMessage(info));
+        if (addMessage) {
+            RateLimitUtil.queueMessage(channel, info, WarRoomRateLimit.ROOM_INFO);
         }
 
         for (DBNation attacker : attackers) {
@@ -258,7 +322,7 @@ public class WarRoomUtil {
                 }
 
                 if (!contains) {
-                    RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+                    RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), WarRoomRateLimit.MANUAL_ROOM_CREATE.deferredPriority());
                     if (ping) {
                         String msg = author.getName() + " added " + user.getAsMention();
 
@@ -299,7 +363,7 @@ public class WarRoomUtil {
                             }
                         }
 
-                        RateLimitUtil.queue(channel.sendMessage(msg + "\n- <" + declareUrl + (">")));
+                        RateLimitUtil.queueMessage(channel, msg + "\n- <" + declareUrl + '>', WarRoomRateLimit.ROOM_INFO);
                     }
                 }
             }
@@ -333,6 +397,7 @@ public class WarRoomUtil {
         }
 
         Set<WarRoom> result = null;
+        if (warCategories == null) return null;
         for (WarCategory warcat : warCategories) {
             if (warcat != null) {
                 WarRoom channel = warcat.createWarRoom(target, false, false, false, reason);
@@ -405,6 +470,6 @@ public class WarRoomUtil {
     }
 
     public static boolean setPlanning(StandardGuildMessageChannel channel, boolean value) {
-        return setSymbol(channel, "\uD83D\uDCC5", value);
+        return DiscordUtil.setSymbol(channel, "\uD83D\uDCC5", value);
     }
 }

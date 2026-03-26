@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -11,15 +10,19 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.PermissionOverride;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static link.locutus.discord.util.discord.DiscordUtil.setSymbol;
 
 public class WarRoom {
     protected final WarCategory warCategory;
@@ -42,7 +45,7 @@ public class WarRoom {
         MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
         if (logChan != null) {
             String msg = "Creating war room for " + target.getMarkdownUrl() + " due to " + reason.name() + ": " + reason.getReason();
-            RateLimitUtil.queueMessage(logChan, msg, true, 60);
+            RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
         }
     }
 
@@ -51,7 +54,7 @@ public class WarRoom {
             MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
             if (logChan != null) {
                 String msg = "Adding channel " + channel.getAsMention() + " to " + target.getMarkdownUrl() + " due to " + reason.name() + ": " + reason.getReason();
-                RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
             }
 
             StandardGuildMessageChannel oldChannel = this.channel;
@@ -63,10 +66,10 @@ public class WarRoom {
             if (oldChannelId == 0 && channel != null && updateUsers) {
                 if (!channel.canTalk()) {
                     if (logChan != null) {
-                        RateLimitUtil.queueMessage(logChan, "Cannot talk in channel: " + channel.getAsMention(), true, 60);
+                        RateLimitUtil.queueMessage(logChan, "Cannot talk in channel: " + channel.getAsMention(), WarRoomRateLimit.ROOM_LOG);
                     }
                 } else {
-                    updatePin(true);
+                    updatePin(false);
                     addInitialParticipants(isPlanning());
                 }
             }
@@ -74,7 +77,7 @@ public class WarRoom {
             if (oldChannel != null) {
                 if (logChan != null) {
                     String msg = "Deleting old channel " + oldChannel.getAsMention() + " for " + target.getMarkdownUrl();
-                    RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                    RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
                 }
                 DiscordUtil.deleteChannelSafe(oldChannel);
                 warCategory.getGuildDb().deleteWarRoomChannelCache(Set.of(oldChannel.getIdLong()));
@@ -109,14 +112,14 @@ public class WarRoom {
         return "https://discord.com/channels/" + warCategory.getGuild().getIdLong() + "/" + channel.getIdLong();
     }
 
-    public IMessageBuilder updatePin(boolean update) {
+    public CompletableFuture<Long> updatePin(boolean update) {
         return WarRoomUtil.updatePin(channel, target, participants, update);
     }
 
     public boolean setGC(boolean value) {
         if (value == enemyGc) return false;
         enemyGc = value;
-        return setSymbol(channel,"\uD83D\uDC82", value);
+        return WarRoomUtil.queueRoomStateSync(this, WarRoomRateLimit.STATUS_UPDATE);
     }
 
     public boolean isGC() {
@@ -127,7 +130,7 @@ public class WarRoom {
     public boolean setAC(boolean value) {
         if (value == enemyAc) return false;
         enemyAc = value;
-        return setSymbol(channel, "\u2708", value);
+        return WarRoomUtil.queueRoomStateSync(this, WarRoomRateLimit.STATUS_UPDATE);
     }
 
     public boolean isAC() {
@@ -138,7 +141,7 @@ public class WarRoom {
     public boolean setBlockade(boolean value) {
         if (enemyBlockade == value) return false;
         enemyBlockade = value;
-        return setSymbol(channel, "\u26F5", value);
+        return WarRoomUtil.queueRoomStateSync(this, WarRoomRateLimit.STATUS_UPDATE);
     }
 
     public boolean isBlockade() {
@@ -149,7 +152,7 @@ public class WarRoom {
     public boolean setPlanning(boolean value) {
         if (value == planning) return false;
         planning = value;
-        return WarRoomUtil.setPlanning(channel, value);
+        return WarRoomUtil.queueRoomStateSync(this, WarRoomRateLimit.STATUS_UPDATE);
     }
 
     public boolean isPlanning() {
@@ -201,7 +204,7 @@ public class WarRoom {
             MessageChannel logChan = GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
             if (logChan != null) {
                 String msg = "Deleting channel " + channel.getAsMention() + " for " + target.getMarkdownUrl() + " due to " + reason;
-                RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
             }
             DiscordUtil.deleteChannelSafe(channel);
             channel = null;

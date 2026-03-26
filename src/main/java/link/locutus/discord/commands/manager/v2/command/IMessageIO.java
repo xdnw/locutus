@@ -27,7 +27,7 @@ public interface IMessageIO {
     }
 
     default @Nullable CompletableFuture<IMessageBuilder> sendIfFree(String message) {
-        if (!RateLimitUtil.isCloseToLimit(true)) {
+        if (!RateLimitUtil.isCloseToLimit(CommandMessagePriority.STATUS)) {
             return send(message);
         }
         return null;
@@ -78,7 +78,7 @@ public interface IMessageIO {
 
 
     default IMessageBuilder updateOptionally(CompletableFuture<IMessageBuilder> msgFuture, String message) {
-        if (msgFuture == null || RateLimitUtil.isCloseToLimit(true)) return null;
+        if (msgFuture == null || RateLimitUtil.isCloseToLimit(CommandMessagePriority.STATUS)) return null;
         IMessageBuilder msg = msgFuture.getNow(null);
         if (msg != null && msg.getId() > 0) {
             msg.clear().append(message).sendIfFree();
@@ -87,7 +87,7 @@ public interface IMessageIO {
     }
 
     default void deleteOptionally(CompletableFuture<IMessageBuilder> msgFuture) {
-        if (msgFuture == null || RateLimitUtil.isCloseToLimit(true)) return;
+        if (msgFuture == null || RateLimitUtil.isCloseToLimit(CommandMessagePriority.STATUS)) return;
         IMessageBuilder msg = msgFuture.getNow(null);
         if (msg != null && msg.getId() > 0) {
             delete(msg.getId());

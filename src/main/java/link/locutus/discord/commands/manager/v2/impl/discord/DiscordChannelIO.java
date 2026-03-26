@@ -87,7 +87,9 @@ public class DiscordChannelIO implements IMessageIO {
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             if (builder.getId() > 0) {
-                CompletableFuture<Message> future = RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)));
+                String key = "message-edit:" + channel.getIdLong() + ":" + builder.getId();
+                CompletableFuture<Message> future = RateLimitUtil.queueLatest(key, link.locutus.discord.util.DeferredPriority.NORMAL,
+                        () -> RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)), link.locutus.discord.util.DeferredPriority.NORMAL));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
             if (discMsg.isEmpty()) return CompletableFuture.completedFuture(builder);
@@ -120,7 +122,9 @@ public class DiscordChannelIO implements IMessageIO {
     public IMessageIO update(IMessageBuilder builder, long id) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             MessageEditData message = discMsg.buildEdit(true);
-            RateLimitUtil.queue(channel.editMessageById(id, message));
+            String key = "message-edit:" + channel.getIdLong() + ":" + id;
+            RateLimitUtil.queueLatest(key, link.locutus.discord.util.DeferredPriority.NORMAL,
+                    () -> RateLimitUtil.queue(channel.editMessageById(id, message), link.locutus.discord.util.DeferredPriority.NORMAL));
             return this;
         } else {
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
