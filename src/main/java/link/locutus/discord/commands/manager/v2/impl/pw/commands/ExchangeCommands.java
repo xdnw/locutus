@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -52,7 +53,7 @@ public class ExchangeCommands {
         exchange.name = guild.getName();
 
         if (!force) {
-            io.create().confirmation("Create: " + symbol, "Create exchange: `" + symbol + "`", command).send();
+            io.create().confirmation("Create: " + symbol, "Create exchange: `" + symbol + "`", command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -79,13 +80,13 @@ public class ExchangeCommands {
     public String drop(@Me Guild guild, @Me IMessageIO io, @Me DBNation me, @Me JSONObject command, StockDB db, @Me Exchange exchange, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         if (!force) {
-            io.create().confirmation("Delete: " + exchange.symbol, exchange.toString(), command).send();
+            io.create().confirmation("Delete: " + exchange.symbol, exchange.toString(), command).send(CommandMessagePriority.RESULT);
             return null;
         }
         db.deleteExchange(exchange);
         TextChannel tc = exchange.getChannel();
         if (tc != null) {
-            RateLimitUtil.queue(tc.delete());
+            RateLimitUtil.queue(tc.delete(), CommandMessagePriority.RESULT);
         }
         return "Deleted exchange: " + exchange.symbol;
     }
@@ -96,7 +97,7 @@ public class ExchangeCommands {
         if (!force) {
             String title = "Confirm transfer: " + MathMan.format(amount) + "x" + resource.name;
             String body = "From `*" + exchange.getName() + "` to " + receiver.getUrlMarkup();
-            io.create().confirmation(title, body, command).send();
+            io.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
             return null;
         }
         // TODO
@@ -115,7 +116,7 @@ public class ExchangeCommands {
         if (!force) {
             String title = "Confirm transfer: " + MathMan.format(amount) + "x" + resource.name;
             String body = "From `*" + exchange.getName() + "` to " + receiver.getUrlMarkup();
-            io.create().confirmation(title, body, command).send();
+            io.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
             return null;
         }
         Map.Entry<Boolean, String> result = new NationOrExchange(me).give(me, receiver, resource, amount, false);
@@ -202,7 +203,7 @@ public class ExchangeCommands {
         if (!force) {
             String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAllianceName();
             String desc = "User: " + user.getAsMention() + "\nPress to confirm";
-            io.create().confirmation(title, desc, command).send();
+            io.create().confirmation(title, desc, command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -221,7 +222,7 @@ public class ExchangeCommands {
         }
         {
             boolean hasInvite = false;
-            List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites());
+            List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites(), CommandMessagePriority.RESULT);
             for (Invite invite : invites) {
                 if (invite.getMaxUses() == 0) {
                     hasInvite = true;
@@ -229,7 +230,7 @@ public class ExchangeCommands {
                 }
             }
             if (!hasInvite) {
-                Invite invite = RateLimitUtil.complete((channel).createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0));
+                Invite invite = RateLimitUtil.complete((channel).createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0), CommandMessagePriority.RESULT);
                 if (invite == null) {
                     return "Could not create a invite.";
                 }
@@ -342,7 +343,7 @@ public class ExchangeCommands {
         Role role = roles.get(rank);
         if (role == null)
             return "No role found for: `" + rank + "`. Valid roles are: " + StringMan.getString(roles.keySet());
-        RateLimitUtil.complete(role.getManager().setColor(color));
+        RateLimitUtil.complete(role.getManager().setColor(color), CommandMessagePriority.RESULT);
         return "Set " + role.getName() + " to " + color;
 
     }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -122,7 +123,7 @@ public class ChannelCommand extends Command {
                 }
             }
 
-            createdChannel = updateChannel(RateLimitUtil.complete(freeCategory.createTextChannel(channelName)), member, roles);
+            createdChannel = updateChannel(RateLimitUtil.complete(freeCategory.createTextChannel(channelName)), member, roles, CommandMessagePriority.RESULT);
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
@@ -131,7 +132,7 @@ public class ChannelCommand extends Command {
                 } else {
                     String copyPasta = Locutus.imp().getGuildDB(guild).getCopyPasta(arg, true);
                     if (copyPasta != null) {
-                        RateLimitUtil.queue(createdChannel.sendMessage(copyPasta));
+                        RateLimitUtil.queue(createdChannel.sendMessage(copyPasta), CommandMessagePriority.RESULT);
                     }
                 }
             }
@@ -144,11 +145,11 @@ public class ChannelCommand extends Command {
                     }
                 }
                 if (pings.length() > 0) {
-                    RateLimitUtil.queue(createdChannel.sendMessage(pings));
+                    RateLimitUtil.queue(createdChannel.sendMessage(pings), CommandMessagePriority.RESULT);
                 }
             }
             if (flags.contains('a')) {
-                RateLimitUtil.queue(createdChannel.sendMessage(author.getAsMention()));
+                RateLimitUtil.queue(createdChannel.sendMessage(author.getAsMention()), CommandMessagePriority.RESULT);
             }
         }
 
@@ -158,12 +159,12 @@ public class ChannelCommand extends Command {
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
         RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
                 .deny(Permission.VIEW_CHANNEL));
-        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
 
         for (Roles dept : depts) {
             Role role = dept.toRole2(channel.getGuild());
             if (role != null) {
-                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
+                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
             }
         }
         return channel;

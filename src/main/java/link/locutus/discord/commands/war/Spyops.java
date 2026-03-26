@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -79,12 +80,12 @@ public class Spyops extends Command {
         DBNation finalNation = nationStr == null ? me : PWBindings.parseNation(runtimeServices(), null, guild, nationStr, null);
 
         if (flags.contains('d')) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()));
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), CommandMessagePriority.RESULT));
         } else {
             channel = channel;
         }
 
-        CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait... "));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait... ", CommandMessagePriority.RESULT);
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
         try {
@@ -94,7 +95,7 @@ public class Spyops extends Command {
             if (flags.contains('r')) {
                 return body;
             } else {
-                channel.create().embed(title, body).send();
+                channel.create().embed(title, body).send(CommandMessagePriority.RESULT);
             }
 
             if (!flags.contains('f')) {
@@ -102,7 +103,7 @@ public class Spyops extends Command {
                 if (!flags.contains('s')) {
                     response.append(". Add `-s` to remove enemies who are already spy slotted");
                 }
-                channel.sendMessage(response.toString());
+                channel.sendMessage(response.toString(), CommandMessagePriority.RESULT);
                 return null;
             }
             return null;
@@ -110,7 +111,7 @@ public class Spyops extends Command {
             try {
                 IMessageBuilder msg = msgFuture.get();
                 if (msg != null && msg.getId() > 0) {
-                    channel.delete(msg.getId());
+                    channel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
                 }
             } catch (InterruptedException | ExecutionException e) {
                 e.printStackTrace();

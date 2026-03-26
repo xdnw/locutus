@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -93,7 +94,7 @@ public class PlayerSettingCommands {
             }
         }
 
-        io.create().append("## " + title + "\n" + message).send();
+        io.create().append("## " + title + "\n" + message).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -139,7 +140,7 @@ public class PlayerSettingCommands {
                 role = roles.get(0);
                 db.addRole(lcRole, role, 0);
             } else {
-                role = RateLimitUtil.complete(guild.createRole().setName(lcRole.name()));
+                role = RateLimitUtil.complete(guild.createRole().setName(lcRole.name()), CommandMessagePriority.RESULT);
                 db.addRole(lcRole, role, 0);
             }
         }
@@ -150,7 +151,7 @@ public class PlayerSettingCommands {
             if (forceOptOut == Boolean.TRUE) {
                 return "You are already opted out of " + lcRole.name() + " alerts";
             }
-            RateLimitUtil.complete(guild.removeRoleFromMember(member, role));
+            RateLimitUtil.complete(guild.removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
             String msg;
             if (!optInDiscRoles.isEmpty() && !hasAnyOptIn) {
                 msg = "Your opt out role has been removed (@" + role.getName() + " removed) however you lack a role required to opt back in (@" + Arrays.stream(optInRoles).map(Roles::name).collect(Collectors.joining(", @")) + ")";
@@ -166,7 +167,7 @@ public class PlayerSettingCommands {
             }
             return "You are already opted in to " + lcRole.name() + " alerts";
         }
-        RateLimitUtil.complete(guild.addRoleToMember(member, role));
+        RateLimitUtil.complete(guild.addRoleToMember(member, role), CommandMessagePriority.RESULT);
         return "Opted out of " + lcRole.name() + " alerts (@" + role.getName() + " added to your user). Use the command again to opt back in";
     }
 
@@ -283,7 +284,7 @@ public class PlayerSettingCommands {
             CM.alerts.bank.unsubscribe unsubCommand = CM.alerts.bank.unsubscribe.cmd.nation_or_alliances(url);
 
             io.create().embed(title, body)
-                    .commandButton(unsubCommand, emoji).send();
+                    .commandButton(unsubCommand, emoji).send(CommandMessagePriority.RESULT);
         }
 
         if (subscriptions.isEmpty()) {

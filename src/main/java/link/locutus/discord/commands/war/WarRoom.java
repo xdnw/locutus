@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
@@ -287,7 +288,7 @@ public class WarRoom {
                 addedMembers.add(member);
             }
             if (channel != null && member != null && channel.getPermissionOverride(member) == null) {
-                RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
             }
         }
         if (!planned && channel != null) {
@@ -296,7 +297,7 @@ public class WarRoom {
                 if (member == null) continue;
                 DBNation nation = DiscordUtil.getNation(member.getUser());
                 if (!added.contains(nation) && !addedMembers.contains(member)) {
-                    RateLimitUtil.queue(override.delete());
+                    RateLimitUtil.queue(override.delete(), CommandMessagePriority.RESULT);
                 }
             }
         }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -49,7 +50,7 @@ public class UpdateEmbed extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage();
 
-        IMessageBuilder message = channel.getMessage();
+        IMessageBuilder message = channel.getMessage(CommandMessagePriority.RESULT);
 
         String requiredRole = DiscordUtil.parseArg(args, "role");
         if (requiredRole != null) {
@@ -100,7 +101,7 @@ public class UpdateEmbed extends Command {
 
         message.clearEmbeds();
         message.embed(builder);
-        message.send();
+        message.send(CommandMessagePriority.RESULT);
 
         return null;
     }

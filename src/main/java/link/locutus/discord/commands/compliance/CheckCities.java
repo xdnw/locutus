@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.compliance;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
@@ -137,10 +138,10 @@ public class CheckCities extends Command {
                 auditResult = auditResults.get(nation);
             }
             if (auditResult == null) {
-                CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Fetching city info: (this will take a minute)");
+                CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Fetching city info: (this will take a minute)", CommandMessagePriority.PROGRESS);
                 auditResult = checkup.checkup(cacheStore, nation, individual, false);
                 auditResults.put(nation, auditResult);
-                channel.deleteOptionally(msgFuture);
+                channel.deleteOptionally(msgFuture, CommandMessagePriority.PROGRESS);
             }
             if (auditResult != null) {
                 auditResult = IACheckup.simplify(auditResult);
@@ -164,7 +165,7 @@ public class CheckCities extends Command {
                 if (flags.contains('p')) {
                     PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
                     if (user != null) {
-                        channel.sendMessage("^ " + user.getAsMention());
+                        channel.sendMessage("^ " + user.getAsMention(), CommandMessagePriority.RESULT);
                     }
                 } else if (mail) {
                     String title = nation.getAllianceName() + " Automatic checkup";
@@ -178,10 +179,10 @@ public class CheckCities extends Command {
 
                     MailApiResponse response = nation.sendMail(keys, title, markdown, false);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
-                    channel.sendMessage(userStr + ": " + response.status() + " " + response.error());
+                    channel.sendMessage(userStr + ": " + response.status() + " " + response.error(), CommandMessagePriority.RESULT);
                 }
             } else {
-                channel.sendMessage("All checks passed for " + nation.getNation());
+                channel.sendMessage("All checks passed for " + nation.getNation(), CommandMessagePriority.RESULT);
             }
             output.setLength(0);
         }

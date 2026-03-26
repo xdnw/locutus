@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.trade;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
@@ -110,7 +111,7 @@ public class Inactive extends Command {
         for (Map.Entry<String, String> entry : labelCommandPairs) {
             msg = msg.commandButton(entry.getValue(), entry.getKey());
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
 
         return null;
     }

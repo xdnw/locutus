@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -87,7 +88,7 @@ public class FACommands {
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "coalition").send();
+        sheet.attach(io.create(), "coalition").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -347,7 +348,7 @@ public class FACommands {
             throw new RuntimeException(e);
         }
 
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -402,7 +403,7 @@ public class FACommands {
 
         String embassyName = aa.getName() + "-" + aa.getId();
 
-        TextChannel channel = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category));
+        TextChannel channel = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category), CommandMessagePriority.RESULT);
 
         StringBuilder body = new StringBuilder();
         // Alliance name/link
@@ -433,7 +434,7 @@ public class FACommands {
 
         updateEmbassyPerms(channel, role, nationUser, true);
 
-        RateLimitUtil.queue(channel.sendMessage(body.toString()));
+        RateLimitUtil.queue(channel.sendMessage(body.toString()), CommandMessagePriority.RESULT);
 
         return "Embassy: <#" + channel.getId() + ">";
     }
@@ -441,16 +442,16 @@ public class FACommands {
     public static void updateEmbassyPerms(TextChannel channel, Role role, User user, boolean mention) {
         RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
                 .deny(Permission.VIEW_CHANNEL));
-        RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
 
         Set<Role> roles = Roles.FOREIGN_AFFAIRS.toRoles(Locutus.imp().getGuildDB(channel.getGuild()));
         List<CompletableFuture< PermissionOverride>> futures = new ArrayList<>();
         for (Role r : roles) {
-            futures.add(RateLimitUtil.queue(channel.upsertPermissionOverride(r).grant(Permission.VIEW_CHANNEL)));
+            futures.add(RateLimitUtil.queue(channel.upsertPermissionOverride(r).grant(Permission.VIEW_CHANNEL)), CommandMessagePriority.RESULT);
         }
         if (!futures.isEmpty()) CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         if (mention) {
-            RateLimitUtil.queue(channel.sendMessage(user.getAsMention()));
+            RateLimitUtil.queue(channel.sendMessage(user.getAsMention()), CommandMessagePriority.RESULT);
         }
     }
 }

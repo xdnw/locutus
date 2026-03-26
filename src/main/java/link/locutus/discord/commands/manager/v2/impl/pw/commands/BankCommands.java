@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -393,7 +394,7 @@ public class BankCommands {
             }
         }
 
-        CompletableFuture<IMessageBuilder> msgFuture = (io.sendIfFree("Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
         long start = System.currentTimeMillis();
 
         IMessageBuilder updateMsg = null;
@@ -404,7 +405,7 @@ public class BankCommands {
             i++;
             if (System.currentTimeMillis() - start > 10000) {
                 updateMsg = io.updateOptionally(msgFuture,
-                        "Updating " + nation.getNation() + "(" + i + "/" + remainingNations.size() + ")");
+                        "Updating " + nation.getNation() + "(" + i + "/" + remainingNations.size() + ")", CommandMessagePriority.PROGRESS);
                 start = System.currentTimeMillis();
             }
             Map<ResourceType, Double> stockpile = stockpiles.get(nation);
@@ -511,7 +512,7 @@ public class BankCommands {
         if (toDepositMap.isEmpty()) {
             IMessageBuilder msg = io.create().append("Nothing to deposit");
             attachErrors.accept(msg, errorRows, "errors");
-            msg.send();
+            msg.send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -616,7 +617,7 @@ public class BankCommands {
             if (!errorRows.isEmpty()) {
                 attachErrors.accept(msg, errorRows, "errors");
             }
-            msg.confirmation(title, body.toString(), command).send();
+            msg.confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -674,8 +675,8 @@ public class BankCommands {
                     result.append("\n- **dm**: No discord user set. See " + CM.register.cmd.toSlashMention());
                 } else {
                     try {
-                        PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
-                        RateLimitUtil.queue(channel.sendMessage(body.toString()));
+                        PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(channel.sendMessage(body.toString()), CommandMessagePriority.RESULT);
                         sentDm = true;
                         result.append("\n- **dm**: Sent dm");
                     } catch (Throwable e) {
@@ -752,11 +753,11 @@ public class BankCommands {
             attachErrors.accept(msg, errorRows, "errors");
             attachErrors.accept(msg, rows, "results");
             msg.append(result.toString());
-            msg.send();
+            msg.send(CommandMessagePriority.RESULT);
         }
 
         if (updateMsg != null && updateMsg.getId() > 0) {
-            io.delete(updateMsg.getId());
+            io.delete(updateMsg.getId(), CommandMessagePriority.PROGRESS);
         }
 
         return null;
@@ -857,7 +858,7 @@ public class BankCommands {
         }
         body.append(StringMan.join(responses, "\n"));
 
-        io.create().embed(title, body.toString()).send();
+        io.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -964,7 +965,7 @@ public class BankCommands {
             results.add(response);
         }
         Map.Entry<String, String> embed = TransferResult.toEmbed(results);
-        io.create().embed(embed.getKey(), embed.getValue()).send();
+        io.create().embed(embed.getKey(), embed.getValue()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1295,11 +1296,11 @@ public class BankCommands {
             }
 
             if (amountToSetOrAdd.isEmpty()) {
-                msg.append(body.toString()).send();
+                msg.append(body.toString()).send(CommandMessagePriority.RESULT);
                 return null;
             }
 
-            msg.confirmation(title, body.toString(), command).send();
+            msg.confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -1607,7 +1608,7 @@ public class BankCommands {
                 msg.file("errors.csv", TransferResult.toFileString(allStatuses));
                 msg.append("\nSummary: `" + TransferResult.count(allStatuses) + "`");
             }
-            msg.send();
+            msg.send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -1636,10 +1637,10 @@ public class BankCommands {
             }
             if (fundsToSendNations.isEmpty()) {
                 msg.append("\nError. No funds to send.");
-                msg.send();
+                msg.send(CommandMessagePriority.RESULT);
                 return null;
             } else {
-                msg.send();
+                msg.send(CommandMessagePriority.RESULT);
             }
         }
         if (fundsToSendNations.size() == 1) {
@@ -1683,7 +1684,7 @@ public class BankCommands {
             if (ping_role != null) {
                 Role role = ping_role.toRole2(db);
                 if (role != null) {
-                    io.send(role.getAsMention());
+                    io.send(role.getAsMention(), CommandMessagePriority.RESULT);
                 }
             }
             return transfer(io, transferCmd, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank,
@@ -1915,7 +1916,7 @@ public class BankCommands {
         response.append("Net Warchest Req (warchest- requirements): `" + ResourceType.toString(totalNet) + "` worth: ~$"
                 + MathMan.format(ResourceType.convertedTotal(totalNet)));
 
-        sheet.attach(io.create(), "warchest", response, false, 0).append(response.toString()).send();
+        sheet.attach(io.create(), "warchest", response, false, 0).append(response.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2079,7 +2080,7 @@ public class BankCommands {
         }
 
         // Progress message (same idea as before)
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
 
         ResetDepositsBuilder.Result result = new ResetDepositsBuilder(db, me, nations)
                 .ignoreGrants(ignoreGrants)
@@ -2089,7 +2090,7 @@ public class BankCommands {
                 .ignoreEscrow(ignoreEscrow)
                 .force(force)
                 .progressIntervalMs(5000L)
-                .onProgress(msg -> io.updateOptionally(msgFuture, msg))
+                .onProgress(msg -> io.updateOptionally(msgFuture, msg, CommandMessagePriority.PROGRESS))
                 .execute();
 
         if (!result.hasChanges()) {
@@ -2103,7 +2104,7 @@ public class BankCommands {
             io.create()
                     .confirmation(title, body, command)
                     .file("transaction.txt", result.getDetails())
-                    .send();
+                    .send(CommandMessagePriority.RESULT);
 
             return body;
         }
@@ -2181,7 +2182,7 @@ public class BankCommands {
             String title = forceErrors.size() + " **ERRORS**. Please confirm transfer";
             String body = StringMan.join(forceErrors, "\n") + "\n\n" +
                     "Press `Confirm` to attempt to send anyway";
-            channel.create().confirmation(title, body, command.put("force", "true"), "bypass_checks").send();
+            channel.create().confirmation(title, body, command.put("force", "true"), "bypass_checks").send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -2321,7 +2322,7 @@ public class BankCommands {
             }
         }
 
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2369,7 +2370,7 @@ public class BankCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "projects").send();
+        sheet.attach(io.create(), "projects").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2429,7 +2430,7 @@ public class BankCommands {
         sheet.updateWrite();
         // appent resource string and worth
         sheet.attach(io.create(), "escrow").append("Total Escrowed: `" + ResourceType.toString(totalEscrowed)
-                + "` | worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalEscrowed))).send();
+                + "` | worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalEscrowed))).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2508,7 +2509,7 @@ public class BankCommands {
                     i.e. To only see funds marked as #TRADE
                     This is for transfer flow breakdown internal, withdrawal, and deposit""", group = 2) @Switch("n") DepositType useFlowNote,
             @Switch("f") boolean force) throws GeneralSecurityException, IOException {
-        CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
 
         SpreadSheet sheet = SpreadSheet.create(db, SheetKey.DEPOSIT_SHEET);
 
@@ -2634,7 +2635,7 @@ public class BankCommands {
                     String msg = String.format("Calculating... (%d/%d nations processed)", count, totalNationsCount);
                     if (lastUpdateTimestamp.compareAndSet(lastUpdateTimestamp.get(), now)) { // Only one thread updates
                         channel.updateOptionally(msgFuture,
-                                String.format("Calculating... (%d/%d nations processed)", count, totalNationsCount));
+                                String.format("Calculating... (%d/%d nations processed)", count, totalNationsCount), CommandMessagePriority.PROGRESS);
                     }
                 }
             }
@@ -2734,7 +2735,7 @@ public class BankCommands {
         }
 
         msg.embed("Nation Deposits (With Alliance)", footer.toString())
-                .send();
+                .send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3090,7 +3091,7 @@ public class BankCommands {
         }
 
         if (isMe) {
-            channel.create().confirmation(title, body.toString(), command).send();
+            channel.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -3105,7 +3106,7 @@ public class BankCommands {
 
         channel.create().embed(title, body.toString())
                 .commandButton(cmd, "confirm")
-                .send();
+                .send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3392,7 +3393,7 @@ public class BankCommands {
             String commandStr = command.put("force", "true").put("key", key).toString();
             msg.embed(title, desc.toString())
                     .commandButton(commandStr, "Confirm")
-                    .send();
+                    .send(CommandMessagePriority.RESULT);
             return null;
         }
         if (key != null) {
@@ -3487,7 +3488,7 @@ public class BankCommands {
             output.append("\n");
             if (result.getStatus().isSuccess()) {
                 totalSent = ResourceType.add(totalSent, ResourceType.resourcesToMap(amount));
-                io.create().embed(result.toTitleString(), result.toEmbedString()).send();
+                io.create().embed(result.toTitleString(), result.toEmbedString()).send(CommandMessagePriority.RESULT);
             } else {
                 errors.put(receiver, result);
             }
@@ -3508,7 +3509,7 @@ public class BankCommands {
                 .append("Done!\nTotal sent: `" + ResourceType.toString(totalSent) + "` worth: ~$"
                         + MathMan.format(convertedTotal(totalSent)));
 
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3687,7 +3688,7 @@ public class BankCommands {
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "tax_rates").send();
+        sheet.attach(io.create(), "tax_rates").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3771,7 +3772,7 @@ public class BankCommands {
                     .append("\n");
             body.append(
                     "\n> In case there is a game captcha it is recommended to have the receiver online on discord to solve it so your funds can be safely deposited");
-            io.create().confirmation(title, body.toString(), command).cancelButton().send();
+            io.create().confirmation(title, body.toString(), command).cancelButton().send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -3870,7 +3871,7 @@ public class BankCommands {
         }
         txSheet.write(transfers).build();
 
-        txSheet.getSheet().attach(io.create(), "tax_deposits").send();
+        txSheet.getSheet().attach(io.create(), "tax_deposits").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3918,7 +3919,7 @@ public class BankCommands {
         }
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "tax_records").send();
+        sheet.attach(io.create(), "tax_records").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -4077,13 +4078,13 @@ public class BankCommands {
                 }
                 String title = "Send (worth: " + worth + ") to " + receiverName;
                 channel.create().confirmation(title, result.getMessageJoined(false), command, "force", "Send")
-                        .cancelButton().send();
+                        .cancelButton().send(CommandMessagePriority.RESULT);
                 return null;
             }
         }
 
         Map.Entry<String, String> embed = TransferResult.toEmbed(results);
-        channel.create().embed(embed.getKey(), embed.getValue()).send();
+        channel.create().embed(embed.getKey(), embed.getValue()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -4144,7 +4145,7 @@ public class BankCommands {
         long escrowExpire = 0;
 
         List<String> footers = new ArrayList<>();
-        IMessageIO output = replyInDMs ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null)
+        IMessageIO output = replyInDMs ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), CommandMessagePriority.RESULT), null)
                 : channel;
         IMessageBuilder msg = output.create();
 
@@ -4528,7 +4529,7 @@ public class BankCommands {
             }
         }
 
-        CompletableFuture<IMessageBuilder> msgFuture = msg.send();
+        CompletableFuture<IMessageBuilder> msgFuture = msg.send(CommandMessagePriority.RESULT);
 
         if (me != null && nationOrAllianceOrGuild.isNation() && nationOrAllianceOrGuild.asNation().getPosition() > 1
                 && db.isWhitelisted() && db.getOrNull(GuildKey.API_KEY) != null
@@ -4573,7 +4574,7 @@ public class BankCommands {
                         try {
                             IMessageBuilder msg = msgFuture.get();
                             if (msg != null && msg.getId() > 0) {
-                                msg.clearEmbeds().embed(title, response.toString()).send();
+                                msg.clearEmbeds().embed(title, response.toString()).send(CommandMessagePriority.RESULT);
                             }
                         } catch (InterruptedException | ExecutionException e) {
                             throw new RuntimeException(e);
@@ -4712,7 +4713,7 @@ public class BankCommands {
 
         String totalStr = ResourceType.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        sheet.attach(channel.create().embed("Nation Stockpiles", totalStr), "stockpiles").send();
+        sheet.attach(channel.create().embed("Nation Stockpiles", totalStr), "stockpiles").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -4794,7 +4795,7 @@ public class BankCommands {
             response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention()
                     + " to view updated tax brackets");
 
-        sheet.attach(io.create(), "tax_brackets", response.toString()).send();
+        sheet.attach(io.create(), "tax_brackets", response.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -4880,7 +4881,7 @@ public class BankCommands {
                 body.append("All other guilds using the prior alliance `" + StringMan.getString(toUnregister)
                         + "` will be changed to use the new offshore");
 
-                confirmButton.embed(title, body.toString()).send();
+                confirmButton.embed(title, body.toString()).send(CommandMessagePriority.RESULT);
                 return null;
             }
 
@@ -4930,9 +4931,9 @@ public class BankCommands {
                         }
                         Member owner = channel.getGuild().getOwner();
                         if (adminRole != null) {
-                            RateLimitUtil.queue((channel.sendMessage(adminRole.getAsMention())));
+                            RateLimitUtil.queue((channel.sendMessage(adminRole.getAsMention())), CommandMessagePriority.RESULT);
                         } else if (owner != null) {
-                            RateLimitUtil.queue((channel.sendMessage(owner.getAsMention())));
+                            RateLimitUtil.queue((channel.sendMessage(owner.getAsMention())), CommandMessagePriority.RESULT);
                         }
                     } catch (InsufficientPermissionException ignore) {
                     }
@@ -4966,7 +4967,7 @@ public class BankCommands {
                 body.append(
                         "\nIt is recommended to withdraw all funds from the current offshore before changing, as Locutus may not be able to access the account after closing it`");
 
-                confirmButton.embed(title, body.toString()).send();
+                confirmButton.embed(title, body.toString()).send(CommandMessagePriority.RESULT);
                 return null;
             }
             for (int aaId : aaIds) {
@@ -4991,7 +4992,7 @@ public class BankCommands {
                 body.append(
                         "If this is an offshore, and you create a new alliance, you may use this command to set the new alliance (all servers offshoring here will be updated)");
 
-                confirmButton.embed(title, body.toString()).send();
+                confirmButton.embed(title, body.toString()).send(CommandMessagePriority.RESULT);
                 return null;
             }
             root.addCoalition(offshoreAlliance.getAlliance_id(), Coalition.OFFSHORE);
@@ -5072,7 +5073,7 @@ public class BankCommands {
                         JSONObject importAccountCmd = WebUtil.json(command).put("force", "true");
                         msg = msg.commandButton(importAccountCmd.put("importAccount", true), "Import");
                     }
-                    msg.send();
+                    msg.send(CommandMessagePriority.RESULT);
                     return null;
                 }
 
@@ -5105,7 +5106,7 @@ public class BankCommands {
                             if (output != null) {
                                 String msg = "Added " + ResourceType.toString(amount) + " to " + account.getTypePrefix()
                                         + ":" + account.getName() + "/" + account.getIdLong();
-                                RateLimitUtil.queue(output.sendMessage(msg));
+                                RateLimitUtil.queue(output.sendMessage(msg), CommandMessagePriority.RESULT);
                                 response.append("Reset deposit for " + root.getGuild() + "\n");
                             }
                         }

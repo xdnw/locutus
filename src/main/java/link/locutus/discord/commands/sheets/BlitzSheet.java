@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.api.client.util.Lists;
 import com.google.api.services.sheets.v4.model.CellData;
 import com.google.api.services.sheets.v4.model.RowData;
@@ -217,7 +218,7 @@ public class BlitzSheet extends Command {
         sheet.updateClearCurrentTab();
         sheet.updateWrite(null, rowData);
 
-        sheet.attach(channel.create(), "blitz").send();
+        sheet.attach(channel.create(), "blitz").send(CommandMessagePriority.RESULT);
         return null;
 
 //        int att1Index = 13;

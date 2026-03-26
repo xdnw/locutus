@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -73,7 +74,7 @@ public class WarInfo extends Command {
             String title = wars.size() + " wars";
             IShrink body = nation.getWarInfoEmbed();
             EmbedShrink embed = new EmbedShrink().title(title).append(body);
-            channel.create().embed(embed).send();
+            channel.create().embed(embed).send(CommandMessagePriority.RESULT);
         } else {
             new WarCard(warId).embed(channel, true, false);
         }

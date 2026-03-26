@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.rankings;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
@@ -101,7 +102,7 @@ public class WarLossesPerCity extends Command {
         String emoji = "Refresh";
         response.append("\n\nPress `").append(emoji).append("` to refresh");
         channel.create().embed(title, response.toString())
-                        .commandButton(DiscordUtil.trimContent(fullCommandRaw), emoji).send();
+                        .commandButton(DiscordUtil.trimContent(fullCommandRaw), emoji).send(CommandMessagePriority.RESULT);
 
         return null;
     }

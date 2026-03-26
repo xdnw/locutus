@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -128,7 +129,7 @@ public class UnitHistory extends Command {
         if (page == null) page = 0;
         title += " (" + (page + 1) + "/" + pages + ")";
 
-        channel.create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send();
+        channel.create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send(CommandMessagePriority.RESULT);
         return null;
     }
 }

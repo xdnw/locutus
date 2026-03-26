@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.api.client.util.Sets;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -142,7 +143,7 @@ public class ListMultisByAlliance extends Command {
             response.append(nationUrl).append("\t").append(allianceUrl).append("\t").append(referredNations.containsKey(nationId)).append("\t").append(sharedWars).append("\t").append(sharedTrades).append("\t").append(sentBank).append("\t").append(sentBank || sharedTrades || sharedWars).append("\t").append(nation.getAgeDays()).append("\t").append(nation.getPosition()).append("\t").append(multiStr).append("\n");
         }
 
-        channel.create().embed("Potential multis:", response.toString()).send();
+        channel.create().embed("Potential multis:", response.toString()).send(CommandMessagePriority.RESULT);
 
         return null;
     }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -55,7 +56,7 @@ public class ImportEmoji extends Command {
                 if (name.lastIndexOf('.') != -1) {
                     name = name.substring(0, name.lastIndexOf('.'));
                 }
-                tasks.add(RateLimitUtil.queue(guild.createEmoji(name, icon)));
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(name, icon)), CommandMessagePriority.RESULT);
             }
             for (Future<?> task : tasks) {
                 task.get();
@@ -76,11 +77,11 @@ public class ImportEmoji extends Command {
             String url = emote.getImageUrl();
             byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL, url);
 
-            channel.send("Creating emote: " + emote.getName() + " | " + url);
+            channel.send("Creating emote: " + emote.getName() + " | " + url, CommandMessagePriority.RESULT);
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon)));
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon)), CommandMessagePriority.RESULT);
             }
         }
         for (Future<?> task : tasks) {

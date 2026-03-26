@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.Research;
@@ -123,13 +124,13 @@ public class ResearchCommands {
 
         sheet.setHeader(header);
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
         long start = System.currentTimeMillis();
         ValueStore cacheStore = PlaceholderCache.createCache(store, nationsFinal, DBNation.class);
         for (DBNation nation : nationsFinal) {
             if (start + 10000 < System.currentTimeMillis()) {
                 start = System.currentTimeMillis();
-                io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl());
+                io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl(), CommandMessagePriority.PROGRESS);
             }
             List<Object> row = new ArrayList<>();
             row.add(nation.getSheetUrl());
@@ -150,7 +151,7 @@ public class ResearchCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "research").send();
+        sheet.attach(io.create(), "research").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -194,6 +195,6 @@ public class ResearchCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "research_city").send();
+        sheet.attach(io.create(), "research_city").send(CommandMessagePriority.RESULT);
     }
 }

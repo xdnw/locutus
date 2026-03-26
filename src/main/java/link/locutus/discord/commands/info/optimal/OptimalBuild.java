@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info.optimal;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -348,7 +349,7 @@ public class OptimalBuild extends Command {
         Continent finalContinent = continent;
         Predicate<Project> hasProject = Projects.optimize(project -> addProject.contains(project) || project.get(finalMe) > 0);
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
 
         ToDoubleFunction<INationCity> baseValueFunc;
         if (taxes != null) {
@@ -542,7 +543,7 @@ public class OptimalBuild extends Command {
         if (flags.contains('p')) {
             return title + "\n" + result.toString();
         }
-        io.create().embed(title, result.toString()).commandButton(command, emoji).send();
+        io.create().embed(title, result.toString()).commandButton(command, emoji).send(CommandMessagePriority.RESULT);
 //        DiscordUtil.createEmbedCommand(channel, title, result.toString(), emoji, command);
         return null;
     }
@@ -670,7 +671,7 @@ public class OptimalBuild extends Command {
                 message.append(audit.getValue()).append("\n");
             }
             message.append("```");
-            io.send("<" + PW.City.getCityUrl(cityId) + "> notes:" + message);
+            io.send("<" + PW.City.getCityUrl(cityId) + "> notes:" + message, CommandMessagePriority.RESULT);
         }
     }
 }

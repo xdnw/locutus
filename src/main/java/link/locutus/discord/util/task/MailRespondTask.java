@@ -21,27 +21,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 public class MailRespondTask implements Callable<String> {
-    private enum MailRespondRateLimit implements RateLimitedSource {
-        RETRY_STATUS(SendPolicy.DEFER, DeferredPriority.MAIL_RESPOND_TASK_RETRY_STATUS);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        MailRespondRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     private final int convoid;
     private final String leader;
@@ -76,7 +55,7 @@ public class MailRespondTask implements Callable<String> {
                         String result = MailRespondTask.this.call();
                         Guild server = Locutus.imp().getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER);
                         if (output != null) {
-                            RateLimitUtil.queueWhenFree(output.sendMessage(result), MailRespondRateLimit.RETRY_STATUS);
+                                            RateLimitUtil.queueWhenFree(output.sendMessage(result), RateLimitedSources.MAIL_RESPOND_TASK_RETRY_STATUS);
                         }
                         return result;
                     }), 3, TimeUnit.MINUTES);

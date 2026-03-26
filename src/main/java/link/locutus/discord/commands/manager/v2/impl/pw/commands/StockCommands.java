@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -246,7 +247,7 @@ public class StockCommands {
 
         String title = nationOrExchange.getName() + " shares";
         String footer = "Total Equity: $" + MathMan.format(total);
-        channel.create().embed(title, response.toString(), footer).send();
+        channel.create().embed(title, response.toString(), footer).send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -254,7 +255,7 @@ public class StockCommands {
     @Command(aliases = {"info", "exchangeinfo"}, desc = "Show general info about an exchange", viewable = true)
     public String info(@Me IMessageIO channel, StockDB db, Exchange exchange) {
         String body = exchange.toString();
-        channel.create().embed(exchange.symbol, body).send();
+        channel.create().embed(exchange.symbol, body).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -321,7 +322,7 @@ public class StockCommands {
 
         channel.create().embed(embed)
                 .commandButton(command, "Refresh")
-                .send();
+                .send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -377,7 +378,7 @@ public class StockCommands {
                                 .addField("Margin", StringMan.join(margin, "\n"), true)
                 )
                 .commandButton(command, "Refresh")
-                .send();
+                .send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -486,7 +487,7 @@ public class StockCommands {
                         .addField("Buying", StringMan.join(lowList, "\n"), true)
                         .addField("Selling", StringMan.join(highList, "\n"), true)
                 ).commandButton(command, "Refresh")
-                .send();
+                .send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -513,7 +514,7 @@ public class StockCommands {
 
                 JSONObject cmdCopy = WebUtil.json(command);
                 cmdCopy.put("onlyBuyOffers", "true");
-                channel.create().paginate(title, cmdCopy, page, perPage, results).send();
+                channel.create().paginate(title, cmdCopy, page, perPage, results).send(CommandMessagePriority.RESULT);
             }
         }
         if (!onlyBuyOffers) {
@@ -529,7 +530,7 @@ public class StockCommands {
 
                 JSONObject cmdCopy = WebUtil.json(command);
                 cmdCopy.put("onlySellOffers", "true");
-                channel.create().paginate(title, cmdCopy, page, perPage, results).send();
+                channel.create().paginate(title, cmdCopy, page, perPage, results).send(CommandMessagePriority.RESULT);
             }
         }
         return result.length() > 0 ? result.toString() : null;
@@ -565,7 +566,7 @@ public class StockCommands {
 
                 JSONObject cmdCopy = WebUtil.json(command);
                 cmdCopy.put("onlyBuyOffers", "true");
-                channel.create().paginate(title, cmdCopy, page, perPage, results).send();
+                channel.create().paginate(title, cmdCopy, page, perPage, results).send(CommandMessagePriority.RESULT);
             }
         }
         if (!onlyBuyOffers) {
@@ -581,7 +582,7 @@ public class StockCommands {
 
                 JSONObject cmdCopy = WebUtil.json(command);
                 cmdCopy.put("onlySellOffers", "true");
-                channel.create().paginate(title, cmdCopy, page, perPage, results).send();
+                channel.create().paginate(title, cmdCopy, page, perPage, results).send(CommandMessagePriority.RESULT);
             }
         }
         return result.length() > 0 ? result.toString() : null;
@@ -608,7 +609,7 @@ public class StockCommands {
         int pages = (results.size() + perPage - 1) / perPage;
         String title = "Transactions (" + (page + 1) + "/" + pages + ")";
 
-        channel.create().paginate(title, command, page, perPage, results).send();
+        channel.create().paginate(title, command, page, perPage, results).send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -626,7 +627,7 @@ public class StockCommands {
         int pages = (results.size() + perPage - 1) / perPage;
         String title = "Shareholders (" + (page + 1) + "/" + pages + ")";
 
-        channel.create().paginate(title, command, page, perPage, results).send();
+        channel.create().paginate(title, command, page, perPage, results).send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -642,7 +643,7 @@ public class StockCommands {
         int pages = (results.size() + perPage - 1) / perPage;
         String title = "Shares (" + (page + 1) + "/" + pages + ")";
 
-        channel.create().paginate(title, command, page, perPage, results).send();
+        channel.create().paginate(title, command, page, perPage, results).send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -666,7 +667,7 @@ public class StockCommands {
             String title = "Confirm transfer worth: $" + MathMan.format(ResourceType.convertedTotal(resources));
             String body = "Amount: " + ResourceType.toString(resources) + "\nTo:" + receiver.getNation() + " | " + receiver.getAllianceName();
 
-            channel.create().confirmation(title, body, command).send();
+            channel.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -731,7 +732,7 @@ public class StockCommands {
             String title = "Confirm transfer worth: $" + MathMan.format(ResourceType.convertedTotal(resources));
             String body = "Amount: " + ResourceType.toString(resources) + "\nTo AA:" + alliance.getName() + "(" + alliance.getNations(true, 0, true).size() + " members)";
 
-            channel.create().confirmation(title, body, command).send();
+            channel.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
             return null;
         }
         return withdraw(db, me, alliance.getUrl(), resources);

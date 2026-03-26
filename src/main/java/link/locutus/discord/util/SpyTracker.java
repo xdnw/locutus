@@ -17,7 +17,6 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -27,6 +26,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -35,7 +35,16 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -470,7 +479,7 @@ public class SpyTracker {
             body.append("\n---");
             Role role = Roles.ESPIONAGE_ALERTS.toRole2(db);
             if (role != null) body.append(role.getAsMention());
-            new DiscordChannelIO(channel).send(body.toString());
+            DiscordUtil.sendMessage(channel, body.toString());
         }
     }
 
@@ -626,7 +635,7 @@ public class SpyTracker {
             }
             body.append("\n\n-# Note: Nations active **BEFORE** the bounty datetime listed here are improbable");
             try {
-                new DiscordChannelIO(channel).send("**__" + title + "__**\n" + body);
+                DiscordUtil.sendMessage(channel, "**__" + title + "__**\n" + body);
             } catch (InsufficientPermissionException permE) {
                 db.deleteInfo(GuildKey.ESPIONAGE_ALERT_CHANNEL);
             } catch (Throwable e) {

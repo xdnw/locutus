@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -72,10 +73,10 @@ public class Mask extends Command {
                 continue;
             }
             if (value) {
-                RateLimitUtil.queue(guild.addRoleToMember(member, role));
+                RateLimitUtil.queue(guild.addRoleToMember(member, role), CommandMessagePriority.RESULT);
                 response.append("\nAdded role to member.");
             } else {
-                RateLimitUtil.queue(guild.removeRoleFromMember(member, role));
+                RateLimitUtil.queue(guild.removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
                 response.append("\nRemoved role from member.");
             }
         }

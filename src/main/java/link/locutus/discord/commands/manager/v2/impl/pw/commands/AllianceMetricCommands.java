@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.opencsv.CSVWriter;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -354,7 +355,7 @@ public class AllianceMetricCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.metricByGroup.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Generate and save the alliance metrics over a period of time, using nation and city snapshots to calculate the metrics")
@@ -385,11 +386,11 @@ public class AllianceMetricCommands {
             throw new IllegalArgumentException("Another instance of this command is running either by you or another user. Please wait and try again.");
         }
         try {
-            CompletableFuture<IMessageBuilder> msg = io.sendIfFree("Please wait...");
+            CompletableFuture<IMessageBuilder> msg = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
             Map<Long, double[]> valuesByDay = AlliancesNationMetricByDay.generateData(new Consumer<Long>() {
                 @Override
                 public void accept(Long day) {
-                    io.updateOptionally(msg, "Processing day " + day + "...");
+                    io.updateOptionally(msg, "Processing day " + day + "...", CommandMessagePriority.PROGRESS);
                 }
             }, metric, start, end, mode, alliances, filter, includeApps);
 
@@ -432,7 +433,7 @@ public class AllianceMetricCommands {
             if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
                 msg2.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.AlliancesDataByDay.cmd.getName(), command));
             }
-            msg2.send();
+            msg2.send(CommandMessagePriority.RESULT);
         } finally {
             ALLIANCE_DATA_LOCK.unlock();
         }

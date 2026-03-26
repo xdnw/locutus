@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import de.siegmar.fastcsv.reader.*;
@@ -326,7 +327,7 @@ public class CustomSheetCommands {
                 body.append("- Columns: `").append(previousTemplate.getColumns().size()).append("` -> `").append(columns.getColumns().size()).append("`\n");
             }
 
-            io.create().confirmation(title, body.toString(), command).send();
+            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -573,7 +574,7 @@ public class CustomSheetCommands {
             msg.file(fileName, exportJson);
             response.append("See: " + CM.sheet_custom.import_json.cmd.toSlashMention() + " to import tab names and header column from json file");
         }
-        msg.append(response.toString()).send();
+        msg.append(response.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -625,7 +626,7 @@ public class CustomSheetCommands {
                     JSONObject copy = WebUtil.json(command).put("index", i + 1);
                     embed = embed.commandButton(copy, String.valueOf(i + 1));
                 }
-                embed.send();
+                embed.send(CommandMessagePriority.RESULT);
                 return null;
             } else {
                 if (index < 1 || index > attachments.size()) {
@@ -660,7 +661,7 @@ public class CustomSheetCommands {
 
                     sheet.updateClearCurrentTab();
                     sheet.updateWrite();
-                    sheet.attach(io.create(), "file").send();
+                    sheet.attach(io.create(), "file").send(CommandMessagePriority.RESULT);
                     return null;
                 }
             }

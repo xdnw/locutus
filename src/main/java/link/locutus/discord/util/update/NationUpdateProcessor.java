@@ -59,9 +59,7 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.DeferredPriority;
-import link.locutus.discord.util.RateLimitedSource;
-import link.locutus.discord.util.SendPolicy;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
@@ -99,28 +97,6 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.db.guild.GuildKey.BAN_ALERT_CHANNEL;
 
 public class NationUpdateProcessor {
-    private enum NationUpdateRateLimit implements RateLimitedSource {
-        BEIGE_ALERT_MENTIONS(SendPolicy.DEFER, DeferredPriority.NATION_UPDATE_BEIGE_ALERT_MENTIONS),
-        EXODUS_ALERT(SendPolicy.DEFER, DeferredPriority.NATION_UPDATE_EXODUS_ALERT);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        NationUpdateRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
 
@@ -724,7 +700,7 @@ public class NationUpdateProcessor {
                 if (membersInRange > 0) {
                     DiscordUtil.createEmbedCommand(channel, title, finalMsg);
                     if (mentions.length() != 0) {
-                        RateLimitUtil.queueWhenFree(channel.sendMessage("^ " + mentions + " (Opt out via: " + CM.alerts.beige.beigeAlertOptOut.cmd.toSlashMention() + ")"), NationUpdateRateLimit.BEIGE_ALERT_MENTIONS);
+                        RateLimitUtil.queueWhenFree(channel.sendMessage("^ " + mentions + " (Opt out via: " + CM.alerts.beige.beigeAlertOptOut.cmd.toSlashMention() + ")"), RateLimitedSources.NATION_UPDATE_BEIGE_ALERT_MENTIONS);
                     }
                 }
             }
@@ -934,7 +910,7 @@ public class NationUpdateProcessor {
                     if (finalGraphData != null) {
                         msg = msg.image("members.png", finalGraphData);
                     }
-                    msg.sendWhenFree(NationUpdateRateLimit.EXODUS_ALERT);
+                        msg.sendWhenFree(RateLimitedSources.NATION_UPDATE_EXODUS_ALERT);
                 }
             });
         }

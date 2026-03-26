@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.account;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -96,7 +97,7 @@ public class Embassy extends Command {
 
         String embassyName = aaName + "-" + aa;
 
-        TextChannel embassyChan = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category).setTopic("Embassy: " + aa.getMarkdownUrl()));
+        TextChannel embassyChan = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category).setTopic("Embassy: " + aa.getMarkdownUrl()), CommandMessagePriority.RESULT);
 
         StringBuilder body = new StringBuilder();
         // Alliance name/link
@@ -127,7 +128,7 @@ public class Embassy extends Command {
 
         FACommands.updateEmbassyPerms(embassyChan, role, author, true);
 
-        RateLimitUtil.queue(embassyChan.sendMessage(body.toString()));
+        RateLimitUtil.queue(embassyChan.sendMessage(body.toString()), CommandMessagePriority.RESULT);
 
         return "Embassy: <#" + embassyChan.getId() + ">";
     }

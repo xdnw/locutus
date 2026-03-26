@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.bank;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
@@ -91,7 +92,7 @@ public class Bank extends Command {
             totals = DBAlliance.getOrCreate(alliance).getStockpile();
         }
         String out = ResourceType.resourcesToFancyString(totals);
-        channel.create().embed(args.get(0) + " stockpile", out).send();
+        channel.create().embed(args.get(0) + " stockpile", out).send(CommandMessagePriority.RESULT);
         return null;
     }
 }

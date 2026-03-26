@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
@@ -194,29 +195,6 @@ import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEn
 import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
 
 public abstract class DBNation implements NationOrAlliance {
-    private enum DbNationRateLimit implements RateLimitedSource {
-        ROLE_ASSIGN(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_ROLE_ASSIGN),
-        OFFSHORE_LOG(SendPolicy.DEFER, DeferredPriority.DB_NATION_OFFSHORE_LOG),
-        DIRECT_MESSAGE(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_DIRECT_MESSAGE);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        DbNationRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     public static DBNation getByUser(User user) {
         return DiscordUtil.getNation(user);
@@ -407,7 +385,7 @@ public abstract class DBNation implements NationOrAlliance {
                             member = db.getGuild().retrieveMember(user).complete();
                         }
                         if (member != null) {
-                            RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role), DbNationRateLimit.ROLE_ASSIGN);
+                                    RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
                             output.append("You have been assigned the role: " + role.getName());
                             AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this);
                             task.execute();
@@ -520,7 +498,7 @@ public abstract class DBNation implements NationOrAlliance {
             }
             creationTurnById.put(getId(), minTurn);
         } else {
-            // Gather each nation’s creation turn and find the global minimum
+            // Gather each nationâ€™s creation turn and find the global minimum
             long minTurn = Long.MAX_VALUE;
             for (DBNation nation : nations) {
                 // replace _creationDate() with your actual creation timestamp field (epoch ms)
@@ -4612,7 +4590,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
-                RateLimitUtil.queue(logChannel.sendMessage(response), DbNationRateLimit.OFFSHORE_LOG);
+                RateLimitUtil.queue(logChannel.sendMessage(response), RateLimitedSources.DB_NATION_OFFSHORE_LOG);
             }
 
             return new KeyValue<>(toDeposit, response.toString());
@@ -6521,8 +6499,8 @@ public abstract class DBNation implements NationOrAlliance {
             return false;
 
         try {
-            MessageChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), DbNationRateLimit.DIRECT_MESSAGE);
-            RateLimitUtil.queue(channel.sendMessage(msg), DbNationRateLimit.DIRECT_MESSAGE);
+                MessageChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
+                RateLimitUtil.queue(channel.sendMessage(msg), RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
         } catch (Throwable e) {
             if (errors != null) {
                 errors.accept(e.getMessage());

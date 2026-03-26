@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -169,9 +170,9 @@ public class RaidCommand extends Command {
                 weakground = true;
                 iterator.remove();
             } else if (next.equalsIgnoreCase("-dnr")) {
-                channel.sendMessage("**WARNING: VIOLATING THE DO NOT RAID LIST IS PROHIBITED**. It has been changed to `-donotraid`. Use only if you are sure");
+                channel.sendMessage("**WARNING: VIOLATING THE DO NOT RAID LIST IS PROHIBITED**. It has been changed to `-donotraid`. Use only if you are sure", CommandMessagePriority.RESULT);
             } else if (next.equalsIgnoreCase("-donotraid")) {
-                channel.sendMessage("**WARNING: VIOLATING THE DO NOT RAID LIST IS PROHIBITED**. Only use `-donotraid` if you aree sure it is okay to violate.");
+                channel.sendMessage("**WARNING: VIOLATING THE DO NOT RAID LIST IS PROHIBITED**. Only use `-donotraid` if you aree sure it is okay to violate.", CommandMessagePriority.RESULT);
                 useDnr = false;
                 iterator.remove();
             } else if (next.startsWith("-beige") || next.startsWith("beige")) {
@@ -246,16 +247,16 @@ public class RaidCommand extends Command {
                              boolean useDnr, Set<Integer> ignoreAlliances, boolean includeAlliances, boolean active,
                              long minutesInactive, double score, double minLoot, int beigeTurns, boolean ignoreBank, boolean ignoreCity, int numResults) throws ExecutionException, InterruptedException {
         if (dms && user != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel()));
+            channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel(), CommandMessagePriority.RESULT));
         }
-        CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...", CommandMessagePriority.RESULT);
 
         List<Map.Entry<DBNation, Map.Entry<Double, Double>>> nationNetValues = getNations(db, me, nations, weakground, vm, slots, beige, useDnr, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBank, ignoreCity, numResults);
 
         if (nationNetValues.isEmpty()) {
             channel.sendMessage("No results. Try using " + CM.war.find.raid.cmd.targets("*").numResults("15") + " or " +
                     CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("10")
-                    +" (and plan raids out). Ping milcom for (assistance");
+                    +" (and plan raids out). Ping milcom for (assistance", CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -274,7 +275,7 @@ public class RaidCommand extends Command {
             try {
                 IMessageBuilder msg = msgFuture.get();
                 if (msg != null && msg.getId() > 0) {
-                    finalChannel.delete(msg.getId());
+                    finalChannel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
                 }
             } catch (InterruptedException | ExecutionException e) {
                 e.printStackTrace();
@@ -307,7 +308,7 @@ public class RaidCommand extends Command {
             me.setMeta(NationMeta.INTERVIEW_RAID_BEIGE, (byte) 1);
         }
 
-        channel.send(response.toString());
+        channel.send(response.toString(), CommandMessagePriority.RESULT);
         return null;
     }
 

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -171,7 +172,7 @@ public class CombatantSheet extends Command {
 
         sheet.updateWrite();
 
-            sheet.attach(channel.create(), "combatant").send();
+            sheet.attach(channel.create(), "combatant").send(CommandMessagePriority.RESULT);
             return null;
         } catch (Throwable e) {
             e.printStackTrace();

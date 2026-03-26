@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.stock;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -309,13 +310,13 @@ public class Exchange {
                 String channelName = channel.getName();
                 channelName = channelName.split("-")[0];
                 if (channelName.equalsIgnoreCase(id + "")) {
-                    tasks.add(RateLimitUtil.queue(channel.getManager().setParent(jdaCategory)));
+                    tasks.add(RateLimitUtil.queue(channel.getManager().setParent(jdaCategory)), CommandMessagePriority.RESULT);
                     return channel;
                 }
             }
         }
 
-        CompletableFuture<TextChannel> channelFuture = RateLimitUtil.queue(jdaCategory.createTextChannel(id + "-" + symbol));
+        CompletableFuture<TextChannel> channelFuture = RateLimitUtil.queue(jdaCategory.createTextChannel(id + "-" + symbol), CommandMessagePriority.RESULT);
         tasks.add(channelFuture);
         for (Future<?> task : tasks) {
             try {
@@ -343,7 +344,7 @@ public class Exchange {
     }
 
     public String alert(String message) {
-        RateLimitUtil.queue(getChannel().sendMessage(message));
+        RateLimitUtil.queue(getChannel().sendMessage(message), CommandMessagePriority.RESULT);
         return message;
     }
 
@@ -445,10 +446,10 @@ public class Exchange {
             toMask.removeAll(masked);
             masked.removeAll(toMask);
             for (Member member : toMask) {
-                RateLimitUtil.queue(guild.addRoleToMember(member, role));
+                RateLimitUtil.queue(guild.addRoleToMember(member, role), CommandMessagePriority.RESULT);
             }
             for (Member member : masked) {
-                RateLimitUtil.queue(guild.removeRoleFromMember(member, role));
+                RateLimitUtil.queue(guild.removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
             }
         }
     }
@@ -476,7 +477,7 @@ public class Exchange {
 
             if (positionRole == null) positionRole = guild.getRoleById(807944560176529440L);
             if (positionRole != null) {
-                RateLimitUtil.queue(guild.modifyRolePositions().selectPosition(role).moveTo(positionRole.getPosition() + 1));
+                RateLimitUtil.queue(guild.modifyRolePositions().selectPosition(role).moveTo(positionRole.getPosition() + 1), CommandMessagePriority.RESULT);
             }
         }
     }
@@ -497,13 +498,13 @@ public class Exchange {
                     case LEADER:
 //                        link.locutus.discord.util.RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_CHANNEL));
                     case HEIR:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_PERMISSIONS));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_PERMISSIONS), CommandMessagePriority.RESULT);
                     case OFFICER:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_MANAGE));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_MANAGE), CommandMessagePriority.RESULT);
                     case MEMBER:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_SEND));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
                     case APPLICANT:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.VIEW_CHANNEL));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
 //                        link.locutus.discord.util.RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_ADD_REACTION));
                         break;
                 }
@@ -514,11 +515,11 @@ public class Exchange {
 
         if (!hasRoleSet) {
             if (requiredRank.id <= 0) {
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.VIEW_CHANNEL));
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.MESSAGE_SEND));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
             } else {
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.VIEW_CHANNEL));
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.MESSAGE_SEND));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
             }
         }
     }

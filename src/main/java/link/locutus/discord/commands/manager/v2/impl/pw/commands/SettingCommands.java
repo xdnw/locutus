@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -248,7 +249,7 @@ public class SettingCommands {
             String title = "Overwrite Existing Transactions?";
             String body = "Are you sure you want to import and overwrite the transactions for " + nationIds.size()
                     + " nations?";
-            io.create().confirmation(title, body, command).send();
+            io.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
             return null;
         }
         StringBuilder tsv = new StringBuilder();
@@ -269,7 +270,7 @@ public class SettingCommands {
             }
         });
         io.create().append("Please wait...\nSee attached, the list of transactions being overwritten")
-                .file("transactions.tsv", tsv.toString()).send();
+                .file("transactions.tsv", tsv.toString()).send(CommandMessagePriority.RESULT);
         int numAdded = db.importNationTransactions(other, nationIds);
         return "Done! Added " + numAdded + " transactions.\n" +
                 "See also " + CM.settings.info.cmd.key("") + " with:\n" +

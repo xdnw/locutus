@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.trade.subbank;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -77,7 +78,7 @@ public class BankSubscriptions extends Command {
             String unsubCommand = Settings.commandPrefix(true) + "UnsubBank " + url;
 
             channel.create().embed(title, body.toString())
-                            .commandButton(unsubCommand, emoji).send();
+                            .commandButton(unsubCommand, emoji).send(CommandMessagePriority.RESULT);
         }
 
         if (subscriptions.isEmpty()) {

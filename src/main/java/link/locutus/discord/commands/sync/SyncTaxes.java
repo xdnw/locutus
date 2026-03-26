@@ -1,8 +1,10 @@
 package link.locutus.discord.commands.sync;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -23,7 +25,6 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -32,7 +33,6 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -107,13 +107,13 @@ public class SyncTaxes extends Command {
                         throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + StringMan.getString(ids));
                     }
 
-                    CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait..."));
+                    CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait...", CommandMessagePriority.RESULT);
 
                     int taxesCount = aa.updateTaxesLegacy(latestDate);
 
                     IMessageBuilder msg = msgFuture.get();
                     if (msg != null && msg.getId() > 0) {
-                        channel.delete(msg.getId());
+                        channel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
                     }
 
                     return "Updated " + taxesCount + " records.\n"

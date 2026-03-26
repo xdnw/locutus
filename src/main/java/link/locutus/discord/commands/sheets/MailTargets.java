@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -257,11 +258,11 @@ public class MailTargets extends Command {
 
             String cmd = DiscordUtil.trimContent(fullCommandRaw) + " -f";
             channel.create().embed(embedTitle, body.toString())
-                    .commandButton(cmd, "Confirm").send();
+                    .commandButton(cmd, "Confirm").send(CommandMessagePriority.RESULT);
             return author.getAsMention();
         }
 
-        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending messages...");
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending messages...", CommandMessagePriority.RESULT);
         IMessageBuilder msg = null;
 
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
@@ -276,7 +277,7 @@ public class MailTargets extends Command {
                 try {
                     attacker.sendDM("**" + subject + "**:\n" + markup);
                 } catch (Throwable e) {
-                    channel.sendMessage(e.getMessage() + " for " + attacker.getNation());
+                    channel.sendMessage(e.getMessage() + " for " + attacker.getNation(), CommandMessagePriority.RESULT);
                     e.printStackTrace();
                 }
             }
@@ -286,7 +287,7 @@ public class MailTargets extends Command {
                 try {
                     msg = msgFuture.get();
                     if (msg != null && msg.getId() > 0) {
-                        msg.clear().append("Sending to " + attacker.getNation()).sendIfFree();
+                        msg.clear().append("Sending to " + attacker.getNation()).sendIfFree(CommandMessagePriority.PROGRESS);
                     }
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
@@ -294,7 +295,7 @@ public class MailTargets extends Command {
             }
         }
 
-        if (msg != null && msg.getId() > 0) channel.delete(msg.getId());
+        if (msg != null && msg.getId() > 0) channel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
 
         return "Done, sent " + sent + " messages";
     }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -62,7 +63,7 @@ public class ClearNicks extends Command {
                             nick = nick.substring(nick.indexOf(' ') + 1);
                         }
                     }
-                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)));
+                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)), CommandMessagePriority.RESULT);
                 } catch (Throwable e) {
                     msg = e.getMessage();
                     failed++;

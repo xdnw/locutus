@@ -375,6 +375,10 @@ public interface IMessageBuilder {
 
     CompletableFuture<IMessageBuilder> send(RateLimitedSource source);
 
+    default CompletableFuture<IMessageBuilder> sendIfFree(RateLimitedSource source) {
+        return send(source);
+    }
+
     default void sendWhenFree(RateLimitedSource source) {
         RateLimitUtil.queueWhenFree(source, () -> send(source));
     }

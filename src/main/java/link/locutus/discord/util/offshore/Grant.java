@@ -1,25 +1,30 @@
 package link.locutus.discord.util.offshore;
 
-import link.locutus.discord.Locutus;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -29,9 +34,19 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.lang.reflect.Member;
 import java.security.GeneralSecurityException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -676,7 +691,7 @@ public class Grant {
         if (grantByReceiver.isEmpty()) {
             io.create().embed("No Grants Created", "Summary: `" + TransferResult.count(errors) + "`\n" + footer + "\n" +
                     "See attached `errors.csv`")
-                    .file("errors.csv", TransferResult.toFileString(errors)).send();
+                    .file("errors.csv", TransferResult.toFileString(errors)).send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -684,7 +699,7 @@ public class Grant {
             if (pingRole != null) {
                 Role role = pingRole.toRole2(db);
                 if (role != null) {
-                    io.send(role.getAsMention());
+                    io.send(role.getAsMention(), CommandMessagePriority.RESULT);
                 }
             }
             DBNation receiver = receivers.iterator().next();
@@ -693,7 +708,7 @@ public class Grant {
             double[] toSend = original.clone();
             TransferResult abort = onlyMissingFunc.apply(receiver, toSend);
             if (abort != null) {
-                io.create().embed(abort.toTitleString(), abort.toEmbedString()).send();
+                io.create().embed(abort.toTitleString(), abort.toEmbedString()).send(CommandMessagePriority.RESULT);
                 return null;
             }
 
@@ -730,8 +745,8 @@ public class Grant {
                 body.append("\n\n**Only missing funds will be sent**\n");
             }
 
-            io.create().embed("Instruct: " + grant.title(), body.toString()).send();
-            io.create().confirmation("Confirm: " + grant.title(), msg.toString(), transferCmd).cancelButton().send();
+            io.create().embed("Instruct: " + grant.title(), body.toString()).send(CommandMessagePriority.RESULT);
+            io.create().confirmation("Confirm: " + grant.title(), msg.toString(), transferCmd).cancelButton().send(CommandMessagePriority.RESULT);
             return null;
         } else {
             sheet.updateWrite();

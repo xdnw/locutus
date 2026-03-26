@@ -49,9 +49,7 @@ import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.DeferredPriority;
-import link.locutus.discord.util.RateLimitedSource;
-import link.locutus.discord.util.SendPolicy;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -84,27 +82,6 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.apiv1.enums.AttackType.*;
 
 public class WarUpdateProcessor {
-    private enum WarUpdateRateLimit implements RateLimitedSource {
-        BOUNTY_MENTIONS(SendPolicy.DEFER, DeferredPriority.WAR_UPDATE_BOUNTY_MENTIONS);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        WarUpdateRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     @Subscribe
     public void onBountyCreate(BountyCreateEvent event) {
@@ -138,7 +115,7 @@ public class WarUpdateProcessor {
                         }
                     }
                     if (!mentions.isEmpty()) {
-                        RateLimitUtil.queueWhenFree(channel.sendMessage(mentions), WarUpdateRateLimit.BOUNTY_MENTIONS);
+                                        RateLimitUtil.queueWhenFree(channel.sendMessage(mentions), RateLimitedSources.WAR_UPDATE_BOUNTY_MENTIONS);
                     }
                 } catch (Throwable ignore) {
                     ignore.printStackTrace();

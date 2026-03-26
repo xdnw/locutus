@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.account.question.questions;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
@@ -82,7 +83,7 @@ public enum InterviewQuestion implements Question {
                 if (role != null && !Roles.TEMP.has(author, guild)) {
                     Member member = guild.getMember(author);
                     assert member != null;
-                    RateLimitUtil.queue(guild.addRoleToMember(member, role));
+                    RateLimitUtil.queue(guild.addRoleToMember(member, role), CommandMessagePriority.RESULT);
                 }
             }
             return true;
@@ -115,7 +116,7 @@ public enum InterviewQuestion implements Question {
                 if (GuildKey.MEMBER_CAN_SET_BRACKET.getOrNull(Locutus.imp().getGuildDB(guild)) == Boolean.TRUE) {
                     String mention = author.getAsMention();
                     String msg = "Please use `" + Settings.commandPrefix(true) + "SetTaxRate " + mention + " 25/25` or `" + Settings.commandPrefix(true) + "SetTaxRate " + mention + " 50/50`";
-                    channel.sendMessage(msg);
+                    channel.sendMessage(msg, CommandMessagePriority.RESULT);
                 }
             }
             return true;
@@ -129,7 +130,7 @@ public enum InterviewQuestion implements Question {
                 Role ia = Roles.INTERVIEWER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
                 if (ia != null) {
                     String msg = ia.getAsMention() + "please discuss the importance of fighting in this game with " + author.getAsMention();
-                    channel.sendMessage(msg);
+                    channel.sendMessage(msg, CommandMessagePriority.RESULT);
                 }
                 throw new IllegalArgumentException("Fighting is an important part of this game, and a requirement of the alliance. Please discuss your stance with gov");
             }
@@ -144,7 +145,7 @@ public enum InterviewQuestion implements Question {
                 Role ia = Roles.INTERVIEWER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
                 if (ia != null) {
                     String msg = ia.getAsMention() + " please discuss why we want to create a positive community with " + author.getAsMention();
-                    channel.sendMessage(msg);
+                    channel.sendMessage(msg, CommandMessagePriority.RESULT);
                 }
                 throw new IllegalArgumentException("**Please discuss with gov on why you think you can't be nice to others**\n\n" + getContent());
             }
@@ -167,7 +168,7 @@ public enum InterviewQuestion implements Question {
                 Set<Integer> aaIds = db.getAllianceIds();
                 if (!aaIds.isEmpty() && !aaIds.contains(me.getAlliance_id()) || me.getPosition() <= 1) {
                     String msg = ia.getAsMention() + " please conduct a short interview";
-                    channel.sendMessage(msg);
+                    channel.sendMessage(msg, CommandMessagePriority.RESULT);
                 }
             }
             return true;
@@ -187,7 +188,7 @@ public enum InterviewQuestion implements Question {
                             try {
                                 String result = new SetRank().onCommand(guild, channel, sudoUser, sudoer, me.getUser().getAsMention() + " MEMBER");
                                 if (result != null) {
-                                    channel.sendMessage(result);
+                                    channel.sendMessage(result, CommandMessagePriority.RESULT);
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -195,7 +196,7 @@ public enum InterviewQuestion implements Question {
                             Member member = guild.getMember(author);
                             Role memberRole = Roles.MEMBER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
                             if (member != null && memberRole != null) {
-                                RateLimitUtil.queue(guild.addRoleToMember(member, memberRole));
+                                RateLimitUtil.queue(guild.addRoleToMember(member, memberRole), CommandMessagePriority.RESULT);
                             }
                         }
                     } else {

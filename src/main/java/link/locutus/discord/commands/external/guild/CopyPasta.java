@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -83,8 +84,8 @@ public class CopyPasta extends Command implements Noformat {
 
             if (value == null)
                 return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.commandPrefix(true) + "copypasta <key> <message>`";
-            IMessageBuilder existing = channel.getMessage();
-            if (existing != null && existing.getId() > 0) channel.delete(existing.getId());
+            IMessageBuilder existing = channel.getMessage(CommandMessagePriority.RESULT);
+            if (existing != null && existing.getId() > 0) channel.delete(existing.getId(), CommandMessagePriority.PROGRESS);
             NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
             return formatter.format2(guild, me, author, value, me, false);
         } else {

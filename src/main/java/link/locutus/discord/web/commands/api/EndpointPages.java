@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.api;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.javalin.http.Context;
@@ -135,7 +136,7 @@ public class EndpointPages extends PageHelper {
             if (result != null) {
                 String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim(), io.getGuildOrNull());
                 if (!formatted.isEmpty()) {
-                    io.send(formatted);
+                    io.send(formatted, CommandMessagePriority.RESULT);
                 }
             }
             return new WebViewCommand(commandUid.incrementAndGet(), queue.getQueue());

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -406,7 +407,7 @@ public class SlashCommandManager extends ListenerAdapter {
     public void register(Guild guild) {
         List<CommandData> toRegister = generateCommandData();
         if (!toRegister.isEmpty()) {
-            List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(guild.updateCommands().addCommands(toRegister));
+            List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(guild.updateCommands().addCommands(toRegister), CommandMessagePriority.RESULT);
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                 String path = command.getName();
 //                commandIds.put(path, command.getIdLong());
@@ -543,7 +544,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
             // 4. Update commands and Save new hash
             List<net.dv8tion.jda.api.interactions.commands.Command> commands =
-                    RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister));
+                    RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister), CommandMessagePriority.RESULT);
             commandIds.clear();
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                 String path = command.getName();
@@ -1050,7 +1051,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         if (newCompleteTime != startNanos) {
                             return;
                         }
-                        RateLimitUtil.queue(event.replyChoices(choices));
+                        RateLimitUtil.queue(event.replyChoices(choices), CommandMessagePriority.RESULT);
                     }
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -1074,10 +1075,10 @@ public class SlashCommandManager extends ListenerAdapter {
                 isModal = false;
                 try {
                     if (isEphemeral(path)) {
-                        RateLimitUtil.queue(event.deferReply(true));
+                        RateLimitUtil.queue(event.deferReply(true), CommandMessagePriority.RESULT);
                         hook.setEphemeral(true);
                     } else {
-                        RateLimitUtil.queue(event.deferReply(false));
+                        RateLimitUtil.queue(event.deferReply(false), CommandMessagePriority.RESULT);
                     }
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -1126,7 +1127,7 @@ public class SlashCommandManager extends ListenerAdapter {
         Guild guild = event.isFromGuild() ? event.getGuild() : null;
 
         DiscordHookIO io = new DiscordHookIO(hook, event);
-        RateLimitUtil.complete(event.deferReply(true));
+        RateLimitUtil.complete(event.deferReply(true), CommandMessagePriority.RESULT);
         hook.setEphemeral(true);
 
         User user = GuildShardManager.updateUserName(event.getUser());

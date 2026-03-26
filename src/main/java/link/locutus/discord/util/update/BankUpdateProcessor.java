@@ -18,11 +18,9 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitedSource;
-import link.locutus.discord.util.SendPolicy;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -42,27 +40,6 @@ import java.util.concurrent.TimeUnit;
 import static link.locutus.discord.db.guild.GuildKey.*;
 
 public class BankUpdateProcessor {
-    private enum BankUpdateRateLimit implements RateLimitedSource {
-        WITHDRAW_ALERT(SendPolicy.DEFER, DeferredPriority.BANK_UPDATE_WITHDRAW_ALERT);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        BankUpdateRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     @Subscribe
     public void process(TransactionEvent event) {
@@ -133,7 +110,7 @@ public class BankUpdateProcessor {
                                 if (isDeposit) {
                                     msg.send();
                                 } else {
-                                    msg.sendWhenFree(BankUpdateRateLimit.WITHDRAW_ALERT);
+                                    msg.sendWhenFree(RateLimitedSources.BANK_UPDATE_WITHDRAW_ALERT);
                                 }
                             } catch (InsufficientPermissionException ignore) {
                             }

@@ -3,14 +3,12 @@ package link.locutus.discord.commands.manager.v2.command;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.RateLimitedSource;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONObject;
 
 import javax.annotation.CheckReturnValue;
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -29,6 +27,18 @@ public interface IMessageIO {
 
     default CompletableFuture<IMessageBuilder> send(String message, RateLimitedSource source) {
         return send(create().append(message), source);
+    }
+
+    default CompletableFuture<IMessageBuilder> sendMessage(String message, RateLimitedSource source) {
+        return send(message, source);
+    }
+
+    default CompletableFuture<IMessageBuilder> sendIfFree(String message, RateLimitedSource source) {
+        return send(message, source);
+    }
+
+    default CompletableFuture<IMessageBuilder> sendIfFree(IMessageBuilder builder, RateLimitedSource source) {
+        return send(builder, source);
     }
 
     default boolean isInteraction() {
@@ -68,6 +78,25 @@ public interface IMessageIO {
         message.clearEmbeds().embed(builder).send(source);
 
         return true;
+    }
+
+    default IMessageBuilder updateOptionally(CompletableFuture<IMessageBuilder> messageFuture,
+                                             String content,
+                                             RateLimitedSource source) {
+        if (messageFuture == null) return null;
+        IMessageBuilder message = messageFuture.getNow(null);
+        if (message == null || message.getId() <= 0) return null;
+        message.clear().append(content).send(source);
+        return message;
+    }
+
+    default void deleteOptionally(CompletableFuture<IMessageBuilder> messageFuture, RateLimitedSource source) {
+        if (messageFuture == null) return;
+        messageFuture.thenAccept(message -> {
+            if (message != null && message.getId() > 0) {
+                delete(message.getId(), source);
+            }
+        });
     }
 
     long getIdLong();

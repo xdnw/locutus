@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -75,7 +76,7 @@ public class CounterStats extends Command {
         String response = MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)" + '\n' +
                 MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)";
 
-        channel.create().embed(title, response).send();
+        channel.create().embed(title, response).send(CommandMessagePriority.RESULT);
         return null;
     }
 }

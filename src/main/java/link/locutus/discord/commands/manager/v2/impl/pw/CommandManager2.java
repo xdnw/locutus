@@ -730,7 +730,7 @@ public class CommandManager2 {
                 CommandCallable callable = commands.get(Arrays.asList(path.split(" ")));
                 if (callable == null) {
                     Logg.info("User attempted invalid command: " + path);
-                    io.create().append("No command found for " + path).send();
+                    io.create().append("No command found for " + path).send(CommandMessagePriority.RESULT);
                     return;
                 }
 
@@ -813,7 +813,7 @@ public class CommandManager2 {
                 return true;
             }
             if (!Roles.ADMIN.has(user, guild)) {
-                io.create().append("Aborted command. You do not have permission to add buttons to menus.").send();
+                io.create().append("Aborted command. You do not have permission to add buttons to menus.").send(CommandMessagePriority.RESULT);
                 return true;
             }
             handleCall(io, () -> {
@@ -833,7 +833,7 @@ public class CommandManager2 {
             try {
                 Object result = call.get();
                 if (result != null) {
-                    io.create().append(result.toString()).send();
+                    io.create().append(result.toString()).send(CommandMessagePriority.RESULT);
                 }
             } catch (CommandUsageException e) {
                 Throwable root = e;
@@ -871,17 +871,17 @@ public class CommandManager2 {
                     }
                 }
 
-                io.create().embed(title, body.toString()).send();
+                io.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
-                io.create().append(e.getMessage()).send();
+                io.create().append(e.getMessage()).send(CommandMessagePriority.RESULT);
             } catch (Throwable e) {
                 Throwable root = e;
                 while (root.getCause() != null)
                     root = root.getCause();
 
                 root.printStackTrace();
-                io.create().append("Error: " + root.getMessage()).send();
+                io.create().append("Error: " + root.getMessage()).send(CommandMessagePriority.RESULT);
             }
         } catch (Throwable e) {
             e.printStackTrace();

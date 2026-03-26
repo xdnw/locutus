@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
@@ -194,7 +195,7 @@ public class UnsortedCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "mil_buy_remaining").send();
+        sheet.attach(channel.create(), "mil_buy_remaining").send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Generate a sheet of guild member nations that have free espionage spy operations\n" +
@@ -304,7 +305,7 @@ public class UnsortedCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "spy_free").send();
+        sheet.attach(channel.create(), "spy_free").send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Get an alert on discord when a target logs in within the next 5 days\n" +
@@ -340,7 +341,7 @@ public class UnsortedCommands {
             @Arg("Include the potential revenue of untaxable nations\n" +
                     "Assumes 100/100)") @Switch("u") boolean includeUntaxable)
             throws GeneralSecurityException, IOException {
-        CompletableFuture<IMessageBuilder> msgFuture = (io.sendIfFree("Updating research. Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Updating research. Please wait...", CommandMessagePriority.PROGRESS);
 
         Set<TaxBracket> brackets = new HashSet<>();
         Set<Integer> aaIds = db.getAllianceIds(true);
@@ -411,7 +412,7 @@ public class UnsortedCommands {
         for (TaxBracket bracket : brackets) {
             if (start + 10000 < System.currentTimeMillis()) {
                 start = System.currentTimeMillis();
-                io.updateOptionally(msgFuture, "Loading tax bracket records... " + bracket.toString());
+                io.updateOptionally(msgFuture, "Loading tax bracket records... " + bracket.toString(), CommandMessagePriority.PROGRESS);
             }
             header.clear();
             if (bracket.rssRate < 0 || bracket.moneyRate < 0) {
@@ -474,7 +475,7 @@ public class UnsortedCommands {
 
         IMessageBuilder msg = io.create();
         msg.append("Notes:\n- " + StringMan.join(messages, "\n- "));
-        sheet.attach(msg, "tax_revenue").send();
+        sheet.attach(msg, "tax_revenue").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -549,7 +550,7 @@ public class UnsortedCommands {
             out.append("\n").append(wcInfo);
         }
 
-        channel.create().embed(nationOrAlliance.getName() + " stockpile", out.toString()).send();
+        channel.create().embed(nationOrAlliance.getName() + " stockpile", out.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -705,9 +706,9 @@ public class UnsortedCommands {
                     + "/account/>";
         }
         try {
-            IMessageBuilder msg = io.getMessage();
+            IMessageBuilder msg = io.getMessage(CommandMessagePriority.RESULT);
             if (msg != null)
-                io.delete(msg.getId());
+                io.delete(msg.getId(), CommandMessagePriority.PROGRESS);
         } catch (Throwable ignore) {
         }
         PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(apiKey, verifiedBotKey).build());
@@ -731,10 +732,10 @@ public class UnsortedCommands {
     public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me,
             @Arg("Your username (i.e. email) for Politics And War") String username,
             String password) {
-        IMessageBuilder msg = io.getMessage();
+        IMessageBuilder msg = io.getMessage(CommandMessagePriority.RESULT);
         try {
             if (msg != null)
-                io.delete(msg.getId());
+                io.delete(msg.getId(), CommandMessagePriority.PROGRESS);
         } catch (Throwable ignore) {
         }
         ;
@@ -851,7 +852,7 @@ public class UnsortedCommands {
                     Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
                     for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                         if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
-                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
                             log.add("Removed " + entry.getValue().getName());
                         }
                     }
@@ -859,7 +860,7 @@ public class UnsortedCommands {
                         return "No unused roles found!";
                     }
                     io.create().append("Cleared " + log.size() + " roles")
-                            .file("role_changes.txt", StringMan.join(log, "\n")).send();
+                            .file("role_changes.txt", StringMan.join(log, "\n")).send(CommandMessagePriority.RESULT);
                     return null;
                 }
                 case NOT_ALLOW_LISTED: {
@@ -870,7 +871,7 @@ public class UnsortedCommands {
                     List<String> log = new ArrayList<>();
                     for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                         if (!allowed.apply(entry.getKey())) {
-                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
                             log.add("Removed " + entry.getValue().getName());
                         }
                     }
@@ -878,7 +879,7 @@ public class UnsortedCommands {
                         return "No roles found!";
                     }
                     io.create().append("Cleared " + log.size() + " roles")
-                            .file("role_changes.txt", StringMan.join(log, "\n")).send();
+                            .file("role_changes.txt", StringMan.join(log, "\n")).send(CommandMessagePriority.RESULT);
                     return null;
                 }
                 case INACTIVE_ALLIANCES:
@@ -895,7 +896,7 @@ public class UnsortedCommands {
                                     && f.getVm_turns() == 0 && f.active_m() < TimeUnit.DAYS.toMinutes(7)).isEmpty();
                         }
                         if (!active) {
-                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
                             String reason = alliance != null ? "Inactive" : "Deleted";
                             log.add("Removed " + entry.getValue().getName() + "(" + reason + ")");
                         }
@@ -904,7 +905,7 @@ public class UnsortedCommands {
                         return "No roles found!";
                     }
                     io.create().append("Cleared " + log.size() + " roles")
-                            .file("role_changes.txt", StringMan.join(log, "\n")).send();
+                            .file("role_changes.txt", StringMan.join(log, "\n")).send(CommandMessagePriority.RESULT);
                     return null;
                 }
                 case NON_ALLIES:
@@ -967,7 +968,7 @@ public class UnsortedCommands {
                                 }
                             }
                             if (reason != null) {
-                                tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role)));
+                                tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role)), CommandMessagePriority.RESULT);
                                 log.add("Removed " + role.getName() + " from " + member.getEffectiveName() + "("
                                         + reason + ")");
                             }
@@ -984,14 +985,14 @@ public class UnsortedCommands {
                             msg.append("\n\nErrors:\n- " + StringMan.join(errors, "\n- "));
                         }
                     }
-                    msg.send();
+                    msg.send(CommandMessagePriority.RESULT);
                     return null;
                 }
                 case ALLIANCE: {
                     Map<Integer, Set<Role>> aaRoles = DiscordUtil.getAARolesIncDuplicates(guild.getRoles());
                     for (Map.Entry<Integer, Set<Role>> entry : aaRoles.entrySet()) {
                         for (Role role : entry.getValue()) {
-                            tasks.add(RateLimitUtil.queue(role.delete()));
+                            tasks.add(RateLimitUtil.queue(role.delete()), CommandMessagePriority.RESULT);
                         }
                     }
                     return "Cleared all AA roles!";
@@ -1040,7 +1041,7 @@ public class UnsortedCommands {
                         // nick = nick.substring(nick.indexOf(' ') + 1);
                         // }
                     }
-                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)));
+                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)), CommandMessagePriority.RESULT);
                 } catch (Throwable e) {
                     msg = e.getMessage();
                     failed++;
@@ -1066,7 +1067,7 @@ public class UnsortedCommands {
             @AllowDeleted Set<NationOrAllianceOrGuildOrTaxid> accounts, Map<ResourceType, Double> amount, DepositTypeInfo note,
             @Switch("f") boolean force) throws Exception {
         if (note != null && note.isIgnored()) {
-            channel.sendMessage("Note: Using `#ignore` will not affect the balance");
+            channel.sendMessage("Note: Using `#ignore` will not affect the balance", CommandMessagePriority.RESULT);
         }
         AddBalanceBuilder builder = db.addBalanceBuilder().add(accounts, amount, note);
         if (!force) {
@@ -1265,7 +1266,7 @@ public class UnsortedCommands {
                     + " untaxable nations removed. Use 'includeUntaxable: True' to include them.`");
         }
 
-        response.send();
+        response.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1341,7 +1342,7 @@ public class UnsortedCommands {
         if (!errors.isEmpty()) {
             msg.append("\n- " + StringMan.join(errors, "\n- "));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1431,7 +1432,7 @@ public class UnsortedCommands {
             page = 0;
         title += " (" + (page + 1) + "/" + pages + ")";
 
-        channel.create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send();
+        channel.create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1576,7 +1577,7 @@ public class UnsortedCommands {
             body.append(dateStr + " | " + dcStr + "\n");
         }
         body.append("\n\n**Guess**: turn " + nation.getDc_turn());
-        channel.create().embed(title, body.toString()).send();
+        channel.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1653,7 +1654,7 @@ public class UnsortedCommands {
         desc.append("\n----------------\n### __Now__\n");
         lines.forEach(line -> desc.append(line).append("\n"));
 
-        io.create().embed(title, desc.toString().trim()).send();
+        io.create().embed(title, desc.toString().trim()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1784,7 +1785,7 @@ public class UnsortedCommands {
             }
             msg.file("ids.txt", StringMan.join(ids, ","));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1811,7 +1812,7 @@ public class UnsortedCommands {
                 for (String option : options) {
                     msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.key(option), option);
                 }
-                msg.send();
+                msg.send(CommandMessagePriority.RESULT);
                 return null;
             }
 
@@ -1931,7 +1932,7 @@ public class UnsortedCommands {
         if (mailResults && keys == null)
             throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
 
-        CompletableFuture<IMessageBuilder> msg = channel.sendIfFree("Please wait...");
+        CompletableFuture<IMessageBuilder> msg = channel.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
 
         Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
 
@@ -1991,7 +1992,7 @@ public class UnsortedCommands {
             } else {
                 resultMsg.append("All checks passed for " + nation.getNation());
             }
-            resultMsg.send();
+            resultMsg.send(CommandMessagePriority.RESULT);
         }
 
         if (postInInterviewChannels) {
@@ -2191,7 +2192,7 @@ public class UnsortedCommands {
         StringBuilder body = new StringBuilder();
         body.append("Reroll date: " + DiscordUtil.timestamp(nation.getDate(), "d") + "\n");
         body.append("Original creation date: " + DiscordUtil.timestamp(date, "d"));
-        io.create().embed(title, body.toString()).send();
+        io.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2552,7 +2553,7 @@ public class UnsortedCommands {
             msg = msg.file("ids_by_audit.txt", listByAudit.toString());
         }
 
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = """
@@ -2662,12 +2663,12 @@ public class UnsortedCommands {
 
             }
 
-            msg.send();
+            msg.send(CommandMessagePriority.RESULT);
 
             return null;
         }
 
-        currentChannel.send("Please wait...");
+        currentChannel.send("Please wait...", CommandMessagePriority.RESULT);
 
         List<Integer> failedToDM = new ArrayList<>();
         List<Integer> failedToMail = new ArrayList<>();
@@ -2691,7 +2692,7 @@ public class UnsortedCommands {
                 if (maxUsesEach != null) {
                     create = create.setMaxUses(maxUsesEach);
                 }
-                Invite invite = RateLimitUtil.complete(create);
+                Invite invite = RateLimitUtil.complete(create, CommandMessagePriority.RESULT);
 
                 String replaced = message + "\n" + invite.getUrl();
                 String personal = replaced + "\n\n- " + author.getAsMention();
@@ -2757,7 +2758,7 @@ public class UnsortedCommands {
             msg = msg.embed("[#" + annId + "] " + subject, body.toString());
 
             CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "");
-            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
+            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send(CommandMessagePriority.RESULT);
         }
 
         return "Done. See " + CM.announcement.find.cmd.toSlashMention() + "\n" + author.getAsMention();

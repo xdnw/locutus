@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -196,11 +197,9 @@ import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.RateLimitedSource;
-import link.locutus.discord.util.SendPolicy;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -231,27 +230,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import static link.locutus.discord.util.discord.DiscordUtil.threadDump;
 
 public class CommandManager {
-    private enum CommandManagerRateLimit implements RateLimitedSource {
-        WAR_ROOM_RELAY(SendPolicy.DEFER, DeferredPriority.COMMAND_MANAGER_WAR_ROOM_RELAY);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        CommandManagerRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     private final char prefix1;
     private final Map<String, Command> commandMap;
@@ -392,7 +370,7 @@ public class CommandManager {
                         if (closest.size() > 5) closest = closest.subList(0, 5);
                         channel.send("No command found for `" + StringMan.getString(arg0) + "`\n" +
                                 "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
-                                "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
+                                "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention(), CommandMessagePriority.RESULT);
                     }
                     return;
                 }
@@ -400,7 +378,7 @@ public class CommandManager {
                 if (!cmd.checkPermission(guild, msgUser)) {
                     if (noPermMsg) {
                         if (nation == null) {
-                            channel.sendMessage("Please use " + CM.register.cmd.toSlashMention());
+                            channel.sendMessage("Please use " + CM.register.cmd.toSlashMention(), CommandMessagePriority.RESULT);
                             return;
                         }
                         if (guild != null) {
@@ -411,7 +389,7 @@ public class CommandManager {
                                 }
                             }
                         }
-                        channel.sendMessage(Messages.NOT_MEMBER);
+                        channel.sendMessage(Messages.NOT_MEMBER, CommandMessagePriority.RESULT);
                     }
                     return;
                 }
@@ -419,24 +397,24 @@ public class CommandManager {
                 if (nation != null && !(cmd instanceof RegisterCommand) && !(cmd instanceof Unregister) && !(cmd instanceof MeCommand) && !(cmd instanceof HelpCommand) && !(cmd instanceof Who) && !(cmd instanceof Embassy)) {
                     String allianceDenyReason = Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.get(nation.getAlliance_id());
                     if (allianceDenyReason != null) {
-                        channel.sendMessage("Access-Denied: " + allianceDenyReason);
+                        channel.sendMessage("Access-Denied: " + allianceDenyReason, CommandMessagePriority.RESULT);
                         return;
                     }
                     String nationDenyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(nation.getNation_id());
                     if (nationDenyReason != null) {
-                        channel.sendMessage("Access-Denied: " + nationDenyReason);
+                        channel.sendMessage("Access-Denied: " + nationDenyReason, CommandMessagePriority.RESULT);
                         return;
                     }
                 }
                 String userDenyReason = Settings.INSTANCE.MODERATION.BANNED_USERS.get(msgUser.getIdLong());
                 if (userDenyReason != null) {
-                    channel.sendMessage("Access-Denied: " + userDenyReason);
+                    channel.sendMessage("Access-Denied: " + userDenyReason, CommandMessagePriority.RESULT);
                     return;
                 }
                 if (guild != null) {
                     String guildDenyReason = Settings.INSTANCE.MODERATION.BANNED_GUILDS.get(guild.getIdLong());
                     if (guildDenyReason != null) {
-                        channel.sendMessage("Access-Denied: " + guildDenyReason);
+                        channel.sendMessage("Access-Denied: " + guildDenyReason, CommandMessagePriority.RESULT);
                         return;
                     }
                     long ownerId = guild.getOwnerIdLong();
@@ -479,7 +457,7 @@ public class CommandManager {
                 try {
                     String header = header(cmd, msgUser, guild);
                     if (header != null && !header.isEmpty()) {
-                        channel.send(header);
+                        channel.send(header, CommandMessagePriority.RESULT);
                     }
                     result = cmd.onCommand(guild, channel, msgUser, nation, content1, args);
                 } catch (Throwable e) { // IllegalArgumentException | UnsupportedOperationException |
@@ -493,7 +471,7 @@ public class CommandManager {
                 if (result != null && !result.isEmpty()) {
                     result = StringUtils.replaceIgnoreCase(result, Locutus.loader().getApiKey(), "XXX");
 //                    result = result.replaceAll("(?i)(?<=^|[^A-Fa-f0-9])(?:[0-9a-f]{2}){7,}(?=[^A-Fa-f0-9]|$)", "XXX");
-                    channel.send(result);
+                    channel.send(result, CommandMessagePriority.RESULT);
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -542,7 +520,7 @@ public class CommandManager {
             msg = msg.replaceAll("@everyone", "@ everyone");
             msg = msg.replaceAll("@here", "@ here");
             msg = msg.replaceAll("<@&", "<@ &");
-            RateLimitUtil.queueWhenFree(other.channel.sendMessage(msg), CommandManagerRateLimit.WAR_ROOM_RELAY);
+                RateLimitUtil.queueWhenFree(other.channel.sendMessage(msg), RateLimitedSources.COMMAND_MANAGER_WAR_ROOM_RELAY);
         }
     }
 
@@ -551,19 +529,19 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole2(msgGuild);
             if (registeredRole == null) {
-                channel.sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.locutusRole(Roles.REGISTERED.name()).discordRole("").toSlashCommand());
+                channel.sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.locutusRole(Roles.REGISTERED.name()).discordRole("").toSlashCommand(), CommandMessagePriority.RESULT);
                 return true;
             } else {
                 assert member != null;
                 if (!member.getUnsortedRoles().contains(registeredRole)) {
-                    channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: `" + registeredRole.getName() + "`");
+                    channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: `" + registeredRole.getName() + "`", CommandMessagePriority.RESULT);
                     return true;
                 }
             }
         }
         {
             if (!Roles.MEMBER.has(member)) {
-                channel.sendMessage("Missing role " + Roles.MEMBER.toDiscordRoleNameElseInstructions(msgGuild));
+                channel.sendMessage("Missing role " + Roles.MEMBER.toDiscordRoleNameElseInstructions(msgGuild), CommandMessagePriority.RESULT);
                 return true;
             }
         }
@@ -571,39 +549,39 @@ public class CommandManager {
             Role adminRole = Roles.ADMIN.toRole2(msgGuild);
             if (adminRole == null) {
                 if (!Settings.INSTANCE.DISCORD.DISCORD_ADMIN_IS_LOCUTUS_ADMIN || !member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
-                    channel.sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`");
+                    channel.sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`", CommandMessagePriority.RESULT);
                     return true;
                 }
             } else if (!member.getUnsortedRoles().contains(adminRole)) {
-                channel.sendMessage("You do not have the role: " + adminRole.getName());
+                channel.sendMessage("You do not have the role: " + adminRole.getName(), CommandMessagePriority.RESULT);
                 return true;
             }
         }
         if (cmd.getCategories().contains(CommandCategory.GOV)) {
             if (cmd.getCategories().contains(CommandCategory.MILCOM)) {
                 if (!Roles.MILCOM.has(member)) {
-                    channel.sendMessage("You do not have the role: " + Roles.MILCOM.toDiscordRoleNameElseInstructions(msgGuild));
+                    channel.sendMessage("You do not have the role: " + Roles.MILCOM.toDiscordRoleNameElseInstructions(msgGuild), CommandMessagePriority.RESULT);
                     return true;
                 }
             }
 
             if (cmd.getCategories().contains(CommandCategory.ECON)) {
                 if (!Roles.ECON.has(member)) {
-                    channel.sendMessage("You do not have the role: " + Roles.ECON.toDiscordRoleNameElseInstructions(msgGuild));
+                    channel.sendMessage("You do not have the role: " + Roles.ECON.toDiscordRoleNameElseInstructions(msgGuild), CommandMessagePriority.RESULT);
                     return true;
                 }
             }
 
             if (cmd.getCategories().contains(CommandCategory.INTERNAL_AFFAIRS)) {
                 if (!Roles.INTERNAL_AFFAIRS.has(member)) {
-                    channel.sendMessage("You do not have the role: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(msgGuild));
+                    channel.sendMessage("You do not have the role: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(msgGuild), CommandMessagePriority.RESULT);
                     return true;
                 }
             }
 
             if (cmd.getCategories().contains(CommandCategory.FOREIGN_AFFAIRS)) {
                 if (!Roles.FOREIGN_AFFAIRS.has(member)) {
-                    channel.sendMessage("You do not have the role: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(msgGuild));
+                    channel.sendMessage("You do not have the role: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(msgGuild), CommandMessagePriority.RESULT);
                     return true;
                 }
             }
@@ -651,7 +629,7 @@ public class CommandManager {
                             assert value != null;
                             double converted = ResourceType.convertedTotal(value.getValue());
                             double pct = 0.1 * (1 + (attacker.looterModifier(false) - 1) + (nation.lootModifier() - 1));
-                            channel.sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct));
+                            channel.sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct), CommandMessagePriority.RESULT);
                         }
                     }
                 } catch (Throwable e) {

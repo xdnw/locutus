@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -219,7 +220,7 @@ public class MMRSheet extends Command {
             String response = "";
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
 
-            sheet.attach(channel.create(), "mmr", response).send();
+            sheet.attach(channel.create(), "mmr", response).send(CommandMessagePriority.RESULT);
             return null;
         } catch (Throwable e) {
             e.printStackTrace();

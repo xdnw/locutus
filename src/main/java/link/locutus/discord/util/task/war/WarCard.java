@@ -1,7 +1,13 @@
 package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -9,19 +15,15 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.CounterStat;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitedSource;
-import link.locutus.discord.util.SendPolicy;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.WarNation;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 
 import java.util.List;
 import java.util.Map;
@@ -29,27 +31,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class WarCard {
-    private enum WarCardRateLimit implements RateLimitedSource {
-        CONDENSED_EMBED(SendPolicy.CONDENSE, DeferredPriority.WAR_CARD_CONDENSED_EMBED);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        WarCardRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     private final int warId;
     public CounterStat counterStat;
@@ -492,7 +473,7 @@ public class WarCard {
         }
         if (send) {
             if (condense) {
-                msg.sendWhenFree(WarCardRateLimit.CONDENSED_EMBED);
+                msg.sendWhenFree(RateLimitedSources.WAR_CARD_CONDENSED_EMBED);
             } else {
                 msg.send();
             }

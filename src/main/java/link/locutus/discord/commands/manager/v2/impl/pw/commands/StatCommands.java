@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
@@ -174,7 +175,7 @@ public class StatCommands {
                 .embed(reimbursement.title(), reimbursement.body())
                 .commandButton(CM.stats_war.warCost.cmd.war(Integer.toString(war.warId)).reimburse("true"), "Reimburse")
                 .commandButton(CM.war.card.cmd.warId(Integer.toString(war.warId)), "War Info")
-                .send();
+                .send(CommandMessagePriority.RESULT);
     }
 
     private static String executeWarReimbursement(User author, Guild guild, GuildDB db, DBNation bankerNation, DBWar war,
@@ -218,7 +219,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.warAttacksByDay.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -489,7 +490,7 @@ public class StatCommands {
         WarReimbursement reimbursement = war.getDate() >= reimburseCutoff ? getWarReimbursement(db, war, cost) : null;
         if (reimbursement != null) {
             if (db.hasReimbursedWar(war.warId)) {
-                channel.send(alreadyReimbursedMessage(war, reimbursement));
+                channel.send(alreadyReimbursedMessage(war, reimbursement), CommandMessagePriority.RESULT);
             } else if (getWarReimbursementPermissionError(author, guild, reimbursement) == null) {
                 sendWarReimbursementPrompt(channel, war, reimbursement);
             }
@@ -629,7 +630,7 @@ public class StatCommands {
             msg.embed("War Status", response.toString());
         }
         msg.append("\n\nSee also: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">");
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -660,7 +661,7 @@ public class StatCommands {
             radsTable.add(Arrays.asList(continent.name().toLowerCase(Locale.ROOT), MathMan.format(continent.getRadIndex())));
         }
         String footer = "See also: " + CM.stats_other.radiationByTurn.cmd.toSlashMention();
-        msg.writeTable("Radiation", radsTable, false, footer).send();
+        msg.writeTable("Radiation", radsTable, false, footer).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -851,7 +852,7 @@ public class StatCommands {
         String response = MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)" + '\n' +
                 MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)";
 
-        channel.create().embed(title, response).send();
+        channel.create().embed(title, response).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1005,7 +1006,7 @@ public class StatCommands {
         }
 
         msg.append(response);
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1115,7 +1116,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.strengthTierGraph.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1147,7 +1148,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.spyTierGraph.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1174,7 +1175,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.scoreTierGraph.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1528,7 +1529,7 @@ public class StatCommands {
             }
 
             msg.append(response);
-            msg.send();
+            msg.send(CommandMessagePriority.RESULT);
 
             return null;
         }
@@ -1559,7 +1560,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.cityTierGraph.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1581,7 +1582,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.metric_compare_by_turn.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance", viewable = true)
@@ -1602,7 +1603,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.militarizationTime.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1621,7 +1622,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricAB.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = """
@@ -1702,7 +1703,7 @@ public class StatCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "alliances").send();
+        sheet.attach(channel.create(), "alliances").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1718,7 +1719,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.radiationByTurn.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return "Done!";
     }
 
@@ -1739,7 +1740,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricByTurn.cmd.getName(), command));
         }
-        msg.append("Done!" + (user != null ? " " + user.getAsMention() : "")).send();
+        msg.append("Done!" + (user != null ? " " + user.getAsMention() : "")).send(CommandMessagePriority.RESULT);
     }
 
     @Command(
@@ -1894,7 +1895,7 @@ public class StatCommands {
 
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "war_cost_rss").send();
+        sheet.attach(channel.create(), "war_cost_rss").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2023,7 +2024,7 @@ public class StatCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "war_cost_aa").send();
+        sheet.attach(channel.create(), "war_cost_aa").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2210,7 +2211,7 @@ public class StatCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "war_cost").send();
+        sheet.attach(channel.create(), "war_cost").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2471,7 +2472,7 @@ public class StatCommands {
         msg.append("> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                 "> Each alliance is grouped by sphere and color coded");
 
-        sheet.attach(msg, "alliance_ranking").send();
+        sheet.attach(msg, "alliance_ranking").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2609,7 +2610,7 @@ public class StatCommands {
         IMessageBuilder msg = io.create();
         sheet.attach(msg, "attack_breakdown");
         if (!response.isEmpty()) msg.append(response.toString());
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Generate a graph for a global game statistic by day", viewable = true)
@@ -2622,7 +2623,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.orbisStatByDay.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Get nth loot beige graph by score range", viewable = true)
@@ -2643,7 +2644,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.NthBeigeLootByScoreRange.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2715,7 +2716,7 @@ public class StatCommands {
             sheet = SpreadSheet.create(db, SheetKey.MERGES_SHEET);
         }
 
-        CompletableFuture<IMessageBuilder> msg = io.sendIfFree("Please wait...");
+        CompletableFuture<IMessageBuilder> msg = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
         long currentDay = TimeUtil.getDay() - 1;
 
         Map<Long, Map<Integer, Set<Integer>>> nationsByAAByDay = new Long2ObjectLinkedOpenHashMap<>();
@@ -2745,7 +2746,7 @@ public class StatCommands {
             long now = System.currentTimeMillis();
             if (start.get() + 5000 < now) {
                 start.set(now);
-                io.updateOptionally(msg, "Processing day " + aLong + "/" + (currentDay + 1));
+                io.updateOptionally(msg, "Processing day " + aLong + "/" + (currentDay + 1), CommandMessagePriority.PROGRESS);
             }
         });;
 
@@ -2819,7 +2820,7 @@ public class StatCommands {
         }
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "merges").send();
+        sheet.attach(io.create(), "merges").send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Get the largest alliance bank loot per score", viewable = true)
@@ -2997,7 +2998,7 @@ public class StatCommands {
             breakdown.addAttack(war, attack, parser.getAttackPrimary(), parser.getAttackSecondary());
         });
 
-        channel.create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send();
+        channel.create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -3034,7 +3035,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.warCostsByDay.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3114,7 +3115,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.warsCostRankingByDay.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3170,7 +3171,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.compareStats.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Graph multiple metrics for a coalition of alliances over a period of time", viewable = true)
@@ -3195,7 +3196,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceStats.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
@@ -3250,6 +3251,6 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.compareTierStats.cmd.getName(), command));
         }
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 }

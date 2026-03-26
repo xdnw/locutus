@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -321,7 +322,7 @@ public class UtilityCommands {
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "colors").append(lines.toString()).send();
+        sheet.attach(io.create(), "colors").append(lines.toString()).send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -385,7 +386,7 @@ public class UtilityCommands {
             channelList.append("\n");
         }
 
-        channel.create().file(count + "of 500 channels", channelList.toString()).send();
+        channel.create().file(count + "of 500 channels", channelList.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1304,7 +1305,7 @@ public class UtilityCommands {
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "project_cost").send();
+        sheet.attach(io.create(), "project_cost").send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = "Get nation or bank loot history\n" +
@@ -1435,7 +1436,7 @@ public class UtilityCommands {
         if (!extraInfo.isEmpty())
             response.append("\n`notes:`\n`- " + StringMan.join(extraInfo, "`\n`- ") + "`");
 
-        CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
+        CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString(), CommandMessagePriority.RESULT);
 
         if (nationOrAlliance.isNation() && nationOrAlliance.asNation().active_m() > 1440
                 && nationOrAlliance.asNation().active_m() < 20160) {
@@ -1450,7 +1451,7 @@ public class UtilityCommands {
                             + MathMan.format(100 - percent) + "%");
                 }
                 try {
-                    msgFuture.get().append("\n`- " + StringMan.join(append, "`\n`- ") + "`").send();
+                    msgFuture.get().append("\n`- " + StringMan.join(append, "`\n`- ") + "`").send(CommandMessagePriority.RESULT);
                 } catch (InterruptedException | ExecutionException e) {
                     throw new RuntimeException(e);
                 }
@@ -1599,7 +1600,7 @@ public class UtilityCommands {
                 }
             }
             response.append("\nSee " + CM.transfer.bulk.cmd.toSlashMention());
-            msg.append(response.toString()).send();
+            msg.append(response.toString()).send(CommandMessagePriority.RESULT);
             return null;
         }
     }
@@ -1609,7 +1610,7 @@ public class UtilityCommands {
     public static String autoroleall(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
             @Switch("f") boolean force) {
         if (force) {
-            channel.send("Please wait...");
+            channel.send("Please wait...", CommandMessagePriority.RESULT);
         }
 
         AutoRoleBulkResult result = AutoRoleService.autoroleall(db, force);
@@ -1635,7 +1636,7 @@ public class UtilityCommands {
             msg.append(maskedMembers);
         }
 
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -1654,7 +1655,7 @@ public class UtilityCommands {
         String title = nation == null ? "Auto role " + member.getEffectiveName() : "Auto role " + nation.getNation();
         String body = autoRolePreviewHeader(result.sync, result.role_names) + "\n------\n"
                 + formatSingleAutoRolePreview(result);
-        channel.create().confirmation(title, body, command).send();
+        channel.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2004,7 +2005,7 @@ public class UtilityCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "alliances").send();
+        sheet.attach(channel.create(), "alliances").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -2076,7 +2077,7 @@ public class UtilityCommands {
 
         msg.embed("Update Nation Sheet", body).commandButton(CommandBehavior.DELETE_MESSAGE, command, "Update");
         sheet.attach(msg, "nations");
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
     }
 
     @Command(desc = """
@@ -2121,7 +2122,7 @@ public class UtilityCommands {
                     + nation.getId());
         }
 
-        msg.append(disclaimer).send();
+        msg.append(disclaimer).send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -2298,11 +2299,11 @@ public class UtilityCommands {
             body.append("\n\nSee `changes.txt` for list of changes");
             msg.file("changes.txt", StringMan.join(changes, "\n"));
 
-            msg.confirmation(title, body.toString(), command).send();
+            msg.confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
             return null;
         }
 
-        CompletableFuture<IMessageBuilder> msg = io.send((StringMan.join(errors, "\n") + "\n\nPlease wait...").trim());
+        CompletableFuture<IMessageBuilder> msg = io.send((StringMan.join(errors, "\n") + "\n\nPlease wait...").trim(), CommandMessagePriority.RESULT);
         List<String> results = new ArrayList<>();
 
         Set<DBNation> allNations = new HashSet<>();
@@ -2444,7 +2445,7 @@ public class UtilityCommands {
                 CM.unit.history history = CM.unit.history.cmd.nation(nation.getUrl()).unit("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, history, "Unit History");
 
-                msg.send();
+                msg.send(CommandMessagePriority.RESULT);
             } else {
                 if (snapshotDate != null) {
                     throw new IllegalArgumentException(
@@ -2507,7 +2508,7 @@ public class UtilityCommands {
                         .alliance(alliance.getQualifiedId()).cutoffMs("200d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
 
-                msg.send();
+                msg.send(CommandMessagePriority.RESULT);
             }
         } else {
             NationList nationList = new SimpleNationList(nations);
@@ -2568,10 +2569,10 @@ public class UtilityCommands {
             // CM.alliance.cost.cmd.create(filter);
             // msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
 
-            msg.send();
+            msg.send(CommandMessagePriority.RESULT);
         }
         if (!listInfo && page == null && !response.isEmpty()) {
-            channel.create().embed(title, response.toString()).send();
+            channel.create().embed(title, response.toString()).send(CommandMessagePriority.RESULT);
         }
 
         if (listAny) {
@@ -2633,7 +2634,7 @@ public class UtilityCommands {
             int pages = (nations.size() + perpage - 1) / perpage;
             title += "(" + (page + 1) + "/" + pages + ")";
 
-            channel.create().paginate(title, command, page, perpage, nationList).send();
+            channel.create().paginate(title, command, page, perpage, nationList).send(CommandMessagePriority.RESULT);
         }
         if (listInfo) {
             // if (perpage == null) perpage = 5;
@@ -2672,7 +2673,7 @@ public class UtilityCommands {
 
                 results.add(IShrink.of(entry.toString()));
             }
-            channel.create().paginate("Nations", command, page, perpage, results).send();
+            channel.create().paginate("Nations", command, page, perpage, results).send(CommandMessagePriority.RESULT);
         }
 
         return null;
@@ -2773,7 +2774,7 @@ public class UtilityCommands {
 
         msg.embed(title, result.toString())
                 .commandButton(cmd, emoji)
-                .send();
+                .send(CommandMessagePriority.RESULT);
 
         return null;
     }
@@ -3028,7 +3029,7 @@ public class UtilityCommands {
         }
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "inactivity").send();
+        sheet.attach(io.create(), "inactivity").send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3037,7 +3038,7 @@ public class UtilityCommands {
     public static String vmHistory(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
             @Switch("s") SpreadSheet sheet)
             throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Mounting nation snapshots...");
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Mounting nation snapshots...", CommandMessagePriority.PROGRESS);
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).load().getUtil()
                 .getCachedVmRanged(Long.MAX_VALUE, true);
 
@@ -3076,7 +3077,7 @@ public class UtilityCommands {
 
             msg.append("-# If two VM ranges exist for `Present` it means the range may have been extended");
 
-            sheet.attach(msg, "vm_history").send();
+            sheet.attach(msg, "vm_history").send(CommandMessagePriority.RESULT);
             return null;
         }
 
@@ -3106,10 +3107,10 @@ public class UtilityCommands {
             fullMsg.append("\n");
         }
 
-        io.deleteOptionally(msgFuture);
+        io.deleteOptionally(msgFuture, CommandMessagePriority.PROGRESS);
         IMessageBuilder msg = msgFuture.get();
         if (msg != null && msg.getId() > 0) {
-            io.delete(msg.getId());
+            io.delete(msg.getId(), CommandMessagePriority.PROGRESS);
         }
         return fullMsg.toString();
 
@@ -3362,7 +3363,7 @@ public class UtilityCommands {
                 + ResourceType.toString(total) + "`");
         response.append("\n\nCity Project Refund (not incl. in total): $" + MathMan.format(cityProjectRefund));
 
-        channel.create().embed(title, response.toString()).send();
+        channel.create().embed(title, response.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3412,7 +3413,7 @@ public class UtilityCommands {
         if (color == null)
             color = ImageUtil.getDefaultWatermarkColor(image);
         byte[] bytes = ImageUtil.addWatermark(image, watermarkText, color, opacityF, font, repeat);
-        io.create().image("locutus-watermark.png", bytes).send();
+        io.create().image("locutus-watermark.png", bytes).send(CommandMessagePriority.RESULT);
         return null;
     }
 
@@ -3488,7 +3489,7 @@ public class UtilityCommands {
 
         StringBuilder result = new StringBuilder();
         CompletableFuture<IMessageBuilder> msgFuture = channel
-                .send("Please wait. This will take 5s to initialize and then 5s for each project to calculate ROI...");
+                .send("Please wait. This will take 5s to initialize and then 5s for each project to calculate ROI...", CommandMessagePriority.RESULT);
         long start = System.currentTimeMillis();
         boolean hasAny = false;
         List<Project> projectsList = new ArrayList<>(projects);
@@ -3503,9 +3504,9 @@ public class UtilityCommands {
                     && (!project.canBuild(nation) || nation.hasProject(project)))
                 continue;
             if (i != projectsList.size() - 1 && System.currentTimeMillis() - start > 10000) {
-                channel.updateOptionally(msgFuture, "Calculating ROI for " + project.name() + "...");
+                channel.updateOptionally(msgFuture, "Calculating ROI for " + project.name() + "...", CommandMessagePriority.PROGRESS);
                 start = System.currentTimeMillis();
-                channel.send(result.toString());
+                channel.send(result.toString(), CommandMessagePriority.RESULT);
                 result.setLength(0); // Clear the result to avoid sending too much at once
             }
             RoiResult roi = roiFunc.apply(days, nationCopy, project, originRevenue);
@@ -3522,10 +3523,10 @@ public class UtilityCommands {
         }
         if (result.length() != 0 || hasAny) {
             result.append("\n\nDone!");
-            channel.send(result.toString());
+            channel.send(result.toString(), CommandMessagePriority.RESULT);
         } else if (!hasAny) {
             channel.send("No projects found with a ROI function that can be calculated for the given parameters.\n" +
-                    "Note: Provide only one project if you would like to test projects the nation already has or cannot currently build");
+                    "Note: Provide only one project if you would like to test projects the nation already has or cannot currently build", CommandMessagePriority.RESULT);
         }
         return null;
     }

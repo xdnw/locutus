@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -48,7 +49,7 @@ public class ClearRoles extends Command {
             
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                 if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
-                    tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                    tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
                 }
             }
             // complete tasks
@@ -60,7 +61,7 @@ public class ClearRoles extends Command {
         if (args.get(0).equalsIgnoreCase("ALLIANCE")) {
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
-                tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                tasks.add(RateLimitUtil.queue(entry.getValue().delete()), CommandMessagePriority.RESULT);
             }
             for (Future<?> task : tasks) {
                 task.get();
@@ -84,7 +85,7 @@ public class ClearRoles extends Command {
                     for (Role role : memberRoles.values()) {
                         if (roles.contains(role)) {
                             response.append("\nRemove member from " + member.getEffectiveName());
-                            RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
+                            RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
                         }
                     }
 
@@ -97,7 +98,7 @@ public class ClearRoles extends Command {
                         Set<Long> allowedAAIds = inverse.get(role);
                         if (allowedAAIds != null && !allowedAAIds.contains((long) 0L) && !allowedAAIds.contains((long) nation.getAlliance_id())) {
                             response.append("\nRemove member from " + member.getEffectiveName());
-                            RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
+                            RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
                         }
                     }
                 }

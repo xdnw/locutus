@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -81,7 +82,7 @@ public class Multi extends Command {
             msg.append("\n**See also:** " + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/multi_v2/" + nation.getId());
         }
 
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 }

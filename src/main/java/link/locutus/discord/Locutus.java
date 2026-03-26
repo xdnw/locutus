@@ -1,5 +1,6 @@
 package link.locutus.discord;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -1051,7 +1052,7 @@ public final class Locutus extends ListenerAdapter {
             String path = pair[1];
             boolean ephemeral = getSlashCommands().isEphemeral(path);
             try {
-                RateLimitUtil.queue(event.deferReply(ephemeral));
+                RateLimitUtil.queue(event.deferReply(ephemeral), CommandMessagePriority.RESULT);
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -1070,7 +1071,7 @@ public final class Locutus extends ListenerAdapter {
             Button button = event.getButton();
 
             if (button.getId().equalsIgnoreCase("")) {
-                RateLimitUtil.queue(message.delete());
+                RateLimitUtil.queue(message.delete(), CommandMessagePriority.RESULT);
                 return;
             }
 
@@ -1111,7 +1112,7 @@ public final class Locutus extends ListenerAdapter {
                 for (DiscordUtil.CommandInfo info : commands) {
                     behavior = info.behavior;
                     if (behavior == CommandBehavior.DELETE_MESSAGE && !markedDeleted) {
-                        io.setMessageDeleted();
+                        io.setMessageDeleted(CommandMessagePriority.RESULT);
                         markedDeleted = true;
                     }
                     if (info.command.isBlank()) {
@@ -1122,11 +1123,11 @@ public final class Locutus extends ListenerAdapter {
                     if (!deferred && !id.contains("modal create")) {
                         deferred = true;
                         if (forceEphemeral || info.behavior == CommandBehavior.EPHEMERAL) {
-                            RateLimitUtil.queue(event.deferReply(true));
+                            RateLimitUtil.queue(event.deferReply(true), CommandMessagePriority.RESULT);
                             hook.setEphemeral(true);
                             isEphemeral = true;
                         } else {
-                            RateLimitUtil.queue(event.deferEdit());
+                            RateLimitUtil.queue(event.deferEdit(), CommandMessagePriority.RESULT);
                         }
                         DiscordHookIO hookIO = (DiscordHookIO) io;
                         hookIO.setIsModal(event);
@@ -1138,7 +1139,7 @@ public final class Locutus extends ListenerAdapter {
                         }
                         GuildMessageChannel cmdChannel = getDiscordApi().getGuildChannelById(info.channelId);
                         if (cmdChannel == null) {
-                            io.send("Channel not found: <#" + info.channelId + ">");
+                            io.send("Channel not found: <#" + info.channelId + ">", CommandMessagePriority.RESULT);
                             continue;
                         }
                         ioToUse = new DiscordChannelIO(cmdChannel);
@@ -1150,7 +1151,7 @@ public final class Locutus extends ListenerAdapter {
                     } else if (id.startsWith("{")) {
                         getCommandManager().getV2().run(guild, channel, user, message, ioToUse, id, true, true);
                     } else if (!id.isEmpty()) {
-                        RateLimitUtil.queue(event.reply("Unknown command (2): `" + id + "`"));
+                        RateLimitUtil.queue(event.reply("Unknown command (2): `" + id + "`"), CommandMessagePriority.RESULT);
                         return;
                     }
                 }
@@ -1160,8 +1161,8 @@ public final class Locutus extends ListenerAdapter {
                 if (behavior != null) {
                     switch (behavior) {
                         case DELETE_MESSAGE -> {
-                            io.setMessageDeleted();
-                            RateLimitUtil.queue(message.delete());
+                            io.setMessageDeleted(CommandMessagePriority.RESULT);
+                            RateLimitUtil.queue(message.delete(), CommandMessagePriority.RESULT);
                         }
                         case EPHEMERAL, UNPRESS -> {
                             // unsupported
@@ -1177,15 +1178,15 @@ public final class Locutus extends ListenerAdapter {
                                 }
                             }
                             rows.removeIf(f -> f.getComponents().isEmpty());
-                            RateLimitUtil.queue(message.editMessageComponents(rows));
+                            RateLimitUtil.queue(message.editMessageComponents(rows), CommandMessagePriority.RESULT);
                         }
                         case DELETE_BUTTONS -> {
-                            RateLimitUtil.queue(message.editMessageComponents(new ArrayList<>()));
+                            RateLimitUtil.queue(message.editMessageComponents(new ArrayList<>()), CommandMessagePriority.RESULT);
                         }
                     }
                 }
             } catch (IllegalArgumentException e) {
-                io.send(StringMan.stripApiKey(e.getMessage()));
+                io.send(StringMan.stripApiKey(e.getMessage()), CommandMessagePriority.RESULT);
                 return;
             }
         } catch (Throwable e) {
@@ -1281,7 +1282,7 @@ public final class Locutus extends ListenerAdapter {
         }
         boolean isLocutus = false;
         try {
-            Message message = link.locutus.discord.util.RateLimitUtil.complete(channel.retrieveMessageById(messageId));
+            Message message = link.locutus.discord.util.RateLimitUtil.complete(channel.retrieveMessageById(messageId), CommandMessagePriority.RESULT);
             User author = message.getAuthor();
             isLocutus = (author != null && author.getIdLong() == Settings.INSTANCE.APPLICATION_ID);
             return isLocutus ? message : null;
@@ -1308,7 +1309,7 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
             emote = event.getEmoji();
             if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
-                link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()));
+                link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()), CommandMessagePriority.RESULT);
                 return;
             }
         }
@@ -1366,10 +1367,10 @@ public final class Locutus extends ListenerAdapter {
 
         String raw = map.getOrDefault(emote.getName(), map.get(emote.asUnicode().getAsCodepoints()));
         if (raw == null) {
-            RateLimitUtil.queue(message.removeReaction(emote, user));
+            RateLimitUtil.queue(message.removeReaction(emote, user), CommandMessagePriority.RESULT);
             return;
         } else if (raw.isEmpty()) {
-            link.locutus.discord.util.RateLimitUtil.queue(message.delete());
+            link.locutus.discord.util.RateLimitUtil.queue(message.delete(), CommandMessagePriority.RESULT);
             return;
         }
 
@@ -1415,16 +1416,16 @@ public final class Locutus extends ListenerAdapter {
         }
         if (success) {
             if (deleteMessage) {
-                RateLimitUtil.queue(message.delete());
+                RateLimitUtil.queue(message.delete(), CommandMessagePriority.RESULT);
             }
             if (deleteReactions) {
-                RateLimitUtil.queue(message.clearReactions());
+                RateLimitUtil.queue(message.clearReactions(), CommandMessagePriority.RESULT);
             }
             if (deleteReaction) {
-                RateLimitUtil.queue(message.removeReaction(emote, user));
+                RateLimitUtil.queue(message.removeReaction(emote, user), CommandMessagePriority.RESULT);
             }
         } else {
-            RateLimitUtil.queue(message.removeReaction(emote, user));
+            RateLimitUtil.queue(message.removeReaction(emote, user), CommandMessagePriority.RESULT);
         }
     }
 

@@ -3,10 +3,8 @@ package link.locutus.discord.db.entities.announce;
 import com.google.api.services.drive.model.File;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.util.DeferredPriority;
-import link.locutus.discord.util.RateLimitedSource;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.SendPolicy;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.DriveFile;
 import net.dv8tion.jda.api.entities.Invite;
@@ -44,7 +42,7 @@ public enum AnnounceType {
             if (maxUses != 0) {
                 create = create.setMaxUses(maxUses);
             }
-            Invite invite = RateLimitUtil.complete(create, AnnounceRateLimit.INVITE_SYNC);
+                Invite invite = RateLimitUtil.complete(create, RateLimitedSources.ANNOUNCE_INVITE_SYNC);
             return invite.getUrl();
         }
 
@@ -60,7 +58,7 @@ public enum AnnounceType {
             String inviteUrl = inviteSplit[inviteSplit.length - 1];
             String code = inviteUrl.substring(inviteUrl.lastIndexOf("/") + 1);
 
-            for (Invite invite : RateLimitUtil.complete(otherDb.getGuild().retrieveInvites(), AnnounceRateLimit.INVITE_SYNC)) {
+                for (Invite invite : RateLimitUtil.complete(otherDb.getGuild().retrieveInvites(), RateLimitedSources.ANNOUNCE_INVITE_SYNC)) {
                 if (invite.getCode().equals(code)) {
                     return true;
                 }
@@ -91,27 +89,6 @@ public enum AnnounceType {
 
     public static final AnnounceType[] values = values();
 
-    private enum AnnounceRateLimit implements RateLimitedSource {
-        INVITE_SYNC(SendPolicy.DEFER, DeferredPriority.ANNOUNCE_INVITE_SYNC);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        AnnounceRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     public boolean isValid(GuildDB db, Announcement original, Announcement.PlayerAnnouncement current) {
         return true;

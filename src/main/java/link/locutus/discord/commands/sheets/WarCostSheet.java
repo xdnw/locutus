@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
@@ -79,7 +80,7 @@ public class WarCostSheet extends Command {
 
         WarParser parser1 = WarParser.of(guild, author, me, args.get(0), args.get(1), cutOff);
 
-        CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...", CommandMessagePriority.RESULT);
 
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKey.WAR_COST_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -131,7 +132,7 @@ public class WarCostSheet extends Command {
             if (-start + (start = System.currentTimeMillis()) > 5000) {
                 IMessageBuilder msg = msgFuture.get();
                 if (msg != null && msg.getId() > 0) {
-                    msg.clear().append("Updating wars for " + nation.getNation()).sendIfFree();
+                    msg.clear().append("Updating wars for " + nation.getNation()).sendIfFree(CommandMessagePriority.PROGRESS);
                 }
             }
             int nationId = nation.getNation_id();
@@ -231,12 +232,12 @@ public class WarCostSheet extends Command {
         sheet.updateWrite();
         try {
             IMessageBuilder msg = msgFuture.get();
-            if (msg != null && msg.getId() > 0) channel.delete(msg.getId());
+            if (msg != null && msg.getId() > 0) channel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        sheet.attach(channel.create(), "war_cost").send();
+        sheet.attach(channel.create(), "war_cost").send(CommandMessagePriority.RESULT);
         return null;
     }
 

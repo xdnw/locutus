@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
@@ -155,28 +156,6 @@ import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_SUBTRACT;
  * guild-specific operations.
  */
 public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrAlliance, SyncableDatabase {
-    private enum GuildDbRateLimit implements RateLimitedSource {
-        ADD_BALANCE_ALERT(SendPolicy.DEFER, DeferredPriority.GUILD_DB_ADD_BALANCE_ALERT),
-        DISCORD_SYNC(SendPolicy.DEFER, DeferredPriority.GUILD_DB_DISCORD_SYNC);
-
-        private final SendPolicy sendPolicy;
-        private final DeferredPriority deferredPriority;
-
-        GuildDbRateLimit(SendPolicy sendPolicy, DeferredPriority deferredPriority) {
-            this.sendPolicy = sendPolicy;
-            this.deferredPriority = deferredPriority;
-        }
-
-        @Override
-        public SendPolicy sendPolicy() {
-            return sendPolicy;
-        }
-
-        @Override
-        public DeferredPriority deferredPriority() {
-            return deferredPriority;
-        }
-    }
 
     private static final String INTERNAL_TRANSACTIONS_TABLE = "INTERNAL_TRANSACTIONS2";
     private static final String INTERNAL_TRANSACTIONS_LEGACY_TABLE = "INTERNAL_TRANSACTIONS2_LEGACY";
@@ -384,7 +363,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             iaCat = delegate.getIACategory(false, false, throwError);
         }
         if (iaCat == null && create) {
-            Category category = RateLimitUtil.complete(guild.createCategory("interview"), GuildDbRateLimit.DISCORD_SYNC);
+                Category category = RateLimitUtil.complete(guild.createCategory("interview"), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
             this.iaCat = new IACategory(this);
             this.iaCat.load();
         }
@@ -904,7 +883,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public Invite getInvite(boolean create) {
-        List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites(), GuildDbRateLimit.DISCORD_SYNC);
+        List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites(), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
         for (Invite invite : invites) {
             if (invite.getMaxUses() == 0) {
                 return invite;
@@ -915,7 +894,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             if (defChannel == null)
                 return null;
             return RateLimitUtil
-                    .complete(defChannel.createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0), GuildDbRateLimit.DISCORD_SYNC);
+                    .complete(defChannel.createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
         }
         return null;
     }
@@ -944,7 +923,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         MessageChannel output = getOrNull(GuildKey.ADDBALANCE_ALERT_CHANNEL);
         if (output != null) {
             try {
-                RateLimitUtil.queueWhenFree(output.sendMessage(tx.toString()), GuildDbRateLimit.ADD_BALANCE_ALERT);
+                        RateLimitUtil.queueWhenFree(output.sendMessage(tx.toString()), RateLimitedSources.GUILD_DB_ADD_BALANCE_ALERT);
             } catch (Throwable ignore) {
                 ignore.printStackTrace();
             }

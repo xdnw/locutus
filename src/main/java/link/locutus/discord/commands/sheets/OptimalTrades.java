@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -64,7 +65,7 @@ public class OptimalTrades extends Command {
         response.append('\n').append("Profit: ").append(profit);
         response.append('\n').append("Note: Actual exploitation is probably closer to 50% (depending on activity. This is where the alerts will come in handy)");
 
-        msg.append(response.toString()).send();
+        msg.append(response.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 }

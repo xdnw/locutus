@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -54,7 +55,7 @@ public class MsgInfo extends Command {
         Map<User, List<String>> reactionsByUser = new LinkedHashMap<>();
         for (MessageReaction reaction : reactions) {
             String emoji = reaction.getEmoji().asUnicode().getAsCodepoints();
-            List<User> users = RateLimitUtil.complete(reaction.retrieveUsers());
+            List<User> users = RateLimitUtil.complete(reaction.retrieveUsers(), CommandMessagePriority.RESULT);
             for (User user : users) {
                 reactionsByUser.computeIfAbsent(user, f -> new ArrayList<>()).add(emoji);
             }
@@ -70,7 +71,7 @@ public class MsgInfo extends Command {
             }
         }
 
-        channel.create().embed(title, response.toString()).send();
+        channel.create().embed(title, response.toString()).send(CommandMessagePriority.RESULT);
         return null;
     }
 }

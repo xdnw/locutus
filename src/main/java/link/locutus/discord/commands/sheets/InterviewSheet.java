@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
 import link.locutus.discord.commands.manager.Command;
@@ -108,7 +109,7 @@ public class InterviewSheet extends Command {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "interview").send();
+        sheet.attach(channel.create(), "interview").send(CommandMessagePriority.RESULT);
         return null;
     }
 }

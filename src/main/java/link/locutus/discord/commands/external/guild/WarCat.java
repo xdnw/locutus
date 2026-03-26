@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -79,7 +80,7 @@ public class WarCat extends Command {
         List<Category> categories = guild.getCategoriesByName(categoryName, true);
         Category category;
         if (categories.isEmpty()) {
-            category = RateLimitUtil.complete(guild.createCategory(categoryName));
+            category = RateLimitUtil.complete(guild.createCategory(categoryName), CommandMessagePriority.RESULT);
             Set<Role> milcomRoles = Roles.MILCOM.toRoles(db);
             List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
             for (Role milcomRole : milcomRoles) {
@@ -98,7 +99,7 @@ public class WarCat extends Command {
             return "Already in category: " + categoryName;
         }
 
-        RateLimitUtil.complete(cc.getManager().setParent(category));
+        RateLimitUtil.complete(cc.getManager().setParent(category), CommandMessagePriority.RESULT);
 
         return "Set category for " + textChannel.getAsMention() + " to " + categoryName;
     }

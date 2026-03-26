@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -95,7 +96,7 @@ public class GPTSearchUtil {
             msg.append("\n");
         }
         msg.append("\n\n" + footer);
-        msg.send();
+        msg.send(CommandMessagePriority.RESULT);
         return null;
     }
 }

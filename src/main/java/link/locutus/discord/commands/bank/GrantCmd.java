@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.bank;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -235,7 +236,7 @@ public class GrantCmd extends Command {
             sheet.updateWrite();
 
             String totalStr = ResourceType.toString(total) + " worth ~$" + MathMan.format(ResourceType.convertedTotal(total));
-            sheet.attach(channel.create().append(totalStr), "grant", null, false, 0).send();
+            sheet.attach(channel.create().append(totalStr), "grant", null, false, 0).send(CommandMessagePriority.RESULT);
             return null;
         }
 

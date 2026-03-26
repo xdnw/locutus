@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -47,7 +48,7 @@ public class ChannelCount extends Command {
         }
 
         if (Roles.ADMIN.has(author, guild)) {
-            channel.create().file(guild.getChannels().size() + "_of_500_channels.txt", channelList.toString()).send();
+            channel.create().file(guild.getChannels().size() + "_of_500_channels.txt", channelList.toString()).send(CommandMessagePriority.RESULT);
             return null;
         } else {
             return "This discord has " + guild.getChannels().size() + "/500 channels";
