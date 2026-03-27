@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
@@ -82,7 +82,7 @@ public class CardCommand extends Command implements Noformat {
             String codePoint = i + emoji;
             msg.commandButton(cmd, codePoint);
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

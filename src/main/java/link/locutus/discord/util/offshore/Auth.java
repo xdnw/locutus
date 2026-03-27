@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore;
 
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;

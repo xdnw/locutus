@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -31,8 +31,8 @@ public class KickLocutus extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        channel.sendMessage("Goodbye.", CommandMessagePriority.RESULT);
-        RateLimitUtil.queue(guild.leave(), CommandMessagePriority.RESULT);
+        channel.sendMessage("Goodbye.", RateLimitedSources.COMMAND_RESULT);
+        RateLimitUtil.queue(guild.leave(), RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

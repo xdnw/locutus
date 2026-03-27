@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.table;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import de.erichseifert.gral.data.Column;
@@ -22,7 +23,6 @@ import de.erichseifert.gral.plots.legends.AbstractLegend;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
@@ -473,7 +473,7 @@ public abstract class TimeNumericTable<T> {
     }
     public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv, GuildDB db, SheetKey attachSheet) throws IOException {
         IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, type, originDate, attachJson, attachCsv, db, attachSheet);
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
     public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv, GuildDB db, SheetKey attachSheet) throws IOException {

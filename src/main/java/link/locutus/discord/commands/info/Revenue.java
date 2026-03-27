@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.info;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -119,7 +119,7 @@ public class Revenue extends Command {
             if (nations.size() == 0) {
                 return "Invalid nation or alliance: `" + args.get(0) + "` (add `-i` if they are inactive/vm/gray/app/beige)";
             } else {
-                channel.sendMessage("Fetching cities (please wait)...", CommandMessagePriority.RESULT);
+                channel.sendMessage("Fetching cities (please wait)...", RateLimitedSources.COMMAND_RESULT);
                 for (DBNation aaMember : nations) {
                     if (!force && (aaMember.isGray() || aaMember.getVm_turns() != 0)) {
                         continue;

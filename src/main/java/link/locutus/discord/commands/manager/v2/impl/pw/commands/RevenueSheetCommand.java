@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -140,7 +140,7 @@ public class RevenueSheetCommand {
         }
         sheet.setHeader(header);
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", RateLimitedSources.COMMAND_PROGRESS);
         List<DBNation> nationList = new ArrayList<>(nationSet);
         ValueStore cacheStore = PlaceholderCache.createCache(store, nationSet, DBNation.class);
 
@@ -202,7 +202,7 @@ public class RevenueSheetCommand {
 
         INationCity[] best = null;
         if (!batch.isEmpty()) {
-            io.updateOptionally(msgFuture, "Running city heuristic for " + batch.size() + " cities across " + data.size() + " nations...", CommandMessagePriority.PROGRESS);
+            io.updateOptionally(msgFuture, "Running city heuristic for " + batch.size() + " cities across " + data.size() + " nations...", RateLimitedSources.COMMAND_PROGRESS);
             try {
                 best = CityFallbackHeuristic.findBestBatch(
                         batch.toArray(new BatchEntry[0]),
@@ -306,7 +306,7 @@ public class RevenueSheetCommand {
         if (!footer.isEmpty()) {
             result.append("\n" + String.join("\n", footer));
         }
-        result.send(CommandMessagePriority.RESULT);
+        result.send(RateLimitedSources.COMMAND_RESULT);
 
         System.out.println("[RevenueSheet] Send msg: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
 

@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.trade;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -74,7 +74,7 @@ public class GlobalTradeVolume extends Command {
                 .addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true)
                 .addField("Daily", StringMan.join(daily, " "), true)
                 .addField("Weekly", StringMan.join(weekly, " "), true)
-        ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send(CommandMessagePriority.RESULT);
+        ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }

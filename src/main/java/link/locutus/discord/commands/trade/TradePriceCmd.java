@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.trade;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -148,7 +148,7 @@ public class TradePriceCmd extends Command {
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField(lowKey, StringMan.join(lowList, "\n"), true)
                 .addField(highKey, StringMan.join(highList, "\n"), true)
-        ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send(CommandMessagePriority.RESULT);
+        ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 

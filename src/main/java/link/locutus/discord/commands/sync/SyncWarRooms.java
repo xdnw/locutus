@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.sync;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -96,13 +96,13 @@ public class SyncWarRooms extends Command {
                             if (guildChan != null) {
                                 Category category = guildChan.getParentCategory();
                                 if (category != null) categories.add(category);
-                                RateLimitUtil.queue(guildChan.delete(), CommandMessagePriority.RESULT);
+                                RateLimitUtil.queue(guildChan.delete(), RateLimitedSources.COMMAND_RESULT);
                             }
                             iter.remove();
                         }
                         for (Category category : categories) {
                             if (category.getName().toLowerCase().startsWith("warcat-")) {
-                                RateLimitUtil.queue(category.delete(), CommandMessagePriority.RESULT);
+                                RateLimitUtil.queue(category.delete(), RateLimitedSources.COMMAND_RESULT);
                             }
                         }
                         return "Deleted!";

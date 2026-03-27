@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import com.vdurmont.emoji.EmojiParser;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -212,7 +212,7 @@ public class GPTCommands {
 
             IMessageBuilder msg = io.create();
             msg.file("input.md", markdown);
-            msg.confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            msg.confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -246,7 +246,7 @@ public class GPTCommands {
             if (!listRoot) {
                 io.create().embed("No sources found", "Try `listRoot` to see the default sources")
                         .commandButton(CommandBehavior.DELETE_MESSAGE, CM.chat.dataset.list.cmd.listRoot(Boolean.TRUE + ""), "List Root")
-                        .send(CommandMessagePriority.RESULT);
+                        .send(RateLimitedSources.COMMAND_RESULT);
                 return null;
             }
             return "No sources found";
@@ -279,7 +279,7 @@ public class GPTCommands {
             body.append("This will delete the document with the name `" + source.source_name + "`.\n");
             int numVectors = gpt.getVectorDB().countVectors(source.source_id);
             body.append("Vectors: `").append(numVectors).append("`.\n");
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -325,7 +325,7 @@ public class GPTCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "embeddings", null, false, 0).send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "embeddings", null, false, 0).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -357,7 +357,7 @@ public class GPTCommands {
                 body.append("This will overwrite the existing document with the same name.\n");
                 int numVectors = gpt.getVectorDB().countVectors(source.source_id);
                 body.append("Vectors: `").append(numVectors).append("`.\n");
-                io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+                io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
                 return null;
             }
         }
@@ -574,7 +574,7 @@ public class GPTCommands {
             }
             body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup()).append("\n");
             body.append("Reason: ").append(modReason).append("\n");
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         nation.deleteMeta(NationMeta.GPT_MODERATED);
@@ -732,7 +732,7 @@ public class GPTCommands {
             if (emojis.isEmpty()) {
                 io.create().append("No emojis generated. See the attached `errors.txt`")
                         .file("errors.txt", String.join("\n", errors))
-                        .send(CommandMessagePriority.RESULT);
+                        .send(RateLimitedSources.COMMAND_RESULT);
             }
 
             sheet = SpreadSheet.create(db, SheetKey.RENAME_CHANNELS);
@@ -814,7 +814,7 @@ public class GPTCommands {
             if (!errors.isEmpty()) {
                 msg = msg.file("errors.txt", String.join("\n", errors));
             }
-            msg.send(CommandMessagePriority.RESULT);
+            msg.send(RateLimitedSources.COMMAND_RESULT);
         }
 
         if (!force) {
@@ -831,7 +831,7 @@ public class GPTCommands {
             if (!errors.isEmpty()) {
                 msg = msg.file("errors.txt", String.join("\n", errors));
             }
-            msg.send(CommandMessagePriority.RESULT);
+            msg.send(RateLimitedSources.COMMAND_RESULT);
             return;
         }
 
@@ -856,11 +856,11 @@ public class GPTCommands {
                 continue;
             }
             changes.add(channel.getName() + " -> " + newName);
-            RateLimitUtil.queue(channel.getManager().setName(newName), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(channel.getManager().setName(newName), RateLimitedSources.COMMAND_RESULT);
 
             String desc = setDesc.get(entry.getKey());
             if (desc != null) {
-                RateLimitUtil.queue(channel.getManager().setTopic(desc), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(channel.getManager().setTopic(desc), RateLimitedSources.COMMAND_RESULT);
             }
         }
 
@@ -873,7 +873,7 @@ public class GPTCommands {
             // attach errors.txt
             msg.file("errors.txt", String.join("\n", errors));
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
 }

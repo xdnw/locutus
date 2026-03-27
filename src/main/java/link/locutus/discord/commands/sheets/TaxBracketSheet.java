@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -128,7 +128,7 @@ public class TaxBracketSheet extends Command {
 
         StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
-        sheet.attach(channel.create(), "tax_bracket", response.toString()).send(CommandMessagePriority.RESULT);
+        sheet.attach(channel.create(), "tax_bracket", response.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

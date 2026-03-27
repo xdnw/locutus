@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.info;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -73,7 +73,7 @@ public class HelpCommand extends Command {
             response.append("\n").append("**For help on a specific command, use: `").append(Settings.commandPrefix(true)).append("? <command>`**");
             response.append("\n").append("**To search for a cmd, use: `").append(Settings.commandPrefix(true)).append("? <search>`**");
             String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.commandPrefix(true) + "invite` and follow the summoning ritual instructions.";
-            channel.create().embed("Categories", response.toString().trim(), footer).send(CommandMessagePriority.RESULT);
+            channel.create().embed("Categories", response.toString().trim(), footer).send(RateLimitedSources.COMMAND_RESULT);
         } else {
             Integer page = DiscordUtil.parseArgInt(args, "page");
 
@@ -130,7 +130,7 @@ public class HelpCommand extends Command {
                 }
             }
             response.append("\n").append("`").append(cmd.help()).append("`").append("- ").append(cmd.desc());
-            channel.create().embed(args.get(0), response.toString().trim()).send(CommandMessagePriority.RESULT);
+            channel.create().embed(args.get(0), response.toString().trim()).send(RateLimitedSources.COMMAND_RESULT);
         }
         return null;
     }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -119,7 +120,7 @@ public class WarCategory {
                 if (pretty.length() > 0) {
                     String msg = "(startup) Synced war rooms. To confirm these changes, run:" +
                             CM.admin.sync.warrooms.cmd.toSlashMention() + "\n" + pretty;
-                    RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
+                    RateLimitUtil.queueMessage(logChan, msg, RateLimitedSources.WAR_ROOM_ROOM_LOG);
                 }
             }
         }
@@ -231,7 +232,7 @@ public class WarCategory {
     }
 
     public synchronized WarRoom createWarRoom(DBNation target, boolean createRoom, boolean forceCreate, boolean planning, WarCatReason reason) {
-        RateLimitedSource creationSource = WarRoomRateLimit.forRoomCreation(reason);
+        RateLimitedSource creationSource = (reason.isActive() ? RateLimitedSources.WAR_ROOM_AUTO_ROOM_CREATE : RateLimitedSources.WAR_ROOM_MANUAL_ROOM_CREATE);
         WarRoom existing = warRoomMap.get(target.getNation_id());
         if (existing == null) {
             synchronized (target) {
@@ -351,7 +352,7 @@ public class WarCategory {
             MessageChannel logChan = GuildKey.WAR_ROOM_LOG.getOrNull(getGuildDb());
             if (logChan != null) {
                 String msg = "Error with war war room for target-id: " + (targetId) + ":\n```java\n" + StringMan.stacktraceToString(e.getStackTrace()) + "```";
-                RateLimitUtil.queueMessage(logChan, msg, WarRoomRateLimit.ROOM_LOG);
+                RateLimitUtil.queueMessage(logChan, msg, RateLimitedSources.WAR_ROOM_ROOM_LOG);
             }
         }
     }
@@ -515,7 +516,7 @@ public class WarCategory {
         if (change) {
             switch (attack.getAttack_type()) {
                 case GROUND:
-                    RateLimitUtil.queueWhenFree(WarRoomRateLimit.STATUS_UPDATE, () -> room.setGC(value));
+                    RateLimitUtil.queueWhenFree(RateLimitedSources.WAR_ROOM_STATUS_UPDATE, () -> room.setGC(value));
                     break;
                 case AIRSTRIKE_INFRA:
                 case AIRSTRIKE_SOLDIER:
@@ -523,10 +524,10 @@ public class WarCategory {
                 case AIRSTRIKE_MONEY:
                 case AIRSTRIKE_SHIP:
                 case AIRSTRIKE_AIRCRAFT:
-                    RateLimitUtil.queueWhenFree(WarRoomRateLimit.STATUS_UPDATE, () -> room.setAC(value));
+                    RateLimitUtil.queueWhenFree(RateLimitedSources.WAR_ROOM_STATUS_UPDATE, () -> room.setAC(value));
                     break;
                 case NAVAL:
-                    RateLimitUtil.queueWhenFree(WarRoomRateLimit.STATUS_UPDATE, () -> room.setBlockade(value));
+                    RateLimitUtil.queueWhenFree(RateLimitedSources.WAR_ROOM_STATUS_UPDATE, () -> room.setBlockade(value));
                     break;
             }
         }
@@ -550,7 +551,7 @@ public class WarCategory {
                 if (!defLosses.isEmpty()) message += "\nDefender unit losses: " + StringMan.getString(defLosses);
             }
             message = "**" + attack.getAttack_type() + "**\n" + message;
-            RateLimitUtil.queueMessage(channel, message, WarRoomRateLimit.ATTACK_MESSAGE);
+            RateLimitUtil.queueMessage(channel, message, RateLimitedSources.WAR_ROOM_ATTACK_MESSAGE);
         }
     }
 
@@ -663,7 +664,7 @@ public class WarCategory {
                     if (rangeEntry.getKey().contains(room.target.getCities())) {
                         for (Category newCat : rangeEntry.getValue()) {
                             if (newCat.getChannels().size() > 49) continue;
-                            RateLimitUtil.queue(room.channel.getManager().setParent(newCat), WarRoomRateLimit.STATUS_UPDATE);
+                            RateLimitUtil.queue(room.channel.getManager().setParent(newCat), RateLimitedSources.WAR_ROOM_STATUS_UPDATE);
                             moved++;
                             continue outer;
                         }
@@ -673,7 +674,7 @@ public class WarCategory {
                 if (range != null && !noRange.isEmpty()) {
                     for (Category newCat : noRange) {
                         if (newCat.getChannels().size() > 49) continue;
-                        RateLimitUtil.queue(room.channel.getManager().setParent(newCat), WarRoomRateLimit.STATUS_UPDATE);
+                        RateLimitUtil.queue(room.channel.getManager().setParent(newCat), RateLimitedSources.WAR_ROOM_STATUS_UPDATE);
                         moved++;
                         continue outer;
                     }
@@ -821,7 +822,7 @@ public class WarCategory {
                     if (!duplicateChannels.add(targetId)) {
                         if (duplicates != null) duplicates.computeIfAbsent(targetId, f -> new ObjectLinkedOpenHashSet<>()).add(channel);
                         if (create) {
-                            RateLimitUtil.queueWhenFree(channel.delete(), WarRoomRateLimit.ROOM_CLEANUP);
+                            RateLimitUtil.queueWhenFree(channel.delete(), RateLimitedSources.WAR_ROOM_ROOM_CLEANUP);
                         }
                     } else {
                         WarRoom existing = warRoomMap.get(targetId);
@@ -851,7 +852,7 @@ public class WarCategory {
                     } else {
                         if (toDelete != null) toDelete.put(targetId, WarCatReason.NO_WARS_CHANNEL);
                         if (create) {
-                            RateLimitUtil.queueWhenFree(channel.delete(), WarRoomRateLimit.ROOM_CLEANUP);
+                            RateLimitUtil.queueWhenFree(channel.delete(), RateLimitedSources.WAR_ROOM_ROOM_CLEANUP);
                         }
                     }
                 }

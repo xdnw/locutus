@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.stock;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -310,13 +310,13 @@ public class Exchange {
                 String channelName = channel.getName();
                 channelName = channelName.split("-")[0];
                 if (channelName.equalsIgnoreCase(id + "")) {
-                    tasks.add(RateLimitUtil.queue(channel.getManager().setParent(jdaCategory), CommandMessagePriority.RESULT));
+                    tasks.add(RateLimitUtil.queue(channel.getManager().setParent(jdaCategory), RateLimitedSources.COMMAND_RESULT));
                     return channel;
                 }
             }
         }
 
-        CompletableFuture<TextChannel> channelFuture = RateLimitUtil.queue(jdaCategory.createTextChannel(id + "-" + symbol), CommandMessagePriority.RESULT);
+        CompletableFuture<TextChannel> channelFuture = RateLimitUtil.queue(jdaCategory.createTextChannel(id + "-" + symbol), RateLimitedSources.COMMAND_RESULT);
         tasks.add(channelFuture);
         for (Future<?> task : tasks) {
             try {
@@ -331,7 +331,7 @@ public class Exchange {
     public void setChannelInvite() {
         Invite invite = getInvite();
         if (invite != null) {
-            RateLimitUtil.queue(getChannel().getManager().setTopic(invite.getUrl()), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(getChannel().getManager().setTopic(invite.getUrl()), RateLimitedSources.COMMAND_RESULT);
         }
     }
 
@@ -340,11 +340,11 @@ public class Exchange {
     }
 
     public void alert(String title, String message) {
-        DiscordUtil.createEmbedCommand(getChannel(), title, message, CommandMessagePriority.RESULT);
+        DiscordUtil.createEmbedCommand(getChannel(), title, message, RateLimitedSources.COMMAND_RESULT);
     }
 
     public String alert(String message) {
-        RateLimitUtil.queue(getChannel().sendMessage(message), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(getChannel().sendMessage(message), RateLimitedSources.COMMAND_RESULT);
         return message;
     }
 
@@ -446,10 +446,10 @@ public class Exchange {
             toMask.removeAll(masked);
             masked.removeAll(toMask);
             for (Member member : toMask) {
-                RateLimitUtil.queue(guild.addRoleToMember(member, role), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(guild.addRoleToMember(member, role), RateLimitedSources.COMMAND_RESULT);
             }
             for (Member member : masked) {
-                RateLimitUtil.queue(guild.removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(guild.removeRoleFromMember(member, role), RateLimitedSources.COMMAND_RESULT);
             }
         }
     }
@@ -473,11 +473,11 @@ public class Exchange {
                     .setName(name)
                     .setMentionable(false)
                     .setHoisted(true)
-                    , CommandMessagePriority.RESULT);
+                    , RateLimitedSources.COMMAND_RESULT);
 
             if (positionRole == null) positionRole = guild.getRoleById(807944560176529440L);
             if (positionRole != null) {
-                RateLimitUtil.queue(guild.modifyRolePositions().selectPosition(role).moveTo(positionRole.getPosition() + 1), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(guild.modifyRolePositions().selectPosition(role).moveTo(positionRole.getPosition() + 1), RateLimitedSources.COMMAND_RESULT);
             }
         }
     }
@@ -498,13 +498,13 @@ public class Exchange {
                     case LEADER:
 //                        link.locutus.discord.util.RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_CHANNEL));
                     case HEIR:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_PERMISSIONS), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_PERMISSIONS), RateLimitedSources.COMMAND_RESULT);
                     case OFFICER:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_MANAGE), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_MANAGE), RateLimitedSources.COMMAND_RESULT);
                     case MEMBER:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_SEND), RateLimitedSources.COMMAND_RESULT);
                     case APPLICANT:
-                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
 //                        link.locutus.discord.util.RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_ADD_REACTION));
                         break;
                 }
@@ -515,11 +515,11 @@ public class Exchange {
 
         if (!hasRoleSet) {
             if (requiredRank.id <= 0) {
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.MESSAGE_SEND), RateLimitedSources.COMMAND_RESULT);
             } else {
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
-                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.MESSAGE_SEND), RateLimitedSources.COMMAND_RESULT);
             }
         }
     }

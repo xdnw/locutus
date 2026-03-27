@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
@@ -809,7 +809,7 @@ public class GrantCommands {
                 command.put("listDisabled", "true");
                 msg = msg.commandButton(command, "View Disabled");
             }
-            msg.send(CommandMessagePriority.RESULT);
+            msg.send(RateLimitedSources.COMMAND_RESULT);
             return;
         }
 
@@ -863,7 +863,7 @@ public class GrantCommands {
             "Use `listDisabled: True` to list them");
         }
 
-        io.send(result.toString(), CommandMessagePriority.RESULT);
+        io.send(result.toString(), RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Full information about a grant template", viewable = true)
@@ -888,7 +888,7 @@ public class GrantCommands {
         }
         JSONObject editJson = command.put("show_command", "true");
         io.create().embed(template.getName(), template.toFullString(me, receiver, value))
-                .commandButton(editJson, "Edit").send(CommandMessagePriority.RESULT);
+                .commandButton(editJson, "Edit").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -898,7 +898,7 @@ public class GrantCommands {
     public String templateDelete(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
         if (!force) {
             String body = template.toFullString(me, null, null);
-            io.create().confirmation("Delete template: " + template.getName(), body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation("Delete template: " + template.getName(), body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         db.getGrantTemplateManager().deleteTemplate(template);
@@ -1025,7 +1025,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.saveTemplate(template);
@@ -1138,7 +1138,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.saveTemplate(template);
@@ -1286,7 +1286,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.saveTemplate(template);
@@ -1396,7 +1396,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.saveTemplate(template);
@@ -1529,7 +1529,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.saveTemplate(template);
@@ -1641,7 +1641,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.saveTemplate(template);
@@ -1757,7 +1757,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.saveTemplate(template);
@@ -1881,7 +1881,7 @@ public class GrantCommands {
                         "\n\n" + body;
             }
             String prefix = existing != null ? "Overwrite " : "Create ";
-            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         if (existing != null) {
@@ -1970,7 +1970,7 @@ public class GrantCommands {
             String title = "Send grant: " + template.getName();
             StringBuilder body = new StringBuilder();
             body.append(template.toFullString(me, receiver, parsed));
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -2098,7 +2098,7 @@ public class GrantCommands {
         grantMessage.append(instructions);
 
         String title = template.getName() + " grant sent to " + receiver.getName();
-        io.create().embed(title, grantMessage.toString()).send(CommandMessagePriority.RESULT);
+        io.create().embed(title, grantMessage.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -3048,7 +3048,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Receiver " + receiver.getUrl() + "is in Vacation Mode");
         }
         if (receiver.isBlockaded() && !force) {
-            channel.create().confirmation("Error: Nation is blockaded!", "Do you want to try sending anyway?", command).send(CommandMessagePriority.RESULT);
+            channel.create().confirmation("Error: Nation is blockaded!", "Do you want to try sending anyway?", command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -3065,7 +3065,7 @@ public class GrantCommands {
             body.append("**Amount**: `" + ResourceType.toString(amtArr) + "`\n");
             body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(amtArr)));
 
-            channel.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            channel.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -3086,7 +3086,7 @@ public class GrantCommands {
                             "**Amount Specified:** `" + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + "`\n" +
                             "**Amount escrowed:** `" + MathMan.format(escrowedPair.getKey()[type.ordinal()]) + "`\n" +
                             "See: " + CM.deposits.check.cmd.toSlashMention();
-                    channel.create().embed("Escrow Withdraw Failed", msg).send(CommandMessagePriority.RESULT);
+                    channel.create().embed("Escrow Withdraw Failed", msg).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
             }
@@ -3140,12 +3140,12 @@ public class GrantCommands {
                 case ESCROWED:
                 case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
-                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send(CommandMessagePriority.RESULT);
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
                 default:
                 case OTHER: {
-                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send(CommandMessagePriority.RESULT);
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
                 case TURN_CHANGE:
@@ -3170,7 +3170,7 @@ public class GrantCommands {
                     // add balance back
                     db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
                     result.addMessage("Adding back `" + ResourceType.toString(amtArr) + "` to escrow account for " + receiver.getMarkdownUrl());
-                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send(CommandMessagePriority.RESULT);
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
             }
@@ -3476,15 +3476,15 @@ public class GrantCommands {
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "purchases").append(body.toString()).send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "purchases").append(body.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
     @Command(desc = "Cancel a grant request")
     @RolePermission(value = {Roles.ECON, Roles.ECON_STAFF}, any=true)
     public String grantRequestCancel(@Me IMessageIO io, @Me User user, @Me GuildDB db, GrantRequest request) {
-        if (!request.updateMessage(io, "Rejected by " + user.getAsMention(), CommandMessagePriority.RESULT)) {
-            io.setMessageDeleted(CommandMessagePriority.RESULT);
+        if (!request.updateMessage(io, "Rejected by " + user.getAsMention(), RateLimitedSources.COMMAND_RESULT)) {
+            io.setMessageDeleted(RateLimitedSources.COMMAND_RESULT);
         }
         db.deleteGrantRequest(request.getId());
 
@@ -3500,8 +3500,8 @@ public class GrantCommands {
         if (reqUser != null) {
             // DM them
             try {
-                PrivateChannel channel = RateLimitUtil.complete(reqUser.openPrivateChannel(), CommandMessagePriority.RESULT);
-                RateLimitUtil.queue(channel.sendMessage(msgStart + user.getAsMention()), CommandMessagePriority.RESULT);
+                PrivateChannel channel = RateLimitUtil.complete(reqUser.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT);
+                RateLimitUtil.queue(channel.sendMessage(msgStart + user.getAsMention()), RateLimitedSources.COMMAND_RESULT);
                 sendMail = false;
                 response.append("Rejection notification sent to " + reqUser.getAsMention() + " via DM\n");
             } catch (Throwable e) {}
@@ -3531,8 +3531,8 @@ public class GrantCommands {
         arguments.remove("");
         Locutus.cmd().getV2().run((LocalValueStore) locals, io, cmd, stringArguments, false);
 
-        if (!request.updateMessage(io, "Approved by " + user.getAsMention(), CommandMessagePriority.RESULT)) {
-            io.setMessageDeleted(CommandMessagePriority.RESULT);
+        if (!request.updateMessage(io, "Approved by " + user.getAsMention(), RateLimitedSources.COMMAND_RESULT)) {
+            io.setMessageDeleted(RateLimitedSources.COMMAND_RESULT);
         }
 
         db.deleteGrantRequest(request.getId());
@@ -3546,8 +3546,8 @@ public class GrantCommands {
         if (reqUser != null) {
             // DM them
             try {
-                PrivateChannel channel = RateLimitUtil.complete(reqUser.openPrivateChannel(), CommandMessagePriority.RESULT);
-                RateLimitUtil.queue(channel.sendMessage(msgStart + user.getAsMention()), CommandMessagePriority.RESULT);
+                PrivateChannel channel = RateLimitUtil.complete(reqUser.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT);
+                RateLimitUtil.queue(channel.sendMessage(msgStart + user.getAsMention()), RateLimitedSources.COMMAND_RESULT);
                 sendMail = false;
                 response.append("Approval notification sent to " + reqUser.getAsMention() + " via DM\n");
             } catch (Throwable e) {}
@@ -3680,7 +3680,7 @@ public class GrantCommands {
                 .append(roleMention)
                 .commandButton(CommandBehavior.DELETE_BUTTONS, confirmCmd, "confirm")
                 .commandButton(CommandBehavior.DELETE_BUTTONS, cancelCmd, "cancel")
-                .send(CommandMessagePriority.RESULT).get();
+                .send(RateLimitedSources.COMMAND_RESULT).get();
         if (requestMsg.getId() != 0) {
             request.setMessageId(requestMsg.getId());
             db.updateGrantRequestMessageId(request.getId(), requestMsg.getId());
@@ -3688,9 +3688,9 @@ public class GrantCommands {
 
         IMessageBuilder response = io.create().embed(requestTitle, "**Please be patient while it is processed**\n\n" + sb.toString());
         if (user != null) response.append(user.getAsMention());
-        response.send(CommandMessagePriority.RESULT);
+        response.send(RateLimitedSources.COMMAND_RESULT);
 
-        io.appendToEmbed("**Submitted grant request, ID: #" + request.getId() + "**", CommandMessagePriority.RESULT);
+        io.appendToEmbed("**Submitted grant request, ID: #" + request.getId() + "**", RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }

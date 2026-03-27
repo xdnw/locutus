@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -80,16 +80,16 @@ public class WarCat extends Command {
         List<Category> categories = guild.getCategoriesByName(categoryName, true);
         Category category;
         if (categories.isEmpty()) {
-            category = RateLimitUtil.complete(guild.createCategory(categoryName), CommandMessagePriority.RESULT);
+            category = RateLimitUtil.complete(guild.createCategory(categoryName), RateLimitedSources.COMMAND_RESULT);
             Set<Role> milcomRoles = Roles.MILCOM.toRoles(db);
             List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
             for (Role milcomRole : milcomRoles) {
                 futures.add(RateLimitUtil.queue(category.upsertPermissionOverride(milcomRole)
-                        .grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE), CommandMessagePriority.RESULT));
+                        .grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE), RateLimitedSources.COMMAND_RESULT));
             }
             if (!futures.isEmpty()) CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
             RateLimitUtil.queue(category.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
-                    .deny(net.dv8tion.jda.api.Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                    .deny(net.dv8tion.jda.api.Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
         } else {
             category = categories.get(0);
         }
@@ -99,7 +99,7 @@ public class WarCat extends Command {
             return "Already in category: " + categoryName;
         }
 
-        RateLimitUtil.complete(cc.getManager().setParent(category), CommandMessagePriority.RESULT);
+        RateLimitUtil.complete(cc.getManager().setParent(category), RateLimitedSources.COMMAND_RESULT);
 
         return "Set category for " + textChannel.getAsMention() + " to " + categoryName;
     }

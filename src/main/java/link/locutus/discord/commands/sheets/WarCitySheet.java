@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -93,7 +93,7 @@ public class WarCitySheet extends Command {
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(channel.create(), "wars_tiering").send(CommandMessagePriority.RESULT);
+        sheet.attach(channel.create(), "wars_tiering").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

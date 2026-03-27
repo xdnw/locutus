@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.bank;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -58,7 +58,7 @@ public class TransferResources extends Command {
             String title = "Please set your color off gray";
             String body = "<" + Settings.PNW_URL() + "/nation/edit/>\n" +
                     "Press `confirm` once you have done so.";
-            channel.create().embed(title, body).commandButton(fullCommandRaw + " -f", "Confirm").send(CommandMessagePriority.RESULT);
+            channel.create().embed(title, body).commandButton(fullCommandRaw + " -f", "Confirm").send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         String mention = author.getAsMention();

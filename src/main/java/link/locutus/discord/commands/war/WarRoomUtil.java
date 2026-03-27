@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -174,13 +175,13 @@ public class WarRoomUtil {
 
         if (existingMessageId == null) {
             CompletableFuture<Long> future = new CompletableFuture<>();
-            msg.send(WarRoomRateLimit.INITIAL_PIN).whenComplete((sent, error) -> {
+            msg.send(RateLimitedSources.WAR_ROOM_INITIAL_PIN).whenComplete((sent, error) -> {
                 if (error != null) {
                     future.completeExceptionally(error);
                     return;
                 }
                 long messageId = sent.getId();
-                queuePinnedMessageMetadata(channel, messageId, WarRoomRateLimit.INITIAL_PIN);
+                queuePinnedMessageMetadata(channel, messageId, RateLimitedSources.WAR_ROOM_INITIAL_PIN);
                 future.complete(messageId);
             });
             return future;
@@ -189,8 +190,8 @@ public class WarRoomUtil {
         long messageId = existingMessageId;
         MessageEditData editData = msg.buildEdit(true);
         String key = messageEditKey(channel, messageId);
-        return RateLimitUtil.queueLatest(key, WarRoomRateLimit.PIN_REFRESH,
-                () -> RateLimitUtil.queue(channel.editMessageById(messageId, editData), WarRoomRateLimit.PIN_REFRESH))
+        return RateLimitUtil.queueLatest(key, RateLimitedSources.WAR_ROOM_PIN_REFRESH,
+                () -> RateLimitUtil.queue(channel.editMessageById(messageId, editData), RateLimitedSources.WAR_ROOM_PIN_REFRESH))
                 .thenApply(Message::getIdLong);
     }
 
@@ -296,7 +297,7 @@ public class WarRoomUtil {
                 "About Counters: https://docs.google.com/document/d/1eJfgNRk6L72G6N3MT01xjfn0CzQtYibwnTg9ARFknRg";
 
         if (addMessage) {
-            RateLimitUtil.queueMessage(channel, info, WarRoomRateLimit.ROOM_INFO);
+            RateLimitUtil.queueMessage(channel, info, RateLimitedSources.WAR_ROOM_ROOM_INFO);
         }
 
         for (DBNation attacker : attackers) {
@@ -323,7 +324,7 @@ public class WarRoomUtil {
                 }
 
                 if (!contains) {
-                    RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), WarRoomRateLimit.MANUAL_ROOM_CREATE);
+                    RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL), RateLimitedSources.WAR_ROOM_MANUAL_ROOM_CREATE);
                     if (ping) {
                         String msg = author.getName() + " added " + user.getAsMention();
 
@@ -364,7 +365,7 @@ public class WarRoomUtil {
                             }
                         }
 
-                        RateLimitUtil.queueMessage(channel, msg + "\n- <" + declareUrl + '>', WarRoomRateLimit.ROOM_INFO);
+                        RateLimitUtil.queueMessage(channel, msg + "\n- <" + declareUrl + '>', RateLimitedSources.WAR_ROOM_ROOM_INFO);
                     }
                 }
             }

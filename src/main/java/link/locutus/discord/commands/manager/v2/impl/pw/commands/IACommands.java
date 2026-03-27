@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
@@ -150,7 +150,7 @@ public class IACommands {
             String topic = channel.getTopic();
             if (topic == null || channel.getTopic().isEmpty()) {
                 String newTopic = nation.getUrl();
-                RateLimitUtil.queue(channel.getManager().setTopic(newTopic), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(channel.getManager().setTopic(newTopic), RateLimitedSources.COMMAND_RESULT);
             }
             String newName = nation.getName() + "-" + nation.getId();
             if (channel.getName().replace(" ", "-").equalsIgnoreCase(newName.replace(" ", "-")))
@@ -159,7 +159,7 @@ public class IACommands {
                     + nation.getId());
             if (force) {
                 try {
-                    RateLimitUtil.queue(channel.getManager().setName(newName), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(channel.getManager().setName(newName), RateLimitedSources.COMMAND_RESULT);
                 } catch (PermissionException e) {
                     errors.put(channel, "Error renaming channel: " + e.getMessage());
                 }
@@ -219,15 +219,15 @@ public class IACommands {
 
         if (changes.isEmpty()) {
             append.append("No changes to be made");
-            msg.append(append.toString()).send(CommandMessagePriority.RESULT);
+            msg.append(append.toString()).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         if (!force) {
             append.append(changes.size() + " changes.");
             msg.confirmation("Confirm rename channels", append.toString() + "\n" +
-                    StringMan.join(changes, "\n"), command).send(CommandMessagePriority.RESULT);
+                    StringMan.join(changes, "\n"), command).send(RateLimitedSources.COMMAND_RESULT);
         } else {
-            msg.append(append.toString() + "\n" + StringMan.join(changes, "\n")).send(CommandMessagePriority.RESULT);
+            msg.append(append.toString() + "\n" + StringMan.join(changes, "\n")).send(RateLimitedSources.COMMAND_RESULT);
         }
         return null;
     }
@@ -295,7 +295,7 @@ public class IACommands {
         if (!errors.isEmpty()) {
             msg = msg.append("\nCategory Name Errors:\n" + StringMan.join(errors, "\n"));
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -360,7 +360,7 @@ public class IACommands {
         if (!errors.isEmpty()) {
             msg = msg.append("\nCategory Name Errors:\n" + StringMan.join(errors, "\n"));
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -430,7 +430,7 @@ public class IACommands {
         if (!errors.isEmpty()) {
             msg = msg.append("\nSheet Errors:\n" + StringMan.join(errors, "\n"));
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -523,7 +523,7 @@ public class IACommands {
                 Category currCategory = channel.getParentCategory();
                 if (force) {
                     try {
-                        RateLimitUtil.queue(channel.getManager().setParent(nonMax), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(channel.getManager().setParent(nonMax), RateLimitedSources.COMMAND_RESULT);
                     } catch (PermissionException e) {
                         errors.put(channel, "Error moving " + nonMax.getName() + ": " + e.getMessage());
                         continue;
@@ -690,7 +690,7 @@ public class IACommands {
         sheet.updateWrite();
 
         sheet.attach(io.create(), "day_change")
-                .append("Timezone is the UTC update timezone as displayed in-game on the account page").send(CommandMessagePriority.RESULT);
+                .append("Timezone is the UTC update timezone as displayed in-game on the account page").send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Add a discord role to all users in a server")
@@ -699,7 +699,7 @@ public class IACommands {
         int amt = 0;
         for (Member member : guild.getMembers()) {
             if (!member.getUnsortedRoles().contains(role)) {
-                RateLimitUtil.queue(guild.addRoleToMember(member, role), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(guild.addRoleToMember(member, role), RateLimitedSources.COMMAND_RESULT);
                 amt++;
             }
         }
@@ -716,7 +716,7 @@ public class IACommands {
         Map<User, List<String>> reactionsByUser = new LinkedHashMap<>();
         for (MessageReaction reaction : reactions) {
             String emoji = reaction.getEmoji().asUnicode().getAsCodepoints();
-            List<User> users = RateLimitUtil.complete(reaction.retrieveUsers(), CommandMessagePriority.RESULT);
+            List<User> users = RateLimitUtil.complete(reaction.retrieveUsers(), RateLimitedSources.COMMAND_RESULT);
             for (User user : users) {
                 reactionsByUser.computeIfAbsent(user, f -> new ArrayList<>()).add(emoji);
             }
@@ -743,7 +743,7 @@ public class IACommands {
             }
         }
 
-        channel.create().embed(title, response.toString()).send(CommandMessagePriority.RESULT);
+        channel.create().embed(title, response.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -783,7 +783,7 @@ public class IACommands {
                 msg = msg.append("Closed " + channel.getAsMention() + "\n");
             }
         }
-        msg.append("Done!").send(CommandMessagePriority.RESULT);
+        msg.append("Done!").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -895,7 +895,7 @@ public class IACommands {
         if (member.getUnsortedRoles().contains(addRole)) {
             return member + " already has " + addRole;
         }
-        RateLimitUtil.queue(db.getGuild().addRoleToMember(member, addRole), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(db.getGuild().addRoleToMember(member, addRole), RateLimitedSources.COMMAND_RESULT);
         return "Added " + addRole + " to " + member;
     }
 
@@ -931,7 +931,7 @@ public class IACommands {
         if (!member.getUnsortedRoles().contains(addRole)) {
             return member + " does not have " + addRole;
         }
-        RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, addRole), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, addRole), RateLimitedSources.COMMAND_RESULT);
         return "Removed " + addRole + " to " + member;
     }
 
@@ -944,10 +944,10 @@ public class IACommands {
         }
         if (member.getUnsortedRoles().contains(role)) {
             // remove role
-            RateLimitUtil.complete(guild.removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
+            RateLimitUtil.complete(guild.removeRoleFromMember(member, role), RateLimitedSources.COMMAND_RESULT);
             return "Opted in to beige alerts (@" + role.getName() + " role removed). Use the command again to opt out";
         }
-        RateLimitUtil.complete(guild.addRoleToMember(member, role), CommandMessagePriority.RESULT);
+        RateLimitUtil.complete(guild.addRoleToMember(member, role), RateLimitedSources.COMMAND_RESULT);
         return "Opted out of beige alerts (@" + role.getName() + " role added). Use the command again to opt in";
     }
 
@@ -977,7 +977,7 @@ public class IACommands {
                             ? " from Mentor (" + currentMentor.getNation() + " | "
                                     + currentMentor.getUserDiscriminator() + ")"
                             : "");
-            RateLimitUtil.queue(alertChannel.sendMessage(message), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(alertChannel.sendMessage(message), RateLimitedSources.COMMAND_RESULT);
         }
 
         return "Set " + mentee.getNation() + "'s mentor to null";
@@ -1027,7 +1027,7 @@ public class IACommands {
         }
 
         if (lacking.isEmpty()) {
-            msg.append("No results found").send(CommandMessagePriority.RESULT);
+            msg.append("No results found").send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -1042,7 +1042,7 @@ public class IACommands {
             response.append("\n" + nation.getNation() + ": " + nation.getSpies() + "/" + nation.getSpyCap());
         }
 
-        msg.append(response.toString()).send(CommandMessagePriority.RESULT);
+        msg.append(response.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1064,7 +1064,7 @@ public class IACommands {
                         String title = mentee.getNation() + " already has a mentor";
                         StringBuilder body = new StringBuilder();
                         body.append("Current mentor: " + current.getNationUrlMarkup());
-                        io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+                        io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
                         return null;
                     }
                 }
@@ -1557,7 +1557,7 @@ public class IACommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "mail", null, false, 0).send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "mail", null, false, 0).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1628,7 +1628,7 @@ public class IACommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "loot").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "loot").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1700,7 +1700,7 @@ public class IACommands {
             body.append("subject: " + subject + "\n");
             body.append("body: ```" + message + "```");
 
-            channel.create().confirmation(embedTitle, body.toString(), command).send(CommandMessagePriority.RESULT);
+            channel.create().confirmation(embedTitle, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -1710,7 +1710,7 @@ public class IACommands {
 
         CompletableFuture<IMessageBuilder> msgFuture = null;
         if (nations.size() > 1) {
-            msgFuture = channel.sendIfFree("Sending to " + nations.size() + " (please wait)", CommandMessagePriority.PROGRESS);
+            msgFuture = channel.sendIfFree("Sending to " + nations.size() + " (please wait)", RateLimitedSources.COMMAND_PROGRESS);
         }
         List<String> full = new ArrayList<>();
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
@@ -2035,7 +2035,7 @@ public class IACommands {
                     }
                     body.append("\nWould you like to promote anyway?");
                     channel.create().confirmation("Failed " + checks.size() + " checks", body.toString(), command)
-                            .send(CommandMessagePriority.RESULT);
+                            .send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
 
@@ -2046,7 +2046,7 @@ public class IACommands {
                             .bank_note("#deposit").nation_account(nation.getNation_id() + "").bypass_checks("true");
                     channel.create().embed(title, body)
                             .commandButton(cmd, "Disburse 3 days")
-                            .send(CommandMessagePriority.RESULT);
+                            .send(RateLimitedSources.COMMAND_RESULT);
                 }
             }
         }
@@ -2059,7 +2059,7 @@ public class IACommands {
                     if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) {
                         Role role = Roles.MEMBER.toRole(discordUser, db);
                         if (role != null) {
-                            RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role), CommandMessagePriority.RESULT);
+                            RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role), RateLimitedSources.COMMAND_RESULT);
                         }
                     } else if (position == DBAlliancePosition.APPLICANT || position == DBAlliancePosition.REMOVE) {
                         Collection<Role> roles = Roles.MEMBER.toRoleMap(db).values();
@@ -2067,7 +2067,7 @@ public class IACommands {
                             Set<Role> currentRoles = member.getUnsortedRoles();
                             for (Role role : roles) {
                                 if (currentRoles.contains(role)) {
-                                    RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
+                                    RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), RateLimitedSources.COMMAND_RESULT);
                                 }
                             }
                         }
@@ -2120,7 +2120,7 @@ public class IACommands {
         String title = "Inactive nations";
         List<IShrink> results = nationList.stream().map(NationOrAllianceOrGuildOrTaxid::toShrink)
                 .collect(Collectors.toList());
-        channel.create().paginate(title, command, page, perPage, results).send(CommandMessagePriority.RESULT);
+        channel.create().paginate(title, command, page, perPage, results).send(RateLimitedSources.COMMAND_RESULT);
 
     }
 
@@ -2131,7 +2131,7 @@ public class IACommands {
         if (!(channel instanceof ICategorizableChannel))
             return "This channel cannot be categorized";
         ICategorizableChannel tc = ((ICategorizableChannel) channel);
-        RateLimitUtil.queue(tc.getManager().setParent(category), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(tc.getManager().setParent(category), RateLimitedSources.COMMAND_RESULT);
         return "Moved " + tc.getAsMention() + " to " + category.getName();
     }
 
@@ -2192,7 +2192,7 @@ public class IACommands {
         if (nations.isEmpty())
             return "No nations specified";
 
-        Future<IMessageBuilder> msgFuture = channel.send("Please wait...", CommandMessagePriority.RESULT);
+        Future<IMessageBuilder> msgFuture = channel.send("Please wait...", RateLimitedSources.COMMAND_RESULT);
         long start = System.currentTimeMillis();
 
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
@@ -2203,7 +2203,7 @@ public class IACommands {
         for (DBNation nation : nations) {
             if (-start + (start = System.currentTimeMillis()) > 5000) {
                 try {
-                    msgFuture.get().clear().append("Running for: " + nation.getNation() + "...").send(CommandMessagePriority.RESULT);
+                    msgFuture.get().clear().append("Running for: " + nation.getNation() + "...").send(RateLimitedSources.COMMAND_RESULT);
                 } catch (InterruptedException | ExecutionException e) {
                     // ignore
                 }
@@ -2265,7 +2265,7 @@ public class IACommands {
         CM.mail.sheet cmd = CM.mail.sheet.cmd.sheet(sheet.getURL()).dm(sendDM ? "true" : null)
                 .skipMail(skipMail ? "true" : null);
 
-        msg.confirmation(title, embed.toString(), cmd).send(CommandMessagePriority.RESULT);
+        msg.confirmation(title, embed.toString(), cmd).send(RateLimitedSources.COMMAND_RESULT);
 
         if (errorMsgs.isEmpty())
             return null;
@@ -2370,7 +2370,7 @@ public class IACommands {
                 body.append("applicant receivers: " + applicants + "\n");
 
             body.append("\nPress to confirm");
-            msg.confirmation(title, body.toString(), command, "force").send(CommandMessagePriority.RESULT);
+            msg.confirmation(title, body.toString(), command, "force").send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -2378,7 +2378,7 @@ public class IACommands {
         if (keys == null)
             throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
 
-        io.send("Sending to " + messageMap.size() + " nations in " + alliances.size() + " alliances. Please wait.", CommandMessagePriority.RESULT);
+        io.send("Sending to " + messageMap.size() + " nations in " + alliances.size() + " alliances. Please wait.", RateLimitedSources.COMMAND_RESULT);
         List<String> response = new ArrayList<>();
         int errors = 0;
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : messageMap.entrySet()) {
@@ -2411,14 +2411,14 @@ public class IACommands {
                     result.add("\n- **dm**: No discord user set. See " + CM.register.cmd.toSlashMention());
                 } else {
                     try {
-                        PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), CommandMessagePriority.RESULT);
+                        PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT);
                         DiscordChannelIO dmIo = new DiscordChannelIO(channel);
                         IMessageBuilder msg = dmIo.create();
                         if (richBody != null)
                             richBody.writeTo(msg);
                         else
                             msg.append(body);
-                        msg.send(CommandMessagePriority.RESULT);
+                        msg.send(RateLimitedSources.COMMAND_RESULT);
                         result.add("\n- **dm**: Sent dm");
                     } catch (Throwable e) {
                         e.printStackTrace();
@@ -2538,10 +2538,10 @@ public class IACommands {
 
         if (tc.getName().contains(closeChar)) {
             String newName = tc.getName().replace(closeChar, "");
-            RateLimitUtil.queue(tc.getManager().setName(newName), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(tc.getManager().setName(newName), RateLimitedSources.COMMAND_RESULT);
         }
         if (category != null) {
-            RateLimitUtil.queue(tc.getManager().setParent(category), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(tc.getManager().setParent(category), RateLimitedSources.COMMAND_RESULT);
         }
         return "Reopened channel";
     }
@@ -2575,7 +2575,7 @@ public class IACommands {
         if (canClose) {
             Category parent = tc.getParentCategory();
             if (channel.getName().contains(closeChar)) {
-                RateLimitUtil.queue(((GuildMessageChannel) channel).delete(), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(((GuildMessageChannel) channel).delete(), RateLimitedSources.COMMAND_RESULT);
                 return null;
             } else if (parent != null && (parent.getName().toLowerCase().startsWith("treasury")
                     || parent.getName().toLowerCase().startsWith("grant"))) {
@@ -2588,13 +2588,13 @@ public class IACommands {
                             OffsetDateTime created = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(id);
                             long diff = System.currentTimeMillis() - created.toEpochSecond() * 1000L;
                             if (diff > expireTime && ++i < 5) {
-                                RateLimitUtil.queue(otherChannel.delete(), CommandMessagePriority.RESULT);
+                                RateLimitUtil.queue(otherChannel.delete(), RateLimitedSources.COMMAND_RESULT);
                             }
                         }
                     }
                 }
                 RateLimitUtil
-                        .queue(((GuildMessageChannel) channel).getManager().setName(closeChar + channel.getName()), CommandMessagePriority.RESULT);
+                        .queue(((GuildMessageChannel) channel).getManager().setName(closeChar + channel.getName()), RateLimitedSources.COMMAND_RESULT);
                 return "Marked channel as closed. Auto deletion in >24h. Use " + CM.channel.open.cmd.toSlashMention()
                         + " to reopen. Use " + CM.channel.close.current.cmd.toSlashMention() + " again to force close";
             }
@@ -2602,7 +2602,7 @@ public class IACommands {
             Category archiveCategory = db.getOrNull(GuildKey.ARCHIVE_CATEGORY);
             if (archiveCategory != null) {
                 if (true || archiveCategory.equals(tc.getParentCategory()) || forceDelete) {
-                    RateLimitUtil.queue(tc.delete(), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(tc.delete(), RateLimitedSources.COMMAND_RESULT);
                 } else {
                     long cutoff = System.currentTimeMillis() - expireTime;
                     Locutus.imp().getExecutor().submit(new Runnable() {
@@ -2613,7 +2613,7 @@ public class IACommands {
                                     long created = net.dv8tion.jda.api.utils.TimeUtil
                                             .getTimeCreated(toDelete.getLatestMessageIdLong()).toEpochSecond() * 1000L;
                                     if (created < cutoff) {
-                                        RateLimitUtil.queue(toDelete.delete(), CommandMessagePriority.RESULT);
+                                        RateLimitUtil.queue(toDelete.delete(), RateLimitedSources.COMMAND_RESULT);
                                     }
                                 } catch (IllegalStateException ignore) {
                                     ignore.printStackTrace();
@@ -2621,15 +2621,15 @@ public class IACommands {
                             }
                         }
                     });
-                    RateLimitUtil.queue(tc.getManager().setParent(archiveCategory), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(tc.getManager().setParent(archiveCategory), RateLimitedSources.COMMAND_RESULT);
                     for (PermissionOverride perm : tc.getMemberPermissionOverrides()) {
                         RateLimitUtil.queue(tc.upsertPermissionOverride(perm.getMember())
-                                .setAllowed(Permission.VIEW_CHANNEL).setDenied(Permission.MESSAGE_SEND), CommandMessagePriority.RESULT);
+                                .setAllowed(Permission.VIEW_CHANNEL).setDenied(Permission.MESSAGE_SEND), RateLimitedSources.COMMAND_RESULT);
                     }
                     return "This channel is archived and marked for deletion after 2 days. Do not reply here";
                 }
             }
-            RateLimitUtil.queue(((GuildMessageChannel) channel).delete(), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(((GuildMessageChannel) channel).delete(), RateLimitedSources.COMMAND_RESULT);
             return null;
         } else {
             return "You do not have permission to close this channel";
@@ -2652,7 +2652,7 @@ public class IACommands {
         if (applicantRole != null) {
             Member member = db.getGuild().getMember(user);
             if (member == null || !member.getUnsortedRoles().contains(applicantRole)) {
-                RateLimitUtil.queue(db.getGuild().addRoleToMember(user, applicantRole), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(db.getGuild().addRoleToMember(user, applicantRole), RateLimitedSources.COMMAND_RESULT);
             }
         }
 
@@ -2772,7 +2772,7 @@ public class IACommands {
                 for (IAChannel iaChan : channels) {
                     GuildMessageChannel channel = iaChan.getChannel();
                     DBNation nation = iaChan.getNation();
-                    List<Message> messages = RateLimitUtil.complete(channel.getHistory().retrievePast(25), CommandMessagePriority.RESULT);
+                    List<Message> messages = RateLimitUtil.complete(channel.getHistory().retrievePast(25), RateLimitedSources.COMMAND_RESULT);
                     User user = nation.getUser();
 
                     Message latestMessageUs = null;
@@ -2984,7 +2984,7 @@ public class IACommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "interview").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "interview").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -3138,7 +3138,7 @@ public class IACommands {
             output.updateWrite();
             output.attach(msg, "unmatched_builds");
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

@@ -1,10 +1,10 @@
 package link.locutus.discord.commands.sync;
 
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -107,13 +107,13 @@ public class SyncTaxes extends Command {
                         throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + StringMan.getString(ids));
                     }
 
-                    CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait...", CommandMessagePriority.RESULT);
+                    CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait...", RateLimitedSources.COMMAND_RESULT);
 
                     int taxesCount = aa.updateTaxesLegacy(latestDate);
 
                     IMessageBuilder msg = msgFuture.get();
                     if (msg != null && msg.getId() > 0) {
-                        channel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
+                        channel.delete(msg.getId(), RateLimitedSources.COMMAND_PROGRESS);
                     }
 
                     return "Updated " + taxesCount + " records.\n"

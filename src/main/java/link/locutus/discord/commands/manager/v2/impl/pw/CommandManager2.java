@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -19,7 +20,6 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.CommandTextParser;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
@@ -730,7 +730,7 @@ public class CommandManager2 {
                 CommandCallable callable = commands.get(Arrays.asList(path.split(" ")));
                 if (callable == null) {
                     Logg.info("User attempted invalid command: " + path);
-                    io.create().append("No command found for " + path).send(CommandMessagePriority.RESULT);
+                    io.create().append("No command found for " + path).send(RateLimitedSources.COMMAND_RESULT);
                     return;
                 }
 
@@ -797,7 +797,7 @@ public class CommandManager2 {
     }
 
     private void sendResult(IMessageIO io, String message) {
-        io.send(message, CommandMessagePriority.RESULT);
+        io.send(message, RateLimitedSources.COMMAND_RESULT);
     }
 
     private boolean handleMenu(IMessageIO io, User user, Guild guild, Map<String, String> argsAndCmd) {
@@ -813,7 +813,7 @@ public class CommandManager2 {
                 return true;
             }
             if (!Roles.ADMIN.has(user, guild)) {
-                io.create().append("Aborted command. You do not have permission to add buttons to menus.").send(CommandMessagePriority.RESULT);
+                io.create().append("Aborted command. You do not have permission to add buttons to menus.").send(RateLimitedSources.COMMAND_RESULT);
                 return true;
             }
             handleCall(io, () -> {
@@ -833,7 +833,7 @@ public class CommandManager2 {
             try {
                 Object result = call.get();
                 if (result != null) {
-                    io.create().append(result.toString()).send(CommandMessagePriority.RESULT);
+                    io.create().append(result.toString()).send(RateLimitedSources.COMMAND_RESULT);
                 }
             } catch (CommandUsageException e) {
                 Throwable root = e;
@@ -871,17 +871,17 @@ public class CommandManager2 {
                     }
                 }
 
-                io.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
+                io.create().embed(title, body.toString()).send(RateLimitedSources.COMMAND_RESULT);
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
-                io.create().append(e.getMessage()).send(CommandMessagePriority.RESULT);
+                io.create().append(e.getMessage()).send(RateLimitedSources.COMMAND_RESULT);
             } catch (Throwable e) {
                 Throwable root = e;
                 while (root.getCause() != null)
                     root = root.getCause();
 
                 root.printStackTrace();
-                io.create().append("Error: " + root.getMessage()).send(CommandMessagePriority.RESULT);
+                io.create().append("Error: " + root.getMessage()).send(RateLimitedSources.COMMAND_RESULT);
             }
         } catch (Throwable e) {
             e.printStackTrace();

@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
@@ -109,13 +109,13 @@ public class WarRoomCmd extends Command {
                     (dbNationDBNationEntry, s) -> response.append(s).append("\n"),
                     info -> response.append("```\n" + info.entrySet().stream().map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.joining("\n")) + "\n```").append("\n"));
             if (response.length() != 0) {
-                channel.send(response.toString(), CommandMessagePriority.RESULT);
+                channel.send(response.toString(), RateLimitedSources.COMMAND_RESULT);
                 if (!flags.contains('f')) {
                     return "Add `-f` to force create the channels anyway.";
                 }
             }
 
-            channel.sendMessage("Generating channels...", CommandMessagePriority.RESULT);
+            channel.sendMessage("Generating channels...", RateLimitedSources.COMMAND_RESULT);
 
             if (filterArg != null) {
                 Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, filterArg, false, false);
@@ -138,7 +138,7 @@ public class WarRoomCmd extends Command {
                 }
                 try {
                     if (args.get(1).length() > 1 && !args.get(1).equalsIgnoreCase("null")) {
-                        RateLimitUtil.queue(warChan.sendMessage(args.get(1)), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(warChan.sendMessage(args.get(1)), RateLimitedSources.COMMAND_RESULT);
                     }
                     channels.add(warChan);
                 } catch (Throwable e) {

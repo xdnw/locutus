@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.trade;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -94,7 +94,7 @@ public class FindProducer extends Command {
             nations.removeIf(f -> !f.isTaxable());
         }
 
-        channel.sendMessage("Fetching cities for " + nations.size() + " nations. Please wait...", CommandMessagePriority.RESULT);
+        channel.sendMessage("Fetching cities for " + nations.size() + " nations. Please wait...", RateLimitedSources.COMMAND_RESULT);
         long last = System.currentTimeMillis();
         Map<DBNation, Number> profitByNation = new HashMap<>();
 

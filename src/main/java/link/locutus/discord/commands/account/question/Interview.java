@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.account.question;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -74,7 +74,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
                         if (category.equals(cc.getParentCategory())) {
                             return "This channel is already in " + category.getName();
                         }
-                        RateLimitUtil.queue(cc.getManager().setParent(category), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(cc.getManager().setParent(category), RateLimitedSources.COMMAND_RESULT);
                         return "Moving " + dChannel.getAsMention() + " to " + category.getName();
                     }
                 }
@@ -111,7 +111,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
         if (applicantRole != null) {
             Member member = guild.getMember(user);
             if (member == null || !member.getUnsortedRoles().contains(applicantRole)) {
-                RateLimitUtil.queue(guild.addRoleToMember(user, applicantRole), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(guild.addRoleToMember(user, applicantRole), RateLimitedSources.COMMAND_RESULT);
             }
         }
         return dChannel.getAsMention();

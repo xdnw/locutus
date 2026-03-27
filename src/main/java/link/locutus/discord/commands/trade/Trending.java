@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.trade;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -144,7 +144,7 @@ public class Trending extends Command {
 
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "trending").send(CommandMessagePriority.RESULT);
+        sheet.attach(channel.create(), "trending").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

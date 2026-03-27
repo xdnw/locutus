@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -288,7 +288,7 @@ public class CounterSheet extends Command {
 
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "counter").send(CommandMessagePriority.RESULT);
+        sheet.attach(channel.create(), "counter").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

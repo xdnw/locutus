@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.war;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -93,7 +93,7 @@ public class WarCommand extends Command {
         double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
 
         if (flags.contains('d')) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), CommandMessagePriority.RESULT));
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
         }
 
         boolean includeInactives = flags.contains('i');
@@ -165,7 +165,7 @@ public class WarCommand extends Command {
                     nations.remove(war.getNation(false));
                 }
 
-                CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait... ", CommandMessagePriority.RESULT);
+                CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait... ", RateLimitedSources.COMMAND_RESULT);
 
                 Set<Integer> allies = db.getAllies();
                 Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
@@ -286,7 +286,7 @@ public class WarCommand extends Command {
                                         "- Add `-a` to include applicants\n" +
                                         "e.g. `" + Settings.commandPrefix(true) + "war -i -a`";
                             }
-                            channel.sendMessage(message, CommandMessagePriority.RESULT);
+                            channel.sendMessage(message, RateLimitedSources.COMMAND_RESULT);
                             return null;
                         }
                     }
@@ -355,17 +355,17 @@ public class WarCommand extends Command {
                     }
 
                     if (count == 0) {
-                        channel.sendMessage("No results. Please ping a target (advisor", CommandMessagePriority.RESULT);
+                        channel.sendMessage("No results. Please ping a target (advisor", RateLimitedSources.COMMAND_RESULT);
                         return null;
                     }
 
-                    channel.send(response.toString().trim(), CommandMessagePriority.RESULT);
+                    channel.send(response.toString().trim(), RateLimitedSources.COMMAND_RESULT);
                     return null;
                 } finally {
                     try {
                         IMessageBuilder msg = msgFuture.get();
                         if (msg != null && msg.getId() > 0) {
-                            channel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
+                            channel.delete(msg.getId(), RateLimitedSources.COMMAND_PROGRESS);
                         }
                     } catch (InterruptedException | ExecutionException e) {
                         e.printStackTrace();

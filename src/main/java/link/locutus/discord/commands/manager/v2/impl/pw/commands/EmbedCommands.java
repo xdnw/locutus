@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -50,7 +50,7 @@ public class EmbedCommands {
     @Command(desc = "Create a simple embed with a title and description")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public void create(@Me IMessageIO io, String title, String description) {
-        io.create().embed(title, description.replace("\\n", "\n")).send(CommandMessagePriority.RESULT);
+        io.create().embed(title, description.replace("\\n", "\n")).send(RateLimitedSources.COMMAND_RESULT);
     }
 
     private void checkMessagePerms(User user, Guild guild, Message message) {
@@ -76,8 +76,8 @@ public class EmbedCommands {
 
         message.clearEmbeds();
         message.embed(builder);
-        message.send(CommandMessagePriority.RESULT);
-        io.create().embed("Set Title", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send(CommandMessagePriority.RESULT);
+        message.send(RateLimitedSources.COMMAND_RESULT);
+        io.create().embed("Set Title", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -101,8 +101,8 @@ public class EmbedCommands {
 
         message.clearEmbeds();
         message.embed(builder);
-        message.send(CommandMessagePriority.RESULT);
-        io.create().embed("Set Description", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send(CommandMessagePriority.RESULT);
+        message.send(RateLimitedSources.COMMAND_RESULT);
+        io.create().embed("Set Description", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -147,9 +147,9 @@ public class EmbedCommands {
                 msg.commandButton(button.getId(), button.getLabel().equalsIgnoreCase(label) ? rename_to : button.getLabel());
             }
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         io.create().embed("Renamed Button", "Done! Renamed button `" + label + "` to " + rename_to + "\n" +
-                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention()).cancelButton("Dismiss").send(CommandMessagePriority.RESULT);
+                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention()).cancelButton("Dismiss").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -184,8 +184,8 @@ public class EmbedCommands {
             throw new IllegalArgumentException("Invalid labels: `" + StringMan.join(invalidLabels, ", ") + "`. Valid labels: `" + StringMan.join(validLabels, ", ") + "`");
         }
 
-        RateLimitUtil.queue(message.editMessageComponents(rows), CommandMessagePriority.RESULT);
-        io.create().embed("Deleted Button", "Done! Deleted " + labels.size() + " buttons").cancelButton("Dismiss").send(CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(message.editMessageComponents(rows), RateLimitedSources.COMMAND_RESULT);
+        io.create().embed("Deleted Button", "Done! Deleted " + labels.size() + " buttons").cancelButton("Dismiss").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -211,7 +211,7 @@ public class EmbedCommands {
                     String title = "Button already exists";
                     String body = "The button label `" + label + "` already exists on the embed.\n\n" +
                             "Would you like to replace it?";
-                    io.create().confirmation(title, body, cmdJson).send(CommandMessagePriority.RESULT);
+                    io.create().confirmation(title, body, cmdJson).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
             }
@@ -224,10 +224,10 @@ public class EmbedCommands {
         new DiscordMessageBuilder(message.getChannel(), message)
                 .removeButtonByLabel(label)
                 .commandButton(behavior, channelId, command.replace("\\n", "\n"), label)
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
         io.create().embed("Added Button", "Added button `" + label + "` to " + message.getJumpUrl() + "\n" +
                 "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention() + "\n" +
-                "Rename using " + CM.embed.rename.button.cmd.toSlashMention()).cancelButton("Dismiss").send(CommandMessagePriority.RESULT);// + CM.embed.rename.button.cmd.toSlashMention();
+                "Rename using " + CM.embed.rename.button.cmd.toSlashMention()).cancelButton("Dismiss").send(RateLimitedSources.COMMAND_RESULT);// + CM.embed.rename.button.cmd.toSlashMention();
         return null;
     }
 
@@ -320,8 +320,8 @@ public class EmbedCommands {
         Long channelId = channel == null ? null : channel.getIdLong();
         new DiscordMessageBuilder(message.getChannel(), message)
                 .modal(behavior, channelId, command, full, label)
-                .send(CommandMessagePriority.RESULT);
-        io.create().embed("Added Modal", "Added modal button `" + label + "` to " + message.getJumpUrl()).cancelButton("Dismiss").send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
+        io.create().embed("Added Modal", "Added modal button `" + label + "` to " + message.getJumpUrl()).cancelButton("Dismiss").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -442,7 +442,7 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
                 .commandButton(behavior, channelId, ground_2d, "2d_ground")
                 .commandButton(behavior, channelId, losing, "losing")
                 .commandButton(behavior, channelId, unprotected, "unprotected")
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
     }
 
         /*
@@ -506,7 +506,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     .commandButton(behavior, channelId, broke, "broke")
                     .commandButton(behavior, channelId, breakCmd, "break")
                     .commandButton(behavior, channelId, breakUnpowered, "unpowered")
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
         }
 
         @Command(desc="Econ panel for members")
@@ -551,7 +551,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     .commandButton(behavior, channelId, tradeprice, "price")
                     .commandButton(behavior, channelId, trademargin, "margin")
                     .commandButton(behavior, channelId, tradeprofit, "profit")
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
 
         }
 
@@ -631,7 +631,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 .commandButton(behavior, channelId, damageNoVDS, "no_vds")
                 .commandButton(behavior, channelId, damageNoID, "no_id")
                 .commandButton(behavior, channelId, damageNoVDSID, "no_vds_id")
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
     }
 
             /*
@@ -718,7 +718,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 .commandButton(behavior, channelId, low, "low")
                 .commandButton(behavior, channelId, weak, "weak")
                 .commandButton(behavior, channelId, infra, "infra")
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
     }
 
     // Spy embed with spy - airplane - tank - ship spying - auto
@@ -775,7 +775,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             .commandButton(behavior, channelId, nuke, "nuke")
             .commandButton(behavior, channelId, dmg, "dmg")
             .commandButton(behavior, channelId, kill, "kill")
-            .send(CommandMessagePriority.RESULT);
+            .send(RateLimitedSources.COMMAND_RESULT);
   }
 
   // Winning target being high average infra, high mil, low mil, off beige soon
@@ -844,7 +844,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             .commandButton(behavior, channelId, inactive, "inactive")
             .commandButton(behavior, channelId, infra, "infra")
             .commandButton(behavior, channelId, beige, "beige")
-            .send(CommandMessagePriority.RESULT);
+            .send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Discord embed for Econ Staff to view deposits, stockpiles, revenue, tax brackets, tax income, warchest and offshore funds")
@@ -907,7 +907,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxRevenue.cmd.createEmpty(), "tax");
         // warchest
         msg = msg.commandButton(behavior, channelId, CM.sheets_econ.warchestSheet.cmd.nations(allianceStr), "warchest");
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
     // todo ia panel
@@ -957,7 +957,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         // auto
         msg = msg.commandButton(behavior, channelId, CM.role.autoassign.cmd.createEmpty(), "auto");
 
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Discord embed for checking deposits, withdrawing funds, viewing your stockpile, depositing resources and offshoring funds")
@@ -1051,7 +1051,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 msg = msg.commandButton(behavior, channelId, add, label);
             }
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
 
@@ -1213,7 +1213,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                                 allEnemies.getKey()).columns(
                                 StringMan.join(allEnemies.getValue(), " ")).sheet(
                                 "sheet:" + allEnemiesSheet.getSpreadsheetId()
-                        ), "update").send(CommandMessagePriority.RESULT);
+                        ), "update").send(RateLimitedSources.COMMAND_RESULT);
 
         io.create().embed("All Allies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
                 CM.nation.sheet.NationSheet.cmd.nations(
@@ -1221,14 +1221,14 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         StringMan.join(allAllies.getValue(), " ")).sheet(
                         "sheet:" + allAlliesSheet.getSpreadsheetId()
 
-                ), "update").send(CommandMessagePriority.RESULT);
+                ), "update").send(RateLimitedSources.COMMAND_RESULT);
         io.create().embed("Priority Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
                 CM.nation.sheet.NationSheet.cmd.nations(
                         priorityEnemies.getKey()).columns(
                         StringMan.join(priorityEnemies.getValue(), " ")).sheet(
                         "sheet:" + priorityEnemiesSheet.getSpreadsheetId()
 
-                ), "update").send(CommandMessagePriority.RESULT);
+                ), "update").send(RateLimitedSources.COMMAND_RESULT);
 
         io.create().embed("Underutilized Allies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
                 CM.nation.sheet.NationSheet.cmd.nations(
@@ -1236,7 +1236,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         StringMan.join(underutilizedAllies.getValue(), " ")).sheet(
                         "sheet:" + underutilizedAlliesSheet.getSpreadsheetId()
 
-                ), "update").send(CommandMessagePriority.RESULT);
+                ), "update").send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Discord embed for sheet to update ally and enemy spy counts, generate and send spy blitz targets")
@@ -1300,13 +1300,13 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.nations(
                         "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10").columns(
                         columns
-                ), "allies").send(CommandMessagePriority.RESULT);
+                ), "allies").send(RateLimitedSources.COMMAND_RESULT);
 
         io.create().embed("Update enemy", "Press `enemies` to update active enemy spy counts" + footer)
                 .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.nations(
                         "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10").columns(
                         columns
-                ), "enemies").send(CommandMessagePriority.RESULT);
+                ), "enemies").send(RateLimitedSources.COMMAND_RESULT);
 
         io.create().embed("Blitz priority kills", "Press `blitz_kill` for a spy blitz sheet focusing spies/air" + footer)
         .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.attackers(
@@ -1317,7 +1317,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "true").prioritizeKills(
                         "true").sheet(
                         "sheet:" + spySheetId
-                ), "blitz_kill").send(CommandMessagePriority.RESULT);
+                ), "blitz_kill").send(RateLimitedSources.COMMAND_RESULT);
 
         io.create().embed("Blitz priority damage", "Press `blitz_dmg` for a spy blitz sheet focusing damage" + footer)
                 .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.attackers(
@@ -1327,7 +1327,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "true").prioritizeKills(
                         "true").sheet(
                         "sheet:" + spySheetId
-                ), "blitz_dmg").send(CommandMessagePriority.RESULT);
+                ), "blitz_dmg").send(RateLimitedSources.COMMAND_RESULT);
         io.create().embed("Validate and send", """
                         Press `check` to validate spy blitz sheet
                         Press `mail` to mail targets
@@ -1340,7 +1340,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "sheet:" + spySheetId).allowedNations(
                         "~" + allies).sendFromGuildAccount(
                         "true").force("true"
-                ), "mail").send(CommandMessagePriority.RESULT);
+                ), "mail").send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Create an embed to view a google document for multiple nations, with random variations for each receiver")
@@ -1369,6 +1369,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         body.append("ID: `#" + annId + "`\n\n");
         body.append("Press `view` to view the document");
         io.create().embed(title, body.toString())
-                .commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send(CommandMessagePriority.RESULT);
+                .commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send(RateLimitedSources.COMMAND_RESULT);
     }
 }

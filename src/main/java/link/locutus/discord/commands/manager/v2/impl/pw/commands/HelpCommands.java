@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -53,7 +53,7 @@ public class HelpCommands {
                 msg.append("Error message: " + result.getMessage() + "\n");
             }
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Display help information for a command argument type", viewable = true)
@@ -97,7 +97,7 @@ public class HelpCommands {
             body.append("\n\nCommands that use this argument:\n- " + String.join("\n- ", commandListStr));
         }
 
-        io.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
+        io.create().embed(title, body.toString()).send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Show the description, usage information and permissions for a command", viewable = true)
@@ -121,7 +121,7 @@ public class HelpCommands {
             }
         }
 
-        embed.send(CommandMessagePriority.RESULT);
+        embed.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -146,7 +146,7 @@ public class HelpCommands {
             }
         }
 
-        embed.send(CommandMessagePriority.RESULT);
+        embed.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -183,9 +183,9 @@ public class HelpCommands {
                 msg.append("> " + desc.replaceAll("\n", "\n > "));
                 msg.append("\n");
             }
-            msg.send(CommandMessagePriority.RESULT);
+            msg.send(RateLimitedSources.COMMAND_RESULT);
         } catch (IllegalArgumentException e) {
-            io.send(e.getMessage(), CommandMessagePriority.RESULT);
+            io.send(e.getMessage(), RateLimitedSources.COMMAND_RESULT);
         } catch (Throwable e) {
             e.printStackTrace();
         }

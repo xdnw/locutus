@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.account;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -56,7 +56,7 @@ public class CheckMail extends Command {
         String query = args.get(0);
         if (query.equalsIgnoreCase("*")) query = "";
 
-        channel.sendMessage("Please wait...", CommandMessagePriority.RESULT);
+        channel.sendMessage("Please wait...", RateLimitedSources.COMMAND_RESULT);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
@@ -133,7 +133,7 @@ public class CheckMail extends Command {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "mail", null, false, 0).send(CommandMessagePriority.RESULT);
+        sheet.attach(channel.create(), "mail", null, false, 0).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -123,7 +123,7 @@ public class ChannelCommand extends Command {
                 }
             }
 
-            createdChannel = updateChannel(RateLimitUtil.complete(freeCategory.createTextChannel(channelName), CommandMessagePriority.RESULT), member, roles);
+            createdChannel = updateChannel(RateLimitUtil.complete(freeCategory.createTextChannel(channelName), RateLimitedSources.COMMAND_RESULT), member, roles);
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
@@ -132,7 +132,7 @@ public class ChannelCommand extends Command {
                 } else {
                     String copyPasta = Locutus.imp().getGuildDB(guild).getCopyPasta(arg, true);
                     if (copyPasta != null) {
-                        RateLimitUtil.queue(createdChannel.sendMessage(copyPasta), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(createdChannel.sendMessage(copyPasta), RateLimitedSources.COMMAND_RESULT);
                     }
                 }
             }
@@ -145,11 +145,11 @@ public class ChannelCommand extends Command {
                     }
                 }
                 if (pings.length() > 0) {
-                    RateLimitUtil.queue(createdChannel.sendMessage(pings), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(createdChannel.sendMessage(pings), RateLimitedSources.COMMAND_RESULT);
                 }
             }
             if (flags.contains('a')) {
-                RateLimitUtil.queue(createdChannel.sendMessage(author.getAsMention()), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(createdChannel.sendMessage(author.getAsMention()), RateLimitedSources.COMMAND_RESULT);
             }
         }
 
@@ -158,13 +158,13 @@ public class ChannelCommand extends Command {
 
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
         RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                .deny(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
-        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                .deny(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
+        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
 
         for (Roles dept : depts) {
             Role role = dept.toRole2(channel.getGuild());
             if (role != null) {
-                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
             }
         }
         return channel;

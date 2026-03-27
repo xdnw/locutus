@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.war;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.Command;
@@ -138,11 +138,11 @@ public class Damage extends Command {
         else valueFunction = damageEstByNation;
 
         if (flags.contains('d')) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), CommandMessagePriority.RESULT));
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
         }
 
         if (valueFunction.isEmpty()) {
-            channel.sendMessage("No results (found", CommandMessagePriority.RESULT);
+            channel.sendMessage("No results (found", RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -173,7 +173,7 @@ public class Damage extends Command {
             String moneyStr = "$" + MathMan.format(cost);
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
-        channel.send(response.toString().trim(), CommandMessagePriority.RESULT);
+        channel.send(response.toString().trim(), RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 

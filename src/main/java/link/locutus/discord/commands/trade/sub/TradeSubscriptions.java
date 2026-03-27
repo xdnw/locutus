@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.trade.sub;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -65,7 +65,7 @@ public class TradeSubscriptions extends Command {
 
             body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
 
-            channel.create().embed(title, body.toString()).commandButton(unsubCommand, emoji).send(CommandMessagePriority.RESULT);
+            channel.create().embed(title, body.toString()).commandButton(unsubCommand, emoji).send(RateLimitedSources.COMMAND_RESULT);
         }
 
         return null;

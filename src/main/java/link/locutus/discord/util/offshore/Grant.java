@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore;
 
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -8,7 +9,6 @@ import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -691,7 +691,7 @@ public class Grant {
         if (grantByReceiver.isEmpty()) {
             io.create().embed("No Grants Created", "Summary: `" + TransferResult.count(errors) + "`\n" + footer + "\n" +
                     "See attached `errors.csv`")
-                    .file("errors.csv", TransferResult.toFileString(errors)).send(CommandMessagePriority.RESULT);
+                    .file("errors.csv", TransferResult.toFileString(errors)).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -699,7 +699,7 @@ public class Grant {
             if (pingRole != null) {
                 Role role = pingRole.toRole2(db);
                 if (role != null) {
-                    io.send(role.getAsMention(), CommandMessagePriority.RESULT);
+                    io.send(role.getAsMention(), RateLimitedSources.COMMAND_RESULT);
                 }
             }
             DBNation receiver = receivers.iterator().next();
@@ -708,7 +708,7 @@ public class Grant {
             double[] toSend = original.clone();
             TransferResult abort = onlyMissingFunc.apply(receiver, toSend);
             if (abort != null) {
-                io.create().embed(abort.toTitleString(), abort.toEmbedString()).send(CommandMessagePriority.RESULT);
+                io.create().embed(abort.toTitleString(), abort.toEmbedString()).send(RateLimitedSources.COMMAND_RESULT);
                 return null;
             }
 
@@ -745,8 +745,8 @@ public class Grant {
                 body.append("\n\n**Only missing funds will be sent**\n");
             }
 
-            io.create().embed("Instruct: " + grant.title(), body.toString()).send(CommandMessagePriority.RESULT);
-            io.create().confirmation("Confirm: " + grant.title(), msg.toString(), transferCmd).cancelButton().send(CommandMessagePriority.RESULT);
+            io.create().embed("Instruct: " + grant.title(), body.toString()).send(RateLimitedSources.COMMAND_RESULT);
+            io.create().confirmation("Confirm: " + grant.title(), msg.toString(), transferCmd).cancelButton().send(RateLimitedSources.COMMAND_RESULT);
             return null;
         } else {
             sheet.updateWrite();

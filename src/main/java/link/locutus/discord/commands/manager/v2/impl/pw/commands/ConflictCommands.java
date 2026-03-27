@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -233,15 +233,15 @@ public class ConflictCommands {
         }
         CompletableFuture<IMessageBuilder> msgFuture;
         if (reinitialize_wars) {
-            msgFuture = io.sendIfFree("Initializing wars...", CommandMessagePriority.PROGRESS);
+            msgFuture = io.sendIfFree("Initializing wars...", RateLimitedSources.COMMAND_PROGRESS);
             manager.loadConflictWars(conflicts, true, false, true);
         } else {
-            msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
+            msgFuture = io.sendIfFree("Please wait...", RateLimitedSources.COMMAND_PROGRESS);
         }
         if (reinitialize_graphs) {
             manager.ensureLoadedFully(conflicts);
             for (Conflict conflict : conflicts) {
-                io.updateOptionally(msgFuture, "Initializing graphs for " + conflict.getName() + "...", CommandMessagePriority.PROGRESS);
+                io.updateOptionally(msgFuture, "Initializing graphs for " + conflict.getName() + "...", RateLimitedSources.COMMAND_PROGRESS);
                 conflict.updateGraphsLegacy(manager);
             }
         }
@@ -249,10 +249,10 @@ public class ConflictCommands {
         if (conflicts != null) {
             List<String> urls = new ArrayList<>();
             for (Conflict conflict : conflicts) {
-                io.updateOptionally(msgFuture, "Pushing " + conflict.getName() + "...", CommandMessagePriority.PROGRESS);
+                io.updateOptionally(msgFuture, "Pushing " + conflict.getName() + "...", RateLimitedSources.COMMAND_PROGRESS);
                 urls.addAll(conflict.pushChanges(manager, null, true, true, upload_graph, upload_graph, false, now));
             }
-            io.updateOptionally(msgFuture, "Pushing index...", CommandMessagePriority.PROGRESS);
+            io.updateOptionally(msgFuture, "Pushing index...", RateLimitedSources.COMMAND_PROGRESS);
             urls.add(manager.pushIndex(now));
         } else {
             if (!manager.pushDirtyConflicts()) {
@@ -273,7 +273,7 @@ public class ConflictCommands {
                 String title = "Delete temporary conflict " + conflict.getName();
                 String body = "Temporary ID: `" + virtualId.toWebId() + "`\n" +
                         "This will delete the temporary conflict object and graph object from cloud storage.";
-                io.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
+                io.create().confirmation(title, body, command).send(RateLimitedSources.COMMAND_RESULT);
                 return null;
             }
             CloudStorage cloud = manager.getCloud();
@@ -298,7 +298,7 @@ public class ConflictCommands {
             body.append("Col2: `"
                     + conflict.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(","))
                     + "`\n");
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         manager.deleteConflict(conflict);
@@ -326,7 +326,7 @@ public class ConflictCommands {
             io.create().confirmation("No active conflicts",
                     "Press `list inactive` to show inactive conflicts",
                     command,
-                    "includeInactive", "list inactive").send(CommandMessagePriority.RESULT);
+                    "includeInactive", "list inactive").send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         StringBuilder response = new StringBuilder(conflicts.size() + " conflicts:\n");
@@ -514,11 +514,11 @@ public class ConflictCommands {
                 .append(coalition2.stream().map(DBAlliance::getName).collect(Collectors.joining(","))).append("`");
         String reinitializeGraphsArg = null;
         {
-            CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Loading conflict stats", CommandMessagePriority.PROGRESS);
+            CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Loading conflict stats", RateLimitedSources.COMMAND_PROGRESS);
             manager.loadVirtualConflict(conflict, false);
             long diff = end - start;
             if (diff < TimeUnit.DAYS.toMillis(90)) {
-                io.updateOptionally(msgFuture, "Updating graphs...", CommandMessagePriority.PROGRESS);
+                io.updateOptionally(msgFuture, "Updating graphs...", RateLimitedSources.COMMAND_PROGRESS);
                 conflict.updateGraphsLegacy(manager);
             } else {
                 reinitializeGraphsArg = "true";
@@ -745,7 +745,7 @@ public class ConflictCommands {
         CM.conflict.sync.website cm = CM.conflict.sync.website.cmd.conflicts(conflict.getId() + "").reinitialize_wars("true").reinitialize_wars("true").upload_graph("true");
         io.create().embed("Updated conflict coalitions", msg)
                 .commandButton(cm, "update")
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Import ctowned conflicts into the database\n" +
@@ -931,14 +931,14 @@ public class ConflictCommands {
                 requireConflictWritePerm(conflict, me, user, guild, db);
             }
         }
-        CompletableFuture<IMessageBuilder> future = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> future = io.sendIfFree("Please wait...", RateLimitedSources.COMMAND_PROGRESS);
         return recalculateGraphs2(io, future, manager, conflicts);
     }
 
     private String recalculateGraphs2(@Me IMessageIO io, CompletableFuture<IMessageBuilder> updateMsg,
             ConflictManager manager, Set<Conflict> conflicts) throws IOException, ParseException {
         for (Conflict conflict : conflicts) {
-            io.updateOptionally(updateMsg, "Updating " + conflict.getName(), CommandMessagePriority.PROGRESS);
+            io.updateOptionally(updateMsg, "Updating " + conflict.getName(), RateLimitedSources.COMMAND_PROGRESS);
             conflict.updateGraphsLegacy(manager);
         }
         return "Done!\nNote: this does not push the data to the site";
@@ -956,7 +956,7 @@ public class ConflictCommands {
             @Switch("a") boolean allianceNames,
             @Switch("w") boolean wiki,
             @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", RateLimitedSources.COMMAND_PROGRESS);
 
         boolean loadGraphData = false;
         if (all) {
@@ -967,28 +967,28 @@ public class ConflictCommands {
             loadGraphData = true;
         }
         if (allianceNames) {
-            io.updateOptionally(msgFuture, "Importing alliance names", CommandMessagePriority.PROGRESS);
+            io.updateOptionally(msgFuture, "Importing alliance names", RateLimitedSources.COMMAND_PROGRESS);
             importAllianceNames(manager);
         }
         if (ctowned) {
-            io.updateOptionally(msgFuture, "Importing from ctowned.net", CommandMessagePriority.PROGRESS);
+            io.updateOptionally(msgFuture, "Importing from ctowned.net", RateLimitedSources.COMMAND_PROGRESS);
             importCtowned(db, manager, null, true);
         }
         if (wiki) {
-            io.updateOptionally(msgFuture, "Importing from wiki", CommandMessagePriority.PROGRESS);
+            io.updateOptionally(msgFuture, "Importing from wiki", RateLimitedSources.COMMAND_PROGRESS);
             importWikiAll(db, manager, true);
         }
         if (loadGraphData && graphData == null) {
-            io.updateOptionally(msgFuture, "Recaculating tables", CommandMessagePriority.PROGRESS);
+            io.updateOptionally(msgFuture, "Recaculating tables", RateLimitedSources.COMMAND_PROGRESS);
             graphData = new ObjectLinkedOpenHashSet<>(manager.getConflictMap().values());
             recalculateTablesInternal(graphData);
         }
         if (graphData != null) {
-            io.updateOptionally(msgFuture, "Recaculating graphs", CommandMessagePriority.PROGRESS);
+            io.updateOptionally(msgFuture, "Recaculating graphs", RateLimitedSources.COMMAND_PROGRESS);
             recalculateGraphs2(io, msgFuture, manager, graphData);
             if (all && !graphData.isEmpty()) {
                 long now = System.currentTimeMillis();
-                io.updateOptionally(msgFuture, "Pushing data to the site", CommandMessagePriority.PROGRESS);
+                io.updateOptionally(msgFuture, "Pushing data to the site", RateLimitedSources.COMMAND_PROGRESS);
                 for (Conflict conflict : graphData) {
                     conflict.pushChanges(manager, null, true, true, true, true, false, now);
                 }
@@ -1128,7 +1128,7 @@ public class ConflictCommands {
             body.append("Kept: " + kept.size() + "/" + manager.getConflictMap().size() + "\n");
             io.create().confirmation("Deleted " + deleted.size() + " conflicts", body.toString(), command)
                     .file("deleted.txt", StringMan.join(deleted, "\n"))
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
     }
@@ -1239,7 +1239,7 @@ public class ConflictCommands {
             body.append("Kept: " + kept.size() + "/" + manager.getConflictMap().size() + "\n");
             io.create().confirmation("Deleted " + deleted.size() + " conflicts", body.toString(), command)
                     .file("deleted.txt", StringMan.join(deleted, "\n"))
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
     }
@@ -1254,7 +1254,7 @@ public class ConflictCommands {
         if (!file.getName().equalsIgnoreCase("war.db")) {
             throw new IllegalArgumentException("File must be named `war.db`");
         }
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Importing from " + file.getName() + "...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Importing from " + file.getName() + "...", RateLimitedSources.COMMAND_PROGRESS);
         manager.importFromExternal(file);
         return "Done! A restart is required to load the new data.";
     }
@@ -1443,7 +1443,7 @@ public class ConflictCommands {
             CloudStorage source = fromS3 ? s3 : r2;
             CloudStorage target = fromS3 ? r2 : s3;
 
-            CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
+            CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", RateLimitedSources.COMMAND_PROGRESS);
             long start = System.currentTimeMillis();
 
             // Load listings
@@ -1496,7 +1496,7 @@ public class ConflictCommands {
                             msgFuture,
                             "Copying... examined: " + examined + ", copied: " + copied + ", skipped: " + skipped
                                     + ", errors: " + failed,
-                            CommandMessagePriority.PROGRESS);
+                            RateLimitedSources.COMMAND_PROGRESS);
                     lastUpdate = now;
                 }
             }

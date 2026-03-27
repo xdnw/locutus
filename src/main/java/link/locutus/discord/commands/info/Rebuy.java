@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.info;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -67,7 +67,7 @@ public class Rebuy extends Command {
             body.append(dateStr).append(" | ").append(dcStr).append("\n");
         }
 
-        channel.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
+        channel.create().embed(title, body.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

@@ -1,9 +1,9 @@
 package link.locutus.discord.db.entities.menu;
 
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -261,8 +261,8 @@ public class AppMenu {
                 CM.menu.cancel cmd = CM.menu.cancel.cmd.menu(title);
                 msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "Cancel");
             }
-            io.setMessageDeleted(CommandMessagePriority.RESULT);
-            return msg.send(CommandMessagePriority.RESULT);
+            io.setMessageDeleted(RateLimitedSources.COMMAND_RESULT);
+            return msg.send(RateLimitedSources.COMMAND_RESULT);
         }
     }
 }

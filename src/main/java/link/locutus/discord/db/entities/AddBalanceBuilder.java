@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -7,7 +8,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
@@ -347,7 +347,7 @@ public class AddBalanceBuilder {
 
         body.append("\n\nPress `" + emoji + "` to confirm");
 
-        io.create().embed(title.toString(), body.toString()).commandButton(command, "Confirm").send(CommandMessagePriority.RESULT);
+        io.create().embed(title.toString(), body.toString()).commandButton(command, "Confirm").send(RateLimitedSources.COMMAND_RESULT);
     }
 
     public Set<String> getNotes(Predicate<NationOrAllianceOrGuildOrTaxid> consumer) {

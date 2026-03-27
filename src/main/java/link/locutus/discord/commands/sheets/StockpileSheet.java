@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -102,9 +102,9 @@ public class StockpileSheet extends Command {
 
         String totalStr = ResourceType.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        channel.create().embed("Nation Stockpiles", totalStr).send(CommandMessagePriority.RESULT);
+        channel.create().embed("Nation Stockpiles", totalStr).send(RateLimitedSources.COMMAND_RESULT);
 
-        sheet.attach(channel.create(), "stockpiles").send(CommandMessagePriority.RESULT);
+        sheet.attach(channel.create(), "stockpiles").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

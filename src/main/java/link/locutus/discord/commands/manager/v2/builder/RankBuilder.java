@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.builder;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -200,7 +200,7 @@ public class RankBuilder<T> {
                 msg.file(title + ".txt", toString());
             }
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
     public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
@@ -225,7 +225,7 @@ public class RankBuilder<T> {
             }
         }
 
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
     }
 
     public List<IShrink> toItems(int limit, boolean all) {

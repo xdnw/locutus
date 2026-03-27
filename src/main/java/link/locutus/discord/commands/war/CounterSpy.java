@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.war;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
@@ -120,7 +120,7 @@ public class CounterSpy extends Command {
 
         List<Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
-        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...", CommandMessagePriority.RESULT);
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...", RateLimitedSources.COMMAND_RESULT);
 
         try {
             Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
@@ -210,7 +210,7 @@ public class CounterSpy extends Command {
                     ;
 
 
-            channel.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
+            channel.create().embed(title, body.toString()).send(RateLimitedSources.COMMAND_RESULT);
         } finally {
         }
         return null;

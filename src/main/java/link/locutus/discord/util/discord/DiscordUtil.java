@@ -1,5 +1,6 @@
 package link.locutus.discord.util.discord;
 
+import link.locutus.discord.util.RateLimitedSources;
 import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;

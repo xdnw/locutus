@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;

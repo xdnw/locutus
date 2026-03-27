@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.rankings;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -52,7 +52,7 @@ public class AttackTypeBreakdownAB extends Command {
             breakdown.addAttack(war, attack, parser.getIsPrimary(), parser.getIsSecondary());
         });
 
-        channel.create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send(CommandMessagePriority.RESULT);
+        channel.create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }

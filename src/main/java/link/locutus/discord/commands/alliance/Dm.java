@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.alliance;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -78,15 +78,15 @@ public class Dm extends Command {
             String dmMsg = "content: ```" + body + "```";
 
             JSONObject json = CM.admin.dm.cmd.message(dmMsg).nations(args.get(0)).force("true").toJson();
-            channel.create().embed( embedTitle, dmMsg).confirmation(json).send(CommandMessagePriority.RESULT);
+            channel.create().embed( embedTitle, dmMsg).confirmation(json).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
-        channel.sendMessage("Please wait...", CommandMessagePriority.RESULT);
+        channel.sendMessage("Please wait...", RateLimitedSources.COMMAND_RESULT);
         for (User mention : mentions) {
-            mention.openPrivateChannel().queue(f -> RateLimitUtil.queue(f.sendMessage(author.getAsMention() + " said: " + body + "\n\n(no reply)"), CommandMessagePriority.RESULT));
+            mention.openPrivateChannel().queue(f -> RateLimitUtil.queue(f.sendMessage(author.getAsMention() + " said: " + body + "\n\n(no reply)"), RateLimitedSources.COMMAND_RESULT));
         }
-        channel.sendMessage("Sent " + mentions.size() + " messages", CommandMessagePriority.RESULT);
+        channel.sendMessage("Sent " + mentions.size() + " messages", RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

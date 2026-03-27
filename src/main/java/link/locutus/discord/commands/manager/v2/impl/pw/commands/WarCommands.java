@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -126,7 +126,7 @@ public class WarCommands {
                 Member member = guild.getMember(user);
                 if (role != null && member != null && member.getUnsortedRoles().contains(role)) {
                     try {
-                        RateLimitUtil.queue(guild.removeRoleFromMember(user, role), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(guild.removeRoleFromMember(user, role), RateLimitedSources.COMMAND_RESULT);
                         response.append("\nRemoved ").append(role.getName()).append(" from ").append(guild.getName());
                     } catch (Exception e) {
                         response.append("\nFailed to remove ").append(role.getName()).append(" from ").append(guild.getName() + " (" + e.getMessage() + ")");
@@ -372,7 +372,7 @@ public class WarCommands {
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
         String explanation = db.getHandler().getBeigeCyclingInfo(Collections.singleton(BeigeReason.BEIGE_CYCLE), false);
-        channel.send(explanation, CommandMessagePriority.RESULT);
+        channel.send(explanation, RateLimitedSources.COMMAND_RESULT);
 
         Set<DBWar> wars = nation.getActiveWars();
         for (DBWar war : wars) {
@@ -409,7 +409,7 @@ public class WarCommands {
                 }
             }
 
-            channel.create().embed(embed).send(CommandMessagePriority.RESULT);
+            channel.create().embed(embed).send(RateLimitedSources.COMMAND_RESULT);
 
         }
         return "Notes:\n" +
@@ -501,7 +501,7 @@ public class WarCommands {
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";
             response += "\nMore info: https://docs.google.com/document/d/1gEeSOjjSDNBpKhrU9dhO_DN-YM3nYcklYzSYzSqq8k0";
-            channel.create().embed(title, response).send(CommandMessagePriority.RESULT);
+            channel.create().embed(title, response).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         return "No results found";
@@ -521,7 +521,7 @@ public class WarCommands {
             response.append("**ALLY **");
             response.append(author.getAsMention());
             response.append("<" + me.getUrl() + "> Cancelled the unblockade request: `" + existing.getValue() + "`");
-            RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()), RateLimitedSources.COMMAND_RESULT);
         }
 
         return "Cancelled unblockade request";
@@ -622,7 +622,7 @@ public class WarCommands {
             response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.info.cmd.toSlashMention() + " with key: `" + GuildKey.UNBLOCKADE_REQUESTS.name() + "`\n");
 
         }
-        RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()), RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1158,7 +1158,7 @@ public class WarCommands {
                     @Arg(value = "Include nations much stronger than you in the search\nDefaults to false", group = 2)
                         @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
         if (resultsInDm && author != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), CommandMessagePriority.RESULT));
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
         }
         if (attackerScore == null) attackerScore = me.getScore();
 
@@ -1251,7 +1251,7 @@ public class WarCommands {
                             - Add `-i` to include inactives
                             - Add `-a` to include applicants""";
                 }
-                channel.send(message, CommandMessagePriority.RESULT);
+                channel.send(message, RateLimitedSources.COMMAND_RESULT);
                 return;
             }
         }
@@ -1307,9 +1307,9 @@ public class WarCommands {
         }
 
         if (count == 0) {
-            channel.send("No results. Please ping a target (advisor)", CommandMessagePriority.RESULT);
+            channel.send("No results. Please ping a target (advisor)", RateLimitedSources.COMMAND_RESULT);
         } else {
-            channel.send(response.toString(), CommandMessagePriority.RESULT);
+            channel.send(response.toString(), RateLimitedSources.COMMAND_RESULT);
         }
     }
 
@@ -1354,9 +1354,9 @@ public class WarCommands {
         }
 
         if (count == 0) {
-            channel.send("No results. Please ping a target (advisor)", CommandMessagePriority.RESULT);
+            channel.send("No results. Please ping a target (advisor)", RateLimitedSources.COMMAND_RESULT);
         } else {
-            channel.send(response.toString(), CommandMessagePriority.RESULT);
+            channel.send(response.toString(), RateLimitedSources.COMMAND_RESULT);
         }
     }
 
@@ -1416,9 +1416,9 @@ public class WarCommands {
         }
 
         if (count == 0) {
-            channel.send("No results. Please ping a target (advisor)", CommandMessagePriority.RESULT);
+            channel.send("No results. Please ping a target (advisor)", RateLimitedSources.COMMAND_RESULT);
         } else {
-            channel.send(response.toString(), CommandMessagePriority.RESULT);
+            channel.send(response.toString(), RateLimitedSources.COMMAND_RESULT);
         }
     }
 
@@ -1601,7 +1601,7 @@ public class WarCommands {
         else valueFunction = damageEstByNation;
 
         if (resultsInDm && author != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), CommandMessagePriority.RESULT));
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
         }
 
         String removeMsg = removeNotes.isEmpty() ? "" : "\n- " + String.join("\n- ", removeNotes);
@@ -1639,7 +1639,7 @@ public class WarCommands {
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
         response.append(removeMsg);
-        channel.send(response.toString(), CommandMessagePriority.RESULT);
+        channel.send(response.toString(), RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1711,7 +1711,7 @@ public class WarCommands {
         List<Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
 
-        channel.send("Please wait...", CommandMessagePriority.RESULT);
+        channel.send("Please wait...", RateLimitedSources.COMMAND_RESULT);
 
         Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
 
@@ -1789,7 +1789,7 @@ public class WarCommands {
                 .append(enemy.toMarkdown(true, true, false, false, true, true))
         ;
 
-        channel.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
+        channel.create().embed(title, body.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1824,13 +1824,13 @@ public class WarCommands {
         String body = runSpyOps(finalNation, db, targets, operations, requiredSuccess, prioritizeKills);
 
         if (directMesssage && author != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), CommandMessagePriority.RESULT));
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
         }
 
         IMessageBuilder msg = channel.create().embed(title, body);
 
         String response = ("Use " + CM.nation.spies.cmd.toSlashMention() + " first to ensure the results are up to date");
-        msg.append(response.toString()).send(CommandMessagePriority.RESULT);
+        msg.append(response.toString()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2188,7 +2188,7 @@ public class WarCommands {
             }
         }
 
-        sheet.send(io, header.isEmpty() ? null : header.toString(), author == null ? null : author.getAsMention()).send(CommandMessagePriority.RESULT);
+        sheet.send(io, header.isEmpty() ? null : header.toString(), author == null ? null : author.getAsMention()).send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
 
@@ -2298,7 +2298,7 @@ public class WarCommands {
         SpySheet.generateSpySheet(sheet, targets);
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "spy_intel").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "spy_intel").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2320,7 +2320,7 @@ public class WarCommands {
         output.updateWrite();
 
         String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
-        output.send(io, null, warningStr + (author != null ? author.getAsMention() : null)).send(CommandMessagePriority.RESULT);
+        output.send(io, null, warningStr + (author != null ? author.getAsMention() : null)).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2340,7 +2340,7 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author == null ? null : author.getAsMention()).send(CommandMessagePriority.RESULT);
+        output.send(io, null, author == null ? null : author.getAsMention()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2362,7 +2362,7 @@ public class WarCommands {
         output.updateWrite();
 
         String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
-        output.send(io, null, warningStr + (author == null ? null : author.getAsMention())).send(CommandMessagePriority.RESULT);
+        output.send(io, null, warningStr + (author == null ? null : author.getAsMention())).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2413,7 +2413,7 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author == null ? null : author.getAsMention()).send(CommandMessagePriority.RESULT);
+        output.send(io, null, author == null ? null : author.getAsMention()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
 
 
@@ -2507,7 +2507,7 @@ public class WarCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.send(io, null, author == null ? null : author.getAsMention()).send(CommandMessagePriority.RESULT);
+        sheet.send(io, null, author == null ? null : author.getAsMention()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2693,7 +2693,7 @@ public class WarCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "activity").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "activity").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2812,7 +2812,7 @@ public class WarCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "activity").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "activity").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2887,7 +2887,7 @@ public class WarCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "activity").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "activity").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2958,7 +2958,7 @@ public class WarCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "activity").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "activity").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -3125,7 +3125,7 @@ public class WarCommands {
         sheet.updateWrite();
         String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
-        sheet.attach(io.create(), "mmr", response).send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "mmr", response).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -3265,7 +3265,7 @@ public class WarCommands {
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "deserter").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "deserter").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -3394,7 +3394,7 @@ public class WarCommands {
 
             sheet.updateWrite();
 
-            sheet.attach(io.create(), "combatant").send(CommandMessagePriority.RESULT);
+            sheet.attach(io.create(), "combatant").send(RateLimitedSources.COMMAND_RESULT);
             return null;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -3584,11 +3584,11 @@ public class WarCommands {
                 }
             }
             msg.embed(title, body.toString())
-                    .confirmation(command).send(CommandMessagePriority.RESULT);
+                    .confirmation(command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
-        msg.append("Creating channels...").send(CommandMessagePriority.RESULT);
+        msg.append("Creating channels...").send(RateLimitedSources.COMMAND_RESULT);
 
         if (allowedNations != null) {
             for (Map.Entry<DBNation, Set<DBNation>> entry : targets.entrySet()) {
@@ -3612,7 +3612,7 @@ public class WarCommands {
                     response.append(roomChan.getAsMention());
                     try {
                         if (customMessage != null) {
-                            RateLimitUtil.queue(roomChan.sendMessage(customMessage), CommandMessagePriority.RESULT);
+                            RateLimitUtil.queue(roomChan.sendMessage(customMessage), RateLimitedSources.COMMAND_RESULT);
                         }
                         channels.add(roomChan);
                     } catch (Throwable e) {
@@ -3888,13 +3888,13 @@ public class WarCommands {
 
             channel.create().confirmation(embedTitle, body.toString(), command)
                             .append(author == null ? "" : author.getAsMention())
-                                    .send(CommandMessagePriority.RESULT);
+                                    .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
         Map<DBNation, String> mailErrors = new LinkedHashMap<>();
         Map<DBNation, String> dmErrors = new LinkedHashMap<>();
-        CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Sending messages...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Sending messages...", RateLimitedSources.COMMAND_PROGRESS);
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
             subject = entry.getValue().getKey();
@@ -3921,7 +3921,7 @@ public class WarCommands {
 
             if (System.currentTimeMillis() - start > 10000) {
                 start = System.currentTimeMillis();
-                channel.updateOptionally(msgFuture, "Sending to " + attacker.getNation(), CommandMessagePriority.PROGRESS);
+                channel.updateOptionally(msgFuture, "Sending to " + attacker.getNation(), RateLimitedSources.COMMAND_PROGRESS);
             }
         }
 
@@ -3956,7 +3956,7 @@ public class WarCommands {
         if (!errorMsg.isEmpty()) {
             msg = msg.file("Errors.txt", errorMsg.toString());
         }
-        msg.append("Done, sent " + sent + " messages" + (errorMsg.isEmpty() ? " (no errors)" : " (with errors)")).send(CommandMessagePriority.RESULT);
+        msg.append("Done, sent " + sent + " messages" + (errorMsg.isEmpty() ? " (no errors)" : " (with errors)")).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -4104,7 +4104,7 @@ public class WarCommands {
 
         SheetUtil.writeTargets(sheet, targets, turn);
 
-        sheet.send(io, null, author == null ? null : author.getAsMention()).send(CommandMessagePriority.RESULT);
+        sheet.send(io, null, author == null ? null : author.getAsMention()).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -4223,7 +4223,7 @@ public class WarCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "wars").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "wars").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -4478,7 +4478,7 @@ public class WarCommands {
 
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "counter").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "counter").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -4494,7 +4494,7 @@ public class WarCommands {
         Set<DBWar> wars = nation.getActiveWars();
         String title = wars.size() + " wars";
         IShrink body = nation.getWarInfoEmbed();
-        channel.create().embed(new EmbedShrink().setTitle(title).append(body)).send(CommandMessagePriority.RESULT);
+        channel.create().embed(new EmbedShrink().setTitle(title).append(body)).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -4889,28 +4889,28 @@ public class WarCommands {
         if (!force) {
             for (DBNation attacker : attackersSorted) {
                 if (!tracked.contains(attacker.getAlliance_id())) {
-                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is not an ally.", command).send(CommandMessagePriority.RESULT);
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is not an ally.", command).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
                 if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * PW.WAR_RANGE_MAX_MODIFIER) {
 //                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", 'f');
-                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", command).send(CommandMessagePriority.RESULT);
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", command).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
                 if (attacker.getOff() >= attacker.getMaxOff() && !allowAttackersWithMaxOffensives) {
-                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() +  " already has max offensives. ", command).send(CommandMessagePriority.RESULT);
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() +  " already has max offensives. ", command).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
                 if (attacker.getVm_turns() > 0) {
-                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is in VM. ", command).send(CommandMessagePriority.RESULT);
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is in VM. ", command).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
                 if (attacker.isGray() && attacker.active_m() > 1440 || attacker.getCities() < 10 && attacker.active_m() > 2000) {
-                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is gray/inactive. ", command).send(CommandMessagePriority.RESULT);
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is gray/inactive. ", command).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
                 if (attacker.getNumWars() > 0 && attacker.getRelativeStrength() < 1) {
-                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is already involved in heavy conflict.", command).send(CommandMessagePriority.RESULT);
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is already involved in heavy conflict.", command).send(RateLimitedSources.COMMAND_RESULT);
                     return null;
                 }
             }
@@ -4975,7 +4975,7 @@ public class WarCommands {
             return "Already in category: " + category.getName();
         }
 
-        RateLimitUtil.complete(channel.getManager().setParent(category), CommandMessagePriority.RESULT);
+        RateLimitUtil.complete(channel.getManager().setParent(category), RateLimitedSources.COMMAND_RESULT);
 
         return "Set category for " + channel.getAsMention() + " to " + category.getName();
     }
@@ -5036,7 +5036,7 @@ public class WarCommands {
         int perPage = 10;
         String title = "Blitz targets";
 
-        channel.create().paginate(title, command, page, perPage, IShrink.toList(results)).send(CommandMessagePriority.RESULT);
+        channel.create().paginate(title, command, page, perPage, IShrink.toList(results)).send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -5069,6 +5069,6 @@ public class WarCommands {
 
         String title = "War/Spy range at " + MathMan.format(score) + "ns";
 
-        io.create().embed(title, sb.toString()).send(CommandMessagePriority.RESULT);
+        io.create().embed(title, sb.toString()).send(RateLimitedSources.COMMAND_RESULT);
     }
 }

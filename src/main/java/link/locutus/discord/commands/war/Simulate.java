@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.war;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -182,7 +182,7 @@ public class Simulate extends Command {
         }
 
         msg.append(totalMsg);
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

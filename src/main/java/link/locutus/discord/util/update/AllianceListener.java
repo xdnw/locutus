@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

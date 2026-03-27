@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -160,7 +160,7 @@ public class ROI extends Command {
             return "Invalid guild. Please register your alliance id with: " + GuildKey.ALLIANCE_ID.getCommandMention();
         }
 
-        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Fetching nations: ", CommandMessagePriority.RESULT);
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Fetching nations: ", RateLimitedSources.COMMAND_RESULT);
 
         Set<Integer> aaIds = guildDb.getAllianceIds();
         if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention();
@@ -179,7 +179,7 @@ public class ROI extends Command {
                     if (nation.active_m() > TimeUnit.DAYS.toMinutes(7)) continue;
                     IMessageBuilder msg = msgFuture.get();
                     if (msg != null && msg.getId() > 0) {
-                        msg.clear().append("Calculating ROI for: " + nation.getNation()).sendIfFree(CommandMessagePriority.PROGRESS);
+                        msg.clear().append("Calculating ROI for: " + nation.getNation()).sendIfFree(RateLimitedSources.COMMAND_PROGRESS);
                     }
                     roi(nation, days, roiMap);
                 }
@@ -215,7 +215,7 @@ public class ROI extends Command {
                 try {
                     IMessageBuilder msg = msgFuture.get();
                     if (msg != null && msg.getId() > 0) {
-                        msg.clear().append("Calculating ROI for: " + nation.getNation()).sendIfFree(CommandMessagePriority.PROGRESS);
+                        msg.clear().append("Calculating ROI for: " + nation.getNation()).sendIfFree(RateLimitedSources.COMMAND_PROGRESS);
                     }
                     roi(nation, days, roiMap);
                 } catch (Throwable e) {
@@ -225,7 +225,7 @@ public class ROI extends Command {
         }
         IMessageBuilder msg = msgFuture.get();
         if (msg != null && msg.getId() > 0) {
-            channel.delete(msg.getId(), CommandMessagePriority.PROGRESS);
+            channel.delete(msg.getId(), RateLimitedSources.COMMAND_PROGRESS);
         }
         msg = channel.create().append("Results:");
 
@@ -332,7 +332,7 @@ public class ROI extends Command {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            sheet.attach(channel.create(), "roi").send(CommandMessagePriority.RESULT);
+            sheet.attach(channel.create(), "roi").send(RateLimitedSources.COMMAND_RESULT);
             return null;
         } else {
             StringBuilder output = new StringBuilder("Weekly ROI (" + days + " days):\n");
@@ -368,7 +368,7 @@ public class ROI extends Command {
                 }
             }
 
-            msg.append("\n" + output.toString()).send(CommandMessagePriority.RESULT);
+            msg.append("\n" + output.toString()).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
     }

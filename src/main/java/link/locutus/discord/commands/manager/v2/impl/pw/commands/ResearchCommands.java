@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.Research;
@@ -124,13 +124,13 @@ public class ResearchCommands {
 
         sheet.setHeader(header);
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", RateLimitedSources.COMMAND_PROGRESS);
         long start = System.currentTimeMillis();
         ValueStore cacheStore = PlaceholderCache.createCache(store, nationsFinal, DBNation.class);
         for (DBNation nation : nationsFinal) {
             if (start + 10000 < System.currentTimeMillis()) {
                 start = System.currentTimeMillis();
-                io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl(), CommandMessagePriority.PROGRESS);
+                io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl(), RateLimitedSources.COMMAND_PROGRESS);
             }
             List<Object> row = new ArrayList<>();
             row.add(nation.getSheetUrl());
@@ -151,7 +151,7 @@ public class ResearchCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "research").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "research").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -195,6 +195,6 @@ public class ResearchCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "research_city").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "research_city").send(RateLimitedSources.COMMAND_RESULT);
     }
 }

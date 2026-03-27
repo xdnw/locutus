@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -64,7 +64,7 @@ public abstract class Command {
                 response.append("**").append(arg).append("**\n\n");
             }
             response.append("`").append(help()).append("`").append("- ").append(desc());
-            channel.create().embed(aliases.get(0), response.toString().trim()).send(CommandMessagePriority.RESULT);
+            channel.create().embed(aliases.get(0), response.toString().trim()).send(RateLimitedSources.COMMAND_RESULT);
             throw new IllegalArgumentException("");
         }
         throw new IllegalArgumentException("Usage: " + help());

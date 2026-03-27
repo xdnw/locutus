@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
@@ -137,13 +137,13 @@ public class DiscordCommands {
             } else {
                 action = override.grant(permission);
             }
-            tasks.add(RateLimitUtil.queue(action, CommandMessagePriority.RESULT));
+            tasks.add(RateLimitUtil.queue(action, RateLimitedSources.COMMAND_RESULT));
 
             changes.add("Set " + permission + "=" + !negate + " for " + nameFuc.apply(member));
         }
 
         for (Member member : toRemove) {
-            tasks.add(RateLimitUtil.queue(channel.upsertPermissionOverride(member).clear(permission), CommandMessagePriority.RESULT));
+            tasks.add(RateLimitUtil.queue(channel.upsertPermissionOverride(member).clear(permission), RateLimitedSources.COMMAND_RESULT));
             changes.add("Clear " + permission + " for " + nameFuc.apply(member));
         }
 
@@ -199,11 +199,11 @@ public class DiscordCommands {
             String url = emote.getImageUrl();
             byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL, url);
 
-            channel.send("Creating emote: " + emote.getName() + " | " + url, CommandMessagePriority.RESULT);
+            channel.send("Creating emote: " + emote.getName() + " | " + url, RateLimitedSources.COMMAND_RESULT);
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon), CommandMessagePriority.RESULT));
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon), RateLimitedSources.COMMAND_RESULT));
             }
         }
         for (Future<?> task : tasks) {
@@ -243,7 +243,7 @@ public class DiscordCommands {
 
                 msg = msg.commandButton(cmd, codePoint);
             }
-            msg.send(CommandMessagePriority.RESULT);
+            msg.send(RateLimitedSources.COMMAND_RESULT);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -276,7 +276,7 @@ public class DiscordCommands {
         holders.addAll(member.getUnsortedRoles());
         holders.add(guild.getRolesByName("@everyone", false).get(0));
 
-        IMessageBuilder msg = output.getMessage(CommandMessagePriority.RESULT);
+        IMessageBuilder msg = output.getMessage(RateLimitedSources.COMMAND_RESULT);
         boolean hasOverride = msg != null && msg.getAuthor().getIdLong() == Settings.INSTANCE.APPLICATION_ID;
         for (IPermissionHolder holder : holders) {
             PermissionOverride overrides = category.getPermissionOverride(holder);
@@ -313,7 +313,7 @@ public class DiscordCommands {
             }
         }
         if (createdChannel == null) {
-            createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName), CommandMessagePriority.RESULT), member,
+            createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName), RateLimitedSources.COMMAND_RESULT), member,
                     roles);
             DiscordChannelIO io = new DiscordChannelIO(createdChannel);
             IMessageBuilder toSend = null;
@@ -341,7 +341,7 @@ public class DiscordCommands {
                 toSend.append("\n" + author.getAsMention());
             }
             if (toSend != null)
-                toSend.send(CommandMessagePriority.RESULT);
+                toSend.send(RateLimitedSources.COMMAND_RESULT);
         }
 
         return "Channel: " + createdChannel.getAsMention();
@@ -350,13 +350,13 @@ public class DiscordCommands {
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
         RateLimitUtil
                 .complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                        .deny(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
-        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                        .deny(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
+        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
 
         for (Roles dept : depts) {
             Role role = dept.toRole2(channel.getGuild());
             if (role != null) {
-                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL), CommandMessagePriority.RESULT);
+                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL), RateLimitedSources.COMMAND_RESULT);
             }
         }
         return channel;
@@ -414,7 +414,7 @@ public class DiscordCommands {
     public String updateEmbed(@Me Guild guild, @Me User user, @Me IMessageIO io,
             @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title,
             @Switch("d") String desc) {
-        IMessageBuilder message = io.getMessage(CommandMessagePriority.RESULT);
+        IMessageBuilder message = io.getMessage(RateLimitedSources.COMMAND_RESULT);
 
         if (message == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID)
             return "This command can only be run when bound to a Locutus embed.";
@@ -451,7 +451,7 @@ public class DiscordCommands {
 
         message.clearEmbeds();
         message.embed(builder);
-        message.send(CommandMessagePriority.RESULT);
+        message.send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -481,7 +481,7 @@ public class DiscordCommands {
         if (originalNation != null && (userNation == null || !userNation.equals(originalNation)) && !force) {
             String title = "Unregister another user.";
             String body = nation.getNationUrlMarkup() + " | " + "<@" + nationUserId + ">";
-            io.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         if (nation != null) {
@@ -584,7 +584,7 @@ public class DiscordCommands {
     @Command(desc = "Move a discord channel up 1 position")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String channelUp(@Me TextChannel channel) {
-        RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() - 1), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() - 1), RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -595,7 +595,7 @@ public class DiscordCommands {
         String[] split = text.getName().split("-");
         if (((split.length >= 2 && MathMan.isInteger(split[split.length - 1])) || Roles.ADMIN.has(user, guild))
                 && text.canTalk(member)) {
-            RateLimitUtil.queue(text.delete(), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(text.delete(), RateLimitedSources.COMMAND_RESULT);
             return null;
         } else {
             return "You do not have permission to close that channel.";
@@ -606,7 +606,7 @@ public class DiscordCommands {
     @Command(desc = "Move a discord channel down 1 position")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String channelDown(@Me TextChannel channel) {
-        RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() + 1), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() + 1), RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -628,7 +628,7 @@ public class DiscordCommands {
                     if (pingMentee && user != null) {
                         localMessage += "\n" + user.getAsMention();
                     }
-                    RateLimitUtil.queue(channel.sendMessage(localMessage), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(channel.sendMessage(localMessage), RateLimitedSources.COMMAND_RESULT);
                     num++;
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -647,7 +647,7 @@ public class DiscordCommands {
         String[] split = channel.getName().split("-");
         if (((split.length >= 2 && MathMan.isInteger(split[split.length - 1])) || Roles.ADMIN.has(member))
                 && channel.canTalk(member)) {
-            RateLimitUtil.queue(channel.getManager().setParent(category), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(channel.getManager().setParent(category), RateLimitedSources.COMMAND_RESULT);
             return null;
         } else {
             return "You do not have permission to move that channel.";
@@ -670,7 +670,7 @@ public class DiscordCommands {
         } else {
             args = CommandManager2.parseArguments(command.getUserParameterMap().keySet(), defaults, true);
         }
-        io.modal().create(command, args, StringMan.split(arguments, ',')).send(CommandMessagePriority.RESULT);
+        io.modal().create(command, args, StringMan.split(arguments, ',')).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -779,7 +779,7 @@ public class DiscordCommands {
             body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup()).append("\n");
             body.append("Worth: `$" + MathMan.format(ResourceType.convertedTotal(amount)) + "`\n- ");
             body.append(StringMan.join(messages, "\n- "));
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 

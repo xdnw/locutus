@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -115,7 +115,7 @@ public class AppMenuCommands {
         if (!force) {
             String title = "Delete Menu";
             String body = "Are you sure you want to delete the menu `" + menu.title + "`?";
-            io.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         if (menu.isDefault()) {
@@ -196,7 +196,7 @@ public class AppMenuCommands {
         }
         if (contains != null) {
             if (!force) {
-                io.create().confirmation("Button already exists", "A button with the label `" + label + "` already exists. Do you want to overwrite it?", cmdJson).send(CommandMessagePriority.RESULT);
+                io.create().confirmation("Button already exists", "A button with the label `" + label + "` already exists. Do you want to overwrite it?", cmdJson).send(RateLimitedSources.COMMAND_RESULT);
                 return;
             }
             menu.buttons.remove(contains);
@@ -404,6 +404,6 @@ public class AppMenuCommands {
             body.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
         }
         body.append("```");
-        io.create().embed(title, body.toString()).send(CommandMessagePriority.RESULT);
+        io.create().embed(title, body.toString()).send(RateLimitedSources.COMMAND_RESULT);
     }
 }

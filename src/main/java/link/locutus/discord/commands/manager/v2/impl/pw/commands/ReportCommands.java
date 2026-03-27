@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -124,7 +123,7 @@ public class ReportCommands {
         }
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "reports").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "reports").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -317,7 +316,7 @@ public class ReportCommands {
         sheet.updateWrite();
         sheet.attach(io.create(), "loans")
                 .append("Total on loan: `" + ResourceType.toString(total) + "` worth `$" + MathMan.format(ResourceType.convertedTotal(total)) + "`")
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -434,7 +433,7 @@ public class ReportCommands {
                 }
             }
 
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -527,7 +526,7 @@ public class ReportCommands {
         if (!force) {
             String title = "Confirm delete loan";
             String body = loan.getLineString(true, true);
-            io.create().confirmation(title, body, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         // ensure has permission
@@ -567,7 +566,7 @@ public class ReportCommands {
                 body.append("Deleting: All Loans from alliance: " + PW.getMarkdownUrl(guildOrAllianceId.intValue(), true));
             }
 
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         loanManager.deleteLoans(loans);
@@ -592,7 +591,7 @@ public class ReportCommands {
             for (DBLoan loan : loans) {
                 body.append("- " + loan.getLineString(true, false)).append("\n");
             }
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         for (DBLoan loan : loans) {
@@ -783,7 +782,7 @@ public class ReportCommands {
                     .confirmation(command, "overwriteSameNation", "Same")
                     .confirmation(command, "overwriteLoans", "Overwrite")
                     .commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, CM.report.sheet.generate.cmd, "View")
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         if (addLoans) {
@@ -980,7 +979,7 @@ public class ReportCommands {
                     If there is a game rule violation, create a report on the P&W discord, or forums
                     If there is a violation of discord ToS, report to discord: 
                     <https://discord.com/safety/360044103651-reporting-abusive-behavior-to-discord>""")
-                    .confirmation(command).send(CommandMessagePriority.RESULT);
+                    .confirmation(command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -1045,7 +1044,7 @@ public class ReportCommands {
         if (!force) {
             String title = "Remove " + report.type + " report";
             StringBuilder body = new StringBuilder(report.toMarkdown(true));
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         reportManager.deleteReport(report.reportId);
@@ -1070,7 +1069,7 @@ public class ReportCommands {
             StringBuilder body = new StringBuilder();
             body.append("See report: #" + report.reportId + " | " + CM.report.show.cmd.toSlashMention() + "\n");
             body.append(comment.toMarkdown());
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         reportManager.deleteComment(report.reportId, comment.nationId);
@@ -1086,7 +1085,7 @@ public class ReportCommands {
         if (!force) {
             String title = "Verify " + report.type + " report";
             StringBuilder body = new StringBuilder(report.toMarkdown(false));
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         report.approved = true;
@@ -1111,7 +1110,7 @@ public class ReportCommands {
                 bodyString = "Overwrite your existing comment:\n```\n" + existing.comment + "\n```\n" + bodyString;
             }
 
-            io.create().confirmation(title, bodyString, command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, bodyString, command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -1163,7 +1162,7 @@ public class ReportCommands {
                 body.append("Reporting user: ").append("<@" + reportingUser + ">").append("\n");
             }
             body.append("\n");
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         for (Report report : reports) {
@@ -1207,7 +1206,7 @@ public class ReportCommands {
                 body.append("User commenting: ").append("<@" + discord_id + ">").append("\n");
             }
             body.append("\n");
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         for (ReportManager.Comment comment : comments) {
@@ -1234,7 +1233,7 @@ public class ReportCommands {
                 body.append("Existing ban:\n```\n").append(ban.getKey()).append("\n```\nuntil ").append(DiscordUtil.timestamp(ban.getValue(), null)).append("\n");
             }
 
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         reportManager.setBanned(nation, timestamp, reason);
@@ -1255,7 +1254,7 @@ public class ReportCommands {
             if (ban != null) {
                 body.append("Existing ban:\n```\n").append(ban.getKey()).append("\n```\nuntil ").append(DiscordUtil.timestamp(ban.getValue(), null)).append("\n");
             }
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         nation.deleteMeta(NationMeta.REPORT_BAN);
@@ -1480,9 +1479,9 @@ public class ReportCommands {
             }
         }
         if (response.length() < 4000) {
-            io.create().embed(nation.getNation() + " Analysis", response.toString()).send(CommandMessagePriority.RESULT);
+            io.create().embed(nation.getNation() + " Analysis", response.toString()).send(RateLimitedSources.COMMAND_RESULT);
         } else {
-            io.send(response.toString(), CommandMessagePriority.RESULT);
+            io.send(response.toString(), RateLimitedSources.COMMAND_RESULT);
         }
         return null;
 //

@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.WarAttack;
@@ -156,7 +156,7 @@ public class AdminCommands {
                                 "You are about to leave " + servers.size() + " guilds.\n" +
                                         "This action is irreversible and will remove the bot from these guilds.\n" +
                                         "If you are sure, use the `!cull <guilds> -f` command to force this action.")
-                        .confirmation(command).send(CommandMessagePriority.RESULT);
+                        .confirmation(command).send(RateLimitedSources.COMMAND_RESULT);
                 return null;
             }
             int delay = 1;
@@ -169,9 +169,9 @@ public class AdminCommands {
                                         +
                                         "<https://discord.com/api/oauth2/authorize?client_id="
                                         + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
-                                        "- <https://github.com/xdnw/locutus/wiki>"), CommandMessagePriority.RESULT);
+                                        "- <https://github.com/xdnw/locutus/wiki>"), RateLimitedSources.COMMAND_RESULT);
                     }
-                    RateLimitUtil.queue(db.getGuild().leave(), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(db.getGuild().leave(), RateLimitedSources.COMMAND_RESULT);
                 }, delay, TimeUnit.SECONDS);
                 delay += 2; // Increase delay for each guild to avoid hitting rate limits
             }
@@ -307,7 +307,7 @@ public class AdminCommands {
 
         IMessageBuilder msg = sheet.attach(io.create(), "guild_culling");
         msg.embed(title, body);
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -382,36 +382,36 @@ public class AdminCommands {
             throw new IllegalArgumentException(
                     "Offshore alliance has no stockpile (send $1 to it for the purposes of this command)");
         }
-        io.send("Checked stockpile", CommandMessagePriority.RESULT);
+        io.send("Checked stockpile", RateLimitedSources.COMMAND_RESULT);
         TransferResult result = offshore.transferUnsafe(offshoreAuth, alliance, stockpile, TransactionNote.of(DepositType.IGNORE));
-        io.send("Sent stockpile " + result.toLineString(), CommandMessagePriority.RESULT);
+        io.send("Sent stockpile " + result.toLineString(), RateLimitedSources.COMMAND_RESULT);
         if (!result.getStatus().isSuccess()) {
             throw new IllegalArgumentException(
                     "Failed to send funds to new alliance (send $1 to the offshore and try again?):\n"
                             + result.toEmbedString());
         }
         Map<ResourceType, Double> stockpileTest = offshoreAA.getStockpile();
-        io.send("Checked new stockpile: " + ResourceType.toString(stockpileTest), CommandMessagePriority.RESULT);
+        io.send("Checked new stockpile: " + ResourceType.toString(stockpileTest), RateLimitedSources.COMMAND_RESULT);
         if (!stockpileTest.isEmpty()) {
             throw new IllegalArgumentException(
                     "Stockpile was sent, but AA is not empty. Please contact support, or try again.");
         }
         // leave alliance ingame and apply to new aa
         offshoreAuth.leaveAlliance(offshoreAA);
-        io.send("Left offshore alliance", CommandMessagePriority.RESULT);
+        io.send("Left offshore alliance", RateLimitedSources.COMMAND_RESULT);
         offshoreAuth.apply(alliance);
-        io.send("Applied to new alliance", CommandMessagePriority.RESULT);
+        io.send("Applied to new alliance", RateLimitedSources.COMMAND_RESULT);
 
         // set to member
         AlliancePosition setLeaderResult = setRankApi.assignAlliancePosition(offshoreAuth.getNationId(),
                 leaderPos.getId());
         if (setLeaderResult == null) {
             io.send("Failed to set position in new alliance. Please set " + offshoreNation.getMarkdownUrl()
-                    + " manually to leader", CommandMessagePriority.RESULT);
+                    + " manually to leader", RateLimitedSources.COMMAND_RESULT);
         } else {
             offshoreNation.setAlliance_id(alliance.getId());
             offshoreNation.setAlliancePositionId(leaderPos.getId());
-            io.send("Set position in new alliance to " + setLeaderResult, CommandMessagePriority.RESULT);
+            io.send("Set position in new alliance to " + setLeaderResult, RateLimitedSources.COMMAND_RESULT);
 
         }
         return BankCommands.addOffshore(io, offshoreUser, offshore.getGuildDB(), offshoreAuth.getNation(), null,
@@ -475,7 +475,7 @@ public class AdminCommands {
     @Command(desc = "Force update of research data")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String updateResearch(@Me IMessageIO io, Set<DBNation> nations) throws IOException, ParseException {
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Updating research. Please wait...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Updating research. Please wait...", RateLimitedSources.COMMAND_PROGRESS);
         long start = System.currentTimeMillis();
         List<DBNation> nationList = new ArrayList<>(nations);
         int backoff = 1000;
@@ -485,7 +485,7 @@ public class AdminCommands {
                 if (start + 10000 < System.currentTimeMillis()) {
                     start = System.currentTimeMillis();
                     io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl() + " (" + (i + 1)
-                            + "/" + nationList.size() + ")", CommandMessagePriority.PROGRESS);
+                            + "/" + nationList.size() + ")", RateLimitedSources.COMMAND_PROGRESS);
                 }
                 nation.updateResearch();
                 Thread.sleep(350);
@@ -493,7 +493,7 @@ public class AdminCommands {
             } catch (Exception e) {
                 e.printStackTrace();
                 io.create().append("Failed to update research for " + nation.getMarkdownUrl() + ": " + e.getMessage())
-                        .send(CommandMessagePriority.RESULT);
+                        .send(RateLimitedSources.COMMAND_RESULT);
                 try {
                     Thread.sleep(backoff);
                     backoff += 1000;
@@ -711,14 +711,14 @@ public class AdminCommands {
         if (!force) {
             String title = "Confirm sync war rooms";
             String body = "See the attached log file for details on room creation, deletion";
-            io.create().confirmation(title, body, command).file("warcat.txt", full.toString()).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body, command).file("warcat.txt", full.toString()).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         long diff = System.currentTimeMillis() - start;
         io.create().append("Sync war rooms complete. Took: " + diff + "ms\n" +
                 "See the attached log file for task output. To sort rooms, see: "
                 + CM.war.room.sort.cmd.toSlashMention())
-                .file("warcat.txt", full.toString()).send(CommandMessagePriority.RESULT);
+                .file("warcat.txt", full.toString()).send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -794,7 +794,7 @@ public class AdminCommands {
                     msg += " (deleted setting)";
                     TextChannel backupChannel = otherDb.getNotifcationChannel();
                     if (backupChannel != null)
-                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage), RateLimitedSources.COMMAND_RESULT);
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -808,7 +808,7 @@ public class AdminCommands {
                     msg += " (deleted setting)";
                     TextChannel backupChannel = otherDb.getNotifcationChannel();
                     if (backupChannel != null)
-                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage), RateLimitedSources.COMMAND_RESULT);
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -820,7 +820,7 @@ public class AdminCommands {
                     msg += " (deleted setting)";
                     TextChannel backupChannel = otherDb.getNotifcationChannel();
                     if (backupChannel != null)
-                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage), RateLimitedSources.COMMAND_RESULT);
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -831,7 +831,7 @@ public class AdminCommands {
                 if (force && unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
-                    RateLimitUtil.queue(gmc.sendMessage(msg + "\n" + errorMessage), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(gmc.sendMessage(msg + "\n" + errorMessage), RateLimitedSources.COMMAND_RESULT);
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -844,7 +844,7 @@ public class AdminCommands {
                 continue;
             }
             try {
-                Webhook.WebhookReference result = RateLimitUtil.complete(subscribe.follow(tc), CommandMessagePriority.RESULT);
+                Webhook.WebhookReference result = RateLimitUtil.complete(subscribe.follow(tc), RateLimitedSources.COMMAND_RESULT);
                 otherDb.deleteInfo(setting);
                 infoMsgs.add(successMsg + " | " + result);
             } catch (Exception e) {
@@ -853,7 +853,7 @@ public class AdminCommands {
                 if (unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
-                    RateLimitUtil.queue(gmc.sendMessage(msg + "\n" + errorMessage), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(gmc.sendMessage(msg + "\n" + errorMessage), RateLimitedSources.COMMAND_RESULT);
                 }
                 continue;
 
@@ -869,7 +869,7 @@ public class AdminCommands {
             io.create().confirmation(title, body.toString(), command)
                     .file("info.txt", String.join("\n", infoMsgs))
                     .file("errors.txt", String.join("\n", errorMsgs))
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         io.create().append("Done! " + infoMsgs.size() + " servers subscribed" +
@@ -877,7 +877,7 @@ public class AdminCommands {
                 "See attached files for details")
                 .file("info.txt", String.join("\n", infoMsgs))
                 .file("errors.txt", String.join("\n", errorMsgs))
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -928,7 +928,7 @@ public class AdminCommands {
                         sendTo = otherDb.getNotifcationChannel();
                     if (sendTo != null) {
                         try {
-                            RateLimitUtil.queue(sendTo.sendMessage(message), CommandMessagePriority.RESULT);
+                            RateLimitUtil.queue(sendTo.sendMessage(message), RateLimitedSources.COMMAND_RESULT);
                         } catch (Exception ignore) {
                         }
                     }
@@ -1041,14 +1041,14 @@ public class AdminCommands {
             body.append("Servers affected: `" + unsetReasons.size() + "`\n");
             io.create().confirmation(title, body.toString(), command)
                     .file("unset.txt", msg.toString())
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         io.create().append("Done! " + settings.size() + " keys unset" +
                 " | " + unsetReasons.size() + " servers affected\n" +
                 "See attached file for details")
                 .file("unset.txt", msg.toString())
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1122,7 +1122,7 @@ public class AdminCommands {
         sheet.updateWrite();
 
         StringMessageIO out = new StringMessageIO(user, db.getGuild());
-        sheet.attach(out.create(), "setting_servers").send(CommandMessagePriority.RESULT);
+        sheet.attach(out.create(), "setting_servers").send(RateLimitedSources.COMMAND_RESULT);
         Logg.text(out.toString());
 
         return "Done! See console";
@@ -1161,7 +1161,7 @@ public class AdminCommands {
             if (!botRole.hasPermission(Permission.BAN_MEMBERS))
                 continue;
             try {
-                List<Guild.Ban> bans = RateLimitUtil.complete(guild.retrieveBanList(), CommandMessagePriority.RESULT);
+                List<Guild.Ban> bans = RateLimitUtil.complete(guild.retrieveBanList(), RateLimitedSources.COMMAND_RESULT);
                 for (Guild.Ban ban : bans) {
                     User user = ban.getUser();
                     String reason = ban.getReason();
@@ -1267,7 +1267,7 @@ public class AdminCommands {
         }
 
         if (numResults > 25) {
-            io.create().file("queue.txt", sb.toString()).send(CommandMessagePriority.RESULT);
+            io.create().file("queue.txt", sb.toString()).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         } else {
             return sb.toString();
@@ -1338,7 +1338,7 @@ public class AdminCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "login_times").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "login_times").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1619,7 +1619,7 @@ public class AdminCommands {
             return null;
         }
 
-        currentChannel.send("Please wait...", CommandMessagePriority.RESULT);
+        currentChannel.send("Please wait...", RateLimitedSources.COMMAND_RESULT);
 
         List<String> resultsArray = new ArrayList<>(results);
         Collections.shuffle(resultsArray, random);
@@ -1695,7 +1695,7 @@ public class AdminCommands {
             }
 
             CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "");
-            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send(CommandMessagePriority.RESULT);
+            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send(RateLimitedSources.COMMAND_RESULT);
         }
 
         return output.toString().trim();
@@ -1947,7 +1947,7 @@ public class AdminCommands {
         }
 
         if (rolesRemoved.isEmpty() && rolesAdded.isEmpty()) {
-            msg.append("\n**Result**: No roles to add or remove").send(CommandMessagePriority.RESULT);
+            msg.append("\n**Result**: No roles to add or remove").send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -1972,10 +1972,10 @@ public class AdminCommands {
             } else {
                 body.append(separator + changeStr);
             }
-            msg.confirmation("Confirm bulk role change", body.toString(), command).send(CommandMessagePriority.RESULT);
+            msg.confirmation("Confirm bulk role change", body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
-        io.send("Please wait...", CommandMessagePriority.RESULT);
+        io.send("Please wait...", RateLimitedSources.COMMAND_RESULT);
         info.execute();
         return AutoRoleTextFormatter.formatExecution(info);
     }
@@ -1997,10 +1997,10 @@ public class AdminCommands {
                 continue;
             }
             if (value) {
-                RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role), RateLimitedSources.COMMAND_RESULT);
                 response.add(user.getName() + ": Added role to member");
             } else {
-                RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
+                RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), RateLimitedSources.COMMAND_RESULT);
                 response.add(user.getName() + ": Removed role from member");
             }
         }
@@ -2011,12 +2011,12 @@ public class AdminCommands {
                 Set<Role> memberRoles = member.getUnsortedRoles();
                 if (value) {
                     if (memberRoles.contains(role)) {
-                        RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role), RateLimitedSources.COMMAND_RESULT);
                         response.add(member.getUser().getName() + ": Removed role from member");
                     }
                 } else {
                     if (!memberRoles.contains(role)) {
-                        RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role), CommandMessagePriority.RESULT);
+                        RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role), RateLimitedSources.COMMAND_RESULT);
                         response.add(member.getUser().getName() + ": Added role to member");
                     }
                 }
@@ -2042,7 +2042,7 @@ public class AdminCommands {
             if (alliances.size() != 1)
                 embedTitle += " in " + alliances.size() + " alliances.";
             String dmMsg = "content: ```" + message + "```";
-            io.create().embed(embedTitle, dmMsg).confirmation(command).send(CommandMessagePriority.RESULT);
+            io.create().embed(embedTitle, dmMsg).confirmation(command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         boolean hasAdmin = Roles.ADMIN.hasOnRoot(author);
@@ -2070,12 +2070,12 @@ public class AdminCommands {
         if (!Roles.MAIL.hasOnRoot(author))
             GPTUtil.checkThrowModeration(message);
         CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree(
-                "Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"), CommandMessagePriority.PROGRESS);
+                "Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"), RateLimitedSources.COMMAND_PROGRESS);
         for (User mention : users) {
             mention.openPrivateChannel().queue(f -> RateLimitUtil
-                    .queue(f.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)"), CommandMessagePriority.RESULT));
+                    .queue(f.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)"), RateLimitedSources.COMMAND_RESULT));
         }
-        io.sendMessage("Done! Sent " + users.size() + " messages", CommandMessagePriority.RESULT);
+        io.sendMessage("Done! Sent " + users.size() + " messages", RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -2388,7 +2388,7 @@ public class AdminCommands {
         if (!force) {
             io.create().embed("Confirm removing invalid accounts", msg.toString())
                     .confirmation(command)
-                    .send(CommandMessagePriority.RESULT);
+                    .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         for (long id : toRemove) {
@@ -2474,7 +2474,7 @@ public class AdminCommands {
                 } catch (Throwable ignore) {
                 }
             }
-            RateLimitUtil.queue(GuildMessageChannel.delete(), CommandMessagePriority.RESULT);
+            RateLimitUtil.queue(GuildMessageChannel.delete(), RateLimitedSources.COMMAND_RESULT);
             deleted++;
             continue;
         }
@@ -2519,7 +2519,7 @@ public class AdminCommands {
                         long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake)
                                 .toEpochSecond() * 1000L;
                         if (latestMs > cutoff) {
-                            List<Message> messages = RateLimitUtil.complete(channel.getHistory().retrievePast(5), CommandMessagePriority.RESULT);
+                            List<Message> messages = RateLimitUtil.complete(channel.getHistory().retrievePast(5), RateLimitedSources.COMMAND_RESULT);
                             for (Message message : messages) {
                                 if (message.getAuthor().isSystem() || message.getAuthor().isBot()
                                         || guild.getMember(message.getAuthor()) == null) {
@@ -2574,7 +2574,7 @@ public class AdminCommands {
         if (db == null)
             return "Server not found " + guildId;
         Guild guild = db.getGuild();
-        RateLimitUtil.queue(guild.leave(), CommandMessagePriority.RESULT);
+        RateLimitUtil.queue(guild.leave(), RateLimitedSources.COMMAND_RESULT);
         return "Leaving " + guild.getName();
     }
 
@@ -2830,7 +2830,7 @@ public class AdminCommands {
             if (db == null)
                 throw new IllegalArgumentException("No guild found for AA:" + alliance);
 
-            channel.send("Syncing banks for " + db.getGuild() + "...", CommandMessagePriority.RESULT);
+            channel.send("Syncing banks for " + db.getGuild() + "...", RateLimitedSources.COMMAND_RESULT);
             OffshoreInstance bank = alliance.getBank();
             bank.sync(timestamp, false);
         }
@@ -3049,7 +3049,7 @@ public class AdminCommands {
             }
             msg.append(discordMsg.toString());
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -3095,7 +3095,7 @@ public class AdminCommands {
             }
         }
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Updating...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Updating...", RateLimitedSources.COMMAND_PROGRESS);
         IMessageBuilder msg = null;
         long start = System.currentTimeMillis();
 
@@ -3117,7 +3117,7 @@ public class AdminCommands {
             if (!nationIdsWithUids.contains(nation.getId())) {
                 if (System.currentTimeMillis() - start > 10000) {
                     msg = io.updateOptionally(msgFuture,
-                            "Fetching " + nation.getNation() + "(" + i + "/" + nationsList.size() + ")", CommandMessagePriority.PROGRESS);
+                            "Fetching " + nation.getNation() + "(" + i + "/" + nationsList.size() + ")", RateLimitedSources.COMMAND_PROGRESS);
                     start = System.currentTimeMillis();
                 }
                 UPDATED_UID.put(nation.getId(), now);
@@ -3149,12 +3149,12 @@ public class AdminCommands {
                 long dateUpdated = UPDATED_UID.getOrDefault(nation.getId(), 0L);
                 if (System.currentTimeMillis() - start > 10000) {
                     msg = io.updateOptionally(msgFuture,
-                            "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")", CommandMessagePriority.PROGRESS);
+                            "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")", RateLimitedSources.COMMAND_PROGRESS);
                     start = System.currentTimeMillis();
                 }
                 if (System.currentTimeMillis() - start > 10000) {
                     msg = io.updateOptionally(msgFuture,
-                            "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")", CommandMessagePriority.PROGRESS);
+                            "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")", RateLimitedSources.COMMAND_PROGRESS);
                     start = System.currentTimeMillis();
                 }
                 nation.fetchUid(true);
@@ -3166,7 +3166,7 @@ public class AdminCommands {
                 i++;
             }
             if (msg != null && msg.getId() > 0)
-                io.delete(msg.getId(), CommandMessagePriority.PROGRESS);
+                io.delete(msg.getId(), RateLimitedSources.COMMAND_PROGRESS);
             return hasSameNetworkAsBan(io, author, nations, listExpired, onlySameAlliance, onlySimilarTime,
                     sortByAgeDays, sortByLogin, false);
         }
@@ -3422,7 +3422,7 @@ public class AdminCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "login_times").send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "login_times").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -3473,13 +3473,13 @@ public class AdminCommands {
                     Category category = guildChan.getParentCategory();
                     if (category != null)
                         categories.add(category);
-                    RateLimitUtil.queue(guildChan.delete(), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(guildChan.delete(), RateLimitedSources.COMMAND_RESULT);
                 }
                 iter.remove();
             }
             for (Category category : categories) {
                 if (category.getName().toLowerCase().startsWith("warcat-")) {
-                    RateLimitUtil.queue(category.delete(), CommandMessagePriority.RESULT);
+                    RateLimitUtil.queue(category.delete(), RateLimitedSources.COMMAND_RESULT);
                 }
             }
             return "Deleted war rooms! See also: " + CM.admin.sync.warrooms.cmd.toSlashMention();
@@ -3624,7 +3624,7 @@ public class AdminCommands {
         String footer = "Weekly Avg: " + weeklyAverage;
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        sheet.attach(io.create(), "conversion_rates", footer).send(CommandMessagePriority.RESULT);
+        sheet.attach(io.create(), "conversion_rates", footer).send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -3750,11 +3750,11 @@ public class AdminCommands {
                 throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + aaId);
             }
             CompletableFuture<IMessageBuilder> msgFuture = io
-                    .sendIfFree("Syncing taxes for " + aaId + ". Please wait...", CommandMessagePriority.PROGRESS);
+                    .sendIfFree("Syncing taxes for " + aaId + ". Please wait...", RateLimitedSources.COMMAND_PROGRESS);
 
             int taxesCount = aa.updateTaxesLegacy(timestamp);
 
-            io.deleteOptionally(msgFuture, CommandMessagePriority.PROGRESS);
+            io.deleteOptionally(msgFuture, RateLimitedSources.COMMAND_PROGRESS);
             return "Updated " + taxesCount + " records.\n"
                     + "<" + SyncTaxes.updateTurnGraph(db, aaId) + ">";
         }
@@ -3954,7 +3954,7 @@ public class AdminCommands {
                 IMessageBuilder msg = io.create();
                 condensed.flatten();
                 condensed.writeTo(msg);
-                msg.send(CommandMessagePriority.RESULT);
+                msg.send(RateLimitedSources.COMMAND_RESULT);
                 condensed.clear();
             }
         };
@@ -3994,7 +3994,7 @@ public class AdminCommands {
                 IMessageBuilder msg = io.create();
                 condensed.flatten();
                 condensed.writeTo(msg);
-                msg.send(CommandMessagePriority.RESULT);
+                msg.send(RateLimitedSources.COMMAND_RESULT);
                 condensed.clear();
             }
         };

@@ -1,6 +1,6 @@
 package link.locutus.discord.web.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -71,7 +71,7 @@ public class WebCommands {
                 body.append("Users will be sent a new or existing login code via in-game mail\n");
             }
             body.append("Do you want to continue?");
-            io.create().confirmation(title, body.toString(), command).send(CommandMessagePriority.RESULT);
+            io.create().confirmation(title, body.toString(), command).send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
         ApiKeyPool mailKey = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
@@ -79,7 +79,7 @@ public class WebCommands {
         int success = 0;
         int i = 0;
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", CommandMessagePriority.PROGRESS);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree("Please wait...", RateLimitedSources.COMMAND_PROGRESS);
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {
@@ -91,7 +91,7 @@ public class WebCommands {
                 errors.put(nation.getMarkdownUrl(), "Failed to send mail: " + e.getMessage());
             }
             if (System.currentTimeMillis() - start > 10000) {
-                io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nations.size() + ")", CommandMessagePriority.PROGRESS);
+                io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nations.size() + ")", RateLimitedSources.COMMAND_PROGRESS);
                 start = System.currentTimeMillis();
             }
         }
@@ -102,7 +102,7 @@ public class WebCommands {
                 msg.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
             }
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

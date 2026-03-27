@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Maps;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
@@ -515,7 +515,7 @@ public class TradeCommands {
         channel.create()
                 .embed(embed)
                 .commandButton(command, "Refresh")
-                .send(CommandMessagePriority.RESULT);
+                .send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -557,7 +557,7 @@ public class TradeCommands {
                 .addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true)
                 .addField("Daily", StringMan.join(daily, " "), true)
                 .addField("Weekly", StringMan.join(weekly, " "), true)
-        ).commandButton(command, "Refresh").send(CommandMessagePriority.RESULT);
+        ).commandButton(command, "Refresh").send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -655,7 +655,7 @@ public class TradeCommands {
                 .setTitle("Trade Margin")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField("margin", StringMan.join(diffList, "\n"), true)
-        ).commandButton(command, "Refresh").send(CommandMessagePriority.RESULT);
+        ).commandButton(command, "Refresh").send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -691,7 +691,7 @@ public class TradeCommands {
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField(lowKey, StringMan.join(lowList, "\n"), true)
                 .addField(highKey, StringMan.join(highList, "\n"), true)
-        ).commandButton(command, "Refresh").send(CommandMessagePriority.RESULT);
+        ).commandButton(command, "Refresh").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -874,7 +874,7 @@ public class TradeCommands {
 
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "trending").send(CommandMessagePriority.RESULT);
+        sheet.attach(channel.create(), "trending").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1123,7 +1123,7 @@ public class TradeCommands {
             sheet = SpreadSheet.create(db, SheetKey.OFFSHORE_DEPOSITS);
         }
 
-        channel.send("Please wait...", CommandMessagePriority.RESULT);
+        channel.send("Please wait...", RateLimitedSources.COMMAND_RESULT);
 
         OffshoreInstance offshore = db.getOffshore();
         offshore.sync();
@@ -1168,7 +1168,7 @@ public class TradeCommands {
         if (!errors.isEmpty()) {
             msg.append("\n- " + StringMan.join(errors, "\n- "));
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
@@ -1184,7 +1184,7 @@ public class TradeCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.compareStockpileValueByDay.cmd.getName(), command));
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return "Done!";
     }
 
@@ -1199,7 +1199,7 @@ public class TradeCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.tradePriceByDay.cmd.getName(), command));
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
         return "Done!";
     }
 
@@ -1241,7 +1241,7 @@ public class TradeCommands {
                 commandRss.put("resources", rssStr);
                 msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.tradeMarginByDay.cmd.getName(), commandRss));
             }
-            msg.send(CommandMessagePriority.RESULT);
+            msg.send(RateLimitedSources.COMMAND_RESULT);
         }
         return null;
     }
@@ -1290,7 +1290,7 @@ public class TradeCommands {
                 commandForRss.put("resource", type.name());
                 msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + ref.getName(), commandForRss));
             }
-            msg.send(CommandMessagePriority.RESULT);
+            msg.send(RateLimitedSources.COMMAND_RESULT);
         }
     }
 
@@ -1357,7 +1357,7 @@ public class TradeCommands {
                 .addField("Nation", StringMan.join(nationName, "\n"), true)
                 .addField("Amt", StringMan.join(amtList, "\n"), true)
                 .addField("Ppu", StringMan.join(ppuList, "\n"), true)
-        ).commandButton(command, "Refresh").send(CommandMessagePriority.RESULT);
+        ).commandButton(command, "Refresh").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 
@@ -1518,7 +1518,7 @@ public class TradeCommands {
 
             body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
 
-            io.create().embed(title, body.toString()).commandButton(unsubCommand, emoji).send(CommandMessagePriority.RESULT);
+            io.create().embed(title, body.toString()).commandButton(unsubCommand, emoji).send(RateLimitedSources.COMMAND_RESULT);
         }
 
         return null;

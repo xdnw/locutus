@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.buildcmd;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -68,7 +68,7 @@ public class AssignBuild extends Command {
         String instructions = to.instructions(from, totalArr, true, true);
         String emoji = "Grant";
         String command = Settings.commandPrefix(true) + "grant {usermention} " + to.toJson(false);
-        io.create().embed("Build", instructions).commandButton(command, emoji).send(CommandMessagePriority.RESULT);
+        io.create().embed("Build", instructions).commandButton(command, emoji).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 

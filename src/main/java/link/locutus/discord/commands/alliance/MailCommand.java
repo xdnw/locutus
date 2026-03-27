@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.alliance;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -132,7 +132,7 @@ public class MailCommand extends Command implements Noformat {
 
                 JSONObject json = CM.mail.send.cmd.force("true").message(message).subject(subject).nations(arg0).toJson();
                 channel.create().embed(embedTitle, body)
-                                .confirmation(json).send(CommandMessagePriority.RESULT);
+                                .confirmation(json).send(RateLimitedSources.COMMAND_RESULT);
                 return null;
             }
 
@@ -141,12 +141,12 @@ public class MailCommand extends Command implements Noformat {
             }
             if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
 
-            CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Sending to...", CommandMessagePriority.PROGRESS);
+            CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Sending to...", RateLimitedSources.COMMAND_PROGRESS);
             StringBuilder response = new StringBuilder();
             long start = System.currentTimeMillis();
             for (DBNation nation : nations) {
                 if (System.currentTimeMillis() - start > 10000) {
-                    channel.updateOptionally(msgFuture, "Sending to " + nation.getNation(), CommandMessagePriority.PROGRESS);
+                    channel.updateOptionally(msgFuture, "Sending to " + nation.getNation(), RateLimitedSources.COMMAND_PROGRESS);
                     start = System.currentTimeMillis();
                 }
                 response.append(nation.sendMail(key, subject, message, nations.size() == 1)).append("\n");

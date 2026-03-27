@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.buildcmd;
 
-import link.locutus.discord.commands.manager.v2.command.CommandMessagePriority;
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.api.client.util.Lists;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -71,7 +71,7 @@ public class GetBuild extends Command {
                 msg.append("### " + build.getKey() + ":\n" + build.getValue() + "\n");
             }
         }
-        msg.send(CommandMessagePriority.RESULT);
+        msg.send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }
