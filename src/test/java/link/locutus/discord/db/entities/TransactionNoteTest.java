@@ -240,7 +240,7 @@ class TransactionNoteTest {
 
                 WebTransaction webTransaction = new WebTransaction(tx);
 
-                assertArrayEquals(tx.getNoteBytes(), webTransaction.note);
+                assertArrayEquals(tx.getNoteBytes(Transaction2.createNoteBuffer()), webTransaction.note);
         }
 
         @Test
@@ -258,9 +258,9 @@ class TransactionNoteTest {
                 Transaction2 original = Transaction2.constructLegacy(1, 2L, 3L, 1, 4L, 2, 5,
                                 "Alice defeated Bob's nation and captured.", new double[ResourceType.values.length]);
                 Transactions_2Record record = new Transactions_2Record();
-                original.set(record);
+                original.set(record, Transaction2.createNoteBuffer());
 
-                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.reusableNoteBuffer());
+                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
 
                 assertNotSame(original, restored);
                 assertTrue(restored.isLootTransfer());
@@ -304,9 +304,9 @@ class TransactionNoteTest {
                 Transaction2 tx = Transaction2.construct(7, 9L, 11L, 1, 13L, 2, 17, note, false, false,
                                 new double[ResourceType.values.length]);
                 Transactions_2Record record = new Transactions_2Record();
-                tx.set(record);
+                tx.set(record, Transaction2.createNoteBuffer());
 
-                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.reusableNoteBuffer());
+                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
 
                 assertEquals(NationMeta.REFERRER, restored.getStructuredNote().get(DepositType.INCENTIVE));
                 assertEquals("#deposit #incentive=REFERRER", restored.getLegacyNote());
@@ -323,9 +323,9 @@ class TransactionNoteTest {
                 resources[ResourceType.STEEL.ordinal()] = -5.5d;
                 Transaction2 tx = Transaction2.construct(7, 9L, 11L, 1, 13L, 2, 17, note, false, false, resources);
                 Transactions_2Record record = new Transactions_2Record();
-                tx.set(record);
+                tx.set(record, Transaction2.createNoteBuffer());
 
-                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.reusableNoteBuffer());
+                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
 
                 assertEquals(12.34d, restored.resources[ResourceType.MONEY.ordinal()]);
                 assertEquals(-5.5d, restored.resources[ResourceType.STEEL.ordinal()]);

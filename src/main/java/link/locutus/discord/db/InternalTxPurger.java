@@ -232,7 +232,7 @@ public final class InternalTxPurger {
 
         try (PreparedStatement ps = conn.prepareStatement(sql.toString());
                 ResultSet rs = ps.executeQuery()) {
-            BitBuffer noteBuffer = Transaction2.reusableNoteBuffer();
+            BitBuffer noteBuffer = Transaction2.createNoteBuffer();
 
             while (rs.next()) {
                 scanned++;

@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.TransactionEndpointKey;
 import link.locutus.discord.db.entities.TransactionNote;
+import link.locutus.discord.util.io.BitBuffer;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -83,13 +84,14 @@ class InternalTxPurgerTest {
                     tx_id, tx_datetime, sender_key, receiver_key, banker_nation_id, note
                 ) VALUES (?, ?, ?, ?, ?, ?)
                 """)) {
+            BitBuffer buffer = Transaction2.createNoteBuffer();
             int index = 1;
             statement.setInt(index++, tx.tx_id);
             statement.setLong(index++, tx.tx_datetime);
             statement.setLong(index++, TransactionEndpointKey.encode(tx.sender_id, tx.sender_type));
             statement.setLong(index++, TransactionEndpointKey.encode(tx.receiver_id, tx.receiver_type));
             statement.setInt(index++, tx.banker_nation);
-            statement.setBytes(index++, tx.getNoteBytes());
+            statement.setBytes(index++, tx.getNoteBytes(buffer));
             statement.executeUpdate();
         }
     }

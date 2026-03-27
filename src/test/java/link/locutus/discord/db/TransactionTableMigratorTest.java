@@ -286,6 +286,7 @@ class TransactionTableMigratorTest {
     private static void insertSplitSourceRow(Connection conn, String tableName, Transaction2 tx) throws Exception {
         try (PreparedStatement stmt = conn.prepareStatement(
                 "INSERT INTO `" + tableName + "` (tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+            BitBuffer buffer = Transaction2.createNoteBuffer();
             int index = 1;
             stmt.setInt(index++, tx.tx_id);
             stmt.setLong(index++, tx.tx_datetime);
@@ -294,7 +295,7 @@ class TransactionTableMigratorTest {
             stmt.setLong(index++, tx.receiver_id);
             stmt.setInt(index++, tx.receiver_type);
             stmt.setInt(index++, tx.banker_nation);
-            stmt.setBytes(index++, tx.getNoteBytes());
+            stmt.setBytes(index++, tx.getNoteBytes(buffer));
             stmt.executeUpdate();
         }
     }
@@ -307,9 +308,10 @@ class TransactionTableMigratorTest {
         boolean autoCommit = conn.getAutoCommit();
         conn.setAutoCommit(false);
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            BitBuffer buffer = Transaction2.createNoteBuffer();
             for (Transaction2 tx : batch) {
                 stmt.clearParameters();
-                tx.set(stmt);
+                tx.set(stmt, buffer);
                 stmt.addBatch();
             }
             stmt.executeBatch();
@@ -325,7 +327,7 @@ class TransactionTableMigratorTest {
     private static void assertCanonicalRows(Connection conn, String tableName, List<Transaction2> expected) throws Exception {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM `" + tableName + "` ORDER BY tx_id ASC");
                 ResultSet rs = stmt.executeQuery()) {
-            BitBuffer buffer = Transaction2.reusableNoteBuffer();
+            BitBuffer buffer = Transaction2.createNoteBuffer();
             int index = 0;
             while (rs.next()) {
                 Transaction2 actual = Transaction2.load(rs, buffer);

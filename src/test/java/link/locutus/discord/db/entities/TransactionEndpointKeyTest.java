@@ -32,12 +32,12 @@ class TransactionEndpointKeyTest {
         Transaction2 tx = Transaction2.construct(7, 9L, 11L, 4, 0L, 0, 17, note, false, false,
                 new double[ResourceType.values.length]);
         Transactions_2Record record = new Transactions_2Record();
-        tx.set(record);
+        tx.set(record, Transaction2.createNoteBuffer());
 
         assertEquals(TransactionEndpointKey.encode(11L, 4), record.getSenderKey());
         assertEquals(TransactionEndpointKey.NONE, record.getReceiverKey());
 
-        Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.reusableNoteBuffer());
+        Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
 
         assertEquals(11L, restored.sender_id);
         assertEquals(4, restored.sender_type);

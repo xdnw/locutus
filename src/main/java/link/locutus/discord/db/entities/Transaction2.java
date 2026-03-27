@@ -50,8 +50,6 @@ public class Transaction2 {
         };
     }
 
-    private static final ThreadLocal<BitBuffer> NOTE_BUFFER = ThreadLocal
-            .withInitial(() -> new BitBuffer(NOTE_BUFFER_SIZE));
     private static final Pattern LOOT_CAPTURE = Pattern
             .compile("^(.+?) defeated (.+?)'s nation and captured(?:\\.|\\b).*$");
     private static final Pattern ALLIANCE_BANK_LOOT = Pattern.compile("of the alliance bank inventory\\.");
@@ -221,10 +219,6 @@ public class Transaction2 {
         return tx;
     }
 
-    public static Transaction2 load(ResultSet rs) throws SQLException {
-        return load(rs, noteBuffer());
-    }
-
     public static Transaction2 load(ResultSet rs, BitBuffer buffer) throws SQLException {
         int tx_id = rs.getInt("tx_id");
         long tx_datetime = rs.getLong("tx_datetime");
@@ -290,8 +284,8 @@ public class Transaction2 {
         return noteData.isLootTransfer();
     }
 
-    public static BitBuffer reusableNoteBuffer() {
-        return noteBuffer();
+    public static BitBuffer createNoteBuffer() {
+        return new BitBuffer(NOTE_BUFFER_SIZE);
     }
 
     public static TransactionNote noteOf(DepositType type) {
@@ -353,8 +347,8 @@ public class Transaction2 {
         return noteData.toLegacyString();
     }
 
-    public byte[] getNoteBytes() {
-        return PayloadState.toBytes(noteData, resources, noteBuffer());
+    public byte[] getNoteBytes(BitBuffer buffer) {
+        return PayloadState.toBytes(noteData, resources, buffer);
     }
 
     public static int noteDbFormatMagic() {
@@ -457,10 +451,6 @@ public class Transaction2 {
             return true;
         long accountId = getAccountId(offshoreAAs, false);
         return (accountId == 0 || accountId == db.getIdLong() || aaIds.contains((int) accountId));
-    }
-
-    public static Transaction2 fromTX2Table(Transactions_2Record record) {
-        return fromTX2Table(record, noteBuffer());
     }
 
     public static Transaction2 fromTX2Table(Transactions_2Record record, BitBuffer buffer) {
@@ -573,13 +563,13 @@ public class Transaction2 {
         return sql.toString();
     }
 
-    public void set(PreparedStatement stmt) throws SQLException {
+    public void set(PreparedStatement stmt, BitBuffer buffer) throws SQLException {
         stmt.setInt(1, tx_id);
         stmt.setLong(2, tx_datetime);
         stmt.setLong(3, getSenderKey());
         stmt.setLong(4, getReceiverKey());
         stmt.setInt(5, banker_nation);
-        byte[] noteBytes = getNoteBytes();
+        byte[] noteBytes = getNoteBytes(buffer);
         if (noteBytes == null) {
             stmt.setNull(6, Types.BLOB);
         } else {
@@ -587,12 +577,12 @@ public class Transaction2 {
         }
     }
 
-    public void setNoID(PreparedStatement stmt) throws SQLException {
+    public void setNoID(PreparedStatement stmt, BitBuffer buffer) throws SQLException {
         stmt.setLong(1, tx_datetime);
         stmt.setLong(2, getSenderKey());
         stmt.setLong(3, getReceiverKey());
         stmt.setInt(4, banker_nation);
-        byte[] noteBytes = getNoteBytes();
+        byte[] noteBytes = getNoteBytes(buffer);
         if (noteBytes == null) {
             stmt.setNull(5, Types.BLOB);
         } else {
@@ -687,13 +677,13 @@ public class Transaction2 {
         return NationOrAllianceOrGuild.create(receiver_id, receiver_type);
     }
 
-    public void set(Transactions_2Record record) {
+    public void set(Transactions_2Record record, BitBuffer buffer) {
         record.setTxId(tx_id);
         record.setTxDatetime(tx_datetime);
         record.setSenderKey(getSenderKey());
         record.setReceiverKey(getReceiverKey());
         record.setBankerNationId(banker_nation);
-        record.setNote(getNoteBytes());
+        record.setNote(getNoteBytes(buffer));
 
     }
 
@@ -873,7 +863,4 @@ public class Transaction2 {
         return (value >>> 1) ^ -(value & 1L);
     }
 
-    private static BitBuffer noteBuffer() {
-        return NOTE_BUFFER.get().reset();
-    }
 }

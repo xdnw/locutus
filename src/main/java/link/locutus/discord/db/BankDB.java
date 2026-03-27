@@ -30,7 +30,6 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -105,7 +104,7 @@ public class BankDB extends DBMainV3 {
     public List<Transaction2> getTransactions(Condition condition, SortField<?> orderBy, Integer limit) {
         Result<Record> rs = query(TRANSACTIONS_2, condition, orderBy, limit);
         List<Transaction2> list = new ArrayList<>();
-        BitBuffer noteBuffer = Transaction2.reusableNoteBuffer();
+        BitBuffer noteBuffer = Transaction2.createNoteBuffer();
         for (Record r : rs) {
             list.add(Transaction2.fromTX2Table((Transactions_2Record) r, noteBuffer));
         }
@@ -1065,11 +1064,12 @@ public class BankDB extends DBMainV3 {
                         consumer.accept(nationId, transfer);
                     }
                 };
-                BitBuffer noteBuffer = ordered ? Transaction2.reusableNoteBuffer() : null;
+                BitBuffer noteBuffer = ordered ? Transaction2.createNoteBuffer() : null;
+                ThreadLocal<BitBuffer> parallelNoteBuffers = ordered ? null
+                        : ThreadLocal.withInitial(Transaction2::createNoteBuffer);
                 workStream.forEach(record -> {
-                    Transaction2 transfer = ordered
-                            ? Transaction2.fromTX2Table((Transactions_2Record) record, noteBuffer)
-                            : Transaction2.fromTX2Table((Transactions_2Record) record);
+                    BitBuffer buffer = ordered ? noteBuffer : parallelNoteBuffers.get().reset();
+                    Transaction2 transfer = Transaction2.fromTX2Table((Transactions_2Record) record, buffer);
                     int nationId;
                     if (transfer.sender_type == 1) {
                         if (transfer.receiver_type == 1) {
@@ -1253,7 +1253,7 @@ public class BankDB extends DBMainV3 {
         GroupField groupBy = TRANSACTIONS_2.SENDER_KEY;
         Result<Record> rs = query(TRANSACTIONS_2, condition, null, null, groupBy);
         Set<Integer> set = new IntOpenHashSet();
-        BitBuffer noteBuffer = Transaction2.reusableNoteBuffer();
+        BitBuffer noteBuffer = Transaction2.createNoteBuffer();
         for (Record r : rs) {
             Transaction2 tx = Transaction2.fromTX2Table((Transactions_2Record) r, noteBuffer);
             if (tx.sender_type == 1) {
@@ -1277,9 +1277,10 @@ public class BankDB extends DBMainV3 {
         if (transactions.isEmpty())
             return new int[0];
         List<Query> queries = new ArrayList<>(transactions.size());
+        BitBuffer noteBuffer = Transaction2.createNoteBuffer();
         for (Transaction2 transaction : transactions) {
             Transactions_2Record record = ctx().newRecord(TRANSACTIONS_2);
-            transaction.set(record);
+            transaction.set(record, noteBuffer);
 
             @NotNull
             InsertSetMoreStep<Transactions_2Record> insert = ctx().insertInto(TRANSACTIONS_2).set(record);

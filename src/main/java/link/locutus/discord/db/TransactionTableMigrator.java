@@ -154,7 +154,7 @@ public final class TransactionTableMigrator {
             stmt.setLong(1, lastTxId);
             stmt.setInt(2, batchSize);
             try (ResultSet rs = stmt.executeQuery()) {
-                BitBuffer noteBuffer = splitEndpointTable ? Transaction2.reusableNoteBuffer() : null;
+                BitBuffer noteBuffer = splitEndpointTable ? Transaction2.createNoteBuffer() : null;
                 while (rs.next()) {
                     batch.add(splitEndpointTable ? Transaction2.loadSplit(rs, noteBuffer) : Transaction2.loadLegacy(rs));
                 }

@@ -20,6 +20,6 @@ public class WebTransaction {
         this.receiver_id = tx.receiver_id;
         this.receiver_type = tx.receiver_type;
         this.banker_nation = tx.banker_nation;
-        this.note = tx.getNoteBytes();
+        this.note = tx.getNoteBytes(Transaction2.createNoteBuffer());
     }
 }
