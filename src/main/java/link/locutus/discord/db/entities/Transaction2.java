@@ -43,13 +43,6 @@ public class Transaction2 {
     private static final int NOTE_DB_FORMAT_MAGIC = 0x54;
     private static final int NOTE_DB_FORMAT_VERSION = 1;
 
-    private static boolean hasLegacyRootAccountTag(DepositType type) {
-        return switch (type) {
-            case DEPOSIT, TAX, LOAN, GRANT, IGNORE, TRADE -> true;
-            default -> false;
-        };
-    }
-
     private static final Pattern LOOT_CAPTURE = Pattern
             .compile("^(.+?) defeated (.+?)'s nation and captured(?:\\.|\\b).*$");
     private static final Pattern ALLIANCE_BANK_LOOT = Pattern.compile("of the alliance bank inventory\\.");

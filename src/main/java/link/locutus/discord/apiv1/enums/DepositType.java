@@ -379,4 +379,11 @@ public enum DepositType {
         }
     }
 
+    public static boolean hasLegacyRootAccountTag(DepositType type) {
+        return switch (type) {
+            case DEPOSIT, TAX, LOAN, GRANT, IGNORE, TRADE -> true;
+            default -> false;
+        };
+    }
+
 }

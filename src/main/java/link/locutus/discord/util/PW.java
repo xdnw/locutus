@@ -789,7 +789,7 @@ public final class PW {
             tracked = guildDB.getTrackedBanks();
         }
         long forceRssConversionAfter;
-        long allowConversionDefaultCutoff = 1735265627000L;
+        final long allowConversionDefaultCutoff = 1735265627000L;
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (allowConversionDefault && nation != null) {
             GuildDB delegate = guildDB.getDelegateServer();
@@ -840,68 +840,47 @@ public final class PW {
 
             Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry
                     : Predicates.alwaysFalse();
+
+            boolean useMarkedAccountFilter = record.tx_datetime > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE;
+
             PW.processDeposit(record, guildDB, finalTracked, sign, result, record.resources, record.tx_datetime,
-                    allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc,
+                    allowExpiryFinal, allowConversion, allowArbitraryConversion, useMarkedAccountFilter, forceIncludeIgnored, rateFunc,
                     forceConversionAfterFinal, start);
         };
     }
 
-    public static boolean aboveMMR(String currentMMR, String requiredMMR) {
-        requiredMMR = requiredMMR.toLowerCase();
-        for (int i = 0; i < 4; i++) {
-            int val1 = currentMMR.charAt(i) - '0';
-            char char2 = currentMMR.charAt(i);
-
-            int val2;
-            if (char2 == 'X') {
-                val2 = 0;
-            } else {
-                val2 = char2 - '0';
-            }
-            if (val1 < val2)
-                return false;
-        }
-        return true;
-    }
-
-    public static boolean matchesMMR(String currentMMR, String requiredMMR) {
-        requiredMMR = requiredMMR.toLowerCase().replace('X', '.');
-        return currentMMR.matches(requiredMMR);
-    }
-
     public static void processDeposit(Transaction2 record,
-            GuildDB guildDB,
-            Set<Long> tracked,
-            int sign,
-            Map<DepositType, double[]> result,
-            double[] amount,
-            long date,
-            Predicate<Transaction2> allowExpiry,
-            boolean allowConversion,
-            boolean allowArbitraryConversion,
-            boolean ignoreMarkedDeposits,
-            boolean includeIgnored,
-            Function<ResourceType, Double> rates,
-            long forceConvertRssAfter,
-            long now) {
-        /*
-         * allowConversion sender is nation and alliance has conversion enabled
-         */
-        if (tracked == null) {
-            tracked = guildDB.getTrackedBanks();
-        }
+                                      GuildDB guildDB,
+                                      Set<Long> tracked,
+                                      int sign,
+                                      Map<DepositType, double[]> result,
+                                      double[] amount,
+                                      long date,
+                                      Predicate<Transaction2> allowExpiry,
+                                      boolean allowConversion,
+                                      boolean allowArbitraryConversion,
+                                      boolean useMarkedAccountFilter,
+                                      boolean includeIgnored,
+                                      Function<ResourceType, Double> rates,
+                                      long forceConvertRssAfter,
+                                      long now) {
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
         Map<DepositType, Object> notes3 = record.getNoteMap();
         DepositType type = DepositType.DEPOSIT;
         double decayFactor = 1;
-        boolean useMarkedAccountFilter = ignoreMarkedDeposits
-            && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE;
-        long taggedAccountId = useMarkedAccountFilter ? record.getTaggedAccountId() : 0;
 
         for (Map.Entry<DepositType, Object> entry2 : notes3.entrySet()) {
             DepositType tag2 = entry2.getKey();
             Object value2 = entry2.getValue();
+            if (useMarkedAccountFilter && DepositType.hasLegacyRootAccountTag(tag2)) {
+                if (value2 instanceof Number n) {
+                    long taggedAccountId = n.longValue();
+                    if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
+                        return;
+                    }
+                }
+            }
 
             switch (tag2) {
                 case NATION:
@@ -911,32 +890,20 @@ public final class PW {
                     return;
                 case IGNORE:
                     if (includeIgnored) {
-                        if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
-                            return;
-                        }
                         continue;
                     }
                     return;
                 case DEPOSIT:
                 case TRADE:
                 case WARCHEST:
-                    if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
-                        return;
-                    }
                     type = DepositType.DEPOSIT;
                     continue;
                 case RAWS:
                 case TAX:
                     type = DepositType.TAX;
-                    if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
-                        return;
-                    }
                     continue;
                 case LOAN:
                 case GRANT:
-                    if (taggedAccountId != 0 && !tracked.contains(taggedAccountId)) {
-                        return;
-                    }
                     if (type == DepositType.DEPOSIT) {
                         type = DepositType.LOAN;
                     }
@@ -995,6 +962,29 @@ public final class PW {
                 rss[i] = DOUBLE_ADD.applyAsDouble(rss[i], amount[i] * factor);
             }
         }
+    }
+
+    public static boolean aboveMMR(String currentMMR, String requiredMMR) {
+        requiredMMR = requiredMMR.toLowerCase();
+        for (int i = 0; i < 4; i++) {
+            int val1 = currentMMR.charAt(i) - '0';
+            char char2 = currentMMR.charAt(i);
+
+            int val2;
+            if (char2 == 'X') {
+                val2 = 0;
+            } else {
+                val2 = char2 - '0';
+            }
+            if (val1 < val2)
+                return false;
+        }
+        return true;
+    }
+
+    public static boolean matchesMMR(String currentMMR, String requiredMMR) {
+        requiredMMR = requiredMMR.toLowerCase().replace('X', '.');
+        return currentMMR.matches(requiredMMR);
     }
 
     private static void applyCashConversion(GuildDB guildDB,
