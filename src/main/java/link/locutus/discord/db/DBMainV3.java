@@ -1,276 +1,289 @@
 package link.locutus.discord.db;
 
+import org.jdbi.v3.core.Jdbi;
+import org.sqlite.SQLiteDataSource;
 
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.AlertUtil;
-import org.jetbrains.annotations.NotNull;
-import org.jooq.*;
-import org.jooq.Record;
-import org.jooq.impl.DSL;
-import org.sqlite.SQLiteConfig;
-
-import java.io.Closeable;
+import javax.sql.DataSource;
 import java.io.File;
-import java.sql.*;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
-import java.util.function.Consumer;
-import java.util.logging.Level;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.logging.Logger;
 
-public abstract class DBMainV3 implements Closeable {
-    private static final Logger log = Logger.getLogger("DBMain");
+public abstract class DBMainV3 implements AutoCloseable {
+    private final DataSource dataSource;
+    private final Jdbi jdbi;
+    private final String jdbcUrl;
+    private final Connection keepAliveConnection;
 
-    private final File dbLocation;
-    private final int mmapSize;
-    private final int memCache;
-    private DSLContext ctx;
-    private Connection connection;
-    private boolean inMemory;
+    public DBMainV3(
+            File path,
+            String name,
+            boolean fullDurability,
+            boolean inMemory,
+            int mmapSizeMb,
+            int memCacheMb,
+            int busyTimeoutSeconds
+    ) throws SQLException, ClassNotFoundException {
+        Class.forName("org.sqlite.JDBC");
 
-    public DBMainV3(Settings.DATABASE config, String name, boolean inMemory, int mmapSize, int memCache) throws SQLException, ClassNotFoundException {
-        this.inMemory = inMemory;
-        this.mmapSize = mmapSize;
-        this.memCache = memCache;
-        if (config.SQLITE.USE) {
-            dbLocation = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
-            // create file directory if not exist
-            if (!dbLocation.getParentFile().exists()) {
-                dbLocation.getParentFile().mkdirs();
-            }
-            forceConnection();
-        } else {
-            throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
-        }
-        init();
-    }
+        this.jdbcUrl = buildJdbcUrl(path == null ? null : path.toPath(), name, inMemory);
 
-    protected void createTableWithIndexes(Table<?> table) {
-        ctx()
-                .createTableIfNotExists(table)
-                .columns(table.fields())
-                .primaryKey(table.getPrimaryKey().getFields())
-                .execute();
+        SQLiteDataSource sqlite = new SQLiteDataSource();
+        sqlite.setUrl(jdbcUrl);
 
-        for (Index idx : table.getIndexes()) {
-            ctx()
-                    .createIndexIfNotExists(idx.getName())
-                    .on(table, idx.getFields().toArray(new SortField<?>[0]))
-                    .execute();
-        }
-    }
+        this.dataSource = new ConfiguringDataSource(
+                sqlite,
+                fullDurability,
+                inMemory,
+                mmapSizeMb,
+                memCacheMb,
+                busyTimeoutSeconds
+        );
+        this.jdbi = Jdbi.create(dataSource);
 
-    public boolean tableExists(String tableName) throws SQLException {
-        DatabaseMetaData meta = getConnection().getMetaData();
-        try (ResultSet resultSet = meta.getTables(null, null, tableName, new String[] {"TABLE"})) {
-
-            return resultSet.next();
-        }
-    }
-
-    public Condition and(Condition a, Condition b) {
-        if (a == null) return b;
-        if (b == null) return a;
-        return a.and(b);
-    }
-    public Condition or(Condition a, Condition b) {
-        if (a == null) return b;
-        if (b == null) return a;
-        return a.or(b);
-    }
-
-
-    public DSLContext ctx() {
-        return ctx;
-    }
-
-    public DBMainV3 init() {
-        createTables();
-        return this;
-    }
-
-    protected int updateLegacy(String sql, Consumer<PreparedStatement> withStmt) {
-        synchronized (this) {
-            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
-                withStmt.accept(stmt);
-                return stmt.executeUpdate();
-            } catch (SQLException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    protected boolean queryLegacy(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
-        {
-            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
-                stmt.setFetchSize(10000);
-                withStmt.accept(stmt);
-                ResultSet rs = stmt.executeQuery();
-                rsq.accept(rs);
-                return rs != null;
-            } catch (SQLException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public Result<Record> query(TableLike<?> table, Condition condition, SortField<?> orderBy, Integer limit, GroupField... groupBy) {
-        @NotNull SelectJoinStep<Record> select = ctx().select().from(table);
-        SelectConnectByStep<Record> where;
-        if (condition != null) {
-            where = select.where(condition);
-        } else {
-            where = select;
-        }
-
-        SelectHavingStep<Record> groupStep;
-        if (groupBy != null && groupBy.length > 0) {
-            groupStep = where.groupBy(groupBy);
-        } else {
-            groupStep = where;
-        }
-        SelectLimitStep<Record> orderStep;
-        if (orderBy != null) {
-            orderStep = groupStep.orderBy(orderBy);
-        } else {
-            orderStep = groupStep;
-        }
-        SelectForUpdateStep<Record> limitStep;
-        if (limit != null) {
-            limitStep = orderStep.limit(limit);
-        } else {
-            limitStep = orderStep;
-        }
-        return limitStep.fetch();
-    }
-
-    /**
-     * Gets the connection with the database
-     *
-     * @return Connection with the database, null if none
-     */
-    public Connection getConnection() {
-        if (connection == null) {
-            try {
-                forceConnection();
-            } catch (ClassNotFoundException | SQLException e) {
-                e.printStackTrace();
-            }
-        }
-        return connection;
-    }
-
-    /**
-     * Closes the connection with the database
-     *
-     * @return true if successful
-     * @throws SQLException if the connection cannot be closed
-     */
-    public boolean closeConnection() throws SQLException {
-        if (connection == null) {
-            return false;
-        }
-        synchronized (this) {
-            if (connection == null) {
-                return false;
-            }
-            connection.close();
-            connection = null;
-            return true;
-        }
-    }
-
-    /**
-     * Checks if a connection is open with the database
-     *
-     * @return true if the connection is open
-     */
-    public synchronized boolean checkConnection() {
-        try {
-            return connection != null && !connection.isClosed();
-        } catch (SQLException e) {
-            return false;
-        }
-    }
-
-    @Override
-    public synchronized void close() {
-        try {
-            closeConnection();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    protected void handleError(Throwable e) {
-        AlertUtil.displayTray("DATABASAE ERROR", "SSEE CONSOLE");
-        log.log(Level.WARNING, "============ DATABASE ERROR ============");
-        log.log(Level.WARNING, "There was an error updating the database.");
-        log.log(Level.WARNING, "- It will be corrected on shutdown");
-        log.log(Level.WARNING, "========================================");
-        e.printStackTrace();
-        log.log(Level.WARNING, "========================================");
-        System.exit(1);
+        // A named shared in-memory DB disappears when the last connection closes.
+        this.keepAliveConnection = inMemory ? this.dataSource.getConnection() : null;
     }
 
     public abstract void createTables();
 
-    private Connection forceConnection() throws SQLException, ClassNotFoundException {
-        Connection conn = connection = forceConnection(dbLocation, 0, memCache, inMemory);
-        ctx = DSL.using(conn, SQLDialect.SQLITE, new org.jooq.conf.Settings()
-                .withExecuteLogging(false)
-        );
-        return conn;
+    protected final Jdbi jdbi() {
+        return jdbi;
     }
 
-    public static Connection forceConnection(File dbLocation, int mmapSizeMB, int memCache, boolean inMemory) throws SQLException {
-        SQLiteConfig cfg = new SQLiteConfig();
-        cfg.enforceForeignKeys(true);
-        cfg.setBusyTimeout(5000);
+    protected final DataSource dataSource() {
+        return dataSource;
+    }
 
-        final String url;
+    protected final String jdbcUrl() {
+        return jdbcUrl;
+    }
+
+    protected final Connection getConnection() throws SQLException {
+        return dataSource.getConnection();
+    }
+
+    protected final boolean tableExists(String tableName) throws SQLException {
+        try (Connection connection = getConnection();
+             PreparedStatement stmt = connection.prepareStatement(
+                     "SELECT 1 FROM sqlite_master WHERE type = 'table' AND lower(name) = lower(?) LIMIT 1"
+             )) {
+            stmt.setString(1, tableName);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    protected final boolean hasColumn(String tableName, String columnName) throws SQLException {
+        return getColumnType(tableName, columnName) != null;
+    }
+
+    protected final String getColumnType(String tableName, String columnName) throws SQLException {
+        String sql = "PRAGMA table_info(" + quoteIdentifier(tableName) + ")";
+        try (Connection connection = getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String name = rs.getString("name");
+                if (name != null && name.equalsIgnoreCase(columnName)) {
+                    return rs.getString("type");
+                }
+            }
+        }
+        return null;
+    }
+
+    protected static String quoteIdentifier(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
+    }
+
+    @Override
+    public void close() throws SQLException {
+        if (keepAliveConnection != null && !keepAliveConnection.isClosed()) {
+            keepAliveConnection.close();
+        }
+    }
+
+    private static String buildJdbcUrl(Path path, String name, boolean inMemory) throws SQLException {
+        String databaseName = requireName(name);
 
         if (inMemory) {
-            // Per-connection in-memory DB (non-persistent)
-            url = "jdbc:sqlite:file:memdb1?mode=memory&cache=shared";
+            return "jdbc:sqlite:file:" + encodeForSqliteUri(databaseName) + "?mode=memory&cache=shared";
+        }
 
-            // Durability is irrelevant for in-memory; favor low overhead.
-            cfg.setJournalMode(SQLiteConfig.JournalMode.MEMORY);      // or OFF
-            cfg.setSynchronous(SQLiteConfig.SynchronousMode.OFF);     // FULL provides no benefit here
-            cfg.setTempStore(SQLiteConfig.TempStore.MEMORY);
+        if (path == null) {
+            throw new IllegalArgumentException("path cannot be null when inMemory is false");
+        }
 
-            // cache_size still applies (optional)
-            if (memCache > 0) {
-                cfg.setPragma(SQLiteConfig.Pragma.CACHE_SIZE, "-" + (memCache * 1000));
+        Path dbFile = path.resolve(toDatabaseFileName(databaseName));
+
+        try {
+            Path parent = dbFile.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+        } catch (IOException e) {
+            throw new SQLException("Failed to create SQLite directory for " + dbFile, e);
+        }
+
+        return "jdbc:sqlite:" + dbFile;
+    }
+
+    private static String requireName(String name) {
+        if (name == null) {
+            throw new IllegalArgumentException("name cannot be null or blank");
+        }
+
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("name cannot be null or blank");
+        }
+
+        return trimmed;
+    }
+
+    private static String toDatabaseFileName(String name) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".db") || lower.endsWith(".sqlite") || lower.endsWith(".sqlite3")) {
+            return name;
+        }
+        return name + ".db";
+    }
+
+    private static String encodeForSqliteUri(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private static final class ConfiguringDataSource implements DataSource {
+        private static final long MB = 1024L * 1024L;
+
+        private final DataSource delegate;
+        private final boolean fullDurability;
+        private final boolean inMemory;
+        private final long mmapSizeBytes;
+        private final long cacheSizeKb;
+        private final int busyTimeoutMs;
+
+        private ConfiguringDataSource(
+                DataSource delegate,
+                boolean fullDurability,
+                boolean inMemory,
+                int mmapSizeMb,
+                int memCacheMb,
+                int busyTimeoutSeconds
+        ) {
+            this.delegate = delegate;
+            this.fullDurability = fullDurability;
+            this.inMemory = inMemory;
+            this.mmapSizeBytes = Math.max(0L, (long) mmapSizeMb) * MB;
+            this.cacheSizeKb = Math.max(0L, (long) memCacheMb) * 1024L;
+
+            long busyTimeoutMsLong = Math.max(0L, (long) busyTimeoutSeconds) * 1000L;
+            this.busyTimeoutMs = busyTimeoutMsLong > Integer.MAX_VALUE
+                    ? Integer.MAX_VALUE
+                    : (int) busyTimeoutMsLong;
+        }
+
+        @Override
+        public Connection getConnection() throws SQLException {
+            return configure(delegate.getConnection());
+        }
+
+        @Override
+        public Connection getConnection(String username, String password) throws SQLException {
+            return configure(delegate.getConnection(username, password));
+        }
+
+        private Connection configure(Connection connection) throws SQLException {
+            try (Statement stmt = connection.createStatement()) {
+                execute(stmt, "PRAGMA foreign_keys = ON");
+                execute(stmt, "PRAGMA temp_store = MEMORY");
+                execute(stmt, "PRAGMA busy_timeout = " + busyTimeoutMs);
+
+                if (cacheSizeKb > 0) {
+                    // Negative cache_size means the value is in KiB instead of pages.
+                    // Note: this is per connection.
+                    execute(stmt, "PRAGMA cache_size = -" + cacheSizeKb);
+                }
+
+                if (inMemory) {
+                    // WAL is not available for in-memory databases.
+                    execute(stmt, "PRAGMA journal_mode = MEMORY");
+                    execute(stmt, "PRAGMA synchronous = OFF");
+                } else {
+                    execute(stmt, "PRAGMA journal_mode = WAL");
+                    execute(stmt, "PRAGMA synchronous = " + (fullDurability ? "FULL" : "NORMAL"));
+
+                    if (mmapSizeBytes > 0) {
+                        execute(stmt, "PRAGMA mmap_size = " + mmapSizeBytes);
+                    }
+                }
+            } catch (SQLException e) {
+                try {
+                    connection.close();
+                } catch (SQLException ignored) {
+                }
+                throw e;
             }
 
-        } else {
-            url = "jdbc:sqlite:" + dbLocation.getAbsolutePath();
+            return connection;
+        }
 
-            // Durable on-disk settings
-            cfg.setJournalMode(SQLiteConfig.JournalMode.WAL);
-            cfg.setSynchronous(SQLiteConfig.SynchronousMode.FULL);
-            cfg.setTempStore(SQLiteConfig.TempStore.FILE);
-            if (memCache > 0) {
-                cfg.setPragma(SQLiteConfig.Pragma.CACHE_SIZE, "-" + (memCache * 1000));
-            }
-            cfg.setPragma(SQLiteConfig.Pragma.JOURNAL_SIZE_LIMIT, Long.toString(64L * 1024 * 1024)); // 64MB
-
-            if (mmapSizeMB > 0) {
-                cfg.setPragma(SQLiteConfig.Pragma.MMAP_SIZE,
-                        Long.toString(mmapSizeMB * 1024L * 1024L));
+        private void execute(Statement stmt, String sql) throws SQLException {
+            if (stmt.execute(sql)) {
+                try (ResultSet ignored = stmt.getResultSet()) {
+                    // no-op
+                }
             }
         }
 
-        Connection conn = DriverManager.getConnection(url, cfg.toProperties());
-
-        if (!inMemory) {
-            // not in your enum -> execute manually
-            try (Statement st = conn.createStatement()) {
-                st.execute("PRAGMA wal_autocheckpoint = 1000");
-            }
+        @Override
+        public <T> T unwrap(Class<T> iface) throws SQLException {
+            return delegate.unwrap(iface);
         }
-        return conn;
+
+        @Override
+        public boolean isWrapperFor(Class<?> iface) throws SQLException {
+            return delegate.isWrapperFor(iface);
+        }
+
+        @Override
+        public PrintWriter getLogWriter() throws SQLException {
+            return delegate.getLogWriter();
+        }
+
+        @Override
+        public void setLogWriter(PrintWriter out) throws SQLException {
+            delegate.setLogWriter(out);
+        }
+
+        @Override
+        public void setLoginTimeout(int seconds) throws SQLException {
+            delegate.setLoginTimeout(seconds);
+        }
+
+        @Override
+        public int getLoginTimeout() throws SQLException {
+            return delegate.getLoginTimeout();
+        }
+
+        @Override
+        public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+            return delegate.getParentLogger();
+        }
     }
 }

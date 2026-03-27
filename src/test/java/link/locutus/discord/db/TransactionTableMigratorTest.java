@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.db.bank.TransactionTableMigrator;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.TransactionEndpointKey;
 import link.locutus.discord.db.entities.TransactionNote;

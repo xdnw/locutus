@@ -1,5 +1,7 @@
 package link.locutus.discord.db;
 
+import link.locutus.discord.db.bank.BankerWithdrawUsageTracker;
+import link.locutus.discord.db.bank.TransactionTableMigrator;
 import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import com.google.common.eventbus.AsyncEventBus;

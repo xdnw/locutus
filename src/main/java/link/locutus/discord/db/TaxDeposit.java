@@ -40,6 +40,29 @@ public class TaxDeposit {
         this.tax_id = tax_id;
     }
 
+    public static TaxDeposit fromStored(
+            int taxId,
+            int allianceId,
+            long date,
+            int index,
+            int nationId,
+            int moneyRate,
+            int resourceRate,
+            byte[] resourcesBytes,
+            short internalTaxRatePair
+    ) {
+        if (date > 1656153134000L && date < 1657449182000L) {
+            date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date));
+        }
+        int internalMoneyRate = MathMan.unpairShortX(internalTaxRatePair);
+        int internalResourceRate = MathMan.unpairShortY(internalTaxRatePair);
+        if (internalMoneyRate > 100 || internalMoneyRate < -1)
+            throw new IllegalStateException("Internal money rate is invalid: " + internalMoneyRate + " #" + taxId);
+        if (internalResourceRate > 100 || internalResourceRate < -1)
+            throw new IllegalStateException("Internal rss rate is too high: " + internalResourceRate + " #" + taxId);
+        return new TaxDeposit(allianceId, date, index, taxId, nationId, moneyRate, resourceRate, internalMoneyRate, internalResourceRate, ArrayUtil.toDoubleArrayCents(resourcesBytes));
+    }
+
     @Command(desc = "Get market value of tax record")
     public double getMarketValue() {
         return ResourceType.convertedTotal(this.resources);
@@ -163,35 +186,6 @@ public class TaxDeposit {
         byte internalResourceRate = MathMan.unpairShortY(internalTaxRatePair);
 
         int tax_id = rs.getInt("tax_id");
-
-        return new TaxDeposit(alliance, date, id, tax_id, nation, money, rss, internalMoneyRate, internalResourceRate, deposit);
-    }
-
-    public static TaxDeposit of(org.example.jooq.bank.tables.records.TaxDepositsDateRecord rs) {
-        int money = rs.getMoneyrate();
-        int rss = rs.getResoucerate();
-        int id = rs.getId();
-        long date = rs.getDate();
-        // round date for legacy reasons
-        if (date > 1656153134000L && date < 1657449182000L) {
-            date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date));
-        }
-        byte[] bytes = rs.getResources();
-        double[] deposit = ArrayUtil.toDoubleArrayCents(bytes);
-
-        int alliance = rs.getAlliance();
-        int nation = rs.getNation();
-
-        short internalTaxRatePair = rs.getInternalTaxrate().shortValue();
-
-        byte internalMoneyRate = MathMan.unpairShortX(internalTaxRatePair);
-        byte internalResourceRate = MathMan.unpairShortY(internalTaxRatePair);
-        if (internalMoneyRate > 100 || internalMoneyRate < -1)
-            throw new IllegalStateException("Internal money rate is invalid: " + internalMoneyRate + " #" + id);
-        if (internalResourceRate > 100 || internalResourceRate < -1)
-            throw new IllegalStateException("Internal rss rate is too high: " + internalResourceRate + " #" + id);
-
-        int tax_id = rs.getTaxId();
 
         return new TaxDeposit(alliance, date, id, tax_id, nation, money, rss, internalMoneyRate, internalResourceRate, deposit);
     }

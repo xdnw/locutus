@@ -25,7 +25,7 @@ import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.Report;
 import link.locutus.discord.db.ReportManager;
-import link.locutus.discord.db.TaxBracketLookup;
+import link.locutus.discord.db.bank.TaxBracketLookup;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;

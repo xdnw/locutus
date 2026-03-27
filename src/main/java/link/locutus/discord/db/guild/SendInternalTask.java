@@ -7,7 +7,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankerWithdrawUsageTracker;
+import link.locutus.discord.db.bank.BankerWithdrawUsageTracker;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;

@@ -67,6 +67,7 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.bank.TaxBracketLookup;
 import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.AllianceMeta;
 import link.locutus.discord.db.entities.DBAlliance;

@@ -12,7 +12,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
-import link.locutus.discord.db.TaxBracketLookup;
+import link.locutus.discord.db.bank.TaxBracketLookup;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;

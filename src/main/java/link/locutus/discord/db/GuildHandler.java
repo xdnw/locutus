@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import link.locutus.discord.db.bank.BankerWithdrawUsageTracker;
 import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;

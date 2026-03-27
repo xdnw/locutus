@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import link.locutus.discord.db.bank.BankerWithdrawUsageTracker;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

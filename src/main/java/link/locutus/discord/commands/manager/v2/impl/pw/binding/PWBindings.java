@@ -78,7 +78,7 @@ import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.Report;
-import link.locutus.discord.db.TaxBracketLookup;
+import link.locutus.discord.db.bank.TaxBracketLookup;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.ReportType;
 import link.locutus.discord.db.WarDB;

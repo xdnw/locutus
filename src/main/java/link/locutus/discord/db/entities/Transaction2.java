@@ -6,26 +6,19 @@ import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
-import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
 import java.nio.charset.StandardCharsets;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -35,6 +28,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static link.locutus.discord.apiv1.enums.DepositType.hasLegacyRootAccountTag;
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
 
@@ -185,57 +179,6 @@ public class Transaction2 {
 
     public static Transaction2 fromTrade(DBTrade offer) {
         return new Transaction2(offer);
-    }
-
-    public static Transaction2 fromTransfer(Transfer transfer) {
-        return new Transaction2(transfer);
-    }
-
-    public static Transaction2 loadLegacy(ResultSet rs) throws SQLException {
-        int tx_id = rs.getInt("tx_id");
-        long tx_datetime = rs.getLong("tx_datetime");
-        long sender_id = rs.getLong("sender_id");
-        int sender_type = rs.getInt("sender_type");
-        long receiver_id = rs.getLong("receiver_id");
-        int receiver_type = rs.getInt("receiver_type");
-        int banker_nation = rs.getInt("banker_nation_id");
-        String note = rs.getString("note");
-        double[] resources = new double[ResourceType.values.length];
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS)
-                continue;
-            resources[type.ordinal()] = ArrayUtil.fromCents(rs.getLong(type.name()));
-        }
-        Transaction2 tx = new Transaction2(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type,
-                banker_nation, note, resources);
-        tx.original_id = tx_id;
-        return tx;
-    }
-
-    public static Transaction2 load(ResultSet rs, BitBuffer buffer) throws SQLException {
-        int tx_id = rs.getInt("tx_id");
-        long tx_datetime = rs.getLong("tx_datetime");
-        long sender_key = rs.getLong("sender_key");
-        long receiver_key = rs.getLong("receiver_key");
-        int banker_nation = rs.getInt("banker_nation_id");
-        byte[] data = rs.getBytes("note");
-        return fromPayload(tx_id, tx_datetime,
-                TransactionEndpointKey.idFromKey(sender_key), TransactionEndpointKey.typeFromKey(sender_key),
-                TransactionEndpointKey.idFromKey(receiver_key), TransactionEndpointKey.typeFromKey(receiver_key),
-                banker_nation, data, buffer);
-    }
-
-    public static Transaction2 loadSplit(ResultSet rs, BitBuffer buffer) throws SQLException {
-        int tx_id = rs.getInt("tx_id");
-        long tx_datetime = rs.getLong("tx_datetime");
-        long sender_id = rs.getLong("sender_id");
-        int sender_type = rs.getInt("sender_type");
-        long receiver_id = rs.getLong("receiver_id");
-        int receiver_type = rs.getInt("receiver_type");
-        int banker_nation = rs.getInt("banker_nation_id");
-        byte[] data = rs.getBytes("note");
-        return fromPayload(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation,
-                data, buffer);
     }
 
     public static Transaction2 fromApiV3(Bankrec rec) {
@@ -439,26 +382,50 @@ public class Transaction2 {
         return 0;
     }
 
-    public boolean isTrackedForGuild(GuildDB db, Set<Integer> aaIds, Set<Integer> offshoreAAs) {
-        if (aaIds.contains((int) sender_id) || aaIds.contains((int) receiver_id))
-            return true;
-        long accountId = getAccountId(offshoreAAs, false);
-        return (accountId == 0 || accountId == db.getIdLong() || aaIds.contains((int) accountId));
-    }
-
-    public static Transaction2 fromTX2Table(Transactions_2Record record, BitBuffer buffer) {
-        long senderKey = record.getSenderKey();
-        long receiverKey = record.getReceiverKey();
+    public static Transaction2 fromStoredPayload(
+            int txId,
+            long txDatetime,
+            long senderKey,
+            long receiverKey,
+            int bankerNationId,
+            byte[] data,
+            BitBuffer buffer
+    ) {
         return fromPayload(
-                record.getTxId(),
-                record.getTxDatetime(),
+                txId,
+                txDatetime,
                 TransactionEndpointKey.idFromKey(senderKey),
                 TransactionEndpointKey.typeFromKey(senderKey),
                 TransactionEndpointKey.idFromKey(receiverKey),
                 TransactionEndpointKey.typeFromKey(receiverKey),
-                record.getBankerNationId(),
-                record.getNote(),
-                buffer);
+                bankerNationId,
+                data,
+                buffer
+        );
+    }
+
+    public static Transaction2 fromStoredPayload(
+            int txId,
+            long txDatetime,
+            long senderId,
+            int senderType,
+            long receiverId,
+            int receiverType,
+            int bankerNationId,
+            byte[] data,
+            BitBuffer buffer
+    ) {
+        return fromPayload(
+                txId,
+                txDatetime,
+                senderId,
+                senderType,
+                receiverId,
+                receiverType,
+                bankerNationId,
+                data,
+                buffer
+        );
     }
 
     private static Transaction2 fromPayload(int tx_id, long tx_datetime, long sender_id, int sender_type,
@@ -547,42 +514,6 @@ public class Transaction2 {
         return tx_id;
     }
 
-    public String createInsert(String table, boolean id, boolean ignore) {
-        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR " + (ignore ? "IGNORE" : "REPLACE") + " " : "")
-                + "INTO `" + table + "` (" + (id ? "tx_id, " : "")
-                + "tx_datetime, sender_key, receiver_key, banker_nation_id, note");
-        int fieldCount = id ? 6 : 5;
-        sql.append(") VALUES(" + StringMan.repeat("?,", fieldCount - 1) + "?" + ")");
-        return sql.toString();
-    }
-
-    public void set(PreparedStatement stmt, BitBuffer buffer) throws SQLException {
-        stmt.setInt(1, tx_id);
-        stmt.setLong(2, tx_datetime);
-        stmt.setLong(3, getSenderKey());
-        stmt.setLong(4, getReceiverKey());
-        stmt.setInt(5, banker_nation);
-        byte[] noteBytes = getNoteBytes(buffer);
-        if (noteBytes == null) {
-            stmt.setNull(6, Types.BLOB);
-        } else {
-            stmt.setBytes(6, noteBytes);
-        }
-    }
-
-    public void setNoID(PreparedStatement stmt, BitBuffer buffer) throws SQLException {
-        stmt.setLong(1, tx_datetime);
-        stmt.setLong(2, getSenderKey());
-        stmt.setLong(3, getReceiverKey());
-        stmt.setInt(4, banker_nation);
-        byte[] noteBytes = getNoteBytes(buffer);
-        if (noteBytes == null) {
-            stmt.setNull(5, Types.BLOB);
-        } else {
-            stmt.setBytes(5, noteBytes);
-        }
-    }
-
     public long getDate() {
         return tx_datetime;
     }
@@ -668,16 +599,6 @@ public class Transaction2 {
 
     public NationOrAllianceOrGuild getReceiverObj() {
         return NationOrAllianceOrGuild.create(receiver_id, receiver_type);
-    }
-
-    public void set(Transactions_2Record record, BitBuffer buffer) {
-        record.setTxId(tx_id);
-        record.setTxDatetime(tx_datetime);
-        record.setSenderKey(getSenderKey());
-        record.setReceiverKey(getReceiverKey());
-        record.setBankerNationId(banker_nation);
-        record.setNote(getNoteBytes(buffer));
-
     }
 
     public boolean isInternal() {

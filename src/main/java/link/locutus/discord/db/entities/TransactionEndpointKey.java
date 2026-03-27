@@ -1,8 +1,6 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import org.jooq.Condition;
-import org.jooq.Field;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,26 +67,6 @@ public final class TransactionEndpointKey {
 
     public static boolean hasType(long key, int type) {
         return typeFromKey(key) == type;
-    }
-
-    public static String sqlEncode(String idExpression, int type) {
-        validateType(type);
-        if (type == NONE_TYPE) {
-            return Long.toString(NONE);
-        }
-        return "((CAST(" + idExpression + " AS BIGINT) << " + TYPE_BITS + ") | " + (type & TYPE_MASK) + ")";
-    }
-
-    public static Condition eq(Field<Long> field, long id, int type) {
-        return field.eq(encode(id, type));
-    }
-
-    public static Condition eq(Field<Long> field, long key) {
-        return field.eq(key);
-    }
-
-    public static Condition hasType(Field<Long> field, int type) {
-        return field.bitAnd(TYPE_MASK).eq((long) type);
     }
 
     public static List<Long> expand(Collection<Long> ids, int... types) {

@@ -3,7 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.db.AllianceLookup;
-import link.locutus.discord.db.TaxBracketLookup;
+import link.locutus.discord.db.bank.TaxBracketLookup;
 
 /**
  * Shared composition-root wiring for runtime services exposed through a value store.

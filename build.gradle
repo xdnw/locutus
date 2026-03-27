@@ -11,8 +11,8 @@
  * Generate GraphQL
  * .\gradlew -Pgraphql graphqlCodegen
  */
+
 import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
-import nu.studer.gradle.jooq.JooqEdition
 
 buildscript {
     repositories {
@@ -24,7 +24,6 @@ buildscript {
     }
     dependencies {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
-        classpath 'org.jooq:jooq-codegen:3.19.13'
         classpath 'org.xerial:sqlite-jdbc:3.51.1.0'
         classpath 'com.gradleup.shadow:shadow-gradle-plugin:8.3.0'
     }
@@ -37,7 +36,6 @@ plugins {
     id 'java'
     id "idea"
     id 'com.gradleup.shadow' version '8.3.0' apply false
-    id "nu.studer.jooq" version "9.0" apply false
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0" apply false
     id 'cz.habarta.typescript-generator' version '3.2.1263' apply false
     id "gg.jte.gradle" version "3.2.1" apply false
@@ -148,7 +146,6 @@ tasks.register('cityFallbackBenchQuick', JavaExec) {
     dependsOn tasks.named('testClasses')
 }
 
-def useJooq = providers.gradleProperty("jooq").isPresent()
 def useTs = providers.gradleProperty("ts").isPresent()
 def useShadow = gradle.startParameter.taskNames.any { it.endsWith("shadowJar") }
 def useGraphql = providers.gradleProperty("graphql").isPresent() || useShadow
@@ -297,6 +294,7 @@ dependencies {
     implementation platform('com.amazonaws:aws-java-sdk-bom:1.12.788')
     implementation platform('software.amazon.awssdk:bom:2.37.3') // pick a current version
     implementation 'software.amazon.awssdk:s3'
+    implementation("org.jdbi:jdbi3-core:3.52.0")
 
     implementation platform('org.apache.logging.log4j:log4j-bom:2.23.1')
     implementation 'org.apache.logging.log4j:log4j-core'
@@ -311,7 +309,7 @@ dependencies {
 
     implementation 'com.google.http-client:google-http-client-jackson2:1.47.1'
 
-    implementation('org.xerial:sqlite-jdbc:3.51.1.0')
+    implementation('org.xerial:sqlite-jdbc:3.51.3.0')
 
     implementation 'com.google.code.gson:gson:2.13.1'
     implementation 'org.jsoup:jsoup:1.21.1'
@@ -366,7 +364,6 @@ dependencies {
     implementation 'de.siegmar:fastcsv:4.0.0'
 
 
-    implementation('org.jooq:jooq:3.19.13')
     compileOnly "jakarta.xml.bind:jakarta.xml.bind-api:4.0.2"
 
 
@@ -409,196 +406,6 @@ configurations {
     }
 
 }
-
-if (useJooq) {
-    apply plugin: "nu.studer.jooq"
-    dependencies {
-        jooqGenerator("org.jooq:jooq-meta:3.19.13")
-        jooqGenerator("org.jooq:jooq-codegen:3.19.13")
-        jooqGenerator 'org.xerial:sqlite-jdbc:3.50.3.0'
-    }
-    jooq {
-        version = "3.19.13"  // default (can be omitted)
-        edition = JooqEdition.OSS  // default (can be omitted)
-        configurations {
-            bank {
-                generateSchemaSourceOnCompilation = false; // default (can be omitted)
-                generationTool {
-                    jdbc {
-                        driver = 'org.sqlite.JDBC'
-                        url = 'jdbc:sqlite:database/bank.db'
-                    }
-                    generator {
-                        name = 'org.jooq.codegen.DefaultGenerator'
-                        database {
-                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                        }
-                        generate {
-                            deprecated = false
-                            records = true
-                            immutablePojos = true
-                            fluentSetters = true
-                        }
-                        target {
-
-                            packageName = 'org.example.jooq.bank'
-                        }
-                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                    }
-                }
-            }
-
-            locutus {
-                generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
-                generationTool {
-                    jdbc {
-                        driver = 'org.sqlite.JDBC'
-                        url = 'jdbc:sqlite:database/locutus.db'
-                    }
-                    generator {
-                        name = 'org.jooq.codegen.DefaultGenerator'
-                        database {
-                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                        }
-                        generate {
-                            deprecated = false
-                            records = true
-                            immutablePojos = true
-                            fluentSetters = true
-                        }
-                        target {
-                            packageName = 'org.example.jooq.locutus'
-                        }
-                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                    }
-                }
-            }
-
-            nations {
-                generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
-                generationTool {
-                    jdbc {
-                        driver = 'org.sqlite.JDBC'
-                        url = 'jdbc:sqlite:database/nations.db'
-                    }
-                    generator {
-                        name = 'org.jooq.codegen.DefaultGenerator'
-                        database {
-                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                        }
-                        generate {
-                            deprecated = false
-                            records = true
-                            immutablePojos = true
-                            fluentSetters = true
-                        }
-                        target {
-                            packageName = 'org.example.jooq.nations'
-                        }
-                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                    }
-                }
-            }
-
-            trade {
-                generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
-                generationTool {
-                    jdbc {
-                        driver = 'org.sqlite.JDBC'
-                        url = 'jdbc:sqlite:database/trade.db'
-                    }
-                    generator {
-                        name = 'org.jooq.codegen.DefaultGenerator'
-                        database {
-                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                        }
-                        generate {
-                            deprecated = false
-                            records = true
-                            immutablePojos = true
-                            fluentSetters = true
-                        }
-                        target {
-                            packageName = 'org.example.jooq.trade'
-                        }
-                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                    }
-                }
-            }
-
-            war {
-                generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
-                generationTool {
-                    jdbc {
-                        driver = 'org.sqlite.JDBC'
-                        url = 'jdbc:sqlite:database/war.db'
-                    }
-                    generator {
-                        name = 'org.jooq.codegen.DefaultGenerator'
-                        database {
-                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                        }
-                        generate {
-                            deprecated = false
-                            records = true
-                            immutablePojos = true
-                            fluentSetters = true
-                        }
-                        target {
-                            packageName = 'org.example.jooq.war'
-                        }
-                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                    }
-                }
-            }
-
-            web {
-                generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
-                generationTool {
-                    jdbc {
-                        driver = 'org.sqlite.JDBC'
-                        url = 'jdbc:sqlite:database/web.db'
-                    }
-                    generator {
-                        name = 'org.jooq.codegen.DefaultGenerator'
-                        database {
-                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                        }
-                        generate {
-                            deprecated = false
-                            records = true
-                            immutablePojos = true
-                            fluentSetters = true
-                        }
-                        target {
-                            packageName = 'org.example.jooq.web'
-                        }
-                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Enable when wanting to generate the classes (I currently run it once then disable)
-//sourceSets.main.java.srcDirs (
-//        tasks.named('generateBankJooq').flatMap { it.outputDir },
-//        tasks.named('generateLocutusJooq').flatMap { it.outputDir },
-//        tasks.named('generateNationsJooq').flatMap { it.outputDir },
-//        tasks.named('generateTradeJooq').flatMap { it.outputDir },
-//        tasks.named('generateWarJooq').flatMap { it.outputDir },
-//        tasks.named('generateWebJooq').flatMap { it.outputDir }
-//)
-
-/**
- * Generate requests and model from external service
- */
 
 def graphqlSchemasDir = layout.projectDirectory.dir("src/main/resources/graphql")
 def graphqlGeneratedDir = layout.buildDirectory.dir("generated")
@@ -733,9 +540,6 @@ def addOptionalGeneratedSrc(String taskName, Provider<Directory> outputDir) {
     }
 }
 
-def jooqGeneratedDir = layout.buildDirectory.dir("generated-src")
-def jooqConfigurations = ['bank', 'locutus', 'nations', 'trade', 'war', 'web']
-
 // GraphQL (optional)
 addOptionalGeneratedSrc('graphqlCodegen', graphqlGeneratedDir)
 
@@ -748,22 +552,12 @@ if (jteTask) {
     sourceSets.main.java.srcDir(jteGeneratedDir)
 }
 
-// Each jOOQ config generates under build/generated-src/jooq/<schema>/org/..., so the
-// schema directory itself must be the source root for IDE package inference.
-jooqConfigurations.each { configName ->
-    addOptionalGeneratedSrc(
-            "generate${configName.capitalize()}Jooq",
-            jooqGeneratedDir.map { it.dir("jooq/${configName}") }
-    )
-}
-
 tasks.register('cleanGeneratedBaselines', Delete) {
     group = 'build'
-    description = 'Deletes the preserved GraphQL, JTE, and jOOQ source baselines under build/.'
+    description = 'Deletes the preserved GraphQL, JTE source baselines under build/.'
     delete(
             graphqlGeneratedDir.get().asFile,
             jteGeneratedDir.get().asFile,
-            jooqGeneratedDir.get().asFile
     )
 }
 

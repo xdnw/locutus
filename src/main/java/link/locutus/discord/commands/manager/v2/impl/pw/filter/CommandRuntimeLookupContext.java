@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.TaxBracketLookup;
+import link.locutus.discord.db.bank.TaxBracketLookup;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.util.discord.GuildShardManager;
 import net.dv8tion.jda.api.entities.Guild;

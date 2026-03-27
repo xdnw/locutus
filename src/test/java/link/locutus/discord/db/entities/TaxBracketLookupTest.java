@@ -2,7 +2,7 @@ package link.locutus.discord.db.entities;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.db.TaxBracketLookup;
+import link.locutus.discord.db.bank.TaxBracketLookup;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.pnw.AllianceList;
