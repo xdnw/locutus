@@ -1,13 +1,17 @@
 package link.locutus.discord.db;
 
 import com.ptsmods.mysqlw.Database;
-import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Collection;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -16,7 +20,7 @@ import java.util.function.Function;
 public class DBMainV2 implements Closeable {
     private final File file;
     private boolean isDelegate;
-    private final Database db;
+    private Database db;
 
     public DBMainV2(String name) throws SQLException {
         this(Settings.INSTANCE.DATABASE, name);
@@ -25,39 +29,29 @@ public class DBMainV2 implements Closeable {
     public DBMainV2(Settings.DATABASE config, String name) throws SQLException {
         if (config.SQLITE.USE) {
             this.file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
-            // create file directory if not exist
             if (!file.getParentFile().exists()) {
                 file.getParentFile().mkdirs();
             }
             this.db = Database.connect(file);
         } else {
             throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
-//            this.db = Database.connect(config.MYSQL.HOST,
-//                    config.MYSQL.PORT,
-//                    name,
-//                    config.MYSQL.USER,
-//                    config.MYSQL.PASSWORD
-//                    );
+        }
+        if (name.equalsIgnoreCase("nations")) {
+            new RebuildTask(file, () -> {
+                try {
+                    db.getConnection().close();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }, () -> {
+                try {
+                    db = Database.connect(file);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }).rebuild(RebuildTask.RecoveryMode.SQLITE_RECOVER);
         }
         init();
-    }
-
-    protected void rebuild() {
-        try (Statement stmt = getConnection().createStatement()) {
-            // Run integrity check
-            try (ResultSet rs = stmt.executeQuery("PRAGMA integrity_check;")) {
-                while (rs.next()) {
-                    String result = rs.getString(1);
-                    Logg.info("PRAGMA integrity_check: " + result);
-                }
-            }
-            // Reindex all indexes
-            stmt.execute("REINDEX;");
-            Logg.info("REINDEX completed.");
-        } catch (SQLException e) {
-            e.printStackTrace();
-            Logg.error("Database integrity check or reindex failed");
-        }
     }
 
     public File getFile() {
@@ -89,7 +83,6 @@ public class DBMainV2 implements Closeable {
 
     private void init() {
         // Do any initialization here
-
         createTables();
     }
 

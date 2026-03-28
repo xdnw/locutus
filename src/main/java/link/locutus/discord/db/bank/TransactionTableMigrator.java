@@ -1,6 +1,7 @@
 package link.locutus.discord.db.bank;
 
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.Transaction2Jdbc;
 import link.locutus.discord.util.io.BitBuffer;
 
 import java.sql.Connection;
@@ -15,7 +16,7 @@ import java.util.logging.Logger;
 public final class TransactionTableMigrator {
     static final String PROGRESS_TABLE = "TRANSACTION_MIGRATION_PROGRESS";
     public static final String BATCH_SIZE_PROPERTY = "locutus.transactionMigration.batchSize";
-    public static final int DEFAULT_BATCH_SIZE = 1_000;
+    public static final int DEFAULT_BATCH_SIZE = Character.MAX_VALUE;
 
     private static final Logger LOG = Logger.getLogger(TransactionTableMigrator.class.getName());
 
@@ -156,7 +157,9 @@ public final class TransactionTableMigrator {
             try (ResultSet rs = stmt.executeQuery()) {
                 BitBuffer noteBuffer = splitEndpointTable ? Transaction2.createNoteBuffer() : null;
                 while (rs.next()) {
-                    batch.add(splitEndpointTable ? Transaction2.loadSplit(rs, noteBuffer) : Transaction2.loadLegacy(rs));
+                    batch.add(splitEndpointTable
+                            ? Transaction2Jdbc.readSplitPayload(rs, noteBuffer)
+                            : Transaction2Jdbc.readLegacyWide(rs));
                 }
             }
         }

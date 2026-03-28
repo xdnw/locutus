@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.QueryBankrecsOrderByColumn;
 import com.politicsandwar.graphql.model.QueryBankrecsOrderByOrderByClause;
 import com.politicsandwar.graphql.model.SortOrder;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -31,6 +32,7 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.Query;
 
+import java.io.File;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
@@ -62,7 +64,7 @@ public class BankDB extends DBMainV3 implements BankStore {
     private static final String TRANSACTIONS_ALLIANCE_LEGACY_TABLE = "TRANSACTIONS_ALLIANCE_2";
     private static final String TRANSACTION_FORMAT_TABLE = "TRANSACTION_PAYLOAD_FORMAT";
 
-    private static final int MIGRATION_BATCH_SIZE = 500;
+    private static final int MIGRATION_BATCH_SIZE = Character.MAX_VALUE;
     private static final long TURN_GROUP_WINDOW_MS = 5L * 60L * 1000L;
     private static final long TAX_DATE_FIX_START = 1656153134000L;
     private static final long TAX_DATE_FIX_END = 1657449182000L;
@@ -145,7 +147,15 @@ public class BankDB extends DBMainV3 implements BankStore {
     private SoftReference<Map.Entry<Integer, List<Transaction2>>> txNationCache;
 
     public BankDB() throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, "bank", false, Settings.INSTANCE.DATABASE.SQLITE.BANK_MMAP_SIZE_MB, 20);
+        super(
+                new File(Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY),
+                "bank",
+                true,
+                false,
+                Settings.INSTANCE.DATABASE.SQLITE.BANK_MMAP_SIZE_MB,
+                20,
+                5
+        );
         createTables();
     }
 
@@ -542,7 +552,8 @@ public class BankDB extends DBMainV3 implements BankStore {
             if (canonicalExists) {
                 assertCurrentTransactionsTable(TRANSACTIONS_TABLE);
                 createTransactionsTable();
-                ensureTransactionPayloadFormat(false);
+                // allow initializing metadata if this DB predates TRANSACTION_PAYLOAD_FORMAT
+                ensureTransactionPayloadFormat(true);
                 migrateLegacyAllianceTransactionsIfPresent();
                 return;
             }
@@ -1211,10 +1222,10 @@ public class BankDB extends DBMainV3 implements BankStore {
                                     .bind("nationId", nationId)
                                     .bind("taxBase", (int) guildTaxPair)
                                     .bind("date", date)
-                                    .bind("noInternalApplied", ArrayUtil.toByteArray(summary.no_internal_applied))
-                                    .bind("noInternalUnapplied", ArrayUtil.toByteArray(summary.no_internal_unapplied))
-                                    .bind("internalApplied", ArrayUtil.toByteArray(summary.internal_applied))
-                                    .bind("internalUnapplied", ArrayUtil.toByteArray(summary.internal_unapplied))
+                                    .bindBySqlType("noInternalApplied", ArrayUtil.toByteArray(summary.no_internal_applied), Types.BLOB)
+                                    .bindBySqlType("noInternalUnapplied", ArrayUtil.toByteArray(summary.no_internal_unapplied), Types.BLOB)
+                                    .bindBySqlType("internalApplied", ArrayUtil.toByteArray(summary.internal_applied), Types.BLOB)
+                                    .bindBySqlType("internalUnapplied", ArrayUtil.toByteArray(summary.internal_unapplied), Types.BLOB)
                                     .add();
                         }
                     }
@@ -1346,9 +1357,11 @@ public class BankDB extends DBMainV3 implements BankStore {
 
         invalidateTXCache();
 
-        List<Transaction2> transfers = new ArrayList<>();
+        List<Transaction2> transfers = new ObjectArrayList<>();
         for (Bankrec bankrec : bankrecs) {
-            transfers.add(Transaction2.fromApiV3(bankrec));
+            Transaction2 tx2 = Transaction2.fromApiV3(bankrec);
+            if (tx2.tx_datetime < 1451607023000L) continue;
+            transfers.add(tx2);
         }
 
         transfers.sort(Comparator.comparingLong(Transaction2::getDate));
@@ -1912,20 +1925,16 @@ public class BankDB extends DBMainV3 implements BankStore {
             BitBuffer noteBuffer = Transaction2.createNoteBuffer();
 
             for (Transaction2 tx : transactions) {
+                byte[] noteBytes = tx.getNoteBytes(noteBuffer);
+
                 batch.bind("txId", tx.tx_id)
                         .bind("txDatetime", tx.tx_datetime)
                         .bind("senderKey", tx.getSenderKey())
                         .bind("receiverKey", tx.getReceiverKey())
-                        .bind("bankerNationId", tx.banker_nation);
-
-                byte[] noteBytes = tx.getNoteBytes(noteBuffer);
-                if (noteBytes == null) {
-                    batch.bindNull("note", Types.BLOB);
-                } else {
-                    batch.bind("note", noteBytes);
-                }
-
-                batch.add();
+                        .bind("bankerNationId", tx.banker_nation)
+                        // IMPORTANT: use bindBySqlType for nullable BLOBs
+                        .bindBySqlType("note", noteBytes, Types.BLOB)
+                        .add();
             }
 
             return batch.execute();
@@ -2251,7 +2260,7 @@ public class BankDB extends DBMainV3 implements BankStore {
                         .bind("nationId", record.nationId)
                         .bind("moneyRate", (int) record.moneyRate)
                         .bind("resourceRate", (int) record.resourceRate)
-                        .bind("resources", ArrayUtil.toByteArray(depositCents))
+                        .bindBySqlType("resources", ArrayUtil.toByteArray(depositCents), Types.BLOB)
                         .bind("internalTaxRate", (int) internalPair)
                         .add();
 

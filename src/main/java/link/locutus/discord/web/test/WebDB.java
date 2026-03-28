@@ -6,12 +6,11 @@ import link.locutus.discord.db.DBMainV3;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 
 import javax.annotation.Nullable;
+import java.io.File;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
-import static org.jooq.impl.DSL.asterisk;
 
 public class WebDB extends DBMainV3 {
 
@@ -20,7 +19,8 @@ public class WebDB extends DBMainV3 {
     private final Map<Integer, DBAuthRecord> authByNationId = new ConcurrentHashMap<>();
 
     public WebDB() throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, "web", false, 0, 0);
+        super(new File(Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY), "web", true, false, 0, 0, 5);
+        createTables();
         load();
     }
 
@@ -42,27 +42,41 @@ public class WebDB extends DBMainV3 {
 
     @Override
     public void createTables() {
-        ctx().execute("CREATE TABLE IF NOT EXISTS `AUTH` (`least` BIGINT NOT NULL, `most` BIGINT NOT NULL, `NATION_ID` BIGINT, `USER_ID` BIGINT, `TIMESTAMP` BIGINT NOT NULL, PRIMARY KEY (`least`, `most`))");
+        jdbi().useHandle(handle ->
+                handle.execute("CREATE TABLE IF NOT EXISTS `AUTH` (`least` BIGINT NOT NULL, `most` BIGINT NOT NULL, `NATION_ID` BIGINT, `USER_ID` BIGINT, `TIMESTAMP` BIGINT NOT NULL, PRIMARY KEY (`least`, `most`))")
+        );
         deleteOldTempAuth();
     }
 
     private void load() {
-        ctx().select(asterisk()).from("AUTH").where("TIMESTAMP > ?", getCutoff()).fetch().forEach(row -> {
-            long small = row.get("least", Long.class);
-            long big = row.get("most", Long.class);
-            Integer nationId = row.get("NATION_ID", Integer.class);
-            Long userId = row.get("USER_ID", Long.class);
-            UUID uuid = new UUID(big, small);
-            long timestamp = row.get("TIMESTAMP", Long.class);
-            DBAuthRecord record = new DBAuthRecord(userId == null ? 0 : userId, nationId == null ? 0 : nationId, uuid, timestamp);
-            this.authByUUID.put(uuid, record);
-            if (userId != null) {
-                this.authByUserId.put(userId, record);
+        List<StoredAuthRecord> rows = jdbi().withHandle(handle -> handle.createQuery(
+                        "SELECT least, most, NATION_ID, USER_ID, TIMESTAMP FROM `AUTH` WHERE `TIMESTAMP` > :cutoff")
+                .bind("cutoff", getCutoff())
+                .map((rs, ctx) -> new StoredAuthRecord(
+                        rs.getLong("least"),
+                        rs.getLong("most"),
+                        (Integer) rs.getObject("NATION_ID"),
+                        (Long) rs.getObject("USER_ID"),
+                        rs.getLong("TIMESTAMP")
+                ))
+                .list());
+
+        for (StoredAuthRecord row : rows) {
+            UUID uuid = new UUID(row.most(), row.least());
+            DBAuthRecord record = new DBAuthRecord(
+                    row.userId() == null ? 0 : row.userId(),
+                    row.nationId() == null ? 0 : row.nationId(),
+                    uuid,
+                    row.timestamp()
+            );
+            authByUUID.put(uuid, record);
+            if (row.userId() != null) {
+                authByUserId.put(row.userId(), record);
             }
-            if (nationId != null) {
-                this.authByNationId.put(nationId, record);
+            if (row.nationId() != null) {
+                authByNationId.put(row.nationId(), record);
             }
-        });
+        }
     }
 
     public void removeToken(boolean resolve, @Nullable UUID uuid, @Nullable Integer nationId, @Nullable Long userId) {
@@ -116,7 +130,7 @@ public class WebDB extends DBMainV3 {
             where.add("(`least` = " + small + " AND `most` = " + big + ")");
         }
         query.append(String.join(" OR ", where));
-        ctx().execute(query.toString());
+        jdbi().useHandle(handle -> handle.execute(query.toString()));
     }
 
     public synchronized DBAuthRecord updateToken(UUID uuid, @Nullable Integer nation, @Nullable Long userId) {
@@ -132,7 +146,14 @@ public class WebDB extends DBMainV3 {
         long big = uuid.getMostSignificantBits();
         Integer nationId = auth.getNationIdRaw();
         Long userId = auth.getUserIdRaw();
-        ctx().execute("INSERT OR REPLACE INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ", small, big, nationId, userId, auth.timestamp);
+        jdbi().useHandle(handle -> handle.createUpdate(
+                        "INSERT OR REPLACE INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (:least, :most, :nationId, :userId, :timestamp)")
+                .bind("least", small)
+                .bind("most", big)
+                .bind("nationId", nationId)
+                .bind("userId", userId)
+                .bind("timestamp", auth.timestamp)
+                .execute());
         if (nationId != null) {
             authByNationId.put(nationId, auth);
         }
@@ -143,10 +164,15 @@ public class WebDB extends DBMainV3 {
     }
 
     public void deleteOldTempAuth() {
-        ctx().execute("DELETE FROM `AUTH` WHERE `TIMESTAMP` < ?;", getCutoff());
+        jdbi().useHandle(handle -> handle.createUpdate("DELETE FROM `AUTH` WHERE `TIMESTAMP` < :cutoff")
+                .bind("cutoff", getCutoff())
+                .execute());
     }
 
     public Set<UUID> getAuthKeys() {
         return authByUUID.keySet();
+    }
+
+    private record StoredAuthRecord(long least, long most, Integer nationId, Long userId, long timestamp) {
     }
 }

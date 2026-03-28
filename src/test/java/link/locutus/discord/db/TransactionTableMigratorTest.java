@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.bank.TransactionTableMigrator;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.Transaction2Jdbc;
 import link.locutus.discord.db.entities.TransactionEndpointKey;
 import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.util.io.BitBuffer;
@@ -305,14 +306,14 @@ class TransactionTableMigratorTest {
         if (batch.isEmpty()) {
             return;
         }
-        String query = batch.get(0).createInsert(tableName, true, false);
+        String query = Transaction2Jdbc.insertSql(tableName, true, false);
         boolean autoCommit = conn.getAutoCommit();
         conn.setAutoCommit(false);
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             BitBuffer buffer = Transaction2.createNoteBuffer();
             for (Transaction2 tx : batch) {
                 stmt.clearParameters();
-                tx.set(stmt, buffer);
+                Transaction2Jdbc.bindWithId(stmt, tx, buffer);
                 stmt.addBatch();
             }
             stmt.executeBatch();
@@ -331,7 +332,7 @@ class TransactionTableMigratorTest {
             BitBuffer buffer = Transaction2.createNoteBuffer();
             int index = 0;
             while (rs.next()) {
-                Transaction2 actual = Transaction2.load(rs, buffer);
+                Transaction2 actual = Transaction2Jdbc.readStoredPayload(rs, buffer);
                 Transaction2 exp = expected.get(index++);
                 assertEquals(exp.tx_id, actual.tx_id);
                 assertEquals(exp.tx_datetime, actual.tx_datetime);
@@ -352,7 +353,7 @@ class TransactionTableMigratorTest {
     private static void assertProgress(Connection conn, String targetTable, String sourceTable, long lastTxId,
             int batchSize, boolean completed) throws Exception {
         try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT source_table, last_tx_id, batch_size, completed_at FROM `" + TransactionTableMigrator.PROGRESS_TABLE + "` WHERE target_table = ?")) {
+                "SELECT source_table, last_tx_id, batch_size, completed_at FROM `TRANSACTION_MIGRATION_PROGRESS` WHERE target_table = ?")) {
             stmt.setString(1, targetTable);
             try (ResultSet rs = stmt.executeQuery()) {
                 assertTrue(rs.next());

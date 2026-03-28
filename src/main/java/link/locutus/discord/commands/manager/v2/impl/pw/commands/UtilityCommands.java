@@ -103,7 +103,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
-import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 @LiveAppCommandSurface("Utility commands still depend on live app data/update services that are intentionally outside the neutral runtime seam.")
 public class UtilityCommands {
@@ -741,8 +740,7 @@ public class UtilityCommands {
                 }
             }
 
-            List<Transaction2> transfers = Locutus.imp().getBankDB().getTransactions(TRANSACTIONS_2.SENDER_KEY
-                    .eq(TransactionEndpointKey.encode(aaId, 2)).and(TRANSACTIONS_2.TX_DATETIME.gt(cutoff)));
+            List<Transaction2> transfers = Locutus.imp().getBankDB().getTransactionsByAllianceSender(aaId);
 
             transfers.removeIf(f -> f.sender_id != aaId || f.tx_datetime < cutoff);
             transfers.removeIf(Transaction2::isLootTransfer);

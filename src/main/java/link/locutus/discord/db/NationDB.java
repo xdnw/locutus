@@ -226,23 +226,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return loanManager;
     }
 
-//    private void condenseCities() {
-//        synchronized (citiesByNation) {
-//            ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>();
-//            for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-//                ArrayUtil.iterateElements(SimpleDBCity.class, entry.getValue(), dbCity -> {
-//                    ByteArrayList currBytes = new ByteArrayList(dbCity.getBuildings3());
-//                    ByteArrayList existing = cityBytes.get(currBytes);
-//                    if (existing != null) {
-//                        dbCity.setBuildings3(existing.elements());
-//                    } else {
-//                        cityBytes.add(currBytes);
-//                        dbCity.setBuildings3(currBytes.elements());
-//                    }
-//                });
-//            }
-//        }
-//    }
     private void condenseCities() {
         synchronized (citiesByNation) {
             ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>(citiesByNation.size() * 2);

@@ -154,7 +154,7 @@ public class WebRoot {
                     }
                 });
             }
-            new File("/files").mkdirs();
+            new File("files").mkdirs();
             config.staticFiles.add(new Consumer<StaticFileConfig>() {
                 @Override
                 public void accept(StaticFileConfig staticFiles) {

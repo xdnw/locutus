@@ -3,7 +3,6 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.commands.binding.value_types.WebTransaction;
-import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -257,10 +256,8 @@ class TransactionNoteTest {
         void lootTransferFlagSurvivesStructuredPersistenceWithoutRawNoteRoundTrip() {
                 Transaction2 original = Transaction2.constructLegacy(1, 2L, 3L, 1, 4L, 2, 5,
                                 "Alice defeated Bob's nation and captured.", new double[ResourceType.values.length]);
-                Transactions_2Record record = new Transactions_2Record();
-                original.set(record, Transaction2.createNoteBuffer());
 
-                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
+                Transaction2 restored = roundTrip(original);
 
                 assertNotSame(original, restored);
                 assertTrue(restored.isLootTransfer());
@@ -303,10 +300,8 @@ class TransactionNoteTest {
                                 .build();
                 Transaction2 tx = Transaction2.construct(7, 9L, 11L, 1, 13L, 2, 17, note, false, false,
                                 new double[ResourceType.values.length]);
-                Transactions_2Record record = new Transactions_2Record();
-                tx.set(record, Transaction2.createNoteBuffer());
 
-                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
+                Transaction2 restored = roundTrip(tx);
 
                 assertEquals(NationMeta.REFERRER, restored.getStructuredNote().get(DepositType.INCENTIVE));
                 assertEquals("#deposit #incentive=REFERRER", restored.getLegacyNote());
@@ -322,10 +317,8 @@ class TransactionNoteTest {
                 resources[ResourceType.MONEY.ordinal()] = 12.34d;
                 resources[ResourceType.STEEL.ordinal()] = -5.5d;
                 Transaction2 tx = Transaction2.construct(7, 9L, 11L, 1, 13L, 2, 17, note, false, false, resources);
-                Transactions_2Record record = new Transactions_2Record();
-                tx.set(record, Transaction2.createNoteBuffer());
 
-                Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
+                Transaction2 restored = roundTrip(tx);
 
                 assertEquals(12.34d, restored.resources[ResourceType.MONEY.ordinal()]);
                 assertEquals(-5.5d, restored.resources[ResourceType.STEEL.ordinal()]);
@@ -357,5 +350,17 @@ class TransactionNoteTest {
                         hash *= FNV_PRIME;
                 }
                 return hash;
+        }
+
+        private static Transaction2 roundTrip(Transaction2 tx) {
+                byte[] payload = tx.getNoteBytes(Transaction2.createNoteBuffer());
+                return Transaction2.fromStoredPayload(
+                                tx.tx_id,
+                                tx.tx_datetime,
+                                tx.getSenderKey(),
+                                tx.getReceiverKey(),
+                                tx.banker_nation,
+                                payload,
+                                Transaction2.createNoteBuffer());
         }
 }

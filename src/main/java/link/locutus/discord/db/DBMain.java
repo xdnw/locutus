@@ -3,6 +3,7 @@ package link.locutus.discord.db;
 
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.AlertUtil;
+import org.sqlite.SQLiteConfig;
 
 import java.io.Closeable;
 import java.io.File;
@@ -149,7 +150,32 @@ public abstract class DBMain implements Closeable {
     }
 
     private Connection forceConnection() throws SQLException, ClassNotFoundException {
-        return connection = DBMainV3.forceConnection(dbLocation, 0, memCache, inMemory);
+        Class.forName("org.sqlite.JDBC");
+
+        SQLiteConfig cfg = new SQLiteConfig();
+        cfg.enforceForeignKeys(true);
+        cfg.setBusyTimeout(5000);
+        cfg.setTempStore(SQLiteConfig.TempStore.MEMORY);
+
+        if (memCache > 0) {
+            cfg.setPragma(SQLiteConfig.Pragma.CACHE_SIZE, Long.toString(-1L * memCache * 1024L));
+        }
+
+        final String url;
+        if (inMemory) {
+            url = "jdbc:sqlite:file:" + dbLocation.getName() + "?mode=memory&cache=shared";
+            cfg.setJournalMode(SQLiteConfig.JournalMode.MEMORY);
+            cfg.setSynchronous(SQLiteConfig.SynchronousMode.OFF);
+        } else {
+            url = "jdbc:sqlite:" + dbLocation.getAbsolutePath();
+            cfg.setJournalMode(SQLiteConfig.JournalMode.WAL);
+            cfg.setSynchronous(SQLiteConfig.SynchronousMode.FULL);
+            if (mmapSize > 0) {
+                cfg.setPragma(SQLiteConfig.Pragma.MMAP_SIZE, Long.toString(mmapSize * 1024L * 1024L));
+            }
+        }
+
+        return connection = DriverManager.getConnection(url, cfg.toProperties());
     }
 
     protected synchronized PreparedStatement prepareStatement(String sql) throws SQLException {

@@ -59,7 +59,7 @@ public abstract class DBMainV3 implements AutoCloseable {
 
     public abstract void createTables();
 
-    protected final Jdbi jdbi() {
+    public final Jdbi jdbi() {
         return jdbi;
     }
 
@@ -112,9 +112,15 @@ public abstract class DBMainV3 implements AutoCloseable {
     }
 
     @Override
-    public void close() throws SQLException {
-        if (keepAliveConnection != null && !keepAliveConnection.isClosed()) {
-            keepAliveConnection.close();
+    public void close() {
+        if (keepAliveConnection != null) {
+            try {
+                if (!keepAliveConnection.isClosed()) {
+                    keepAliveConnection.close();
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("Failed to close SQLite keep-alive connection", e);
+            }
         }
     }
 

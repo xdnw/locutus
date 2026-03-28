@@ -1,17 +1,14 @@
 package link.locutus.discord.db;
 
 import link.locutus.discord.db.entities.TransactionEndpointKey;
-import org.jooq.DSLContext;
-import org.jooq.SQLDialect;
-import org.jooq.impl.DSL;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Statement;
 
-import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BankDBEndpointQueryTest {
@@ -28,13 +25,12 @@ class BankDBEndpointQueryTest {
             insert(conn, 4, TransactionEndpointKey.encode(77L, TransactionEndpointKey.NATION_TYPE),
                     TransactionEndpointKey.encode(502L, TransactionEndpointKey.ALLIANCE_TYPE));
 
-            DSLContext ctx = DSL.using(conn, SQLDialect.SQLITE);
-            Integer txId = ctx.select(TRANSACTIONS_2.TX_ID)
-                    .from(TRANSACTIONS_2)
-                    .where(BankDB.latestDepositCondition(77L, TransactionEndpointKey.NATION_TYPE))
-                    .orderBy(TRANSACTIONS_2.TX_ID.desc())
-                    .limit(1)
-                    .fetchOne(TRANSACTIONS_2.TX_ID);
+            Integer txId = queryLatestTransactionId(
+                    conn,
+                    "SELECT tx_id FROM TRANSACTIONS_2 WHERE sender_key = ? AND (receiver_key & ?) = ? ORDER BY tx_id DESC LIMIT 1",
+                    TransactionEndpointKey.encode(77L, TransactionEndpointKey.NATION_TYPE),
+                    TransactionEndpointKey.ALLIANCE_TYPE
+            );
 
             assertEquals(4, txId);
         }
@@ -53,13 +49,12 @@ class BankDBEndpointQueryTest {
             insert(conn, 4, TransactionEndpointKey.encode(502L, TransactionEndpointKey.ALLIANCE_TYPE),
                     TransactionEndpointKey.encode(77L, TransactionEndpointKey.NATION_TYPE));
 
-            DSLContext ctx = DSL.using(conn, SQLDialect.SQLITE);
-            Integer txId = ctx.select(TRANSACTIONS_2.TX_ID)
-                    .from(TRANSACTIONS_2)
-                    .where(BankDB.latestWithdrawalCondition(77L, TransactionEndpointKey.NATION_TYPE))
-                    .orderBy(TRANSACTIONS_2.TX_ID.desc())
-                    .limit(1)
-                    .fetchOne(TRANSACTIONS_2.TX_ID);
+            Integer txId = queryLatestTransactionId(
+                    conn,
+                    "SELECT tx_id FROM TRANSACTIONS_2 WHERE receiver_key = ? AND (sender_key & ?) = ? ORDER BY tx_id DESC LIMIT 1",
+                    TransactionEndpointKey.encode(77L, TransactionEndpointKey.NATION_TYPE),
+                    TransactionEndpointKey.ALLIANCE_TYPE
+            );
 
             assertEquals(4, txId);
         }
@@ -92,5 +87,17 @@ class BankDBEndpointQueryTest {
             stmt.executeUpdate();
         }
     }
+
+        private static Integer queryLatestTransactionId(Connection conn, String sql, long endpointKey, int otherType)
+                        throws Exception {
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                        stmt.setLong(1, endpointKey);
+                        stmt.setLong(2, TransactionEndpointKey.TYPE_MASK);
+                        stmt.setInt(3, otherType);
+                        try (ResultSet rs = stmt.executeQuery()) {
+                                return rs.next() ? rs.getInt(1) : null;
+                        }
+                }
+        }
 }
 

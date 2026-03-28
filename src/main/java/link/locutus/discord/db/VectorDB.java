@@ -19,43 +19,52 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
-import org.jetbrains.annotations.Nullable;
-import org.jooq.Record;
+import org.jdbi.v3.core.statement.PreparedBatch;
 
-import java.io.Closeable;
+import java.io.File;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import static graphql.com.google.common.base.Preconditions.checkArgument;
 
-public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
+public class VectorDB extends DBMainV3 implements IVectorDB {
 
     private final IEmbedding embedding;
-
     private volatile boolean loaded = false;
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
     private final SqliteVecStore vectors;
-
     private final Map<String, Integer> usageCache = new ConcurrentHashMap<>();
 
     public VectorDB(IEmbedding embedding) throws Exception {
-        super(Settings.INSTANCE.DATABASE, "gpt", false, Settings.INSTANCE.DATABASE.SQLITE.GPT_MMAP_SIZE_MB, 20);
+        super(
+                new File(Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY),
+                "gpt",
+                true,
+                false,
+                Settings.INSTANCE.DATABASE.SQLITE.GPT_MMAP_SIZE_MB,
+                20,
+                5
+        );
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
-
         this.embedding = embedding;
-
         this.vectors = new SqliteVecStore(Path.of("database", embedding.getTableName() + ".db"), embedding.getDimensions());
     }
 
+    @SuppressWarnings("unchecked")
     public <T extends VectorDB> T load() {
-        if (loaded) return (T) this;
+        if (loaded) {
+            return (T) this;
+        }
         loaded = true;
         createTables();
         loadSources();
@@ -76,7 +85,8 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     }
 
     @Override
-    public void createEmbeddingIfNotExist(IEmbedding provider, long embeddingHash, String embeddingText, EmbeddingSource source, ThrowingConsumer<String> moderate) {
+    public void createEmbeddingIfNotExist(IEmbedding provider, long embeddingHash, String embeddingText,
+            EmbeddingSource source, ThrowingConsumer<String> moderate) {
         vectors.addDocumentIfNotExists(embeddingText, embeddingHash, (ThrowingSupplier<float[]>) () -> {
             if (moderate != null) {
                 moderate.accept(embeddingText);
@@ -86,75 +96,113 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     }
 
     private void createSourcesTable() {
-        ctx().execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL)");
+        jdbi().useHandle(handle ->
+                handle.execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL)")
+        );
     }
 
     private void createDocumentQueueTable() {
-        ctx().execute("CREATE TABLE IF NOT EXISTS document_queue (" +
-                "source_id INTEGER NOT NULL, " +
-                "prompt VARCHAR NOT NULL, " +
-                "remaining VARCHAR, " +
-                "converted BOOLEAN NOT NULL, " +
-                "use_global_context BOOLEAN NOT NULL, " +
-                "user BIGINT NOT NULL, " +
-                "error VARCHAR, " +
-                "date BIGINT NOT NULL, " +
-                "hash BIGINT NOT NULL, " +
-                "PRIMARY KEY (source_id))");
+        jdbi().useHandle(handle ->
+                handle.execute("CREATE TABLE IF NOT EXISTS document_queue ("
+                        + "source_id INTEGER NOT NULL, "
+                        + "prompt VARCHAR NOT NULL, "
+                        + "remaining VARCHAR, "
+                        + "converted BOOLEAN NOT NULL, "
+                        + "use_global_context BOOLEAN NOT NULL, "
+                        + "user BIGINT NOT NULL, "
+                        + "error VARCHAR, "
+                        + "date BIGINT NOT NULL, "
+                        + "hash BIGINT NOT NULL, "
+                        + "PRIMARY KEY (source_id))")
+        );
     }
 
     private void createUsageTable() {
-        ctx().execute(
-                "CREATE TABLE IF NOT EXISTS usage (" +
-                        "model VARCHAR PRIMARY KEY, " +
-                        "usage INTEGER NOT NULL, " +
-                        "day BIGINT NOT NULL)"
+        jdbi().useHandle(handle ->
+                handle.execute("CREATE TABLE IF NOT EXISTS usage ("
+                        + "model VARCHAR PRIMARY KEY, "
+                        + "usage INTEGER NOT NULL, "
+                        + "day BIGINT NOT NULL)")
         );
     }
 
     public synchronized void loadUsageCache() {
         long currentDay = TimeUtil.getDay();
-        boolean[] needsDelete = {false};
+        boolean[] needsDelete = { false };
 
-        ctx().selectFrom("usage").fetch().forEach(r -> {
-            String model = r.get("model", String.class);
-            int usage = r.get("usage", int.class);
-            long day = r.get("day", long.class);
-            if (day == currentDay) {
-                usageCache.put(model, usage);
-            } else if (day < currentDay) {
+        List<UsageRow> rows = jdbi().withHandle(handle -> handle.createQuery(
+                        "SELECT model, usage, day FROM usage")
+                .map((rs, ctx) -> new UsageRow(
+                        rs.getString("model"),
+                        rs.getInt("usage"),
+                        rs.getLong("day")
+                ))
+                .list());
+
+        for (UsageRow row : rows) {
+            if (row.day() == currentDay) {
+                usageCache.put(row.model(), row.usage());
+            } else if (row.day() < currentDay) {
                 needsDelete[0] = true;
             }
-        });
+        }
 
         if (needsDelete[0]) {
-            ctx().execute("DELETE FROM usage WHERE day < ?", currentDay);
+            jdbi().useHandle(handle -> handle.createUpdate("DELETE FROM usage WHERE day < :currentDay")
+                    .bind("currentDay", currentDay)
+                    .execute());
         }
     }
 
+    @Override
     public int getUsage(String model) {
         return usageCache.getOrDefault(model, 0);
     }
 
+    @Override
     public void addUsage(String model, int usage) {
         usageCache.merge(model, usage, Integer::sum);
-        ctx().transaction((TransactionalRunnable) -> {
-            ctx().execute("INSERT INTO usage (model, usage, day) VALUES (?, ?, ?) ON CONFLICT(model) DO UPDATE SET usage = usage + ?",
-                    model, usage, TimeUtil.getDay(), usage);
-        });
+        jdbi().useTransaction(handle -> handle.createUpdate(
+                        "INSERT INTO usage (model, usage, day) VALUES (:model, :usage, :day) "
+                                + "ON CONFLICT(model) DO UPDATE SET usage = usage + :usage")
+                .bind("model", model)
+                .bind("usage", usage)
+                .bind("day", TimeUtil.getDay())
+                .execute());
     }
 
     private void loadUnconvertedDocuments() {
-        ctx().execute("DELETE FROM document_queue WHERE converted = ?", true);
-        // delete where source_id not in sources
-        ctx().execute("DELETE FROM document_queue WHERE source_id NOT IN (SELECT source_id FROM sources)");
+        jdbi().useHandle(handle -> {
+            handle.createUpdate("DELETE FROM document_queue WHERE converted = :converted")
+                    .bind("converted", true)
+                    .execute();
+            handle.execute("DELETE FROM document_queue WHERE source_id NOT IN (SELECT source_id FROM sources)");
+        });
 
-        List<ConvertingDocument> docs = ctx().selectFrom("document_queue").fetchInto(ConvertingDocument.class);
+        List<ConvertingDocument> docs = jdbi().withHandle(handle -> handle.createQuery(
+                        "SELECT source_id, prompt, remaining, converted, use_global_context, user, error, date, hash FROM document_queue")
+                .map((rs, ctx) -> {
+                    ConvertingDocument doc = new ConvertingDocument();
+                    doc.source_id = rs.getInt("source_id");
+                    doc.prompt = rs.getString("prompt");
+                    doc.text = rs.getString("remaining");
+                    doc.converted = rs.getBoolean("converted");
+                    doc.use_global_context = rs.getBoolean("use_global_context");
+                    doc.user = rs.getLong("user");
+                    doc.error = rs.getString("error");
+                    doc.date = rs.getLong("date");
+                    doc.hash = rs.getLong("hash");
+                    return doc;
+                })
+                .list());
+
+        unconvertedDocuments.clear();
         for (ConvertingDocument doc : docs) {
             unconvertedDocuments.put(doc.source_id, doc);
         }
     }
 
+    @Override
     public List<ConvertingDocument> getUnconvertedDocuments() {
         load();
         return new ArrayList<>(this.unconvertedDocuments.values());
@@ -166,6 +214,7 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
         return unconvertedDocuments.get(source_id);
     }
 
+    @Override
     public void addDocument(List<ConvertingDocument> documents) {
         load();
         for (ConvertingDocument document : documents) {
@@ -175,22 +224,33 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
                 unconvertedDocuments.remove(document.source_id);
             }
         }
-        ctx().transaction((TransactionalRunnable) -> {
+        jdbi().useTransaction(handle -> {
+            PreparedBatch batch = handle.prepareBatch(
+                    "INSERT OR REPLACE INTO document_queue (source_id, prompt, remaining, converted, use_global_context, user, error, date, hash) "
+                            + "VALUES (:sourceId, :prompt, :remaining, :converted, :useGlobalContext, :user, :error, :date, :hash)");
             for (ConvertingDocument document : documents) {
-                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, user, error, date, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        document.source_id, document.prompt, document.converted, document.use_global_context, document.user, document.error, document.date, document.hash);
+                batch.bind("sourceId", document.source_id)
+                        .bind("prompt", document.prompt)
+                        .bind("remaining", document.text)
+                        .bind("converted", document.converted)
+                        .bind("useGlobalContext", document.use_global_context)
+                        .bind("user", document.user)
+                        .bind("error", document.error)
+                        .bind("date", document.date)
+                        .bind("hash", document.hash)
+                        .add();
             }
+            batch.execute();
         });
     }
-
 
     @Override
     public void deleteDocument(int sourceId) {
         load();
         unconvertedDocuments.remove(sourceId);
-        ctx().transaction((TransactionalRunnable) -> {
-            ctx().execute("DELETE FROM document_queue WHERE source_id = ?", sourceId);
-        });
+        jdbi().useHandle(handle -> handle.createUpdate("DELETE FROM document_queue WHERE source_id = :sourceId")
+                .bind("sourceId", sourceId)
+                .execute());
     }
 
     @Override
@@ -202,59 +262,67 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     @Override
     public synchronized EmbeddingSource getOrCreateSource(String name, long guild_id) {
         load();
-        name = name.toLowerCase();
+        String normalizedName = name.toLowerCase();
 
-        EmbeddingSource source = this.getSource(name, guild_id);
-
-        if (source == null) {
-            long date_added = System.currentTimeMillis();
-            // create
-            source = new EmbeddingSource(-1, name, date_added, 0, guild_id);
-            // source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL
-            ctx().execute("INSERT INTO sources (source_name, date_added, guild_id, hash) VALUES (?, ?, ?, ?)", source.source_name, source.date_added, source.guild_id, source.source_hash);
-            // set source id
-            @Nullable Record result = ctx().fetchOne("SELECT source_id FROM sources WHERE source_name = ? AND date_added = ? AND guild_id = ?", source.source_name, source.date_added, source.guild_id);
-            int source_id = (Integer) result.getValue("source_id");
-            source = new EmbeddingSource(source_id, source.source_name, source.date_added, 0, source.guild_id);
-            // add to map
-            embeddingSources.put(source.source_id, source);
-            return source;
-        } else {
+        EmbeddingSource source = this.getSource(normalizedName, guild_id);
+        if (source != null) {
             return source;
         }
+
+        long dateAdded = System.currentTimeMillis();
+        int sourceId = jdbi().withHandle(handle -> handle.createQuery(
+                        "INSERT INTO sources (source_name, date_added, guild_id, hash) VALUES (:sourceName, :dateAdded, :guildId, :hash) RETURNING source_id")
+                .bind("sourceName", normalizedName)
+                .bind("dateAdded", dateAdded)
+                .bind("guildId", guild_id)
+                .bind("hash", 0L)
+                .mapTo(Integer.class)
+                .one());
+
+        EmbeddingSource created = new EmbeddingSource(sourceId, normalizedName, dateAdded, 0, guild_id);
+        embeddingSources.put(created.source_id, created);
+        return created;
     }
 
     @Override
     public void updateSources(List<EmbeddingSource> sources) {
         load();
-        ctx().transaction((TransactionalRunnable) -> {
+        jdbi().useTransaction(handle -> {
+            PreparedBatch batch = handle.prepareBatch(
+                    "UPDATE sources SET source_name = :sourceName, date_added = :dateAdded, guild_id = :guildId WHERE source_id = :sourceId");
             for (EmbeddingSource source : sources) {
-                ctx().execute("UPDATE sources SET source_name = ?, date_added = ?, guild_id = ? WHERE source_id = ?",
-                        source.source_name, source.date_added, source.guild_id, source.source_id);
+                batch.bind("sourceName", source.source_name)
+                        .bind("dateAdded", source.date_added)
+                        .bind("guildId", source.guild_id)
+                        .bind("sourceId", source.source_id)
+                        .add();
             }
+            batch.execute();
         });
     }
 
     private void loadSources() {
-        ctx().select().from("sources").fetch().forEach(r -> {
-            int source_id = r.get("source_id", Integer.class);
-            String source_name = r.get("source_name", String.class);
-            long date_added = r.get("date_added", Long.class);
-            long guild_id = r.get("guild_id", Long.class);
-            long hash = r.get("hash", Long.class);
+        embeddingSources.clear();
+        List<EmbeddingSource> sources = jdbi().withHandle(handle -> handle.createQuery(
+                        "SELECT source_id, source_name, date_added, guild_id, hash FROM sources")
+                .map((rs, ctx) -> new EmbeddingSource(
+                        rs.getInt("source_id"),
+                        rs.getString("source_name"),
+                        rs.getLong("date_added"),
+                        rs.getLong("hash"),
+                        rs.getLong("guild_id")
+                ))
+                .list());
 
-            // embeddingSources is a map of guild_id to set<EmbeddingSource>
-            EmbeddingSource source = new EmbeddingSource(source_id, source_name, date_added, hash, guild_id);
+        for (EmbeddingSource source : sources) {
             embeddingSources.put(source.source_id, source);
-        });
+        }
     }
 
+    @Override
     public synchronized void createTables() {
-//        sources: long source_id, String source_name, long date_added, long guild_id
         createSourcesTable();
-        // document_queue: source_id, prompt, converted, use_global_context, gpt_provider, user, error, date
         createDocumentQueueTable();
-        // usage: model, usage, day
         createUsageTable();
     }
 
@@ -268,12 +336,16 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     @Override
     public void deleteSource(EmbeddingSource source) {
         load();
-        // delete from expanded_text and sources and vector_sources
         int source_id = source.source_id;
-        ctx().execute("DELETE FROM expanded_text WHERE source_id = ?", source_id);
-        ctx().execute("DELETE FROM sources WHERE source_id = ?", source_id);
-        ctx().execute("DELETE FROM vector_sources WHERE source_id = ?", source_id);
-
+        vectors.deleteMissing(source_id, Collections.emptySet());
+        jdbi().useTransaction(handle -> {
+            handle.createUpdate("DELETE FROM document_queue WHERE source_id = :sourceId")
+                    .bind("sourceId", source_id)
+                    .execute();
+            handle.createUpdate("DELETE FROM sources WHERE source_id = :sourceId")
+                    .bind("sourceId", source_id)
+                    .execute();
+        });
         embeddingSources.remove(source.source_id);
         unconvertedDocuments.remove(source_id);
     }
@@ -284,15 +356,14 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     }
 
     @Override
-    public float[] getOrCreateEmbedding(IEmbedding provider, long embeddingHash, String embeddingText, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate) {
+    public float[] getOrCreateEmbedding(IEmbedding provider, long embeddingHash, String embeddingText,
+            EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate) {
         float[] existing = getEmbedding(embeddingHash);
         if (existing == null) {
             if (moderate != null) {
                 moderate.accept(embeddingText);
             }
-            // fetch embedding
             existing = provider.fetchAndNormalize(embeddingText);
-            // store
             if (save) {
                 vectors.addDocumentIfNotExists(embeddingText, embeddingHash, existing, source.source_id);
             }
@@ -308,32 +379,34 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     @Override
     public void iterateVectors(Set<EmbeddingSource> allowedSources, Consumer<VectorRow> source_hash_vector_consumer) {
         Set<Integer> srcIds = new IntOpenHashSet(allowedSources.size());
-        for (EmbeddingSource src : allowedSources) srcIds.add(src.source_id);
-        vectors.getDocumentsBySource(srcIds, true, new Consumer<VectorRow>() {
-            @Override
-            public void accept(VectorRow result) {
-                EmbeddingSource source = result.sourceId == -1 ? null : embeddingSources.get(result.sourceId);
-                if (source != null) {
-                    source_hash_vector_consumer.accept(result);
-                } else {
-                    Logg.error("Source with id " + result.sourceId + " not found for hash " + result.id + " | " + result.text);
-                }
+        for (EmbeddingSource src : allowedSources) {
+            srcIds.add(src.source_id);
+        }
+        vectors.getDocumentsBySource(srcIds, true, result -> {
+            EmbeddingSource source = result.sourceId == -1 ? null : embeddingSources.get(result.sourceId);
+            if (source != null) {
+                source_hash_vector_consumer.accept(result);
+            } else {
+                Logg.error("Source with id " + result.sourceId + " not found for hash " + result.id + " | " + result.text);
             }
         });
     }
 
+    @Override
     public Map<Long, String> getContent(Set<Long> hashes) {
         Map<Long, String> result = new Long2ObjectOpenHashMap<>();
+        if (hashes == null || hashes.isEmpty()) {
+            return result;
+        }
         List<Long> hashesSorted = new LongArrayList();
-        // sort ascending
         hashesSorted.addAll(hashes);
         hashesSorted.sort(Long::compareTo);
-        String query = "SELECT hash, description FROM vector_text WHERE hash IN (" + hashesSorted.stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";
-        ctx().fetch(query).forEach(r -> {
-            long hash = r.get("hash", Long.class);
-            String description = r.get("description", String.class);
-            result.put(hash, description);
-        });
+        for (Long hash : hashesSorted) {
+            VectorRow row = vectors.getVectorById(hash, true, false);
+            if (row != null) {
+                result.put(hash, row.text);
+            }
+        }
         return result;
     }
 
@@ -352,7 +425,9 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
         return null;
     }
 
-    public Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate) {
+    @Override
+    public Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull,
+            Predicate<EmbeddingSource> sourcePredicate) {
         Set<EmbeddingSource> result = new ObjectLinkedOpenHashSet<>();
         for (EmbeddingSource source : embeddingSources.values()) {
             if (guildPredicateOrNull == null || guildPredicateOrNull.test(source.guild_id)) {
@@ -371,14 +446,11 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     }
 
     @Override
-    public List<EmbeddingInfo> getClosest(EmbeddingSource inputSource, String input, int top, Set<EmbeddingSource> allowedTypes, BiPredicate<EmbeddingSource, Long> sourceHashPredicate, ThrowingConsumer<String> moderate) {
+    public List<EmbeddingInfo> getClosest(EmbeddingSource inputSource, String input, int top,
+            Set<EmbeddingSource> allowedTypes,
+            BiPredicate<EmbeddingSource, Long> sourceHashPredicate,
+            ThrowingConsumer<String> moderate) {
         checkArgument(top > 0, "top must be > 0");
-        PriorityQueue<EmbeddingInfo> largest = new PriorityQueue<>(top, new Comparator<EmbeddingInfo>() {
-            @Override
-            public int compare(EmbeddingInfo o1, EmbeddingInfo o2) {
-                return Double.compare(o1.distance, o2.distance);
-            }
-        });
 
         float[] compareTo = getEmbedding(inputSource, input, moderate);
         Map<Integer, EmbeddingSource> sourceMap = new Int2ObjectLinkedOpenHashMap<>();
@@ -400,5 +472,8 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
             resultsMapped.add(info);
         }
         return resultsMapped;
+    }
+
+    private record UsageRow(String model, int usage, long day) {
     }
 }

@@ -31,6 +31,7 @@ import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.Transaction2Jdbc;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
@@ -186,21 +187,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 id == Settings.INSTANCE.ROOT_SERVER ? 20 : 0);
         this.roleToAccountToDiscord = new ConcurrentHashMap<>();
         this.guild = guild;
-        Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
+        if (guild != null) Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
         importLegacyRoles();
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
-        if (gpt != null) {
-            gpt.getConverter().initDocumentConversion(this);
-        }
-        if (getIdLong() == 1364255765753499719L) {
-            try (var st = getConnection().createStatement()) {
-                // If you are in WAL mode, this helps reclaim -wal space too.
-                st.execute("PRAGMA wal_checkpoint(TRUNCATE);");
-                // Shrinks the main database file (rewrites it).
-                st.execute("VACUUM;");
+        Locutus lc = Locutus.imp();
+        if (lc != null) {
+            PWGPTHandler gpt = lc.getCommandManager().getV2().getGptHandler();
+            if (gpt != null) {
+                gpt.getConverter().initDocumentConversion(this);
             }
         }
-
     }
 
     @Override
@@ -909,11 +904,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
         if (transactions.isEmpty())
             return;
-        String query = transactions.get(0).createInsert(INTERNAL_TRANSACTIONS_TABLE, false, false);
+        String query = Transaction2Jdbc.insertSql(INTERNAL_TRANSACTIONS_TABLE, false, false);
         BitBuffer noteBuffer = Transaction2.createNoteBuffer();
         executeBatch(transactions, query,
-                (ThrowingBiConsumer<Transaction2, PreparedStatement>) (transaction, stmt) -> transaction.setNoID(stmt,
-                        noteBuffer));
+            (ThrowingBiConsumer<Transaction2, PreparedStatement>) (transaction, stmt) ->
+                Transaction2Jdbc.bindWithoutId(stmt, transaction, noteBuffer));
     }
 
     public void addTransaction(Transaction2 tx) {
@@ -922,9 +917,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             delegate.addTransaction(tx);
             return;
         }
-        String sql = tx.createInsert(INTERNAL_TRANSACTIONS_TABLE, false, false);
+        String sql = Transaction2Jdbc.insertSql(INTERNAL_TRANSACTIONS_TABLE, false, false);
         BitBuffer noteBuffer = Transaction2.createNoteBuffer();
-        update(sql, (ThrowingConsumer<PreparedStatement>) stmt -> tx.setNoID(stmt, noteBuffer));
+        update(sql, (ThrowingConsumer<PreparedStatement>) stmt -> Transaction2Jdbc.bindWithoutId(stmt, tx, noteBuffer));
 
         MessageChannel output = getOrNull(GuildKey.ADDBALANCE_ALERT_CHANNEL);
         if (output != null) {
@@ -971,7 +966,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 if (!rs.next()) {
                     return null;
                 }
-                return Transaction2.load(rs, Transaction2.createNoteBuffer());
+                return Transaction2Jdbc.readStoredPayload(rs, Transaction2.createNoteBuffer());
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to load internal transaction " + id, e);
@@ -1051,7 +1046,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             try (ResultSet rs = stmt.executeQuery()) {
                 BitBuffer noteBuffer = Transaction2.createNoteBuffer();
                 while (rs.next()) {
-                    Transaction2 tx = Transaction2.load(rs, noteBuffer);
+                    Transaction2 tx = Transaction2Jdbc.readStoredPayload(rs, noteBuffer);
                     for (DepositType type : types) {
                         if (type != null && tx.hasNoteTag(type)) {
                             list.add(tx);
@@ -1121,7 +1116,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }, (ThrowingConsumer<ResultSet>) rs -> {
             BitBuffer noteBuffer = Transaction2.createNoteBuffer();
             while (rs.next()) {
-                list.add(Transaction2.load(rs, noteBuffer));
+                list.add(Transaction2Jdbc.readStoredPayload(rs, noteBuffer));
             }
         });
         return list;
@@ -1175,7 +1170,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }, (ThrowingConsumer<ResultSet>) rs -> {
             BitBuffer noteBuffer = Transaction2.createNoteBuffer();
             while (rs.next()) {
-                consumer.accept(Transaction2.load(rs, noteBuffer));
+                consumer.accept(Transaction2Jdbc.readStoredPayload(rs, noteBuffer));
             }
         });
         return;
@@ -1219,7 +1214,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             try (ResultSet rs = stmt.executeQuery()) {
                 BitBuffer noteBuffer = Transaction2.createNoteBuffer();
                 while (rs.next()) {
-                    list.add(Transaction2.load(rs, noteBuffer));
+                    list.add(Transaction2Jdbc.readStoredPayload(rs, noteBuffer));
                 }
             }
             return list;
@@ -1285,11 +1280,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     if (batch.isEmpty()) {
                         return;
                     }
-                    String query = batch.get(0).createInsert(INTERNAL_TRANSACTIONS_TABLE, true, false);
+                    String query = Transaction2Jdbc.insertSql(INTERNAL_TRANSACTIONS_TABLE, true, false);
                     BitBuffer noteBuffer = Transaction2.createNoteBuffer();
                     executeBatch(batch, query,
-                            (ThrowingBiConsumer<Transaction2, PreparedStatement>) (tx, stmt) -> tx.set(stmt,
-                                    noteBuffer));
+                        (ThrowingBiConsumer<Transaction2, PreparedStatement>) (tx, stmt) -> {
+                            if (tx.sender_id < 0) {
+                                if (tx.sender_id == -7815) tx.sender_id = 1;
+                                else tx.sender_id = -tx.sender_id;
+                            }
+                            Transaction2Jdbc.bindWithId(stmt, tx, noteBuffer);
+                        });
                 });
     }
 

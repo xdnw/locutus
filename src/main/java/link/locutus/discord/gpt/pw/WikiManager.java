@@ -8,7 +8,6 @@ import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.IVectorDB;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.wiki.game.PWWikiUtil;
-import org.jooq.DSLContext;
 
 import java.io.IOException;
 import java.util.*;
@@ -78,10 +77,6 @@ public class WikiManager {
     }
 
 
-    private DSLContext ctx() {
-        return vectorSqlDb.ctx();
-    }
-
     public Set<String> getCategories() {
         Set<String> categories = new ObjectLinkedOpenHashSet<>();
         for (WikiPagePW page : gameWikiPagesBySourceId.values()) {
@@ -101,7 +96,9 @@ public class WikiManager {
     }
 
     public void createTables() {
-        ctx().execute("CREATE TABLE IF NOT EXISTS wiki_pages (source_id INT NOT NULL PRIMARY KEY, page_name TEXT NOT NULL, url TEXT NOT NULL, categories TEXT NOT NULL, hash BIGINT NOT NULL)");
+        vectorSqlDb.jdbi().useHandle(handle ->
+                handle.execute("CREATE TABLE IF NOT EXISTS wiki_pages (source_id INT NOT NULL PRIMARY KEY, page_name TEXT NOT NULL, url TEXT NOT NULL, categories TEXT NOT NULL, hash BIGINT NOT NULL)")
+        );
     }
 
     public void deleteWikiPage(int sourceId, boolean deleteEmbedding) {
@@ -112,24 +109,37 @@ public class WikiManager {
                 embeddings.deleteSource(source);
             }
         }
-        ctx().execute("DELETE FROM wiki_pages WHERE source_id = ?", sourceId);
+        vectorSqlDb.jdbi().useHandle(handle ->
+                handle.createUpdate("DELETE FROM wiki_pages WHERE source_id = :sourceId")
+                        .bind("sourceId", sourceId)
+                        .execute()
+        );
     }
 
     public void loadPages() {
         gameWikiPagesBySourceId.clear();
-        ctx().selectFrom("wiki_pages").fetch().forEach(f -> {
-            int sourceId = f.get("source_id", Integer.class);
-            String pageName = f.get("page_name", String.class);
-            String url = f.get("url", String.class);
-            long hash = f.get("hash", Long.class);
-            String categories = f.get("categories", String.class);
+        vectorSqlDb.jdbi().useHandle(handle -> handle.createQuery(
+                        "SELECT source_id, page_name, url, categories, hash FROM wiki_pages")
+                .map((rs, ctx) -> new StoredWikiPage(
+                        rs.getInt("source_id"),
+                        rs.getString("page_name"),
+                        rs.getString("url"),
+                        rs.getString("categories"),
+                        rs.getLong("hash")
+                ))
+                .forEach(f -> {
+            int sourceId = f.sourceId();
+            String pageName = f.pageName();
+            String url = f.url();
+            long hash = f.hash();
+            String categories = f.categories();
             Set<String> categorySet = new ObjectLinkedOpenHashSet<>();
             for (String category : categories.split(",")) {
                 categorySet.add(category.trim());
             }
             WikiPagePW page = new WikiPagePW(pageName, url, hash, categorySet);
             gameWikiPagesBySourceId.put(sourceId, page);
-        });
+        }));
     }
 
     public void importFileCategories(boolean deleteMissing, boolean importSummary) throws IOException {
@@ -196,5 +206,8 @@ public class WikiManager {
             return null;
         }
         return gameWikiPagesBySourceId.get(sourceId);
+    }
+
+    private record StoredWikiPage(int sourceId, String pageName, String url, String categories, long hash) {
     }
 }

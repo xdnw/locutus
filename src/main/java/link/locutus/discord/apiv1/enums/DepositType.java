@@ -94,7 +94,11 @@ public enum DepositType {
 
         @Override
         public void write(BitBuffer out, Object value) {
-            out.writeByte(((Project) value).ordinal());
+            if (value instanceof Number n) {
+                out.writeByte(n.byteValue());
+            } else {
+                out.writeByte(((Project) value).ordinal());
+            }
         }
 
         @Override

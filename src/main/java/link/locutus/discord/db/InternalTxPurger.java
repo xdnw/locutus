@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.Transaction2Jdbc;
 import link.locutus.discord.db.entities.TransactionEndpointKey;
 import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.util.io.BitBuffer;
@@ -209,7 +210,7 @@ public final class InternalTxPurger {
                 .append(" WHERE sender_key != receiver_key");
 
         if (REQUIRE_BANKER_ENDPOINT) {
-            String bankerNationKeySql = TransactionEndpointKey.sqlEncode("banker_nation_id",
+            String bankerNationKeySql = packedKeySql("banker_nation_id",
                     TransactionEndpointKey.NATION_TYPE);
             sql.append("   AND ((sender_key = ")
                     .append(bankerNationKeySql)
@@ -237,7 +238,7 @@ public final class InternalTxPurger {
             while (rs.next()) {
                 scanned++;
 
-                Transaction2 tx = Transaction2.load(rs, noteBuffer);
+                Transaction2 tx = Transaction2Jdbc.readStoredPayload(rs, noteBuffer);
                 long txId = tx.tx_id;
                 long txDatetime = tx.tx_datetime;
                 long senderId = tx.sender_id;
@@ -467,5 +468,13 @@ public final class InternalTxPurger {
         if (v > 0 && v < 100_000_000_000L)
             return v * 1000L;
         return v;
+    }
+
+    private static String packedKeySql(String idExpression, int type) {
+        if (type == TransactionEndpointKey.NONE_TYPE) {
+            return Long.toString(TransactionEndpointKey.NONE);
+        }
+        return "((CAST(" + idExpression + " AS BIGINT) << " + TransactionEndpointKey.TYPE_BITS + ") | "
+                + (type & TransactionEndpointKey.TYPE_MASK) + ")";
     }
 }

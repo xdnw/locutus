@@ -2,7 +2,6 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,13 +30,11 @@ class TransactionEndpointKeyTest {
         TransactionNote note = TransactionNote.of(DepositType.TAX);
         Transaction2 tx = Transaction2.construct(7, 9L, 11L, 4, 0L, 0, 17, note, false, false,
                 new double[ResourceType.values.length]);
-        Transactions_2Record record = new Transactions_2Record();
-        tx.set(record, Transaction2.createNoteBuffer());
 
-        assertEquals(TransactionEndpointKey.encode(11L, 4), record.getSenderKey());
-        assertEquals(TransactionEndpointKey.NONE, record.getReceiverKey());
+        assertEquals(TransactionEndpointKey.encode(11L, 4), tx.getSenderKey());
+        assertEquals(TransactionEndpointKey.NONE, tx.getReceiverKey());
 
-        Transaction2 restored = Transaction2.fromTX2Table(record, Transaction2.createNoteBuffer());
+        Transaction2 restored = roundTrip(tx);
 
         assertEquals(11L, restored.sender_id);
         assertEquals(4, restored.sender_type);
@@ -58,10 +55,10 @@ class TransactionEndpointKeyTest {
     }
 
     @Test
-    void sqlEncodeProducesCanonicalPackedKeyExpression() {
-        assertEquals("0", TransactionEndpointKey.sqlEncode("banker_nation_id", TransactionEndpointKey.NONE_TYPE));
-        assertEquals("((CAST(banker_nation_id AS BIGINT) << 3) | 1)",
-                TransactionEndpointKey.sqlEncode("banker_nation_id", TransactionEndpointKey.NATION_TYPE));
+    void encodedKeysReserveLowBitsForEndpointType() {
+        assertEquals(0L, TransactionEndpointKey.encode(0L, TransactionEndpointKey.NONE_TYPE));
+        assertEquals((77L << TransactionEndpointKey.TYPE_BITS) | TransactionEndpointKey.NATION_TYPE,
+                TransactionEndpointKey.encode(77L, TransactionEndpointKey.NATION_TYPE));
     }
 
     private static void assertRoundTrip(long id, int type, long expectedKey) {
@@ -69,6 +66,19 @@ class TransactionEndpointKeyTest {
         assertEquals(expectedKey, key);
         assertEquals(id, TransactionEndpointKey.idFromKey(key));
         assertEquals(type, TransactionEndpointKey.typeFromKey(key));
+    }
+
+    private static Transaction2 roundTrip(Transaction2 tx) {
+        byte[] payload = tx.getNoteBytes(Transaction2.createNoteBuffer());
+        return Transaction2.fromStoredPayload(
+                tx.tx_id,
+                tx.tx_datetime,
+                tx.getSenderKey(),
+                tx.getReceiverKey(),
+                tx.banker_nation,
+                payload,
+                Transaction2.createNoteBuffer()
+        );
     }
 }
 
