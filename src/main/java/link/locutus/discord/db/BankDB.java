@@ -627,18 +627,9 @@ public class BankDB extends DBMainV3 implements BankStore {
     }
 
     private String renameTable(String currentName, String preferredName) throws SQLException {
-        String targetName = preferredName;
-        if (tableExists(targetName)) {
-            targetName = preferredName + "_" + System.currentTimeMillis();
+        try (var connection = getConnection()) {
+            return SqliteTableMoveSupport.moveTableToAvailableName(connection, currentName, preferredName);
         }
-
-        try (var connection = getConnection();
-             var stmt = connection.createStatement()) {
-            stmt.executeUpdate(
-                    "ALTER TABLE " + quoteIdentifier(currentName) + " RENAME TO " + quoteIdentifier(targetName)
-            );
-        }
-        return targetName;
     }
 
     private boolean isBlobNoteTable(String tableName) throws SQLException {
