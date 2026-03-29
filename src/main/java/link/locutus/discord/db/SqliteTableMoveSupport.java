@@ -5,7 +5,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Locale;
 import java.util.Objects;
 
 final class SqliteTableMoveSupport {
@@ -18,16 +17,26 @@ final class SqliteTableMoveSupport {
         Objects.requireNonNull(currentName, "currentName");
         Objects.requireNonNull(preferredName, "preferredName");
 
-        String targetName = availableTableName(connection, preferredName);
+        boolean writableSchemaEnabled = false;
         try {
-            renameTable(connection, currentName, targetName);
-            return targetName;
-        } catch (SQLException renameFailure) {
-            if (tableExists(connection, targetName) && !tableExists(connection, currentName)) {
+            setWritableSchema(connection, true);
+            writableSchemaEnabled = true;
+
+            String targetName = availableTableName(connection, preferredName);
+            try {
+                renameTable(connection, currentName, targetName);
+                return targetName;
+            } catch (SQLException renameFailure) {
+                if (tableExists(connection, targetName) && !tableExists(connection, currentName)) {
+                    return targetName;
+                }
+                snapshotTableForMigration(connection, currentName, targetName, renameFailure);
                 return targetName;
             }
-            snapshotTableForMigration(connection, currentName, targetName, renameFailure);
-            return targetName;
+        } finally {
+            if (writableSchemaEnabled) {
+                setWritableSchema(connection, false);
+            }
         }
     }
 
@@ -101,6 +110,12 @@ final class SqliteTableMoveSupport {
             }
         }
         return false;
+    }
+
+    private static void setWritableSchema(Connection connection, boolean enabled) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("PRAGMA writable_schema = " + (enabled ? "ON" : "OFF"));
+        }
     }
 
     private static String sanitizeIdentifier(String value) {
