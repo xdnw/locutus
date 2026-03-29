@@ -146,6 +146,100 @@ tasks.register('cityFallbackBenchQuick', JavaExec) {
     dependsOn tasks.named('testClasses')
 }
 
+tasks.register('offshoreJmh', JavaExec) {
+    group = 'verification'
+    description = 'Run JMH benchmarks for the real-data offshore loading and processing pipeline'
+    notCompatibleWithConfigurationCache('Offshore JMH arguments are assembled dynamically at execution time.')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'org.openjdk.jmh.Main'
+    standardInput = System.in
+
+    def include = providers.gradleProperty('offshoreJmhInclude')
+            .orElse('^link\\.locutus\\.discord\\.db\\.OffshoreTest.*')
+    def warmups = providers.gradleProperty('offshoreJmhWarmups').orElse('3')
+    def measurements = providers.gradleProperty('offshoreJmhMeasurements').orElse('5')
+    def forks = providers.gradleProperty('offshoreJmhForks').orElse('1')
+    def warmupTime = providers.gradleProperty('offshoreJmhWarmupTime').orElse('1s')
+    def measurementTime = providers.gradleProperty('offshoreJmhMeasurementTime').orElse('1s')
+    def resultFormat = providers.gradleProperty('offshoreJmhResultFormat').orElse('json')
+    def resultFile = providers.gradleProperty('offshoreJmhResultFile')
+            .orElse(layout.buildDirectory.file('reports/jmh/offshore.json').map { it.asFile.absolutePath })
+    def profilers = providers.gradleProperty('offshoreJmhProfilers').orElse('')
+    def extraArgs = providers.gradleProperty('offshoreJmhExtraArgs').orElse('')
+
+    doFirst {
+        File output = file(resultFile.get())
+        if (output.parentFile != null) {
+            output.parentFile.mkdirs()
+        }
+
+        def cliArgs = [
+                include.get(),
+                '-wi', warmups.get(),
+                '-i', measurements.get(),
+                '-f', forks.get(),
+                '-w', warmupTime.get(),
+                '-r', measurementTime.get(),
+                '-rf', resultFormat.get(),
+                '-rff', output.absolutePath
+        ]
+
+        profilers.get().split(/\s*,\s*/).findAll { !it.isBlank() }.each { profiler ->
+            cliArgs += ['-prof', profiler]
+        }
+
+        if (extraArgs.get()) {
+            cliArgs += extraArgs.get().toString().split(/\s+/).findAll { !it.isBlank() }
+        }
+
+        setArgs(cliArgs)
+    }
+
+    dependsOn tasks.named('testClasses')
+}
+
+tasks.register('offshoreJmhQuick', JavaExec) {
+    group = 'verification'
+    description = 'Quick JMH preset for the key real-data offshore loading and processing stages'
+    notCompatibleWithConfigurationCache('Offshore JMH arguments are assembled dynamically at execution time.')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'org.openjdk.jmh.Main'
+    standardInput = System.in
+
+    def include = providers.gradleProperty('offshoreJmhInclude')
+            .orElse('^link\\.locutus\\.discord\\.db\\.OffshoreTest\\.(queryRawBankPayloadRows|decodeBankStoredPayloads|filterBankTransactionsForGuild|loadAllianceOffsetTransactions|loadBankTransactionsForAllianceCold|loadBankTransactionsForAllianceHot|pipelineAllianceBalanceSingleCold|pipelineAllianceBalanceSingleHot|pipelineAllianceBalanceMultiHot)$')
+    def resultFormat = providers.gradleProperty('offshoreJmhResultFormat').orElse('json')
+    def resultFile = providers.gradleProperty('offshoreJmhResultFile')
+            .orElse(layout.buildDirectory.file('reports/jmh/offshore-quick.json').map { it.asFile.absolutePath })
+    def extraArgs = providers.gradleProperty('offshoreJmhExtraArgs').orElse('')
+
+    doFirst {
+        File output = file(resultFile.get())
+        if (output.parentFile != null) {
+            output.parentFile.mkdirs()
+        }
+
+        def cliArgs = [
+                include.get(),
+                '-wi', '1',
+                '-i', '2',
+                '-f', '1',
+                '-w', '200ms',
+                '-r', '200ms',
+                '-rf', resultFormat.get(),
+                '-rff', output.absolutePath
+        ]
+
+        if (extraArgs.get()) {
+            cliArgs += extraArgs.get().toString().split(/\s+/).findAll { !it.isBlank() }
+        }
+
+        setArgs(cliArgs)
+    }
+
+    dependsOn tasks.named('testClasses')
+}
+
 def useTs = providers.gradleProperty("ts").isPresent()
 def useShadow = gradle.startParameter.taskNames.any { it.endsWith("shadowJar") }
 def useGraphql = providers.gradleProperty("graphql").isPresent() || useShadow
@@ -393,6 +487,8 @@ dependencies {
     implementation 'info.debatty:java-string-similarity:2.0.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    testAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }
 
 configurations {
@@ -474,9 +570,23 @@ tasks.withType(JavaCompile).configureEach {
     options.incremental = true
     options.compilerArgs += [
             "-parameters",
-            "-Xmaxerrs", "1000",
-            "-proc:none"
+            "-Xmaxerrs", "1000"
     ]
+    if (name != 'compileTestJava') {
+        options.compilerArgs += ["-proc:none"]
+    }
+}
+
+tasks.named('compileJava', JavaCompile).configure {
+    exclude '**/sources/annotationProcessor/java/test/**'
+    exclude '**/generated-test-sources/**'
+}
+
+tasks.named('compileTestJava', JavaCompile).configure {
+    options.generatedSourceOutputDirectory = layout.buildDirectory
+            .dir('generated-test-sources/annotationProcessor/java/test')
+            .get()
+            .asFile
 }
 
 def explicitlyRequestsShadow = gradle.startParameter.taskNames.any { it == 'shadowJar' || it.endsWith(':shadowJar') }

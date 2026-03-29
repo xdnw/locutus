@@ -1,115 +1,518 @@
 package link.locutus.discord.db;
 
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.offshore.OffshoreInstance;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.Blackhole;
+import org.openjdk.jmh.results.format.ResultFormatType;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.sql.SQLException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
-import static link.locutus.discord.util.offshore.OffshoreInstance.getFilter;
-import static link.locutus.discord.util.offshore.OffshoreInstance.getTotal;
-
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Fork(value = 1, jvmArgsAppend = {"-Xms1g", "-Xmx1g"})
 public class OffshoreTest {
-    private final Set<Integer> offshoreIds;
-    private final long guildId;
-    private final GuildDB offshoreDb;
-    private final BankDB bankDb;
-
-    public OffshoreTest(BankDB bankDb, long guildId, Set<Integer> offshoreIds) throws SQLException, ClassNotFoundException {
-        this.bankDb = bankDb;
-        this.offshoreIds = offshoreIds;
-        this.guildId = guildId;
-        this.offshoreDb = new GuildDB(null, guildId);
+    @Benchmark
+    public void queryRawBankPayloadRows(RawBankReadState state, Blackhole bh) {
+        List<OffshoreBenchmarkSupport.StoredPayloadRow> rows = state.bankStore
+                .loadAllianceTransactionRows(state.fixture.offshoreIds());
+        bh.consume(rows.size());
+        bh.consume(checksumStoredRows(rows));
     }
 
-    private Map<ResourceType, Double> getGuildBalance(long guildId) {
-        long start = 0L;
-        long end = Long.MAX_VALUE;
-
-        List<Transaction2> toProcess = new ObjectArrayList<>();
-        toProcess.addAll(getOffshoreTransactions(guildId, 3, start, end));
-
-        List<Transaction2> offset = offshoreDb.getDepositOffsetTransactions(guildId, 3, start, end);
-        toProcess.addAll(offset);
-
-        return ResourceType.resourcesToMap(getTotal(offshoreIds, toProcess, guildId, 3));
-    }
-
-    private List<Transaction2> getOffshoreTransactions(long id, int type, long start, long end) {
-        Predicate<Transaction2> filter = getFilter(id, type);
-        if (start != 0)
-            filter = filter.and(tx -> tx.tx_datetime >= start);
-        if (end != Long.MAX_VALUE)
-            filter = filter.and(tx -> tx.tx_datetime <= end);
-        return bankDb.getAllianceTransactions(offshoreIds, true, filter);
-    }
-
-    private Map<ResourceType, Double> getAllianceBalance(Set<Integer> allianceIds) {
-        allianceIds = new ObjectLinkedOpenHashSet<>(allianceIds);
-
-        List<Transaction2> toProcess = getTransactionsAA(allianceIds, false, 0, Long.MAX_VALUE);
-        Set<Long> allianceIdsLong = allianceIds.stream().map(Integer::longValue).collect(Collectors.toSet());
-
-        System.out.println("num tx for " + allianceIds + ": " + toProcess.size());
-        double[] sum = getTotal(offshoreIds, toProcess, allianceIdsLong, 2);
-        return ResourceType.resourcesToMap(sum);
-    }
-
-    public synchronized List<Transaction2> getTransactionsAA(Set<Integer> allianceId, boolean force, long start, long end) {
-        List<Transaction2> toProcess = new ObjectArrayList<>();
-        for (int id : allianceId) {
-            toProcess.addAll(getOffshoreTransactions((long) id, 2, start, end));
-            toProcess.addAll(offshoreDb.getDepositOffsetTransactionsForAlliance(id, start, end));
+    @Benchmark
+    public void decodeBankStoredPayloads(PayloadDecodeState state, Blackhole bh) {
+        long checksum = 0L;
+        for (OffshoreBenchmarkSupport.StoredPayloadRow row : state.rows) {
+            Transaction2 tx = row.decode(state.buffer);
+            checksum = mix(checksum, tx.tx_id);
+            checksum = mix(checksum, tx.sender_id);
+            checksum = mix(checksum, tx.receiver_id);
         }
-        return toProcess;
+        bh.consume(checksum);
     }
 
-    public static void main(String[] args) throws SQLException, ClassNotFoundException {
-        // parse that into Set<Long> ids for offshoring and Set<Integer> offshore
-        Set<Integer> offshoreIds = new IntOpenHashSet();
-        Set<Long> offshoringIds = new LongOpenHashSet();
+    @Benchmark
+    public void filterBankTransactionsForGuild(FilterState state, Blackhole bh) {
+        bh.consume(runFilter(state.workingTransactions, state.guildFilter));
+    }
 
+    @Benchmark
+    public void filterBankTransactionsForAlliance(FilterState state, Blackhole bh) {
+        bh.consume(runFilter(state.workingTransactions, state.primaryAllianceFilter));
+    }
 
+    @Benchmark
+    public void totalGuildTransactions(TotalState state, Blackhole bh) {
+        bh.consume(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                state.guildTransactions,
+                state.fixture.guildId(),
+                OffshoreBenchmarkSupport.GUILD_TYPE));
+    }
 
-        for (int id : new int[]{7425,8706,12290,11270,11782,7432,9736,8457,8205,11023,10003,7445,8472,8728,11290,8476,11036,8222,10527,10529,11298,7977,8745,10795,11307,8493,10546,10035,8760,11064,11320,10809,11836,8512,8513,12355,11332,8773,11077,10822,8264,7498,10570,12363,7244,8782,11090,8789,8533,12373,7766,11350,10585,9821,11103,7521,10081,7778,11106,9315,10595,8549,7529,11372,7534,10608,9585,10865,11127,10109,7550,12414,11647,10881,9347,9605,10631,11400,11656,9614,10896,12432,8597,11417,11163,9632,7332,7589,9644,7597,12461,11182,10415,10927,10672,8628,11445,9403,8636,10429,11709,7614,10691,11204,12230,7623,11719,11464,13769,9674,9419,11214,10703,11729,11474,12244,7637,9941,9686,7384,7385,7644,8669,10973,9954,11237,7911,10728,11497,10987,12271,13809,8692,11509,11257,8443,11518}) {
-            offshoreIds.add(id);
-        }
+    @Benchmark
+    public void totalAllianceTransactionsSingle(TotalState state, Blackhole bh) {
+        bh.consume(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                state.primaryAllianceTransactions,
+                state.fixture.primaryAllianceId(),
+                OffshoreBenchmarkSupport.ALLIANCE_TYPE));
+    }
 
-        for (long id : new long[]{14336L,12290L,14341L,13318L,12295L,14344L,11273L,1428570979713679392L,13324L,14349L,13326L,9230L,11281L,1357889124039790845L,14354L,10259L,1162818416835563713L,1108023670498152468L,12312L,9241L,12314L,13339L,13342L,13345L,1061444001242296362L,1268518968205901875L,13356L,1362091535780417536L,14382L,13360L,14386L,1455255634889936970L,12339L,1285343873140392017L,14390L,1338187400953856051L,11324L,1366532239797653596L,1277641816619094088L,14401L,1296210357437595788L,11330L,11331L,12355L,14404L,12357L,14405L,13382L,13384L,13386L,12363L,11339L,13390L,1057740879974105119L,14415L,13392L,13393L,14417L,14419L,1478853253352390883L,12373L,14421L,14422L,13399L,1424314593349730355L,1263241407280185404L,13423L,13431L,1466887885797200037L,13434L,11387L,1346162589041692843L,14459L,13436L,12414L,12418L,1124965572698968166L,14468L,12422L,10375L,1385144213930508520L,10377L,647252780817448972L,1091564651864670248L,12432L,14480L,12433L,14481L,14485L,13463L,1120134226965168178L,14489L,14493L,1366878520248107038L,13475L,14501L,13482L,13483L,1414336004344512534L,12461L,13489L,13490L,14514L,13491L,1350006914481782824L,1412519200785830101L,13497L,13498L,14522L,12475L,1097581008628482078L,13505L,1485069268281200692L,12493L,13518L,1252491173348507768L,1397332960591614042L,12497L,11474L,13524L,14549L,1040139305202503710L,11483L,13532L,1486313524392099962L,12512L,1452450981676711986L,13537L,9445L,12519L,11497L,13547L,1467633006830419968L,13552L,11509L,10488L,1421022990048428065L,14586L,8442L,11518L,13568L,12550L,12551L,13575L,1368208090578812989L,14601L,1077035593973895319L,1287277681091805225L,8463L,12562L,1478535724344148152L,11543L,13594L,7452L,12576L,11553L,13603L,13612L,959221677416411176L,1424090183044825109L,1438917833697263730L,14643L,1424881373201698879L,14645L,2358L,13622L,14647L,10553L,1166241139578376243L,1176910636295389265L,13632L,12610L,1468974038712979704L,1200983066601082961L,12611L,1338238506471919616L,14661L,12614L,12615L,14666L,13643L,14670L,14673L,1188931831291191386L,14675L,14676L,11607L,1378137326643056811L,1418607509551452272L,11610L,13658L,12635L,1145128931473764495L,1270594160298164246L,13664L,14688L,14689L,13667L,13668L,13670L,14696L,9577L,12649L,14700L,12653L,1430664354638073879L,11634L,14706L,1263223495869857954L,11640L,1480579107484991660L,12666L,14715L,1457072473295159351L,14717L,14718L,11647L,14719L,9600L,13697L,13699L,10629L,14727L,11656L,13704L,1478844946600558763L,11657L,1103439191536320513L,1096375542799941632L,13709L,13711L,14735L,1266535215967371344L,13715L,1321010334831480934L,14743L,1363632987962609674L,14745L,13723L,14748L,14751L,1396825094306660423L,948345873182642246L,12705L,14753L,14754L,13733L,10668L,10671L,14769L,964173142933274636L,9651L,1282927002671644726L,1122996886064865363L,13751L,11709L,11711L,1111925588920377476L,12738L,12741L,1146432357579116685L,11719L,13769L,14793L,12751L,11729L,14802L,14808L,12774L,1401849134066958336L,14826L,13805L,13807L,12784L,13809L,1125541644159168583L,1353380808551043092L,13815L,14839L,1282072566634250373L,13817L,13824L,14849L,12802L,13828L,11782L,14859L,1330946810134397028L,1421787014713315370L,14866L,1283207384688234507L,14869L,12823L,14873L,1211798526619684895L,4638L,14878L,12832L,1329218694139871243L,10788L,13861L,11818L,1323720756164821106L,1182957349393137704L,1283205787321237545L,1482085715641897014L,11833L,9788L,11836L,13885L,14909L,11841L,7750L,11846L,14918L,1199946177144172564L,1481846456729079898L,13897L,1061615892808601651L,11853L,12879L,13907L,13908L,13912L,12889L,13913L,12892L,1363933376012226590L,9822L,11873L,11874L,14951L,12904L,1351127353429856256L,11884L,11885L,11889L,12917L,1279742353174691924L,12919L,12925L,13950L,877164184360611841L,11907L,12931L,11908L,13958L,1403470355581894758L,7815L,12941L,1114326913180242001L,11920L,1279597584914186281L,13972L,11925L,12951L,9883L,12958L,12960L,1146694365960491069L,8868L,1329617789606170634L,11949L,1353065341630287984L,11954L,1435101745750736949L,12985L,11962L,10938L,11965L,14013L,14014L,1447616692871233690L,12991L,1366067465947316265L,12994L,8899L,9927L,11977L,1197581560111706182L,1235326933764411424L,14026L,1199014340314009690L,14029L,1742L,1445311581708882044L,13009L,1286108479840456787L,1363974558322917406L,14036L,13014L,1296983631864004698L,14047L,12000L,1297124861055074385L,1324416999715242035L,14056L,12009L,13033L,12010L,14058L,12011L,1343293383392759869L,13045L,11003L,1440360427891462187L,1464730711499211006L,11009L,9986L,14082L,1283235968786366494L,14086L,14090L,8972L,1449845846173552722L,1404811017258532865L,1132644199985070150L,12053L,11032L,14108L,11037L,14109L,14110L,1330506368284626967L,14114L,14117L,14122L,14124L,1187910561799864340L,1372205302019264652L,756580822739320883L,1282441925529571480L,14133L,1283237899881414698L,1303212182711963699L,13111L,11066L,13115L,12092L,1337520010981015662L,14141L,12094L,1264109379901198396L,14146L,14147L,13125L,14151L,1327992354581254246L,14160L,1280642965844262953L,1424290236720218174L,14163L,12116L,1278977526617870438L,846710610028396554L,13142L,14166L,13143L,1324783742677422193L,14170L,10075L,14172L,14173L,12128L,14177L,1461732625403347194L,14181L,1147757659571888141L,14185L,14189L,13168L,9074L,13175L,678328116107542541L,14199L,14201L,1136336457439653959L,1155733529196494901L,1477222411542724682L,13183L,14207L,1135060034368327703L,12166L,13194L,11149L,672217848311054346L,14225L,13202L,1279965157598036050L,1255383950860484659L,14230L,14232L,11162L,14234L,1404582621228306576L,14237L,1249402766653390850L,14245L,362547926511386625L,14248L,1271424607349379133L,13225L,1382127372656181378L,1287274272615698574L,11186L,7094L,1308155586990309516L,1308104715489251349L,13250L,11202L,14276L,12230L,845289446147620915L,11209L,14282L,1382658088733118474L,11218L,12244L,13271L,1321636127467245699L,13275L,14305L,10213L,13286L,14310L,9192L,13290L,12271L,14326L,1086518847311462410L,12281L,13307L,1362026605278662818L,1424496320441356320L,1277039575985819709L}) {
-            offshoringIds.add(id);
-        }
+    @Benchmark
+    public void totalAllianceTransactionsMulti(TotalState state, Blackhole bh) {
+        bh.consume(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                state.multiAllianceTransactions,
+                state.fixture.trackedAllianceIdsLong(),
+                OffshoreBenchmarkSupport.ALLIANCE_TYPE));
+    }
 
-        BankDB bankDb = new BankDB();
+    @Benchmark
+    public void loadBankTransactionsUnfilteredCold(BankColdLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.bankDb.getAllianceTransactions(state.fixture.offshoreIds(), true, null);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
 
-        OffshoreTest instance = new OffshoreTest(bankDb, 672217848311054346L, offshoreIds);
+    @Benchmark
+    public void loadBankTransactionsUnfilteredHot(BankHotLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.bankDb.getAllianceTransactions(state.fixture.offshoreIds(), true, null);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
 
-        long start = System.currentTimeMillis();
-        for (long id : offshoringIds) {
-            Map<ResourceType, Double> balance;
-            if (id > Integer.MAX_VALUE) {
-                // guild
-                balance = instance.getGuildBalance(id);
-            } else { // alliance
-                int allianceId = (int) id;
-                Set<Integer> allianceIds = new IntOpenHashSet();
-                allianceIds.add(allianceId);
-                balance = instance.getAllianceBalance(allianceIds);
+    @Benchmark
+    public void loadBankTransactionsForGuildCold(BankColdLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.bankDb.getAllianceTransactions(
+                state.fixture.offshoreIds(),
+                true,
+                state.guildFilter);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
+
+    @Benchmark
+    public void loadBankTransactionsForGuildHot(BankHotLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.bankDb.getAllianceTransactions(
+                state.fixture.offshoreIds(),
+                true,
+                state.guildFilter);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
+
+    @Benchmark
+    public void loadBankTransactionsForAllianceCold(BankColdLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.bankDb.getAllianceTransactions(
+                state.fixture.offshoreIds(),
+                true,
+                state.primaryAllianceFilter);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
+
+    @Benchmark
+    public void loadBankTransactionsForAllianceHot(BankHotLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.bankDb.getAllianceTransactions(
+                state.fixture.offshoreIds(),
+                true,
+                state.primaryAllianceFilter);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
+
+    @Benchmark
+    public void loadGuildOffsetTransactions(InternalLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.guildDb.getDepositOffsetTransactionsForGuild(
+                state.fixture.guildId(),
+                OffshoreBenchmarkSupport.START,
+                OffshoreBenchmarkSupport.END);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
+
+    @Benchmark
+    public void loadAllianceOffsetTransactions(InternalLoadState state, Blackhole bh) {
+        List<Transaction2> loaded = state.guildDb.getDepositOffsetTransactionsForAlliance(
+                state.fixture.primaryAllianceId(),
+                OffshoreBenchmarkSupport.START,
+                OffshoreBenchmarkSupport.END);
+        bh.consume(loaded.size());
+        bh.consume(checksumTransactions(loaded));
+    }
+
+    @Benchmark
+    public void pipelineGuildBalanceCold(PipelineColdState state, Blackhole bh) {
+        List<Transaction2> toProcess = OffshoreBenchmarkSupport.loadGuildTransactions(
+                state.bankDb,
+                state.guildDb,
+                state.fixture);
+        bh.consume(ResourceType.resourcesToMap(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                toProcess,
+                state.fixture.guildId(),
+                OffshoreBenchmarkSupport.GUILD_TYPE)));
+    }
+
+    @Benchmark
+    public void pipelineGuildBalanceHot(PipelineHotState state, Blackhole bh) {
+        List<Transaction2> toProcess = OffshoreBenchmarkSupport.loadGuildTransactions(
+                state.bankDb,
+                state.guildDb,
+                state.fixture);
+        bh.consume(ResourceType.resourcesToMap(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                toProcess,
+                state.fixture.guildId(),
+                OffshoreBenchmarkSupport.GUILD_TYPE)));
+    }
+
+    @Benchmark
+    public void pipelineAllianceBalanceSingleCold(PipelineColdState state, Blackhole bh) {
+        int allianceId = state.fixture.primaryAllianceId();
+        List<Transaction2> toProcess = OffshoreBenchmarkSupport.loadAllianceTransactions(
+                state.bankDb,
+                state.guildDb,
+                state.fixture,
+                allianceId);
+        bh.consume(ResourceType.resourcesToMap(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                toProcess,
+                allianceId,
+                OffshoreBenchmarkSupport.ALLIANCE_TYPE)));
+    }
+
+    @Benchmark
+    public void pipelineAllianceBalanceSingleHot(PipelineHotState state, Blackhole bh) {
+        int allianceId = state.fixture.primaryAllianceId();
+        List<Transaction2> toProcess = OffshoreBenchmarkSupport.loadAllianceTransactions(
+                state.bankDb,
+                state.guildDb,
+                state.fixture,
+                allianceId);
+        bh.consume(ResourceType.resourcesToMap(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                toProcess,
+                allianceId,
+                OffshoreBenchmarkSupport.ALLIANCE_TYPE)));
+    }
+
+    @Benchmark
+    public void pipelineAllianceBalanceMultiCold(PipelineColdState state, Blackhole bh) {
+        List<Transaction2> toProcess = OffshoreBenchmarkSupport.loadAllianceTransactions(
+                state.bankDb,
+                state.guildDb,
+                state.fixture,
+                state.fixture.trackedAllianceIds());
+        bh.consume(ResourceType.resourcesToMap(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                toProcess,
+                state.fixture.trackedAllianceIdsLong(),
+                OffshoreBenchmarkSupport.ALLIANCE_TYPE)));
+    }
+
+    @Benchmark
+    public void pipelineAllianceBalanceMultiHot(PipelineHotState state, Blackhole bh) {
+        List<Transaction2> toProcess = OffshoreBenchmarkSupport.loadAllianceTransactions(
+                state.bankDb,
+                state.guildDb,
+                state.fixture,
+                state.fixture.trackedAllianceIds());
+        bh.consume(ResourceType.resourcesToMap(OffshoreInstance.getTotal(
+                state.fixture.offshoreIds(),
+                toProcess,
+                state.fixture.trackedAllianceIdsLong(),
+                OffshoreBenchmarkSupport.ALLIANCE_TYPE)));
+    }
+
+    public static void main(String[] args) throws RunnerException, IOException {
+        OptionsBuilder options = new OptionsBuilder();
+        options.include("^" + Pattern.quote(OffshoreTest.class.getName()) + ".*");
+        options.shouldFailOnError(true);
+
+        applyIntegerOption(System.getProperty("offshoreJmhWarmupIterations"), options::warmupIterations);
+        applyIntegerOption(System.getProperty("offshoreJmhMeasurementIterations"), options::measurementIterations);
+        applyIntegerOption(System.getProperty("offshoreJmhForks"), options::forks);
+
+        String resultFile = System.getProperty("offshoreJmhResultFile");
+        if (resultFile != null && !resultFile.isBlank()) {
+            Path output = Path.of(resultFile).toAbsolutePath();
+            if (output.getParent() != null) {
+                Files.createDirectories(output.getParent());
             }
-            System.out.println("ID: " + id + ", balance: " + ResourceType.toString(balance));
+            options.result(output.toString());
         }
-        long diff = System.currentTimeMillis() - start;
-        System.out.println("Took " + diff + "ms");
 
-        if (true) {
-            System.exit(0);
+        String resultFormat = System.getProperty("offshoreJmhResultFormat");
+        if (resultFormat != null && !resultFormat.isBlank()) {
+            options.resultFormat(ResultFormatType.valueOf(resultFormat.toUpperCase(Locale.ROOT)));
+        }
+
+        new Runner(options.build()).run();
+    }
+
+    private static void applyIntegerOption(String value, java.util.function.IntConsumer consumer) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        consumer.accept(Integer.parseInt(value));
+    }
+
+    private static long runFilter(List<Transaction2> transactions, Predicate<Transaction2> filter) {
+        long checksum = 0L;
+        int matches = 0;
+        for (Transaction2 tx : transactions) {
+            if (filter.test(tx)) {
+                matches++;
+                checksum = mix(checksum, tx.tx_id);
+                checksum = mix(checksum, tx.sender_id);
+                checksum = mix(checksum, tx.receiver_id);
+            }
+        }
+        return mix(checksum, matches);
+    }
+
+    private static long checksumStoredRows(List<OffshoreBenchmarkSupport.StoredPayloadRow> rows) {
+        long checksum = 0L;
+        for (OffshoreBenchmarkSupport.StoredPayloadRow row : rows) {
+            checksum = mix(checksum, row.txId());
+            checksum = mix(checksum, row.senderKey());
+            checksum = mix(checksum, row.receiverKey());
+            checksum = mix(checksum, row.payload() == null ? 0L : row.payload().length);
+        }
+        return checksum;
+    }
+
+    private static long checksumTransactions(List<Transaction2> transactions) {
+        long checksum = 0L;
+        for (Transaction2 tx : transactions) {
+            checksum = mix(checksum, tx.tx_id);
+            checksum = mix(checksum, tx.sender_id);
+            checksum = mix(checksum, tx.receiver_id);
+            checksum = mix(checksum, Double.doubleToLongBits(tx.resources[ResourceType.MONEY.ordinal()]));
+        }
+        return checksum;
+    }
+
+    private static long mix(long current, long value) {
+        long mixed = current ^ value;
+        return mixed * 0x9E3779B97F4A7C15L;
+    }
+
+    @State(Scope.Thread)
+    public static class RawBankReadState {
+        private OffshoreBenchmarkSupport.BenchmarkFixture fixture;
+        private OffshoreBenchmarkSupport.ActualBankStore bankStore;
+
+        @Setup(Level.Trial)
+        public void setUp() throws Exception {
+            fixture = OffshoreBenchmarkSupport.fixture();
+            bankStore = new OffshoreBenchmarkSupport.ActualBankStore(fixture.snapshotDirectory());
+        }
+
+        @TearDown(Level.Trial)
+        public void tearDown() {
+            bankStore.close();
+            OffshoreBenchmarkSupport.shutdownBenchmarkSchedulers();
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class PayloadDecodeState {
+        private OffshoreBenchmarkSupport.BenchmarkFixture fixture;
+        private List<OffshoreBenchmarkSupport.StoredPayloadRow> rows;
+        private BitBuffer buffer;
+
+        @Setup(Level.Trial)
+        public void setUp() {
+            fixture = OffshoreBenchmarkSupport.fixture();
+            rows = fixture.bankRows();
+            buffer = Transaction2.createNoteBuffer();
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class FilterState {
+        private OffshoreBenchmarkSupport.BenchmarkFixture fixture;
+        private Predicate<Transaction2> guildFilter;
+        private Predicate<Transaction2> primaryAllianceFilter;
+        private List<Transaction2> workingTransactions;
+
+        @Setup(Level.Trial)
+        public void setUpFilters() {
+            fixture = OffshoreBenchmarkSupport.fixture();
+            guildFilter = OffshoreInstance.getFilter(fixture.guildId(), OffshoreBenchmarkSupport.GUILD_TYPE);
+            primaryAllianceFilter = OffshoreInstance.getFilter(
+                    fixture.primaryAllianceId(),
+                    OffshoreBenchmarkSupport.ALLIANCE_TYPE);
+        }
+
+        @Setup(Level.Invocation)
+        public void setUpInvocation() {
+            workingTransactions = OffshoreBenchmarkSupport.decodeRows(fixture.bankRows());
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class TotalState {
+        private OffshoreBenchmarkSupport.BenchmarkFixture fixture;
+        private List<Transaction2> guildTransactions;
+        private List<Transaction2> primaryAllianceTransactions;
+        private List<Transaction2> multiAllianceTransactions;
+
+        @Setup(Level.Trial)
+        public void setUpTotals() throws Exception {
+            fixture = OffshoreBenchmarkSupport.fixture();
+            OffshoreBenchmarkSupport.configureDatabaseDirectory(fixture);
+
+            try (BankDB bankDb = new BankDB(); GuildDB guildDb = new GuildDB(null, fixture.guildId())) {
+                guildTransactions = OffshoreBenchmarkSupport.loadGuildTransactions(bankDb, guildDb, fixture);
+            }
+            try (BankDB bankDb = new BankDB(); GuildDB guildDb = new GuildDB(null, fixture.guildId())) {
+                primaryAllianceTransactions = OffshoreBenchmarkSupport.loadAllianceTransactions(
+                        bankDb,
+                        guildDb,
+                        fixture,
+                        fixture.primaryAllianceId());
+            }
+            try (BankDB bankDb = new BankDB(); GuildDB guildDb = new GuildDB(null, fixture.guildId())) {
+                multiAllianceTransactions = OffshoreBenchmarkSupport.loadAllianceTransactions(
+                        bankDb,
+                        guildDb,
+                        fixture,
+                        fixture.trackedAllianceIds());
+            }
+        }
+
+        @TearDown(Level.Trial)
+        public void tearDownTotals() {
+            OffshoreBenchmarkSupport.shutdownBenchmarkSchedulers();
+        }
+    }
+
+    public abstract static class AbstractBankLoadState {
+        protected OffshoreBenchmarkSupport.BenchmarkFixture fixture;
+        protected BankDB bankDb;
+        protected Predicate<Transaction2> guildFilter;
+        protected Predicate<Transaction2> primaryAllianceFilter;
+
+        @Setup(Level.Trial)
+        public void setUpBank() throws Exception {
+            fixture = OffshoreBenchmarkSupport.fixture();
+            OffshoreBenchmarkSupport.configureDatabaseDirectory(fixture);
+            bankDb = new BankDB();
+            guildFilter = OffshoreInstance.getFilter(fixture.guildId(), OffshoreBenchmarkSupport.GUILD_TYPE);
+            primaryAllianceFilter = OffshoreInstance.getFilter(
+                    fixture.primaryAllianceId(),
+                    OffshoreBenchmarkSupport.ALLIANCE_TYPE);
+        }
+
+        @TearDown(Level.Trial)
+        public void tearDownBank() {
+            bankDb.close();
+            OffshoreBenchmarkSupport.shutdownBenchmarkSchedulers();
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class BankColdLoadState extends AbstractBankLoadState {
+        @Setup(Level.Invocation)
+        public void prepareInvocation() {
+            OffshoreBenchmarkSupport.clearBankTransactionCache(bankDb);
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class BankHotLoadState extends AbstractBankLoadState {
+        @Setup(Level.Invocation)
+        public void prepareInvocation() {
+            OffshoreBenchmarkSupport.clearBankTransactionCache(bankDb);
+            bankDb.getAllianceTransactions(fixture.offshoreIds(), true, null);
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class InternalLoadState {
+        private OffshoreBenchmarkSupport.BenchmarkFixture fixture;
+        private GuildDB guildDb;
+
+        @Setup(Level.Trial)
+        public void setUpGuild() throws Exception {
+            fixture = OffshoreBenchmarkSupport.fixture();
+            OffshoreBenchmarkSupport.configureDatabaseDirectory(fixture);
+            guildDb = new GuildDB(null, fixture.guildId());
+        }
+
+        @TearDown(Level.Trial)
+        public void tearDownGuild() {
+            guildDb.close();
+            OffshoreBenchmarkSupport.shutdownBenchmarkSchedulers();
+        }
+    }
+
+    public abstract static class AbstractPipelineState {
+        protected OffshoreBenchmarkSupport.BenchmarkFixture fixture;
+        protected BankDB bankDb;
+        protected GuildDB guildDb;
+
+        @Setup(Level.Trial)
+        public void setUpPipeline() throws Exception {
+            fixture = OffshoreBenchmarkSupport.fixture();
+            OffshoreBenchmarkSupport.configureDatabaseDirectory(fixture);
+            bankDb = new BankDB();
+            guildDb = new GuildDB(null, fixture.guildId());
+        }
+
+        @TearDown(Level.Trial)
+        public void tearDownPipeline() {
+            bankDb.close();
+            guildDb.close();
+            OffshoreBenchmarkSupport.shutdownBenchmarkSchedulers();
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class PipelineColdState extends AbstractPipelineState {
+        @Setup(Level.Invocation)
+        public void prepareInvocation() {
+            OffshoreBenchmarkSupport.clearBankTransactionCache(bankDb);
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class PipelineHotState extends AbstractPipelineState {
+        @Setup(Level.Invocation)
+        public void prepareInvocation() {
+            OffshoreBenchmarkSupport.clearBankTransactionCache(bankDb);
+            bankDb.getAllianceTransactions(fixture.offshoreIds(), true, null);
         }
     }
 }
