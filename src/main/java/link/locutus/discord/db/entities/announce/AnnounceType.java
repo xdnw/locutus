@@ -42,7 +42,7 @@ public enum AnnounceType {
             if (maxUses != 0) {
                 create = create.setMaxUses(maxUses);
             }
-                Invite invite = RateLimitUtil.complete(create, RateLimitedSources.ANNOUNCE_INVITE_SYNC);
+                Invite invite = RateLimitUtil.complete(create, RateLimitedSources.INVITE_SYNC);
             return invite.getUrl();
         }
 
@@ -58,7 +58,7 @@ public enum AnnounceType {
             String inviteUrl = inviteSplit[inviteSplit.length - 1];
             String code = inviteUrl.substring(inviteUrl.lastIndexOf("/") + 1);
 
-                for (Invite invite : RateLimitUtil.complete(otherDb.getGuild().retrieveInvites(), RateLimitedSources.ANNOUNCE_INVITE_SYNC)) {
+                for (Invite invite : RateLimitUtil.complete(otherDb.getGuild().retrieveInvites(), RateLimitedSources.INVITE_SYNC)) {
                 if (invite.getCode().equals(code)) {
                     return true;
                 }

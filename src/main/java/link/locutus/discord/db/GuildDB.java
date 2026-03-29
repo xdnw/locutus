@@ -70,6 +70,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import net.dv8tion.jda.api.requests.restaction.InviteAction;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -890,8 +891,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             DefaultGuildChannelUnion defChannel = guild.getDefaultChannel();
             if (defChannel == null)
                 return null;
-            return RateLimitUtil
-                    .complete(defChannel.createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
+            InviteAction createInvite = defChannel.createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0);
+            return RateLimitUtil.complete(createInvite, RateLimitedSources.GUILD_DB_DISCORD_SYNC);
         }
         return null;
     }

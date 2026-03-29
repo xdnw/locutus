@@ -165,7 +165,7 @@ public class GuildKey {
                         if (!isValid) {
                             try {
                                 try {
-                                    List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites(), RateLimitedSources.GUILD_DB_DISCORD_SYNC);
+                                    List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites(), RateLimitedSources.INVITE_SYNC);
                                     for (Invite invite : invites) {
                                         String inviteCode = invite.getCode();
                                         inviteCodes.add(inviteCode);

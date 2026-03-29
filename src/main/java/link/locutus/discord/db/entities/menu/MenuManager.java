@@ -70,7 +70,7 @@ public class MenuManager {
                     commands.add(Commands.message(label));
                 }
             }
-                RateLimitUtil.queue(db.getGuild().updateCommands().addCommands(commands), RateLimitedSources.MENU_MANAGER_COMMAND_SYNC);
+            RateLimitUtil.queue(db.getGuild().updateCommands().addCommands(commands), RateLimitedSources.MENU_MANAGER_COMMAND_SYNC);
         }
     }
 

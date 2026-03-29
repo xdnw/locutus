@@ -21,10 +21,12 @@ public final class RateLimitedSources {
         return new Source(sendPolicy, deferredPriority);
     }
 
+    public static final RateLimitedSource DB_NATION_ROLE_ASSIGN = source(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_ROLE_ASSIGN);
+    public static final RateLimitedSource DB_NATION_DIRECT_MESSAGE = source(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_DIRECT_MESSAGE);
+    public static final RateLimitedSource COMMAND_RESULT = source(SendPolicy.IMMEDIATE, DeferredPriority.COMMAND_RESULT);
+
     public static final RateLimitedSource PNW_PUSHER_INVALID_KEY_ALERT = source(SendPolicy.DEFER, DeferredPriority.PNW_PUSHER_INVALID_KEY_ALERT);
     public static final RateLimitedSource REPORT_COMMAND_ALERT = source(SendPolicy.DEFER, DeferredPriority.REPORT_COMMAND_ALERT);
-    public static final RateLimitedSource COMMAND_RESULT = source(SendPolicy.IMMEDIATE, DeferredPriority.COMMAND_RESULT);
-    public static final RateLimitedSource COMMAND_STATUS = source(SendPolicy.DROP, DeferredPriority.COMMAND_STATUS);
     public static final RateLimitedSource COMMAND_PROGRESS = source(SendPolicy.DROP, DeferredPriority.COMMAND_PROGRESS);
     public static final RateLimitedSource GUILD_DB_ADD_BALANCE_ALERT = source(SendPolicy.DEFER, DeferredPriority.GUILD_DB_ADD_BALANCE_ALERT);
     public static final RateLimitedSource GUILD_DB_DISCORD_SYNC = source(SendPolicy.DEFER, DeferredPriority.GUILD_DB_DISCORD_SYNC);
@@ -38,10 +40,8 @@ public final class RateLimitedSources {
     public static final RateLimitedSource GUILD_HANDLER_RECRUIT_MESSAGE_STATUS = source(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_RECRUIT_MESSAGE_STATUS);
     public static final RateLimitedSource GUILD_HANDLER_RECRUIT_MESSAGE_ERROR = source(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_RECRUIT_MESSAGE_ERROR);
     public static final RateLimitedSource GUILD_HANDLER_DISCORD_ALERT = source(SendPolicy.CONDENSE, DeferredPriority.GUILD_HANDLER_DISCORD_ALERT);
-    public static final RateLimitedSource DB_NATION_ROLE_ASSIGN = source(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_ROLE_ASSIGN);
     public static final RateLimitedSource DB_NATION_OFFSHORE_LOG = source(SendPolicy.DEFER, DeferredPriority.DB_NATION_OFFSHORE_LOG);
-    public static final RateLimitedSource DB_NATION_DIRECT_MESSAGE = source(SendPolicy.IMMEDIATE, DeferredPriority.DB_NATION_DIRECT_MESSAGE);
-    public static final RateLimitedSource ANNOUNCE_INVITE_SYNC = source(SendPolicy.DEFER, DeferredPriority.ANNOUNCE_INVITE_SYNC);
+    public static final RateLimitedSource INVITE_SYNC = source(SendPolicy.DEFER, DeferredPriority.INVITE_SYNC);
     public static final RateLimitedSource MENU_MANAGER_COMMAND_SYNC = source(SendPolicy.DEFER, DeferredPriority.MENU_MANAGER_COMMAND_SYNC);
     public static final RateLimitedSource SEND_INTERNAL_TRANSFER_LOG = source(SendPolicy.CONDENSE, DeferredPriority.SEND_INTERNAL_TRANSFER_LOG);
     public static final RateLimitedSource ALERT_AUDIT = source(SendPolicy.DEFER, DeferredPriority.ALERT_AUDIT);
@@ -74,6 +74,7 @@ public final class RateLimitedSources {
     public static final RateLimitedSource WAR_ROOM_ROOM_CLEANUP = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_ROOM_CLEANUP);
     public static final RateLimitedSource WAR_ROOM_ROOM_LOG = source(SendPolicy.CONDENSE, DeferredPriority.WAR_ROOM_ROOM_LOG);
     public static final RateLimitedSource WAR_ROOM_ROOM_INFO = source(SendPolicy.DEFER, DeferredPriority.WAR_ROOM_ROOM_INFO);
+    public static final RateLimitedSource NEW_USER_MAIN = source(SendPolicy.DEFER, DeferredPriority.NEW_USER_MAIN);
 
     private RateLimitedSources() {
     }
