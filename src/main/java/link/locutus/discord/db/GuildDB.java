@@ -78,6 +78,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -166,6 +167,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     private static final String TRANSACTION_FORMAT_TABLE = "TRANSACTION_PAYLOAD_FORMAT";
     private static final String REIMBURSED_WARS_TABLE = "REIMBURSED_WARS";
     private static final String BANKER_WITHDRAW_USAGE_TABLE = "BANKER_WITHDRAW_USAGE";
+
+    public static final boolean FORCE_MIGRATION_RECHECK = true;
 
     private final Guild guild;
     private volatile IAutoRoleTask autoRoleTask;
@@ -1240,10 +1243,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 assertCurrentTransactionsTable(INTERNAL_TRANSACTIONS_TABLE);
                 createInternalTransactionsTable();
                 ensureTransactionPayloadFormat(false);
+                maybeRecheckInternalTransactionsMigration();
                 return;
             }
 
-            String sourceTable = tableExists(INTERNAL_TRANSACTIONS_LEGACY_TABLE) ? INTERNAL_TRANSACTIONS_LEGACY_TABLE : null;
+            String sourceTable = findInternalTransactionMigrationSourceTable();
             createInternalTransactionsTable();
             ensureTransactionPayloadFormat(true);
             if (sourceTable != null) {
@@ -1292,6 +1296,65 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                             Transaction2Jdbc.bindWithId(stmt, tx, noteBuffer);
                         });
                 });
+    }
+
+    private void maybeRecheckInternalTransactionsMigration() throws SQLException {
+        if (!FORCE_MIGRATION_RECHECK) {
+            return;
+        }
+        String sourceTable = findInternalTransactionMigrationSourceTable();
+        if (sourceTable == null) {
+            return;
+        }
+        if (TransactionTableMigrator.needsRecheck(getConnection(), sourceTable, INTERNAL_TRANSACTIONS_TABLE)) {
+            migrateInternalTransactions(sourceTable);
+        }
+    }
+
+    private String findInternalTransactionMigrationSourceTable() throws SQLException {
+        return findTransactionMigrationSourceTable(getConnection(), INTERNAL_TRANSACTIONS_TABLE,
+                INTERNAL_TRANSACTIONS_LEGACY_TABLE);
+    }
+
+    static String findTransactionMigrationSourceTable(Connection connection, String progressKey,
+            String preferredLegacyTable) throws SQLException {
+        TransactionTableMigrator.MigrationProgress progress = TransactionTableMigrator.loadProgress(connection,
+                progressKey);
+        if (progress != null && progress.sourceTable() != null && tableExists(connection, progress.sourceTable())) {
+            return progress.sourceTable();
+        }
+        if (tableExists(connection, preferredLegacyTable)) {
+            return preferredLegacyTable;
+        }
+        List<String> legacyCandidates = findTablesWithPrefix(connection, preferredLegacyTable + "_");
+        return legacyCandidates.size() == 1 ? legacyCandidates.get(0) : null;
+    }
+
+    private static List<String> findTablesWithPrefix(Connection connection, String prefix) throws SQLException {
+        List<String> matches = new ArrayList<>();
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE ? ESCAPE '\\' ORDER BY name ASC")) {
+            stmt.setString(1, escapeSqliteLikePattern(prefix) + "%");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    matches.add(rs.getString("name"));
+                }
+            }
+        }
+        return matches;
+    }
+
+    private static boolean tableExists(Connection connection, String tableName) throws SQLException {
+        DatabaseMetaData metaData = connection.getMetaData();
+        try (ResultSet resultSet = metaData.getTables(null, null, tableName, new String[] { "TABLE" })) {
+            return resultSet.next();
+        }
+    }
+
+    private static String escapeSqliteLikePattern(String value) {
+        return value.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private String renameTable(String currentName, String preferredName) throws SQLException {

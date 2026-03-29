@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -178,6 +179,48 @@ class TransactionTableMigratorTest {
             assertCanonicalRows(conn, TARGET, expected);
             assertProgress(conn, TARGET, LEGACY_SOURCE, 3L, 2, true);
             assertProgress(conn, TARGET + "::" + LEGACY_ALLIANCE_SOURCE, LEGACY_ALLIANCE_SOURCE, 4L, 2, true);
+        }
+    }
+
+    @Test
+    void needsRecheckWhenTargetIsEmptyButLegacySourceHasRows() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            createLegacySourceTable(conn, LEGACY_SOURCE);
+            createCanonicalTargetTable(conn, TARGET);
+
+            insertLegacySourceRow(conn, LEGACY_SOURCE, sampleTransaction(1));
+
+            assertTrue(TransactionTableMigrator.needsRecheck(conn, LEGACY_SOURCE, TARGET));
+        }
+    }
+
+    @Test
+    void needsRecheckWhileMigrationProgressIsIncompleteAndStopsAfterCompletion() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            createLegacySourceTable(conn, LEGACY_SOURCE);
+            createCanonicalTargetTable(conn, TARGET);
+
+            List<Transaction2> expected = sampleTransactions(5);
+            for (Transaction2 tx : expected) {
+                insertLegacySourceRow(conn, LEGACY_SOURCE, tx);
+            }
+
+            AtomicInteger batchCalls = new AtomicInteger();
+            RuntimeException failure = assertThrows(RuntimeException.class, () -> TransactionTableMigrator.migrate(conn,
+                    LEGACY_SOURCE, TARGET, false, 2, batch -> {
+                        if (batchCalls.incrementAndGet() == 2) {
+                            throw new RuntimeException("stop after first committed batch");
+                        }
+                        writeCanonicalBatch(conn, TARGET, batch);
+                    }));
+            assertEquals("stop after first committed batch", failure.getMessage());
+            assertTrue(TransactionTableMigrator.needsRecheck(conn, LEGACY_SOURCE, TARGET));
+
+            TransactionTableMigrator.migrate(conn, LEGACY_SOURCE, TARGET, false, 2,
+                    batch -> writeCanonicalBatch(conn, TARGET, batch));
+
+            assertCanonicalRows(conn, TARGET, expected);
+            assertFalse(TransactionTableMigrator.needsRecheck(conn, LEGACY_SOURCE, TARGET));
         }
     }
 
