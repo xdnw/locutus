@@ -279,9 +279,14 @@ public final class TransactionNote {
     private static Map<DepositType, Object> copyParsed(Map<DepositType, Object> parsed) {
         Map<DepositType, Object> copy = new LinkedHashMap<>(parsed.size());
         for (Map.Entry<DepositType, Object> entry : parsed.entrySet()) {
-            copy.put(entry.getKey(), copyValue(entry.getValue()));
+            copy.put(entry.getKey(), copyValue(entry.getKey(), entry.getValue()));
         }
         return Collections.unmodifiableMap(copy);
+    }
+
+    private static Object copyValue(DepositType type, Object value) {
+        Object copy = copyValue(value);
+        return type == null ? copy : type.normalizeValue(copy);
     }
 
     private static Object copyValue(Object value) {
@@ -471,7 +476,7 @@ public final class TransactionNote {
             this.parsed = new LinkedHashMap<>();
             if (seed != null && !seed.isEmpty()) {
                 for (Map.Entry<DepositType, Object> entry : seed.entrySet()) {
-                    this.parsed.put(entry.getKey(), copyValue(entry.getValue()));
+                    this.parsed.put(entry.getKey(), copyValue(entry.getKey(), entry.getValue()));
                 }
             }
         }
@@ -482,7 +487,7 @@ public final class TransactionNote {
 
         public Builder put(DepositType type, Object value) {
             if (type != null) {
-                parsed.put(type, copyValue(value));
+                parsed.put(type, copyValue(type, value));
             }
             return this;
         }

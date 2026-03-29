@@ -191,12 +191,23 @@ public enum DepositType {
     INCENTIVE(DEPOSIT, "Reward for government activity", "Reward for government activity", true) {
         @Override
         public Object resolve(String value, long timestamp) {
-            return value;
+            NationMeta meta = coerceIncentiveMeta(value);
+            return meta != null ? meta : value;
+        }
+
+        @Override
+        public Object normalizeValue(Object value) {
+            NationMeta meta = coerceIncentiveMeta(value);
+            return meta != null ? meta : value;
         }
 
         @Override
         public void write(BitBuffer out, Object value) {
-            out.writeByte(((NationMeta) value).ordinal());
+            NationMeta meta = coerceIncentiveMeta(value);
+            if (meta == null) {
+                throw new IllegalArgumentException("Unsupported incentive note value: " + value);
+            }
+            out.writeByte(meta.ordinal());
         }
 
         @Override
@@ -239,7 +250,7 @@ public enum DepositType {
         for (Map.Entry<DepositType, Object> entry : data.entrySet()) {
             DepositType type = entry.getKey();
             buffer.writeBits(type.ordinal(), 5);
-            Object value = entry.getValue();
+            Object value = type.normalizeValue(entry.getValue());
             if (value == null) {
                 buffer.writeBit(false);
             } else {
@@ -269,6 +280,10 @@ public enum DepositType {
     public static Map<DepositType, Object> readMap(byte[] bytes, BitBuffer buffer) {
         buffer.setBytes(bytes);
         return readMap(buffer);
+    }
+
+    public Object normalizeValue(Object value) {
+        return value;
     }
 
     public void write(BitBuffer out, Object value) {
@@ -388,6 +403,31 @@ public enum DepositType {
             case DEPOSIT, TAX, LOAN, GRANT, IGNORE, TRADE -> true;
             default -> false;
         };
+    }
+
+    // Accept both exact NationMeta names and older shorthand incentive labels.
+    private static NationMeta coerceIncentiveMeta(Object value) {
+        if (value instanceof NationMeta meta) {
+            return meta;
+        }
+        if (!(value instanceof CharSequence text)) {
+            return null;
+        }
+        String normalized = text.toString().trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        normalized = normalized.toUpperCase(Locale.ROOT);
+        try {
+            return NationMeta.valueOf(normalized);
+        } catch (IllegalArgumentException ignored) {
+            return switch (normalized) {
+                case "INTERVIEWER" -> NationMeta.INCENTIVE_INTERVIEWER;
+                case "MENTOR" -> NationMeta.INCENTIVE_MENTOR;
+                case "REFERRAL" -> NationMeta.INCENTIVE_REFERRER;
+                default -> null;
+            };
+        }
     }
 
 }

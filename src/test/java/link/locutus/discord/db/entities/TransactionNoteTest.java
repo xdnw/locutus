@@ -326,21 +326,43 @@ class TransactionNoteTest {
         }
 
         @Test
-        void legacyParsingPreservesEnumValuedNotePayloadText() {
+        void legacyParsingCoercesRecognizedIncentiveTextToNationMeta() {
                 TransactionNote note = TransactionNote.parseLegacy("#deposit #incentive=REFERRER", 0L);
 
-                assertEquals("REFERRER", note.get(DepositType.INCENTIVE));
+                assertEquals(NationMeta.REFERRER, note.get(DepositType.INCENTIVE));
                 assertEquals("#deposit #incentive=REFERRER", note.toLegacyString());
         }
 
         @Test
-        void parseTransferHashNotesCompatibilityHelperPreservesEnumPayloadText() {
+        void parseTransferHashNotesCompatibilityHelperReturnsTypedIncentiveValues() {
                 Map<DepositType, Object> parsed = Transaction2.parseTransferHashNotes("#deposit #incentive=REFERRER",
                                 0L);
 
                 assertTrue(parsed.containsKey(DepositType.DEPOSIT));
-                assertEquals("REFERRER", parsed.get(DepositType.INCENTIVE));
+                assertEquals(NationMeta.REFERRER, parsed.get(DepositType.INCENTIVE));
                 assertEquals(TransactionNote.parseLegacy("#deposit #incentive=REFERRER", 0L).asMap(), parsed);
+        }
+
+        @Test
+        void legacyIncentiveNotesRoundTripThroughPayloadSerialization() {
+                Transaction2 tx = Transaction2.constructLegacy(7, 9L, 11L, 1, 13L, 2, 17,
+                                "#deposit #incentive=REFERRER", new double[ResourceType.values.length]);
+
+                Transaction2 restored = roundTrip(tx);
+
+                assertEquals(NationMeta.REFERRER, restored.getStructuredNote().get(DepositType.INCENTIVE));
+                assertEquals("#deposit #incentive=REFERRER", restored.getLegacyNote());
+        }
+
+        @Test
+        void legacyIncentiveAliasesRoundTripThroughPayloadSerialization() {
+                Transaction2 tx = Transaction2.constructLegacy(7, 9L, 11L, 1, 13L, 2, 17,
+                                "#deposit #incentive=INTERVIEWER", new double[ResourceType.values.length]);
+
+                Transaction2 restored = roundTrip(tx);
+
+                assertEquals(NationMeta.INCENTIVE_INTERVIEWER, restored.getStructuredNote().get(DepositType.INCENTIVE));
+                assertEquals("#deposit #incentive=INCENTIVE_INTERVIEWER", restored.getLegacyNote());
         }
 
         private static long legacyFnvHash(String legacy) {
