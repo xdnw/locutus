@@ -36,21 +36,21 @@ public class DBMainV2 implements Closeable {
         } else {
             throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
         }
-        if (name.equalsIgnoreCase("nations")) {
-            new RebuildTask(file, () -> {
-                try {
-                    db.getConnection().close();
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }, () -> {
-                try {
-                    db = Database.connect(file);
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }).rebuild(RebuildTask.RecoveryMode.SQLITE_RECOVER);
-        }
+//        if (name.equalsIgnoreCase("nations")) {
+//            new RebuildTask(file, () -> {
+//                try {
+//                    db.getConnection().close();
+//                } catch (SQLException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }, () -> {
+//                try {
+//                    db = Database.connect(file);
+//                } catch (SQLException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }).rebuild(RebuildTask.RecoveryMode.SQLITE_RECOVER);
+//        }
         init();
     }
 
