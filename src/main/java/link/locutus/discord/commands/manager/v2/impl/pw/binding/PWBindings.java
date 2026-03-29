@@ -986,6 +986,12 @@ public class PWBindings extends BindingHelper {
             value = city;
             city = 0;
         }
+        if (DepositType.hasLegacyRootAccountTag(type)) {
+            value = 0;
+        }
+        if (type == DepositType.CASH) {
+            value = 0;
+        }
         if (type.isReserved()) {
             throw new IllegalArgumentException(
                     "The note `" + type + "` is reserved for internal use. Please use a different note.");
