@@ -1437,6 +1437,10 @@ public final class Locutus extends ListenerAdapter {
         return executor;
     }
 
+    public ScheduledThreadPoolExecutor getScheduler() {
+        return scheduler;
+    }
+
     public void stop() {
         synchronized (OffshoreInstance.BANK_LOCK) {
 //            if (raidEstimator != null) {
