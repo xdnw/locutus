@@ -168,6 +168,13 @@ public class WebOptionBindings extends BindingHelper {
             return data;
         }, false);
     }
+    // locutus roles
+    @Binding(types = Roles.class)
+    public WebOption getLocutusRoles() {
+        List<String> roleNames = Arrays.stream(Roles.values).map(Enum::name).toList();
+        List<String> roleDesc = Arrays.stream(Roles.values).map(r -> r.getDesc()).toList();
+        return new WebOption(Roles.class).setOptions(roleNames, roleDesc);
+    }
 //TextChannel
     @Binding(types = TextChannel.class)
     public WebOption getTextChannel() {
