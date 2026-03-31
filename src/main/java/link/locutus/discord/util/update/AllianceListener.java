@@ -30,6 +30,7 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
@@ -39,10 +40,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
 public class AllianceListener {
+    private final AtomicBoolean taxRefreshRequested = new AtomicBoolean();
+    private final AtomicBoolean taxRefreshWorkerRunning = new AtomicBoolean();
 
     public AllianceListener() {
         Locutus.imp().getRepeatingTasks().addTask("Militarization Alerts", new CaughtTask() {
@@ -165,21 +169,61 @@ public class AllianceListener {
         }
 
         { // Update tax records
-            List<TaxDeposit> taxes = new ObjectArrayList<>();
-            for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
-                // Only update taxes if alliance has locutus taxable nations
-                if (alliance.getNations(DBNation::isTaxable).isEmpty()) continue;
-                try {
-                    List<TaxDeposit> recs = alliance.updateTaxes(null, false);
-                    if (recs != null) {
-                        taxes.addAll(recs);
-                    }
-                } catch (Throwable ignore) {
-                    ignore.printStackTrace();
-                }
-            }
-            Locutus.imp().getBankDB().addTaxDeposits(taxes);
+            requestTaxRefresh();
         }
+    }
+
+    private void requestTaxRefresh() {
+        taxRefreshRequested.set(true);
+        startTaxRefreshWorkerIfNeeded();
+    }
+
+    private void startTaxRefreshWorkerIfNeeded() {
+        if (!taxRefreshWorkerRunning.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+                @Override
+                public void runUnsafe() {
+                    runPendingTaxRefreshes();
+                }
+            });
+        } catch (RuntimeException e) {
+            taxRefreshWorkerRunning.set(false);
+            throw e;
+        }
+    }
+
+    private void runPendingTaxRefreshes() {
+        try {
+            while (taxRefreshRequested.getAndSet(false)) {
+                refreshTaxes();
+            }
+        } finally {
+            taxRefreshWorkerRunning.set(false);
+            if (taxRefreshRequested.get()) {
+                startTaxRefreshWorkerIfNeeded();
+            }
+        }
+    }
+
+    // Coalesce turn-triggered refresh requests so remote tax fetches never block the turn event.
+    private void refreshTaxes() {
+        List<TaxDeposit> taxes = new ObjectArrayList<>();
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            // Recompute eligibility inside the worker so repeated turn requests collapse into the latest full refresh.
+            if (alliance.getNations(DBNation::isTaxable).isEmpty()) continue;
+            try {
+                List<TaxDeposit> recs = alliance.updateTaxes(null, false);
+                if (recs != null) {
+                    taxes.addAll(recs);
+                }
+            } catch (Throwable ignore) {
+                ignore.printStackTrace();
+            }
+        }
+        Locutus.imp().getBankDB().addTaxDeposits(taxes);
     }
 
     public static void runMilitarizationAlerts() {
