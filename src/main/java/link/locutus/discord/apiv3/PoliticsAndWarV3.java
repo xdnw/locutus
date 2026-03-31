@@ -947,6 +947,8 @@ public class PoliticsAndWarV3 {
             p.def_id();
             p.att_alliance_id();
             p.def_alliance_id();
+            p.att_alliance_position();
+            p.def_alliance_position();
             p.war_type();
             p.att_peace();
             p.def_peace();
