@@ -4,6 +4,8 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.scheduler.TriFunction;
 
+import java.util.function.Predicate;
+
 public enum WarCostStat {
     WAR_VALUE,
     SOLDIER(MilitaryUnit.SOLDIER),
@@ -29,6 +31,10 @@ public enum WarCostStat {
     PEACE(AttackType.PEACE),
     MISSILE_ATTACK(AttackType.MISSILE),
     NUKE_ATTACK(AttackType.NUKE),
+    PROJECTILE_ATTACK(f -> switch (f) {
+        case NUKE,MISSILE -> true;
+        default -> false;
+    }),
     MONEY(ResourceType.MONEY),
     FOOD(ResourceType.FOOD),
     COAL(ResourceType.COAL),
@@ -45,16 +51,16 @@ public enum WarCostStat {
 
     private final MilitaryUnit unit;
     private final ResourceType resource;
-    private final AttackType attack;
+    private final Predicate<AttackType> isAttack;
 
     WarCostStat() {
         this(null, null, null);
     }
 
-    WarCostStat(MilitaryUnit unit, ResourceType resource, AttackType type) {
+    WarCostStat(MilitaryUnit unit, ResourceType resource, Predicate<AttackType> isAttack) {
         this.unit = unit;
         this.resource = resource;
-        this.attack = type;
+        this.isAttack = isAttack;
     }
 
     WarCostStat(MilitaryUnit unit) {
@@ -66,7 +72,11 @@ public enum WarCostStat {
     }
 
     WarCostStat(AttackType attack) {
-        this(null, null, attack);
+        this(null, null, attack == null ? null : f -> f == attack);
+    }
+
+    WarCostStat(Predicate<AttackType> isAttack) {
+        this(null, null, isAttack);
     }
 
     public MilitaryUnit unit() {
@@ -75,10 +85,6 @@ public enum WarCostStat {
 
     public ResourceType resource() {
         return this.resource;
-    }
-
-    public AttackType attack() {
-        return this.attack;
     }
 
     public final TriFunction<Boolean, DBWar, AbstractCursor, Double> getFunction(boolean excludeUnits, boolean excludeInfra, boolean excludeConsumption, boolean excludeLoot, boolean excludeBuildings, WarCostMode mode) {
@@ -112,11 +118,11 @@ public enum WarCostStat {
                 rssBuffer[resource.ordinal()] = 0;
                 return attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
             };
-        } else if (attack != null) {
+        } else if (isAttack != null) {
             if (!mode.includeDefAttacks()) {
-                throw new IllegalArgumentException("Cannot count defender attacks for attack type: " + attack() + " (as defenders are not attacking)");
+                throw new IllegalArgumentException("Cannot count defender attacks for attack type (as defenders are not attacking)");
             }
-            return (attacker, war, attack) -> attack.getAttack_type() == attack() ? 1d : 0d;
+            return (attacker, war, attack) -> isAttack.test(attack.getAttack_type()) ? 1d : 0d;
         } else {
             if (!mode.includeOffAttacks()) {
                 return (attacker, war, attack) -> {
