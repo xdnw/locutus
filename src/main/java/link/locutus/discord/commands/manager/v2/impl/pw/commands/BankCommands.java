@@ -4145,7 +4145,7 @@ public class BankCommands {
         long escrowExpire = 0;
 
         List<String> footers = new ArrayList<>();
-        IMessageIO output = replyInDMs ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT), null)
+        IMessageIO output = replyInDMs ? DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT)
                 : channel;
         IMessageBuilder msg = output.create();
 

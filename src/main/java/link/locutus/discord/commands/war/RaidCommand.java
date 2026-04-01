@@ -247,7 +247,7 @@ public class RaidCommand extends Command {
                              boolean useDnr, Set<Integer> ignoreAlliances, boolean includeAlliances, boolean active,
                              long minutesInactive, double score, double minLoot, int beigeTurns, boolean ignoreBank, boolean ignoreCity, int numResults) throws ExecutionException, InterruptedException {
         if (dms && user != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
+            channel = DiscordChannelIO.privateOutput(user, RateLimitedSources.COMMAND_RESULT);
         }
         CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...", RateLimitedSources.COMMAND_RESULT);
 

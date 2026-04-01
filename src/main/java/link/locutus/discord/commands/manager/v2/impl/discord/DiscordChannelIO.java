@@ -8,6 +8,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -28,6 +29,85 @@ public class DiscordChannelIO implements IMessageIO {
     private final MessageChannel channel;
     private Supplier<Message> userMessage;
 
+    // Used for command flows that want to target a DM output channel without
+    // blocking at the pivot where the output IO is selected.
+    private static final class DeferredOutputIO implements IMessageIO {
+        private final CompletableFuture<IMessageIO> delegateFuture;
+        private long localId = 1;
+
+        private DeferredOutputIO(CompletableFuture<? extends IMessageIO> delegateFuture) {
+            this.delegateFuture = delegateFuture.thenApply(io -> io);
+        }
+
+        @Override
+        public IMessageBuilder getMessage(RateLimitedSource source) {
+            IMessageIO delegate = delegateFuture.getNow(null);
+            return delegate != null ? delegate.getMessage(source) : null;
+        }
+
+        @Override
+        public Guild getGuildOrNull() {
+            IMessageIO delegate = delegateFuture.getNow(null);
+            return delegate != null ? delegate.getGuildOrNull() : null;
+        }
+
+        @Override
+        public IMessageBuilder create() {
+            return new StringMessageBuilder(this, localId++, System.currentTimeMillis(), null);
+        }
+
+        @Override
+        public void setMessageDeleted(RateLimitedSource source) {
+            delegateFuture.whenComplete((io, error) -> {
+                if (error != null) {
+                    error.printStackTrace();
+                    return;
+                }
+                io.setMessageDeleted(source);
+            });
+        }
+
+        @Override
+        public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder, RateLimitedSource source) {
+            return delegateFuture.thenCompose(io -> io.send(builder.writeTo(io.create()), source));
+        }
+
+        @Override
+        public IMessageIO update(IMessageBuilder builder, long id, RateLimitedSource source) {
+            delegateFuture.whenComplete((io, error) -> {
+                if (error != null) {
+                    error.printStackTrace();
+                    return;
+                }
+                io.update(builder.writeTo(io.create()), id, source);
+            });
+            return this;
+        }
+
+        @Override
+        public IMessageIO delete(long id, RateLimitedSource source) {
+            delegateFuture.whenComplete((io, error) -> {
+                if (error != null) {
+                    error.printStackTrace();
+                    return;
+                }
+                io.delete(id, source);
+            });
+            return this;
+        }
+
+        @Override
+        public long getIdLong() {
+            IMessageIO delegate = delegateFuture.getNow(null);
+            return delegate != null ? delegate.getIdLong() : 0;
+        }
+
+        @Override
+        public CompletableFuture<IModalBuilder> send(IModalBuilder builder, RateLimitedSource source) {
+            return delegateFuture.thenCompose(io -> io.send(builder, source));
+        }
+    }
+
     public DiscordChannelIO(MessageChannel channel, Supplier<Message> userMessage) {
         this.channel = channel;
         this.userMessage = userMessage;
@@ -47,6 +127,11 @@ public class DiscordChannelIO implements IMessageIO {
 
     public DiscordChannelIO(MessageReceivedEvent event) {
         this(event.getChannel(), event::getMessage);
+    }
+
+    public static IMessageIO privateOutput(User user, RateLimitedSource source) {
+        return new DeferredOutputIO(RateLimitUtil.queue(user.openPrivateChannel(), source)
+                .thenApply(DiscordChannelIO::new));
     }
 
     public MessageChannel getChannel() {

@@ -1632,17 +1632,21 @@ public class AdminCommands {
         StringBuilder output = new StringBuilder();
 
         Map<DBNation, String> sentMessages = new HashMap<>();
+        Map<DBNation, String> personalMessages = new LinkedHashMap<>();
+        Map<DBNation, CompletableFuture<String>> dmResults = new LinkedHashMap<>();
 
         int i = 0;
         for (DBNation nation : nations) {
             String replaced = resultsArray.get(i++);
             String personal = replaced + "\n\n- " + author.getAsMention() + " " + guild.getName();
+            personalMessages.put(nation, personal);
 
-            boolean result = sendDM && nation.sendDM(personal);
-            if (!result && sendDM) {
-                failedToDM.add(nation.getNation_id());
+            if (sendDM) {
+                dmResults.put(nation, nation.sendDM(personal)
+                        .handle((ignored, error) -> error == null ? null : StringMan.rootMessage(error)));
             }
-            if ((!result && sendDM) || sendMail) {
+
+            if (sendMail) {
                 try {
                     nation.sendMail(keys, subject, personal, false);
                 } catch (IllegalArgumentException e) {
@@ -1653,6 +1657,24 @@ public class AdminCommands {
             sentMessages.put(nation, replaced);
 
             output.append("\n\n```" + replaced + "```" + "^ " + nation.getNation());
+        }
+
+        if (!dmResults.isEmpty()) {
+            FileUtil.get(CompletableFuture.allOf(dmResults.values().toArray(new CompletableFuture[0])));
+            for (Map.Entry<DBNation, CompletableFuture<String>> entry : dmResults.entrySet()) {
+                String dmError = entry.getValue().getNow(null);
+                if (dmError == null) continue;
+
+                DBNation nation = entry.getKey();
+                failedToDM.add(nation.getNation_id());
+                if (!sendMail) {
+                    try {
+                        nation.sendMail(keys, subject, personalMessages.get(nation), false);
+                    } catch (IllegalArgumentException e) {
+                        failedToMail.add(nation.getNation_id());
+                    }
+                }
+            }
         }
 
         output.append("\n\n------\n");
@@ -2072,8 +2094,12 @@ public class AdminCommands {
         CompletableFuture<IMessageBuilder> msgFuture = io.sendIfFree(
                 "Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"), RateLimitedSources.COMMAND_PROGRESS);
         for (User mention : users) {
-            mention.openPrivateChannel().queue(f -> RateLimitUtil
-                    .queue(f.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)"), RateLimitedSources.COMMAND_RESULT));
+            RateLimitUtil.queue(mention.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT)
+                    .thenCompose(dm -> RateLimitUtil.queue(dm.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)"), RateLimitedSources.COMMAND_RESULT))
+                    .exceptionally(throwable -> {
+                        throwable.printStackTrace();
+                        return null;
+                    });
         }
         io.sendMessage("Done! Sent " + users.size() + " messages", RateLimitedSources.COMMAND_RESULT);
         return null;

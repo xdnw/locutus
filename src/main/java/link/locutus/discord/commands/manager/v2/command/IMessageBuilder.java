@@ -81,6 +81,8 @@ public interface IMessageBuilder {
         return List.of(McpMessageContentAdapter.textItem(toString()));
     }
 
+    IMessageBuilder writeTo(IMessageBuilder output);
+
     long getId();
 
     IMessageBuilder clear();

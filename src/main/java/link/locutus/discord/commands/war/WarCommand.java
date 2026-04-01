@@ -93,7 +93,7 @@ public class WarCommand extends Command {
         double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
 
         if (flags.contains('d')) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
+            channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
 
         boolean includeInactives = flags.contains('i');

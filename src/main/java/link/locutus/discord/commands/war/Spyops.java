@@ -80,7 +80,7 @@ public class Spyops extends Command {
         DBNation finalNation = nationStr == null ? me : PWBindings.parseNation(runtimeServices(), null, guild, nationStr, null);
 
         if (flags.contains('d')) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
+            channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         } else {
             channel = channel;
         }

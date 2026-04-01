@@ -335,11 +335,8 @@ public class LeavingBeigeAlert {
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override
                 public void run() {
-                    PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
-                    DiscordChannelIO io = new DiscordChannelIO(channel);
-                    IMessageBuilder msg = io.create();
-
                     Map<DBNation, Boolean> myTargets = entry.getValue();
+                    List<Map.Entry<String, String>> embeds = new ArrayList<>(myTargets.size());
                     for (Map.Entry<DBNation, Boolean> targetEntry : myTargets.entrySet()) {
                         DBNation target = targetEntry.getKey();
 
@@ -357,10 +354,25 @@ public class LeavingBeigeAlert {
                             body += "\n**auto alert**";
                         }
 
-                        msg.embed(title, body);
+                        embeds.add(Map.entry(title, body));
                     }
-                    msg.append(footer);
-                    msg.send(RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
+                    if (embeds.isEmpty()) {
+                        return;
+                    }
+
+                    RateLimitUtil.queue(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE)
+                            .thenCompose(dm -> {
+                                IMessageBuilder msg = new DiscordChannelIO(dm).create();
+                                for (Map.Entry<String, String> embed : embeds) {
+                                    msg.embed(embed.getKey(), embed.getValue());
+                                }
+                                msg.append(footer);
+                                return msg.send(RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
+                            })
+                            .exceptionally(throwable -> {
+                                throwable.printStackTrace();
+                                return null;
+                            });
                 }
             });
 
