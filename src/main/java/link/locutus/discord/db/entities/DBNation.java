@@ -182,6 +182,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -6489,26 +6490,15 @@ public abstract class DBNation implements NationOrAlliance {
 
     }
 
-    public boolean sendDM(String msg) {
-        return sendDM(msg, null);
-    }
-
-    public boolean sendDM(String msg, Consumer<String> errors) {
+    public CompletableFuture<Void> sendDM(String msg) {
         User user = getUser();
-        if (user == null)
-            return false;
-
-        try {
-                MessageChannel channel = RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
-                RateLimitUtil.queue(channel.sendMessage(msg), RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
-        } catch (Throwable e) {
-            if (errors != null) {
-                errors.accept(e.getMessage());
-            }
-            e.printStackTrace();
-            return false;
+        if (user == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("No discord user set"));
         }
-        return true;
+
+        return RateLimitUtil.queue(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE)
+                .thenCompose(channel -> RateLimitUtil.queue(channel.sendMessage(msg), RateLimitedSources.DB_NATION_DIRECT_MESSAGE))
+                .thenApply(ignored -> null);
     }
 
     private DBNationCache getCache() {

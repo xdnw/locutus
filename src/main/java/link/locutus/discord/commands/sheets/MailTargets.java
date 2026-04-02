@@ -264,6 +264,7 @@ public class MailTargets extends Command {
 
         CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending messages...", RateLimitedSources.COMMAND_RESULT);
         IMessageBuilder msg = null;
+        Map<DBNation, CompletableFuture<String>> dmResults = new LinkedHashMap<>();
 
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
@@ -274,12 +275,8 @@ public class MailTargets extends Command {
 
             if (flags.contains('d')) {
                 String markup = MarkupUtil.htmlToMarkdown(body);
-                try {
-                    attacker.sendDM("**" + subject + "**:\n" + markup);
-                } catch (Throwable e) {
-                    channel.sendMessage(e.getMessage() + " for " + attacker.getNation(), RateLimitedSources.COMMAND_RESULT);
-                    e.printStackTrace();
-                }
+                dmResults.put(attacker, attacker.sendDM("**" + subject + "**:\n" + markup)
+                        .handle((ignored, error) -> error == null ? null : StringMan.rootMessage(error)));
             }
 
             if (System.currentTimeMillis() - start > 10000) {
@@ -291,6 +288,16 @@ public class MailTargets extends Command {
                     }
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
+                }
+            }
+        }
+
+        if (!dmResults.isEmpty()) {
+            FileUtil.get(CompletableFuture.allOf(dmResults.values().toArray(new CompletableFuture[0])));
+            for (Map.Entry<DBNation, CompletableFuture<String>> entry : dmResults.entrySet()) {
+                String dmError = entry.getValue().getNow(null);
+                if (dmError != null) {
+                    channel.sendMessage(dmError + " for " + entry.getKey().getNation(), RateLimitedSources.COMMAND_RESULT);
                 }
             }
         }

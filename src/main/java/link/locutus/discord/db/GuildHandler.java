@@ -333,12 +333,22 @@ public class GuildHandler {
                 if (nation.getAlliance_id() != 0 && !aaIds.contains(nation.getAlliance_id())) {
                     body.append("\n\n**Already member of AA: " + nation.getAllianceName() + "**\n\n");
                     mentionInterviewer = false;
-                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT)
-                            .sendMessage("As you're already a member of another alliance, message or ping @"
-                                    + interviewerRole.getName() + " to (proceed"), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT);
+                    String interviewerRoleName = interviewerRole.getName();
+                    RateLimitUtil.queue(author.openPrivateChannel(), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT)
+                            .thenCompose(dm -> RateLimitUtil.queue(dm.sendMessage("As you're already a member of another alliance, message or ping @"
+                                + interviewerRoleName + " to (proceed"), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT))
+                            .exceptionally(throwable -> {
+                                throwable.printStackTrace();
+                                return null;
+                            });
                 } else {
-                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT).sendMessage(
-                            "Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are able."), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT);
+                    RateLimitUtil.queue(author.openPrivateChannel(), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT)
+                            .thenCompose(dm -> RateLimitUtil.queue(dm.sendMessage(
+                                "Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are able."), RateLimitedSources.GUILD_HANDLER_NEW_APPLICANT_ALERT))
+                            .exceptionally(throwable -> {
+                                throwable.printStackTrace();
+                                return null;
+                            });
                 }
             }
         }

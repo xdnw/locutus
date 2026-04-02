@@ -84,7 +84,12 @@ public class Dm extends Command {
 
         channel.sendMessage("Please wait...", RateLimitedSources.COMMAND_RESULT);
         for (User mention : mentions) {
-            mention.openPrivateChannel().queue(f -> RateLimitUtil.queue(f.sendMessage(author.getAsMention() + " said: " + body + "\n\n(no reply)"), RateLimitedSources.COMMAND_RESULT));
+            RateLimitUtil.queue(mention.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT)
+                    .thenCompose(dm -> RateLimitUtil.queue(dm.sendMessage(author.getAsMention() + " said: " + body + "\n\n(no reply)"), RateLimitedSources.COMMAND_RESULT))
+                    .exceptionally(throwable -> {
+                        throwable.printStackTrace();
+                        return null;
+                    });
         }
         channel.sendMessage("Sent " + mentions.size() + " messages", RateLimitedSources.COMMAND_RESULT);
         return null;

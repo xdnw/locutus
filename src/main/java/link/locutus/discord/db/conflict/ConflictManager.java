@@ -42,6 +42,7 @@ import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -90,6 +91,18 @@ import static link.locutus.discord.util.math.ArrayUtil.ALWAYS_TRUE_INT;
 import static link.locutus.discord.web.jooby.JteUtil.copyArrayElements;
 
 public class ConflictManager {
+    static final class PreparedCloudUpload {
+        private final String key;
+        private final byte[] data;
+        private final long maxAge;
+
+        PreparedCloudUpload(String key, byte[] data, long maxAge) {
+            this.key = key;
+            this.data = data;
+            this.maxAge = maxAge;
+        }
+    }
+
     private final WarDB db;
     private final CloudStorage aws;
 
@@ -344,75 +357,74 @@ public class ConflictManager {
     }
 
     public String pushIndex(long time) {
-        synchronized (this.loadConflictLock) {
-            String key = "conflicts/index.gzip";
-            byte[] value = getIndexBytesZip(time);
-            aws.putObject(key, value, 60);
-            return aws.getLink(key);
-        }
+        return uploadPrepared(prepareIndexUpload(time));
     }
 
     public boolean pushDirtyConflicts() {
         long now = System.currentTimeMillis();
         boolean updateIndex = false;
         List<Conflict> activeConflicts = getActiveConflicts();
+        List<PreparedCloudUpload> uploads = new ArrayList<>();
         if (activeConflicts.isEmpty()) {
             Logg.text("[Conflict] No active conflicts to push.");
             return false;
         }
-        for (Conflict conflict : activeConflicts) {
-            long lastPushPage = conflict.getPushedPage();
-            long lastPushGraph = conflict.getPushedGraph();
-            long lastPushIndex = conflict.getPushedIndex();
+        synchronized (loadConflictLock) {
+            for (Conflict conflict : activeConflicts) {
+                long lastWarUpdate = conflict.getLatestWarAttack();
+                long lastGraphUpdate = conflict.getLatestGraphMs();
 
-            long lastWarUpdate = conflict.getLatestWarAttack();
-            long lastGraphUpdate = conflict.getLatestGraphMs();
+                boolean updatePageMeta = false;
+                boolean updateGraphMeta = false;
+                boolean updatePageStats = false;
+                boolean updateGraphStats = false;
+                synchronized (cacheTimes) {
+                    Map<HeaderGroup, Long> lastCacheTimes = cacheTimes.getOrDefault(conflict.getId(),
+                            Collections.emptyMap());
+                    long lastPageMeta = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_META, 0L);
+                    long lastPageStats = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_STATS, 0L);
+                    long lastGraphMeta = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH_META, 0L);
+                    long lastGraphData = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH_DATA, 0L);
 
-            boolean updatePageMeta = false;
-            boolean updateGraphMeta = false;
-            boolean updatePageStats = false;
-            boolean updateGraphStats = false;
-            synchronized (cacheTimes) {
-                Map<HeaderGroup, Long> lastCacheTimes = cacheTimes.getOrDefault(conflict.getId(),
-                        Collections.emptyMap());
-                long lastPageMeta = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_META, 0L);
-                long lastPageStats = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_STATS, 0L);
-                long lastGraphMeta = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH_META, 0L);
-                long lastGraphData = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH_DATA, 0L);
+                    if (lastPageMeta == 0L)
+                        updatePageMeta = true;
+                    if (lastWarUpdate > lastPageStats)
+                        updatePageStats = true;
+                    if (lastGraphMeta == 0L)
+                        updateGraphMeta = true;
+                    if (lastGraphUpdate > lastGraphData)
+                        updateGraphStats = true;
+                }
 
-                if (lastPageMeta == 0L)
-                    updatePageMeta = true;
-                if (lastWarUpdate > lastPageStats)
-                    updatePageStats = true;
-                if (lastGraphMeta == 0L)
-                    updateGraphMeta = true;
-                if (lastGraphUpdate > lastGraphData)
-                    updateGraphStats = true;
+                if (!updatePageMeta && !updatePageStats && !updateGraphMeta && !updateGraphStats) {
+                    Logg.text("[Conflict] No updates needed for conflict " + conflict.getName() + " (ID " + conflict.getId()
+                            + ").");
+                    continue;
+                }
+
+                Logg.text("[Conflict] Pushing updates for conflict " + conflict.getName() + " (ID " + conflict.getId()
+                        + "): " +
+                        (updatePageMeta ? "page meta " : "") +
+                        (updatePageStats ? "page stats " : "") +
+                        (updateGraphMeta ? "graph meta " : "") +
+                        (updateGraphStats ? "graph stats " : ""));
+
+                if (updatePageMeta || updatePageStats) {
+                    updateIndex = true;
+                }
+
+                uploads.addAll(conflict.preparePushChanges(this, null, updatePageMeta, updatePageStats,
+                        updateGraphMeta, updateGraphStats, now));
             }
 
-            if (!updatePageMeta && !updatePageStats && !updateGraphMeta && !updateGraphStats) {
-                Logg.text("[Conflict] No updates needed for conflict " + conflict.getName() + " (ID " + conflict.getId()
-                        + ").");
-                continue;
+            if (updateIndex) {
+                Logg.text("[Conflict] Pushing updated index.");
+                uploads.add(prepareIndexUpload(now));
             }
-
-            Logg.text("[Conflict] Pushing updates for conflict " + conflict.getName() + " (ID " + conflict.getId()
-                    + "): " +
-                    (updatePageMeta ? "page meta " : "") +
-                    (updatePageStats ? "page stats " : "") +
-                    (updateGraphMeta ? "graph meta " : "") +
-                    (updateGraphStats ? "graph stats " : ""));
-
-            if (updatePageMeta || updatePageStats) {
-                updateIndex = true;
-            }
-
-            conflict.pushChanges(this, null, updatePageMeta, updatePageStats, updateGraphMeta, updateGraphStats, false,
-                    now);
         }
+
+        uploadPrepared(uploads);
         if (updateIndex) {
-            Logg.text("[Conflict] Pushing updated index.");
-            pushIndex(now);
             return true;
         }
         return false;
@@ -714,6 +726,7 @@ public class ConflictManager {
         initTurn();
         long turn = event.getCurrent();
         List<Conflict> active = getActiveConflicts();
+        List<PreparedCloudUpload> uploads = new ArrayList<>();
         synchronized (loadConflictLock) {
             long now = System.currentTimeMillis();
             if (!active.isEmpty()) {
@@ -722,14 +735,15 @@ public class ConflictManager {
                     conflict.getSide2().get().updateTurnChange(this, turn, true);
                 }
                 for (Conflict conflict : active) {
-                    conflict.pushChanges(this, null, true, false, false, true, false, now);
+                    uploads.addAll(conflict.preparePushChanges(this, null, true, false, false, true, now));
                 }
-                pushIndex(now);
+                uploads.add(prepareIndexUpload(now));
             }
             for (Conflict conflict : conflictArr) {
                 conflict.tryUnload();
             }
         }
+        queuePreparedUploads(uploads);
     }
 
     private void recreateConflictsByAlliance() {
@@ -1864,6 +1878,31 @@ public class ConflictManager {
 
     public CloudStorage getCloud() {
         return aws;
+    }
+
+    private PreparedCloudUpload prepareIndexUpload(long time) {
+        return new PreparedCloudUpload("conflicts/index.gzip", getIndexBytesZip(time), 60);
+    }
+
+    String uploadPrepared(PreparedCloudUpload upload) {
+        aws.putObject(upload.key, upload.data, upload.maxAge);
+        return aws.getLink(upload.key);
+    }
+
+    List<String> uploadPrepared(List<PreparedCloudUpload> uploads) {
+        List<String> urls = new ArrayList<>(uploads.size());
+        for (PreparedCloudUpload upload : uploads) {
+            urls.add(uploadPrepared(upload));
+        }
+        return urls;
+    }
+
+    private void queuePreparedUploads(List<PreparedCloudUpload> uploads) {
+        if (uploads.isEmpty()) {
+            return;
+        }
+        // Keep the turn-event snapshot stable, but move the blocking cloud write off-thread.
+        Locutus.imp().getScheduler().execute(CaughtRunnable.wrap(() -> uploadPrepared(uploads)));
     }
 
     public void removeAnnouncement(int id, int topicId) {

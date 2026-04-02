@@ -138,7 +138,7 @@ public class Damage extends Command {
         else valueFunction = damageEstByNation;
 
         if (flags.contains('d')) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
+            channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
 
         if (valueFunction.isEmpty()) {

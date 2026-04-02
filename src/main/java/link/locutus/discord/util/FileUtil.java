@@ -282,7 +282,10 @@ public final class FileUtil {
     public static <T> T get(Future<T> myFuture) {
         try {
             return myFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             if (cause != null && cause instanceof RuntimeException run) throw run;
             throw new RuntimeException(e);

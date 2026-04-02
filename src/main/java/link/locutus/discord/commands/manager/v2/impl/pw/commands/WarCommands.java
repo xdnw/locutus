@@ -1158,7 +1158,7 @@ public class WarCommands {
                     @Arg(value = "Include nations much stronger than you in the search\nDefaults to false", group = 2)
                         @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
         if (resultsInDm && author != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
+            channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
         if (attackerScore == null) attackerScore = me.getScore();
 
@@ -1601,7 +1601,7 @@ public class WarCommands {
         else valueFunction = damageEstByNation;
 
         if (resultsInDm && author != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
+            channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
 
         String removeMsg = removeNotes.isEmpty() ? "" : "\n- " + String.join("\n- ", removeNotes);
@@ -1824,7 +1824,7 @@ public class WarCommands {
         String body = runSpyOps(finalNation, db, targets, operations, requiredSuccess, prioritizeKills);
 
         if (directMesssage && author != null) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel(), RateLimitedSources.COMMAND_RESULT));
+            channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
 
         IMessageBuilder msg = channel.create().embed(title, body);
@@ -3894,6 +3894,7 @@ public class WarCommands {
 
         Map<DBNation, String> mailErrors = new LinkedHashMap<>();
         Map<DBNation, String> dmErrors = new LinkedHashMap<>();
+        Map<DBNation, CompletableFuture<String>> dmResults = new LinkedHashMap<>();
         CompletableFuture<IMessageBuilder> msgFuture = channel.sendIfFree("Sending messages...", RateLimitedSources.COMMAND_PROGRESS);
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
@@ -3907,21 +3908,23 @@ public class WarCommands {
             }
             if (dm) {
                 String markup = MarkupUtil.htmlToMarkdown(body);
-                try {
-                    attacker.sendDM("**" + subject + "**:\n" + markup, new Consumer<String>() {
-                        @Override
-                        public void accept(String string) {
-                            dmErrors.put(attacker, string);
-                        }
-                    });
-                } catch (Throwable e) {
-                    dmErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
-                }
+                dmResults.put(attacker, attacker.sendDM("**" + subject + "**:\n" + markup)
+                        .handle((ignored, error) -> error == null ? null : StringMan.rootMessage(error).split("\n")[0]));
             }
 
             if (System.currentTimeMillis() - start > 10000) {
                 start = System.currentTimeMillis();
                 channel.updateOptionally(msgFuture, "Sending to " + attacker.getNation(), RateLimitedSources.COMMAND_PROGRESS);
+            }
+        }
+
+        if (!dmResults.isEmpty()) {
+            FileUtil.get(CompletableFuture.allOf(dmResults.values().toArray(new CompletableFuture[0])));
+            for (Map.Entry<DBNation, CompletableFuture<String>> entry : dmResults.entrySet()) {
+                String dmError = entry.getValue().getNow(null);
+                if (dmError != null) {
+                    dmErrors.put(entry.getKey(), dmError);
+                }
             }
         }
 

@@ -9,7 +9,7 @@ import java.util.*;
 
 public class StringMessageBuilder extends AMessageBuilder {
 
-    public StringMessageBuilder(StringMessageIO parent, long id, long timeCreated, User author) {
+    public StringMessageBuilder(IMessageIO parent, long id, long timeCreated, User author) {
         super(parent, id, timeCreated, author);
     }
 

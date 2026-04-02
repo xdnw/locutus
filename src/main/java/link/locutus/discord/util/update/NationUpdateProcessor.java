@@ -100,6 +100,8 @@ public class NationUpdateProcessor {
 
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
 
+    private record LoginNotifyDm(User user, String message) {}
+
     public static class NationUpdate {
         public PwUid uuid;
         public boolean verified;
@@ -231,6 +233,7 @@ public class NationUpdateProcessor {
             nation.deleteMeta(NationMeta.LOGIN_NOTIFY);
             if (!notifyMap.isEmpty()) {
                 String message = ("This is your login alert for:\n" + nation.toEmbedString());
+                List<LoginNotifyDm> notifications = new ArrayList<>(notifyMap.size());
 
                 for (Map.Entry<Long, Long> entry : notifyMap.entrySet()) {
                     Long userId = entry.getKey();
@@ -252,12 +255,18 @@ public class NationUpdateProcessor {
                     } else {
                         messageCustom += "\n**You do NOT have an active war with this nation.**";
                     }
+                    notifications.add(new LoginNotifyDm(user, messageCustom));
+                }
 
-                    try {
-                        DiscordChannelIO channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE), null);
-                        channel.send(messageCustom, RateLimitedSources.DB_NATION_DIRECT_MESSAGE);
-                    } catch (Throwable e) {
-                        e.printStackTrace();
+                if (!notifications.isEmpty()) {
+                    // Queue the DM open/send actions without blocking the nation-activity event thread.
+                    for (LoginNotifyDm notification : notifications) {
+                        RateLimitUtil.queue(notification.user().openPrivateChannel(), RateLimitedSources.DB_NATION_DIRECT_MESSAGE)
+                                .thenCompose(dm -> RateLimitUtil.queue(dm.sendMessage(notification.message()), RateLimitedSources.DB_NATION_DIRECT_MESSAGE))
+                                .exceptionally(throwable -> {
+                                    throwable.printStackTrace();
+                                    return null;
+                                });
                     }
                 }
             }

@@ -22,6 +22,7 @@ public class WebOption {
     private boolean allowCustomOption;
 
     private List<String> options;
+    private List<String> optionsSubtext;
 
     private TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions;
     private boolean allowQuery;
@@ -133,6 +134,12 @@ public class WebOption {
         return this;
     }
 
+    public WebOption setOptions(List<String> options, List<String> optionsSubtext) {
+        this.options = options;
+        this.optionsSubtext = optionsSubtext;
+        return this;
+    }
+
     public WebOption setQueryMap(TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions, boolean isLarge) {
         this.queryOptions = queryOptions::apply;
         allowQuery = true;
@@ -188,6 +195,9 @@ public class WebOption {
         Map<String, Object> json = new LinkedHashMap<>();
         if (options != null) {
             json.put("options", options);
+        }
+        if (this.options != null && this.optionsSubtext != null) {
+            json.put("subtext", this.optionsSubtext);
         }
         if (compositeTypes2 != null) {
             List<String> compositeTypes = compositeTypes2.stream().map(Class::getSimpleName).toList();

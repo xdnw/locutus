@@ -2676,6 +2676,8 @@ public class UnsortedCommands {
         StringBuilder output = new StringBuilder();
 
         Map<DBNation, String> sentMessages = new HashMap<>();
+        Map<DBNation, String> personalMessages = new LinkedHashMap<>();
+        Map<DBNation, CompletableFuture<String>> dmResults = new LinkedHashMap<>();
 
         String subject = "Invite to: " + inviteTo.getName();
 
@@ -2696,12 +2698,14 @@ public class UnsortedCommands {
 
                 String replaced = message + "\n" + invite.getUrl();
                 String personal = replaced + "\n\n- " + author.getAsMention();
+                personalMessages.put(nation, personal);
 
-                boolean result = sendDM && nation.sendDM(personal);
-                if (!result && sendDM) {
-                    failedToDM.add(nation.getNation_id());
+                if (sendDM) {
+                    dmResults.put(nation, nation.sendDM(personal)
+                            .handle((ignored, error) -> error == null ? null : StringMan.rootMessage(error)));
                 }
-                if ((!result && sendDM) || sendMail) {
+
+                if (sendMail) {
                     MailApiResponse mailStatus = nation.sendMail(keys, subject, personal, false);
                     if (mailStatus.status() != MailApiSuccess.SUCCESS) {
                         failedToMail.add(nation.getNation_id());
@@ -2711,6 +2715,23 @@ public class UnsortedCommands {
                 sentMessages.put(nation, replaced);
 
                 output.append("\n\n```" + replaced + "```" + "^ " + nation.getNation());
+            }
+        }
+
+        if (!dmResults.isEmpty()) {
+            FileUtil.get(CompletableFuture.allOf(dmResults.values().toArray(new CompletableFuture[0])));
+            for (Map.Entry<DBNation, CompletableFuture<String>> entry : dmResults.entrySet()) {
+                String dmError = entry.getValue().getNow(null);
+                if (dmError == null) continue;
+
+                DBNation nation = entry.getKey();
+                failedToDM.add(nation.getNation_id());
+                if (!sendMail) {
+                    MailApiResponse mailStatus = nation.sendMail(keys, subject, personalMessages.get(nation), false);
+                    if (mailStatus.status() != MailApiSuccess.SUCCESS) {
+                        failedToMail.add(nation.getNation_id());
+                    }
+                }
             }
         }
 

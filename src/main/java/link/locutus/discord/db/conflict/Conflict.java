@@ -32,8 +32,6 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.CachedSupplier;
-import link.locutus.discord.web.jooby.CloudStorage;
-
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -1073,9 +1071,20 @@ public class Conflict {
      */
     public List<String> pushChanges(ConflictManager manager, String webIdOrNull, boolean updatePageMeta,
             boolean updatePageStats, boolean updateGraphMeta, boolean updateGraphStats, boolean updateIndex, long now) {
-        CloudStorage aws = manager.getCloud();
         if (getId() <= 0)
             updateIndex = false; // can't update index if not in db
+        List<ConflictManager.PreparedCloudUpload> uploads = preparePushChanges(manager, webIdOrNull, updatePageMeta,
+                updatePageStats, updateGraphMeta, updateGraphStats, now);
+        List<String> urls = manager.uploadPrepared(uploads);
+        if (updateIndex && id > 0) {
+            manager.pushIndex(now);
+        }
+        return urls;
+    }
+
+    List<ConflictManager.PreparedCloudUpload> preparePushChanges(ConflictManager manager, String webIdOrNull,
+            boolean updatePageMeta, boolean updatePageStats, boolean updateGraphMeta, boolean updateGraphStats,
+            long now) {
         if (webIdOrNull == null) {
             if (isVirtual()) {
                 if (virtualConflictId == null) {
@@ -1087,14 +1096,13 @@ public class Conflict {
             }
         }
         long ttl = isActive() ? TimeUnit.MINUTES.toSeconds(1) : TimeUnit.MINUTES.toSeconds(5);
-        List<String> urls = new ArrayList<>();
+        List<ConflictManager.PreparedCloudUpload> uploads = new ArrayList<>(2);
 
         if (updatePageMeta || updatePageStats) {
             String key = "conflicts/" + webIdOrNull + ".gzip";
             byte[] value = HeaderGroup.getBytesZip(manager, this,
                     Map.of(HeaderGroup.PAGE_META, updatePageMeta, HeaderGroup.PAGE_STATS, updatePageStats), now);
-            aws.putObject(key, value, ttl);
-            urls.add(aws.getLink(key));
+            uploads.add(new ConflictManager.PreparedCloudUpload(key, value, ttl));
         }
 
         if (updateGraphMeta || updateGraphStats) {
@@ -1102,13 +1110,9 @@ public class Conflict {
             String graphKey = "conflicts/graphs/" + webIdOrNull + ".gzip";
             byte[] value = HeaderGroup.getBytesZip(manager, this,
                     Map.of(HeaderGroup.GRAPH_META, updateGraphMeta, HeaderGroup.GRAPH_DATA, updateGraphStats), now);
-            aws.putObject(graphKey, value, ttl);
-            urls.add(aws.getLink(graphKey));
+            uploads.add(new ConflictManager.PreparedCloudUpload(graphKey, value, ttl));
         }
-        if (updateIndex && id > 0) {
-            manager.pushIndex(now);
-        }
-        return urls;
+        return uploads;
     }
 
     public void set(Conflict wikiConflict, boolean setName) {

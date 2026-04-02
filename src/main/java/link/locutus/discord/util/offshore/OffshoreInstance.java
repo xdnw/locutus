@@ -1833,8 +1833,8 @@ public class OffshoreInstance {
                 if (!result.getStatus().isSuccess()) {
                     isError = true;
                 } else {
-                    Auth routeAuth = getAlliance().getAuth(AlliancePermission.WITHDRAW_BANK);
-                    result = createTransfer(routeAuth, api, receiver, amt, note);
+                    Auth routeAuth = alliance.getAuth(AlliancePermission.WITHDRAW_BANK);
+                    result = createTransfer(alliance, routeAuth, api, receiver, amt, note);
                     results.add(result);
                     if (!result.getStatus().isSuccess()) {
                         isError = true;
@@ -1864,7 +1864,8 @@ public class OffshoreInstance {
         return resultFinal;
     }
 
-    private TransferResult createTransfer(Auth auth, PoliticsAndWarV3 api, NationOrAlliance receiver,
+    private TransferResult createTransfer(DBAlliance senderAlliance, Auth auth, PoliticsAndWarV3 api,
+            NationOrAlliance receiver,
             Map<ResourceType, Double> transfer, TransactionNote note) {
         boolean v2 = PW.API.hasRecent500Error();
         if (!v2 || auth == null) {
@@ -1897,13 +1898,13 @@ public class OffshoreInstance {
                 return txResult;
             }
         }
-        if (auth.getAllianceId() != allianceId) {
+        if (auth.getAllianceId() != senderAlliance.getAlliance_id()) {
             throw new IllegalArgumentException("Game API is down currently");
         }
-        DBAlliance aa = getAlliance();
 
         try {
-            String response = auth.withdrawResources(aa, receiver, ResourceType.resourcesToArray(transfer), note);
+            // Keep the fallback sender aligned with the API/auth pair used for this hop.
+            String response = auth.withdrawResources(senderAlliance, receiver, ResourceType.resourcesToArray(transfer), note);
             TransferResult category = categorize(receiver, transfer, note, response);
             if (category.getStatus() == TransferStatus.SUCCESS
                     || category.getStatus() == TransferStatus.SENT_TO_ALLIANCE_BANK) {
@@ -1946,7 +1947,7 @@ public class OffshoreInstance {
 
         try {
             PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
-            return createTransfer(auth, api, receiver, transfer, note);
+            return createTransfer(getAlliance(), auth, api, receiver, transfer, note);
         } catch (HttpClientErrorException.Unauthorized e) {
             return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note)
                     .addMessage("Invalid API key");
