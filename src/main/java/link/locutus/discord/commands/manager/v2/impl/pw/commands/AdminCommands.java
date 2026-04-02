@@ -64,6 +64,7 @@ import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
+import link.locutus.discord.db.bank.DuplicateAllianceBankTransferReport;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.SheetKey;
@@ -2863,6 +2864,32 @@ public class AdminCommands {
 
         Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         return "Done!";
+    }
+
+    @Command(desc = """
+            List likely duplicate routed transfers for a specific alliance bank within a timeframe
+            A match requires a routed `#ignore` transfer into the alliance bank and a second transfer from the same sender alliance
+            with the same banker nation and identical resources within 5 minutes""", viewable = true)
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String listDuplicateAllianceBankTransfers(@Me IMessageIO io,
+            @Arg("The alliance bank that received the routed transfer") int allianceId,
+            @Arg("The start of the timeframe") @Timestamp long start,
+            @Arg("The end of the timeframe") @Timestamp long end) {
+        DuplicateAllianceBankTransferReport report = DuplicateAllianceBankTransferReport.analyze(
+                Locutus.imp().getBankDB(),
+                allianceId,
+                start,
+                end
+        );
+        if (!report.hasDetailFile()) {
+            return report.primaryMessage();
+        }
+
+        io.create()
+                .append(report.primaryMessage())
+                .file(report.detailFileName(), report.detailFileContent())
+                .send(RateLimitedSources.COMMAND_RESULT);
+        return null;
     }
 
     @Command(desc = "Recalculate blockade flags for all nations, and run associated events")

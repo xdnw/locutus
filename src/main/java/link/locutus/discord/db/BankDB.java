@@ -1890,6 +1890,51 @@ public class BankDB extends DBMainV3 implements BankStore {
         );
     }
 
+    public List<Transaction2> getPotentialDuplicateAllianceBankTransfers(
+            int allianceId,
+            long routeStartDate,
+            long routeEndDate,
+            long matchWindowMs
+    ) {
+        if (routeEndDate < routeStartDate) {
+            throw new IllegalArgumentException("routeEndDate must be >= routeStartDate");
+        }
+        if (matchWindowMs < 0) {
+            throw new IllegalArgumentException("matchWindowMs must be >= 0");
+        }
+
+        long allianceKey = TransactionEndpointKey.encode((long) allianceId, TransactionEndpointKey.ALLIANCE_TYPE);
+        long candidateStartDate = routeStartDate <= matchWindowMs ? 0L : routeStartDate - matchWindowMs;
+        long candidateEndDate = routeEndDate >= Long.MAX_VALUE - matchWindowMs ? Long.MAX_VALUE
+                : routeEndDate + matchWindowMs;
+
+        String senderAllianceTypeSql = hasEndpointTypeSql("sender_key", "senderType");
+        String receiverAllianceTypeSql = hasEndpointTypeSql("receiver_key", "receiverType");
+        String whereSql = "tx_datetime >= :candidateStartDate AND tx_datetime <= :candidateEndDate AND "
+                + senderAllianceTypeSql
+                + " AND sender_key IN ("
+                + "SELECT DISTINCT sender_key FROM TRANSACTIONS_2 WHERE receiver_key = :allianceKey "
+                + "AND tx_datetime >= :routeStartDate AND tx_datetime <= :routeEndDate AND "
+                + senderAllianceTypeSql + " AND " + receiverAllianceTypeSql
+                + ")";
+
+        return queryTransactions(
+                whereSql,
+                Map.of(
+                        "allianceKey", allianceKey,
+                        "candidateStartDate", candidateStartDate,
+                        "candidateEndDate", candidateEndDate,
+                        "routeStartDate", routeStartDate,
+                        "routeEndDate", routeEndDate,
+                        "senderType", TransactionEndpointKey.ALLIANCE_TYPE,
+                        "receiverType", TransactionEndpointKey.ALLIANCE_TYPE
+                ),
+                null,
+                "tx_datetime ASC, tx_id ASC",
+                null
+            );
+    }
+
     @Override
     public List<Transaction2> getTransactionsByAlliance(int allianceId) {
         long allianceKey = TransactionEndpointKey.encode((long) allianceId, TransactionEndpointKey.ALLIANCE_TYPE);

@@ -253,6 +253,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "listDuplicateAllianceBankTransfers","list_dupe_tx");
+
         this.commands.registerCommandsWithMapping(CM.class);
 
         this.commands.registerMethod(new FACommands(), List.of("coalitions"), "renameCoalition", "rename");
@@ -260,8 +262,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importCloudData",
                 "cloud_providers");
 
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearAllApiKeys",
-                "clearAllApiKeys");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearAllApiKeys","clearAllApiKeys");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearInvalidAccounts",
                 "clearInvalidAccounts");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "fixCashConversion",
