@@ -308,7 +308,7 @@ public class StatCommands {
         if (type == WarCostMode.PROFIT && stat.unit() != null) {
             throw new IllegalArgumentException("Cannot rank by `type: profit` with a unit stat");
         }
-        if (type == WarCostMode.PROFIT && stat.attack() != null) {
+        if (type == WarCostMode.PROFIT && stat.isAttack()) {
             throw new IllegalArgumentException("Cannot rank by `type: profit` with an attack type stat");
         }
 
@@ -757,7 +757,8 @@ public class StatCommands {
                               @Switch("a") boolean groupByAlliance,
                               @Switch("r") boolean reverseOrder,
                               @Switch("s") @Timestamp Long snapshotDate,
-                              @Arg("Total value instead of average per nation") @Switch("t") boolean total) {
+                              @Arg("Total value instead of average per nation") @Switch("t") boolean total,
+                              @Switch("n") String title) {
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         Map<DBNation, Double> attributeByNation = new Object2DoubleOpenHashMap<>();
         for (DBNation nation : nationsSet) {
@@ -766,7 +767,9 @@ public class StatCommands {
             attributeByNation.put(nation, value);
         }
 
-        String title = (total ? "Total" : groupByAlliance ? "Average" : "Top") + " " + attribute.getName() + " by " + (groupByAlliance ? "alliance" : "nation");
+        if (title == null) {
+            title = (total ? "Total" : groupByAlliance ? "Average" : "Top") + " " + attribute.getName() + " by " + (groupByAlliance ? "alliance" : "nation");
+        }
 
         SummedMapRankBuilder<DBNation, Double> builder = new SummedMapRankBuilder<>(attributeByNation);
 
