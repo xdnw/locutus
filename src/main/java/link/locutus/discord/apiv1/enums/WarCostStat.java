@@ -79,6 +79,10 @@ public enum WarCostStat {
         this(null, null, isAttack);
     }
 
+    public boolean isAttack() {
+        return isAttack != null;
+    }
+
     public MilitaryUnit unit() {
         return this.unit;
     }
