@@ -90,7 +90,7 @@ public final class TransactionEndpointKey {
             }
             return;
         }
-        if (id <= 0L) {
+        if (id < 0L) {
             throw new IllegalArgumentException("Transaction endpoint ids must be positive, got: " + id + " for type " + type);
         }
         if (id > MAX_ID) {

@@ -162,6 +162,8 @@ public class WarDB extends DBMainV2 {
             executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0", true);
             executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0", true);
             executeStmt("ALTER TABLE `WARS` ADD COLUMN `research` INT NOT NULL DEFAULT 0", true);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `att_app` BOOLEAN NOT NULL DEFAULT 0", true);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `def_app` BOOLEAN NOT NULL DEFAULT 0", true);
         };
 
         {
@@ -228,28 +230,6 @@ public class WarDB extends DBMainV2 {
                 e.printStackTrace();
             }
         };
-    }
-
-    public void convertAttackEndian() {
-        String query = "SELECT * FROM `attacks3`";
-        // iterate attacks
-        AttackCursorFactory loader = new AttackCursorFactory(this);
-        DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
-
-        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    byte[] data = rs.getBytes("data");
-                    int warId = rs.getInt("war_id");
-                    int attackerId = rs.getInt("attacker_nation_id");
-                    int defenderId = rs.getInt("defender_nation_id");
-                    AbstractCursor cursor = loader.load(dummy, data, true);
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
     }
 
     public void importVictoryAttacksFromExternalDB(String filePath) throws SQLException {
@@ -368,7 +348,7 @@ public class WarDB extends DBMainV2 {
         }
 
         AttackCursorFactory factory = new AttackCursorFactory(this);
-        DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
+        DBWar dummy = new DBWar(0, 2, 1, 0, 0, false, false, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
 
         String selectSql = "SELECT id, data FROM `attacks3`";
         String updateSql = "UPDATE `attacks3` SET `data` = ? WHERE `id` = ?";
@@ -449,7 +429,7 @@ public class WarDB extends DBMainV2 {
 
     private void reserializedVictoryAttacks() {
         AttackCursorFactory loader = new AttackCursorFactory(this);
-        DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
+        DBWar dummy = new DBWar(0, 2, 1, 0, 0, false, false, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
 
         List<AttackEntry> toSave = new ObjectArrayList<>();
         String query = "SELECT * FROM `attacks3`";
@@ -944,7 +924,7 @@ public class WarDB extends DBMainV2 {
 
         List<DBWar> wars = new ObjectArrayList<>();
         List<DBWar> saveWars = new ObjectArrayList<>();
-        query("SELECT id, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities, research FROM wars " + whereClause, f -> {
+        query("SELECT id, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities, att_app, def_app, research FROM wars " + whereClause, f -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 DBWar war = create(rs);
@@ -2311,19 +2291,7 @@ public class WarDB extends DBMainV2 {
                 setWar(war);
             }
         }
-//        List<Map.Entry<Integer, DBNation>> nationSnapshots = new ArrayList<>();
-//        for (DBWar war : values) {
-//            DBNation attacker = war.getNation(true);
-//            DBNation defender = war.getNation(false);
-//            if (attacker != null) {
-//                nationSnapshots.add(KeyValue.of(war.getWarId(), attacker));
-//            }
-//            if (defender != null) {
-//                nationSnapshots.add(KeyValue.of(war.getWarId(), defender));
-//            }
-//        }
-
-        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`, `attCities`, `defCities`, `research`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `att_app`, `def_app`, `war_type`, `status`, `date`, `attCities`, `defCities`, `research`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         ThrowingBiConsumer<DBWar, PreparedStatement> setStmt = (war, stmt) -> {
             stmt.setInt(1, war.warId);
@@ -2331,12 +2299,14 @@ public class WarDB extends DBMainV2 {
             stmt.setInt(3, war.getDefender_id());
             stmt.setInt(4, war.getAttacker_aa());
             stmt.setInt(5, war.getDefender_aa());
-            stmt.setInt(6, war.getWarType().ordinal());
-            stmt.setInt(7, war.getStatus().ordinal());
-            stmt.setLong(8, war.getDate());
-            stmt.setInt(9, war.getAttCities());
-            stmt.setInt(10, war.getDefCities());
-            stmt.setInt(11, war.getResearchBits());
+            stmt.setBoolean(6, war.isAttApplicant());
+            stmt.setBoolean(7, war.isDefApplicant());
+            stmt.setInt(8, war.getWarType().ordinal());
+            stmt.setInt(9, war.getStatus().ordinal());
+            stmt.setLong(10, war.getDate());
+            stmt.setInt(11, war.getAttCities());
+            stmt.setInt(12, war.getDefCities());
+            stmt.setInt(13, war.getResearchBits());
         };
         if (values.size() == 1) {
             DBWar value = values.iterator().next();
@@ -2388,8 +2358,10 @@ public class WarDB extends DBMainV2 {
         long date = rs.getLong(8);
         int attCities = rs.getInt(9);
         int defCities = rs.getInt(10);
-        int research = rs.getInt(11);
-        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities, research);
+        boolean attApp = rs.getBoolean(11);
+        boolean defApp = rs.getBoolean(12);
+        int research = rs.getInt(13);
+        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, attApp, defApp, war_type, status, date, attCities, defCities, research);
     }
 
     public DBWar getWar(int warId) {
@@ -2682,62 +2654,6 @@ public class WarDB extends DBMainV2 {
             };
         }
     }
-//
-//    private String generateWarQuery(String prefix, Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {
-//        List<String> requirements = new ArrayList<>();
-//        if (start > 0) {
-//            requirements.add(prefix + "date > " + start);
-//        }
-//        if (end < System.currentTimeMillis()) {
-//            requirements.add(prefix + "date < " + end);
-//        }
-//
-//        List<String> attReq = new ArrayList<>();
-//        if (!coal1Alliances.isEmpty()) {
-//            if (coal1Alliances.size() == 1) {
-//                Integer id = coal1Alliances.iterator().next();
-//                attReq.add(prefix + "attacker_aa = " + id);
-//            } else {
-//                attReq.add(prefix + "attacker_aa in " + StringMan.getString(coal1Alliances));
-//            }
-//        }
-//        if (!coal1Nations.isEmpty()) {
-//            if (coal1Nations.size() == 1) {
-//                Integer id = coal1Nations.iterator().next();
-//                attReq.add(prefix + "attacker_id = " + id);
-//            } else {
-//                attReq.add(prefix + "attacker_id in " + StringMan.getString(coal1Nations));
-//            }
-//        }
-//
-//        List<String> defReq = new ArrayList<>();
-//        if (!coal2Alliances.isEmpty()) {
-//            if (coal2Alliances.size() == 1) {
-//                Integer id = coal2Alliances.iterator().next();
-//                defReq.add(prefix + "defender_aa = " + id);
-//            } else {
-//                defReq.add(prefix + "defender_aa in " + StringMan.getString(coal2Alliances));
-//            }
-//        }
-//        if (!coal2Nations.isEmpty()) {
-//            if (coal2Nations.size() == 1) {
-//                Integer id = coal2Nations.iterator().next();
-//                defReq.add(prefix + "defender_id = " + id);
-//            } else {
-//                defReq.add(prefix + "defender_id in " + StringMan.getString(coal2Nations));
-//            }
-//        }
-//
-//        List<String> natOrAAReq = new ArrayList<>();
-//        if (!attReq.isEmpty()) natOrAAReq.add("(" + StringMan.join(attReq, " AND ") + ")");
-//        if (!defReq.isEmpty()) natOrAAReq.add("(" + StringMan.join(defReq, " AND ") + ")");
-//        String natOrAAReqStr = "(" + StringMan.join(natOrAAReq, union ? " AND " : " OR ") + ")";
-//        requirements.add(natOrAAReqStr);
-//
-//
-//        String query = "SELECT * from wars WHERE " + StringMan.join(requirements, " AND ");
-//        return query;
-//    }
 
     public final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
     private long lastUnloadAttacks = 0;

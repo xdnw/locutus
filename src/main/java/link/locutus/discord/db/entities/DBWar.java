@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.politicsandwar.graphql.model.AlliancePositionEnum;
 import com.politicsandwar.graphql.model.War;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -34,6 +35,78 @@ public class DBWar {
     private final long date;
     private char attDefCities;
     private int costBits = -1;
+
+    public DBWar(int warId, int attacker_id, int defender_id, int attacker_aa, int defender_aa, boolean att_applicant, boolean def_applicant, WarType warType, WarStatus status, long date, int attCities, int defCities, int research) {
+        this.warId = warId;
+        this.nationIdPair = MathMan.pairInt(attacker_id, defender_id);
+        this.allianceIdPair = pairAlliance(attacker_aa, att_applicant, defender_aa, def_applicant);
+        this.warStatusType = (byte) (status.ordinal() << 2 | warType.ordinal());
+        this.date = date;
+        if (attCities == 0) attCities = defCities;
+        if (defCities == 0) defCities = attCities;
+        this.attDefCities = (char) (attCities | (defCities << 8));
+        this.costBits = research;
+    }
+
+    public static int pairAlliance(int attacker_aa, boolean att_applicant,
+                                   int defender_aa, boolean def_applicant) {
+        int result = ((attacker_aa & 0x7FFF) << 16) | (defender_aa & 0x7FFF);
+        if (att_applicant) result |= (1 << 31);
+        if (def_applicant) result |= (1 << 15);
+        return result;
+    }
+
+    @Command
+    public int getAttacker_aa() {
+        return (allianceIdPair >> 16) & 0x7FFF;
+    }
+
+    @Command
+    public int getDefender_aa() {
+        return allianceIdPair & 0x7FFF;
+    }
+
+    @Command
+    public boolean isAttApplicant() {
+        return (allianceIdPair & (1 << 31)) != 0;
+    }
+
+    @Command
+    public boolean isDefApplicant() {
+        return (allianceIdPair & (1 << 15)) != 0;
+    }
+
+    public DBWar(War war) {
+        this(war, true);
+    }
+
+    public DBWar(War war, boolean cities) {
+        this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), war.getAtt_alliance_position() == AlliancePositionEnum.APPLICANT, war.getDef_alliance_position() == AlliancePositionEnum.APPLICANT, WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), cities ? getCities(war.getAtt_id()) : 0, cities ? getCities(war.getDef_id()) : 0, 0);
+    }
+
+
+    public DBWar(SWarContainer c) {
+        this(c.getWarID(), c.getAttackerID(), c.getDefenderID(), getAA(c.getAttackerAA()), getAA(c.getDefenderAA()), getPosLegacy(c.getAttackerID()), getPosLegacy(c.getDefenderID()), WarType.parse(c.getWarType()), WarStatus.parse(c.getStatus()), TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate()), getCities(c.getAttackerID()), getCities(c.getDefenderID()), 0);
+    }
+
+    private static boolean getPosLegacy(int nationId) {
+        DBNation nation = DBNation.getById(nationId);
+        return nation != null && nation.getPositionEnum() == Rank.APPLICANT;
+    }
+
+    public DBWar(DBWar other) {
+        this.warId = other.warId;
+        this.nationIdPair = other.nationIdPair;
+        this.allianceIdPair = other.allianceIdPair;
+        this.warStatusType = other.warStatusType;
+        this.date = other.getDate();
+        this.attDefCities = other.attDefCities;
+    }
+
+    private static int getAA(String aaStr) {
+        DBAlliance aa = Locutus.imp().getNationDB().getAllianceByName(aaStr);
+        return aa == null ? 0 : aa.getAlliance_id();
+    }
 
     public void setCities(DBWar existing, boolean fetchIfNotExisting) {
         if (existing != null) {
@@ -101,18 +174,6 @@ public class DBWar {
     @Command
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
-    }
-
-    public DBWar(int warId, int attacker_id, int defender_id, int attacker_aa, int defender_aa, WarType warType, WarStatus status, long date, int attCities, int defCities, int research) {
-        this.warId = warId;
-        this.nationIdPair = MathMan.pairInt(attacker_id, defender_id);
-        this.allianceIdPair = MathMan.pairChars((char) attacker_aa, (char) defender_aa);
-        this.warStatusType = (byte) (status.ordinal() << 2 | warType.ordinal());
-        this.date = date;
-        if (attCities == 0) attCities = defCities;
-        if (defCities == 0) defCities = attCities;
-        this.attDefCities = (char) (attCities | (defCities << 8));
-        this.costBits = research;
     }
 
     @Command
@@ -189,16 +250,6 @@ public class DBWar {
     }
 
     @Command
-    public int getAttacker_aa() {
-        return MathMan.getXFromInt(allianceIdPair);
-    }
-
-    @Command
-    public int getDefender_aa() {
-        return MathMan.getYFromInt(allianceIdPair);
-    }
-
-    @Command
     public WarType getWarType() {
         return WarType.values[warStatusType & 0b11];
     }
@@ -233,31 +284,8 @@ public class DBWar {
         return TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) >= 60;
     }
 
-    public DBWar(War war) {
-        this(war, true);
-    }
 
-    public DBWar(War war, boolean cities) {
-         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), cities ? getCities(war.getAtt_id()) : 0, cities ? getCities(war.getDef_id()) : 0, 0);
-    }
 
-    private static int getAA(String aaStr) {
-        DBAlliance aa = Locutus.imp().getNationDB().getAllianceByName(aaStr);
-        return aa == null ? 0 : aa.getAlliance_id();
-    }
-
-    public DBWar(SWarContainer c) {
-        this(c.getWarID(), c.getAttackerID(), c.getDefenderID(), getAA(c.getAttackerAA()), getAA(c.getDefenderAA()), WarType.parse(c.getWarType()), WarStatus.parse(c.getStatus()), TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate()), getCities(c.getAttackerID()), getCities(c.getDefenderID()), 0);
-    }
-
-    public DBWar(DBWar other) {
-        this.warId = other.warId;
-        this.nationIdPair = other.nationIdPair;
-        this.allianceIdPair = other.allianceIdPair;
-        this.warStatusType = other.warStatusType;
-        this.date = other.getDate();
-        this.attDefCities = other.attDefCities;
-    }
 
     private static int getCities(int nationId) {
         Locutus lc = Locutus.imp();

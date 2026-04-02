@@ -168,9 +168,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     private static final String REIMBURSED_WARS_TABLE = "REIMBURSED_WARS";
     private static final String BANKER_WITHDRAW_USAGE_TABLE = "BANKER_WITHDRAW_USAGE";
 
-    public static final boolean FORCE_MIGRATION_RECHECK = true;
+    public static final boolean FORCE_MIGRATION_RECHECK = false;
 
     private final Guild guild;
+    private final long guildId;
     private volatile IAutoRoleTask autoRoleTask;
     private GuildHandler handler;
     private IACategory iaCat;
@@ -191,6 +192,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 id == Settings.INSTANCE.ROOT_SERVER ? 20 : 0);
         this.roleToAccountToDiscord = new ConcurrentHashMap<>();
         this.guild = guild;
+        this.guildId = id;
         if (guild != null) Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
         importLegacyRoles();
         Locutus lc = Locutus.imp();
@@ -824,7 +826,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     @Override
     @Command
     public long getIdLong() {
-        return guild.getIdLong();
+        return guildId;
     }
 
     @Override
@@ -1229,6 +1231,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     private void ensureParsedInternalTransactionsTable() {
+        if (guildId == 672217848311054346L) return;
         try {
             boolean canonicalExists = tableExists(INTERNAL_TRANSACTIONS_TABLE);
             if (canonicalExists && isLegacyTransactionsTable(INTERNAL_TRANSACTIONS_TABLE)) {
