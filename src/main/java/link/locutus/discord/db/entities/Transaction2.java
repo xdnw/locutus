@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -392,6 +393,19 @@ public class Transaction2 {
             byte[] data,
             BitBuffer buffer
     ) {
+        return fromStoredPayload(txId, txDatetime, senderKey, receiverKey, bankerNationId, data, buffer, true);
+        }
+
+        public static Transaction2 fromStoredPayload(
+            int txId,
+            long txDatetime,
+            long senderKey,
+            long receiverKey,
+            int bankerNationId,
+            byte[] data,
+            BitBuffer buffer,
+            boolean allowCompatibilityRepair
+        ) {
         return fromPayload(
                 txId,
                 txDatetime,
@@ -401,7 +415,8 @@ public class Transaction2 {
                 TransactionEndpointKey.typeFromKey(receiverKey),
                 bankerNationId,
                 data,
-                buffer
+            buffer,
+            allowCompatibilityRepair
         );
     }
 
@@ -416,6 +431,32 @@ public class Transaction2 {
             byte[] data,
             BitBuffer buffer
     ) {
+            return fromStoredPayload(
+                txId,
+                txDatetime,
+                senderId,
+                senderType,
+                receiverId,
+                receiverType,
+                bankerNationId,
+                data,
+                buffer,
+                true
+            );
+            }
+
+            public static Transaction2 fromStoredPayload(
+                int txId,
+                long txDatetime,
+                long senderId,
+                int senderType,
+                long receiverId,
+                int receiverType,
+                int bankerNationId,
+                byte[] data,
+                BitBuffer buffer,
+                boolean allowCompatibilityRepair
+            ) {
         return fromPayload(
                 txId,
                 txDatetime,
@@ -425,15 +466,22 @@ public class Transaction2 {
                 receiverType,
                 bankerNationId,
                 data,
-                buffer
+                buffer,
+                allowCompatibilityRepair
         );
     }
 
+            public static byte[] canonicalizeStoredPayload(byte[] data, BitBuffer buffer) {
+            PayloadState payload = PayloadState.fromBytes(data, buffer, true);
+            return PayloadState.toBytes(payload.noteState(), payload.resources(), buffer);
+            }
+
     private static Transaction2 fromPayload(int tx_id, long tx_datetime, long sender_id, int sender_type,
-            long receiver_id, int receiver_type, int banker_nation, byte[] data, BitBuffer buffer) {
+                long receiver_id, int receiver_type, int banker_nation, byte[] data, BitBuffer buffer,
+                boolean allowCompatibilityRepair) {
         PayloadState payload;
         try {
-            payload = PayloadState.fromBytes(data, buffer);
+                payload = PayloadState.fromBytes(data, buffer, allowCompatibilityRepair);
         } catch (RuntimeException e) {
             throw payloadDecodeFailure(
                     tx_id,
@@ -732,16 +780,43 @@ public class Transaction2 {
             this.resources = resources == null ? ResourceType.getBuffer() : resources;
         }
 
-        private static PayloadState fromBytes(byte[] bytes, BitBuffer buffer) {
+        private static PayloadState fromBytes(byte[] bytes, BitBuffer buffer, boolean allowCompatibilityRepair) {
             if (bytes == null || bytes.length == 0) {
                 return new PayloadState(NoteState.fromParsed(Collections.emptyMap(), false, false), ResourceType.getBuffer());
             }
             buffer.setBytes(bytes);
             boolean validHash = buffer.readBit();
             boolean lootTransfer = buffer.readBit();
-            double[] resources = readResources(buffer);
-            TransactionNote note = TransactionNote.of(DepositType.readMap(buffer));
-            return new PayloadState(new NoteState(note, validHash, lootTransfer), resources);
+            int declaredResourceCount = buffer.readVarInt();
+            if (!allowCompatibilityRepair) {
+                double[] resources = readResources(buffer, declaredResourceCount);
+                TransactionNote note = TransactionNote.of(DepositType.readMap(buffer));
+                return new PayloadState(new NoteState(note, validHash, lootTransfer), resources);
+            }
+            PayloadState decoded = null;
+            RuntimeException decodeFailure = null;
+            try {
+                decoded = decodePayload(bytes, buffer, validHash, lootTransfer, declaredResourceCount, declaredResourceCount);
+            } catch (RuntimeException e) {
+                decodeFailure = e;
+            }
+            if (decoded != null && payloadMatchesSerialized(bytes, decoded, buffer)) {
+                return decoded;
+            }
+            PayloadState recovered = recoverRoundedZeroResourcePayload(
+                    bytes,
+                    buffer,
+                    validHash,
+                    lootTransfer,
+                    declaredResourceCount
+            );
+            if (recovered != null) {
+                return recovered;
+            }
+            if (decodeFailure != null) {
+                throw decodeFailure;
+            }
+            return decoded;
         }
 
         private static byte[] toBytes(NoteState noteState, double[] resources, BitBuffer buffer) {
@@ -774,7 +849,7 @@ public class Transaction2 {
             return true;
         }
         for (ResourceType type : ResourceType.values) {
-            if (type != ResourceType.CREDITS && resources[type.ordinal()] != 0d) {
+            if (hasStoredResourceAmount(resources, type)) {
                 return false;
             }
         }
@@ -782,40 +857,132 @@ public class Transaction2 {
     }
 
     private static void writeResources(BitBuffer buffer, double[] resources) {
-        int count = 0;
-        if (resources != null) {
-            for (ResourceType type : ResourceType.values) {
-                if (type != ResourceType.CREDITS && resources[type.ordinal()] != 0d) {
-                    count++;
-                }
-            }
-        }
-        buffer.writeVarInt(count);
+        buffer.writeVarInt(countStoredResources(resources));
         if (resources == null) {
             return;
         }
         for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) {
+            if (!hasStoredResourceAmount(resources, type)) {
                 continue;
             }
             long amountCents = ArrayUtil.toCents(resources[type.ordinal()]);
-            if (amountCents == 0L) {
-                continue;
-            }
             buffer.writeVarInt(type.ordinal());
             buffer.writeVarLong(zigZagEncode(amountCents));
         }
     }
 
     private static double[] readResources(BitBuffer buffer) {
-        double[] resources = ResourceType.getBuffer();
         int count = buffer.readVarInt();
+        return readResources(buffer, count);
+    }
+
+    private static double[] readResources(BitBuffer buffer, int count) {
+        double[] resources = ResourceType.getBuffer();
         for (int i = 0; i < count; i++) {
             int ordinal = buffer.readVarInt();
             long amountCents = zigZagDecode(buffer.readVarLong());
             resources[ordinal] = ArrayUtil.fromCents(amountCents);
         }
         return resources;
+    }
+
+    private static PayloadState recoverRoundedZeroResourcePayload(
+            byte[] bytes,
+            BitBuffer buffer,
+            boolean validHash,
+            boolean lootTransfer,
+            int declaredResourceCount
+    ) {
+        if (declaredResourceCount <= 0) {
+            return null;
+        }
+        for (int actualResourceCount = declaredResourceCount - 1; actualResourceCount >= 0; actualResourceCount--) {
+            try {
+                PayloadState candidate = decodePayload(
+                        bytes,
+                        buffer,
+                        validHash,
+                        lootTransfer,
+                        declaredResourceCount,
+                        actualResourceCount
+                );
+                if (payloadMatchesExceptDeclaredResourceCount(bytes, candidate, buffer)) {
+                    return candidate;
+                }
+            } catch (RuntimeException ignored) {
+                // Keep trying smaller actual counts; malformed historical payloads
+                // over-counted resources that rounded to zero cents and emitted no bytes.
+            }
+        }
+        return null;
+    }
+
+    private static PayloadState decodePayload(
+            byte[] bytes,
+            BitBuffer buffer,
+            boolean validHash,
+            boolean lootTransfer,
+            int declaredResourceCount,
+            int actualResourceCount
+    ) {
+        buffer.setBytes(bytes);
+        boolean retryValidHash = buffer.readBit();
+        boolean retryLootTransfer = buffer.readBit();
+        int retryDeclaredCount = buffer.readVarInt();
+        if (retryValidHash != validHash || retryLootTransfer != lootTransfer || retryDeclaredCount != declaredResourceCount) {
+            throw new IllegalStateException("Transaction payload header changed during decode retry");
+        }
+        double[] resources = readResources(buffer, actualResourceCount);
+        TransactionNote note = TransactionNote.of(DepositType.readMap(buffer));
+        return new PayloadState(new NoteState(note, validHash, lootTransfer), resources);
+    }
+
+    private static boolean payloadMatchesSerialized(byte[] bytes, PayloadState payload, BitBuffer buffer) {
+        byte[] canonical = PayloadState.toBytes(payload.noteState(), payload.resources(), buffer);
+        return Arrays.equals(bytes, canonical);
+    }
+
+    private static boolean payloadMatchesExceptDeclaredResourceCount(byte[] bytes, PayloadState payload, BitBuffer buffer) {
+        byte[] canonical = PayloadState.toBytes(payload.noteState(), payload.resources(), buffer);
+        if (bytes == null || canonical == null || bytes.length != canonical.length) {
+            return false;
+        }
+        int totalBits = bytes.length * Byte.SIZE;
+        for (int bit = 0; bit < totalBits; bit++) {
+            if (bit >= 2 && bit < 10) {
+                continue;
+            }
+            if (bitAt(bytes, bit) != bitAt(canonical, bit)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int bitAt(byte[] bytes, int bitIndex) {
+        int byteIndex = bitIndex / Byte.SIZE;
+        int offset = bitIndex % Byte.SIZE;
+        return (bytes[byteIndex] >> offset) & 1;
+    }
+
+    private static int countStoredResources(double[] resources) {
+        if (resources == null) {
+            return 0;
+        }
+        int count = 0;
+        for (ResourceType type : ResourceType.values) {
+            if (hasStoredResourceAmount(resources, type)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static boolean hasStoredResourceAmount(double[] resources, ResourceType type) {
+        if (resources == null || type == ResourceType.CREDITS) {
+            return false;
+        }
+        return ArrayUtil.toCents(resources[type.ordinal()]) != 0L;
     }
 
     private static long zigZagEncode(long value) {

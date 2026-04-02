@@ -1057,7 +1057,7 @@ public enum ResourceType {
         resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
         resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
         resources[ResourceType.FOOD.ordinal()] = rec.getFood();
-        return resources;
+        return round(resources);
     }
 
     private final double baseProduction;

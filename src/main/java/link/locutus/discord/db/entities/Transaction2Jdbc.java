@@ -52,6 +52,11 @@ public final class Transaction2Jdbc {
     }
 
     public static Transaction2 readStoredPayload(ResultSet rs, BitBuffer buffer) throws SQLException {
+        return readStoredPayload(rs, buffer, true);
+    }
+
+    public static Transaction2 readStoredPayload(ResultSet rs, BitBuffer buffer, boolean allowCompatibilityRepair)
+            throws SQLException {
         return Transaction2.fromStoredPayload(
                 rs.getInt("tx_id"),
                 rs.getLong("tx_datetime"),
@@ -59,7 +64,8 @@ public final class Transaction2Jdbc {
                 rs.getLong("receiver_key"),
                 rs.getInt("banker_nation_id"),
                 rs.getBytes("note"),
-                buffer
+                buffer,
+                allowCompatibilityRepair
         );
     }
 

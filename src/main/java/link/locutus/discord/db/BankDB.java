@@ -41,6 +41,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -63,6 +64,9 @@ public class BankDB extends DBMainV3 implements BankStore {
     private static final String TRANSACTIONS_LEGACY_TABLE = "TRANSACTIONS_2_LEGACY";
     private static final String TRANSACTIONS_ALLIANCE_LEGACY_TABLE = "TRANSACTIONS_ALLIANCE_2";
     private static final String TRANSACTION_FORMAT_TABLE = "TRANSACTION_PAYLOAD_FORMAT";
+    private static final String TRANSACTION_PAYLOAD_REPAIR_COLUMN = "repair_version";
+    private static final int TRANSACTION_PAYLOAD_REPAIR_VERSION = 1;
+    private static final int TRANSACTION_PAYLOAD_REPAIR_FAILURE_SAMPLE_LIMIT = 20;
 
     private static final int MIGRATION_BATCH_SIZE = Character.MAX_VALUE;
     private static final long TURN_GROUP_WINDOW_MS = 5L * 60L * 1000L;
@@ -137,7 +141,10 @@ public class BankDB extends DBMainV3 implements BankStore {
         return estimate;
     };
 
-    private final RowMapper<Transaction2> transactionMapper = new Transaction2RowMapper();
+        private volatile boolean transactionPayloadRepairVerified;
+
+        private final RowMapper<Transaction2> transactionMapper =
+            new Transaction2RowMapper(() -> !transactionPayloadRepairVerified);
 
     private final Map<Integer, Set<Transaction2>> transactionCache2 = new HashMap<>();
     private final Map<Integer, Long> lastTaxSummaryUpdateByAlliance = new HashMap<>();
@@ -145,6 +152,48 @@ public class BankDB extends DBMainV3 implements BankStore {
     private final Map<Integer, Long> lastTaxRecordDateByAlliance = new HashMap<>();
 
     private SoftReference<Map.Entry<Integer, List<Transaction2>>> txNationCache;
+
+    public record TransactionPayloadRepairResult(
+            boolean applied,
+            int scannedRows,
+            int rewriteRows,
+            int failedRows,
+            boolean metadataMarkedRepaired,
+            List<Integer> sampleFailedTxIds
+    ) {
+        public boolean hasFailures() {
+            return failedRows > 0;
+        }
+
+        public String summary() {
+            StringBuilder result = new StringBuilder()
+                .append(applied ? "Applied repair: scanned " : "Dry run: scanned ")
+                    .append(scannedRows)
+                .append(" bank transaction payload rows; ")
+                .append(applied ? "rewrote " : "would rewrite ")
+                .append(rewriteRows)
+                    .append('.');
+            if (failedRows > 0) {
+                result.append(" Failed to decode ")
+                        .append(failedRows)
+                        .append(" rows");
+                if (!sampleFailedTxIds.isEmpty()) {
+                    result.append(". Sample tx ids: ").append(sampleFailedTxIds);
+                } else {
+                    result.append('.');
+                }
+            } else if (metadataMarkedRepaired) {
+                result.append(" Payload repair metadata marked as version ")
+                        .append(TRANSACTION_PAYLOAD_REPAIR_VERSION)
+                        .append('.');
+            } else if (!applied) {
+                result.append(" No DB changes were applied.");
+            } else {
+                result.append(" No metadata changes were required.");
+            }
+            return result.toString();
+        }
+    }
 
     public BankDB() throws SQLException, ClassNotFoundException {
         super(
@@ -674,12 +723,24 @@ public class BankDB extends DBMainV3 implements BankStore {
                     CREATE TABLE IF NOT EXISTS TRANSACTION_PAYLOAD_FORMAT (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     format_magic INTEGER NOT NULL,
-                    format_version INTEGER NOT NULL
+                    format_version INTEGER NOT NULL,
+                    repair_version INTEGER NOT NULL DEFAULT 0
                     )
                     """);
 
+            try {
+                if (!hasColumn(TRANSACTION_FORMAT_TABLE, TRANSACTION_PAYLOAD_REPAIR_COLUMN)) {
+                    handle.execute("""
+                            ALTER TABLE TRANSACTION_PAYLOAD_FORMAT
+                            ADD COLUMN repair_version INTEGER NOT NULL DEFAULT 0
+                            """);
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("Failed to validate transaction payload metadata schema", e);
+            }
+
             Map<String, Object> row = handle.createQuery("""
-                    SELECT format_magic, format_version
+                    SELECT format_magic, format_version, repair_version
                     FROM TRANSACTION_PAYLOAD_FORMAT
                     WHERE id = 1
                     """).mapToMap().findOne().orElse(null);
@@ -691,17 +752,19 @@ public class BankDB extends DBMainV3 implements BankStore {
                 }
 
                 handle.createUpdate("""
-                        INSERT INTO TRANSACTION_PAYLOAD_FORMAT(id, format_magic, format_version)
-                        VALUES (1, :magic, :version)
+                    INSERT INTO TRANSACTION_PAYLOAD_FORMAT(id, format_magic, format_version, repair_version)
+                    VALUES (1, :magic, :version, 0)
                         """)
                         .bind("magic", Transaction2.noteDbFormatMagic())
                         .bind("version", Transaction2.noteDbFormatVersion())
                         .execute();
+                transactionPayloadRepairVerified = false;
                 return;
             }
 
             int magic = ((Number) row.get("format_magic")).intValue();
             int version = ((Number) row.get("format_version")).intValue();
+                int repairVersion = ((Number) row.getOrDefault(TRANSACTION_PAYLOAD_REPAIR_COLUMN, 0)).intValue();
 
             if (magic != Transaction2.noteDbFormatMagic()
                     || version != Transaction2.noteDbFormatVersion()) {
@@ -713,7 +776,92 @@ public class BankDB extends DBMainV3 implements BankStore {
                                 + Transaction2.noteDbFormatVersion()
                 );
             }
+
+            transactionPayloadRepairVerified = repairVersion >= TRANSACTION_PAYLOAD_REPAIR_VERSION;
         });
+    }
+
+    private void setTransactionPayloadRepairVersion(int repairVersion) {
+        jdbi().useHandle(handle -> handle.createUpdate("""
+                        UPDATE TRANSACTION_PAYLOAD_FORMAT
+                        SET repair_version = :repairVersion
+                        WHERE id = 1
+                        """)
+                .bind("repairVersion", repairVersion)
+                .execute());
+        transactionPayloadRepairVerified = repairVersion >= TRANSACTION_PAYLOAD_REPAIR_VERSION;
+    }
+
+    public synchronized TransactionPayloadRepairResult repairMalformedTransactionPayloads() {
+        return repairMalformedTransactionPayloads(false);
+    }
+
+    public synchronized TransactionPayloadRepairResult repairMalformedTransactionPayloads(boolean applyChanges) {
+        if (applyChanges) {
+            invalidateTXCache();
+        }
+
+        BitBuffer buffer = Transaction2.createNoteBuffer();
+        List<Map.Entry<Integer, byte[]>> updates = new ArrayList<>();
+        List<Integer> sampleFailedTxIds = new ArrayList<>();
+        int[] scannedRows = {0};
+        int[] failedRows = {0};
+
+        jdbi().useHandle(handle -> handle.createQuery("""
+                        SELECT tx_id, note
+                        FROM TRANSACTIONS_2
+                        WHERE note IS NOT NULL
+                        ORDER BY tx_id
+                        """)
+                .map((rs, ctx) -> new AbstractMap.SimpleImmutableEntry<>(rs.getInt("tx_id"), rs.getBytes("note")))
+                .forEach(entry -> {
+                    scannedRows[0]++;
+                    try {
+                        byte[] canonical = Transaction2.canonicalizeStoredPayload(entry.getValue(), buffer);
+                        if (!Arrays.equals(entry.getValue(), canonical)) {
+                            updates.add(new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), canonical));
+                        }
+                    } catch (RuntimeException e) {
+                        failedRows[0]++;
+                        if (sampleFailedTxIds.size() < TRANSACTION_PAYLOAD_REPAIR_FAILURE_SAMPLE_LIMIT) {
+                            sampleFailedTxIds.add(entry.getKey());
+                        }
+                    }
+                }));
+
+        if (applyChanges && !updates.isEmpty()) {
+            jdbi().useTransaction(handle -> {
+                PreparedBatch batch = handle.prepareBatch("""
+                        UPDATE TRANSACTIONS_2
+                        SET note = :note
+                        WHERE tx_id = :txId
+                        """);
+                for (Map.Entry<Integer, byte[]> update : updates) {
+                    batch.bind("txId", update.getKey())
+                            .bindBySqlType("note", update.getValue(), Types.BLOB)
+                            .add();
+                }
+                batch.execute();
+            });
+            invalidateTXCache();
+        }
+
+        boolean metadataMarkedRepaired = false;
+        if (applyChanges && failedRows[0] == 0) {
+            setTransactionPayloadRepairVersion(TRANSACTION_PAYLOAD_REPAIR_VERSION);
+            metadataMarkedRepaired = true;
+        } else if (applyChanges) {
+            transactionPayloadRepairVerified = false;
+        }
+
+        return new TransactionPayloadRepairResult(
+                applyChanges,
+                scannedRows[0],
+                updates.size(),
+                failedRows[0],
+                metadataMarkedRepaired,
+                List.copyOf(sampleFailedTxIds)
+        );
     }
 
     @Override

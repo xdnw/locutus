@@ -2866,6 +2866,13 @@ public class AdminCommands {
         return "Done!";
     }
 
+    @Command(desc = "Dry-run malformed bank transaction payload repair by default; use `-a` to apply the rewrite and mark the bank DB as repaired")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String repairBankTransactionPayloads(
+            @Arg("Apply the rewrite instead of only reporting what would change") @Switch("a") boolean apply) {
+        return Locutus.imp().getBankDB().repairMalformedTransactionPayloads(apply).summary();
+    }
+
     @Command(desc = """
             List likely duplicate routed transfers for a specific alliance bank within a timeframe
             A match requires a routed `#ignore` transfer into the alliance bank and a second transfer from the same sender alliance
