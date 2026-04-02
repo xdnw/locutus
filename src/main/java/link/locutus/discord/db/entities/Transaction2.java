@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.SQLUtil;
 import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
@@ -430,7 +431,22 @@ public class Transaction2 {
 
     private static Transaction2 fromPayload(int tx_id, long tx_datetime, long sender_id, int sender_type,
             long receiver_id, int receiver_type, int banker_nation, byte[] data, BitBuffer buffer) {
-        PayloadState payload = PayloadState.fromBytes(data, buffer);
+        PayloadState payload;
+        try {
+            payload = PayloadState.fromBytes(data, buffer);
+        } catch (RuntimeException e) {
+            throw payloadDecodeFailure(
+                    tx_id,
+                    tx_datetime,
+                    sender_id,
+                    sender_type,
+                    receiver_id,
+                    receiver_type,
+                    banker_nation,
+                    data,
+                    e
+            );
+        }
         Transaction2 tx = construct(
                 tx_id,
                 tx_datetime,
@@ -446,6 +462,39 @@ public class Transaction2 {
         tx.original_id = tx_id;
         return tx;
     }
+
+    private static IllegalStateException payloadDecodeFailure(
+            int txId,
+            long txDatetime,
+            long senderId,
+            int senderType,
+            long receiverId,
+            int receiverType,
+            int bankerNation,
+            byte[] data,
+            RuntimeException cause
+    ) {
+        long senderKey = TransactionEndpointKey.encode(senderId, senderType);
+        long receiverKey = TransactionEndpointKey.encode(receiverId, receiverType);
+        int noteLength = data == null ? 0 : data.length;
+        String noteHex = data == null ? "null" : SQLUtil.byteArrayToHexString(data);
+        String causeMessage = cause.getMessage();
+
+        return new IllegalStateException(
+                "Failed to decode transaction payload"
+                        + " txId=" + txId
+                        + " txDatetime=" + txDatetime
+                        + " sender=" + senderType + ":" + senderId
+                        + " receiver=" + receiverType + ":" + receiverId
+                        + " bankerNation=" + bankerNation
+                        + " senderKey=" + senderKey
+                        + " receiverKey=" + receiverKey
+                        + " noteLength=" + noteLength
+                        + " noteHex=" + noteHex
+                        + (causeMessage == null || causeMessage.isEmpty() ? "" : " cause=" + causeMessage),
+            cause
+        );
+        }
 
     private static Map.Entry<Long, Integer> idIsAlliance(Element td) {
         try {

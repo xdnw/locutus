@@ -267,7 +267,15 @@ public enum DepositType {
         int size = (int) buffer.readBits(5);
         Map<DepositType, Object> data = new Object2ObjectOpenHashMap<>(size);
         for (int i = 0; i < size; i++) {
-            DepositType type = DepositType.values[(int) buffer.readBits(5)];
+            int ordinal = (int) buffer.readBits(5);
+            if (ordinal < 0 || ordinal >= DepositType.values.length) {
+                throw new IllegalArgumentException(
+                        "Unsupported transaction note deposit type ordinal " + ordinal
+                                + " while decoding structured note payload; known ordinals are 0-"
+                                + (DepositType.values.length - 1)
+                );
+            }
+            DepositType type = DepositType.values[ordinal];
             if (buffer.readBit()) {
                 data.put(type, type.read(buffer));
             } else {

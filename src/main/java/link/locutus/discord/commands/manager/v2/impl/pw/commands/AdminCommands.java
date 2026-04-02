@@ -2872,12 +2872,12 @@ public class AdminCommands {
             with the same banker nation and identical resources within 5 minutes""", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listDuplicateAllianceBankTransfers(@Me IMessageIO io,
-            @Arg("The alliance bank that received the routed transfer") int allianceId,
+            @Arg("The alliance bank that received the routed transfer") DBAlliance alliance,
             @Arg("The start of the timeframe") @Timestamp long start,
             @Arg("The end of the timeframe") @Timestamp long end) {
         DuplicateAllianceBankTransferReport report = DuplicateAllianceBankTransferReport.analyze(
                 Locutus.imp().getBankDB(),
-                allianceId,
+                alliance.getId(),
                 start,
                 end
         );
