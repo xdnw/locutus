@@ -1,7 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.config.Settings;
@@ -11,6 +10,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -103,7 +103,9 @@ public enum DepositType {
 
         @Override
         public Object read(BitBuffer input) {
-            return Projects.get(input.readByte());
+            int projectId = input.readByte();
+            Project project = Projects.get(projectId);
+            return project != null ? project : projectId;
         }
     },
     INFRA(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired infrastructure",
@@ -265,7 +267,7 @@ public enum DepositType {
             return Collections.emptyMap();
         }
         int size = (int) buffer.readBits(5);
-        Map<DepositType, Object> data = new Object2ObjectOpenHashMap<>(size);
+        Map<DepositType, Object> data = new LinkedHashMap<>(size);
         for (int i = 0; i < size; i++) {
             int ordinal = (int) buffer.readBits(5);
             if (ordinal < 0 || ordinal >= DepositType.values.length) {

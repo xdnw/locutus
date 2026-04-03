@@ -393,19 +393,6 @@ public class Transaction2 {
             byte[] data,
             BitBuffer buffer
     ) {
-        return fromStoredPayload(txId, txDatetime, senderKey, receiverKey, bankerNationId, data, buffer, true);
-        }
-
-        public static Transaction2 fromStoredPayload(
-            int txId,
-            long txDatetime,
-            long senderKey,
-            long receiverKey,
-            int bankerNationId,
-            byte[] data,
-            BitBuffer buffer,
-            boolean allowCompatibilityRepair
-        ) {
         return fromPayload(
                 txId,
                 txDatetime,
@@ -415,8 +402,7 @@ public class Transaction2 {
                 TransactionEndpointKey.typeFromKey(receiverKey),
                 bankerNationId,
                 data,
-            buffer,
-            allowCompatibilityRepair
+                buffer
         );
     }
 
@@ -431,32 +417,6 @@ public class Transaction2 {
             byte[] data,
             BitBuffer buffer
     ) {
-            return fromStoredPayload(
-                txId,
-                txDatetime,
-                senderId,
-                senderType,
-                receiverId,
-                receiverType,
-                bankerNationId,
-                data,
-                buffer,
-                true
-            );
-            }
-
-            public static Transaction2 fromStoredPayload(
-                int txId,
-                long txDatetime,
-                long senderId,
-                int senderType,
-                long receiverId,
-                int receiverType,
-                int bankerNationId,
-                byte[] data,
-                BitBuffer buffer,
-                boolean allowCompatibilityRepair
-            ) {
         return fromPayload(
                 txId,
                 txDatetime,
@@ -466,22 +426,38 @@ public class Transaction2 {
                 receiverType,
                 bankerNationId,
                 data,
-                buffer,
-                allowCompatibilityRepair
+                buffer
         );
     }
 
-            public static byte[] canonicalizeStoredPayload(byte[] data, BitBuffer buffer) {
-            PayloadState payload = PayloadState.fromBytes(data, buffer, true);
-            return PayloadState.toBytes(payload.noteState(), payload.resources(), buffer);
+    public static byte[] tryRepairCorruptStoredPayload(byte[] data, BitBuffer buffer) {
+        RuntimeException decodeFailure = null;
+        try {
+            PayloadState decoded = PayloadState.fromBytes(data, buffer);
+            if (payloadMatchesSerialized(data, decoded, buffer)) {
+                return null;
             }
+            decodeFailure = new IllegalStateException(
+                    "Stored payload differs from the fast-decode canonical form and does not match the current schema"
+            );
+        } catch (RuntimeException e) {
+            decodeFailure = e;
+        }
+
+        PayloadState repaired = tryRecoverRoundedZeroResourcePayload(data, buffer);
+        if (repaired == null) {
+            throw decodeFailure == null
+                    ? new IllegalStateException("Stored payload differs from the fast-decode canonical form")
+                    : decodeFailure;
+        }
+        return PayloadState.toBytes(repaired.noteState(), repaired.resources(), buffer);
+    }
 
     private static Transaction2 fromPayload(int tx_id, long tx_datetime, long sender_id, int sender_type,
-                long receiver_id, int receiver_type, int banker_nation, byte[] data, BitBuffer buffer,
-                boolean allowCompatibilityRepair) {
+                long receiver_id, int receiver_type, int banker_nation, byte[] data, BitBuffer buffer) {
         PayloadState payload;
         try {
-                payload = PayloadState.fromBytes(data, buffer, allowCompatibilityRepair);
+                payload = PayloadState.fromBytes(data, buffer);
         } catch (RuntimeException e) {
             throw payloadDecodeFailure(
                     tx_id,
@@ -780,7 +756,7 @@ public class Transaction2 {
             this.resources = resources == null ? ResourceType.getBuffer() : resources;
         }
 
-        private static PayloadState fromBytes(byte[] bytes, BitBuffer buffer, boolean allowCompatibilityRepair) {
+        private static PayloadState fromBytes(byte[] bytes, BitBuffer buffer) {
             if (bytes == null || bytes.length == 0) {
                 return new PayloadState(NoteState.fromParsed(Collections.emptyMap(), false, false), ResourceType.getBuffer());
             }
@@ -788,35 +764,9 @@ public class Transaction2 {
             boolean validHash = buffer.readBit();
             boolean lootTransfer = buffer.readBit();
             int declaredResourceCount = buffer.readVarInt();
-            if (!allowCompatibilityRepair) {
-                double[] resources = readResources(buffer, declaredResourceCount);
-                TransactionNote note = TransactionNote.of(DepositType.readMap(buffer));
-                return new PayloadState(new NoteState(note, validHash, lootTransfer), resources);
-            }
-            PayloadState decoded = null;
-            RuntimeException decodeFailure = null;
-            try {
-                decoded = decodePayload(bytes, buffer, validHash, lootTransfer, declaredResourceCount, declaredResourceCount);
-            } catch (RuntimeException e) {
-                decodeFailure = e;
-            }
-            if (decoded != null && payloadMatchesSerialized(bytes, decoded, buffer)) {
-                return decoded;
-            }
-            PayloadState recovered = recoverRoundedZeroResourcePayload(
-                    bytes,
-                    buffer,
-                    validHash,
-                    lootTransfer,
-                    declaredResourceCount
-            );
-            if (recovered != null) {
-                return recovered;
-            }
-            if (decodeFailure != null) {
-                throw decodeFailure;
-            }
-            return decoded;
+            double[] resources = readResources(buffer, declaredResourceCount);
+            TransactionNote note = TransactionNote.of(DepositType.readMap(buffer));
+            return new PayloadState(new NoteState(note, validHash, lootTransfer), resources);
         }
 
         private static byte[] toBytes(NoteState noteState, double[] resources, BitBuffer buffer) {
@@ -886,13 +836,14 @@ public class Transaction2 {
         return resources;
     }
 
-    private static PayloadState recoverRoundedZeroResourcePayload(
-            byte[] bytes,
-            BitBuffer buffer,
-            boolean validHash,
-            boolean lootTransfer,
-            int declaredResourceCount
-    ) {
+    private static PayloadState tryRecoverRoundedZeroResourcePayload(byte[] bytes, BitBuffer buffer) {
+        if (bytes == null || bytes.length == 0) {
+            return null;
+        }
+        buffer.setBytes(bytes);
+        boolean validHash = buffer.readBit();
+        boolean lootTransfer = buffer.readBit();
+        int declaredResourceCount = buffer.readVarInt();
         if (declaredResourceCount <= 0) {
             return null;
         }
@@ -910,8 +861,7 @@ public class Transaction2 {
                     return candidate;
                 }
             } catch (RuntimeException ignored) {
-                // Keep trying smaller actual counts; malformed historical payloads
-                // over-counted resources that rounded to zero cents and emitted no bytes.
+                // Try smaller counts until the payload prefix lines up with the note map again.
             }
         }
         return null;

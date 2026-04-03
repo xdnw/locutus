@@ -4,7 +4,11 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.SQLUtil;
 import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.math.ArrayUtil;
 import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,27 +53,11 @@ class TransactionPayloadDecodeDebugTest {
         long senderKey = TransactionEndpointKey.encode(13809L, TransactionEndpointKey.ALLIANCE_TYPE);
         long receiverKey = TransactionEndpointKey.encode(189573L, TransactionEndpointKey.NATION_TYPE);
 
-        Transaction2 restored = Transaction2.fromStoredPayload(
-                133729137,
-                1_774_881_528_000L,
-                senderKey,
-                receiverKey,
-                189573,
-                SQLUtil.hexStringToByteArray(FAILING_HEX),
-                Transaction2.createNoteBuffer()
-        );
+        byte[] malformed = SQLUtil.hexStringToByteArray(FAILING_HEX);
 
-        assertEquals("#ignore=13809 #banker=189573", restored.getLegacyNote());
-        assertEquals(95_594.27d, restored.resources[ResourceType.FOOD.ordinal()], 0.00001d);
-        assertEquals(1_069.5d, restored.resources[ResourceType.URANIUM.ordinal()], 0.00001d);
-        assertEquals(0d, restored.resources[ResourceType.MONEY.ordinal()], 0d);
-
-        byte[] canonical = Transaction2.canonicalizeStoredPayload(
-                SQLUtil.hexStringToByteArray(FAILING_HEX),
-                Transaction2.createNoteBuffer()
-        );
-
-        assertTrue(!FAILING_HEX.equals(SQLUtil.byteArrayToHexString(canonical)));
+        byte[] repairedPayload = Transaction2.tryRepairCorruptStoredPayload(malformed, Transaction2.createNoteBuffer());
+        assertNotNull(repairedPayload);
+        assertTrue(!FAILING_HEX.equals(SQLUtil.byteArrayToHexString(repairedPayload)));
 
         Transaction2 repaired = Transaction2.fromStoredPayload(
                 133729137,
@@ -77,9 +65,8 @@ class TransactionPayloadDecodeDebugTest {
                 senderKey,
                 receiverKey,
                 189573,
-                canonical,
-                Transaction2.createNoteBuffer(),
-                false
+                repairedPayload,
+                Transaction2.createNoteBuffer()
         );
 
         assertEquals("#ignore=13809 #banker=189573", repaired.getLegacyNote());
@@ -87,6 +74,50 @@ class TransactionPayloadDecodeDebugTest {
         assertEquals(1_069.5d, repaired.resources[ResourceType.URANIUM.ordinal()], 0.00001d);
         assertEquals(0d, repaired.resources[ResourceType.MONEY.ordinal()], 0d);
     }
+
+    @Test
+    void secondMalformedRoundedZeroResourcePayloadCanBeRepaired() {
+        TransactionNote note = TransactionNote.parseStructuredQuery("#ignore=13809 #banker=189573");
+        byte[] malformed = malformedRoundedZeroPayload(note, 61_811.72d, 697.5d);
+        long senderKey = TransactionEndpointKey.encode(13809L, TransactionEndpointKey.ALLIANCE_TYPE);
+        long receiverKey = TransactionEndpointKey.encode(189573L, TransactionEndpointKey.NATION_TYPE);
+
+        byte[] repairedPayload = Transaction2.tryRepairCorruptStoredPayload(malformed, Transaction2.createNoteBuffer());
+        assertNotNull(repairedPayload);
+
+        Transaction2 repaired = Transaction2.fromStoredPayload(
+                133787467,
+                1_774_881_528_000L,
+                senderKey,
+                receiverKey,
+                189573,
+                repairedPayload,
+                Transaction2.createNoteBuffer()
+        );
+
+        assertEquals("#ignore=13809 #banker=189573", repaired.getLegacyNote());
+        assertEquals(61_811.72d, repaired.resources[ResourceType.FOOD.ordinal()], 0.00001d);
+        assertEquals(697.5d, repaired.resources[ResourceType.URANIUM.ordinal()], 0.00001d);
+        assertEquals(0d, repaired.resources[ResourceType.MONEY.ordinal()], 0d);
+    }
+
+        @Test
+        void unknownProjectIdPayloadRoundTripsWithoutRewrite() {
+                byte[] payload = SQLUtil.hexStringToByteArray("14080067FF8A071480EFCF2900DF9F072C00DF9F073000BE3F0F0CE703");
+                Transaction2 restored = Transaction2.fromStoredPayload(
+                                61639463,
+                                1L,
+                                TransactionEndpointKey.encode(1L, TransactionEndpointKey.ALLIANCE_TYPE),
+                                TransactionEndpointKey.encode(2L, TransactionEndpointKey.NATION_TYPE),
+                                1,
+                                payload,
+                                Transaction2.createNoteBuffer()
+                );
+
+                assertEquals("#project=15", restored.getLegacyNote());
+                assertEquals(SQLUtil.byteArrayToHexString(payload), SQLUtil.byteArrayToHexString(restored.getNoteBytes(Transaction2.createNoteBuffer())));
+                assertTrue(Transaction2.tryRepairCorruptStoredPayload(payload, Transaction2.createNoteBuffer()) == null);
+        }
 
     @Test
     void roundedZeroResourcesDoNotProduceMalformedPayloadsOnWrite() {
@@ -128,6 +159,49 @@ class TransactionPayloadDecodeDebugTest {
         assertEquals(1_069.5d, restored.resources[ResourceType.URANIUM.ordinal()], 0.00001d);
         assertEquals(0d, restored.resources[ResourceType.MONEY.ordinal()], 0d);
     }
+
+        @Test
+        void repairHelperDoesNotRewriteValidPayloads() {
+                Map<DepositType, Object> parsed = new LinkedHashMap<>();
+                parsed.put(DepositType.BANKER, 189573L);
+                parsed.put(DepositType.IGNORE, 13809L);
+                TransactionNote note = TransactionNote.of(parsed);
+
+                Transaction2 tx = Transaction2.construct(
+                                11,
+                                12L,
+                                13809L,
+                                TransactionEndpointKey.ALLIANCE_TYPE,
+                                189573L,
+                                TransactionEndpointKey.NATION_TYPE,
+                                189573,
+                                note,
+                                false,
+                                false,
+                                new double[ResourceType.values.length]
+                );
+
+                byte[] payload = tx.getNoteBytes(Transaction2.createNoteBuffer());
+                assertTrue(Transaction2.tryRepairCorruptStoredPayload(payload, Transaction2.createNoteBuffer()) == null);
+        }
+
+        private static byte[] malformedRoundedZeroPayload(TransactionNote note, double food, double uranium) {
+                BitBuffer buffer = Transaction2.createNoteBuffer();
+                buffer.reset();
+                buffer.writeBit(false);
+                buffer.writeBit(false);
+                buffer.writeVarInt(3);
+                buffer.writeVarInt(ResourceType.FOOD.ordinal());
+                buffer.writeVarLong(zigZagEncode(ArrayUtil.toCents(food)));
+                buffer.writeVarInt(ResourceType.URANIUM.ordinal());
+                buffer.writeVarLong(zigZagEncode(ArrayUtil.toCents(uranium)));
+                DepositType.serialize(note.asMap(), buffer);
+                return buffer.getWrittenBytes();
+        }
+
+        private static long zigZagEncode(long value) {
+                return (value << 1) ^ (value >> 63);
+        }
 
     private static byte[] invalidOrdinalPayload(int invalidOrdinal) {
         BitBuffer buffer = Transaction2.createNoteBuffer();

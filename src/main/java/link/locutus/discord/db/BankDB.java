@@ -41,7 +41,6 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -141,10 +140,7 @@ public class BankDB extends DBMainV3 implements BankStore {
         return estimate;
     };
 
-        private volatile boolean transactionPayloadRepairVerified;
-
-        private final RowMapper<Transaction2> transactionMapper =
-            new Transaction2RowMapper(() -> !transactionPayloadRepairVerified);
+        private final RowMapper<Transaction2> transactionMapper = new Transaction2RowMapper();
 
     private final Map<Integer, Set<Transaction2>> transactionCache2 = new HashMap<>();
     private final Map<Integer, Long> lastTaxSummaryUpdateByAlliance = new HashMap<>();
@@ -159,6 +155,7 @@ public class BankDB extends DBMainV3 implements BankStore {
             int rewriteRows,
             int failedRows,
             boolean metadataMarkedRepaired,
+            List<Integer> sampleRewriteTxIds,
             List<Integer> sampleFailedTxIds
     ) {
         public boolean hasFailures() {
@@ -167,12 +164,15 @@ public class BankDB extends DBMainV3 implements BankStore {
 
         public String summary() {
             StringBuilder result = new StringBuilder()
-                .append(applied ? "Applied repair: scanned " : "Dry run: scanned ")
+                    .append(applied ? "Applied repair: scanned " : "Dry run: scanned ")
                     .append(scannedRows)
-                .append(" bank transaction payload rows; ")
-                .append(applied ? "rewrote " : "would rewrite ")
-                .append(rewriteRows)
+                    .append(" bank transaction payload rows; ")
+                    .append(applied ? "rewrote " : "would rewrite ")
+                    .append(rewriteRows)
                     .append('.');
+            if (!sampleRewriteTxIds.isEmpty()) {
+                result.append(" Sample rewrite tx ids: ").append(sampleRewriteTxIds).append('.');
+            }
             if (failedRows > 0) {
                 result.append(" Failed to decode ")
                         .append(failedRows)
@@ -758,14 +758,11 @@ public class BankDB extends DBMainV3 implements BankStore {
                         .bind("magic", Transaction2.noteDbFormatMagic())
                         .bind("version", Transaction2.noteDbFormatVersion())
                         .execute();
-                transactionPayloadRepairVerified = false;
                 return;
             }
 
             int magic = ((Number) row.get("format_magic")).intValue();
             int version = ((Number) row.get("format_version")).intValue();
-                int repairVersion = ((Number) row.getOrDefault(TRANSACTION_PAYLOAD_REPAIR_COLUMN, 0)).intValue();
-
             if (magic != Transaction2.noteDbFormatMagic()
                     || version != Transaction2.noteDbFormatVersion()) {
                 throw new IllegalStateException(
@@ -776,8 +773,6 @@ public class BankDB extends DBMainV3 implements BankStore {
                                 + Transaction2.noteDbFormatVersion()
                 );
             }
-
-            transactionPayloadRepairVerified = repairVersion >= TRANSACTION_PAYLOAD_REPAIR_VERSION;
         });
     }
 
@@ -789,7 +784,6 @@ public class BankDB extends DBMainV3 implements BankStore {
                         """)
                 .bind("repairVersion", repairVersion)
                 .execute());
-        transactionPayloadRepairVerified = repairVersion >= TRANSACTION_PAYLOAD_REPAIR_VERSION;
     }
 
     public synchronized TransactionPayloadRepairResult repairMalformedTransactionPayloads() {
@@ -803,6 +797,7 @@ public class BankDB extends DBMainV3 implements BankStore {
 
         BitBuffer buffer = Transaction2.createNoteBuffer();
         List<Map.Entry<Integer, byte[]>> updates = new ArrayList<>();
+        List<Integer> sampleRewriteTxIds = new ArrayList<>();
         List<Integer> sampleFailedTxIds = new ArrayList<>();
         int[] scannedRows = {0};
         int[] failedRows = {0};
@@ -817,11 +812,14 @@ public class BankDB extends DBMainV3 implements BankStore {
                 .forEach(entry -> {
                     scannedRows[0]++;
                     try {
-                        byte[] canonical = Transaction2.canonicalizeStoredPayload(entry.getValue(), buffer);
-                        if (!Arrays.equals(entry.getValue(), canonical)) {
-                            updates.add(new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), canonical));
+                        byte[] repaired = Transaction2.tryRepairCorruptStoredPayload(entry.getValue(), buffer);
+                        if (repaired != null) {
+                            updates.add(new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), repaired));
+                            if (sampleRewriteTxIds.size() < TRANSACTION_PAYLOAD_REPAIR_FAILURE_SAMPLE_LIMIT) {
+                                sampleRewriteTxIds.add(entry.getKey());
+                            }
                         }
-                    } catch (RuntimeException e) {
+                    } catch (RuntimeException decodeFailure) {
                         failedRows[0]++;
                         if (sampleFailedTxIds.size() < TRANSACTION_PAYLOAD_REPAIR_FAILURE_SAMPLE_LIMIT) {
                             sampleFailedTxIds.add(entry.getKey());
@@ -850,8 +848,6 @@ public class BankDB extends DBMainV3 implements BankStore {
         if (applyChanges && failedRows[0] == 0) {
             setTransactionPayloadRepairVersion(TRANSACTION_PAYLOAD_REPAIR_VERSION);
             metadataMarkedRepaired = true;
-        } else if (applyChanges) {
-            transactionPayloadRepairVerified = false;
         }
 
         return new TransactionPayloadRepairResult(
@@ -860,6 +856,7 @@ public class BankDB extends DBMainV3 implements BankStore {
                 updates.size(),
                 failedRows[0],
                 metadataMarkedRepaired,
+                List.copyOf(sampleRewriteTxIds),
                 List.copyOf(sampleFailedTxIds)
         );
     }
