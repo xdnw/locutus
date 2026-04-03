@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.TransactionEndpointKey;
 import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.TimeUtil;
@@ -124,7 +125,7 @@ public final class DuplicateAllianceBankTransferReport {
         return detail.toString();
     }
 
-    private static CollectionResult collectMatches(
+    static CollectionResult collectMatches(
             List<Transaction2> candidateTransactions,
             int allianceId,
             long start,
@@ -171,8 +172,13 @@ public final class DuplicateAllianceBankTransferReport {
     }
 
     private static boolean isDirectTransferCandidate(Transaction2 tx, int allianceId) {
-        return !tx.matchesReceiver(allianceId, 2)
-                && !tx.hasNoteTag(DepositType.IGNORE);
+        if (tx.matchesReceiver(allianceId, TransactionEndpointKey.ALLIANCE_TYPE)) {
+            return false;
+        }
+
+        // The direct duplicate can itself carry #ignore=<account> while still targeting a nation.
+        // Only exclude plain routed ignore transfers into alliance-bank receivers.
+        return !(tx.isReceiverAA() && ROUTE_NOTE.equals(tx.getStructuredNote()));
     }
 
     private static void collectMatches(
@@ -274,7 +280,7 @@ public final class DuplicateAllianceBankTransferReport {
         return formatEndpoint(alliance);
     }
 
-    private record CollectionResult(
+        static record CollectionResult(
             int routeCandidateCount,
             List<DuplicateAllianceBankTransferMatch> matches
     ) {
@@ -334,6 +340,6 @@ public final class DuplicateAllianceBankTransferReport {
         }
     }
 
-    private record DuplicateAllianceBankTransferMatch(Transaction2 routeTx, Transaction2 duplicateTx) {
+    static record DuplicateAllianceBankTransferMatch(Transaction2 routeTx, Transaction2 duplicateTx) {
     }
 }
