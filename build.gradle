@@ -1,7 +1,7 @@
 /**
  * Generic runner: call any main without adding a new task each time
  * Usage: gradlew runMain -PmainClass=fully.qualified.MainClass [-PappArgs="a b"] [-PjvmArgs="-Xmx512m"]
- * Includes both main and test runtime classpaths so test harness mains can run too.
+ * Test harness mains should use gradlew runTestMain ... to include test classes and resources.
  *
  * Generate JTE
  * .\gradlew -PwithJtePrecompile generateJte
@@ -52,10 +52,10 @@ tasks.register('runCustomMain', JavaExec) {
     }
 }
 
-tasks.register('runMain', JavaExec) {
-    group = 'application'
-    description = 'Run any main class on the project classpath: -PmainClass=... or -DmainClass=... or env MAIN_CLASS'
-    classpath = sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+def configureGenericMainRun = { task, runtimeClasspath, includeTests ->
+    task.group = 'application'
+    task.classpath = runtimeClasspath
+    task.standardInput = System.in
 
     // Keep task registration lazy so IDE Gradle model sync does not fail.
     def suppliedMain = providers.gradleProperty('mainClass')
@@ -66,10 +66,10 @@ tasks.register('runMain', JavaExec) {
     def suppliedJvmArgs = providers.gradleProperty('jvmArgs')
             .orElse(providers.systemProperty('jvmArgs'))
 
-    mainClass.convention(suppliedMain)
+    task.mainClass.convention(suppliedMain)
 
-    doFirst {
-        if (!mainClass.isPresent()) {
+    task.doFirst {
+        if (!task.mainClass.isPresent()) {
             throw new GradleException("Please specify -PmainClass=fully.qualified.Main or -DmainClass=... or set MAIN_CLASS env var")
         }
 
@@ -84,8 +84,20 @@ tasks.register('runMain', JavaExec) {
         }
     }
 
-    dependsOn tasks.named('classes')
-    dependsOn tasks.named('testClasses')
+    task.dependsOn tasks.named('classes')
+    if (includeTests) {
+        task.dependsOn tasks.named('testClasses')
+    }
+}
+
+tasks.register('runMain', JavaExec) {
+    description = 'Run any main class on the main runtime classpath: -PmainClass=... or -DmainClass=... or env MAIN_CLASS'
+    configureGenericMainRun(delegate, sourceSets.main.runtimeClasspath, false)
+}
+
+tasks.register('runTestMain', JavaExec) {
+    description = 'Run any main class on the main+test runtime classpath: -PmainClass=... or -DmainClass=... or env MAIN_CLASS'
+    configureGenericMainRun(delegate, sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath, true)
 }
 
 tasks.register('cityFallbackBench', JavaExec) {
@@ -283,9 +295,16 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.CoalitionGraphs',
                 'link.locutus.discord.web.commands.binding.value_types.DiscordRole',
                 'link.locutus.discord.web.commands.binding.value_types.GraphType',
-                'link.locutus.discord.web.commands.binding.value_types.NationTaxInfo',
-                'link.locutus.discord.web.commands.binding.value_types.SetGuild',
                 'link.locutus.discord.web.commands.binding.value_types.TaxExpenseBracket',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseBracketMembers',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseNationDetail',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseTime',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseTimeBracket',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseTimeCategory',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseTimeResources',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseTransactionRow',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseTransactions',
+                'link.locutus.discord.web.commands.binding.value_types.SetGuild',
                 'link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson',
                 'link.locutus.discord.web.commands.binding.value_types.WebAnnouncement',
                 'link.locutus.discord.web.commands.binding.value_types.WebAnnouncements',
@@ -307,7 +326,6 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.WebTarget',
                 'link.locutus.discord.web.commands.binding.value_types.WebViewCommand',
                 'link.locutus.discord.web.commands.binding.value_types.WebTargets',
-                'link.locutus.discord.web.commands.binding.value_types.WebTransaction',
                 'link.locutus.discord.web.commands.binding.value_types.WebTransferResult',
                 'link.locutus.discord.web.commands.binding.value_types.WebUrl',
                 'link.locutus.discord.web.commands.binding.value_types.WebValue',
