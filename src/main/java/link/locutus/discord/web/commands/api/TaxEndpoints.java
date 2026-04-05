@@ -231,12 +231,13 @@ public class TaxEndpoints {
     @ReturnType(TaxExpenses.class)
     public TaxExpenses tax_expense(@Me GuildDB db,
                                    @Timestamp long start,
-                                   @Timestamp long end,
+                                   @Default @Timestamp Long end,
                                    @Switch("n") NationList nationList,
                                    @Switch("g") boolean dontRequireGrant,
                                    @Switch("t") boolean dontRequireTagged,
                                    @Switch("e") boolean dontRequireExpiry,
                                    @Switch("d") boolean includeDeposits) throws Exception {
+        if (end == null) end = Long.MAX_VALUE;
         TaxRecordCategorizer2 categorized = createSummaryCategorizer(db, start, end, nationList, dontRequireGrant,
                 dontRequireTagged, dontRequireExpiry, includeDeposits);
 
