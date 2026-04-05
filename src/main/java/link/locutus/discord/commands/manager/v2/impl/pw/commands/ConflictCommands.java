@@ -592,7 +592,9 @@ public class ConflictCommands {
     public void addCoalition(@Me IMessageIO io, ConflictManager manager, @Me DBNation me, @Me User user, @Me Guild guild, @Me GuildDB db,
             Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1,
             @Switch("col2") boolean isCoalition2) {
-        requireConflictWritePerm(conflict, me, user, guild, db);
+        if (isCoalition1 || isCoalition2) {
+            requireConflictWritePerm(conflict, me, user, guild, db);
+        }
         boolean hasAdmin = Roles.ADMIN.hasOnRoot(user);
         if (isCoalition1 && isCoalition2) {
             throw new IllegalArgumentException("Cannot specify both `isCoalition1` and `isCoalition2`");
