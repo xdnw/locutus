@@ -2,7 +2,6 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.web.commands.binding.value_types.WebTransaction;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -229,17 +228,24 @@ class TransactionNoteTest {
         }
 
         @Test
-        void webTransactionExposesRawSerializedPayload() {
+        void storedPayloadRoundTripsRawSerializedPayload() {
                 TransactionNote note = TransactionNote.builder()
                                 .put(DepositType.GRANT)
                                 .put(DepositType.CITY, 4L)
                                 .build();
                 Transaction2 tx = Transaction2.construct(7, 9L, 11L, 1, 13L, 2, 17, note, false, false,
                                 new double[ResourceType.values.length]);
+                byte[] payload = tx.getNoteBytes(Transaction2.createNoteBuffer());
+                Transaction2 decoded = roundTrip(tx);
 
-                WebTransaction webTransaction = new WebTransaction(tx);
-
-                assertArrayEquals(tx.getNoteBytes(Transaction2.createNoteBuffer()), webTransaction.note);
+                assertArrayEquals(payload, decoded.getNoteBytes(Transaction2.createNoteBuffer()));
+                assertEquals(tx.getStructuredNote(), decoded.getStructuredNote());
+                assertArrayEquals(tx.resources, decoded.resources);
+                assertEquals(tx.sender_id, decoded.sender_id);
+                assertEquals(tx.sender_type, decoded.sender_type);
+                assertEquals(tx.receiver_id, decoded.receiver_id);
+                assertEquals(tx.receiver_type, decoded.receiver_type);
+                assertEquals(tx.banker_nation, decoded.banker_nation);
         }
 
         @Test

@@ -829,7 +829,7 @@ public class WebPWBindings extends WebBindingHelper {
         List<Coalition> options = Arrays.asList(Coalition.values());
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.name());
-            subtext.add(obj.getDescription());
+            subtext.add(obj.getDesc());
         });
     }
 

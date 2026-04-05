@@ -175,6 +175,14 @@ public class WebOptionBindings extends BindingHelper {
         List<String> roleDesc = Arrays.stream(Roles.values).map(r -> r.getDesc()).toList();
         return new WebOption(Roles.class).setOptions(roleNames, roleDesc);
     }
+
+    @Binding(types = Coalition.class)
+    public WebOption getCoalitions() {
+        List<String> cName = Arrays.stream(Coalition.values).map(Enum::name).toList();
+        List<String> cDesc = Arrays.stream(Coalition.values).map(r -> r.getDesc()).toList();
+        return new WebOption(Coalition.class).setOptions(cName, cDesc);
+    }
+
 //TextChannel
     @Binding(types = TextChannel.class)
     public WebOption getTextChannel() {
@@ -375,12 +383,18 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = String.class)
     public WebOption guildCoalition() {
         return new WebOption(Key.of(String.class, GuildCoalition.class)).setRequiresGuild().setAllowCustomOption().setQueryMap((db, user, nation) -> {
+            WebOptions data = new WebOptions(false).withText().withSubtext();
+
             Set<String> coalitions = new ObjectLinkedOpenHashSet<>();
             for (Coalition value : Coalition.values()) coalitions.add(value.name().toLowerCase(Locale.ROOT));
             coalitions.addAll(db.getCoalitionNames());
-            WebOptions data = new WebOptions(false).withText();
             for (String coalition : coalitions) {
-                data.add(coalition);
+                Coalition emum = Coalition.parse(coalition);
+                if (emum != null) {
+                    data.addSubtext(coalition, emum.getDesc());
+                } else {
+                    data.addSubtext(coalition, null);
+                }
             }
             return data;
         }, false);

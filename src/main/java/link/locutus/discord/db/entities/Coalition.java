@@ -138,6 +138,7 @@ public enum Coalition {
 
     ;
 
+    public static final Coalition[] values = values();
     private final String desc;
     private final String nameLower;
 
@@ -154,7 +155,7 @@ public enum Coalition {
         return nameLower;
     }
 
-    public String getDescription() {
+    public String getDesc() {
         return desc;
     }
 
