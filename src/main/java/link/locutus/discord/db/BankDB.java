@@ -66,7 +66,6 @@ public class BankDB extends DBMainV3 implements BankStore {
     private static final String TRANSACTION_PAYLOAD_REPAIR_COLUMN = "repair_version";
     private static final int TRANSACTION_PAYLOAD_REPAIR_VERSION = 1;
     private static final int TRANSACTION_PAYLOAD_REPAIR_FAILURE_SAMPLE_LIMIT = 20;
-
     private static final int MIGRATION_BATCH_SIZE = Character.MAX_VALUE;
     private static final long TURN_GROUP_WINDOW_MS = 5L * 60L * 1000L;
     private static final long TAX_DATE_FIX_START = 1656153134000L;
@@ -140,7 +139,7 @@ public class BankDB extends DBMainV3 implements BankStore {
         return estimate;
     };
 
-        private final RowMapper<Transaction2> transactionMapper = new Transaction2RowMapper();
+    private final RowMapper<Transaction2> transactionMapper = new Transaction2RowMapper();
 
     private final Map<Integer, Set<Transaction2>> transactionCache2 = new HashMap<>();
     private final Map<Integer, Long> lastTaxSummaryUpdateByAlliance = new HashMap<>();
@@ -292,6 +291,36 @@ public class BankDB extends DBMainV3 implements BankStore {
 
     private static String andJoin(List<String> clauses) {
         return String.join(" AND ", clauses);
+    }
+
+    private static void addTimeRangeClauses(
+            List<String> clauses,
+            Map<String, Object> scalarBinds,
+            String column,
+            long start,
+            long end
+    ) {
+        if (start > 0) {
+            clauses.add(column + " >= :start");
+            scalarBinds.put("start", start);
+        }
+        if (end != Long.MAX_VALUE) {
+            clauses.add(column + " <= :end");
+            scalarBinds.put("end", end);
+        }
+    }
+
+    private static void addEndpointTypeClause(
+            List<String> clauses,
+            Map<String, Object> scalarBinds,
+            String column,
+            String bindName,
+            Integer endpointType
+    ) {
+        if (endpointType != null) {
+            clauses.add(hasEndpointTypeSql(column, bindName));
+            scalarBinds.put(bindName, endpointType);
+        }
     }
 
     private static int normalizeTaxBase(short pair) {
@@ -453,6 +482,8 @@ public class BankDB extends DBMainV3 implements BankStore {
             handle.execute("CREATE INDEX IF NOT EXISTS idx_transactions_2_datetime ON TRANSACTIONS_2(tx_datetime)");
             handle.execute("CREATE INDEX IF NOT EXISTS idx_transactions_2_sender_key ON TRANSACTIONS_2(sender_key)");
             handle.execute("CREATE INDEX IF NOT EXISTS idx_transactions_2_receiver_key ON TRANSACTIONS_2(receiver_key)");
+            handle.execute("CREATE INDEX IF NOT EXISTS idx_transactions_2_sender_key_datetime ON TRANSACTIONS_2(sender_key, tx_datetime)");
+            handle.execute("CREATE INDEX IF NOT EXISTS idx_transactions_2_receiver_key_datetime ON TRANSACTIONS_2(receiver_key, tx_datetime)");
             handle.execute("CREATE INDEX IF NOT EXISTS idx_transactions_2_banker_nation_id ON TRANSACTIONS_2(banker_nation_id)");
         });
     }
@@ -1985,14 +2016,35 @@ public class BankDB extends DBMainV3 implements BankStore {
 
     @Override
     public List<Transaction2> getTransactionsByAllianceSender(int allianceId) {
-        long allianceKey = TransactionEndpointKey.encode((long) allianceId, TransactionEndpointKey.ALLIANCE_TYPE);
-        return queryTransactions(
-                "sender_key = :allianceKey",
-                Map.of("allianceKey", allianceKey),
-                null,
-                null,
-                null
-        );
+        return getTransactionsByAllianceSender(allianceId, 0L, Long.MAX_VALUE, null);
+    }
+
+    @Override
+    public List<Transaction2> getTransactionsByAllianceSender(int allianceId, long start, long end) {
+        return getTransactionsByAllianceSender(allianceId, start, end, null);
+    }
+
+    @Override
+    public List<Transaction2> getTransactionsByAllianceSender(int allianceId, long start, long end, Integer receiverType) {
+        return getTransactionsByAllianceSender(Set.of(allianceId), start, end, receiverType);
+    }
+
+    @Override
+    public List<Transaction2> getTransactionsByAllianceSender(Set<Integer> allianceIds, long start, long end, Integer receiverType) {
+        if (allianceIds == null || allianceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> clauses = new ArrayList<>();
+        Map<String, Object> scalarBinds = new HashMap<>();
+        Map<String, Collection<?>> listBinds = new HashMap<>();
+
+        clauses.add(inClause("sender_key", "allianceKeys"));
+        listBinds.put("allianceKeys", allianceKeys(allianceIds));
+        addTimeRangeClauses(clauses, scalarBinds, "tx_datetime", start, end);
+        addEndpointTypeClause(clauses, scalarBinds, "receiver_key", "receiverType", receiverType);
+
+        return queryTransactions(andJoin(clauses), scalarBinds, listBinds, "tx_datetime ASC, tx_id ASC", null);
     }
 
     @Override
@@ -2025,9 +2077,42 @@ public class BankDB extends DBMainV3 implements BankStore {
 
     @Override
     public List<Transaction2> getTransactionsByAllianceReceiver(int allianceId) {
+        return getTransactionsByAllianceReceiver(allianceId, 0L, Long.MAX_VALUE, null);
+    }
+
+    @Override
+    public List<Transaction2> getTransactionsByAllianceReceiver(int allianceId, long start, long end) {
+        return getTransactionsByAllianceReceiver(allianceId, start, end, null);
+    }
+
+    @Override
+    public List<Transaction2> getTransactionsByAllianceReceiver(int allianceId, long start, long end, Integer senderType) {
+        return getTransactionsByAllianceReceiver(Set.of(allianceId), start, end, senderType);
+    }
+
+    @Override
+    public List<Transaction2> getTransactionsByAllianceReceiver(Set<Integer> allianceIds, long start, long end, Integer senderType) {
+        if (allianceIds == null || allianceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> clauses = new ArrayList<>();
+        Map<String, Object> scalarBinds = new HashMap<>();
+        Map<String, Collection<?>> listBinds = new HashMap<>();
+
+        clauses.add(inClause("receiver_key", "allianceKeys"));
+        listBinds.put("allianceKeys", allianceKeys(allianceIds));
+        addTimeRangeClauses(clauses, scalarBinds, "tx_datetime", start, end);
+        addEndpointTypeClause(clauses, scalarBinds, "sender_key", "senderType", senderType);
+
+        return queryTransactions(andJoin(clauses), scalarBinds, listBinds, "tx_datetime ASC, tx_id ASC", null);
+    }
+
+    @Override
+    public List<Transaction2> getTransactionsByAlliance(int allianceId) {
         long allianceKey = TransactionEndpointKey.encode((long) allianceId, TransactionEndpointKey.ALLIANCE_TYPE);
         return queryTransactions(
-                "receiver_key = :allianceKey",
+                "sender_key = :allianceKey OR receiver_key = :allianceKey",
                 Map.of("allianceKey", allianceKey),
                 null,
                 null,
@@ -2078,18 +2163,6 @@ public class BankDB extends DBMainV3 implements BankStore {
                 "tx_datetime ASC, tx_id ASC",
                 null
             );
-    }
-
-    @Override
-    public List<Transaction2> getTransactionsByAlliance(int allianceId) {
-        long allianceKey = TransactionEndpointKey.encode((long) allianceId, TransactionEndpointKey.ALLIANCE_TYPE);
-        return queryTransactions(
-                "sender_key = :allianceKey OR receiver_key = :allianceKey",
-                Map.of("allianceKey", allianceKey),
-                null,
-                null,
-                null
-        );
     }
 
     @Override
@@ -2295,26 +2368,38 @@ public class BankDB extends DBMainV3 implements BankStore {
 
     @Override
     public List<TaxDeposit> getTaxesByAA(int alliance) {
-        return queryTaxDeposits(
-                "alliance = :alliance",
-                Map.of("alliance", alliance),
-                null,
-                null,
-                null
-        );
+        return getTaxesByAA(alliance, 0L, Long.MAX_VALUE);
+    }
+
+    @Override
+    public List<TaxDeposit> getTaxesByAA(int alliance, long start, long end) {
+        return getTaxesByAA(Set.of(alliance), start, end);
     }
 
     @Override
     public List<TaxDeposit> getTaxesByAA(Set<Integer> allianceIds) {
+        return getTaxesByAA(allianceIds, 0L, Long.MAX_VALUE);
+    }
+
+    @Override
+    public List<TaxDeposit> getTaxesByAA(Set<Integer> allianceIds, long start, long end) {
         if (allianceIds == null || allianceIds.isEmpty()) {
             return Collections.emptyList();
         }
 
+        List<String> clauses = new ArrayList<>();
+        Map<String, Object> scalarBinds = new HashMap<>();
+        Map<String, Collection<?>> listBinds = new HashMap<>();
+
+        clauses.add(inClause("alliance", "allianceIds"));
+        listBinds.put("allianceIds", sortedIntegers(allianceIds));
+        addTimeRangeClauses(clauses, scalarBinds, "date", start, end);
+
         return queryTaxDeposits(
-                inClause("alliance", "allianceIds"),
-                null,
-                Map.of("allianceIds", sortedIntegers(allianceIds)),
-                null,
+                andJoin(clauses),
+                scalarBinds,
+                listBinds,
+                "date ASC, id ASC",
                 null
         );
     }

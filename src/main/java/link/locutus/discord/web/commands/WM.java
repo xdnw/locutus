@@ -1480,66 +1480,6 @@ public class WM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.page.EconPages.class,method="taxExpensesByTime")
-            public static class taxExpensesByTime extends CommandRef {
-                public static final taxExpensesByTime cmd = new taxExpensesByTime();
-            public taxExpensesByTime start(String value) {
-                return set("start", value);
-            }
-
-            public taxExpensesByTime end(String value) {
-                return set("end", value);
-            }
-
-            public taxExpensesByTime nationFilter(String value) {
-                return set("nationFilter", value);
-            }
-
-            public taxExpensesByTime movingAverageTurns(String value) {
-                return set("movingAverageTurns", value);
-            }
-
-            public taxExpensesByTime cumulative(String value) {
-                return set("cumulative", value);
-            }
-
-            public taxExpensesByTime dontRequireTagged(String value) {
-                return set("dontRequireTagged", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.page.EconPages.class,method="taxExpensesIndex")
-            public static class taxExpensesIndex extends CommandRef {
-                public static final taxExpensesIndex cmd = new taxExpensesIndex();
-            public taxExpensesIndex start(String value) {
-                return set("start", value);
-            }
-
-            public taxExpensesIndex end(String value) {
-                return set("end", value);
-            }
-
-            public taxExpensesIndex nationList(String value) {
-                return set("nationList", value);
-            }
-
-            public taxExpensesIndex dontRequireGrant(String value) {
-                return set("dontRequireGrant", value);
-            }
-
-            public taxExpensesIndex dontRequireTagged(String value) {
-                return set("dontRequireTagged", value);
-            }
-
-            public taxExpensesIndex dontRequireExpiry(String value) {
-                return set("dontRequireExpiry", value);
-            }
-
-            public taxExpensesIndex includeDeposits(String value) {
-                return set("includeDeposits", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.page.TradePages.class,method="tradePrice")
             public static class tradePrice extends CommandRef {
                 public static final tradePrice cmd = new tradePrice();

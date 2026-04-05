@@ -67,7 +67,6 @@ import link.locutus.discord.web.commands.binding.PrimitiveWebBindings;
 import link.locutus.discord.web.commands.binding.WebPWBindings;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.BankPages;
-import link.locutus.discord.web.commands.page.EconPages;
 import link.locutus.discord.web.commands.page.GrantPages;
 import link.locutus.discord.web.commands.page.IAPages;
 import link.locutus.discord.web.commands.page.IndexPages;
@@ -157,7 +156,6 @@ public class PageHandler implements Handler {
 
         this.commands.registerSubCommands(new IndexPages(), "page");
         this.commands.registerSubCommands(new IAPages(), "page");
-        this.commands.registerSubCommands(new EconPages(), "page");
         this.commands.registerSubCommands(new StatPages(), "page");
         this.commands.registerSubCommands(new WarPages(), "page");
         this.commands.registerSubCommands(new GrantPages(), "page");

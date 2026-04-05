@@ -121,9 +121,21 @@ public interface BankStore {
 
     List<Transaction2> getTransactionsByAllianceSender(int allianceId);
 
+    List<Transaction2> getTransactionsByAllianceSender(int allianceId, long start, long end);
+
+    List<Transaction2> getTransactionsByAllianceSender(int allianceId, long start, long end, Integer receiverType);
+
+    List<Transaction2> getTransactionsByAllianceSender(Set<Integer> allianceIds, long start, long end, Integer receiverType);
+
     Set<Integer> getReceiverNationIdFromAllianceReceivers(Set<Integer> allianceIds);
 
     List<Transaction2> getTransactionsByAllianceReceiver(int allianceId);
+
+    List<Transaction2> getTransactionsByAllianceReceiver(int allianceId, long start, long end);
+
+    List<Transaction2> getTransactionsByAllianceReceiver(int allianceId, long start, long end, Integer senderType);
+
+    List<Transaction2> getTransactionsByAllianceReceiver(Set<Integer> allianceIds, long start, long end, Integer senderType);
 
     List<Transaction2> getTransactionsByAlliance(int allianceId);
 
@@ -157,7 +169,11 @@ public interface BankStore {
 
     List<TaxDeposit> getTaxesByAA(int alliance);
 
+    List<TaxDeposit> getTaxesByAA(int alliance, long start, long end);
+
     List<TaxDeposit> getTaxesByAA(Set<Integer> allianceIds);
+
+    List<TaxDeposit> getTaxesByAA(Set<Integer> allianceIds, long start, long end);
 
     TaxDeposit getLatestTaxDeposit(int allianceId);
 

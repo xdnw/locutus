@@ -19,9 +19,6 @@ import java.util.*;
 public class StatEndpoints {
     // EntityTable custom
     // EntityGroup
-    // TaxCategoryGraph
-
-
     // TODO validate permissions
     @Command(desc = "Render a custom WebTable using a placeholder type and specified columns", viewable = true)
     @ReturnType(WebTable.class)

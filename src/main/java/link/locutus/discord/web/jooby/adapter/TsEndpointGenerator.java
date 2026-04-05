@@ -41,7 +41,7 @@ public class TsEndpointGenerator {
     public static void main(String[] args) {
         try {
             PageHandler handler = createStandalonePageHandler();
-            writeFiles(handler, null, true, true);
+            writeFiles(handler, null, true, false);
         } catch (Throwable e) {
             e.printStackTrace();
         }
