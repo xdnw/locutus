@@ -316,7 +316,7 @@ public class TaxRecordCategorizer2 {
         });
 
         long minTurn = TimeUtil.getTurn(start);
-        long maxTurn = TimeUtil.getTurn(end);
+        long maxTurn = Math.min(TimeUtil.getTurn(), TimeUtil.getTurn(end));
 
         this.transactionsByNation = new Int2ObjectOpenHashMap<>();
         this.transactionsByBracket = new Int2ObjectOpenHashMap<>();
