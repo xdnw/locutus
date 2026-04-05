@@ -179,6 +179,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     private final IntOpenHashSet dirtyCities =new IntOpenHashSet();
     private final Set<Integer> dirtyCityNations = Collections.synchronizedSet(new IntOpenHashSet());
+    private final Object dirtyCityUpdateLock = new Object();
     private final Set<Integer> dirtyNations = Collections.synchronizedSet(new IntOpenHashSet());
 
     private final Map<Integer, Set<DBTreasure>> treasuresByNation = new Int2ObjectOpenHashMap<>();
@@ -1494,70 +1495,80 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
-    public synchronized boolean updateDirtyCities(boolean priority, Consumer<Event> eventConsumer, int max) {
-        List<Integer> cityIds = new IntArrayList();
-        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
+    public boolean updateDirtyCities(boolean priority, Consumer<Event> eventConsumer, int max) {
+        synchronized (dirtyCityUpdateLock) {
+            List<Integer> cityIds = new IntArrayList();
+            PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
+            Set<Integer> dirtyNationSnapshot;
+            int dirtyCityCount;
 
-        int dirtyNationCities = estimateCities(dirtyCityNations);
-        if (dirtyCities.size() > 15000 || dirtyNationCities > 15000) {
-            Logg.info("Marking cities as outdated " + dirtyCities.size() + " " + dirtyNationCities);
-        }
-        System.out.println("Dirty cities: " + dirtyCities.size() + ", Dirty nation cities: " + dirtyNationCities);
-
-        if (!dirtyCities.isEmpty()) {
+            synchronized (dirtyCityNations) {
+                dirtyNationSnapshot = new IntOpenHashSet(dirtyCityNations);
+            }
             synchronized (dirtyCities) {
-                Iterator<Integer> iter = dirtyCities.iterator();
-                while (iter.hasNext() && cityIds.size() < max) {
-                    int cityId = iter.next();
-                    iter.remove();
-                    cityIds.add(cityId);
-                }
+                dirtyCityCount = dirtyCities.size();
             }
-        }
-
-        if (cityIds.isEmpty()) return false;
-        Set<Integer> newCityIds = null;
-
-        int pad = 500 - (cityIds.size() % 500);
-        if (pad != 500) {
-            if (pad <= 10) {
-                List<Integer> newCityIdsList = getMostOutdatedCities(pad, new IntOpenHashSet(cityIds));
-                cityIds.addAll(newCityIdsList);
-                newCityIds = new IntOpenHashSet(newCityIdsList);
-            } else {
-                cityIds.addAll(getMostOutdatedCities(pad - 10, new IntOpenHashSet(cityIds)));
+            int dirtyNationCities = estimateCities(dirtyNationSnapshot);
+            if (dirtyCityCount > 15000 || dirtyNationCities > 15000) {
+                Logg.info("Marking cities as outdated " + dirtyCityCount + " " + dirtyNationCities);
             }
-        }
+            System.out.println("Dirty cities: " + dirtyCityCount + ", Dirty nation cities: " + dirtyNationCities);
 
-        Set<Integer> deletedCities = new IntOpenHashSet();
-        Collections.sort(cityIds);
-
-        System.out.println("City ids to update: " + cityIds.size());
-        for (int i = 0; i < cityIds.size() && !cityIds.isEmpty(); i += 500) {
-            int end = Math.min(i + 500, cityIds.size());
-            List<Integer> toFetch = cityIds.subList(i, end);
-            List<City> cities = v3.fetchCitiesWithInfo(priority, r -> r.setId(toFetch), true);
-            deletedCities.addAll(toFetch);
-            for (City city : cities) deletedCities.remove(city.getId());
-            if (newCityIds != null) {
-                for (City city : cities) {
-                    if (newCityIds.contains(city.getId())) {
-                        lastNewCityFetched = Math.max(lastNewCityFetched, city.getId());
+            if (dirtyCityCount > 0) {
+                synchronized (dirtyCities) {
+                    Iterator<Integer> iter = dirtyCities.iterator();
+                    while (iter.hasNext() && cityIds.size() < max) {
+                        int cityId = iter.next();
+                        iter.remove();
+                        cityIds.add(cityId);
                     }
                 }
             }
-            System.out.println("Updating cities: " + cities.size() + " for ids: " + toFetch.size());
-            updateCities(cities, eventConsumer, "updating outdated cities");
-        }
-        if (!deletedCities.isEmpty()) {
-            deleteCities(deletedCities, eventConsumer);
-        }
 
-        if (!dirtyCityNations.isEmpty()) {
-            updateCitiesOfNations(dirtyCityNations, priority, false, eventConsumer);
-        }
+            if (cityIds.isEmpty()) return false;
+            Set<Integer> newCityIds = null;
 
-        return true;
+            int pad = 500 - (cityIds.size() % 500);
+            if (pad != 500) {
+                if (pad <= 10) {
+                    List<Integer> newCityIdsList = getMostOutdatedCities(pad, new IntOpenHashSet(cityIds));
+                    cityIds.addAll(newCityIdsList);
+                    newCityIds = new IntOpenHashSet(newCityIdsList);
+                } else {
+                    cityIds.addAll(getMostOutdatedCities(pad - 10, new IntOpenHashSet(cityIds)));
+                }
+            }
+
+            Set<Integer> deletedCities = new IntOpenHashSet();
+            Collections.sort(cityIds);
+
+            System.out.println("City ids to update: " + cityIds.size());
+            for (int i = 0; i < cityIds.size() && !cityIds.isEmpty(); i += 500) {
+                int end = Math.min(i + 500, cityIds.size());
+                List<Integer> toFetch = cityIds.subList(i, end);
+                List<City> cities = v3.fetchCitiesWithInfo(priority, r -> r.setId(toFetch), true);
+                deletedCities.addAll(toFetch);
+                for (City city : cities) deletedCities.remove(city.getId());
+                if (newCityIds != null) {
+                    for (City city : cities) {
+                        if (newCityIds.contains(city.getId())) {
+                            lastNewCityFetched = Math.max(lastNewCityFetched, city.getId());
+                        }
+                    }
+                }
+                System.out.println("Updating cities: " + cities.size() + " for ids: " + toFetch.size());
+                updateCities(cities, eventConsumer, "updating outdated cities");
+            }
+            if (!deletedCities.isEmpty()) {
+                deleteCities(deletedCities, eventConsumer);
+            }
+
+            if (!dirtyNationSnapshot.isEmpty()) {
+                updateCitiesOfNations(dirtyNationSnapshot, priority, false, eventConsumer);
+            }
+
+            return true;
+        }
     }
 
     private int lastNewCityFetched = 0;
@@ -3636,15 +3647,26 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
-    public synchronized void addRadiationByTurn(Continent continent, long turn, double radiation) {
-        try (PreparedStatement stmt = getConnection().prepareStatement("INSERT OR IGNORE INTO RADIATION_BY_TURN (continent, radiation, turn) VALUES (?, ?, ?)")) {
-            stmt.setInt(1, continent.ordinal());
-            stmt.setInt(2, (int) (radiation * 100));
-            stmt.setLong(3, turn);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+    public synchronized void addRadiationByTurn(Map<Continent, Double> radiationByContinent, long turn) {
+        if (radiationByContinent == null || radiationByContinent.isEmpty()) {
+            return;
         }
+
+        Map<Continent, Double> updatedValues = new Object2ObjectOpenHashMap<>();
+        Map<Continent, Double> cachedResult = radiationCache.getIfPresent(turn);
+        if (cachedResult != null) {
+            updatedValues.putAll(cachedResult);
+        }
+        updatedValues.putAll(radiationByContinent);
+        radiationCache.put(turn, updatedValues);
+
+        executeBatch(radiationByContinent.entrySet(),
+                "INSERT OR IGNORE INTO RADIATION_BY_TURN (continent, radiation, turn) VALUES (?, ?, ?)",
+                (ThrowingBiConsumer<Map.Entry<Continent, Double>, PreparedStatement>) (entry, stmt) -> {
+                    stmt.setInt(1, entry.getKey().ordinal());
+                    stmt.setInt(2, (int) (entry.getValue() * 100));
+                    stmt.setLong(3, turn);
+                });
     }
 
     @Override

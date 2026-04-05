@@ -5,11 +5,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.politicsandwar.graphql.model.*;
+import com.politicsandwar.graphql.model.Color;
+import com.politicsandwar.graphql.model.GameInfo;
+import com.politicsandwar.graphql.model.Radiation;
+import com.politicsandwar.graphql.model.Trade;
+import com.politicsandwar.graphql.model.TradeType;
+import com.politicsandwar.graphql.model.Tradeprice;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -22,11 +26,21 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.DiscordMeta;
+import link.locutus.discord.db.entities.TradeSubscription;
+import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.trade.*;
+import link.locutus.discord.event.trade.BulkTradeSubscriptionEvent;
+import link.locutus.discord.event.trade.TradeCompleteEvent;
+import link.locutus.discord.event.trade.TradeCreateEvent;
+import link.locutus.discord.event.trade.TradeDeleteEvent;
+import link.locutus.discord.event.trade.TradeUpdateEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -35,6 +49,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -43,7 +58,17 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -1030,8 +1055,9 @@ public class TradeManager {
     }
 
     private final Map<Continent, Map.Entry<Double, Long>> radiation = new ConcurrentHashMap<>();
+    private final Object radiationUpdateLock = new Object();
 
-    public synchronized double getGlobalRadiation() {
+    public double getGlobalRadiation() {
         double global = 0;
         for (Continent continent : Continent.values) {
             double rads = getGlobalRadiation(continent);
@@ -1041,57 +1067,57 @@ public class TradeManager {
         return global;
     }
 
-    public synchronized double getGlobalRadiation(Continent continent) {
+    public double getGlobalRadiation(Continent continent) {
         return getGlobalRadiation(continent, false);
     }
 
     private volatile long lastTurnUpdateRads = 0;
 
-    public synchronized double getGlobalRadiation(Continent continent, boolean forceUpdate) {
+    public double getGlobalRadiation(Continent continent, boolean forceUpdate) {
         long currentTurn = TimeUtil.getTurn();
 
         if (!forceUpdate) {
-            Map.Entry<Double, Long> valuePair = radiation.get(continent);
-            if (valuePair != null) {
-                if (valuePair.getValue() == currentTurn || lastTurnUpdateRads == currentTurn) return valuePair.getKey();
-            }
-            ByteBuffer radsStr = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal());
-            if (radsStr != null) {
-                double rads = radsStr.getLong() / 100d;
-                long turn = radsStr.getLong();
-
-                radiation.put(continent, new KeyValue<>(rads, turn));
-                if (turn == currentTurn || lastTurnUpdateRads == currentTurn) {
-                    return rads;
-                }
+            Double cachedValue = getCachedRadiation(continent, currentTurn);
+            if (cachedValue != null) {
+                return cachedValue;
             }
         }
-        try {
-            lastTurnUpdateRads = currentTurn;
-            GameInfo gameInfo = Locutus.imp().getApiPool().getGameInfo();
-            Radiation info = gameInfo.getRadiation();
 
-            Map<Continent, Double> continentRadiation = new Object2DoubleOpenHashMap<>();
-            continentRadiation.put(Continent.NORTH_AMERICA, info.getNorth_america());
-            continentRadiation.put(Continent.SOUTH_AMERICA, info.getSouth_america());
-            continentRadiation.put(Continent.EUROPE, info.getEurope());
-            continentRadiation.put(Continent.AFRICA, info.getAfrica());
-            continentRadiation.put(Continent.ASIA, info.getAsia());
-            continentRadiation.put(Continent.AUSTRALIA, info.getAustralia());
-            continentRadiation.put(Continent.ANTARCTICA, info.getAntarctica());
-            continentRadiation.forEach(this::setRadiation);
-
-            Double cityAvg = gameInfo.getCity_average();
-            if (cityAvg != null && Math.round(cityAvg * 10000) != Math.round(PW.City.CITY_AVERAGE * 10000)) {
-                Locutus.imp().getDiscordDB().setCityAverage(cityAvg);
-                PW.City.CITY_AVERAGE = cityAvg;
-                Logg.info("City average updated: " + cityAvg);
+        synchronized (radiationUpdateLock) {
+            if (!forceUpdate) {
+                Double cachedValue = getCachedRadiation(continent, currentTurn);
+                if (cachedValue != null) {
+                    return cachedValue;
+                }
             }
-        } catch (RuntimeException ignore) {
-            ignore.printStackTrace();
-            // update radiation values to current turn
-            for (Map.Entry<Continent, Map.Entry<Double, Long>> entry : radiation.entrySet()) {
-                entry.getValue().setValue(currentTurn);
+
+            try {
+                lastTurnUpdateRads = currentTurn;
+                GameInfo gameInfo = Locutus.imp().getApiPool().getGameInfo();
+                Radiation info = gameInfo.getRadiation();
+
+                Map<Continent, Double> radsByContinent = new EnumMap<>(Continent.class);
+                radsByContinent.put(Continent.NORTH_AMERICA, info.getNorth_america());
+                radsByContinent.put(Continent.SOUTH_AMERICA, info.getSouth_america());
+                radsByContinent.put(Continent.EUROPE, info.getEurope());
+                radsByContinent.put(Continent.AFRICA, info.getAfrica());
+                radsByContinent.put(Continent.ASIA, info.getAsia());
+                radsByContinent.put(Continent.AUSTRALIA, info.getAustralia());
+                radsByContinent.put(Continent.ANTARCTICA, info.getAntarctica());
+                setRadiation(radsByContinent, currentTurn);
+
+                Double cityAvg = gameInfo.getCity_average();
+                if (cityAvg != null && Math.round(cityAvg * 10000) != Math.round(PW.City.CITY_AVERAGE * 10000)) {
+                    Locutus.imp().getDiscordDB().setCityAverage(cityAvg);
+                    PW.City.CITY_AVERAGE = cityAvg;
+                    Logg.info("City average updated: " + cityAvg);
+                }
+            } catch (RuntimeException ignore) {
+                ignore.printStackTrace();
+                // Keep the last known radiation readable for the current turn if refresh fails.
+                for (Map.Entry<Continent, Map.Entry<Double, Long>> entry : radiation.entrySet()) {
+                    entry.getValue().setValue(currentTurn);
+                }
             }
         }
 
@@ -1106,13 +1132,52 @@ public class TradeManager {
         return TimeUtil.getOrbisDate(TimeUtil.getTimeFromDay(TimeUtil.getDay()));
     }
 
-    private void setRadiation(Continent continent, double rads) {
-        long currentTurn = TimeUtil.getTurn();
-        long[] pair = new long[]{(long) (rads * 100), currentTurn};
-        byte[] bytes = ArrayUtil.toByteArray(pair);
-        Locutus.imp().getNationDB().addRadiationByTurn(continent, currentTurn, rads);
-        Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal(), bytes);
-        radiation.put(continent, new KeyValue<>(rads, currentTurn));
+    private Double getCachedRadiation(Continent continent, long currentTurn) {
+        Map.Entry<Double, Long> valuePair = radiation.get(continent);
+        if (valuePair != null && (valuePair.getValue() == currentTurn || lastTurnUpdateRads == currentTurn)) {
+            return valuePair.getKey();
+        }
+
+        ByteBuffer radsStr = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal());
+        if (radsStr == null) {
+            return null;
+        }
+
+        double rads = radsStr.getLong() / 100d;
+        long turn = radsStr.getLong();
+        radiation.put(continent, new KeyValue<>(rads, turn));
+        if (turn == currentTurn || lastTurnUpdateRads == currentTurn) {
+            return rads;
+        }
+        return null;
+    }
+
+    private void setRadiation(Map<Continent, Double> radsByContinent, long currentTurn) {
+        if (radsByContinent.isEmpty()) {
+            return;
+        }
+
+        Map<Continent, Double> radiationSnapshot = new EnumMap<>(Continent.class);
+        Map<Long, byte[]> infoById = new HashMap<>(radsByContinent.size());
+        for (Map.Entry<Continent, Double> entry : radsByContinent.entrySet()) {
+            Continent continent = entry.getKey();
+            double rads = entry.getValue();
+            radiation.put(continent, new KeyValue<>(rads, currentTurn));
+            radiationSnapshot.put(continent, rads);
+
+            long[] pair = new long[]{(long) (rads * 100), currentTurn};
+            infoById.put((long) continent.ordinal(), ArrayUtil.toByteArray(pair));
+        }
+
+        Locutus locutus = Locutus.imp();
+        // Persist the latest radiation snapshot off-thread so readers stay on the in-memory path.
+        locutus.getExecutor().submit(new CaughtRunnable() {
+            @Override
+            public void runUnsafe() {
+                locutus.getDiscordDB().setInfo(DiscordMeta.RADIATION_CONTINENT, infoById);
+                locutus.getNationDB().addRadiationByTurn(radiationSnapshot, currentTurn);
+            }
+        });
     }
 
     public void updateColorBlocs() {

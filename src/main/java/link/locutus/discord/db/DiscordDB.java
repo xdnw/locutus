@@ -467,17 +467,29 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void setInfo(DiscordMeta meta, long id, byte[] value) {
+        Long2ObjectOpenHashMap<byte[]> valuesById = new Long2ObjectOpenHashMap<>(1);
+        valuesById.put(id, value);
+        setInfo(meta, valuesById);
+    }
+
+    public void setInfo(DiscordMeta meta, Map<Long, byte[]> valuesById) {
         checkNotNull(meta);
-        checkNotNull(value);
+        checkNotNull(valuesById);
+        if (valuesById.isEmpty()) {
+            return;
+        }
         initInfo();
         synchronized (this) {
-            update("INSERT OR REPLACE INTO `DISCORD_META`(`key`, `id`, `value`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-                stmt.setInt(1, meta.ordinal());
-                stmt.setLong(2, id);
-                stmt.setBytes(3, value);
-
-            });
-            info.computeIfAbsent(meta, f -> new Long2ObjectOpenHashMap<>()).put(id, value);
+            executeBatch(valuesById.entrySet(),
+                    "INSERT OR REPLACE INTO `DISCORD_META`(`key`, `id`, `value`) VALUES(?, ?, ?)",
+                    (ThrowingBiConsumer<Map.Entry<Long, byte[]>, PreparedStatement>) (entry, stmt) -> {
+                        checkNotNull(entry.getValue());
+                        stmt.setInt(1, meta.ordinal());
+                        stmt.setLong(2, entry.getKey());
+                        stmt.setBytes(3, entry.getValue());
+                    });
+            Map<Long, byte[]> metaInfo = info.computeIfAbsent(meta, f -> new Long2ObjectOpenHashMap<>());
+            valuesById.forEach(metaInfo::put);
         }
     }
 

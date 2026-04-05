@@ -31,9 +31,11 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
@@ -51,6 +53,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
+    private static final int REQUEST_TIMEOUT_MS = 60_000;
+
     static {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         GraphQLRequestSerializer.OBJECT_MAPPER.setDateFormat(sdf);
@@ -84,7 +88,10 @@ public class PoliticsAndWarV3 {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(REQUEST_TIMEOUT_MS);
+        requestFactory.setReadTimeout(REQUEST_TIMEOUT_MS);
+        this.restTemplate = new RestTemplate(requestFactory);
         this.pool = pool;
 
         this.jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().simpleDateFormat("yyyy-MM-dd").build();
@@ -393,6 +400,19 @@ public class PoliticsAndWarV3 {
                     if (pair.getNationId() != Settings.INSTANCE.NATION_ID) pair.deleteApiKey();
                 }
                 pool.removeKey(pair);
+            } catch (ResourceAccessException e) {
+                long retryDelayMs = Math.min(30_000L, 5_000L * backOff);
+                Logg.text("GraphQL transport error, retrying:\n" +
+                        "- Request: " + graphQLRequest.getRequest() + "\n" +
+                        "- Timeout: " + REQUEST_TIMEOUT_MS + "ms\n" +
+                        "- Retry After: " + retryDelayMs + "ms\n" +
+                        "- Error: " + e.getMessage());
+                try {
+                    Thread.sleep(retryDelayMs);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(interrupted);
+                }
             } catch (HttpClientErrorException e) {
                 FileUtil.setRateLimited(uri, true);
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
