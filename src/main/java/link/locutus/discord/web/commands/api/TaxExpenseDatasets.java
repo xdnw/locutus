@@ -42,6 +42,7 @@ import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.json.JSONObject;
 
+import java.lang.ref.SoftReference;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -64,18 +65,20 @@ final class TaxExpenseDatasets {
     }
 
     private static final int TOTAL_TAX_ID = -1;
-    private static final long DATASET_TTL_MINUTES = 2L;
+    private static final long REQUEST_CACHE_TTL_MINUTES = 2L;
+    private static final long DATASET_LOOKUP_TTL_HOURS = 12L;
     private static final AtomicInteger NEXT_DATASET_ID = new AtomicInteger(1);
     private static final Object SUMMARY_LOCK = new Object();
     private static final Object TIME_LOCK = new Object();
-    private static final PassiveExpiringMap<SummaryRequestKey, SummaryDataset> SUMMARY_BY_KEY =
-            new PassiveExpiringMap<>(DATASET_TTL_MINUTES, TimeUnit.MINUTES);
-    private static final PassiveExpiringMap<Integer, SummaryDataset> SUMMARY_BY_ID =
-            new PassiveExpiringMap<>(DATASET_TTL_MINUTES, TimeUnit.MINUTES);
-    private static final PassiveExpiringMap<TimeRequestKey, TimeDataset> TIME_BY_KEY =
-            new PassiveExpiringMap<>(DATASET_TTL_MINUTES, TimeUnit.MINUTES);
-    private static final PassiveExpiringMap<Integer, TimeDataset> TIME_BY_ID =
-            new PassiveExpiringMap<>(DATASET_TTL_MINUTES, TimeUnit.MINUTES);
+    // Keep request-key reuse fresh for "to now" queries, but retain dataset ids long enough to rebuild page state.
+    private static final PassiveExpiringMap<SummaryRequestKey, SummaryDatasetSlot> SUMMARY_BY_KEY =
+            new PassiveExpiringMap<>(REQUEST_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+    private static final PassiveExpiringMap<Integer, SummaryDatasetSlot> SUMMARY_BY_ID =
+            new PassiveExpiringMap<>(DATASET_LOOKUP_TTL_HOURS, TimeUnit.HOURS);
+    private static final PassiveExpiringMap<TimeRequestKey, TimeDatasetSlot> TIME_BY_KEY =
+            new PassiveExpiringMap<>(REQUEST_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+    private static final PassiveExpiringMap<Integer, TimeDatasetSlot> TIME_BY_ID =
+            new PassiveExpiringMap<>(DATASET_LOOKUP_TTL_HOURS, TimeUnit.HOURS);
     private static final FlowType[] FLOW_TYPES = FlowType.values();
     private static final Comparator<TaxExpenseBracketRow> BRACKET_ROW_ORDER =
             Comparator.<TaxExpenseBracketRow>comparingDouble(row -> Math.abs(row.netValue))
@@ -104,6 +107,7 @@ final class TaxExpenseDatasets {
                                             boolean dontRequireTagged,
                                             boolean dontRequireExpiry,
                                             boolean includeDeposits) throws Exception {
+        long loadEnd = resolveDatasetEnd(end);
         String filter = resolveFilter(command, "nationList", nationList);
         SummaryRequestKey key = new SummaryRequestKey(
                 db.getIdLong(),
@@ -118,39 +122,41 @@ final class TaxExpenseDatasets {
         NationSelection selection = createSelection(nationList);
 
         synchronized (SUMMARY_LOCK) {
-            SummaryDataset cached = SUMMARY_BY_KEY.get(key);
+            SummaryDatasetSlot cached = SUMMARY_BY_KEY.get(key);
             if (cached != null) {
-                SUMMARY_BY_KEY.put(key, cached);
-                SUMMARY_BY_ID.put(cached.datasetId, cached);
-                return cached;
+                SummaryDataset dataset = cached.getOrBuild(db);
+                rememberSummaryRequestSlot(cached);
+                rememberSummaryIdSlot(cached);
+                return dataset;
             }
 
-            SummaryDataset created = buildSummaryDataset(
+            SummaryDatasetSlot created = new SummaryDatasetSlot(
                     key,
                     nextDatasetId(),
-                    db,
+                    db.getIdLong(),
                     start,
-                    end,
+                    loadEnd,
                     selection,
                     dontRequireGrant,
                     dontRequireTagged,
                     dontRequireExpiry,
                     includeDeposits
             );
-            SUMMARY_BY_KEY.put(key, created);
-            SUMMARY_BY_ID.put(created.datasetId, created);
-            return created;
+            SummaryDataset dataset = created.getOrBuild(db);
+            rememberSummaryRequestSlot(created);
+            rememberSummaryIdSlot(created);
+            return dataset;
         }
     }
 
-    static SummaryDataset requireSummaryDataset(GuildDB db, int datasetId) {
+    static SummaryDataset requireSummaryDataset(GuildDB db, int datasetId) throws Exception {
         synchronized (SUMMARY_LOCK) {
-            SummaryDataset dataset = SUMMARY_BY_ID.get(datasetId);
-            if (dataset == null || dataset.guildId != db.getIdLong()) {
+            SummaryDatasetSlot slot = SUMMARY_BY_ID.get(datasetId);
+            if (slot == null || slot.guildId != db.getIdLong()) {
                 throw new IllegalArgumentException("Tax expense dataset expired. Reload the summary page.");
             }
-            SUMMARY_BY_KEY.put(dataset.requestKey, dataset);
-            SUMMARY_BY_ID.put(datasetId, dataset);
+            SummaryDataset dataset = slot.getOrBuild(db);
+            rememberSummaryIdSlot(slot);
             return dataset;
         }
     }
@@ -161,8 +167,9 @@ final class TaxExpenseDatasets {
                                       long end,
                                       @Nullable NationList nationFilter,
                                       boolean dontRequireTagged) throws Exception {
+        long loadEnd = resolveDatasetEnd(end);
         long turnStart = TimeUtil.getTurn(start);
-        long turnEnd = resolveTurnEnd(end);
+        long turnEnd = resolveTurnEnd(loadEnd);
         if (turnEnd - turnStart > 365L * 12L) {
             throw new IllegalArgumentException("Timeframe is too large");
         }
@@ -172,44 +179,61 @@ final class TaxExpenseDatasets {
         NationSelection selection = createSelection(nationFilter);
 
         synchronized (TIME_LOCK) {
-            TimeDataset cached = TIME_BY_KEY.get(key);
+            TimeDatasetSlot cached = TIME_BY_KEY.get(key);
             if (cached != null) {
-                TIME_BY_KEY.put(key, cached);
-                TIME_BY_ID.put(cached.datasetId, cached);
-                return cached;
+                TimeDataset dataset = cached.getOrBuild(db);
+                rememberTimeRequestSlot(cached);
+                rememberTimeIdSlot(cached);
+                return dataset;
             }
 
-            TimeDataset created = buildTimeDataset(
+            TimeDatasetSlot created = new TimeDatasetSlot(
                     key,
                     nextDatasetId(),
-                    db,
+                    db.getIdLong(),
                     start,
-                    end,
+                    loadEnd,
                     selection,
                     dontRequireTagged,
                     turnStart,
                     turnEnd
             );
-            TIME_BY_KEY.put(key, created);
-            TIME_BY_ID.put(created.datasetId, created);
-            return created;
-        }
-    }
-
-    static TimeDataset requireTimeDataset(GuildDB db, int datasetId) {
-        synchronized (TIME_LOCK) {
-            TimeDataset dataset = TIME_BY_ID.get(datasetId);
-            if (dataset == null || dataset.guildId != db.getIdLong()) {
-                throw new IllegalArgumentException("Tax expense dataset expired. Reload the by-time page.");
-            }
-            TIME_BY_KEY.put(dataset.requestKey, dataset);
-            TIME_BY_ID.put(datasetId, dataset);
+            TimeDataset dataset = created.getOrBuild(db);
+            rememberTimeRequestSlot(created);
+            rememberTimeIdSlot(created);
             return dataset;
         }
     }
 
-    private static SummaryDataset buildSummaryDataset(SummaryRequestKey requestKey,
-                                                      int datasetId,
+    static TimeDataset requireTimeDataset(GuildDB db, int datasetId) throws Exception {
+        synchronized (TIME_LOCK) {
+            TimeDatasetSlot slot = TIME_BY_ID.get(datasetId);
+            if (slot == null || slot.guildId != db.getIdLong()) {
+                throw new IllegalArgumentException("Tax expense dataset expired. Reload the by-time page.");
+            }
+            TimeDataset dataset = slot.getOrBuild(db);
+            rememberTimeIdSlot(slot);
+            return dataset;
+        }
+    }
+
+    private static void rememberSummaryRequestSlot(SummaryDatasetSlot slot) {
+        SUMMARY_BY_KEY.put(slot.requestKey, slot);
+    }
+
+    private static void rememberSummaryIdSlot(SummaryDatasetSlot slot) {
+        SUMMARY_BY_ID.put(slot.datasetId, slot);
+    }
+
+    private static void rememberTimeRequestSlot(TimeDatasetSlot slot) {
+        TIME_BY_KEY.put(slot.requestKey, slot);
+    }
+
+    private static void rememberTimeIdSlot(TimeDatasetSlot slot) {
+        TIME_BY_ID.put(slot.datasetId, slot);
+    }
+
+    private static SummaryDataset buildSummaryDataset(int datasetId,
                                                       GuildDB db,
                                                       long start,
                                                       long end,
@@ -272,11 +296,10 @@ final class TaxExpenseDatasets {
                 new IntOpenHashSet(loaded.expenseAllianceIds),
                 loaded.taxes.size()
         );
-        return new SummaryDataset(requestKey, datasetId, db.getIdLong(), response, sectionsByTaxId, loaded.currentTaxIdByNation);
+        return new SummaryDataset(datasetId, db.getIdLong(), response, sectionsByTaxId, loaded.currentTaxIdByNation);
     }
 
-    private static TimeDataset buildTimeDataset(TimeRequestKey requestKey,
-                                                int datasetId,
+    private static TimeDataset buildTimeDataset(int datasetId,
                                                 GuildDB db,
                                                 long start,
                                                 long end,
@@ -351,7 +374,7 @@ final class TaxExpenseDatasets {
                 summaries
         );
         TaxExpenseTimeResources resources = new TaxExpenseTimeResources(totalByResourceByCategory);
-        return new TimeDataset(requestKey, datasetId, db.getIdLong(), response, resources, sectionsByTaxId, turnCount);
+        return new TimeDataset(datasetId, db.getIdLong(), response, resources, sectionsByTaxId, turnCount);
     }
 
     private static LoadedData loadData(GuildDB db,
@@ -734,9 +757,12 @@ final class TaxExpenseDatasets {
         return new NationSelection(new IntOpenHashSet(nationList.getNationIds()));
     }
 
+    private static long resolveDatasetEnd(long end) {
+        return end == Long.MAX_VALUE ? System.currentTimeMillis() : end;
+    }
+
     private static long resolveTurnEnd(long end) {
-        long effectiveEnd = end == Long.MAX_VALUE ? System.currentTimeMillis() : end;
-        return Math.min(TimeUtil.getTurn(effectiveEnd), TimeUtil.getTurn());
+        return Math.min(TimeUtil.getTurn(end), TimeUtil.getTurn());
     }
 
     private static int nextDatasetId() {
@@ -998,21 +1024,74 @@ final class TaxExpenseDatasets {
         }
     }
 
+    private static final class SummaryDatasetSlot {
+        private final SummaryRequestKey requestKey;
+        private final int datasetId;
+        private final long guildId;
+        private final long start;
+        private final long end;
+        private final NationSelection selection;
+        private final boolean dontRequireGrant;
+        private final boolean dontRequireTagged;
+        private final boolean dontRequireExpiry;
+        private final boolean includeDeposits;
+        private SoftReference<SummaryDataset> datasetRef = new SoftReference<>(null);
+
+        private SummaryDatasetSlot(SummaryRequestKey requestKey,
+                                   int datasetId,
+                                   long guildId,
+                                   long start,
+                                   long end,
+                                   NationSelection selection,
+                                   boolean dontRequireGrant,
+                                   boolean dontRequireTagged,
+                                   boolean dontRequireExpiry,
+                                   boolean includeDeposits) {
+            this.requestKey = requestKey;
+            this.datasetId = datasetId;
+            this.guildId = guildId;
+            this.start = start;
+            this.end = end;
+            this.selection = selection;
+            this.dontRequireGrant = dontRequireGrant;
+            this.dontRequireTagged = dontRequireTagged;
+            this.dontRequireExpiry = dontRequireExpiry;
+            this.includeDeposits = includeDeposits;
+        }
+
+        private SummaryDataset getOrBuild(GuildDB db) throws Exception {
+            SummaryDataset dataset = datasetRef.get();
+            if (dataset != null) {
+                return dataset;
+            }
+            dataset = buildSummaryDataset(
+                    datasetId,
+                    db,
+                    start,
+                    end,
+                    selection,
+                    dontRequireGrant,
+                    dontRequireTagged,
+                    dontRequireExpiry,
+                    includeDeposits
+            );
+            datasetRef = new SoftReference<>(dataset);
+            return dataset;
+        }
+    }
+
     static final class SummaryDataset {
         final int datasetId;
         final long guildId;
-        private final SummaryRequestKey requestKey;
         private final TaxExpenses response;
         private final Int2ObjectOpenHashMap<SummarySectionData> sectionsByTaxId;
         private final Int2IntOpenHashMap currentTaxIdByNation;
 
-        private SummaryDataset(SummaryRequestKey requestKey,
-                       int datasetId,
+        private SummaryDataset(int datasetId,
                                long guildId,
                                TaxExpenses response,
                                Int2ObjectOpenHashMap<SummarySectionData> sectionsByTaxId,
                                Int2IntOpenHashMap currentTaxIdByNation) {
-            this.requestKey = requestKey;
             this.datasetId = datasetId;
             this.guildId = guildId;
             this.response = response;
@@ -1137,23 +1216,72 @@ final class TaxExpenseDatasets {
         }
     }
 
+    private static final class TimeDatasetSlot {
+        private final TimeRequestKey requestKey;
+        private final int datasetId;
+        private final long guildId;
+        private final long start;
+        private final long end;
+        private final NationSelection selection;
+        private final boolean dontRequireTagged;
+        private final long turnStart;
+        private final long turnEnd;
+        private SoftReference<TimeDataset> datasetRef = new SoftReference<>(null);
+
+        private TimeDatasetSlot(TimeRequestKey requestKey,
+                                int datasetId,
+                                long guildId,
+                                long start,
+                                long end,
+                                NationSelection selection,
+                                boolean dontRequireTagged,
+                                long turnStart,
+                                long turnEnd) {
+            this.requestKey = requestKey;
+            this.datasetId = datasetId;
+            this.guildId = guildId;
+            this.start = start;
+            this.end = end;
+            this.selection = selection;
+            this.dontRequireTagged = dontRequireTagged;
+            this.turnStart = turnStart;
+            this.turnEnd = turnEnd;
+        }
+
+        private TimeDataset getOrBuild(GuildDB db) throws Exception {
+            TimeDataset dataset = datasetRef.get();
+            if (dataset != null) {
+                return dataset;
+            }
+            dataset = buildTimeDataset(
+                    datasetId,
+                    db,
+                    start,
+                    end,
+                    selection,
+                    dontRequireTagged,
+                    turnStart,
+                    turnEnd
+            );
+            datasetRef = new SoftReference<>(dataset);
+            return dataset;
+        }
+    }
+
     static final class TimeDataset {
         final int datasetId;
         final long guildId;
-        private final TimeRequestKey requestKey;
         private final TaxExpenseTime response;
         private final TaxExpenseTimeResources resources;
         private final Int2ObjectOpenHashMap<TimeSectionData> sectionsByTaxId;
         private final int turnCount;
 
-        private TimeDataset(TimeRequestKey requestKey,
-                    int datasetId,
+        private TimeDataset(int datasetId,
                             long guildId,
                             TaxExpenseTime response,
                             TaxExpenseTimeResources resources,
                             Int2ObjectOpenHashMap<TimeSectionData> sectionsByTaxId,
                             int turnCount) {
-            this.requestKey = requestKey;
             this.datasetId = datasetId;
             this.guildId = guildId;
             this.response = response;

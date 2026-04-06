@@ -57,7 +57,7 @@ public class TaxEndpoints {
     @ReturnType(TaxExpenseBracketRows.class)
     public TaxExpenseBracketRows tax_expense_bracket_rows(@Me GuildDB db,
                                                           int datasetId,
-                                                          int taxId) {
+                                                          int taxId) throws Exception {
         return TaxExpenseDatasets.requireSummaryDataset(db, datasetId).getBracketRows(taxId);
     }
 
@@ -68,7 +68,7 @@ public class TaxEndpoints {
     public TaxExpenseNation tax_expense_nation(@Me GuildDB db,
                                                int datasetId,
                                                int taxId,
-                                               int nation) {
+                                               int nation) throws Exception {
         return TaxExpenseDatasets.requireSummaryDataset(db, datasetId).getNation(taxId, nation);
     }
 
@@ -77,7 +77,7 @@ public class TaxEndpoints {
     @RolePermission(Roles.ECON_STAFF)
     @ReturnType(TaxExpenseTimeResources.class)
     public TaxExpenseTimeResources tax_expense_by_time_resources(@Me GuildDB db,
-                                                                 int datasetId) {
+                                                                 int datasetId) throws Exception {
         return TaxExpenseDatasets.requireTimeDataset(db, datasetId).getResources();
     }
 
@@ -87,7 +87,7 @@ public class TaxEndpoints {
     @ReturnType(TaxExpenseTimeBracket.class)
     public TaxExpenseTimeBracket tax_expense_by_time_bracket(@Me GuildDB db,
                                                              int datasetId,
-                                                             int taxId) {
+                                                             int taxId) throws Exception {
         return TaxExpenseDatasets.requireTimeDataset(db, datasetId).getBracket(taxId);
     }
 
@@ -103,7 +103,13 @@ public class TaxEndpoints {
                                               @Default NationList nationFilter,
                                               @Switch("t") boolean dontRequireTagged) throws Exception {
         if (datasetId != null) {
-            return TaxExpenseDatasets.requireTimeDataset(db, datasetId).toResponse();
+            try {
+                return TaxExpenseDatasets.requireTimeDataset(db, datasetId).toResponse();
+            } catch (IllegalArgumentException ignored) {
+                if (start == null) {
+                    throw ignored;
+                }
+            }
         }
         if (start == null) {
             throw new IllegalArgumentException("start is required when datasetId is not provided");
