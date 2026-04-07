@@ -65,7 +65,7 @@ public enum Coalition {
     },
     TRADE(""),
 
-    OFFSHORE("Alliances that this guild offshores to") {
+    OFFSHORE("Alliances that this guild offshores to. Keep deleted for tracking purposes") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
             return Roles.hasAny(user, guild, Roles.ADMIN);
