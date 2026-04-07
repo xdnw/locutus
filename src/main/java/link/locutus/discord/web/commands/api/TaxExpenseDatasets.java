@@ -25,6 +25,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.commands.binding.value_types.TaxExpenseBracket;
 import link.locutus.discord.web.commands.binding.value_types.TaxExpenseBracketRow;
@@ -268,8 +269,9 @@ final class TaxExpenseDatasets {
             addSummaryResources(getOrCreateSummarySection(sections, loaded, tax.tax_id), tax.nationId, currentTaxId, tax.resources, false, true, null);
         }
 
+        BitBuffer noteBuffer = Transaction2.createNoteBuffer();
         for (ResolvedTransfer transfer : loaded.transfers) {
-            TaxExpenseTransactionRow row = new TaxExpenseTransactionRow(transfer.transaction);
+            TaxExpenseTransactionRow row = new TaxExpenseTransactionRow(transfer.transaction, noteBuffer);
             int currentTaxId = loaded.currentTaxIdByNation.get(transfer.nationId);
             addSummaryResources(total, transfer.nationId, currentTaxId, transfer.transaction.resources, transfer.type.isExpense, false, row);
             addSummaryResources(
