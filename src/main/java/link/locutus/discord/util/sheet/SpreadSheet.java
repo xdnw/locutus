@@ -37,6 +37,7 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.TransactionNote;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -237,6 +238,7 @@ public class SpreadSheet {
             transactions.sort((o1, o2) -> Long.compare(o2.tx_datetime, o1.tx_datetime));
         }
 
+        BitBuffer noteBuffer = Transaction2.createNoteBuffer();
         for (Transaction2 record : transactions) {
             String type;
             if (record.tx_id == -1) {
@@ -254,7 +256,7 @@ public class SpreadSheet {
             header.set(5, record.receiver_id + "");
             header.set(6, record.receiver_type);
             header.set(7, record.banker_nation);
-            header.set(8, record.getStructuredNote().toDisplayString());
+            header.set(8, record.getStructuredNote().toBytes(noteBuffer));
             int i = 9;
             for (ResourceType value : ResourceType.values()) {
                 if (value == ResourceType.CREDITS)
