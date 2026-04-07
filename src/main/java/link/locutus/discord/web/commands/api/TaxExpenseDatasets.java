@@ -8,7 +8,6 @@ import it.unimi.dsi.fastutil.ints.IntComparators;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -166,7 +165,10 @@ final class TaxExpenseDatasets {
                                       long start,
                                       long end,
                                       @Nullable NationList nationFilter,
-                                      boolean dontRequireTagged) throws Exception {
+                                      boolean dontRequireGrant,
+                                      boolean dontRequireTagged,
+                                      boolean dontRequireExpiry,
+                                      boolean includeDeposits) throws Exception {
         long loadEnd = resolveDatasetEnd(end);
         long turnStart = TimeUtil.getTurn(start);
         long turnEnd = resolveTurnEnd(loadEnd);
@@ -175,7 +177,16 @@ final class TaxExpenseDatasets {
         }
 
         String filter = resolveFilter(command, "nationFilter", nationFilter);
-        TimeRequestKey key = new TimeRequestKey(db.getIdLong(), start, end, dontRequireTagged, filter);
+        TimeRequestKey key = new TimeRequestKey(
+                db.getIdLong(),
+                start,
+                end,
+                dontRequireGrant,
+                dontRequireTagged,
+                dontRequireExpiry,
+                includeDeposits,
+                filter
+        );
         NationSelection selection = createSelection(nationFilter);
 
         synchronized (TIME_LOCK) {
@@ -194,7 +205,10 @@ final class TaxExpenseDatasets {
                     start,
                     loadEnd,
                     selection,
+                    dontRequireGrant,
                     dontRequireTagged,
+                    dontRequireExpiry,
+                    includeDeposits,
                     turnStart,
                     turnEnd
             );
@@ -304,14 +318,26 @@ final class TaxExpenseDatasets {
                                                 long start,
                                                 long end,
                                                 NationSelection selection,
+                                                boolean dontRequireGrant,
                                                 boolean dontRequireTagged,
+                                                boolean dontRequireExpiry,
+                                                boolean includeDeposits,
                                                 long turnStart,
                                                 long turnEnd) throws Exception {
-        LoadedData loaded = loadData(db, start, end, selection, true, dontRequireTagged, true, true);
+        LoadedData loaded = loadData(
+                db,
+                start,
+                end,
+                selection,
+                dontRequireGrant,
+                dontRequireTagged,
+                dontRequireExpiry,
+                includeDeposits
+        );
         int turnCount = (int) (turnEnd - turnStart + 1L);
 
         double[][] totalOverallByCategory = new double[FLOW_TYPES.length][turnCount];
-        Object2ObjectOpenHashMap<String, double[][]> totalByResourceByCategory = createResourceSeriesContainer(turnCount);
+        double[][][] totalByResourceOrdinalByCategory = createResourceSeriesContainer(turnCount);
         double[] totalIncome = ResourceType.getBuffer();
         double[] totalExpense = ResourceType.getBuffer();
         Int2ObjectOpenHashMap<MutableTimeSection> sections = new Int2ObjectOpenHashMap<>();
@@ -322,7 +348,7 @@ final class TaxExpenseDatasets {
                 continue;
             }
 
-            addTimeSeriesValue(totalOverallByCategory, totalByResourceByCategory, FlowType.TAX, turnIndex, tax.resources);
+            addTimeSeriesValue(totalOverallByCategory, totalByResourceOrdinalByCategory, FlowType.TAX, turnIndex, tax.resources);
             ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, totalIncome, tax.resources);
 
             MutableTimeSection section = getOrCreateTimeSection(sections, loaded, tax.tax_id);
@@ -336,7 +362,7 @@ final class TaxExpenseDatasets {
                 continue;
             }
 
-            addTimeSeriesValue(totalOverallByCategory, totalByResourceByCategory, transfer.type, turnIndex, transfer.transaction.resources);
+            addTimeSeriesValue(totalOverallByCategory, totalByResourceOrdinalByCategory, transfer.type, turnIndex, transfer.transaction.resources);
             MutableTimeSection section = getOrCreateTimeSection(sections, loaded, transfer.taxId);
             if (transfer.type.isExpense) {
                 ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, totalExpense, transfer.transaction.resources);
@@ -373,7 +399,7 @@ final class TaxExpenseDatasets {
                 total,
                 summaries
         );
-        TaxExpenseTimeResources resources = new TaxExpenseTimeResources(totalByResourceByCategory);
+        TaxExpenseTimeResources resources = new TaxExpenseTimeResources(totalByResourceOrdinalByCategory);
         return new TimeDataset(datasetId, db.getIdLong(), response, resources, sectionsByTaxId, turnCount);
     }
 
@@ -652,8 +678,10 @@ final class TaxExpenseDatasets {
             int nationId = section.nationIds.getInt(i);
             MutableNation nation = section.nationsById.get(nationId);
             int currentTaxId = nation == null ? currentTaxIdByNation.get(nationId) : nation.currentTaxId;
-            double netValue = nation == null ? 0D : toConvertedValue(nation.income) - toConvertedValue(nation.expense);
-            rows.add(new TaxExpenseBracketRow(nationId, nullableTaxId(currentTaxId), netValue));
+            double incomeValue = nation == null ? 0D : toConvertedValue(nation.income);
+            double expenseValue = nation == null ? 0D : toConvertedValue(nation.expense);
+            double netValue = incomeValue - expenseValue;
+            rows.add(new TaxExpenseBracketRow(nationId, nullableTaxId(currentTaxId), incomeValue, expenseValue, netValue));
         }
         rows.sort(BRACKET_ROW_ORDER);
 
@@ -681,17 +709,13 @@ final class TaxExpenseDatasets {
     }
 
     private static void addTimeSeriesValue(double[][] overallByCategory,
-                                           Object2ObjectOpenHashMap<String, double[][]> byResourceByCategory,
+                                           double[][][] byResourceOrdinalByCategory,
                                            FlowType type,
                                            int turnIndex,
                                            double[] resources) {
         overallByCategory[type.ordinal()][turnIndex] += toConvertedValue(resources);
         for (int i = 0; i < resources.length; i++) {
-            ResourceType resource = ResourceType.values[i];
-            if (resource == ResourceType.CREDITS) {
-                continue;
-            }
-            byResourceByCategory.get(resource.name())[type.ordinal()][turnIndex] += resources[i];
+            byResourceOrdinalByCategory[i][type.ordinal()][turnIndex] += resources[i];
         }
     }
 
@@ -707,14 +731,8 @@ final class TaxExpenseDatasets {
         return new TimeSectionData(summary, section.taxRecords, section.transfers);
     }
 
-    private static Object2ObjectOpenHashMap<String, double[][]> createResourceSeriesContainer(int turnCount) {
-        Object2ObjectOpenHashMap<String, double[][]> result = new Object2ObjectOpenHashMap<>();
-        for (ResourceType resource : ResourceType.values) {
-            if (resource != ResourceType.CREDITS) {
-                result.put(resource.name(), new double[FLOW_TYPES.length][turnCount]);
-            }
-        }
-        return result;
+    private static double[][][] createResourceSeriesContainer(int turnCount) {
+        return new double[ResourceType.values.length][FLOW_TYPES.length][turnCount];
     }
 
     private static long[] createTurnTimestamps(long turnStart, long turnEnd) {
@@ -833,18 +851,27 @@ final class TaxExpenseDatasets {
         private final long guildId;
         private final long start;
         private final long end;
+        private final boolean dontRequireGrant;
         private final boolean dontRequireTagged;
+        private final boolean dontRequireExpiry;
+        private final boolean includeDeposits;
         private final String filter;
 
         private TimeRequestKey(long guildId,
                                long start,
                                long end,
+                               boolean dontRequireGrant,
                                boolean dontRequireTagged,
+                               boolean dontRequireExpiry,
+                               boolean includeDeposits,
                                String filter) {
             this.guildId = guildId;
             this.start = start;
             this.end = end;
+            this.dontRequireGrant = dontRequireGrant;
             this.dontRequireTagged = dontRequireTagged;
+            this.dontRequireExpiry = dontRequireExpiry;
+            this.includeDeposits = includeDeposits;
             this.filter = filter;
         }
 
@@ -859,13 +886,16 @@ final class TaxExpenseDatasets {
             return guildId == that.guildId
                     && start == that.start
                     && end == that.end
+                    && dontRequireGrant == that.dontRequireGrant
                     && dontRequireTagged == that.dontRequireTagged
+                    && dontRequireExpiry == that.dontRequireExpiry
+                    && includeDeposits == that.includeDeposits
                     && filter.equals(that.filter);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(guildId, start, end, dontRequireTagged, filter);
+            return Objects.hash(guildId, start, end, dontRequireGrant, dontRequireTagged, dontRequireExpiry, includeDeposits, filter);
         }
     }
 
@@ -1223,7 +1253,10 @@ final class TaxExpenseDatasets {
         private final long start;
         private final long end;
         private final NationSelection selection;
+        private final boolean dontRequireGrant;
         private final boolean dontRequireTagged;
+        private final boolean dontRequireExpiry;
+        private final boolean includeDeposits;
         private final long turnStart;
         private final long turnEnd;
         private SoftReference<TimeDataset> datasetRef = new SoftReference<>(null);
@@ -1234,7 +1267,10 @@ final class TaxExpenseDatasets {
                                 long start,
                                 long end,
                                 NationSelection selection,
+                                boolean dontRequireGrant,
                                 boolean dontRequireTagged,
+                                boolean dontRequireExpiry,
+                                boolean includeDeposits,
                                 long turnStart,
                                 long turnEnd) {
             this.requestKey = requestKey;
@@ -1243,7 +1279,10 @@ final class TaxExpenseDatasets {
             this.start = start;
             this.end = end;
             this.selection = selection;
+            this.dontRequireGrant = dontRequireGrant;
             this.dontRequireTagged = dontRequireTagged;
+            this.dontRequireExpiry = dontRequireExpiry;
+            this.includeDeposits = includeDeposits;
             this.turnStart = turnStart;
             this.turnEnd = turnEnd;
         }
@@ -1259,7 +1298,10 @@ final class TaxExpenseDatasets {
                     start,
                     end,
                     selection,
+                    dontRequireGrant,
                     dontRequireTagged,
+                    dontRequireExpiry,
+                    includeDeposits,
                     turnStart,
                     turnEnd
             );

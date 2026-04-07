@@ -101,7 +101,10 @@ public class TaxEndpoints {
                                               @Default @Timestamp Long start,
                                               @Default @Timestamp Long end,
                                               @Default NationList nationFilter,
-                                              @Switch("t") boolean dontRequireTagged) throws Exception {
+                                              @Switch("g") boolean dontRequireGrant,
+                                              @Switch("t") boolean dontRequireTagged,
+                                              @Switch("e") boolean dontRequireExpiry,
+                                              @Switch("d") boolean includeDeposits) throws Exception {
         if (datasetId != null) {
             try {
                 return TaxExpenseDatasets.requireTimeDataset(db, datasetId).toResponse();
@@ -120,7 +123,10 @@ public class TaxEndpoints {
                 start,
                 resolveEnd(end),
                 nationFilter,
-                dontRequireTagged
+                dontRequireGrant,
+                dontRequireTagged,
+                dontRequireExpiry,
+                includeDeposits
         ).toResponse();
     }
 }
