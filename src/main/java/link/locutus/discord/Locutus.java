@@ -108,6 +108,8 @@ public final class Locutus extends ListenerAdapter {
     private ILoader loader;
 
     private final ThreadPoolExecutor executor;
+    private final ThreadPoolExecutor gatewayExecutor;
+    private final ThreadPoolExecutor interactionExecutor;
     private final ScheduledThreadPoolExecutor scheduler;
 
     private final EventBus eventBus;
@@ -138,6 +140,12 @@ public final class Locutus extends ListenerAdapter {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
         long start = System.currentTimeMillis();
+        int gatewayThreads = Math.max(4, Math.min(32, Runtime.getRuntime().availableProcessors() * 2));
+        int interactionThreads = Math.max(4, Math.min(32, Runtime.getRuntime().availableProcessors() * 2));
+        // Keep lifecycle callbacks off the JDA thread even when the general executor saturates.
+        this.gatewayExecutor = new ThreadPoolExecutor(gatewayThreads, gatewayThreads, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), Executors.defaultThreadFactory());
+        // Keep user interaction traffic isolated from guild bootstrap and lifecycle work.
+        this.interactionExecutor = new ThreadPoolExecutor(interactionThreads, interactionThreads, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), Executors.defaultThreadFactory());
         this.executor = new ThreadPoolExecutor(0, 256, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), new ThreadPoolExecutor.CallerRunsPolicy());
         this.scheduler = new ScheduledThreadPoolExecutor(256, Executors.defaultThreadFactory(), new ThreadPoolExecutor.CallerRunsPolicy());
         this.taskTrack = new RepeatingTasks(scheduler);
@@ -341,7 +349,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildReady(@NotNull GuildReadyEvent event) {
-        onGuildLoad(event.getGuild(), event.getJDA());
+        runGatewayEventAsync(() -> onGuildLoad(event.getGuild(), event.getJDA()));
     }
 
     private void setSelfUser(GuildShardManager manager) {
@@ -356,21 +364,23 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onReady(@NotNull ReadyEvent event) {
-        JDA jda = event.getJDA();
-        for (Guild guild : jda.getGuilds()) {
-            onGuildLoad(guild, jda);
-        }
-
-        try {
-            SlashCommandManager slashCommands = loader.getSlashCommandManager();
-            if (slashCommands != null) {
-                executor.submit(() -> slashCommands.registerCommandData(manager));
+        runGatewayEventAsync(() -> {
+            JDA jda = event.getJDA();
+            for (Guild guild : jda.getGuilds()) {
+                onGuildLoad(guild, jda);
             }
-        } catch (Throwable e) {
-            // sometimes happen when discord api is spotty / timeout
-            e.printStackTrace();
-            Logg.text("Failed to update slash commands: " + e.getMessage());
-        }
+
+            try {
+                SlashCommandManager slashCommands = loader.getSlashCommandManager();
+                if (slashCommands != null) {
+                    executor.submit(() -> slashCommands.registerCommandData(manager));
+                }
+            } catch (Throwable e) {
+                // sometimes happen when discord api is spotty / timeout
+                e.printStackTrace();
+                Logg.text("Failed to update slash commands: " + e.getMessage());
+            }
+        });
     }
 
     public GuildDB getRootCoalitionServer() {
@@ -558,6 +568,14 @@ public final class Locutus extends ListenerAdapter {
                 for (Event event : events) event.post();
             }
         });
+    }
+
+    public Future<?> runGatewayEventAsync(Runnable task) {
+        return gatewayExecutor.submit(CaughtRunnable.wrap(task));
+    }
+
+    public Future<?> runInteractionEventAsync(Runnable task) {
+        return interactionExecutor.submit(CaughtRunnable.wrap(task));
     }
 
     public PnwPusherShardManager getPusher() {
@@ -933,179 +951,271 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildMemberRoleAdd(@Nonnull GuildMemberRoleAddEvent event) {
-        Guild guild = event.getGuild();
-        GuildDB db = getGuildDB(guild);
-        if (!db.hasAlliance()) return;
-
-        executor.submit(() -> db.getHandler().onGuildMemberRoleAdd(event));
+        runGatewayEventAsync(() -> {
+            Guild guild = event.getGuild();
+            GuildDB db = getGuildDB(guild);
+            if (!db.hasAlliance()) return;
+            db.getHandler().onGuildMemberRoleAdd(event);
+        });
     }
 
     @Override
     public void onGuildBan(@NotNull GuildBanEvent event) {
-        executor.submit(new Runnable() {
-            @Override
-            public void run() {
-                User user = GuildShardManager.updateUserName(event.getUser());
-                DiscordBan discordBan = new DiscordBan(user.getIdLong(), event.getGuild().getIdLong(), System.currentTimeMillis(), "");
-                getDiscordDB().addBans(List.of(discordBan));
-            }
+        runGatewayEventAsync(() -> {
+            User user = GuildShardManager.updateUserName(event.getUser());
+            DiscordBan discordBan = new DiscordBan(user.getIdLong(), event.getGuild().getIdLong(), System.currentTimeMillis(), "");
+            getDiscordDB().addBans(List.of(discordBan));
         });
     }
 
     @Override
     public void onGuildJoin(@Nonnull GuildJoinEvent event) {
-        onGuildLoad(event.getGuild(), event.getJDA());
-        if (Settings.INSTANCE.TEST && getSlashCommands() instanceof SlashCommandManager slash) {
-            slash.register(event.getGuild());
-        }
-    }
-
-    @Override
-    public void onGuildAvailable(@NotNull GuildAvailableEvent event) {
-        event.getGuild().loadMembers().onSuccess(members -> {
-            for (Member member : members) {
-                GuildShardManager.updateUserName(member);
+        runGatewayEventAsync(() -> {
+            onGuildLoad(event.getGuild(), event.getJDA());
+            if (Settings.INSTANCE.TEST && getSlashCommands() instanceof SlashCommandManager slash) {
+                slash.register(event.getGuild());
             }
         });
     }
 
     @Override
+    public void onGuildAvailable(@NotNull GuildAvailableEvent event) {
+        runGatewayEventAsync(() -> event.getGuild().loadMembers().onSuccess(members -> {
+            for (Member member : members) {
+                GuildShardManager.updateUserName(member);
+            }
+        }));
+    }
+
+    @Override
     public void onGuildInviteCreate(@Nonnull GuildInviteCreateEvent event) {
-        Guild guild = event.getGuild();
-        GuildDB db = getGuildDB(guild);
-        if (db != null) {
-            db.getHandler().onGuildInviteCreate(event);
-        }
+        runGatewayEventAsync(() -> {
+            Guild guild = event.getGuild();
+            GuildDB db = getGuildDB(guild);
+            if (db != null) {
+                db.getHandler().onGuildInviteCreate(event);
+            }
+        });
     }
 
     @Override
     public void onGuildMemberJoin(@Nonnull GuildMemberJoinEvent event) {
-        executor.submit(() -> {
-            try {
-                Guild guild = event.getGuild();
-                GuildDB db = getGuildDB(guild);
+        runGatewayEventAsync(() -> {
+            Guild guild = event.getGuild();
+            GuildDB db = getGuildDB(guild);
 
-                Member member = GuildShardManager.updateUserName(event.getMember());
-                DBNation nation = DiscordUtil.getNation(member.getIdLong());
-                AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
-                task.execute();
-                db.getHandler().onGuildMemberJoin(event);
+            Member member = GuildShardManager.updateUserName(event.getMember());
+            DBNation nation = DiscordUtil.getNation(member.getIdLong());
+            AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
+            task.execute();
+            db.getHandler().onGuildMemberJoin(event);
 
-                eventBus.post(event);
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
+            eventBus.post(event);
         });
     }
 
     @Override
     public void onModalInteraction(@NotNull ModalInteractionEvent event) {
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getUser().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         try {
-            String id = event.getModalId();
-            User user = GuildShardManager.updateUserName(event.getUser());
-            if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
-
-            InteractionHook hook = event.getHook();
-            List<ModalMapping> values = event.getValues();
-
-            Map<String, String> args = new HashMap<>();
-
-            String[] pair = id.split(" ", 2);
-
-            UUID uuid = UUID.fromString(pair[0]);
-
-            args.put("", pair[1]);
-
-            Guild guild = event.isFromGuild() ? event.getGuild() : null;
-
-            Map<String, String> keyPairs = new LinkedHashMap<>();
-            for (ModalMapping value : values) {
-                keyPairs.put(value.getCustomId(), value.getAsString());
+            String[] pair = event.getModalId().split(" ", 2);
+            if (pair.length == 2) {
+                RateLimitUtil.queue(event.deferReply(getSlashCommands().isEphemeral(pair[1])), RateLimitedSources.COMMAND_RESULT);
             }
-            Set<String> ignoreKeys = new ObjectLinkedOpenHashSet<>();
-
-            Map<String, String> defaults = IModalBuilder.DEFAULT_VALUES.getIfPresent(uuid);
-            if (defaults == null) defaults = new HashMap<>();
-            for (Map.Entry<String, String> defEntry : defaults.entrySet()) {
-                String value = defEntry.getValue();
-                Map<String, String> placeholders = IModalBuilder.getPlaceholders(keyPairs.keySet(), value);
-                if (!placeholders.isEmpty()) {
-                    for (Map.Entry<String, String> phEntry : placeholders.entrySet()) {
-                        String phKey = phEntry.getKey();
-                        String userInput = keyPairs.get(phKey);
-                        String keyRegex = "\\{" + phKey + "(=[^}]+)?}";
-                        value = value.replaceAll(keyRegex, userInput);
-                        ignoreKeys.add(phKey);
-                    }
-                }
-                args.putIfAbsent(defEntry.getKey(), value);
-            }
-
-            for (Map.Entry<String, String> entry : keyPairs.entrySet()) {
-                String key = entry.getKey();
-                if (ignoreKeys.contains(key)) continue;
-                String value = entry.getValue();
-                args.put(key, value);
-            }
-
-            DiscordHookIO io = new DiscordHookIO(hook, null).setInteraction(true);
-            String path = pair[1];
-            boolean ephemeral = getSlashCommands().isEphemeral(path);
-            try {
-                RateLimitUtil.queue(event.deferReply(ephemeral), RateLimitedSources.COMMAND_RESULT);
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-            Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), user, event.getMessage(), io, path, args, true);
         } catch (Throwable e) {
             e.printStackTrace();
         }
+        runInteractionEventAsync(() -> handleModalInteraction(event));
     }
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getUser().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         try {
-            Message message = event.getMessage();
-
-            Button button = event.getButton();
-
-            if (button.getCustomId().equalsIgnoreCase("")) {
-                RateLimitUtil.queue(message.delete(), RateLimitedSources.COMMAND_RESULT);
+            PreparedButtonInteraction prepared = prepareButtonInteraction(event);
+            if (prepared == null) {
                 return;
             }
+            runInteractionEventAsync(() -> handleButtonInteraction(prepared));
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
 
-            if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
-                Logg.text("Author not application");
-                return;
+    @Override
+    public void onChannelDelete(@NotNull ChannelDeleteEvent event) {
+        if (!event.isFromGuild()) return;
+        runGatewayEventAsync(() -> {
+            ChannelUnion channel = event.getChannel();
+            Guild guild = event.getGuild();
+            GuildDB db = getGuildDB(guild);
+            WarCategory warCat = db.getWarChannel(false, false, false);
+            if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
+                warCat.onChannelDelete(gc);
             }
+        });
+    }
+
+    @Override
+    public void onChannelCreate(@NotNull ChannelCreateEvent event) {
+        if (!event.isFromGuild()) return;
+        runGatewayEventAsync(() -> {
+            ChannelUnion channel = event.getChannel();
+            Guild guild = event.getGuild();
+            GuildDB db = getGuildDB(guild);
+            WarCategory warCat = db.getWarChannel(false, false, false);
+            if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
+                warCat.onChannelCreate(gc);
+            }
+        });
+    }
+
+    @Override
+    public void onChannelUpdateParent(@NotNull ChannelUpdateParentEvent event) {
+        if (!event.isFromGuild()) return;
+        runGatewayEventAsync(() -> {
+            ChannelUnion channel = event.getChannel();
+            Guild guild = event.getGuild();
+            GuildDB db = getGuildDB(guild);
+            WarCategory warCat = db.getWarChannel(false, false, false);
+            if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
+                warCat.onChannelParent(gc, event.getOldValue(), event.getNewValue());
+            }
+        });
+    }
+
+    @Override
+    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getAuthor().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+        runGatewayEventAsync(() -> handleMessageReceived(event));
+    }
+
+    private void handleModalInteraction(ModalInteractionEvent event) {
+        String id = event.getModalId();
+        User user = GuildShardManager.updateUserName(event.getUser());
+
+        InteractionHook hook = event.getHook();
+        List<ModalMapping> values = event.getValues();
+
+        Map<String, String> args = new HashMap<>();
+        String[] pair = id.split(" ", 2);
+        UUID uuid = UUID.fromString(pair[0]);
+
+        args.put("", pair[1]);
+
+        Guild guild = event.isFromGuild() ? event.getGuild() : null;
+
+        Map<String, String> keyPairs = new LinkedHashMap<>();
+        for (ModalMapping value : values) {
+            keyPairs.put(value.getCustomId(), value.getAsString());
+        }
+        Set<String> ignoreKeys = new ObjectLinkedOpenHashSet<>();
+
+        Map<String, String> defaults = IModalBuilder.DEFAULT_VALUES.getIfPresent(uuid);
+        if (defaults == null) defaults = new HashMap<>();
+        for (Map.Entry<String, String> defEntry : defaults.entrySet()) {
+            String value = defEntry.getValue();
+            Map<String, String> placeholders = IModalBuilder.getPlaceholders(keyPairs.keySet(), value);
+            if (!placeholders.isEmpty()) {
+                for (Map.Entry<String, String> phEntry : placeholders.entrySet()) {
+                    String phKey = phEntry.getKey();
+                    String userInput = keyPairs.get(phKey);
+                    String keyRegex = "\\{" + phKey + "(=[^}]+)?}";
+                    value = value.replaceAll(keyRegex, userInput);
+                    ignoreKeys.add(phKey);
+                }
+            }
+            args.putIfAbsent(defEntry.getKey(), value);
+        }
+
+        for (Map.Entry<String, String> entry : keyPairs.entrySet()) {
+            String key = entry.getKey();
+            if (ignoreKeys.contains(key)) continue;
+            String value = entry.getValue();
+            args.put(key, value);
+        }
+
+        DiscordHookIO io = new DiscordHookIO(hook, null).setInteraction(true);
+        Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), user, event.getMessage(), io, pair[1], args, true);
+    }
+
+    private PreparedButtonInteraction prepareButtonInteraction(ButtonInteractionEvent event) {
+        Message message = event.getMessage();
+        Button button = event.getButton();
+
+        if (button.getCustomId().equalsIgnoreCase("")) {
+            RateLimitUtil.queue(message.delete(), RateLimitedSources.COMMAND_RESULT);
+            return null;
+        }
+
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            Logg.text("Author not application");
+            return null;
+        }
+
+        Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
+        List<MessageEmbed> embeds = message.getEmbeds();
+        MessageEmbed embed = !embeds.isEmpty() ? embeds.get(0) : null;
+        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(guild, embed, List.of(button), message.getJumpUrl(), false);
+        if (commandMap.isEmpty()) {
+            return null;
+        }
+        List<DiscordUtil.CommandInfo> commands = commandMap.values().iterator().next();
+        if (commands.isEmpty()) {
+            return null;
+        }
+
+        boolean deferred = false;
+        boolean ephemeralDeferred = false;
+        boolean forceEphemeral = message.isEphemeral();
+        for (DiscordUtil.CommandInfo info : commands) {
+            if (info.command.isBlank() || info.command.contains("modal create")) {
+                continue;
+            }
+            deferred = true;
+            ephemeralDeferred = forceEphemeral || info.behavior == CommandBehavior.EPHEMERAL;
+            break;
+        }
+
+        if (deferred) {
+            InteractionHook hook = event.getHook();
+            if (ephemeralDeferred) {
+                RateLimitUtil.queue(event.deferReply(true), RateLimitedSources.COMMAND_RESULT);
+                hook.setEphemeral(true);
+            } else {
+                RateLimitUtil.queue(event.deferEdit(), RateLimitedSources.COMMAND_RESULT);
+            }
+        }
+
+        return new PreparedButtonInteraction(event, message, button, guild, event.getChannel(), commands, deferred, ephemeralDeferred);
+    }
+
+    private void handleButtonInteraction(PreparedButtonInteraction prepared) {
+        try {
+            ButtonInteractionEvent event = prepared.event();
+            Message message = prepared.message();
+            Button button = prepared.button();
 
             User user = GuildShardManager.updateUserName(event.getUser());
             Locutus.imp().getNationDB().markNationDirtyByUser(user.getIdLong());
 
-            Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
+            Guild guild = prepared.guild();
             if (Settings.INSTANCE.MODERATION.BANNED_USERS.containsKey(user.getIdLong())) return;
             if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.containsKey(guild.getIdLong())) return;
 
-            MessageChannel channel = event.getChannel();
-            List<MessageEmbed> embeds = message.getEmbeds();
-            MessageEmbed embed = !embeds.isEmpty() ? embeds.get(0) : null;
+            MessageChannel channel = prepared.channel();
 
             InteractionHook hook = event.getHook();
             boolean forceEphemeral = message != null && message.isEphemeral();
             IMessageIO io = new DiscordHookIO(hook, event).setInteraction(true);
             IMessageIO ioToUse = io;
-            boolean isEphemeral = false;
+            boolean isEphemeral = prepared.ephemeralDeferred();
 
             try {
-                Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(guild, embed, List.of(button), message.getJumpUrl(), false);
-                if (commandMap.isEmpty()) return;
-
-                List<DiscordUtil.CommandInfo> commands = commandMap.values().iterator().next();
-                if (commands.isEmpty()) return;
+                List<DiscordUtil.CommandInfo> commands = prepared.commands();
 
                 boolean markedDeleted = false;
-                boolean deferred = false;
+                boolean deferred = prepared.deferred();
                 boolean success = false;
                 boolean hasLegacyCommand = false;
                 CommandBehavior behavior = null;
@@ -1129,8 +1239,6 @@ public final class Locutus extends ListenerAdapter {
                         } else {
                             RateLimitUtil.queue(event.deferEdit(), RateLimitedSources.COMMAND_RESULT);
                         }
-                        DiscordHookIO hookIO = (DiscordHookIO) io;
-                        hookIO.setIsModal(event);
                     }
 
                     if (info.channelId != null && !isEphemeral) {
@@ -1194,45 +1302,12 @@ public final class Locutus extends ListenerAdapter {
         }
     }
 
-    @Override
-    public void onChannelDelete(@NotNull ChannelDeleteEvent event) {
-        if (!event.isFromGuild()) return;
-        ChannelUnion channel = event.getChannel();
-        Guild guild = event.getGuild();
-        GuildDB db = getGuildDB(guild);
-        WarCategory warCat = db.getWarChannel(false, false, false);
-        if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
-            warCat.onChannelDelete(gc);
-        }
+    private record PreparedButtonInteraction(ButtonInteractionEvent event, Message message, Button button,
+            Guild guild, MessageChannel channel, List<DiscordUtil.CommandInfo> commands,
+            boolean deferred, boolean ephemeralDeferred) {
     }
 
-    @Override
-    public void onChannelCreate(@NotNull ChannelCreateEvent event) {
-        if (!event.isFromGuild()) return;
-        ChannelUnion channel = event.getChannel();
-        Guild guild = event.getGuild();
-        GuildDB db = getGuildDB(guild);
-        WarCategory warCat = db.getWarChannel(false, false, false);
-        if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
-            warCat.onChannelCreate(gc);
-        }
-    }
-
-    @Override
-    public void onChannelUpdateParent(@NotNull ChannelUpdateParentEvent event) {
-        if (!event.isFromGuild()) return;
-        ChannelUnion channel = event.getChannel();
-        Guild guild = event.getGuild();
-        GuildDB db = getGuildDB(guild);
-        WarCategory warCat = db.getWarChannel(false, false, false);
-        if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
-            warCat.onChannelParent(gc, event.getOldValue(), event.getNewValue());
-        }
-    }
-
-    @Override
-    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getAuthor().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+    private void handleMessageReceived(MessageReceivedEvent event) {
         try {
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             if (guild != null) {
@@ -1275,46 +1350,50 @@ public final class Locutus extends ListenerAdapter {
 
     private Map<Long, Boolean> isMessageLocutusMap = new ConcurrentHashMap<>();
 
-    private Message isMessageLocutus(long messageId, GuildMessageChannel channel) {
-        Boolean result = isMessageLocutusMap.get(messageId);
-        if (result == Boolean.FALSE) {
-            return null;
-        }
-        boolean isLocutus = false;
-        try {
-            Message message = link.locutus.discord.util.RateLimitUtil.complete(channel.retrieveMessageById(messageId), RateLimitedSources.COMMAND_RESULT);
-            User author = message.getAuthor();
-            isLocutus = (author != null && author.getIdLong() == Settings.INSTANCE.APPLICATION_ID);
-            return isLocutus ? message : null;
-        } catch (Throwable e) {}
-        finally {
-            isMessageLocutusMap.put(messageId, isLocutus);
-        }
-        return null;
-    }
-
     @Override
     public void onMessageReactionAdd(@Nonnull MessageReactionAddEvent event) {
         User author = event.getUser();
         if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && author.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+        runInteractionEventAsync(() -> handleMessageReactionAdd(event));
+    }
+
+    private void handleMessageReactionAdd(MessageReactionAddEvent event) {
+        User author = event.getUser();
         if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
             return;
         }
         if (author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
             return;
         }
-        Message message = isMessageLocutus(event.getMessageIdLong(), event.getGuildChannel());
-        if (message == null) return;
-        EmojiUnion emote;
-        if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
-            emote = event.getEmoji();
-            if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
-                link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()), RateLimitedSources.COMMAND_RESULT);
-                return;
-            }
+        long messageId = event.getMessageIdLong();
+        if (Boolean.FALSE.equals(isMessageLocutusMap.get(messageId))) {
+            return;
         }
-        emote = event.getEmoji();
-        onMessageReact(message, event.getUser(), emote, event.getResponseNumber());
+        RateLimitUtil.queue(event.getGuildChannel().retrieveMessageById(messageId), RateLimitedSources.COMMAND_RESULT)
+                .thenAccept(message -> {
+                    boolean isLocutus = false;
+                    try {
+                        User messageAuthor = message.getAuthor();
+                        isLocutus = messageAuthor != null && messageAuthor.getIdLong() == Settings.INSTANCE.APPLICATION_ID;
+                        if (!isLocutus) {
+                            return;
+                        }
+                        EmojiUnion emote = event.getEmoji();
+                        if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && author.getIdLong() == Locutus.loader().getAdminUserId()) {
+                            if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
+                                RateLimitUtil.queue(event.getChannel().deleteMessageById(messageId), RateLimitedSources.COMMAND_RESULT);
+                                return;
+                            }
+                        }
+                        onMessageReact(message, author, emote, event.getResponseNumber(), true);
+                    } finally {
+                        isMessageLocutusMap.put(messageId, isLocutus);
+                    }
+                })
+                .exceptionally(throwable -> {
+                    isMessageLocutusMap.put(messageId, false);
+                    return null;
+                });
     }
 
     public void onMessageReact(Message message, User user, EmojiUnion emote, long responseId) {
@@ -1452,6 +1531,8 @@ public final class Locutus extends ListenerAdapter {
             }
             // close pusher subscriptions
 
+            interactionExecutor.shutdownNow();
+            gatewayExecutor.shutdownNow();
             executor.shutdownNow();
             CommandManager cmdManager = getCommandManager();
             if (cmdManager != null) cmdManager.getExecutor().shutdownNow();

@@ -109,7 +109,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
@@ -935,11 +934,15 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onCommandAutoCompleteInteraction(@Nonnull CommandAutoCompleteInteractionEvent event) {
+        long startNanos = System.nanoTime();
+        userIdToAutoCompleteTimeNs.put(event.getUser().getIdLong(), startNanos);
+        Locutus.imp().runInteractionEventAsync(() -> handleAutoCompleteInteraction(event, startNanos));
+    }
+
+    private void handleAutoCompleteInteraction(CommandAutoCompleteInteractionEvent event, long startNanos) {
         System.out.println("Autocomplete: " + event.getFullCommandName() + " | " + event.getFocusedOption().getName() + " = " + event.getFocusedOption().getValue());
         CommandManager2 manager = getCommands();
-        long startNanos = System.nanoTime();
         User user = GuildShardManager.updateUserName(event.getUser());
-        userIdToAutoCompleteTimeNs.put(user.getIdLong(), startNanos);
 
         String path = event.getFullCommandName().replaceAll("/", " ");
         AutoCompleteQuery option = event.getFocusedOption();
@@ -970,120 +973,118 @@ public class SlashCommandManager extends ListenerAdapter {
         Dont post if they have run the command
         Dont post if they have typed something else since then
          */
-        ExecutorService executor = Locutus.imp().getExecutor();
-        executor.submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    boolean autoParse = true;
-                    Parser<?> binding = param.getBinding();
-                    Key key = binding.getKey();
-                    Key parserKey = key.append(Autoparse.class);
-                    Parser parser = manager.getStore().get(parserKey);
+        try {
+            boolean autoParse = true;
+            Parser<?> binding = param.getBinding();
+            Key key = binding.getKey();
+            Key parserKey = key.append(Autoparse.class);
+            Parser parser = manager.getStore().get(parserKey);
 
-                    if (parser == null) {
-                        autoParse = false;
-                        Key completerKey = key.append(Autocomplete.class);
-                        parser = manager.getStore().get(completerKey);
+            if (parser == null) {
+                autoParse = false;
+                Key completerKey = key.append(Autocomplete.class);
+                parser = manager.getStore().get(completerKey);
+            }
+
+            if (parser == null) {
+                Logg.text("[Autocomplete]" + user + " | No parser or completer found for `" + key + "` at `" + path + "`");
+                return;
+            }
+            System.out.println("Found parser: " + parserKey + " | " + key);
+
+            LocalValueStore locals = new LocalValueStore(manager.getStore());
+            locals.addProvider(Key.of(User.class, Me.class), user);
+            if (event.isFromGuild()) {
+                locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
+            }
+            if (event.getMessageChannel() != null) {
+                locals.addProvider(Key.of(MessageChannel.class, Me.class), event.getMessageChannel());
+            }
+
+            // Option with current value
+            List<String> args = new ArrayList<>(List.of(option.getValue()));
+            ArgumentStack stack = new ArgumentStack(args, locals, manager.getValidators(), manager.getPermisser());
+            locals.addProvider(stack);
+
+            List<Choice> choices = new ArrayList<>();
+            if (autoParse) {
+                binding.apply(stack);
+            } else {
+                Object result = parser.apply(stack);
+                if (!(result instanceof List) || ((List<?>) result).isEmpty()) {
+                    double diff = (System.nanoTime() - startNanos) / 1_000_000d;
+                    if (diff > 15) {
+                        Logg.text("[Autocomplete]" + user + " | No results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
                     }
-
-                    if (parser == null) {
-                        Logg.text("[Autocomplete]" + user + " | No parser or completer found for `" + key + "` at `" + path + "`");
-                        return;
-                    }
-                    System.out.println("Found parser: " + parserKey + " | " + key);
-
-                    LocalValueStore locals = new LocalValueStore(manager.getStore());
-                    locals.addProvider(Key.of(User.class, Me.class), user);
-                    if (event.isFromGuild()) {
-                        locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
-                    }
-                    if (event.getMessageChannel() != null) {
-                        locals.addProvider(Key.of(MessageChannel.class, Me.class), event.getMessageChannel());
-                    }
-
-                    // Option with current value
-                    List<String> args = new ArrayList<>(List.of(option.getValue()));
-                    ArgumentStack stack = new ArgumentStack(args, locals, manager.getValidators(), manager.getPermisser());
-                    locals.addProvider(stack);
-
-                    List<Choice> choices = new ArrayList<>();
-                    if (autoParse) {
-                        binding.apply(stack);
+                    return;
+                }
+                List<Object> resultList = (List<Object>) result;
+                if (resultList.size() > OptionData.MAX_CHOICES) {
+                    resultList = resultList.subList(0, OptionData.MAX_CHOICES);
+                }
+                for (Object o : resultList) {
+                    String name;
+                    String value;
+                    if (o instanceof Map.Entry<?, ?> entry) {
+                        name = entry.getKey().toString();
+                        value = entry.getValue().toString();
                     } else {
-                        Object result = parser.apply(stack);
-                        if (!(result instanceof List) || ((List<?>) result).isEmpty()) {
-                            double diff = (System.nanoTime() - startNanos) / 1_000_000d;
-                            if (diff > 15) {
-                                Logg.text("[Autocomplete]" + user + " | No results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
-                            }
-                            return;
-                        }
-                        List<Object> resultList = (List<Object>) result;
-                        if (resultList.size() > OptionData.MAX_CHOICES) {
-                            resultList = resultList.subList(0, OptionData.MAX_CHOICES);
-                        }
-                        for (Object o : resultList) {
-                            String name;
-                            String value;
-                            if (o instanceof Map.Entry<?, ?> entry) {
-                                name = entry.getKey().toString();
-                                value = entry.getValue().toString();
-                            } else {
-                                name = o.toString();
-                                value = o.toString();
-                            }
-                            if (name.length() > MAX_STRING_VALUE_LENGTH) {
-                                name = name.substring(0, MAX_STRING_VALUE_LENGTH);
-                            }
-                            if (value.length() > MAX_STRING_VALUE_LENGTH) {
-                                value = value.substring(0, MAX_STRING_VALUE_LENGTH);
-                            }
-                            choices.add(new Choice(name, value));
-                        }
+                        name = o.toString();
+                        value = o.toString();
                     }
-                    if (!choices.isEmpty()) {
-                        double diff = (System.nanoTime() - startNanos) / 1_000_000d;
-                        if (diff > 15) {
-                            Logg.text("[Autocomplete]" + user + " | Results for `" + option.getName() + " with `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
-                        }
-                        long newCompleteTime = userIdToAutoCompleteTimeNs.get(user.getIdLong());
-                        if (newCompleteTime != startNanos) {
-                            return;
-                        }
-                        RateLimitUtil.queue(event.replyChoices(choices), RateLimitedSources.COMMAND_RESULT);
+                    if (name.length() > MAX_STRING_VALUE_LENGTH) {
+                        name = name.substring(0, MAX_STRING_VALUE_LENGTH);
                     }
-                } catch (Throwable e) {
-                    e.printStackTrace();
+                    if (value.length() > MAX_STRING_VALUE_LENGTH) {
+                        value = value.substring(0, MAX_STRING_VALUE_LENGTH);
+                    }
+                    choices.add(new Choice(name, value));
                 }
             }
-        });
+            if (!choices.isEmpty()) {
+                double diff = (System.nanoTime() - startNanos) / 1_000_000d;
+                if (diff > 15) {
+                    Logg.text("[Autocomplete]" + user + " | Results for `" + option.getName() + " with `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
+                }
+                long newCompleteTime = userIdToAutoCompleteTimeNs.get(user.getIdLong());
+                if (newCompleteTime != startNanos) {
+                    return;
+                }
+                RateLimitUtil.queue(event.replyChoices(choices), RateLimitedSources.COMMAND_RESULT);
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
+        long start = System.currentTimeMillis();
+        userIdToAutoCompleteTimeNs.put(event.getUser().getIdLong(), System.nanoTime());
+        String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
+        if (!path.contains("modal")) {
+            try {
+                InteractionHook hook = event.getHook();
+                if (isEphemeral(path)) {
+                    RateLimitUtil.queue(event.deferReply(true), RateLimitedSources.COMMAND_RESULT);
+                    hook.setEphemeral(true);
+                } else {
+                    RateLimitUtil.queue(event.deferReply(false), RateLimitedSources.COMMAND_RESULT);
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+        Locutus.imp().runInteractionEventAsync(() -> handleSlashCommandInteraction(event, path, start));
+    }
+
+    private void handleSlashCommandInteraction(SlashCommandInteractionEvent event, String path, long start) {
         try {
-            long start = System.currentTimeMillis();
             User user = GuildShardManager.updateUserName(event.getUser());
-            userIdToAutoCompleteTimeNs.put(user.getIdLong(), System.nanoTime());
 
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();
-            boolean isModal = true;
-            String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
-            if (!path.contains("modal")) {
-                isModal = false;
-                try {
-                    if (isEphemeral(path)) {
-                        RateLimitUtil.queue(event.deferReply(true), RateLimitedSources.COMMAND_RESULT);
-                        hook.setEphemeral(true);
-                    } else {
-                        RateLimitUtil.queue(event.deferReply(false), RateLimitedSources.COMMAND_RESULT);
-                    }
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
+            boolean isModal = path.contains("modal");
 
             Map<String, String> combined = new HashMap<>();
             List<OptionMapping> options = event.getOptions();
@@ -1112,23 +1113,31 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onUserContextInteraction(UserContextInteractionEvent event) {
-        handleContext(event, event.getTarget(), event.getTarget().getAsMention(), null, true);
+        deferEphemeralReply(event);
+        Locutus.imp().runGatewayEventAsync(() -> handleContext(event, event.getTarget(), event.getTarget().getAsMention(), null, true));
     }
 
     @Override
     public void onUserUpdateName(@NotNull UserUpdateNameEvent event) {
-        GuildShardManager.updateUserName(event.getUser());
+        Locutus.imp().runGatewayEventAsync(() -> GuildShardManager.updateUserName(event.getUser()));
     }
 
-    public <T extends ISnowflake> void handleContext(GenericContextInteractionEvent event, T target, String mention, Supplier<String> getMsg, boolean isUser) {
+    private void deferEphemeralReply(GenericContextInteractionEvent event) {
+        try {
+            RateLimitUtil.queue(event.deferReply(true), RateLimitedSources.COMMAND_RESULT);
+            event.getHook().setEphemeral(true);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    private <T extends ISnowflake> void handleContext(GenericContextInteractionEvent event, T target, String mention, Supplier<String> getMsg, boolean isUser) {
         String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
         MessageChannel channel = event.getMessageChannel();
         InteractionHook hook = event.getHook();
         Guild guild = event.isFromGuild() ? event.getGuild() : null;
 
         DiscordHookIO io = new DiscordHookIO(hook, event);
-        RateLimitUtil.complete(event.deferReply(true), RateLimitedSources.COMMAND_RESULT);
-        hook.setEphemeral(true);
 
         User user = GuildShardManager.updateUserName(event.getUser());
 
@@ -1160,14 +1169,15 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onMessageContextInteraction(MessageContextInteractionEvent event) {
-        handleContext(event, event.getTarget(), event.getTarget().getJumpUrl(), () -> {
+        deferEphemeralReply(event);
+        Locutus.imp().runGatewayEventAsync(() -> handleContext(event, event.getTarget(), event.getTarget().getJumpUrl(), () -> {
             try {
                 return event.getTarget().getContentRaw();
             } catch (RuntimeException e) {
                 e.printStackTrace();
                 return (String) null;
             }
-        }, false);
+        }, false));
     }
 }
 

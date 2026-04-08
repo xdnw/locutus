@@ -104,7 +104,9 @@ public class DiscordHookIO implements IMessageIO {
     @Override
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder, RateLimitedSource source) {
         if (event != null) {
-            RateLimitUtil.queue(event.deferReply(), source);
+            if (!event.isAcknowledged()) {
+                RateLimitUtil.queue(event.deferReply(), source);
+            }
             event = null;
         }
         if (builder instanceof DiscordMessageBuilder discMsg) {
