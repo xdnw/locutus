@@ -4,6 +4,7 @@ import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -65,7 +66,7 @@ public class TradeSubscriptions extends Command {
 
             body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
 
-            channel.create().embed(title, body.toString()).commandButton(unsubCommand, emoji).send(RateLimitedSources.COMMAND_RESULT);
+            channel.create().embed(title, body.toString()).commandButton(CommandBehavior.DELETE_MESSAGE, null, unsubCommand, emoji).send(RateLimitedSources.COMMAND_RESULT);
         }
 
         return null;

@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -109,7 +110,7 @@ public class Inactive extends Command {
 
         IMessageBuilder msg = channel.create().embed(title, response.toString());
         for (Map.Entry<String, String> entry : labelCommandPairs) {
-            msg = msg.commandButton(entry.getValue(), entry.getKey());
+            msg = msg.commandButton(CommandBehavior.DELETE_MESSAGE, null, entry.getValue(), entry.getKey());
         }
         msg.send(RateLimitedSources.COMMAND_RESULT);
 

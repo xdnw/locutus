@@ -7,6 +7,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -258,7 +259,7 @@ public class MailTargets extends Command {
 
             String cmd = DiscordUtil.trimContent(fullCommandRaw) + " -f";
             channel.create().embed(embedTitle, body.toString())
-                    .commandButton(cmd, "Confirm").send(RateLimitedSources.COMMAND_RESULT);
+                    .commandButton(CommandBehavior.DELETE_MESSAGE, null, cmd, "Confirm").send(RateLimitedSources.COMMAND_RESULT);
             return author.getAsMention();
         }
 

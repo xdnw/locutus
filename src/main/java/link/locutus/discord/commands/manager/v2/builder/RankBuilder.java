@@ -4,6 +4,7 @@ import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
@@ -192,7 +193,7 @@ public class RankBuilder<T> {
         }
         if (author != null) embed.append("\n" + author.getAsMention());
         IMessageBuilder msg = channel.create().embed(embed);
-        if (command != null) msg = msg.commandButton(command.toString(), emoji);
+        if (command != null) msg = msg.commandButton(CommandBehavior.DELETE_MESSAGE, null, command, emoji);
 
         if (upload) {
             List<T> values = get();
@@ -216,7 +217,7 @@ public class RankBuilder<T> {
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
         IMessageBuilder msg = io.create().embed(embed);
-        if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(cmd, emoji);
+        if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(CommandBehavior.DELETE_MESSAGE, null, cmd, emoji);
 
         if (upload) {
             List<T> values = get();

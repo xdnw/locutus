@@ -132,7 +132,7 @@ public class UserWrapper {
     @Command(desc = "Get user color")
     public int getColor() {
         Member member = getMember();
-        return member == null ? 0 : member.getColorRaw();
+        return member == null ? 0 : member.getColors().getPrimaryRaw();
     }
     @Command(desc = "Get user effective name")
     public String getEffectiveName() {
@@ -165,7 +165,7 @@ public class UserWrapper {
     @Command(desc = "Get user color raw")
     public int getColorRaw() {
         Member member = getMember();
-        return member == null ? 0 : member.getColorRaw();
+        return member == null ? 0 : member.getColors().getPrimaryRaw();
     }
     @Command(desc = "If this member has access to a channel")
     public boolean hasAccess(TextChannel channel) {

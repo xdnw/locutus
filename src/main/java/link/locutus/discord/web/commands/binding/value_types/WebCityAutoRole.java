@@ -17,7 +17,7 @@ public class WebCityAutoRole {
     public WebCityAutoRole(Role role, int rangeStart, int rangeEnd, boolean duplicateKey) {
         this.role_id = role.getIdLong();
         this.name = role.getName();
-        this.color = role.getColorRaw();
+        this.color = role.getColors().getPrimaryRaw();
         this.range_start = rangeStart;
         this.range_end = rangeEnd;
         this.duplicate_key = duplicateKey;

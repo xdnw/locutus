@@ -53,6 +53,7 @@ public class WebMessage extends AMessageBuilder {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public IMessageBuilder commandButton(String command, String message) {
         buttons.put(command, message);
         return this;

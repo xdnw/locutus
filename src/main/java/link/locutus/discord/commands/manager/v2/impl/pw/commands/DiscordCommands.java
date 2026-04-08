@@ -241,7 +241,7 @@ public class DiscordCommands {
                 String cmd = commands.get(i);
                 String codePoint = i + emoji;
 
-                msg = msg.commandButton(cmd, codePoint);
+                msg = msg.commandButton(CommandBehavior.DELETE_MESSAGE, null, cmd, codePoint);
             }
             msg.send(RateLimitedSources.COMMAND_RESULT);
         } catch (Throwable e) {

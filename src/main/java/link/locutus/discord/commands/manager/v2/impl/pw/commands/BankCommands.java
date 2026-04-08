@@ -3391,8 +3391,8 @@ public class BankCommands {
             key = UUID.randomUUID();
             APPROVED_BULK_TRANSFER.put(key, transfers);
             String commandStr = command.put("force", "true").put("key", key).toString();
-            msg.embed(title, desc.toString())
-                    .commandButton(commandStr, "Confirm")
+                msg.embed(title, desc.toString())
+                    .commandButton(CommandBehavior.DELETE_MESSAGE, null, commandStr, "Confirm")
                     .send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }

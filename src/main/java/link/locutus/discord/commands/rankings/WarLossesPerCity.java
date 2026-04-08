@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -102,7 +103,7 @@ public class WarLossesPerCity extends Command {
         String emoji = "Refresh";
         response.append("\n\nPress `").append(emoji).append("` to refresh");
         channel.create().embed(title, response.toString())
-                        .commandButton(DiscordUtil.trimContent(fullCommandRaw), emoji).send(RateLimitedSources.COMMAND_RESULT);
+                        .commandButton(CommandBehavior.DELETE_MESSAGE, null, DiscordUtil.trimContent(fullCommandRaw), emoji).send(RateLimitedSources.COMMAND_RESULT);
 
         return null;
     }

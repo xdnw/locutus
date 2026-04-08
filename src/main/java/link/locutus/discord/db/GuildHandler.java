@@ -361,7 +361,7 @@ public class GuildHandler {
         String cmdStr = cmds.stream().map(CommandRef::toCommandArgs).collect(Collectors.joining("\n"));
 
         IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString())
-                .commandButton(CommandBehavior.DELETE_BUTTONS, cmdStr, emoji);
+            .commandButton(CommandBehavior.DELETE_BUTTONS, null, cmdStr, emoji);
         if (mentionInterviewer) {
             msg.append("^ " + interviewerRole.getAsMention());
         }

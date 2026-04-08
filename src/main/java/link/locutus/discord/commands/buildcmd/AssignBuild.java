@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -68,7 +69,7 @@ public class AssignBuild extends Command {
         String instructions = to.instructions(from, totalArr, true, true);
         String emoji = "Grant";
         String command = Settings.commandPrefix(true) + "grant {usermention} " + to.toJson(false);
-        io.create().embed("Build", instructions).commandButton(command, emoji).send(RateLimitedSources.COMMAND_RESULT);
+        io.create().embed("Build", instructions).commandButton(CommandBehavior.DELETE_MESSAGE, null, command, emoji).send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 

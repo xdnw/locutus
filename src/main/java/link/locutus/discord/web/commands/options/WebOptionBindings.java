@@ -163,7 +163,7 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(Role.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             WebOptions data = new WebOptions(false).withText().withColor();
             for (Role r : db.getGuild().getRoles()) {
-                data.addWithColor(r.getId(), r.getName(), String.format("#%06X", (0xFFFFFF & r.getColorRaw())));
+                data.addWithColor(r.getId(), r.getName(), String.format("#%06X", (0xFFFFFF & r.getColors().getPrimaryRaw())));
             }
             return data;
         }, false);

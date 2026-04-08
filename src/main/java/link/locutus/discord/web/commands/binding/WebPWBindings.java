@@ -663,8 +663,8 @@ public class WebPWBindings extends WebBindingHelper {
                         names.add(name);
 
                         String sub = "";
-                        if (obj.getColorRaw() != Role.DEFAULT_COLOR_RAW) {
-                            Color color = obj.getColor();
+                        if (!obj.getColors().isDefault()) {
+                            Color color = obj.getColors().getPrimary();
                             String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
                             sub += hex + "- ";
                         }
@@ -1143,8 +1143,8 @@ public class WebPWBindings extends WebBindingHelper {
             names.add(name);
 
             String sub = "";
-            if (obj.getColorRaw() != Role.DEFAULT_COLOR_RAW) {
-                Color color = obj.getColor();
+            if (!obj.getColors().isDefault()) {
+                Color color = obj.getColors().getPrimary();
                 String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
                 sub += hex + "- ";
             }

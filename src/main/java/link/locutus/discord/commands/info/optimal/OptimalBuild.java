@@ -13,6 +13,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -543,7 +544,7 @@ public class OptimalBuild extends Command {
         if (flags.contains('p')) {
             return title + "\n" + result.toString();
         }
-        io.create().embed(title, result.toString()).commandButton(command, emoji).send(RateLimitedSources.COMMAND_RESULT);
+        io.create().embed(title, result.toString()).commandButton(CommandBehavior.DELETE_MESSAGE, null, command, emoji).send(RateLimitedSources.COMMAND_RESULT);
 //        DiscordUtil.createEmbedCommand(channel, title, result.toString(), emoji, command);
         return null;
     }

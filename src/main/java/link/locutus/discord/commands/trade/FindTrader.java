@@ -4,6 +4,7 @@ import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
@@ -119,7 +120,7 @@ public class FindTrader extends Command {
                 .addField("Nation", StringMan.join(nationName, "\n"), true)
                 .addField("Amt", StringMan.join(amtList, "\n"), true)
                 .addField("Ppu", StringMan.join(ppuList, "\n"), true)
-        ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send(RateLimitedSources.COMMAND_RESULT);
+        ).commandButton(CommandBehavior.DELETE_MESSAGE, null, DiscordUtil.trimContent(fullCommandRaw), "Refresh").send(RateLimitedSources.COMMAND_RESULT);
         return null;
     }
 }

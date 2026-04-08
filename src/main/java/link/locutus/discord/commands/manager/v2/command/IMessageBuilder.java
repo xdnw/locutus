@@ -171,6 +171,7 @@ public interface IMessageBuilder {
     }
 
     @CheckReturnValue
+    @SuppressWarnings("deprecation")
     default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, String command, String message) {
         StringBuilder cmd = new StringBuilder();
         if (outputChannel != null) cmd.append("<#").append(outputChannel).append("> ");
@@ -317,12 +318,12 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder commandButton(JSONObject command, String message) {
-        return commandButton(command.toString(), message);
+        return commandButton(CommandBehavior.DELETE_MESSAGE, null, command.toString(), message);
     }
 
     @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, JSONObject command, String message) {
-        return commandButton(behavior, command.toString(), message);
+        return commandButton(behavior, null, command.toString(), message);
     }
 
     @CheckReturnValue
@@ -337,7 +338,7 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder confirmation(JSONObject command) {
-        return commandButton(command.put("force", "true").toString(), "Confirm");
+        return commandButton(CommandBehavior.DELETE_MESSAGE, null, command.put("force", "true").toString(), "Confirm");
     }
 
     @CheckReturnValue
@@ -350,17 +351,17 @@ public interface IMessageBuilder {
     }
 
     default IMessageBuilder confirmation(String title, String body, JSONObject command, String parameter, String message) {
-        return embed(title, body).commandButton(command.put(parameter, "true").toString(), message);
+        return embed(title, body).commandButton(CommandBehavior.DELETE_MESSAGE, null, command.put(parameter, "true").toString(), message);
     }
 
     default IMessageBuilder confirmation(JSONObject command, String parameter, String message) {
-        return commandButton(command.put(parameter, "true").toString(), message);
+        return commandButton(CommandBehavior.DELETE_MESSAGE, null, command.put(parameter, "true").toString(), message);
     }
 
     @CheckReturnValue
     @Deprecated
     default IMessageBuilder commandButton(CommandBehavior behavior, String command, String message) {
-        return commandButton(behavior.getValue() + command, message);
+        return commandButton(behavior, null, command, message);
     }
 
     @CheckReturnValue
@@ -402,7 +403,7 @@ public interface IMessageBuilder {
     @CheckReturnValue
     default IMessageBuilder addCommands(Map<String, String> reactions) {
         for (Map.Entry<String, String> entry : reactions.entrySet()) {
-            commandButton(entry.getValue(), entry.getKey());
+            commandButton(CommandBehavior.DELETE_MESSAGE, null, entry.getValue(), entry.getKey());
         }
         return this;
     }
@@ -411,12 +412,12 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder cancelButton() {
-        return commandButton(CommandBehavior.DELETE_MESSAGE, " ", "Cancel");
+        return commandButton(CommandBehavior.DELETE_MESSAGE, null, " ", "Cancel");
     }
 
     @CheckReturnValue
     default IMessageBuilder cancelButton(String label) {
-        return commandButton(CommandBehavior.DELETE_MESSAGE, " ", label);
+        return commandButton(CommandBehavior.DELETE_MESSAGE, null, " ", label);
     }
 
     @CheckReturnValue

@@ -337,6 +337,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public IMessageBuilder commandButton(String command, String message) {
         if (command.length() > ID_MAX_LENGTH) {
             int id = remapLongCommands.size();

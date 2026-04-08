@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade.subbank;
 import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -78,7 +79,7 @@ public class BankSubscriptions extends Command {
             String unsubCommand = Settings.commandPrefix(true) + "UnsubBank " + url;
 
             channel.create().embed(title, body.toString())
-                            .commandButton(unsubCommand, emoji).send(RateLimitedSources.COMMAND_RESULT);
+                            .commandButton(CommandBehavior.DELETE_MESSAGE, null, unsubCommand, emoji).send(RateLimitedSources.COMMAND_RESULT);
         }
 
         if (subscriptions.isEmpty()) {

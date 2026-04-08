@@ -16,7 +16,7 @@ public class WebAllianceAutoRole {
     public WebAllianceAutoRole(Role role, int allianceId, boolean duplicateKey) {
         this.role_id = role.getIdLong();
         this.name = role.getName();
-        this.color = role.getColorRaw();
+        this.color = role.getColors().getPrimaryRaw();
         this.alliance_id = allianceId;
         this.duplicate_key = duplicateKey;
     }

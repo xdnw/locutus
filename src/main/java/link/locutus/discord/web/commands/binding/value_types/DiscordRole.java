@@ -13,6 +13,6 @@ public class DiscordRole {
 
     public DiscordRole(Role role) {
         this.name = role.getName();
-        this.color = role.getColorRaw();
+        this.color = role.getColors().getPrimaryRaw();
     }
 }

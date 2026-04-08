@@ -1546,7 +1546,7 @@ public class DiscordUtil {
         String forceCmd = command.put(forceFlag, "true").toString();
         output.create()
                 .embed("Confirm: " + title, desc)
-                .commandButton(CommandBehavior.DELETE_MESSAGE, forceCmd, "Confirm")
+            .commandButton(CommandBehavior.DELETE_MESSAGE, null, forceCmd, "Confirm")
                 .send(RateLimitedSources.DISCORD_UTIL_EMBED_COMMAND);
     }
 

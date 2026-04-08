@@ -17,7 +17,7 @@ public class WebTaxAutoRole {
     public WebTaxAutoRole(Role role, int moneyRate, int rssRate, boolean duplicateKey) {
         this.role_id = role.getIdLong();
         this.name = role.getName();
-        this.color = role.getColorRaw();
+        this.color = role.getColors().getPrimaryRaw();
         this.money_rate = moneyRate;
         this.rss_rate = rssRate;
         this.duplicate_key = duplicateKey;

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account.question;
 import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -119,7 +120,7 @@ public class QuestionCommand<T extends Question> extends Command {
 
         IMessageBuilder msg = channel.create().embed(title, body);
         for (Map.Entry<String, String> entry : labelCommandList) {
-            msg = msg.commandButton(entry.getValue(), entry.getKey());
+            msg = msg.commandButton(CommandBehavior.DELETE_MESSAGE, null, entry.getValue(), entry.getKey());
         }
         msg.send(RateLimitedSources.COMMAND_RESULT);
 

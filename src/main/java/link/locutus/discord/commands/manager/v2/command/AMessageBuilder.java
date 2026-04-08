@@ -400,7 +400,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             output.embed(embed);
         }
         for (Map.Entry<String, String> entry : buttons.entrySet()) {
-            output.commandButton(entry.getKey(), entry.getValue());
+            output.commandButton(CommandBehavior.DELETE_MESSAGE, null, entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, String> entry : links.entrySet()) {
             output.linkButton(entry.getKey(), entry.getValue());
@@ -513,6 +513,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public IMessageBuilder commandButton(String command, String message) {
         buttons.put(command, message);
         return this;

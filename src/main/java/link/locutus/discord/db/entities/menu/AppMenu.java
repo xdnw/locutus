@@ -201,7 +201,7 @@ public class AppMenu {
                         for (Map.Entry<String, String> entry : buttons.entrySet()) {
                             String label = entry.getKey();
                             String command = formatCommand(guild, user, entry.getValue());
-                            msg.commandButton(CommandBehavior.EPHEMERAL, command, label);
+                            msg.commandButton(CommandBehavior.EPHEMERAL, null, command, label);
                         }
                         break;
                     }

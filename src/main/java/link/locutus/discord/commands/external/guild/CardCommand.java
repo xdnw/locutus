@@ -4,6 +4,7 @@ import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -80,7 +81,7 @@ public class CardCommand extends Command implements Noformat {
         for (int i = 0; i < commands.size(); i++) {
             String cmd = commands.get(i);
             String codePoint = i + emoji;
-            msg.commandButton(cmd, codePoint);
+            msg.commandButton(CommandBehavior.DELETE_MESSAGE, null, cmd, codePoint);
         }
         msg.send(RateLimitedSources.COMMAND_RESULT);
         return null;

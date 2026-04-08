@@ -336,7 +336,7 @@ public class AutoRoleInfo {
     }
 
     public void addRoleToMember(Member member, Role role) {
-        addRoleToMember(member, new RoleOrCreate(role, null, role.getName(), -1, role::getColor));
+        addRoleToMember(member, new RoleOrCreate(role, null, role.getName(), -1, () -> role.getColors().getPrimary()));
     }
 
     public void removeRoleFromMember(Member member, Role role) {
@@ -599,8 +599,9 @@ public class AutoRoleInfo {
                 if (existingColors == null) {
                     existingColors = new HashSet<>();
                     allianceRoles.forEach(role -> {
-                        if (role.getColor() != null) {
-                            existingColors.add(role.getColor());
+                        Color color = role.getColors().getPrimary();
+                        if (color != null) {
+                            existingColors.add(color);
                         }
                     });
                 }
