@@ -118,7 +118,7 @@ public class EmbedCommands {
         }
 
         Button found = null;
-        List<Button> buttons = message.getButtons();
+        List<Button> buttons = DiscordUtil.getButtons(message);
         for (Button button : buttons) {
             if (button.getLabel().equalsIgnoreCase(label)) {
                 found = button;
@@ -142,9 +142,10 @@ public class EmbedCommands {
                 msg.commandButton(entry.getValue(), entry.getKey().equalsIgnoreCase(label) ? rename_to : entry.getKey());
             }
         }
-        for (Button button : message.getButtons()) {
-            if (!button.getId().equalsIgnoreCase(button.getLabel())) {
-                msg.commandButton(button.getId(), button.getLabel().equalsIgnoreCase(label) ? rename_to : button.getLabel());
+        for (Button button : DiscordUtil.getButtons(message)) {
+            String id = button.getCustomId();
+            if (!button.getLabel().equalsIgnoreCase(id)) {
+                msg.commandButton(id, button.getLabel().equalsIgnoreCase(label) ? rename_to : button.getLabel());
             }
         }
         msg.send(RateLimitedSources.COMMAND_RESULT);
@@ -164,7 +165,7 @@ public class EmbedCommands {
 
         Set<String> invalidLabels = new HashSet<>(labels);
         Set<String> validLabels = new ObjectLinkedOpenHashSet<>();
-        List<ActionRow> rows = new ArrayList<>(message.getActionRows());
+        List<ActionRow> rows = new ArrayList<>(DiscordUtil.getActionRows(message));
         for (int i = 0; i < rows.size(); i++) {
             ActionRow row = rows.get(i);
             List<ActionRowChildComponentUnion> components = new ArrayList<>(row.getComponents());
@@ -178,8 +179,9 @@ public class EmbedCommands {
                 }
                 return false;
             });
-            rows.set(i, ActionRow.of(components));
+            rows.set(i, components.isEmpty() ? null : ActionRow.of(components));
         }
+        rows.removeIf(row -> row == null);
         if (!invalidLabels.isEmpty()) {
             throw new IllegalArgumentException("Invalid labels: `" + StringMan.join(invalidLabels, ", ") + "`. Valid labels: `" + StringMan.join(validLabels, ", ") + "`");
         }
@@ -204,7 +206,7 @@ public class EmbedCommands {
             throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
         }
 
-        List<Button> buttons = message.getButtons();
+        List<Button> buttons = DiscordUtil.getButtons(message);
         if (!force) {
             for (Button button : buttons) {
                 if (button.getLabel().equalsIgnoreCase(label)) {
@@ -278,7 +280,7 @@ public class EmbedCommands {
         }
         Set<String> validArguments = command.getUserParameterMap().keySet();
 
-        List<Button> buttons = message.getButtons();
+        List<Button> buttons = DiscordUtil.getButtons(message);
         for (Button button : buttons) {
             if (button.getLabel().equalsIgnoreCase(label)) {
                 throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: " + CM.embed.remove.button.cmd.toSlashMention());

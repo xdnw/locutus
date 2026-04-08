@@ -374,7 +374,7 @@ public class DiscordCommands {
         String desc = embed.getDescription();
 
         Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(
-                embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, embedMessage.getButtons(),
+                embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, DiscordUtil.getButtons(embedMessage),
                 embedMessage.getJumpUrl(), true);
         List<String> commands = new ArrayList<>();
 

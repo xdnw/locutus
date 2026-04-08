@@ -7,8 +7,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.RateLimitedSource;
-import net.dv8tion.jda.api.components.actionrow.ActionRow;
-import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.Channel;
@@ -172,14 +170,13 @@ public class DiscordHookIO implements IMessageIO {
             return DiscordChannelIO.send(this, builder, source);
         }
         AModalBuilder casted = (AModalBuilder) builder;
-        List<TextInput> inputs = casted.getInputs();
         if (casted.getId() == null) {
             casted.setId(UUID.randomUUID());
         }
         UUID id = casted.getId();
         String idPair = id + " " + casted.getTitle();
         Modal modal = Modal.create(idPair, casted.getTitle())
-                .addComponents(ActionRow.partitionOf(inputs))
+                .addComponents(casted.getInputComponents())
                 .build();
 
 //        modalCallback.replyModal(modal).complete();

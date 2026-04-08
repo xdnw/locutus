@@ -19,7 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public interface IModalBuilder {
-    IModalBuilder addInput(TextInput input);
+    IModalBuilder addInput(String label, TextInput input);
     UUID getId();
 
     IModalBuilder setId(UUID id);
@@ -87,7 +87,7 @@ public interface IModalBuilder {
                 }
 
                 String name = param.getName();
-                TextInput.Builder builder = TextInput.create(param.getName(), desc, TextInputStyle.PARAGRAPH);
+                TextInput.Builder builder = TextInput.create(param.getName(), TextInputStyle.PARAGRAPH);
                 String[] examples = param.getBinding().getExamples();
                 if (examples != null && examples.length > 0) {
                     builder.setPlaceholder(examples[0]);
@@ -108,7 +108,7 @@ public interface IModalBuilder {
                 }
 
                 TextInput input = builder.build();
-                addInput(input);
+                addInput(desc, input);
                 continue;
             }
 
@@ -121,14 +121,14 @@ public interface IModalBuilder {
                     continue;
                 }
                 String label = "Placeholder " + key + " in " + defEntry.getKey();
-                TextInput.Builder builder = TextInput.create(key, label, TextInputStyle.PARAGRAPH);
+                TextInput.Builder builder = TextInput.create(key, TextInputStyle.PARAGRAPH);
 
                 if (defValue != null) {
                     builder = builder.setPlaceholder(defValue);
                     builder = builder.setValue(defValue);
                 }
                 builder.setRequired(true);
-                addInput(builder.build());
+                addInput(label, builder.build());
                 continue outer;
             }
             throw new IllegalArgumentException("Argument " + key + " is not a valid argument for command " + command.getFullPath(" ") + "\n" +

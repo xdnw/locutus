@@ -1020,7 +1020,7 @@ public final class Locutus extends ListenerAdapter {
 
             Map<String, String> keyPairs = new LinkedHashMap<>();
             for (ModalMapping value : values) {
-                keyPairs.put(value.getId(), value.getAsString());
+                keyPairs.put(value.getCustomId(), value.getAsString());
             }
             Set<String> ignoreKeys = new ObjectLinkedOpenHashSet<>();
 
@@ -1070,7 +1070,7 @@ public final class Locutus extends ListenerAdapter {
 
             Button button = event.getButton();
 
-            if (button.getId().equalsIgnoreCase("")) {
+            if (button.getCustomId().equalsIgnoreCase("")) {
                 RateLimitUtil.queue(message.delete(), RateLimitedSources.COMMAND_RESULT);
                 return;
             }
@@ -1168,16 +1168,16 @@ public final class Locutus extends ListenerAdapter {
                             // unsupported
                         }
                         case DELETE_PRESSED_BUTTON -> {
-                            List<ActionRow> rows = new ArrayList<>(message.getActionRows());
+                            List<ActionRow> rows = new ArrayList<>(DiscordUtil.getActionRows(message));
                             for (int i = 0; i < rows.size(); i++) {
                                 ActionRow row = rows.get(i);
                                 List<ActionRowChildComponentUnion> components = new ArrayList<>(row.getComponents());
-                                if (components.removeIf(f -> f instanceof Button && ((Button) f).getId().equals(button.getId()))) {
+                                if (components.removeIf(f -> f instanceof Button && ((Button) f).getCustomId().equals(button.getCustomId()))) {
 //                                if (components.remove(button)) {
-                                    rows.set(i, ActionRow.of(components));
+                                    rows.set(i, components.isEmpty() ? null : ActionRow.of(components));
                                 }
                             }
-                            rows.removeIf(f -> f.getComponents().isEmpty());
+                            rows.removeIf(row -> row == null);
                             RateLimitUtil.queue(message.editMessageComponents(rows), RateLimitedSources.COMMAND_RESULT);
                         }
                         case DELETE_BUTTONS -> {

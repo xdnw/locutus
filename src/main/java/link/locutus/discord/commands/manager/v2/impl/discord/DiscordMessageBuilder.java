@@ -64,12 +64,12 @@ public class DiscordMessageBuilder extends AMessageBuilder {
 
     public DiscordMessageBuilder appendMessage(Message message) {
         contentShrink.append(message.getContentRaw());
-        message.getButtons().forEach(b -> {
+        DiscordUtil.getButtons(message).forEach(b -> {
             String url = b.getUrl();
             if (url != null && !url.isEmpty()) {
                 links.put(b.getUrl(), b.getLabel());
             } else {
-                buttons.put(b.getId(), b.getLabel());
+                buttons.put(b.getCustomId(), b.getLabel());
             }
         });
         for (MessageEmbed embed : message.getEmbeds()) {

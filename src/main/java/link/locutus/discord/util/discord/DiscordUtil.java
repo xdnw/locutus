@@ -30,6 +30,8 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.jooby.JteUtil;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -61,6 +63,29 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DiscordUtil {
+    // JDA 6 exposes generic top-level components; these command paths only read the action-row buttons this codebase builds.
+    public static List<ActionRow> getActionRows(Message message) {
+        List<ActionRow> rows = new ArrayList<>();
+        for (var component : message.getComponents()) {
+            if (component instanceof ActionRow row) {
+                rows.add(row);
+            }
+        }
+        return rows;
+    }
+
+    public static List<Button> getButtons(Message message) {
+        List<Button> buttons = new ArrayList<>();
+        for (ActionRow row : getActionRows(message)) {
+            for (ActionRowChildComponentUnion component : row.getComponents()) {
+                if (component instanceof Button button) {
+                    buttons.add(button);
+                }
+            }
+        }
+        return buttons;
+    }
+
     public static String getInvite() {
         return "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID
                 + "&permissions=395606879321&scope=bot>\n" +

@@ -239,7 +239,7 @@ public class DiscordChannelIO implements IMessageIO {
         String defaultsStr = null;
         try {
             Map<String, String> defaults = IModalBuilder.DEFAULT_VALUES.get(id);
-            if (defaults != null && !defaultsStr.isEmpty()) {
+            if (defaults != null && !defaults.isEmpty()) {
                 // map to json google
                 defaultsStr = WebUtil.GSON.toJson(defaults);
                 IModalBuilder.DEFAULT_VALUES.refresh(id);
@@ -250,7 +250,7 @@ public class DiscordChannelIO implements IMessageIO {
         String cmd = builder.getTitle();
         List<String> argList = new ArrayList<>();
         for (TextInput input : record.getInputs()) {
-            String argName = input.getId();
+            String argName = input.getCustomId();
             argList.add(argName);
         }
         CM.modal.create cmRef = CM.modal.create.cmd.command(cmd).arguments(StringMan.join(argList, " ")).defaults(defaultsStr);
