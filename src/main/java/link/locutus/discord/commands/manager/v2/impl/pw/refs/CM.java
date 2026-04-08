@@ -14262,6 +14262,10 @@ public class CM {
                 return set("nation", value);
             }
 
+            public cost research(String value) {
+                return set("research", value);
+            }
+
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="unitHistory")
             public static class history extends CommandRef {

@@ -2903,7 +2903,8 @@ public class UtilityCommands {
     public String unitCost(@Me @Default DBNation me,
             Map<MilitaryUnit, Long> units,
             @Arg("Show the upkeep during war time") @Default Boolean wartime,
-            @Switch("n") DBNation nation) {
+            @Switch("n") DBNation nation,
+            @Arg("Military research levels to override nation/default research") @Switch("r") Map<Research, Integer> research) {
         if (wartime == null)
             wartime = false;
         StringBuilder response = new StringBuilder();
@@ -2912,17 +2913,21 @@ public class UtilityCommands {
         double[] cost = ResourceType.getBuffer();
         double[] upkeep = ResourceType.getBuffer();
 
-        Function<Research, Integer> research = (nation == null ? me == null ? f -> 0 : f -> me.getResearch(null, f)
-                : f -> nation.getResearch(null, f));
+        Function<Research, Integer> baseResearch = nation == null
+            ? me == null ? Research.ZERO : f -> me.getResearch(null, f)
+            : f -> nation.getResearch(null, f);
+        Function<Research, Integer> getResearch = research == null
+            ? baseResearch
+            : f -> research.getOrDefault(f, baseResearch.apply(f));
         double upkeepFactor = nation == null ? me == null ? 1 : me.getMilitaryUpkeepFactor()
                 : nation.getMilitaryUpkeepFactor();
         for (Map.Entry<MilitaryUnit, Long> entry : units.entrySet()) {
             MilitaryUnit unit = entry.getKey();
             Long amt = entry.getValue();
 
-            double[] unitCost = ResourceType.resourcesToArray(unit.getCost(amt.intValue(), research));
-            double[] unitUpkeep = unit
-                    .addUpkeep(ResourceType.getBuffer(), amt.intValue(), wartime, research, upkeepFactor).clone();
+            double[] unitCost = ResourceType.resourcesToArray(unit.getCost(amt.intValue(), getResearch));
+                double[] unitUpkeep = unit
+                    .addUpkeep(ResourceType.getBuffer(), amt.intValue(), wartime, getResearch, upkeepFactor).clone();
 
             ResourceType.add(cost, unitCost);
             ResourceType.add(upkeep, unitUpkeep);
