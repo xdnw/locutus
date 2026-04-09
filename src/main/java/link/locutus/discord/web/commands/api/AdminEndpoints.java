@@ -11,12 +11,21 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.CacheType;
+import link.locutus.discord.web.commands.binding.value_types.WebSettingValidationCheapness;
+import link.locutus.discord.web.commands.binding.value_types.WebSettingValidationErrors;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class AdminEndpoints {
@@ -58,5 +67,55 @@ public class AdminEndpoints {
         res.history = rt.getRunHistorySince(id, since);
 
         return res;
+    }
+
+    @Command(desc = "Validate the current local values for selected guild settings; missing keys are valid or unset", viewable = true)
+    @RolePermission(Roles.ADMIN)
+    @ReturnType(WebSettingValidationErrors.class)
+    public WebSettingValidationErrors settings_validation_errors(@Me GuildDB db,
+                                                                 @Me User user,
+                                                                 Set<GuildSetting> settings) {
+        Map<Integer, String> errors = new LinkedHashMap<>();
+        if (settings == null || settings.isEmpty()) {
+            return new WebSettingValidationErrors(errors);
+        }
+
+        for (GuildSetting setting : orderedSettings(settings)) {
+            int ordinal = setting.getOrdinal();
+            if (ordinal < 0) {
+                continue;
+            }
+            String error = setting.getValidationError(db, user, false);
+            if (error != null) {
+                errors.put(ordinal, error);
+            }
+        }
+        return new WebSettingValidationErrors(errors);
+    }
+
+    @Command(desc = "Report whether selected guild settings can be revalidated without expensive remote calls", viewable = true)
+    @RolePermission(Roles.ADMIN)
+    @ReturnType(WebSettingValidationCheapness.class)
+    public WebSettingValidationCheapness settings_validation_cheapness(@Me GuildDB db,
+                                                                       Set<GuildSetting> settings) {
+        Map<Integer, Boolean> isCheap = new LinkedHashMap<>();
+        if (settings == null || settings.isEmpty()) {
+            return new WebSettingValidationCheapness(isCheap);
+        }
+
+        for (GuildSetting setting : orderedSettings(settings)) {
+            int ordinal = setting.getOrdinal();
+            if (ordinal < 0) {
+                continue;
+            }
+            isCheap.put(ordinal, setting.isValidationCheap());
+        }
+        return new WebSettingValidationCheapness(isCheap);
+    }
+
+    private static List<GuildSetting> orderedSettings(Set<GuildSetting> settings) {
+        List<GuildSetting> ordered = new ArrayList<>(settings);
+        ordered.sort(Comparator.comparingInt(GuildSetting::getOrdinal));
+        return ordered;
     }
 }

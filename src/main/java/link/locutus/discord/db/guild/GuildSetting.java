@@ -297,6 +297,55 @@ public abstract class GuildSetting<T> {
         return value;
     }
 
+    /**
+     * Re-validates an already-configured value without performing set-time side effects.
+     */
+    public T validateReadOnly(GuildDB db, User user, T value) {
+        return validate(db, user, value);
+    }
+
+    public boolean isValidationCheap() {
+        return true;
+    }
+
+    public String getValidationError(GuildDB db, User user, boolean allowDelegate) {
+        String raw = getRaw(db, allowDelegate);
+        if (raw == null) {
+            return null;
+        }
+
+        T value = getOrNull(db, allowDelegate);
+        if (value == null) {
+            return "Stored value could not be parsed";
+        }
+
+        try {
+            allowed(db, true);
+        } catch (IllegalArgumentException | UnsupportedOperationException e) {
+            return sanitizeValidationMessage(e);
+        }
+
+        try {
+            T validated = validateReadOnly(db, user, value);
+            if (validated == null) {
+                return "Stored value failed validation";
+            }
+            return null;
+        } catch (IllegalArgumentException | UnsupportedOperationException e) {
+            return sanitizeValidationMessage(e);
+        } catch (Throwable e) {
+            return sanitizeValidationMessage(e);
+        }
+    }
+
+    private static String sanitizeValidationMessage(Throwable throwable) {
+        String message = throwable.getMessage();
+        if (message == null || message.isBlank()) {
+            return throwable.getClass().getSimpleName();
+        }
+        return StringMan.stripApiKey(message);
+    }
+
     public String toReadableString(GuildDB db, T value) {
         return toString(value);
     }

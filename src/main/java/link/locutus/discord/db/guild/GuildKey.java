@@ -106,6 +106,181 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.db.guild.GuildSettingSubgroup.*;
 
 public class GuildKey {
+    private static Set<Integer> validateAllianceIds(GuildDB db, User user, Set<Integer> aaIds, boolean mutateConflictingGuilds) {
+        if (DELEGATE_SERVER.has(db, false)) {
+            throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
+        }
+
+        if (aaIds.isEmpty()) {
+            throw new IllegalArgumentException("No alliance provided");
+        }
+
+        for (int aaId : aaIds) {
+            if (aaId == 0) {
+                throw new IllegalArgumentException("None alliance (id=0) cannot be registered: " + aaIds);
+            }
+            DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+            GuildDB otherDb = alliance.getGuildDB();
+            Member owner = db.getGuild().getOwner();
+            if (user == null || (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) {
+                DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
+                if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
+                    Set<String> inviteCodes = new HashSet<>();
+                    boolean isValid = owner != null && Roles.ADMIN.hasOnRoot(owner.getUser());
+                    if (!isValid) {
+                        try {
+                            try {
+                                List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites(), RateLimitedSources.INVITE_SYNC);
+                                for (Invite invite : invites) {
+                                    String inviteCode = invite.getCode();
+                                    inviteCodes.add(inviteCode);
+                                }
+                            } catch (Throwable ignore) {
+                            }
+
+                            if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
+                                for (String code : inviteCodes) {
+                                    if (alliance.getDiscord_link().contains(code)) {
+                                        isValid = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!isValid) {
+                                String url = Settings.PNW_URL() + "/alliance/id=" + aaId;
+                                String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE, url);
+                                String idStr = db.getGuild().getId();
+
+                                if (content.contains(idStr)) {
+                                    isValid = true;
+                                }
+                            }
+
+                            if (!isValid) {
+                                String msg = "1. Go to: <" + Settings.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
+                                        "2. Scroll down to where it says Alliance Description:\n" +
+                                        "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
+                                        "4. Click save\n" +
+                                        "5. Run the command " + ALLIANCE_ID.getCommandObj(db, aaIds) + " again\n" +
+                                        "(note: you can remove the id after setup)";
+                                throw new IllegalArgumentException(msg);
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            }
+
+            if (otherDb != null && otherDb != db) {
+                if (mutateConflictingGuilds) {
+                    otherDb.deleteInfo(ALLIANCE_ID);
+
+                    String msg = "Only 1 root server per Alliance is permitted. The ALLIANCE_ID in the other guild: " + otherDb.getGuild() + " has been removed.\n" +
+                            "To have multiple servers, set the ALLIANCE_ID on your primary server, and then set " + DELEGATE_SERVER.getCommandMention() + " on your other servers\n" +
+                            "The `<guild-id>` for this server is `" + db.getIdLong() + "` and the id for the other server is `" + otherDb.getIdLong() + "`.\n\n" +
+                            "Run this command again to confirm and set the ALLIANCE_ID";
+                    throw new IllegalArgumentException(msg);
+                }
+
+                String msg = "Only 1 root server per Alliance is permitted. The ALLIANCE_ID is also set on the other guild: " + otherDb.getGuild() + ".\n" +
+                        "To have multiple servers, set the ALLIANCE_ID on your primary server, and then set " + DELEGATE_SERVER.getCommandMention() + " on your other servers\n" +
+                        "The `<guild-id>` for this server is `" + db.getIdLong() + "` and the id for the other server is `" + otherDb.getIdLong() + "`.";
+                throw new IllegalArgumentException(msg);
+            }
+        }
+        return aaIds;
+    }
+
+    private static List<String> validateApiKeys(GuildDB db, List<String> keys, boolean allowNationRefresh) {
+        keys = new ArrayList<>(new ObjectLinkedOpenHashSet<>(keys));
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (aaIds.isEmpty()) {
+            throw new IllegalArgumentException("Please first use " + GuildKey.ALLIANCE_ID.getCommandMention());
+        }
+        for (String key : keys) {
+            try {
+                Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                if (nationId == null) {
+                    throw new IllegalArgumentException("Invalid API key");
+                }
+                DBNation nation = DBNation.getById(nationId);
+                if (nation == null) {
+                    throw new IllegalArgumentException("Nation not found for id: " + nationId + "(out of sync?)");
+                }
+                if (!aaIds.contains(nation.getAlliance_id())) {
+                    if (allowNationRefresh) {
+                        nation.update(true);
+                    }
+                    if (!aaIds.contains(nation.getAlliance_id())) {
+                        throw new IllegalArgumentException("Nation " + nation.getName() + " is not in your alliance: " + StringMan.getString(aaIds));
+                    }
+                }
+            } catch (Throwable e) {
+                try {
+                    ApiKeyDetails details = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
+                    Integer nationId = details.getNation().getId();
+                    if (nationId != null) {
+                        DBNation nation = DBNation.getById(nationId);
+                        if (nation != null && !aaIds.contains(nation.getAlliance_id())) {
+                            continue;
+                        }
+                        throw new IllegalArgumentException("API key is not from a nation in the alliance (nation: " + nation + "): " + StringMan.stripApiKey(e.getMessage()));
+                    }
+                } catch (Throwable ignore) {
+                    ignore.printStackTrace();
+                }
+                throw new IllegalArgumentException("Key was rejected: " + StringMan.stripApiKey(e.getMessage()));
+            }
+        }
+        return keys;
+    }
+
+    private static MessageChannel validateEspionageAlertChannel(GuildDB db, User user, MessageChannel channel, boolean setupSubscriptions) {
+        db.getOrThrow(ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds(true);
+        if (aaIds.isEmpty()) {
+            throw new IllegalArgumentException("Guild not registered to an alliance. See: " + CM.settings.info.cmd.toSlashMention() + " with key `" + ALLIANCE_ID.name() + "`");
+        }
+        String msg = "Invalid api key set. See " + CM.settings.info.cmd.toSlashMention() + " with key `" + API_KEY.name() + "`";
+        for (String key : db.getOrThrow(API_KEY)) {
+            Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+            if (nationId == null) throw new IllegalArgumentException(msg);
+            DBNation nation = DBNation.getById(nationId);
+            if (nation.getAlliancePosition() == null)
+                throw new IllegalArgumentException(msg + " (no position found for nation: " + nationId + ")");
+            if (!nation.getAlliancePosition().hasPermission(AlliancePermission.SEE_SPIES))
+                throw new IllegalArgumentException(msg + " (nation: " + nationId + " does not have permission " + AlliancePermission.SEE_SPIES + ")");
+            if (!aaIds.contains(nation.getAlliance_id()))
+                throw new IllegalArgumentException(msg + " (nation: " + nationId + " is not in your alliance: " + StringMan.getString(aaIds) + ")");
+
+            PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(nationId, key));
+            try {
+                api.getApiKeyStats();
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(StringMan.stripApiKey(e.getMessage()) + " (for nation: " + nationId + ")");
+            }
+        }
+        PnwPusherShardManager pusher = Locutus.imp().getPusher();
+        if (pusher == null) {
+            throw new IllegalArgumentException("Pusher is not enabled. Please contact the bot owner.");
+        }
+
+        channel = GuildSetting.validateChannel(db, channel);
+
+        if (setupSubscriptions) {
+            for (int aaId : aaIds) {
+                DBAlliance aa = DBAlliance.get(aaId);
+                if (aa != null) {
+                    pusher.setupSpySubscriptions(db, aa);
+                }
+            }
+        }
+
+        return channel;
+    }
+
     public static final GuildSetting<Set<Integer>> ALLIANCE_ID = new GuildSetting<Set<Integer>>(GuildSettingCategory.DEFAULT, null, Set.class, Integer.class) {
         @NoFormat
         @Command(descMethod = "help")
@@ -143,89 +318,17 @@ public class GuildKey {
         }
         @Override
         public Set<Integer> validate(GuildDB db, User user, Set<Integer> aaIds) {
-            if (DELEGATE_SERVER.has(db, false))
-                throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
+            return validateAllianceIds(db, user, aaIds, true);
+        }
 
-            if (aaIds.isEmpty()) {
-                throw new IllegalArgumentException("No alliance provided");
-            }
+        @Override
+        public Set<Integer> validateReadOnly(GuildDB db, User user, Set<Integer> aaIds) {
+            return validateAllianceIds(db, user, aaIds, false);
+        }
 
-            for (int aaId : aaIds) {
-                if (aaId == 0) {
-                    throw new IllegalArgumentException("None alliance (id=0) cannot be registered: " + aaIds);
-                }
-                DBAlliance alliance = DBAlliance.getOrCreate(aaId);
-                GuildDB otherDb = alliance.getGuildDB();
-                Member owner = db.getGuild().getOwner();
-                if (user == null || (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) {
-                    DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
-                    if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
-                        Set<String> inviteCodes = new HashSet<>();
-                        boolean isValid = Roles.ADMIN.hasOnRoot(owner.getUser());
-                        if (!isValid) {
-                            try {
-                                try {
-                                    List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites(), RateLimitedSources.INVITE_SYNC);
-                                    for (Invite invite : invites) {
-                                        String inviteCode = invite.getCode();
-                                        inviteCodes.add(inviteCode);
-                                    }
-                                } catch (Throwable ignore) {
-                                }
-
-                                if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
-                                    for (String code : inviteCodes) {
-                                        if (alliance.getDiscord_link().contains(code)) {
-                                            isValid = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!isValid) {
-                                    String url = Settings.PNW_URL() + "/alliance/id=" + aaId;
-                                    String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE, url);
-                                    String idStr = db.getGuild().getId();
-
-                                    if (!content.contains(idStr)) {
-//                                        for (String inviteCode : inviteCodes) {
-//                                            if (content.contains(inviteCode)) {
-//                                                isValid = true;
-//                                                break;
-//                                            }
-//                                        }
-                                    } else {
-                                        isValid = true;
-                                    }
-                                }
-
-                                if (!isValid) {
-                                    String msg = "1. Go to: <" + Settings.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
-                                            "2. Scroll down to where it says Alliance Description:\n" +
-                                            "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
-                                            "4. Click save\n" +
-                                            "5. Run the command " + getCommandObj(db, aaIds) + " again\n" +
-                                            "(note: you can remove the id after setup)";
-                                    throw new IllegalArgumentException(msg);
-                                }
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    }
-                }
-
-                if (otherDb != null && otherDb != db) {
-                    otherDb.deleteInfo(ALLIANCE_ID);
-
-                    String msg = "Only 1 root server per Alliance is permitted. The ALLIANCE_ID in the other guild: " + otherDb.getGuild() + " has been removed.\n" +
-                            "To have multiple servers, set the ALLIANCE_ID on your primary server, and then set " + DELEGATE_SERVER.getCommandMention() + " on your other servers\n" +
-                            "The `<guild-id>` for this server is `" + db.getIdLong() + "` and the id for the other server is `" + otherDb.getIdLong() + "`.\n\n" +
-                            "Run this command again to confirm and set the ALLIANCE_ID";
-                    throw new IllegalArgumentException(msg);
-                }
-            }
-            return aaIds;
+        @Override
+        public boolean isValidationCheap() {
+            return false;
         }
 
         @Override
@@ -444,45 +547,17 @@ public class GuildKey {
 
         @Override
         public List<String> validate(GuildDB db, User user, List<String> keys) {
-            keys = new ArrayList<>(new ObjectLinkedOpenHashSet<>(keys));
-            Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) {
-                throw new IllegalArgumentException("Please first use " + GuildKey.ALLIANCE_ID.getCommandMention());
-            }
-            for (String key : keys) {
-                try {
-                    Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
-                    if (nationId == null) {
-                        throw new IllegalArgumentException("Invalid API key");
-                    }
-                    DBNation nation = DBNation.getById(nationId);
-                    if (nation == null) {
-                        throw new IllegalArgumentException("Nation not found for id: " + nationId + "(out of sync?)");
-                    }
-                    if (!aaIds.contains(nation.getAlliance_id())) {
-                        nation.update(true);
-                        if (!aaIds.contains(nation.getAlliance_id())) {
-                            throw new IllegalArgumentException("Nation " + nation.getName() + " is not in your alliance: " + StringMan.getString(aaIds));
-                        }
-                    }
-                } catch (Throwable e) {
-                    try {
-                        ApiKeyDetails details = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-                        Integer nationId = details.getNation().getId();
-                        if (nationId != null) {
-                            DBNation nation = DBNation.getById(nationId);
-                            if (nation != null && !aaIds.contains(nation.getAlliance_id())) {
-                                continue;
-                            }
-                            throw new IllegalArgumentException("API key is not from a nation in the alliance (nation: " + nation + "): " + StringMan.stripApiKey(e.getMessage()));
-                        }
-                    } catch (Throwable ignore) {
-                        ignore.printStackTrace();
-                    }
-                    throw new IllegalArgumentException("Key was rejected: " + StringMan.stripApiKey(e.getMessage()));
-                }
-            }
-            return keys;
+            return validateApiKeys(db, keys, true);
+        }
+
+        @Override
+        public List<String> validateReadOnly(GuildDB db, User user, List<String> keys) {
+            return validateApiKeys(db, keys, false);
+        }
+
+        @Override
+        public boolean isValidationCheap() {
+            return false;
         }
 
         @Override
@@ -531,45 +606,17 @@ public class GuildKey {
 
         @Override
         public MessageChannel validate(GuildDB db, User user, MessageChannel channel) {
-            db.getOrThrow(ALLIANCE_ID);
-            Set<Integer> aaIds = db.getAllianceIds(true);
-            if (aaIds.isEmpty()) {
-                throw new IllegalArgumentException("Guild not registered to an alliance. See: " + CM.settings.info.cmd.toSlashMention() + " with key `" + ALLIANCE_ID.name() + "`");
-            }
-            String msg = "Invalid api key set. See " + CM.settings.info.cmd.toSlashMention() + " with key `" + API_KEY.name() + "`";
-            for (String key : db.getOrThrow(API_KEY)) {
-                Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
-                if (nationId == null) throw new IllegalArgumentException(msg);
-                DBNation nation = DBNation.getById(nationId);
-                if (nation.getAlliancePosition() == null)
-                    throw new IllegalArgumentException(msg + " (no position found for nation: " + nationId + ")");
-                if (!nation.getAlliancePosition().hasPermission(AlliancePermission.SEE_SPIES))
-                    throw new IllegalArgumentException(msg + " (nation: " + nationId + " does not have permission " + AlliancePermission.SEE_SPIES + ")");
-                if (!aaIds.contains(nation.getAlliance_id()))
-                    throw new IllegalArgumentException(msg + " (nation: " + nationId + " is not in your alliance: " + StringMan.getString(aaIds) + ")");
+            return validateEspionageAlertChannel(db, user, channel, true);
+        }
 
-                PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(nationId, key));
-                try {
-                    api.getApiKeyStats();
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException(StringMan.stripApiKey(e.getMessage()) + " (for nation: " + nationId + ")");
-                }
-            }
-            PnwPusherShardManager pusher = Locutus.imp().getPusher();
-            if (pusher == null) {
-                throw new IllegalArgumentException("Pusher is not enabled. Please contact the bot owner.");
-            }
+        @Override
+        public MessageChannel validateReadOnly(GuildDB db, User user, MessageChannel channel) {
+            return validateEspionageAlertChannel(db, user, channel, false);
+        }
 
-            channel = validateChannel(db, channel);
-
-            for (int aaId : aaIds) {
-                DBAlliance aa = DBAlliance.get(aaId);
-                if (aa != null) {
-                    pusher.setupSpySubscriptions(db, aa);
-                }
-            }
-
-            return channel;
+        @Override
+        public boolean isValidationCheap() {
+            return false;
         }
 
         @Override
@@ -650,6 +697,11 @@ public class GuildKey {
         }
 
         @Override
+        public boolean isValidationCheap() {
+            return false;
+        }
+
+        @Override
         public String help() {
             return "The recruit message subject\n" +
                     "Must also set " + RECRUIT_MESSAGE_CONTENT.getCommandMention();
@@ -687,6 +739,11 @@ public class GuildKey {
         public String validate(GuildDB db, User user, String value) {
             if (!Roles.ADMIN.hasOnRoot(user)) GPTUtil.checkThrowModeration(value);
             return value;
+        }
+
+        @Override
+        public boolean isValidationCheap() {
+            return false;
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_SUBJECT).requires(ALLIANCE_ID).requires(API_KEY));
     public static final GuildSetting<MessageChannel> RECRUIT_MESSAGE_OUTPUT = new GuildChannelSetting(GuildSettingCategory.RECRUIT, NATION_CREATION) {
@@ -887,6 +944,11 @@ public class GuildKey {
             }
 
             return parsed;
+        }
+
+        @Override
+        public boolean isValidationCheap() {
+            return false;
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
     public static final GuildSetting<Map<ResourceType, Double>> WARCHEST_PER_CITY = new GuildResourceSetting(GuildSettingCategory.AUDIT, MANUAL_AUDITS) {

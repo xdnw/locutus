@@ -351,6 +351,8 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.WebCurrentTreaties',
                 'link.locutus.discord.web.commands.binding.value_types.WebCoalitions',
                 'link.locutus.discord.web.commands.binding.value_types.WebRoleAliases',
+                'link.locutus.discord.web.commands.binding.value_types.WebSettingValidationCheapness',
+                'link.locutus.discord.web.commands.binding.value_types.WebSettingValidationErrors',
                 'link.locutus.discord.web.commands.binding.value_types.WebAutoRoleRoles',
                 'link.locutus.discord.web.commands.binding.value_types.WebAllianceAutoRole',
                 'link.locutus.discord.web.commands.binding.value_types.WebCityAutoRole',

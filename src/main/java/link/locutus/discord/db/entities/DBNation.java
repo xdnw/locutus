@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.util.RateLimitedSources;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
@@ -117,15 +116,13 @@ import link.locutus.discord.pnw.NationScoreMap;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.DeferredPriority;
 import link.locutus.discord.util.FetchDeposit;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.RateLimitedSource;
-import link.locutus.discord.util.SendPolicy;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -1829,7 +1826,10 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public void setSpies(int spies, Consumer<Event> eventConsumer) {
-        getCache().processUnitChange(this, MilitaryUnit.SPIES, this.data()._spies(), spies);
+        DBNationCache cache = getCache(eventConsumer != null);
+        if (cache != null) {
+            cache.processUnitChange(this, MilitaryUnit.SPIES, this.data()._spies(), spies);
+        }
         if (eventConsumer != null && this.data()._spies() != spies) {
             DBNation copyOriginal = copy();
             this.edit().setSpies(spies);
