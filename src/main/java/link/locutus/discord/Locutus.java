@@ -108,8 +108,16 @@ public final class Locutus extends ListenerAdapter {
     private ILoader loader;
 
     private final ThreadPoolExecutor executor;
+    private final ThreadPoolExecutor commandExecutor;
+    private final ThreadPoolExecutor appEventExecutor;
     private final ThreadPoolExecutor gatewayExecutor;
     private final ThreadPoolExecutor interactionExecutor;
+    private final ThreadPoolExecutor jdaEventExecutor;
+    private final ThreadPoolExecutor jdaCallbackExecutor;
+    private final ScheduledThreadPoolExecutor jdaGatewayPool;
+    private final ScheduledThreadPoolExecutor jdaRateLimitScheduler;
+    private final ThreadPoolExecutor jdaRateLimitElastic;
+    private final ThreadPoolExecutor rateLimitCompleteExecutor;
     private final ScheduledThreadPoolExecutor scheduler;
 
     private final EventBus eventBus;
@@ -126,6 +134,43 @@ public final class Locutus extends ListenerAdapter {
     private Guild server;
     private MultiUpdater multiUpdater;
 
+    private static ThreadFactory namedThreadFactory(String prefix) {
+        ThreadFactory delegate = Executors.defaultThreadFactory();
+        AtomicInteger counter = new AtomicInteger();
+        return job -> {
+            Thread thread = delegate.newThread(job);
+            thread.setName(prefix + "-" + counter.incrementAndGet());
+            return thread;
+        };
+    }
+
+    private static ThreadPoolExecutor newFixedExecutor(String prefix, int threads) {
+        return new ThreadPoolExecutor(threads, threads, 60L, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(), namedThreadFactory(prefix));
+    }
+
+    private static ThreadPoolExecutor newQueuedExecutor(String prefix, int threads) {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(threads, threads, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(), namedThreadFactory(prefix));
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
+    }
+
+    private static ThreadPoolExecutor newCachedExecutor(String prefix) {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60L,
+                TimeUnit.SECONDS, new SynchronousQueue<>(), namedThreadFactory(prefix));
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
+    }
+
+    private static ScheduledThreadPoolExecutor newScheduledExecutor(String prefix, int threads) {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threads, namedThreadFactory(prefix));
+        executor.setRemoveOnCancelPolicy(true);
+        executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+        return executor;
+    }
+
     public static synchronized Locutus create() {
         if (INSTANCE != null) throw new IllegalStateException("Already initialized");
         try {
@@ -140,14 +185,35 @@ public final class Locutus extends ListenerAdapter {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
         long start = System.currentTimeMillis();
-        int gatewayThreads = Math.max(4, Math.min(32, Runtime.getRuntime().availableProcessors() * 2));
-        int interactionThreads = Math.max(4, Math.min(32, Runtime.getRuntime().availableProcessors() * 2));
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        int gatewayThreads = Math.max(4, Math.min(32, availableProcessors * 2));
+        int interactionThreads = Math.max(4, Math.min(32, availableProcessors * 2));
+        int jdaEventThreads = Math.max(2, Math.min(8, availableProcessors));
+        int jdaCallbackThreads = Math.max(4, Math.min(16, availableProcessors * 2));
+        int jdaGatewayThreads = Math.max(2, Math.min(8, Math.max(1, Settings.INSTANCE.SHARDS)));
+        int jdaRateLimitThreads = Math.max(2, Math.min(8, Math.max(1, Settings.INSTANCE.SHARDS) * 2));
+        int commandThreads = Math.max(8, Math.min(64, availableProcessors * 4));
+        int appEventThreads = Math.max(8, Math.min(64, availableProcessors * 4));
+        int backgroundThreads = Math.max(8, Math.min(128, availableProcessors * 8));
         // Keep lifecycle callbacks off the JDA thread even when the general executor saturates.
-        this.gatewayExecutor = new ThreadPoolExecutor(gatewayThreads, gatewayThreads, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), Executors.defaultThreadFactory());
+        this.gatewayExecutor = newFixedExecutor("Locutus-Discord-Gateway", gatewayThreads);
         // Keep user interaction traffic isolated from guild bootstrap and lifecycle work.
-        this.interactionExecutor = new ThreadPoolExecutor(interactionThreads, interactionThreads, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), Executors.defaultThreadFactory());
-        this.executor = new ThreadPoolExecutor(0, 256, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), new ThreadPoolExecutor.CallerRunsPolicy());
-        this.scheduler = new ScheduledThreadPoolExecutor(256, Executors.defaultThreadFactory(), new ThreadPoolExecutor.CallerRunsPolicy());
+        this.interactionExecutor = newFixedExecutor("Locutus-Discord-Interaction", interactionThreads);
+        // JDA transport work gets its own pools so Discord IO never falls back to the generic worker lane.
+        this.jdaEventExecutor = newFixedExecutor("Locutus-JDA-Event", jdaEventThreads);
+        this.jdaCallbackExecutor = newFixedExecutor("Locutus-JDA-Callback", jdaCallbackThreads);
+        this.jdaGatewayPool = newScheduledExecutor("Locutus-JDA-Gateway", jdaGatewayThreads);
+        this.jdaRateLimitScheduler = newScheduledExecutor("Locutus-JDA-RateLimit", jdaRateLimitThreads);
+        this.jdaRateLimitElastic = newCachedExecutor("Locutus-JDA-Rest");
+        // completeWhenFree only uses this lane while rate-limited, but it must not pin the admission worker.
+        this.rateLimitCompleteExecutor = newFixedExecutor("Locutus-RateLimit-Complete", 1);
+        // Keep user-triggered command bodies off the scheduler so delayed tasks still fire on time.
+        this.commandExecutor = newQueuedExecutor("Locutus-Command", commandThreads);
+        // Domain event fanout must not share backlog with bulk background work.
+        this.appEventExecutor = newQueuedExecutor("Locutus-App-Event", appEventThreads);
+        this.scheduler = newScheduledExecutor("Locutus-Scheduler", 256);
+        // Background follow-up work must stay off gateway/interaction threads and degrade by backlog rather than inline execution.
+        this.executor = newQueuedExecutor("Locutus-Background", backgroundThreads);
         this.taskTrack = new RepeatingTasks(scheduler);
         Logg.text("Created Executors (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
 
@@ -276,7 +342,7 @@ public final class Locutus extends ListenerAdapter {
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
             this.pusher = new PnwPusherShardManager();
-            executor.submit(new Runnable() {
+            runBackgroundAsync(new Runnable() {
                 @Override
                 public void run() {
                     Logg.text("Loading pusher");
@@ -373,7 +439,7 @@ public final class Locutus extends ListenerAdapter {
             try {
                 SlashCommandManager slashCommands = loader.getSlashCommandManager();
                 if (slashCommands != null) {
-                    executor.submit(() -> slashCommands.registerCommandData(manager));
+                    runBackgroundAsync(() -> slashCommands.registerCommandData(manager));
                 }
             } catch (Throwable e) {
                 // sometimes happen when discord api is spotty / timeout
@@ -562,12 +628,20 @@ public final class Locutus extends ListenerAdapter {
 
     public Future<?> runEventsAsync(Collection<Event> events) {
         if (events.isEmpty()) return null;
-        return getExecutor().submit(new CaughtRunnable() {
+        return appEventExecutor.submit(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
                 for (Event event : events) event.post();
             }
         });
+    }
+
+    public Future<?> runBackgroundAsync(Runnable task) {
+        return executor.submit(task);
+    }
+
+    public Future<?> runCommandAsync(Runnable task) {
+        return commandExecutor.submit(task);
     }
 
     public Future<?> runGatewayEventAsync(Runnable task) {
@@ -875,7 +949,7 @@ public final class Locutus extends ListenerAdapter {
                 runEventsAsync(getNationDB()::deleteExpiredTreaties);
             }
 
-            getExecutor().submit(new CaughtRunnable() {
+            runBackgroundAsync(new CaughtRunnable() {
                 @Override
                 public void runUnsafe() {
                     getNationDB().saveResearch();
@@ -1516,6 +1590,30 @@ public final class Locutus extends ListenerAdapter {
         return executor;
     }
 
+    public ExecutorService getJdaEventExecutor() {
+        return jdaEventExecutor;
+    }
+
+    public ExecutorService getJdaCallbackExecutor() {
+        return jdaCallbackExecutor;
+    }
+
+    public ScheduledExecutorService getJdaGatewayPool() {
+        return jdaGatewayPool;
+    }
+
+    public ScheduledExecutorService getJdaRateLimitScheduler() {
+        return jdaRateLimitScheduler;
+    }
+
+    public ExecutorService getJdaRateLimitElastic() {
+        return jdaRateLimitElastic;
+    }
+
+    public ExecutorService getRateLimitCompleteExecutor() {
+        return rateLimitCompleteExecutor;
+    }
+
     public ScheduledThreadPoolExecutor getScheduler() {
         return scheduler;
     }
@@ -1533,9 +1631,18 @@ public final class Locutus extends ListenerAdapter {
 
             interactionExecutor.shutdownNow();
             gatewayExecutor.shutdownNow();
+            commandExecutor.shutdownNow();
+            appEventExecutor.shutdownNow();
+            jdaEventExecutor.shutdownNow();
+            jdaCallbackExecutor.shutdownNow();
+            jdaGatewayPool.shutdownNow();
+            jdaRateLimitScheduler.shutdownNow();
+            jdaRateLimitElastic.shutdownNow();
+            rateLimitCompleteExecutor.shutdownNow();
             executor.shutdownNow();
+            scheduler.shutdownNow();
             CommandManager cmdManager = getCommandManager();
-            if (cmdManager != null) cmdManager.getExecutor().shutdownNow();
+            if (cmdManager != null && cmdManager.getExecutor() != scheduler) cmdManager.getExecutor().shutdownNow();
 
             // join all threads
             for (Thread thread : Thread.getAllStackTraces().keySet()) {

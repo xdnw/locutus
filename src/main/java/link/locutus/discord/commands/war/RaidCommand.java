@@ -271,7 +271,7 @@ public class RaidCommand extends Command {
         }
 
         IMessageIO finalChannel = channel;
-        Locutus.imp().getExecutor().submit(() -> {
+        Locutus.imp().runBackgroundAsync(() -> {
             try {
                 IMessageBuilder msg = msgFuture.get();
                 if (msg != null && msg.getId() > 0) {

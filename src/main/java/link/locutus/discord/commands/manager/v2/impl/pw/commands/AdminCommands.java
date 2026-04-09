@@ -2764,11 +2764,7 @@ public class AdminCommands {
         List<Event> events = new ArrayList<>();
         db.updateAllCities(events::add);
         if (events.size() > 0) {
-            Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events)
-                    event.post();
-                ;
-            });
+            Locutus.imp().runEventsAsync(events);
         }
         result.append("events: " + events.size() + "\n");
         result.append("Outdated cities: " + db.getDirtyCities().size() + "\n");
@@ -2785,11 +2781,7 @@ public class AdminCommands {
         List<Event> events = new ArrayList<>();
         db.updateAllCities(events::add);
         if (events.size() > 0) {
-            Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events)
-                    event.post();
-                ;
-            });
+            Locutus.imp().runEventsAsync(events);
         }
         result.append("events: " + events.size() + "\n");
         result.append("Outdated cities: " + db.getDirtyCities().size() + "\n");
@@ -2836,11 +2828,7 @@ public class AdminCommands {
             db.updateAlliances(null, events::add);
         }
         if (events.size() > 0) {
-            Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events)
-                    event.post();
-                ;
-            });
+            Locutus.imp().runEventsAsync(events);
         }
         return "Updated " + updatedIds.size() + " nations. " + events.size() + " changes detected";
     }

@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
@@ -79,7 +78,6 @@ public final class CommandRuntimeServices implements CommandRuntimeLookupContext
     private final Supplier<DiscordDB> discordDbSupplier;
     private final Supplier<ReportManager> reportManagerSupplier;
     private final Supplier<LoanManager> loanManagerSupplier;
-    private final Supplier<ExecutorService> executorSupplier;
     private final Supplier<TradeManager> tradeManagerSupplier;
     private final Supplier<TradeDB> tradeDbSupplier;
     private final IntFunction<DBNation> nationByIdResolver;
@@ -114,7 +112,6 @@ public final class CommandRuntimeServices implements CommandRuntimeLookupContext
         this.discordDbSupplier = builder.discordDbSupplier;
         this.reportManagerSupplier = builder.reportManagerSupplier;
         this.loanManagerSupplier = builder.loanManagerSupplier;
-        this.executorSupplier = builder.executorSupplier;
         this.tradeManagerSupplier = builder.tradeManagerSupplier;
         this.tradeDbSupplier = builder.tradeDbSupplier;
         this.nationByIdResolver = builder.nationByIdResolver;
@@ -269,9 +266,6 @@ public final class CommandRuntimeServices implements CommandRuntimeLookupContext
         }
         if (this.loanManagerSupplier != null) {
             builder.loanManager(this.loanManagerSupplier);
-        }
-        if (this.executorSupplier != null) {
-            builder.executor(this.executorSupplier);
         }
         if (this.tradeManagerSupplier != null) {
             builder.tradeManager(this.tradeManagerSupplier);
@@ -549,13 +543,6 @@ public final class CommandRuntimeServices implements CommandRuntimeLookupContext
         throw unsupported("loan manager");
     }
 
-    public ExecutorService executor() {
-        if (executorSupplier != null) {
-            return executorSupplier.get();
-        }
-        throw unsupported("executor");
-    }
-
     public TradeManager tradeManager() {
         if (tradeManagerSupplier != null) {
             return tradeManagerSupplier.get();
@@ -689,7 +676,6 @@ public final class CommandRuntimeServices implements CommandRuntimeLookupContext
         private Supplier<DiscordDB> discordDbSupplier;
         private Supplier<ReportManager> reportManagerSupplier;
         private Supplier<LoanManager> loanManagerSupplier;
-        private Supplier<ExecutorService> executorSupplier;
         private Supplier<TradeManager> tradeManagerSupplier;
         private Supplier<TradeDB> tradeDbSupplier;
         private IntFunction<DBNation> nationByIdResolver;
@@ -819,11 +805,6 @@ public final class CommandRuntimeServices implements CommandRuntimeLookupContext
 
         public Builder loanManager(Supplier<LoanManager> supplier) {
             this.loanManagerSupplier = Objects.requireNonNull(supplier);
-            return this;
-        }
-
-        public Builder executor(Supplier<ExecutorService> supplier) {
-            this.executorSupplier = Objects.requireNonNull(supplier);
             return this;
         }
 

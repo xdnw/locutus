@@ -516,7 +516,7 @@ public class WarCategory {
         if (change) {
             switch (attack.getAttack_type()) {
                 case GROUND:
-                    RateLimitUtil.queueWhenFree(RateLimitedSources.WAR_ROOM_STATUS_UPDATE, () -> room.setGC(value));
+                    room.setGC(value);
                     break;
                 case AIRSTRIKE_INFRA:
                 case AIRSTRIKE_SOLDIER:
@@ -524,10 +524,10 @@ public class WarCategory {
                 case AIRSTRIKE_MONEY:
                 case AIRSTRIKE_SHIP:
                 case AIRSTRIKE_AIRCRAFT:
-                    RateLimitUtil.queueWhenFree(RateLimitedSources.WAR_ROOM_STATUS_UPDATE, () -> room.setAC(value));
+                    room.setAC(value);
                     break;
                 case NAVAL:
-                    RateLimitUtil.queueWhenFree(RateLimitedSources.WAR_ROOM_STATUS_UPDATE, () -> room.setBlockade(value));
+                    room.setBlockade(value);
                     break;
             }
         }

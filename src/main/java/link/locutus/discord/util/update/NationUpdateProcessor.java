@@ -173,7 +173,7 @@ public class NationUpdateProcessor {
                 totalCities.put(aaId, totalCities.getOrDefault(aaId, 0d) + nation.getCities());
             }
         }
-        Locutus.imp().getExecutor().submit(new Runnable() {
+        Locutus.imp().runBackgroundAsync(new Runnable() {
             @Override
             public void run() {
                 for (Map.Entry<Integer, Integer> entry : membersByAA.entrySet()) {
@@ -279,7 +279,7 @@ public class NationUpdateProcessor {
 //            Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
 
             if (previous.active_m() > 360 && Settings.INSTANCE.TASKS.AUTO_FETCH_UID) {
-                Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+                Locutus.imp().runBackgroundAsync(new CaughtRunnable() {
                     @Override
                     public void runUnsafe() throws Exception {
                         nation.fetchUid(false);
@@ -294,7 +294,7 @@ public class NationUpdateProcessor {
         DBNation current = event.getCurrent();
 
         // Reroll alerts (run on another thread since fetching UID takes time)
-        Locutus.imp().getExecutor().submit(() -> {
+        Locutus.imp().runBackgroundAsync(() -> {
             int rerollId = current.isReroll(true);
             if (rerollId > 0) {
                 String title = "Detected reroll: " + current.getNation();

@@ -714,7 +714,7 @@ public class CommandManager2 {
             }
         };
         if (async)
-            Locutus.imp().getExecutor().submit(task);
+            Locutus.imp().runCommandAsync(task);
         else
             task.run();
     }
@@ -793,7 +793,7 @@ public class CommandManager2 {
             }
         };
         if (async)
-            Locutus.imp().getExecutor().submit(task);
+            Locutus.imp().runCommandAsync(task);
         else
             task.run();
     }

@@ -1439,7 +1439,7 @@ public class UtilityCommands {
         if (nationOrAlliance.isNation() && nationOrAlliance.asNation().active_m() > 1440
                 && nationOrAlliance.asNation().active_m() < 20160) {
             DBNation nation = nationOrAlliance.asNation();
-            Locutus.imp().getExecutor().submit(() -> {
+            Locutus.imp().runBackgroundAsync(() -> {
                 LoginFactorResult factors = DBNation.getLoginFactorPercents(nation);
                 List<String> append = new ArrayList<>();
                 for (Map.Entry<LoginFactor, Double> entry : factors.getResult().entrySet()) {

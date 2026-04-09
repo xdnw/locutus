@@ -455,6 +455,7 @@ public class PreLoader implements ILoader {
         if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
             builder.enableCache(CacheFlag.EMOJI);
         }
+        configureDiscordExecutors(builder);
         builder.setRestConfig(new RestConfig().setRateLimiterFactory(InstrumentedRateLimiter::new));
         return builder.build();
     }
@@ -508,11 +509,28 @@ public class PreLoader implements ILoader {
         if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
             builder.enableCache(CacheFlag.EMOJI);
         }
+        configureDiscordExecutors(builder);
         builder.setRestConfig(new RestConfig().setRateLimiterFactory(InstrumentedRateLimiter::new));
         return builder
                 .setShardsTotal(Settings.INSTANCE.SHARDS)
                 .setShards(0, Settings.INSTANCE.SHARDS - 1)
                 .build();
+    }
+
+    private void configureDiscordExecutors(JDABuilder builder) {
+        builder.setEventPool(locutus.getJdaEventExecutor());
+        builder.setCallbackPool(locutus.getJdaCallbackExecutor());
+        builder.setGatewayPool(locutus.getJdaGatewayPool());
+        builder.setRateLimitScheduler(locutus.getJdaRateLimitScheduler());
+        builder.setRateLimitElastic(locutus.getJdaRateLimitElastic());
+    }
+
+    private void configureDiscordExecutors(DefaultShardManagerBuilder builder) {
+        builder.setEventPool(locutus.getJdaEventExecutor());
+        builder.setCallbackPool(locutus.getJdaCallbackExecutor());
+        builder.setGatewayPool(locutus.getJdaGatewayPool());
+        builder.setRateLimitScheduler(locutus.getJdaRateLimitScheduler());
+        builder.setRateLimitElastic(locutus.getJdaRateLimitElastic());
     }
 
     @Override

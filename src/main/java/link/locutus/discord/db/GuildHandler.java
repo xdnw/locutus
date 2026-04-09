@@ -95,7 +95,7 @@ public class GuildHandler {
     public GuildHandler(Guild guild, GuildDB db, boolean trackInvites) {
         this.guild = guild;
         this.db = db;
-        Locutus.imp().getExecutor().submit(() -> {
+        Locutus.imp().runBackgroundAsync(() -> {
             if (db.isWhitelisted())
                 setupApplicants();
         });
@@ -675,7 +675,7 @@ public class GuildHandler {
         MessageChannel finalChannl = channel == null ? db.getNotifcationChannel() : channel;
         String finalTitle = title;
         String finalMsg = message;
-        Locutus.imp().getExecutor().submit(() -> {
+        Locutus.imp().runBackgroundAsync(() -> {
             MailApiResponse result = nation.sendMail(mailKey, finalTitle, finalMsg, false);
             if (finalChannl != null && result.status() == MailApiSuccess.NON_MAIL_KEY) {
                 String msg = result.status() + " " + result.error() + ". Disabling `"
@@ -928,7 +928,7 @@ public class GuildHandler {
     }
 
     private void persistBankerWithdrawUsageAsync(int bankerId, BankerWithdrawUsageTracker.UsageSnapshot snapshot) {
-        Locutus.imp().getExecutor().submit(() -> db.saveLocalBankerWithdrawUsage(bankerId, snapshot));
+        Locutus.imp().runBackgroundAsync(() -> db.saveLocalBankerWithdrawUsage(bankerId, snapshot));
     }
 
     public TaxRate getInternalTaxrate(int nationId) {
@@ -2027,12 +2027,12 @@ public class GuildHandler {
             }
         }
 
-        Locutus.imp().getExecutor().submit(new Runnable() {
+        Locutus.imp().runBackgroundAsync(new Runnable() {
             @Override
             public void run() {
                 try {
                     if (!dnrViolations.isEmpty()) {
-                        Locutus.imp().getExecutor().submit(() -> {
+                        Locutus.imp().runBackgroundAsync(() -> {
                             try {
                                 ApiKeyPool key = db.getMailKey();
                                 if (key == null)
@@ -3130,7 +3130,7 @@ public class GuildHandler {
                 return;
             double[] amt = ResourceType.resourcesToArray(amtMap);
 
-            Locutus.imp().getExecutor().submit(new Runnable() {
+            Locutus.imp().runBackgroundAsync(new Runnable() {
                 @Override
                 public void run() {
                     { // Reward referrer

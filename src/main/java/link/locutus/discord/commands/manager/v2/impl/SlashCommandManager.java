@@ -1114,7 +1114,7 @@ public class SlashCommandManager extends ListenerAdapter {
     @Override
     public void onUserContextInteraction(UserContextInteractionEvent event) {
         deferEphemeralReply(event);
-        Locutus.imp().runGatewayEventAsync(() -> handleContext(event, event.getTarget(), event.getTarget().getAsMention(), null, true));
+        Locutus.imp().runInteractionEventAsync(() -> handleContext(event, event.getTarget(), event.getTarget().getAsMention(), null, true));
     }
 
     @Override
@@ -1170,7 +1170,7 @@ public class SlashCommandManager extends ListenerAdapter {
     @Override
     public void onMessageContextInteraction(MessageContextInteractionEvent event) {
         deferEphemeralReply(event);
-        Locutus.imp().runGatewayEventAsync(() -> handleContext(event, event.getTarget(), event.getTarget().getJumpUrl(), () -> {
+        Locutus.imp().runInteractionEventAsync(() -> handleContext(event, event.getTarget(), event.getTarget().getJumpUrl(), () -> {
             try {
                 return event.getTarget().getContentRaw();
             } catch (RuntimeException e) {

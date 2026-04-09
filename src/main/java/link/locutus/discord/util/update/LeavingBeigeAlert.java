@@ -332,7 +332,7 @@ public class LeavingBeigeAlert {
             User user = attacker.getUser();
             if (user == null) continue;
 
-            Locutus.imp().getExecutor().submit(new Runnable() {
+            Locutus.imp().runBackgroundAsync(new Runnable() {
                 @Override
                 public void run() {
                     Map<DBNation, Boolean> myTargets = entry.getValue();

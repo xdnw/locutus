@@ -37,17 +37,12 @@ public class RateLimitUtil {
 // Internal state check
 // -------------------------------------------------------------------------
 
-    private static InstrumentedRateLimiter limiter() {
-        return InstrumentedRateLimiter.getInstance();
-    }
-
     /**
      * True if we should hold further sends rather than submitting to JDA.
      * Priority requests have a higher threshold, reserving headroom for user interactions.
      */
     private static boolean shouldPause(boolean priority) {
-        InstrumentedRateLimiter inst = limiter();
-        if (inst != null && inst.isGloballyLimited()) return true;
+        if (InstrumentedRateLimiter.isGloballyLimited()) return true;
         int inflight = InstrumentedRateLimiter.getInflightCount();
         return inflight >= (priority ? INFLIGHT_PRIORITY_PAUSE : INFLIGHT_NONPRIORITY_PAUSE);
     }
@@ -61,9 +56,9 @@ public class RateLimitUtil {
     }
 
     private static long globalResetDelayMs() {
-        InstrumentedRateLimiter inst = limiter();
-        if (inst == null || !inst.isGloballyLimited()) return 0L;
-        return Math.max(0L, inst.globalResetAtMs() - System.currentTimeMillis());
+        long resetAtMs = InstrumentedRateLimiter.globalResetAtMs();
+        if (resetAtMs <= 0L) return 0L;
+        return Math.max(0L, resetAtMs - System.currentTimeMillis());
     }
 
     private static long channelResetDelayMs(long channelId) {
@@ -78,9 +73,9 @@ public class RateLimitUtil {
 
     private static void assertNotJdaThread() {
         String name = Thread.currentThread().getName();
-        if (name.startsWith("JDA")) {
+        if (name.startsWith("JDA") || name.startsWith("Locutus-JDA-")) {
             throw new IllegalStateException(
-                    "Blocking call on JDA thread '" + name + "' would deadlock");
+                    "Blocking call on JDA-managed thread '" + name + "' would deadlock");
         }
     }
 
@@ -106,7 +101,7 @@ public class RateLimitUtil {
         }
 
         CompletableFuture<T> future = new CompletableFuture<>();
-        queueWhenFree(priority, () ->
+        queueSubmissionWhenFree(priority, () ->
                 submitNow(action, source).whenComplete((v, e) -> {
                     if (e != null) future.completeExceptionally(e);
                     else future.complete(v);
@@ -154,15 +149,46 @@ public class RateLimitUtil {
     public static CompletableFuture<Void> queueWhenFree(RestAction<?> action, RateLimitedSource source) {
         if (action == null) return CompletableFuture.completedFuture(null);
         Objects.requireNonNull(source, "source");
-        return queueWhenFree(source.deferredPriority(), () -> submitNow(action, source));
+        return queueSubmissionWhenFree(source.deferredPriority(), () -> submitNow(action, source));
     }
 
     public static CompletableFuture<Void> queueWhenFree(RateLimitedSource source, Runnable action) {
         Objects.requireNonNull(source, "source");
-        return queueWhenFree(source.deferredPriority(), action);
+        if (!shouldPause(source.deferredPriority())) {
+            try {
+                action.run();
+            } catch (Throwable e) {
+                return CompletableFuture.failedFuture(e);
+            }
+            return CompletableFuture.completedFuture(null);
+        }
+
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        queueSubmissionWhenFree(source.deferredPriority(), () -> {
+            try {
+                Locutus.imp().getScheduler().execute(new CaughtRunnable() {
+                    @Override
+                    public void runUnsafe() {
+                        try {
+                            action.run();
+                            future.complete(null);
+                        } catch (Throwable e) {
+                            future.completeExceptionally(e);
+                            throw e;
+                        }
+                    }
+                });
+            } catch (Throwable e) {
+                future.completeExceptionally(e);
+                throw e;
+            }
+        }).whenComplete((v, e) -> {
+            if (e != null) future.completeExceptionally(e);
+        });
+        return future;
     }
 
-    private static CompletableFuture<Void> queueWhenFree(DeferredPriority priority, Runnable action) {
+    private static CompletableFuture<Void> queueSubmissionWhenFree(DeferredPriority priority, Runnable action) {
         if (!shouldPause(priority)) {
             try {
                 action.run();
@@ -173,7 +199,7 @@ public class RateLimitUtil {
         }
 
         CompletableFuture<Void> future = new CompletableFuture<>();
-        queuedActions.get(priority).add(new QueuedAction(action, future));
+        queuedSubmissions.get(priority).add(new QueuedSubmission(action, future));
 
         startQueueWorkerIfNeeded();
         return future;
@@ -194,12 +220,23 @@ public class RateLimitUtil {
         assertNotJdaThread();
 
         CompletableFuture<T> result = new CompletableFuture<>();
-        queueWhenFree(priority, () -> {
+        queueSubmissionWhenFree(priority, () -> {
             try {
-                T value = handleNews(source, action.complete());
-                result.complete(value);
+                Locutus.imp().getRateLimitCompleteExecutor().execute(new CaughtRunnable() {
+                    @Override
+                    public void runUnsafe() {
+                        try {
+                            T value = handleNews(source, action.complete());
+                            result.complete(value);
+                        } catch (Throwable e) {
+                            result.completeExceptionally(e);
+                            throw e;
+                        }
+                    }
+                });
             } catch (Throwable e) {
                 result.completeExceptionally(e);
+                throw e;
             }
         }).whenComplete((v, e) -> {
             if (e != null) result.completeExceptionally(e);
@@ -215,20 +252,20 @@ public class RateLimitUtil {
     }
 
 // -------------------------------------------------------------------------
-// Deferred action queue
+// Deferred submission queue
 // -------------------------------------------------------------------------
 
-    private record QueuedAction(Runnable runnable, CompletableFuture<Void> future) {}
+    private record QueuedSubmission(Runnable runnable, CompletableFuture<Void> future) {}
 
     private static final DeferredPriority[] DEFERRED_PRIORITY_ORDER = DeferredPriority.values();
-    private static final EnumMap<DeferredPriority, ConcurrentLinkedQueue<QueuedAction>> queuedActions = new EnumMap<>(DeferredPriority.class);
+    private static final EnumMap<DeferredPriority, ConcurrentLinkedQueue<QueuedSubmission>> queuedSubmissions = new EnumMap<>(DeferredPriority.class);
     private static final EnumMap<DeferredPriority, ConcurrentLinkedQueue<String>> queuedReplaceableKeys = new EnumMap<>(DeferredPriority.class);
     private static final ConcurrentHashMap<String, ReplaceableAction> replaceableActions = new ConcurrentHashMap<>();
     private static final AtomicBoolean runningTask = new AtomicBoolean(false);
 
     static {
         for (DeferredPriority priority : DEFERRED_PRIORITY_ORDER) {
-            queuedActions.put(priority, new ConcurrentLinkedQueue<>());
+            queuedSubmissions.put(priority, new ConcurrentLinkedQueue<>());
             queuedReplaceableKeys.put(priority, new ConcurrentLinkedQueue<>());
         }
     }
@@ -316,7 +353,7 @@ public class RateLimitUtil {
             try {
                 while (true) {
                     boolean hadWork = hasAnyQueuedWork();
-                    QueuedAction current = pollNextQueuedAction();
+                    QueuedSubmission current = pollNextQueuedSubmission();
                     if (current != null) {
                         try {
                             current.runnable().run();
@@ -347,7 +384,7 @@ public class RateLimitUtil {
                 if (hasAnyQueuedWork()
                         && runningTask.compareAndSet(false, true)) {
                     try {
-                        Locutus.imp().getExecutor().submit(this);
+                        Locutus.imp().getScheduler().execute(this);
                     } catch (Throwable e) {
                         runningTask.set(false);
                         failQueuedActions(e);
@@ -358,11 +395,11 @@ public class RateLimitUtil {
     };
 
     private static boolean hasAnyQueuedWork() {
-        return hasQueuedActions() || hasQueuedReplaceableActions();
+        return hasQueuedSubmissions() || hasQueuedReplaceableActions();
     }
 
-    private static boolean hasQueuedActions() {
-        for (ConcurrentLinkedQueue<QueuedAction> queue : queuedActions.values()) {
+    private static boolean hasQueuedSubmissions() {
+        for (ConcurrentLinkedQueue<QueuedSubmission> queue : queuedSubmissions.values()) {
             if (!queue.isEmpty()) {
                 return true;
             }
@@ -384,18 +421,18 @@ public class RateLimitUtil {
 
     private static int totalQueuedActionCount() {
         int count = 0;
-        for (ConcurrentLinkedQueue<QueuedAction> queue : queuedActions.values()) {
+        for (ConcurrentLinkedQueue<QueuedSubmission> queue : queuedSubmissions.values()) {
             count += queue.size();
         }
         return count + replaceableActions.size();
     }
 
-    private static QueuedAction pollNextQueuedAction() {
+    private static QueuedSubmission pollNextQueuedSubmission() {
         for (DeferredPriority priority : DEFERRED_PRIORITY_ORDER) {
             if (shouldPause(priority)) {
                 continue;
             }
-            QueuedAction queued = queuedActions.get(priority).poll();
+            QueuedSubmission queued = queuedSubmissions.get(priority).poll();
             if (queued != null) {
                 return queued;
             }
@@ -455,7 +492,7 @@ public class RateLimitUtil {
         if (!runningTask.compareAndSet(false, true)) return;
 
         try {
-            Locutus.imp().getExecutor().submit(QUEUE_WORKER);
+            Locutus.imp().getScheduler().execute(QUEUE_WORKER);
         } catch (Throwable e) {
             runningTask.set(false);
             failQueuedActions(e);
@@ -463,8 +500,8 @@ public class RateLimitUtil {
     }
 
     private static void failQueuedActions(Throwable e) {
-        for (ConcurrentLinkedQueue<QueuedAction> queue : queuedActions.values()) {
-            QueuedAction q;
+        for (ConcurrentLinkedQueue<QueuedSubmission> queue : queuedSubmissions.values()) {
+            QueuedSubmission q;
             while ((q = queue.poll()) != null) {
                 q.future().completeExceptionally(e);
             }
@@ -539,7 +576,7 @@ public class RateLimitUtil {
                                                      RateLimitedSource source) {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
-        queueWhenFree(source, () ->
+        queueSubmissionWhenFree(source.deferredPriority(), () ->
                 sendNow(io, apply, source).whenComplete((v, e) -> {
                     if (e != null) future.completeExceptionally(e);
                     else future.complete(null);
@@ -607,7 +644,7 @@ public class RateLimitUtil {
         }
 
         try {
-            Locutus.imp().getCommandManager().getExecutor().schedule(new CaughtRunnable() {
+            Locutus.imp().getScheduler().schedule(new CaughtRunnable() {
                 @Override
                 public void runUnsafe() {
                     List<PendingMessage> toSend = null;
@@ -634,7 +671,7 @@ public class RateLimitUtil {
                     }
 
                     List<PendingMessage> batch = toSend;
-                    queueWhenFree(source, () ->
+                    queueSubmissionWhenFree(source.deferredPriority(), () ->
                             sendNow(io, msg -> {
                                 boolean modified = false;
                                 for (int i = 0; i < batch.size(); i++) {
@@ -713,7 +750,6 @@ public class RateLimitUtil {
     ) {}
 
     public static DebugSnapshot getDebugSnapshot() {
-        InstrumentedRateLimiter inst = limiter();
         int msgCount;
         int channelCount;
         synchronized (messageQueueLock) {
@@ -721,8 +757,8 @@ public class RateLimitUtil {
             msgCount = messageQueue.values().stream().mapToInt(List::size).sum();
         }
         return new DebugSnapshot(
-                inst != null && inst.isGloballyLimited(),
-                inst != null ? inst.globalResetAtMs() : 0L,
+                InstrumentedRateLimiter.isGloballyLimited(),
+                InstrumentedRateLimiter.globalResetAtMs(),
                 InstrumentedRateLimiter.getInflightCount(),
                 totalQueuedActionCount(),
                 runningTask.get(),

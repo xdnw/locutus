@@ -1171,7 +1171,7 @@ public class TradeManager {
 
         Locutus locutus = Locutus.imp();
         // Persist the latest radiation snapshot off-thread so readers stay on the in-memory path.
-        locutus.getExecutor().submit(new CaughtRunnable() {
+        locutus.runBackgroundAsync(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
                 locutus.getDiscordDB().setInfo(DiscordMeta.RADIATION_CONTINENT, infoById);

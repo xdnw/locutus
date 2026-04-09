@@ -2605,7 +2605,7 @@ public class IACommands {
                     RateLimitUtil.queue(tc.delete(), RateLimitedSources.COMMAND_RESULT);
                 } else {
                     long cutoff = System.currentTimeMillis() - expireTime;
-                    Locutus.imp().getExecutor().submit(new Runnable() {
+                    Locutus.imp().runBackgroundAsync(new Runnable() {
                         @Override
                         public void run() {
                             for (GuildMessageChannel toDelete : archiveCategory.getTextChannels()) {

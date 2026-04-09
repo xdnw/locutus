@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.requests.Route;
 import net.dv8tion.jda.api.requests.SequentialRestRateLimiter;
 import okhttp3.Response;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,13 +26,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class InstrumentedRateLimiter implements RestRateLimiter {
 
-    private static volatile InstrumentedRateLimiter INSTANCE;
-
     private final SequentialRestRateLimiter delegate;
     private final GlobalRateLimit globalRateLimit;
+    private final AtomicBoolean stopped = new AtomicBoolean(false);
 
     // Keyed by "METHOD/compiled/route/with/major/params", e.g. "POST/channels/123/messages"
     private static final ConcurrentHashMap<String, BucketSnapshot> bucketsByRoute = new ConcurrentHashMap<>();
+    private static final Set<GlobalRateLimit> globalRateLimits = ConcurrentHashMap.newKeySet();
+    private static final AtomicInteger activeLimiterCount = new AtomicInteger(0);
 
     // Requests submitted to JDA's queue but not yet responded to.
     private static final AtomicInteger inflightCount = new AtomicInteger(0);
@@ -69,15 +71,13 @@ public class InstrumentedRateLimiter implements RestRateLimiter {
     // -------------------------------------------------------------------------
 
     public InstrumentedRateLimiter(RateLimitConfig config) {
-        bucketsByRoute.clear();
-        inflightCount.set(0);
+        if (activeLimiterCount.getAndIncrement() == 0) {
+            bucketsByRoute.clear();
+            inflightCount.set(0);
+        }
         this.globalRateLimit = config.getGlobalRateLimit();
         this.delegate = new SequentialRestRateLimiter(config);
-        INSTANCE = this;
-    }
-
-    public static InstrumentedRateLimiter getInstance() {
-        return INSTANCE;
+        globalRateLimits.add(globalRateLimit);
     }
 
     // -------------------------------------------------------------------------
@@ -87,16 +87,26 @@ public class InstrumentedRateLimiter implements RestRateLimiter {
     /**
      * True if JDA has received a global rate-limit signal (classic token-level or
      * Cloudflare IP-level) that hasn't expired yet. Reads from the same GlobalRateLimit
-     * object JDA uses internally — always accurate, never an approximation.
+     * objects JDA uses internally across all shards — always accurate, never an approximation.
      */
-    public boolean isGloballyLimited() {
+    public static boolean isGloballyLimited() {
         long now = System.currentTimeMillis();
-        return globalRateLimit.getClassic() > now || globalRateLimit.getCloudflare() > now;
+        for (GlobalRateLimit globalRateLimit : globalRateLimits) {
+            if (globalRateLimit.getClassic() > now || globalRateLimit.getCloudflare() > now) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Unix ms timestamp at which the active global limit expires. 0 if none active. */
-    public long globalResetAtMs() {
-        return Math.max(globalRateLimit.getClassic(), globalRateLimit.getCloudflare());
+    public static long globalResetAtMs() {
+        long resetAtMs = 0L;
+        for (GlobalRateLimit globalRateLimit : globalRateLimits) {
+            resetAtMs = Math.max(resetAtMs,
+                    Math.max(globalRateLimit.getClassic(), globalRateLimit.getCloudflare()));
+        }
+        return resetAtMs;
     }
 
     /** Last observed bucket snapshot for POST /channels/{channelId}/messages. */
@@ -135,7 +145,12 @@ public class InstrumentedRateLimiter implements RestRateLimiter {
 
     @Override
     public void stop(boolean shutdown, Runnable callback) {
-        delegate.stop(shutdown, callback);
+        delegate.stop(shutdown, () -> {
+            releaseSharedState();
+            if (callback != null) {
+                callback.run();
+            }
+        });
     }
 
     @Override
@@ -146,6 +161,18 @@ public class InstrumentedRateLimiter implements RestRateLimiter {
     @Override
     public int cancelRequests() {
         return delegate.cancelRequests();
+    }
+
+    private void releaseSharedState() {
+        if (!stopped.compareAndSet(false, true)) {
+            return;
+        }
+        globalRateLimits.remove(globalRateLimit);
+        if (activeLimiterCount.decrementAndGet() == 0) {
+            bucketsByRoute.clear();
+            inflightCount.set(0);
+            globalRateLimits.clear();
+        }
     }
 
     // -------------------------------------------------------------------------

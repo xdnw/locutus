@@ -320,7 +320,7 @@ public class CommandManager {
                 System.out.println("TYPE " + type);
                 Runnable task = () -> getV2().handleLanguage(guild, channel, msgUser, content);
                 if (async) {
-                    executor.submit(task);
+                    Locutus.imp().runCommandAsync(task);
                 } else {
                     task.run();
                 }
@@ -477,7 +477,7 @@ public class CommandManager {
             }
         };
         if (async) {
-            executor.submit(task);
+            Locutus.imp().runCommandAsync(task);
         } else {
             task.run();
         }
@@ -594,7 +594,7 @@ public class CommandManager {
     }
 
     private void handleIntelOp(Guild guild, User user, IMessageIO channel, String content) {
-        this.executor.submit(new CaughtRunnable() {
+        Locutus.imp().runCommandAsync(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
                 try {

@@ -4535,7 +4535,7 @@ public class BankCommands {
                 && db.isWhitelisted() && db.getOrNull(GuildKey.API_KEY) != null
                 && db.getAllianceIds(true).contains(nationOrAllianceOrGuild.asNation().getAlliance_id())) {
             DBNation finalNation = nationOrAllianceOrGuild.asNation();
-            Locutus.imp().getExecutor().submit(new Runnable() {
+            Locutus.imp().runBackgroundAsync(new Runnable() {
                 @Override
                 public void run() {
                     int initialLength = response.length();

@@ -34,7 +34,6 @@ public final class LocutusCommandRuntimeServiceFactory {
                 .baseballDb(loader::getBaseballDB)
                 .forumDb(loader::getForumDB)
                 .discordDb(loader::getDiscordDB)
-                .executor(locutus::getExecutor)
                 .tradeManager(loader::getTradeManager)
                 .build();
     }

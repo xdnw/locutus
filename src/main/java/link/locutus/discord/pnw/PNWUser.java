@@ -47,7 +47,7 @@ public class PNWUser {
             try {
                 AuditLogPaginationAction logs = guild.retrieveAuditLogs();
 
-                Future<?> task = Locutus.imp().getExecutor().submit(new Runnable() {
+                Future<?> task = Locutus.imp().runBackgroundAsync(new Runnable() {
                     @Override
                     public void run() {
                         List<Map.Entry<ActionType, String>> guildResult = new ArrayList<>();

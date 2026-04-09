@@ -183,7 +183,7 @@ public class AllianceListener {
             return;
         }
         try {
-            Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+            Locutus.imp().runBackgroundAsync(new CaughtRunnable() {
                 @Override
                 public void runUnsafe() {
                     runPendingTaxRefreshes();

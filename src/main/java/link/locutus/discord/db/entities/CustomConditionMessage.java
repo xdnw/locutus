@@ -79,7 +79,7 @@ public class CustomConditionMessage {
     }
 
     public void send(GuildDB db, DBNation nation, boolean sendEnabled) {
-        Locutus.imp().getExecutor().submit(new Runnable() {
+        Locutus.imp().runBackgroundAsync(new Runnable() {
             @Override
             public void run() {
                 MessageChannel output = GuildKey.RECRUIT_MESSAGE_OUTPUT.getOrNull(db);

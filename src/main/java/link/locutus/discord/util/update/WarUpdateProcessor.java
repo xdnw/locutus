@@ -131,7 +131,7 @@ public class WarUpdateProcessor {
 //
         handleAlerts(wars);
 
-        Locutus.imp().getExecutor().submit(() -> handleWarRooms(wars));
+        Locutus.imp().runBackgroundAsync(() -> handleWarRooms(wars));
 
         for (Map.Entry<DBWar, DBWar> entry : wars) {
             DBWar previous = entry.getKey();

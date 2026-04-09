@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -48,7 +49,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 /**
@@ -113,11 +113,6 @@ public class PWAppBindings extends BindingHelper {
     @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
     public Guild guild(CommandRuntimeServices services, long guildId) {
         return PWBindings.resolveGuild(services, guildId);
-    }
-
-    @Binding
-    public ExecutorService executor(CommandRuntimeServices services) {
-        return services.executor();
     }
 
     @Binding
@@ -186,7 +181,7 @@ public class PWAppBindings extends BindingHelper {
             DBCity cityEntry = nationDb.getCitiesV3ByCityId(cityId);
             if (cityEntry == null) {
                 final int finalCityId = cityId;
-                cityEntry = returnEventsAsync(services.executor(), f -> nationDb.getCitiesV3ByCityId(finalCityId, true, f));
+                cityEntry = returnEventsAsync(f -> nationDb.getCitiesV3ByCityId(finalCityId, true, f));
                 if (cityEntry == null) {
                     throw new IllegalArgumentException(
                             "No city found in cache with id " + cityId + " (expecting city id or url)");
@@ -261,16 +256,11 @@ public class PWAppBindings extends BindingHelper {
         return new AllianceList(allowedIds);
     }
 
-    private static <T> T returnEventsAsync(ExecutorService executor,
-            ThrowingFunction<Consumer<Event>, T> eventHandler) {
+    private static <T> T returnEventsAsync(ThrowingFunction<Consumer<Event>, T> eventHandler) {
         Collection<Event> events = new ObjectArrayList<>(0);
         T result = eventHandler.apply(events::add);
         if (!events.isEmpty()) {
-            executor.submit(() -> {
-                for (Event event : events) {
-                    event.post();
-                }
-            });
+            Locutus.imp().runEventsAsync(events);
         }
         return result;
     }
