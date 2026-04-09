@@ -64,6 +64,8 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.TriConsumer;
+import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import link.locutus.discord.web.commands.mcp.DataQueryMode;
 import link.locutus.discord.web.commands.mcp.ExecuteMode;
@@ -86,6 +88,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 public class WebOptionBindings extends BindingHelper {
 //Parser
@@ -186,27 +189,29 @@ public class WebOptionBindings extends BindingHelper {
 //TextChannel
     @Binding(types = TextChannel.class)
     public WebOption getTextChannel() {
+        TriConsumer<TextChannel, Member, WebOptions> adder = (c, member, options) -> {
+            if (!c.canTalk(member)) return;
+            Category category = c.getParentCategory();
+            options.add(c.getId(), c.getName(), category == null ? null : category.getName());
+        };
+        TriConsumer<Guild, User, WebOptions> forGuild = (guild, user, options) -> {
+            Member member = user == null ? null : guild.getMember(user);
+            if (member == null) member = guild.getSelfMember();
+            Member finalMember = member;
+            guild.getTextChannels().forEach(c -> adder.accept(c, finalMember, options));
+        };
         return new WebOption(TextChannel.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             WebOptions data = new WebOptions(false).withText().withSubtext();
-            Member member = null;
-            if (user != null) {
-                member = db.getGuild().getMember(user);
-            }
-            if (member == null) member = db.getGuild().getSelfMember();
-            Member finalMember = member;
-            BiFunction<TextChannel, WebOptions, WebOptions> adder = (c, options) -> {
-                if (!c.canTalk(finalMember)) return options;
-                Category category = c.getParentCategory();
-                return options.add(c.getId(), c.getName(), category == null ? null : category.getName());
-            };
-            db.getGuild().getTextChannels().forEach(c -> adder.apply(c, data));
-            GuildDB faServer = db.getOrNull(GuildKey.FA_SERVER);
+            GuildDB faServerDb = db.getOrNull(GuildKey.FA_SERVER);
+            Guild faServer = faServerDb == null ? null : faServerDb.getGuild();
             Guild maServer = db.getOrNull(GuildKey.WAR_SERVER);
+
+            forGuild.accept(db.getGuild(), user, data);
             if (faServer != null && faServer.getIdLong() != db.getIdLong()) {
-                faServer.getGuild().getTextChannels().forEach(c -> adder.apply(c, data));
+                forGuild.accept(faServer, user, data);
             }
-            if (maServer != null && maServer.getIdLong() != db.getIdLong()) {
-                maServer.getTextChannels().forEach(c -> adder.apply(c, data));
+            if (maServer != null && maServer.getIdLong() != db.getIdLong() && maServer != faServer) {
+                forGuild.accept(maServer, user, data);
             }
             return data;
         }, false);
