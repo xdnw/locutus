@@ -230,34 +230,37 @@ public class TimeUtil {
     }
 
     public static long timeToSec(String string, long currentTime, boolean forwards) {
-        if (string.length() == 0) return 0;
-        if (string.equals("60d")) return TimeUnit.DAYS.toSeconds(60);
+        String trimmed = string.trim();
+        if (trimmed.length() == 0) return 0;
+        if (trimmed.equals("60d")) return TimeUnit.DAYS.toSeconds(60);
 
-        if ((MathMan.isInteger(string) && string.length() > 12)) {
-            long timestamp = Long.parseLong(string);
+        if ((MathMan.isInteger(trimmed) && trimmed.length() > 12)) {
+            long timestamp = Long.parseLong(trimmed);
             if (forwards) {
                 return (timestamp - currentTime) / 1000L;
             } else {
                 return (currentTime - timestamp) / 1000L;
             }
         }
-        if (string.length() > 10 && (string.charAt(0) == 't')) {
-            boolean isTimestamp = string.startsWith("timestamp:");
-            boolean isTimediff = !isTimestamp && string.startsWith("timediff:");
-            if (isTimediff || isTimestamp) {
-                long timestamp = Long.parseLong(string.split(":")[1]);
-                if (isTimediff) return timestamp / 1000L;
-                if (forwards) {
-                    return (timestamp - currentTime) / 1000L;
-                } else {
-                    return (currentTime - timestamp) / 1000L;
-                }
+        // Web forms serialize explicit time payloads with prefixes, including zero diffs like `timediff:0`.
+        if (trimmed.regionMatches(true, 0, "timestamp:", 0, "timestamp:".length())
+                || trimmed.regionMatches(true, 0, "timediff:", 0, "timediff:".length())) {
+            boolean isTimestamp = trimmed.regionMatches(true, 0, "timestamp:", 0, "timestamp:".length());
+            String rawValue = trimmed.substring((isTimestamp ? "timestamp:" : "timediff:").length()).trim();
+            long timestamp = Long.parseLong(rawValue);
+            if (!isTimestamp) {
+                return timestamp / 1000L;
+            }
+            if (forwards) {
+                return (timestamp - currentTime) / 1000L;
+            } else {
+                return (currentTime - timestamp) / 1000L;
             }
         }
-        if (MathMan.isInteger(string)) {
-            return Long.parseLong(string);
+        if (MathMan.isInteger(trimmed)) {
+            return Long.parseLong(trimmed);
         }
-        string = string.toLowerCase().trim().toLowerCase();
+        string = trimmed.toLowerCase(Locale.ROOT);
         if (string.charAt(0) == 'f'  && string.equalsIgnoreCase("false")) {
             return 0;
         }
