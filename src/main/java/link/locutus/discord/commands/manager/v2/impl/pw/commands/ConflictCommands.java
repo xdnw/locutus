@@ -70,12 +70,31 @@ public class ConflictCommands {
         return hasMilcom && hasCoalitionPerm;
     }
 
-    private void requireConflictWritePerm(Conflict conflict, DBNation me, User user, Guild guild, GuildDB db) {
+    private boolean hasConflictWritePerm(Conflict conflict, DBNation me, User user, Guild guild, GuildDB db) {
         if (hasStandardConflictPerms(user, guild, db)) {
-            return;
+            return true;
         }
         ConflictUtil.VirtualConflictId virtualId = getVirtualIdOrNull(conflict);
-        if (virtualId != null && me != null && me.getId() == virtualId.nationId()) {
+        return virtualId != null && me != null && me.getId() == virtualId.nationId();
+    }
+
+    private boolean canSelfServeAddCoalition(Conflict conflict, DBNation me, User user, Guild guild, GuildDB db) {
+        if (hasConflictWritePerm(conflict, me, user, guild, db)) {
+            return true;
+        }
+        return conflict != null && !conflict.isVirtual() && conflict.isActive();
+    }
+
+    private boolean canBypassCoalitionDetection(Conflict conflict, DBNation me, User user) {
+        if (user != null && Roles.ADMIN.hasOnRoot(user)) {
+            return true;
+        }
+        ConflictUtil.VirtualConflictId virtualId = getVirtualIdOrNull(conflict);
+        return virtualId != null && me != null && me.getId() == virtualId.nationId();
+    }
+
+    private void requireConflictWritePerm(Conflict conflict, DBNation me, User user, Guild guild, GuildDB db) {
+        if (hasConflictWritePerm(conflict, me, user, guild, db)) {
             return;
         }
         throw new IllegalArgumentException("You do not have permission to modify this conflict");
@@ -592,13 +611,18 @@ public class ConflictCommands {
     public void addCoalition(@Me IMessageIO io, ConflictManager manager, @Me DBNation me, @Me User user, @Me Guild guild, @Me GuildDB db,
             Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1,
             @Switch("col2") boolean isCoalition2) {
-        if (isCoalition1 || isCoalition2) {
-            requireConflictWritePerm(conflict, me, user, guild, db);
+        if (!canSelfServeAddCoalition(conflict, me, user, guild, db)) {
+            if (conflict != null && conflict.isVirtual()) {
+                throw new IllegalArgumentException(
+                        "Only the temporary conflict owner or a conflict admin can add alliances to a temporary conflict");
+            }
+            throw new IllegalArgumentException(
+                    "Only conflict admins can add alliances to inactive public conflicts");
         }
-        boolean hasAdmin = Roles.ADMIN.hasOnRoot(user);
         if (isCoalition1 && isCoalition2) {
             throw new IllegalArgumentException("Cannot specify both `isCoalition1` and `isCoalition2`");
         }
+        boolean canBypassDetection = canBypassCoalitionDetection(conflict, me, user);
         Set<DBAlliance> addCol1 = new HashSet<>();
         Set<DBAlliance> addCol2 = new HashSet<>();
 
@@ -615,7 +639,7 @@ public class ConflictCommands {
                 throw new IllegalArgumentException(
                         "Alliance " + alliance.getMarkdownUrl() + " is already in coalition 2");
             }
-            if (hasAdmin) {
+            if (canBypassDetection) {
                 if (isCoalition1) {
                     addCol1.add(alliance);
                     continue;
@@ -693,19 +717,17 @@ public class ConflictCommands {
                             "Alliance " + alliance.getMarkdownUrl() + " has a treaty with a member of coalition 2");
                 }
                 addCol1.add(alliance);
-            } else if (hasAdmin) {
+            } else if (canBypassDetection) {
                 StringBuilder msg = new StringBuilder();
                 msg.append("Please specify either `isCoalition1` or `isCoalition2` for ")
                         .append(alliance.getMarkdownUrl()).append(". ");
 
                 List<String> reasons = new ArrayList<>();
-                // No auto-assignment by treaty because it's ambiguous or absent
                 if (hasTreatyCol1 && hasTreatyCol2) {
                     reasons.add("it has treaties with members of both coalitions");
                 } else if (!hasTreatyCol1 && !hasTreatyCol2) {
                     reasons.add("it has no treaties with members of either coalition");
                 }
-                // No auto-assignment by activity because it's inactive vs both sides
                 if (fightingCol1 == 0 && fightingCol2 == 0) {
                     reasons.add("it has no active wars with members of either coalition");
                 }
@@ -724,8 +746,36 @@ public class ConflictCommands {
                 // (within the conflict timespan)
                 throw new IllegalArgumentException(msg.toString());
             } else {
-                throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl()
-                        + " does not have active wars with the conflict participants. Please contact an administrator");
+                StringBuilder msg = new StringBuilder();
+                msg.append("Alliance ").append(alliance.getMarkdownUrl())
+                        .append(" could not be added to the conflict. ");
+                if (isCoalition1 || isCoalition2) {
+                    msg.append("The requested coalition is treated as a constraint, not an override. ");
+                }
+
+                List<String> reasons = new ArrayList<>();
+                if (hasTreatyCol1 && hasTreatyCol2) {
+                    reasons.add("it has treaties with members of both coalitions");
+                } else if (!hasTreatyCol1 && !hasTreatyCol2) {
+                    reasons.add("it has no treaties with members of either coalition");
+                }
+                if (fightingCol1 == 0 && fightingCol2 == 0) {
+                    reasons.add("it has no active wars with members of either coalition");
+                }
+                if (reasons.isEmpty()) {
+                    reasons.add("signals were ambiguous");
+                }
+
+                msg.append("No qualifying side match was found because ")
+                        .append(StringMan.join(reasons, "; ")).append(". ")
+                        .append("Summary: treaties[col1=").append(hasTreatyCol1)
+                        .append(", col2=").append(hasTreatyCol2).append("], ")
+                        .append("wars[col1=").append(fightingCol1)
+                        .append(", col2=").append(fightingCol2).append("]");
+
+                // TODO if both fightingCol1 and fightingCol2 are 0, check both past wars
+                // (within the conflict timespan)
+                throw new IllegalArgumentException(msg.toString());
             }
         }
         if (addCol1.isEmpty() && addCol2.isEmpty()) {
