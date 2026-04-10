@@ -65,6 +65,7 @@ public class Conflict {
         final int tank;
         final int aircraft;
         final int ship;
+        final int spy;
 
         NationSlice(DBNation nation) {
             this.allianceId = nation.getAlliance_id();
@@ -77,6 +78,7 @@ public class Conflict {
             this.tank = nation.getUnits(MilitaryUnit.TANK);
             this.aircraft = nation.getUnits(MilitaryUnit.AIRCRAFT);
             this.ship = nation.getUnits(MilitaryUnit.SHIP);
+            this.spy = nation.getUnits(MilitaryUnit.SPIES);
         }
     }
 
@@ -466,7 +468,8 @@ public class Conflict {
                             nation.soldier,
                             nation.tank,
                             nation.aircraft,
-                            nation.ship
+                            nation.ship,
+                            nation.spy
                     });
                 }
             };
@@ -492,7 +495,7 @@ public class Conflict {
                             for (Map.Entry<Integer, Map<MilitaryUnit, Integer>> entry : turnMilHistory.entrySet()) {
                                 int nationId = entry.getKey();
                                 Map<MilitaryUnit, Integer> counts = entry.getValue();
-                                int[] current = milCountByNation.computeIfAbsent(nationId, k -> new int[4]);
+                                int[] current = milCountByNation.computeIfAbsent(nationId, k -> new int[5]);
                                 for (Map.Entry<MilitaryUnit, Integer> milEntry : counts.entrySet()) {
                                     if (milEntry.getKey() == MilitaryUnit.SOLDIER) {
                                         current[0] = milEntry.getValue();
@@ -502,6 +505,8 @@ public class Conflict {
                                         current[2] = milEntry.getValue();
                                     } else if (milEntry.getKey() == MilitaryUnit.SHIP) {
                                         current[3] = milEntry.getValue();
+                                    } else if (milEntry.getKey() == MilitaryUnit.SPIES) {
+                                        current[4] = milEntry.getValue();
                                     }
                                 }
                             }
@@ -544,6 +549,8 @@ public class Conflict {
                             cityMap.merge(MilitaryUnit.AIRCRAFT, nation.aircraft, Integer::sum);
                         if (nation.ship > 0)
                             cityMap.merge(MilitaryUnit.SHIP, nation.ship, Integer::sum);
+                        if (nation.spy > 0)
+                            cityMap.merge(MilitaryUnit.SPIES, nation.spy, Integer::sum);
                     } else {
                         if (historicalCounts[0] > 0)
                             cityMap.merge(MilitaryUnit.SOLDIER, historicalCounts[0], Integer::sum);
@@ -553,6 +560,8 @@ public class Conflict {
                             cityMap.merge(MilitaryUnit.AIRCRAFT, historicalCounts[2], Integer::sum);
                         if (historicalCounts[3] > 0)
                             cityMap.merge(MilitaryUnit.SHIP, historicalCounts[3], Integer::sum);
+                        if (historicalCounts[4] > 0)
+                            cityMap.merge(MilitaryUnit.SPIES, historicalCounts[4], Integer::sum);
                     }
                 }
 
