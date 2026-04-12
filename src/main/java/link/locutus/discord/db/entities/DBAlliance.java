@@ -975,6 +975,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     double scoreCached = -1;
+    long scoreCachedNationSnapshotVersion = -1;
 
     @Override
     public double getScore() {
@@ -986,8 +987,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (filter != null) {
             return new SimpleNationList(getNations(filter.toCached(Long.MAX_VALUE))).getScore();
         }
-        if (scoreCached == -1) {
+        long nationSnapshotVersion = Locutus.imp().getNationDB().getNationSnapshotVersion();
+        if (scoreCached == -1 || scoreCachedNationSnapshotVersion != nationSnapshotVersion) {
             scoreCached = new SimpleNationList(getNations(true, 0, true)).getScore();
+            scoreCachedNationSnapshotVersion = nationSnapshotVersion;
         }
         return scoreCached;
     }

@@ -176,6 +176,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     private final Map<Integer, Map<Integer, DBAlliancePosition>> positionsByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, Treaty>> treatiesByAlliance = new Int2ObjectOpenHashMap<>();
     private final AtomicLong treatyVersion = new AtomicLong(1);
+    private final AtomicLong nationSnapshotVersion = new AtomicLong(1);
+    private final Object allianceScoreRankingLock = new Object();
+    private volatile long allianceScoreRankingVersion = -1;
+    private volatile IntArrayList allianceIdsRankedByScoreCache = new IntArrayList();
 
     private final IntOpenHashSet dirtyCities =new IntOpenHashSet();
     private final Set<Integer> dirtyCityNations = Collections.synchronizedSet(new IntOpenHashSet());
@@ -195,8 +199,16 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return treatyVersion.get();
     }
 
+    public long getNationSnapshotVersion() {
+        return nationSnapshotVersion.get();
+    }
+
     private void bumpTreatyVersion() {
         treatyVersion.incrementAndGet();
+    }
+
+    private void bumpNationSnapshotVersion() {
+        nationSnapshotVersion.incrementAndGet();
     }
 
     @Override
@@ -204,6 +216,55 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         synchronized (nationsById) {
             return new ObjectOpenHashSet<>(nationsById.values());
         }
+    }
+
+    public List<Integer> getAllianceIdsRankedByScore(int limit) {
+        if (limit <= 0) {
+            return Collections.emptyList();
+        }
+
+        long version = getNationSnapshotVersion();
+        IntArrayList ranked = allianceIdsRankedByScoreCache;
+        if (allianceScoreRankingVersion != version) {
+            synchronized (allianceScoreRankingLock) {
+                version = getNationSnapshotVersion();
+                if (allianceScoreRankingVersion != version) {
+                    allianceIdsRankedByScoreCache = buildAllianceIdsRankedByScore();
+                    allianceScoreRankingVersion = version;
+                }
+                ranked = allianceIdsRankedByScoreCache;
+            }
+        }
+
+        int resultSize = Math.min(limit, ranked.size());
+        IntArrayList result = new IntArrayList(resultSize);
+        for (int i = 0; i < resultSize; i++) {
+            result.add(ranked.getInt(i));
+        }
+        return result;
+    }
+
+    private IntArrayList buildAllianceIdsRankedByScore() {
+        final Int2DoubleMap scoreMap = new Int2DoubleOpenHashMap();
+        synchronized (nationsByAlliance) {
+            for (Map.Entry<Integer, Map<Integer, DBNation>> entry : nationsByAlliance.entrySet()) {
+                int allianceId = entry.getKey();
+                if (allianceId == 0) {
+                    continue;
+                }
+                double score = 0;
+                for (DBNation nation : entry.getValue().values()) {
+                    score += nation.getScore();
+                }
+                if (score > 0) {
+                    scoreMap.put(allianceId, score);
+                }
+            }
+        }
+
+        IntArrayList ranked = new IntArrayList(scoreMap.keySet());
+        ranked.sort((IntComparator) (id1, id2) -> Double.compare(scoreMap.get(id2), scoreMap.get(id1)));
+        return ranked;
     }
 
     @Override
@@ -4499,6 +4560,33 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return getLoot(-allianceId);
     }
 
+    public Map<Integer, LootEntry> getAllianceLootMap(Set<Integer> allianceIds) {
+        if (allianceIds == null || allianceIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Set<Integer> lootIds = new IntOpenHashSet();
+        for (int allianceId : allianceIds) {
+            if (allianceId != 0) {
+                lootIds.add(-allianceId);
+            }
+        }
+        if (lootIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Integer, LootEntry> rawLoot = getLootMap(lootIds);
+        if (rawLoot.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Integer, LootEntry> result = new Int2ObjectOpenHashMap<>();
+        for (Map.Entry<Integer, LootEntry> entry : rawLoot.entrySet()) {
+            result.put(-entry.getKey(), entry.getValue());
+        }
+        return result;
+    }
+
     public LootEntry getLoot(int nationId) {
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id = ? ORDER BY `date` DESC LIMIT 1")) {
             stmt.setInt(1, nationId);
@@ -4684,6 +4772,42 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+
+    public Map<Integer, Set<Long>> getActivityByTurn(long minTurn, long maxTurn, Set<Integer> nationIds) {
+        if (nationIds == null || nationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            Set<Long> turns = getActivity(nationId, minTurn, maxTurn);
+            return turns.isEmpty() ? Collections.emptyMap() : Map.of(nationId, turns);
+        }
+
+        List<Integer> sortedIds = new IntArrayList(nationIds);
+        Collections.sort(sortedIds);
+
+        Map<Integer, Set<Long>> result = new Int2ObjectOpenHashMap<>();
+        final int batchSize = 900;
+        for (int i = 0; i < sortedIds.size(); i += batchSize) {
+            List<Integer> chunk = sortedIds.subList(i, Math.min(i + batchSize, sortedIds.size()));
+            String sql = "SELECT nation, `turn` FROM ACTIVITY WHERE turn >= ? AND turn <= ? AND nation IN " + StringMan.getString(chunk);
+            try (PreparedStatement stmt = prepareQuery(sql)) {
+                stmt.setLong(1, minTurn);
+                stmt.setLong(2, maxTurn);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int nationId = rs.getInt(1);
+                        long turn = rs.getLong(2);
+                        result.computeIfAbsent(nationId, ignored -> new LongOpenHashSet()).add(turn);
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+        return result;
     }
 
     public Map<Long, Set<Integer>> getActivityByDay(long minDate, Set<Integer> nationIds) {
@@ -5637,12 +5761,15 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (nations.isEmpty()) return new int[0];
         String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id,gdp,discord,city_refund,research) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
+        int[] result;
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
-            return new int[]{update(query, stmt -> setNation.accept(nation, stmt))};
+            result = new int[]{update(query, stmt -> setNation.accept(nation, stmt))};
         } else {
-            return executeBatch(nations, query, setNation);
+            result = executeBatch(nations, query, setNation);
         }
+        bumpNationSnapshotVersion();
+        return result;
     }
 
     public void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
@@ -5694,6 +5821,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             deleteCitiesInDB(citiesToDelete);
         }
         deleteNationsInDB(ids);
+        bumpNationSnapshotVersion();
     }
 
     private synchronized void deleteNationsInDB(Set<Integer> ids) {

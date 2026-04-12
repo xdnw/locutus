@@ -22,7 +22,6 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -88,6 +87,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -3482,126 +3482,230 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return getCanRaid(topX, true);
     }
 
-    public Function<DBNation, Boolean> getCanRaid(int topX, boolean checkTreaties) {
-        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong())
-            return faServer.getCanRaid(topX, checkTreaties);
-        loadCoalitions();
-        Set<Integer> dnr = new IntOpenHashSet(getCoalition(Coalition.ALLIES));
-        dnr.addAll(getCoalition("dnr"));
-        Set<Integer> dnr_active = new IntOpenHashSet(getCoalition("dnr_active"));
-        Set<Integer> dnr_member = new IntOpenHashSet(getCoalition("dnr_member"));
-        Set<Integer> can_raid = new IntOpenHashSet(getCoalition(Coalition.CAN_RAID));
-        can_raid.addAll(getCoalition(Coalition.ENEMIES));
-        Set<Integer> can_raid_inactive = new IntOpenHashSet(getCoalition("can_raid_inactive"));
-        Map<Integer, Long> dnr_timediff_member = new HashMap<>();
-        Map<Integer, Long> dnr_timediff_app = new HashMap<>();
+    private static final class CanRaidCacheKey {
+        private final int topX;
+        private final boolean checkTreaties;
+        private final IntArrayList allianceIds;
+
+        private CanRaidCacheKey(int topX, boolean checkTreaties, IntArrayList allianceIds) {
+            this.topX = topX;
+            this.checkTreaties = checkTreaties;
+            this.allianceIds = allianceIds;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof CanRaidCacheKey key)) {
+                return false;
+            }
+            return topX == key.topX && checkTreaties == key.checkTreaties && Objects.equals(allianceIds, key.allianceIds);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(topX, checkTreaties, allianceIds);
+        }
+    }
+
+    private static final class CanRaidCacheEntry {
+        private final long coalitionVersion;
+        private final long treatyVersion;
+        private final long nationSnapshotVersion;
+        private final Function<DBNation, Boolean> policy;
+
+        private CanRaidCacheEntry(long coalitionVersion, long treatyVersion, long nationSnapshotVersion, Function<DBNation, Boolean> policy) {
+            this.coalitionVersion = coalitionVersion;
+            this.treatyVersion = treatyVersion;
+            this.nationSnapshotVersion = nationSnapshotVersion;
+            this.policy = policy;
+        }
+
+        private boolean matches(long coalitionVersion, long treatyVersion, long nationSnapshotVersion) {
+            return this.coalitionVersion == coalitionVersion
+                    && this.treatyVersion == treatyVersion
+                    && this.nationSnapshotVersion == nationSnapshotVersion;
+        }
+    }
+
+    private static final class CanRaidPolicy implements Function<DBNation, Boolean> {
+        private final Set<Integer> alwaysAllowed;
+        private final Set<Integer> inactiveAllowed;
+        private final Set<Integer> blockedAlliances;
+        private final Set<Integer> blockedWhenActive;
+        private final Set<Integer> blockedMembers;
+        private final Map<Integer, Long> timedApplicantInactivity;
+        private final Map<Integer, Long> timedMemberInactivity;
+
+        private CanRaidPolicy(Set<Integer> alwaysAllowed,
+                              Set<Integer> inactiveAllowed,
+                              Set<Integer> blockedAlliances,
+                              Set<Integer> blockedWhenActive,
+                              Set<Integer> blockedMembers,
+                              Map<Integer, Long> timedApplicantInactivity,
+                              Map<Integer, Long> timedMemberInactivity) {
+            this.alwaysAllowed = alwaysAllowed;
+            this.inactiveAllowed = inactiveAllowed;
+            this.blockedAlliances = blockedAlliances;
+            this.blockedWhenActive = blockedWhenActive;
+            this.blockedMembers = blockedMembers;
+            this.timedApplicantInactivity = timedApplicantInactivity;
+            this.timedMemberInactivity = timedMemberInactivity;
+        }
+
+        @Override
+        public Boolean apply(DBNation enemy) {
+            int allianceId = enemy.getAlliance_id();
+            if (allianceId == 0) {
+                return true;
+            }
+            if (alwaysAllowed.contains(allianceId)) {
+                return true;
+            }
+            if (inactiveAllowed.contains(allianceId) && enemy.active_m() > 10000) {
+                return true;
+            }
+            if (blockedAlliances.contains(allianceId)) {
+                return false;
+            }
+            if (enemy.active_m() < 10000 && blockedWhenActive.contains(allianceId)) {
+                return false;
+            }
+            if ((enemy.active_m() < 10000 || enemy.getPosition() > 1) && blockedMembers.contains(allianceId)) {
+                return false;
+            }
+
+            long requiredInactive = -1;
+            Long applicantTime = timedApplicantInactivity.get(allianceId);
+            if (applicantTime != null) {
+                requiredInactive = enemy.getPosition() > 1 ? Long.MAX_VALUE : applicantTime;
+            }
+            if (enemy.getPosition() > 1) {
+                Long memberTime = timedMemberInactivity.get(allianceId);
+                if (memberTime != null) {
+                    requiredInactive = memberTime;
+                }
+            }
+
+            long msInactive = enemy.active_m() * 60 * 1000L;
+            return msInactive > requiredInactive;
+        }
+    }
+
+    private final AtomicLong coalitionVersion = new AtomicLong(1);
+    private final Map<CanRaidCacheKey, CanRaidCacheEntry> canRaidCache = new ConcurrentHashMap<>();
+
+    private long getCoalitionVersion() {
+        return coalitionVersion.get();
+    }
+
+    private void invalidateCanRaidCache() {
+        coalitionVersion.incrementAndGet();
+        canRaidCache.clear();
+    }
+
+    private static IntArrayList sortedAllianceIds(Set<Integer> allianceIds) {
+        IntArrayList sorted = new IntArrayList(allianceIds);
+        Collections.sort(sorted);
+        return sorted;
+    }
+
+    private Function<DBNation, Boolean> buildCanRaidPolicy(int topX, boolean checkTreaties, Set<Integer> guildAllianceIds) {
+        NationDB nationDb = Locutus.imp().getNationDB();
+        Set<Integer> blockedAlliances = new IntOpenHashSet(getCoalition(Coalition.ALLIES));
+        blockedAlliances.addAll(getCoalition("dnr"));
+        Set<Integer> blockedWhenActive = new IntOpenHashSet(getCoalition("dnr_active"));
+        Set<Integer> blockedMembers = new IntOpenHashSet(getCoalition("dnr_member"));
+        Set<Integer> alwaysAllowed = new IntOpenHashSet(getCoalition(Coalition.CAN_RAID));
+        alwaysAllowed.addAll(getCoalition(Coalition.ENEMIES));
+        Set<Integer> inactiveAllowed = new IntOpenHashSet(getCoalition("can_raid_inactive"));
+        Map<Integer, Long> timedMemberInactivity = new HashMap<>();
+        Map<Integer, Long> timedApplicantInactivity = new HashMap<>();
 
         if (checkTreaties) {
-            for (int allianceId : getAllianceIds()) {
-                Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
-                dnr.addAll(treaties.keySet());
-                dnr.add(allianceId);
+            for (int allianceId : guildAllianceIds) {
+                Map<Integer, Treaty> treaties = nationDb.getTreaties(allianceId);
+                blockedAlliances.addAll(treaties.keySet());
+                blockedAlliances.add(allianceId);
             }
         }
 
         if (topX > 0) {
-            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getAllNations())
-                    .group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
-            for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
-                if (entry.getKey() == 0)
-                    continue;
-                if (topX-- <= 0)
-                    break;
-                int allianceId = entry.getKey();
-                Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
+            for (int allianceId : nationDb.getAllianceIdsRankedByScore(topX)) {
+                Map<Integer, Treaty> treaties = nationDb.getTreaties(allianceId);
                 for (Map.Entry<Integer, Treaty> aaTreatyEntry : treaties.entrySet()) {
                     switch (aaTreatyEntry.getValue().getType()) {
                         case EXTENSION:
                         case MDP:
                         case MDOAP:
                         case PROTECTORATE:
-                            dnr_member.add(aaTreatyEntry.getKey());
+                            blockedMembers.add(aaTreatyEntry.getKey());
                     }
                 }
-                dnr_member.add(allianceId);
+                blockedMembers.add(allianceId);
             }
         }
 
         for (Map.Entry<String, Long> entry : coalitionName2Id.entrySet()) {
             String name = entry.getKey();
-            if (!name.startsWith("dnr_"))
+            if (!name.startsWith("dnr_")) {
                 continue;
+            }
 
             String[] split = name.split("_");
-            if (split.length < 2 || split[split.length - 1].isEmpty())
+            if (split.length < 2 || split[split.length - 1].isEmpty()) {
                 continue;
+            }
             String timeStr = split[split.length - 1];
-            if (!Character.isDigit(timeStr.charAt(0)))
+            if (!Character.isDigit(timeStr.charAt(0))) {
                 continue;
+            }
 
             long time = TimeUtil.timeToSec(timeStr) * 1000L;
-
             Set<Long> ids = coalitions2.get(entry.getValue());
-            if (ids == null || ids.isEmpty())
+            if (ids == null || ids.isEmpty()) {
                 continue;
+            }
 
             for (long id : ids) {
-                if (id > Integer.MAX_VALUE)
+                if (id > Integer.MAX_VALUE) {
                     continue;
+                }
                 int aaId = (int) id;
                 if (split.length == 3 && split[1].equalsIgnoreCase("member")) {
-                    dnr_timediff_member.put(aaId, time);
-                } else if (true || split[1].equalsIgnoreCase("applicant")) {
-                    dnr_timediff_app.put(aaId, time);
+                    timedMemberInactivity.put(aaId, time);
+                } else {
+                    timedApplicantInactivity.put(aaId, time);
                 }
-
             }
         }
-        Set<Integer> enemies = getCoalition("enemies");
-        enemies.addAll(getCoalition(Coalition.CAN_RAID));
 
-        Function<DBNation, Boolean> canRaid = new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation enemy) {
-                if (enemy.getAlliance_id() == 0)
-                    return true;
-                if (can_raid.contains(enemy.getAlliance_id()))
-                    return true;
-                if (can_raid_inactive.contains(enemy.getAlliance_id()) && enemy.active_m() > 10000)
-                    return true;
-                if (enemies.contains(enemy.getAlliance_id()))
-                    return true;
-                if (dnr.contains(enemy.getAlliance_id()))
-                    return false;
-                if (enemy.active_m() < 10000 && dnr_active.contains(enemy.getAlliance_id()))
-                    return false;
-                if ((enemy.active_m() < 10000 || enemy.getPosition() > 1)
-                        && dnr_member.contains(enemy.getAlliance_id()))
-                    return false;
+        return new CanRaidPolicy(alwaysAllowed, inactiveAllowed, blockedAlliances, blockedWhenActive, blockedMembers,
+                timedApplicantInactivity, timedMemberInactivity);
+    }
 
-                long requiredInactive = -1;
+    public Function<DBNation, Boolean> getCanRaid(int topX, boolean checkTreaties) {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong())
+            return faServer.getCanRaid(topX, checkTreaties);
+        loadCoalitions();
+        NationDB nationDb = Locutus.imp().getNationDB();
+        Set<Integer> guildAllianceIds = checkTreaties ? getAllianceIds() : Collections.emptySet();
+        long coalitionVersion = getCoalitionVersion();
+        long treatyVersion = (checkTreaties || topX > 0) ? nationDb.getTreatyVersion() : 0;
+        long nationSnapshotVersion = topX > 0 ? nationDb.getNationSnapshotVersion() : 0;
 
-                {
-                    Long timeDiff = dnr_timediff_app.get(enemy.getAlliance_id());
-                    if (timeDiff != null) {
-                        requiredInactive = enemy.getPosition() > 1 ? Long.MAX_VALUE : timeDiff;
-                    }
-                }
-                if (enemy.getPosition() > 1) {
-                    Long timeDiff = dnr_timediff_member.get(enemy.getAlliance_id());
-                    if (timeDiff != null) {
-                        requiredInactive = timeDiff;
-                    }
-                }
+        CanRaidCacheKey key = new CanRaidCacheKey(topX, checkTreaties, sortedAllianceIds(guildAllianceIds));
+        CanRaidCacheEntry cached = canRaidCache.get(key);
+        if (cached != null && cached.matches(coalitionVersion, treatyVersion, nationSnapshotVersion)) {
+            return cached.policy;
+        }
 
-                long msInactive = enemy.active_m() * 60 * 1000L;
-
-                return (msInactive > requiredInactive);
-            }
-        };
-
-        return canRaid;
+        Function<DBNation, Boolean> policy = buildCanRaidPolicy(topX, checkTreaties, guildAllianceIds);
+        canRaidCache.put(key, new CanRaidCacheEntry(coalitionVersion, treatyVersion, nationSnapshotVersion, policy));
+        return policy;
     }
 
     // @Command TODO PERMS
@@ -3989,6 +4093,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                         stmt.setString(2, coalition);
                         stmt.setLong(3, System.currentTimeMillis());
                     });
+            invalidateCanRaidCache();
         }
     }
 
@@ -4021,6 +4126,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                                 stmt.setLong(1, allianceId);
                                 stmt.setString(2, coalition.toLowerCase());
                             });
+                    invalidateCanRaidCache();
                 }
             }
         }
@@ -4045,7 +4151,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                         (ThrowingConsumer<PreparedStatement>) stmt -> {
                             stmt.setString(1, coalitionLower);
                         });
-                return coalitions2.remove(hash);
+                Set<Long> removed = coalitions2.remove(hash);
+                invalidateCanRaidCache();
+                return removed;
             }
             return Collections.emptySet();
         }

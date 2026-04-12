@@ -170,6 +170,8 @@ public class WarDB extends DBMainV2 {
             executeStmt("CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))");
         };
 
+        executeStmt("CREATE INDEX IF NOT EXISTS index_BOUNTIES_V3_nation_date ON BOUNTIES_V3 (nation_id, date);");
+
         executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_date ON WARS (date);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_attacker ON WARS (attacker_id);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_defender ON WARS (defender_id);");
@@ -177,6 +179,7 @@ public class WarDB extends DBMainV2 {
 
         {
             String create = "CREATE TABLE IF NOT EXISTS `COUNTER_STATS` (`id` INT NOT NULL PRIMARY KEY, `type` INT NOT NULL, `active` INT NOT NULL)";
+
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -1690,9 +1693,7 @@ public class WarDB extends DBMainV2 {
                 List<Map.Entry<DBWar, CounterStat>> result = new ArrayList<>();
                 while (rs.next()) {
                     int id = rs.getInt("id");
-                    CounterStat stat = new CounterStat();
-                    stat.isActive = rs.getBoolean("active");
-                    stat.type = CounterType.values[rs.getInt("type")];
+                    CounterStat stat = readCounterStat(rs);
                     DBWar war = getWar(id);
                     Map.Entry<DBWar, CounterStat> entry = new KeyValue<>(war, stat);
                     result.add(entry);
@@ -1705,23 +1706,74 @@ public class WarDB extends DBMainV2 {
         return null;
     }
 
-    public CounterStat getCounterStat(DBWar war) {
-        try (PreparedStatement stmt= prepareQuery("SELECT * FROM COUNTER_STATS WHERE id = ?")) {
-            stmt.setInt(1, war.warId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    int id = rs.getInt("id");
-                    CounterStat stat = new CounterStat();
-                    stat.isActive = rs.getBoolean("active");
-                    stat.type = CounterType.values[rs.getInt("type")];
-                    return stat;
-                }
-            }
-            return updateCounter(war, f -> Locutus.imp().runEventsAsync(List.of(f)));
-        } catch (Exception e) {
-            e.printStackTrace();
+    public Map<Integer, CounterStat> getCounterStatsByWarIds(Collection<DBWar> wars) {
+        if (wars == null || wars.isEmpty()) {
+            return Collections.emptyMap();
         }
-        return null;
+
+        Map<Integer, DBWar> warsById = new Int2ObjectOpenHashMap<>();
+        List<Integer> warIds = new IntArrayList();
+        for (DBWar war : wars) {
+            if (war == null || warsById.putIfAbsent(war.warId, war) != null) {
+                continue;
+            }
+            warIds.add(war.warId);
+        }
+        if (warIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Collections.sort(warIds);
+        Map<Integer, CounterStat> result = new Int2ObjectOpenHashMap<>();
+        final int batchSize = 900;
+        for (int i = 0; i < warIds.size(); i += batchSize) {
+            List<Integer> chunk = warIds.subList(i, Math.min(i + batchSize, warIds.size()));
+            String queryStr = "SELECT * FROM COUNTER_STATS WHERE id IN " + StringMan.getString(chunk);
+            try (PreparedStatement stmt = getConnection().prepareStatement(queryStr)) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        result.put(rs.getInt("id"), readCounterStat(rs));
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+
+        if (result.size() == warIds.size()) {
+            return result;
+        }
+
+        List<Event> events = new ObjectArrayList<>();
+        for (int warId : warIds) {
+            if (result.containsKey(warId)) {
+                continue;
+            }
+            DBWar war = warsById.get(warId);
+            if (war == null) {
+                continue;
+            }
+            CounterStat stat = updateCounter(war, events::add);
+            if (stat != null) {
+                result.put(warId, stat);
+            }
+        }
+        if (!events.isEmpty()) {
+            Locutus.imp().runEventsAsync(events);
+        }
+        return result;
+    }
+
+    public CounterStat getCounterStat(DBWar war) {
+        return getCounterStatsByWarIds(List.of(war)).get(war.warId);
+    }
+
+    private CounterStat readCounterStat(ResultSet rs) throws SQLException {
+        CounterStat stat = new CounterStat();
+        stat.isActive = rs.getBoolean("active");
+        stat.type = CounterType.values[rs.getInt("type")];
+        return stat;
     }
 
     public CounterStat updateCounter(DBWar war, Consumer<Event> eventConsumer) {
@@ -1870,8 +1922,31 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
+    public Map<Integer, List<DBBounty>> getBountiesByNationIds(Set<Integer> nationIds) {
+        if (nationIds == null || nationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Integer> sortedIds = new IntArrayList(nationIds);
+        Collections.sort(sortedIds);
+
+        Map<Integer, List<DBBounty>> result = new Int2ObjectOpenHashMap<>();
+        final int batchSize = 900;
+        for (int i = 0; i < sortedIds.size(); i += batchSize) {
+            List<Integer> chunk = sortedIds.subList(i, Math.min(i + batchSize, sortedIds.size()));
+            String query = "SELECT * FROM `BOUNTIES_V3` WHERE nation_id IN " + StringMan.getString(chunk) + " ORDER BY nation_id ASC, date DESC";
+            query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    DBBounty bounty = new DBBounty(rs);
+                    result.computeIfAbsent(bounty.getNationId(), key -> new ObjectArrayList<>()).add(bounty);
+                }
+            });
+        }
+        return result;
+    }
+
     public Map<Integer, List<DBBounty>> getBountiesByNation() {
-        return getBounties().stream().collect(Collectors.groupingBy(DBBounty::getId, Collectors.toList()));
+        return getBounties().stream().collect(Collectors.groupingBy(DBBounty::getNationId, Collectors.toList()));
     }
 
     public boolean hasAnyBounties() {
@@ -2450,6 +2525,51 @@ public class WarDB extends DBMainV2 {
             });
         }
         return list;
+    }
+
+    public Set<Integer> getNationIdsWithWars(Set<Integer> nationIds) {
+        if (nationIds == null || nationIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<Integer> result = new IntOpenHashSet();
+        synchronized (warsByNationLock) {
+            for (int nationId : nationIds) {
+                Object wars = warsByNationId.get(nationId);
+                if (wars != null) {
+                    result.add(nationId);
+                }
+            }
+        }
+        return result;
+    }
+
+    public Map<Integer, DBWar> getLastDefensiveWarsByNationIds(Set<Integer> nationIds) {
+        if (nationIds == null || nationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Integer, DBWar> result = new Int2ObjectOpenHashMap<>();
+        synchronized (warsByNationLock) {
+            for (int nationId : nationIds) {
+                Object wars = warsByNationId.get(nationId);
+                if (wars == null) {
+                    continue;
+                }
+
+                final DBWar[] lastWar = {null};
+                ArrayUtil.iterateElements(DBWar.class, wars, war -> {
+                    if (war.getDefender_id() != nationId) {
+                        return;
+                    }
+                    if (lastWar[0] == null || war.warId > lastWar[0].warId) {
+                        lastWar[0] = war;
+                    }
+                });
+                if (lastWar[0] != null) {
+                    result.put(nationId, lastWar[0]);
+                }
+            }
+        }
+        return result;
     }
 
     public DBWar getLastOffensiveWar(int nation) {

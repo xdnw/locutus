@@ -35,6 +35,10 @@ public class Activity {
         return nation -> activityMap.computeIfAbsent(nation, (Function<DBNation, Activity>) n -> n.getActivity(turns));
     }
 
+    public static Activity fromTurns(Set<Long> activityTurns, long turnStartAbs, long turnEndAbs) {
+        return new Activity(activityTurns, turnStartAbs, turnEndAbs);
+    }
+
     /**
      * Turns from now, array of activity probability
      * @param numTurns
@@ -171,18 +175,17 @@ public class Activity {
         }
     }
 
+    private Activity(Set<Long> activityTurns, long turnStartAbs, long turnEndAbs) {
+        if (activityTurns == null || activityTurns.isEmpty()) return;
+        load(activityTurns, turnStartAbs, turnEndAbs);
+    }
+
     public Activity(int nationId, long turnStartAbs, long turnEndAbs) {
-        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, turnStartAbs, turnEndAbs);
-        if (activity.isEmpty()) return;
-        load(activity, turnStartAbs, turnEndAbs);
+        this(Locutus.imp().getNationDB().getActivity(nationId, turnStartAbs, turnEndAbs), turnStartAbs, turnEndAbs);
     }
 
     public Activity(int nationId) {
-        long turnStartAbs = 0;
-        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, turnStartAbs, Long.MAX_VALUE);
-        if (activity.isEmpty()) return;
-
-        load(activity, turnStartAbs, Long.MAX_VALUE);
+        this(Locutus.imp().getNationDB().getActivity(nationId, 0, Long.MAX_VALUE), 0, Long.MAX_VALUE);
     }
 
     public double getAverageByDay() {

@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
@@ -13,8 +14,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -22,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -41,6 +41,14 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class RaidCommand extends Command {
+    private static final int MAX_RAID_INACTIVE_MINUTES = 385920;
+    private static final int RAID_ACTIVITY_WINDOW_TURNS = 24;
+    private static final long RAID_ACTIVITY_LOOKBACK_TURNS = 70L * 12L;
+    private static final double RAID_LOOT_PCT = 0.14;
+    private static final long RAID_TIMING_LOG_THRESHOLD_NS = TimeUnit.MILLISECONDS.toNanos(25);
+    private static final int RAID_TIMING_LOG_INPUT_THRESHOLD = 250;
+    private static final int RAID_TIMING_LOG_RISK_THRESHOLD = 25;
+
     public RaidCommand() {
         super("raid", CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MEMBER);
     }
@@ -132,11 +140,7 @@ public class RaidCommand extends Command {
                 iterator.remove();
             } else if ((next.charAt(0) == '-' || next.charAt(0) == '+') && MathMan.isInteger(next.substring(1))) {
                 int topX = Integer.parseInt(next.substring(1));
-                Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getAllNations()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
-                for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
-                    if (entry.getKey() == 0) continue;
-                    if (topX-- <= 0) break;
-                    int allianceId = entry.getKey();
+                for (int allianceId : Locutus.imp().getNationDB().getAllianceIdsRankedByScore(topX)) {
                     Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                     for (Map.Entry<Integer, Treaty> aaTreatyEntry : treaties.entrySet()) {
                         switch (aaTreatyEntry.getValue().getType()) {
@@ -203,8 +207,18 @@ public class RaidCommand extends Command {
 
         if (beigeTurns > 0) vm = Math.max(vm, beigeTurns);
 
-        Set<DBNation> allNations = new ObjectLinkedOpenHashSet<>(Locutus.imp().getNationDB().getAllNations());
         Set<DBNation> nations;
+        double minScore = score * PW.WAR_RANGE_MIN_MODIFIER;
+        double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
+        final int candidateVm = vm;
+        final int candidateSlots = slots;
+        final boolean candidateBeige = beige;
+        final boolean candidateActive = active;
+        final long candidateMinutesInactive = minutesInactive;
+        final int candidateBeigeTurns = beigeTurns;
+        Predicate<DBNation> wideCandidateFilter = enemy -> passesWideCandidatePrefilter(enemy, minScore, maxScore,
+            candidateVm, candidateSlots, candidateBeige, candidateActive, candidateMinutesInactive, candidateBeigeTurns);
+        NationDB nationDb = Locutus.imp().getNationDB();
 
         switch (args.size()) {
             default:
@@ -214,16 +228,14 @@ public class RaidCommand extends Command {
                 aa = args.get(0);
             case 0:
                 if (aa == null) {
-                    nations = new ObjectLinkedOpenHashSet<>(allNations);
-                    nations.removeIf(new Predicate<DBNation>() {
-                        @Override
-                        public boolean test(DBNation nation) {
-                            return nation.getPosition() > 1;
+                    nations = nationDb.getNationsMatching(enemy -> enemy.getPosition() <= 1 && wideCandidateFilter.test(enemy));
+                    for (DBNation enemy : nationDb.getNationsByAlliance(enemyAAs)) {
+                        if (wideCandidateFilter.test(enemy)) {
+                            nations.add(enemy);
                         }
-                    });
-                    nations.addAll(Locutus.imp().getNationDB().getNationsByAlliance(enemyAAs));
+                    }
                 } else if (aa.equalsIgnoreCase("*")) {
-                    nations = new ObjectLinkedOpenHashSet<>(allNations);
+                    nations = nationDb.getNationsMatching(wideCandidateFilter);
                 } else {
                     double min = PW.getAttackRange(true, true, true, score);
                     double max = PW.getAttackRange(true, true, false, score);
@@ -312,279 +324,476 @@ public class RaidCommand extends Command {
         return null;
     }
 
+    private static final class RaidCandidate implements Comparable<RaidCandidate> {
+        private final DBNation enemy;
+        private final double upperBound;
+        private final double bankLootEst;
+        private final double enemyGroundStrength;
+        private final long enemyMilitaryValue;
+        private final boolean riskEligible;
+
+        private RaidCandidate(DBNation enemy, double upperBound, double bankLootEst,
+                              double enemyGroundStrength, long enemyMilitaryValue, boolean riskEligible) {
+            this.enemy = enemy;
+            this.upperBound = upperBound;
+            this.bankLootEst = bankLootEst;
+            this.enemyGroundStrength = enemyGroundStrength;
+            this.enemyMilitaryValue = enemyMilitaryValue;
+            this.riskEligible = riskEligible;
+        }
+
+        @Override
+        public int compareTo(RaidCandidate other) {
+            return Double.compare(other.upperBound, upperBound);
+        }
+    }
+
+    private static final class RaidTiming {
+        private final int inputCandidates;
+        private int filteredCandidates;
+        private int upperBoundCandidates;
+        private int riskPool;
+        private int riskEvaluated;
+        private int resultCount;
+        private long filterNs;
+        private long beigeLootNs;
+        private long revenueNs;
+        private long bankNs;
+        private long bountyNs;
+        private long activityNs;
+        private long counterNs;
+        private long upperBoundOrderNs;
+        private long finalSortNs;
+        private long totalNs;
+
+        private RaidTiming(int inputCandidates) {
+            this.inputCandidates = inputCandidates;
+        }
+
+        private boolean shouldLog() {
+            return totalNs >= RAID_TIMING_LOG_THRESHOLD_NS
+                    || inputCandidates >= RAID_TIMING_LOG_INPUT_THRESHOLD
+                    || riskEvaluated >= RAID_TIMING_LOG_RISK_THRESHOLD;
+        }
+
+        private void log() {
+            Logg.text("[RaidCommand.getNations] input=" + inputCandidates
+                    + " filtered=" + filteredCandidates
+                    + " upperBounds=" + upperBoundCandidates
+                    + " riskPool=" + riskPool
+                    + " riskEvaluated=" + riskEvaluated
+                    + " results=" + resultCount
+                    + " filter=" + formatMillis(filterNs)
+                    + " beigeLoot=" + formatMillis(beigeLootNs)
+                    + " revenue=" + formatMillis(revenueNs)
+                    + " bank=" + formatMillis(bankNs)
+                    + " bounty=" + formatMillis(bountyNs)
+                    + " activity=" + formatMillis(activityNs)
+                    + " counter=" + formatMillis(counterNs)
+                    + " order=" + formatMillis(upperBoundOrderNs)
+                    + " finalSort=" + formatMillis(finalSortNs)
+                    + " total=" + formatMillis(totalNs));
+        }
+    }
+
+    static double applyBounties(DBNation me, double value, List<DBBounty> natBounties) {
+        if (natBounties == null || natBounties.isEmpty()) {
+            return value;
+        }
+
+        Map<WarType, Double> totals = new EnumMap<>(WarType.class);
+        totals.put(WarType.RAID, value);
+        totals.put(WarType.ORD, value * 0.5);
+        totals.put(WarType.ATT, value * 0.25);
+
+        for (DBBounty bounty : natBounties) {
+            if (bounty.getType() == WarType.NUCLEAR) {
+                if (me.getNukes() > 0) {
+                    long amount = bounty.getAmount() - 1_000_000L;
+                    for (WarType type : WarType.values) {
+                        if (type == WarType.NUCLEAR) {
+                            continue;
+                        }
+                        totals.put(type, totals.getOrDefault(type, 0d) + amount);
+                    }
+                }
+                continue;
+            }
+            totals.put(bounty.getType(), totals.getOrDefault(bounty.getType(), 0d) + bounty.getAmount());
+        }
+
+        double bestValue = value;
+        for (double total : totals.values()) {
+            bestValue = Math.max(bestValue, total);
+        }
+        return bestValue;
+    }
+
+    private static boolean isRiskEligible(DBNation enemy, Set<Integer> enemyAAs) {
+        return enemy.active_m() < 10000 && enemy.getAlliance_id() != 0 && !enemyAAs.contains(enemy.getAlliance_id());
+    }
+
+    private static double estimateAllianceBankLoot(LootEntry aaLoot, double attackerScore, double allianceScore, double foodFactor) {
+        if (aaLoot == null || allianceScore <= 0) {
+            return 0;
+        }
+
+        double ratio = ((attackerScore * 10000) / allianceScore) / 2d;
+        double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
+        double convertedTotal = 0;
+        for (ResourceType type : ResourceType.values) {
+            double amt = aaLoot.getTotal_rss()[type.ordinal()];
+            if (amt > 0) {
+                convertedTotal += ResourceType.convertedTotal(type, type == ResourceType.FOOD ? amt * foodFactor : amt);
+            }
+        }
+        return convertedTotal * percent;
+    }
+
+    private static String formatMillis(long nanos) {
+        return MathMan.format(nanos / 1_000_000d) + "ms";
+    }
+
+    private static boolean passesWideCandidatePrefilter(DBNation enemy, double minScore, double maxScore,
+                                                        int vm, int slots, boolean beige,
+                                                        boolean active, long minutesInactive, int beigeTurns) {
+        if (enemy.hasUnsetMil()) {
+            return false;
+        }
+        if (enemy.active_m() > MAX_RAID_INACTIVE_MINUTES) {
+            return false;
+        }
+        if (enemy.getScore() >= maxScore || enemy.getScore() <= minScore) {
+            return false;
+        }
+        if (enemy.getVm_turns() > vm) {
+            return false;
+        }
+        if ((slots == -1 && enemy.getDef() >= 3) || (slots != -1 && 3 - enemy.getDef() != slots)) {
+            return false;
+        }
+        if (!beige && enemy.isBeige()) {
+            return false;
+        }
+        if (enemy.isBeige() && beigeTurns != -1 && beigeTurns != Integer.MAX_VALUE && enemy.getBeigeTurns() >= beigeTurns) {
+            return false;
+        }
+        return active || enemy.active_m() >= minutesInactive;
+    }
+
     public static List<Map.Entry<DBNation, Map.Entry<Double, Double>>> getNations(GuildDB db, DBNation me, Set<DBNation> nations, boolean weakground,
                                                                            int vm, int slots, boolean beige,
                                                                            boolean useDnr, Set<Integer> ignoreAlliances, boolean includeAlliances, boolean active,
                                                                            long minutesInactive, double score, double minLoot, int beigeTurns, boolean ignoreBank, boolean ignoreCity, int numResults) {
-        Set<Integer> enemyAAs = db == null ? Collections.emptySet() : db.getCoalition("enemies");
+        if (numResults <= 0) {
+            return Collections.emptyList();
+        }
+        if (me == null || me.hasUnsetMil()) {
+            return Collections.emptyList();
+        }
 
-        if (weakground) nations.removeIf(f -> f.getGroundStrength(true, true) > me.getGroundStrength(true, true) * 0.4);
+        long totalStartNs = System.nanoTime();
+        RaidTiming timing = new RaidTiming(nations.size());
+
+        Set<Integer> enemyAAs = db == null ? Collections.emptySet() : db.getCoalition("enemies");
+        Function<DBNation, Boolean> canRaidDNR = db == null ? f -> true : db.getCanRaid();
+
+        double myGroundStrong = me.getGroundStrength(true, true);
+        double myGroundAggressive = me.getGroundStrength(true, false);
+        double myGroundDefensive = me.getGroundStrength(false, true);
+        int myShips = me.getShips();
+        int myAircraft = me.getAircraft();
+        long myMilValue = me.militaryValue(null, false);
+
+        long filterStartNs = System.nanoTime();
+
+        if (weakground) {
+            nations.removeIf(f -> f.getGroundStrength(true, true) > myGroundStrong * 0.4);
+        }
 
         nations.removeIf(nation ->
-                nation.active_m() < 12000 &&
-                        nation.getGroundStrength(true, false) > me.getGroundStrength(true, false) &&
-                        nation.getAircraft() > me.getAircraft() &&
-                        nation.getShips() > me.getShips() + 2);
-
-
-
+                nation.active_m() < 12000
+                        && nation.getGroundStrength(true, false) > myGroundAggressive
+                        && nation.getAircraft() > myAircraft
+                        && nation.getShips() > myShips + 2);
 
         double minScore = score * PW.WAR_RANGE_MIN_MODIFIER;
         double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
 
-        int count = 0;
+        Set<Integer> attackedDefenderIds = new IntOpenHashSet();
+        for (DBWar war : Locutus.imp().getWarDb().getWarsByNation(me.getNation_id(), WarStatus.ACTIVE)) {
+            attackedDefenderIds.add(war.getDefender_id());
+        }
 
-        Function<DBNation, Boolean> canRaidDNR = db == null ? f -> true : db.getCanRaid();
-
-        List<Map.Entry<DBNation, Map.Entry<Double, Double>>> nationNetValues = new ObjectArrayList<>();
-
-        Map<Integer, Double> allianceScores = new HashMap<>();
-
-        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id(), WarStatus.ACTIVE);
-        Map<Integer, List<DBWar>> attackingWars = new RankBuilder<>(wars).group(DBWar::getDefender_id).get();
-
-        Map<Integer, List<DBBounty>> allBounties = Locutus.imp().getWarDb().getBountiesByNation();
-
-        // 38w4d
         ArrayList<DBNation> enemies = new ArrayList<>();
+        Set<Integer> enemyIds = new IntOpenHashSet();
+        Set<Integer> allianceIds = new IntOpenHashSet();
         for (DBNation enemy : nations) {
-            if (enemy.active_m() > 385920) continue;
-            if (enemy.getScore() >= maxScore || enemy.getScore() <= minScore) continue;
-            if (enemy.getVm_turns() > vm) continue;
-            if ((slots == -1 && enemy.getDef() >= 3) || (slots != -1 && 3 - enemy.getDef() != slots)) continue;
-            if (enemy.hasUnsetMil()) continue;
-            if (!beige && enemy.isBeige()) continue;
+            if (!passesWideCandidatePrefilter(enemy, minScore, maxScore, vm, slots, beige, active, minutesInactive, beigeTurns)) continue;
             if (useDnr && !canRaidDNR.apply(enemy)) continue;
-//                    if (dnr.contains(enemy.getAlliance_id())) continue;
-//                    if (enemy.active_m() < 10000 && dnr_active.contains(enemy.getAlliance_id())) continue;
-//                    if ((enemy.active_m() < 10000 || enemy.getPosition() > 1) && dnr_member.contains(enemy.getAlliance_id())) continue;
-            if ((ignoreAlliances.contains(enemy.getAlliance_id()) != includeAlliances) && (includeAlliances || enemy.getPosition() > 1))
-                continue;
-            if (attackingWars.containsKey(enemy.getNation_id())) continue;
-            if (!active && enemy.active_m() < minutesInactive) continue;
-            if (enemy.hasUnsetMil() || me.hasUnsetMil()) continue;
+            if ((ignoreAlliances.contains(enemy.getAlliance_id()) != includeAlliances) && (includeAlliances || enemy.getPosition() > 1)) continue;
+            if (attackedDefenderIds.contains(enemy.getNation_id())) continue;
+
             enemies.add(enemy);
+            enemyIds.add(enemy.getNation_id());
+            if (!ignoreBank && enemy.getAlliance_id() != 0 && enemy.getPositionEnum() != Rank.APPLICANT) {
+                allianceIds.add(enemy.getAlliance_id());
+            }
+        }
+
+        timing.filterNs = System.nanoTime() - filterStartNs;
+        timing.filteredCandidates = enemies.size();
+        if (enemies.isEmpty()) {
+            timing.totalNs = System.nanoTime() - totalStartNs;
+            if (timing.shouldLog()) {
+                timing.log();
+            }
+            return Collections.emptyList();
         }
 
         double infraCost = PW.City.Infra.calculateInfra(me.getAvg_infra(), me.getAvg_infra() - me.getAvg_infra() * 0.05) * me.getCities();
-
         double foodFactor = db != null && db.getOffshore() == Locutus.imp().getRootBank() ? 2 : 1;
-
-        double lootPct = 0.14;
-
-        Map<DBNation, Double> lootTotal = new HashMap<>();
-        Map<DBNation, Double> lootEst = new HashMap<>();
-
         long turn = TimeUtil.getTurn();
+
         ValueStore cacheStore = PlaceholderCache.createIsolatedCache(enemies, DBNation.class);
+        List<Map.Entry<DBNation, Double>> baseLootValues = new ObjectArrayList<>(enemies.size());
         for (DBNation enemy : enemies) {
-            double value = 0;
-            {
-                LootEntry loot = enemy.getBeigeLoot(cacheStore);
-                if (loot != null) {
-                    double[] total = loot.getTotal_rss();
-                    for (ResourceType type : ResourceType.values) {
-                        double amt = total[type.ordinal()];
-                        if (amt > 0) {
-                            value += ResourceType.convertedTotal(type, type == ResourceType.FOOD ? amt * foodFactor : amt);
-                        }
+            double lootValue = 0;
+            LootEntry loot;
+
+            long beigeLootStartNs = System.nanoTime();
+            loot = enemy.getBeigeLoot(cacheStore);
+            if (loot != null) {
+                double[] total = loot.getTotal_rss();
+                for (ResourceType type : ResourceType.values) {
+                    double amt = total[type.ordinal()];
+                    if (amt > 0) {
+                        lootValue += ResourceType.convertedTotal(type, type == ResourceType.FOOD ? amt * foodFactor : amt);
                     }
                 }
-
-                double revenueEst = 0;
-                if (!ignoreCity) {
-                    long turnInactive = TimeUtil.getTurn(enemy.lastActiveMs());
-                    if (loot != null) {
-                        long lootTurn = TimeUtil.getTurn(loot.getDate());
-                        if (lootTurn > turnInactive) turnInactive = lootTurn;
-                    }
-                    long turnEntered = enemy.getEntered_vm();
-                    long turnEnded = enemy.getLeaving_vm();
-
-                    if (enemy.getVm_turns() > 0) {
-                        if (turnEntered > turnInactive) {
-                            turnInactive = turn - (turnEntered - turnInactive);
-                        } else {
-                            turnInactive = turn;
-                        }
-                    } else if (turnEnded > turnInactive) {
-                        turnInactive = turnEnded;
-                    }
-                    int turnsInactive = (int) (turn - turnInactive);
-
-                    if (turnsInactive > 0) {
-                        double[] revenue = enemy.getRevenue(null, turnsInactive + 24, true, true, false, true, false, false, 0d, false);
-                        if (loot != null) {
-                            if (revenue[ResourceType.FOOD.ordinal()] > 0) {
-                                revenue[ResourceType.FOOD.ordinal()] *= foodFactor;
-                            }
-                            revenue = PW.capManuFromRaws(revenue, loot.getTotal_rss());
-                        }
-                        revenueEst = ResourceType.convertedTotal(revenue);
-                    }
-                }
-                value += revenueEst;
-
-                lootTotal.put(enemy, value);
-                lootEst.put(enemy, value * lootPct * enemy.lootModifier());
             }
+            timing.beigeLootNs += System.nanoTime() - beigeLootStartNs;
+
+            long revenueStartNs = System.nanoTime();
+            double revenueEst = 0;
+            if (!ignoreCity) {
+                long turnInactive = TimeUtil.getTurn(enemy.lastActiveMs());
+                if (loot != null) {
+                    long lootTurn = TimeUtil.getTurn(loot.getDate());
+                    if (lootTurn > turnInactive) {
+                        turnInactive = lootTurn;
+                    }
+                }
+                long turnEntered = enemy.getEntered_vm();
+                long turnEnded = enemy.getLeaving_vm();
+
+                if (enemy.getVm_turns() > 0) {
+                    if (turnEntered > turnInactive) {
+                        turnInactive = turn - (turnEntered - turnInactive);
+                    } else {
+                        turnInactive = turn;
+                    }
+                } else if (turnEnded > turnInactive) {
+                    turnInactive = turnEnded;
+                }
+                int turnsInactive = (int) (turn - turnInactive);
+
+                if (turnsInactive > 0) {
+                    double[] revenue = enemy.getRevenue(null, turnsInactive + 24, true, true, false, true, false, false, 0d, false);
+                    if (loot != null) {
+                        if (revenue[ResourceType.FOOD.ordinal()] > 0) {
+                            revenue[ResourceType.FOOD.ordinal()] *= foodFactor;
+                        }
+                        revenue = PW.capManuFromRaws(revenue, loot.getTotal_rss());
+                    }
+                    revenueEst = ResourceType.convertedTotal(revenue);
+                }
+            }
+            timing.revenueNs += System.nanoTime() - revenueStartNs;
+
+            baseLootValues.add(new KeyValue<>(enemy, (lootValue + revenueEst) * RAID_LOOT_PCT * enemy.lootModifier()));
         }
 
-        lootEst = new SummedMapRankBuilder<>(lootEst).sort().get();
+        long bankStartNs = System.nanoTime();
+        Map<Integer, LootEntry> allianceLootByAllianceId = ignoreBank
+                ? Collections.emptyMap()
+                : Locutus.imp().getNationDB().getAllianceLootMap(allianceIds);
+        timing.bankNs += System.nanoTime() - bankStartNs;
 
-        int i = 0;
-        for (Map.Entry<DBNation, Double> lootEntry : lootEst.entrySet()) {
-            DBNation enemy = lootEntry.getKey();
-            double value = lootEntry.getValue();
+        long bountyStartNs = System.nanoTime();
+        Map<Integer, List<DBBounty>> bountiesByNationId = Locutus.imp().getWarDb().getBountiesByNationIds(enemyIds);
+        timing.bountyNs += System.nanoTime() - bountyStartNs;
 
+        Map<Integer, Double> allianceScores = new HashMap<>();
+        List<RaidCandidate> candidateList = new ObjectArrayList<>(baseLootValues.size());
+        Set<Integer> riskNationIds = new IntOpenHashSet();
+        for (Map.Entry<DBNation, Double> baseEntry : baseLootValues) {
+            DBNation enemy = baseEntry.getKey();
+            double value = baseEntry.getValue();
+
+            long bankCalcStartNs = System.nanoTime();
             double bankLootEst = 0;
-
-            if (!ignoreBank) {
-                DBAlliance alliance = enemy.getAlliance();
-                if (alliance != null && enemy.getPositionEnum() != Rank.APPLICANT) {
-                    LootEntry aaLoot = alliance.getLoot();
-                    if (aaLoot != null) {
-                        Double allianceScore = allianceScores.get(enemy.getAlliance_id());
-                        if (allianceScore == null) {
-                            allianceScores.put(enemy.getAlliance_id(), allianceScore = alliance.getScore());
-                        }
-
-                        double ratio = ((score * 10000) / allianceScore) / 2d;
-                        double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
-                        double convertedTotal = 0;
-                        for (ResourceType type : ResourceType.values) {
-                            double amt = aaLoot.getTotal_rss()[type.ordinal()];
-                            if (amt > 0) {
-                                convertedTotal += ResourceType.convertedTotal(type, type == ResourceType.FOOD ? amt * foodFactor : amt);
-                            }
-                        }
-                        bankLootEst = convertedTotal * percent;
-                        value += bankLootEst;
+            if (!ignoreBank && enemy.getPositionEnum() != Rank.APPLICANT) {
+                LootEntry allianceLoot = allianceLootByAllianceId.get(enemy.getAlliance_id());
+                if (allianceLoot != null) {
+                    Double allianceScore = allianceScores.get(enemy.getAlliance_id());
+                    if (allianceScore == null) {
+                        allianceScore = DBAlliance.getOrCreate(enemy.getAlliance_id()).getScore();
+                        allianceScores.put(enemy.getAlliance_id(), allianceScore);
                     }
+                    bankLootEst = estimateAllianceBankLoot(allianceLoot, score, allianceScore, foodFactor);
+                    value += bankLootEst;
                 }
             }
+            timing.bankNs += System.nanoTime() - bankCalcStartNs;
 
-            List<DBBounty> natBounties = allBounties.get(enemy.getNation_id());
-            if (natBounties != null && !natBounties.isEmpty()) {
-                Map<WarType, Double> total = new HashMap<>();
-                for (WarType type : WarType.values) {
-                    switch (type) {
-                        case RAID:
-                            total.put(type, value);
-                            break;
-                        case ORD:
-                            total.put(type, value * 0.5);
-                            break;
-                        case ATT:
-                            total.put(type, value * 0.25);
-                            break;
-                    }
-                }
-                for (DBBounty bounty : natBounties) {
-                    if (bounty.getType() == WarType.NUCLEAR) {
-                        if (me.getNukes() > 0) {
-                            long amount = bounty.getAmount() - 1000000;
-                            for (WarType type : WarType.values) {
-                                if (type == WarType.NUCLEAR) continue;
-                                total.put(type, total.getOrDefault(bounty.getType(), 0d) + amount);
-                            }
-                        }
-                        continue;
-                    }
-                    total.put(bounty.getType(), total.getOrDefault(bounty.getType(), 0d) + bounty.getAmount());
-                }
-                for (Map.Entry<WarType, Double> entry : total.entrySet()) {
-                    value = Math.max(value, entry.getValue());
-                }
+            long bountyCalcStartNs = System.nanoTime();
+            value = applyBounties(me, value, bountiesByNationId.get(enemy.getNation_id()));
+            timing.bountyNs += System.nanoTime() - bountyCalcStartNs;
+
+            if (value <= minLoot) {
+                continue;
             }
 
-            double originalValue = value;
+            boolean riskEligible = isRiskEligible(enemy, enemyAAs);
+            if (riskEligible) {
+                riskNationIds.add(enemy.getNation_id());
+            }
+
+            candidateList.add(new RaidCandidate(
+                    enemy,
+                    value,
+                    bankLootEst,
+                    riskEligible ? enemy.getGroundStrength(true, false) : 0,
+                    riskEligible ? enemy.militaryValue(null, false) : 0,
+                    riskEligible));
+        }
+
+        timing.upperBoundCandidates = candidateList.size();
+        timing.riskPool = riskNationIds.size();
+        if (candidateList.isEmpty()) {
+            timing.totalNs = System.nanoTime() - totalStartNs;
+            if (timing.shouldLog()) {
+                timing.log();
+            }
+            return Collections.emptyList();
+        }
+
+        long activityStartTurn = turn - RAID_ACTIVITY_LOOKBACK_TURNS;
+        long activityLoadStartNs = System.nanoTime();
+        Map<Integer, Set<Long>> riskActivityTurns = riskNationIds.isEmpty()
+                ? Collections.emptyMap()
+                : Locutus.imp().getNationDB().getActivityByTurn(activityStartTurn, turn, riskNationIds);
+        timing.activityNs += System.nanoTime() - activityLoadStartNs;
+
+        long counterLoadStartNs = System.nanoTime();
+        Set<Integer> nationsWithWars = riskNationIds.isEmpty()
+                ? Collections.emptySet()
+                : Locutus.imp().getWarDb().getNationIdsWithWars(riskNationIds);
+        Map<Integer, DBWar> lastDefensiveWars = riskNationIds.isEmpty()
+                ? Collections.emptyMap()
+                : Locutus.imp().getWarDb().getLastDefensiveWarsByNationIds(riskNationIds);
+        List<DBWar> activeLastWars = new ObjectArrayList<>();
+        for (DBWar lastWar : lastDefensiveWars.values()) {
+            if (lastWar.getStatus() == WarStatus.ACTIVE) {
+                activeLastWars.add(lastWar);
+            }
+        }
+        Map<Integer, CounterStat> counterStatsByWarId = activeLastWars.isEmpty()
+                ? Collections.emptyMap()
+                : Locutus.imp().getWarDb().getCounterStatsByWarIds(activeLastWars);
+        timing.counterNs += System.nanoTime() - counterLoadStartNs;
+
+        long orderStartNs = System.nanoTime();
+        PriorityQueue<RaidCandidate> candidatesByUpperBound = new PriorityQueue<>(candidateList);
+        timing.upperBoundOrderNs = System.nanoTime() - orderStartNs;
+
+        Map<Integer, Activity> activityCache = new HashMap<>();
+        PriorityQueue<Map.Entry<DBNation, Map.Entry<Double, Double>>> topResults =
+                new PriorityQueue<>(numResults, Comparator.comparingDouble(entry -> entry.getValue().getKey()));
+
+        while (!candidatesByUpperBound.isEmpty()) {
+            RaidCandidate candidate = candidatesByUpperBound.poll();
+            if (topResults.size() >= numResults && candidate.upperBound <= topResults.peek().getValue().getKey()) {
+                break;
+            }
+
+            DBNation enemy = candidate.enemy;
+            double value = candidate.upperBound;
             double winChance = 1;
             double costIncurred = 0;
             double activeChance = enemy.active_m() < 10000 ? (enemy.active_m() < 3000 ? 1 : 0.5) : 0;
 
-            if (value <= minLoot) continue;
+            if (candidate.riskEligible) {
+                timing.riskEvaluated++;
 
-            double counterChance = -1;
-            long myMilValue = me.militaryValue(null, false);
+                long activityEvalStartNs = System.nanoTime();
+                Activity activity = activityCache.computeIfAbsent(enemy.getNation_id(), ignored ->
+                    Activity.fromTurns(riskActivityTurns.getOrDefault(enemy.getNation_id(), Collections.emptySet()), activityStartTurn, turn));
+                activeChance = activity.loginChance(RAID_ACTIVITY_WINDOW_TURNS, true);
+                timing.activityNs += System.nanoTime() - activityEvalStartNs;
 
-            if (enemy.active_m() < 10000 && enemy.getAlliance_id() != 0 && !enemyAAs.contains(enemy.getAlliance_id())) {
-                int turns = 2 * 12;
-                long startTurn = TimeUtil.getTurn() - 70 * 12;
-                Activity activity = new Activity(enemy.getNation_id(), startTurn, Long.MAX_VALUE);
-                activeChance = activity.loginChance(turns, true);
-                if (me.getShips() <= enemy.getShips()) {
-                    value -= Math.max(0, value - bankLootEst) * 0.75 * activeChance;
+                if (myShips <= enemy.getShips()) {
+                    value -= Math.max(0, value - candidate.bankLootEst) * 0.75 * activeChance;
                 } else {
-                    value -= Math.max(0, value - bankLootEst) * 0.25 * activeChance;
+                    value -= Math.max(0, value - candidate.bankLootEst) * 0.25 * activeChance;
                 }
 
-                long enemyMilValue = enemy.militaryValue(null, false);
-                long minMilValue = (long) (Math.min(myMilValue, enemyMilValue) * 0.5);
-
-                if (enemy.getGroundStrength(true, false) > me.getGroundStrength(false, true)) {
-                    if (enemy.getGroundStrength(true, false) > me.getGroundStrength(true, true)) {
-                        winChance -= winChance * activeChance;
-                    } else {
-                        winChance -= winChance * activeChance;
-                    }
+                long minMilValue = (long) (Math.min(myMilValue, candidate.enemyMilitaryValue) * 0.5);
+                if (candidate.enemyGroundStrength > myGroundDefensive) {
+                    winChance -= winChance * activeChance;
                 }
-
                 costIncurred += minMilValue * activeChance;
-//
-                Set<DBWar> enemyWars = Locutus.imp().getWarDb().getWarsByNation(enemy.getNation_id());
-                if (!enemyWars.isEmpty()) {
-                    DBWar lastWar = null;
-                    for (DBWar war : enemyWars) {
-                        if (war.getDefender_id() == enemy.getNation_id()) {
-                            lastWar = war;
-                            if (war.getStatus() != WarStatus.ACTIVE) {
-                                break;
-                            }
-                            CounterStat counter = Locutus.imp().getWarDb().getCounterStat(lastWar);
-                            if (counter != null && counter.type == CounterType.GETS_COUNTERED) {
-                                counterChance = 1;
-                                break;
+
+                long counterEvalStartNs = System.nanoTime();
+                DBWar lastWar = lastDefensiveWars.get(enemy.getNation_id());
+                if (lastWar != null) {
+                    if (lastWar.getStatus() == WarStatus.ACTIVE) {
+                        CounterStat counter = counterStatsByWarId.get(lastWar.warId);
+                        if (counter != null && counter.type == CounterType.GETS_COUNTERED) {
+                            costIncurred += Math.min(myMilValue, 1_000_000L * enemy.getCities());
+                            if (candidate.enemyGroundStrength * 2 > myGroundDefensive) {
+                                double ratio = candidate.enemyGroundStrength / myGroundDefensive;
+                                winChance -= winChance * Math.min(0.8, ratio * activeChance);
                             }
                         }
                     }
-                    if (lastWar != null) {
-                        if (lastWar.getStatus() == WarStatus.DEFENDER_VICTORY) {
-                            winChance *= 0.5;
-                        } else if (lastWar.getStatus() != WarStatus.ATTACKER_VICTORY) {
-                            winChance *= 0.9;
-                        }
+                    if (lastWar.getStatus() == WarStatus.DEFENDER_VICTORY) {
+                        winChance *= 0.5;
+                    } else if (lastWar.getStatus() != WarStatus.ATTACKER_VICTORY) {
+                        winChance *= 0.9;
                     }
-                } else {
+                } else if (!nationsWithWars.contains(enemy.getNation_id())) {
                     winChance *= 0.8;
                 }
-            }
-
-            if (counterChance != -1) {
-                costIncurred += Math.min(myMilValue, 1000000 * enemy.getCities()) * counterChance;
-                double enemyGS = enemy.getGroundStrength(true, false);
-                double myGs = me.getGroundStrength(false, true);
-                if (enemyGS * 2 > myGs) {
-                    double ratio = enemyGS / myGs;
-                    winChance = winChance - winChance * Math.min(0.8, ratio * counterChance * activeChance);
-                }
+                timing.counterNs += System.nanoTime() - counterEvalStartNs;
             }
 
             costIncurred += (1 - winChance) * infraCost;
 
-            value = value * winChance;
-            value -= costIncurred;
+            double finalValue = value * winChance - costIncurred;
+            if (finalValue <= minLoot) {
+                continue;
+            }
 
-            nationNetValues.add(new KeyValue<>(enemy, new KeyValue<>(value, originalValue)));
+            Map.Entry<DBNation, Map.Entry<Double, Double>> result = new KeyValue<>(enemy, new KeyValue<>(finalValue, candidate.upperBound));
+            if (topResults.size() < numResults) {
+                topResults.add(result);
+            } else if (finalValue > topResults.peek().getValue().getKey()) {
+                topResults.poll();
+                topResults.add(result);
+            }
         }
 
+        long finalSortStartNs = System.nanoTime();
+        List<Map.Entry<DBNation, Map.Entry<Double, Double>>> nationNetValues = new ObjectArrayList<>(topResults);
         nationNetValues.sort((o1, o2) -> Double.compare(o2.getValue().getKey(), o1.getValue().getKey()));
+        timing.finalSortNs = System.nanoTime() - finalSortStartNs;
 
-        nationNetValues.removeIf(f -> f.getKey().isBeige() && beigeTurns != -1 && beigeTurns != Integer.MAX_VALUE && f.getKey().getBeigeTurns() >= beigeTurns);
-
-        // cap nationNetValues at numResults
-        if (nationNetValues.size() > numResults) {
-            nationNetValues = nationNetValues.subList(0, numResults);
+        timing.resultCount = nationNetValues.size();
+        timing.totalNs = System.nanoTime() - totalStartNs;
+        if (timing.shouldLog()) {
+            timing.log();
         }
 
         return nationNetValues;
