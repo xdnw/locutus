@@ -41,9 +41,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding.checkMembership;
-import static link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.getCounterChance;
-
 public class IAEndpoints extends PageHelper {
     @Command(desc = "Return IA audit results for the current nation", viewable = true)
     @IsMemberIngameOrDiscord
@@ -148,6 +145,7 @@ public class IAEndpoints extends PageHelper {
     public WebInt unread_count(@Me GuildDB db, @Me DBNation nation) {
         return new WebInt(db.getPlayerAnnouncementsByNation(nation.getNation_id(), true).size());
     }
+
 
     @Command(desc = "Preview or execute autorole for a guild member")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, alliance = true, any = true)
@@ -256,110 +254,6 @@ public class IAEndpoints extends PageHelper {
         result.breakdown = breakdown.entrySet().stream().collect(Collectors.toMap(f -> f.getKey().name(), Map.Entry::getValue));
         return result;
     }
-//
-    @Command(desc = "Compute raid targets based on provided parameters", viewable = true)
-    @ReturnType(WebTargets.class)
-    public WebTargets raid(@Me @Default GuildDB db, @Me @Default DBNation me, @Me @Default User user,
-                                    @Default DBNation nation,
-                                    @Default("*,#position<=1") Set<DBNation> nations,
-                                    @Default("false") boolean weak_ground,
-                                    @Default("0") int vm_turns,
-                                    @Default("0") int beige_turns,
-                                    @Default("false") boolean ignore_dnr,
-                                    @Default("7d") @Timediff long time_inactive,
-                                    @Default("-1") double min_loot,
-                                    @Default("8") int num_results) throws InterruptedException {
-        if (nation == null) nation = me;
-        if (nation == null) {
-            throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
-        }
-        if (db == null) db = nation.getGuildDB();
-        if (db != null) {
-            if (!checkMembership(db, null, user, me, false)) db = null;
-        }
-
-        List<Map.Entry<DBNation, Map.Entry<Double, Double>>> raidResult = RaidCommand.getNations(
-                db,
-                nation,
-                nations,
-                weak_ground,
-                vm_turns,
-                -1,
-                beige_turns > 0,
-                !ignore_dnr,
-                Collections.emptySet(),
-                false,
-                false,
-                time_inactive / TimeUnit.MINUTES.toMillis(1),
-                nation.getScore(),
-                min_loot, beige_turns,
-                false, false, num_results
-        );
-        List<WebTarget> targets = new ObjectArrayList<>();
-        for (Map.Entry<DBNation, Map.Entry<Double, Double>> entry : raidResult) {
-            DBNation other = entry.getKey();
-            double expected = entry.getValue().getKey();
-            double loot = entry.getValue().getValue();
-            targets.add(new WebTarget(other, expected, loot, 0));
-        }
-        WebTargets result = targets(nation, targets);
-        return result;
-    }
-
-    @Command(desc = "List unprotected counter targets with various filters", viewable = true)
-    @ReturnType(WebTargets.class)
-    public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me, @Default @Me User user,
-                           ValueStore store,
-                           @Default DBNation nation,
-                           @Default("*") Set<DBNation> nations,
-                           @Switch("a") boolean includeAllies,
-                           @Switch("o") boolean ignoreODP,
-                           @Default("false") boolean ignore_dnr,
-                           @Arg("The maximum allowed military strength of the target nation relative to you")
-                           @Switch("s") @Default("1.2") Double maxRelativeTargetStrength,
-                           @Arg("The maximum allowed military strength of counters relative to you")
-                           @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
-                           @Arg("Only list targets within range of ALL attackers")
-                           @Default("8") int num_results) throws InterruptedException {
-        if (nation == null) nation = me;
-        if (nation == null) {
-            throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
-        }
-        if (db == null) db = nation.getGuildDB();
-        if (db != null) {
-            if (!checkMembership(db, null, user, me, false)) db = null;
-        }
-
-        Set<DBNation> nationsToBlitzWith = Set.of(nation);
-        List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, nations, num_results, ignore_dnr, includeAllies, Set.of(nation), maxRelativeTargetStrength, maxRelativeCounterStrength, false, ignoreODP, true);
-        List<DBNation> counterNations = counterChance.stream().map(Map.Entry::getKey).collect(Collectors.toList());
-        ValueStore cacheStore = PlaceholderCache.createCache(store, counterNations, DBNation.class);
-
-        double myStrength = nationsToBlitzWith.stream().mapToDouble(f -> Math.pow(f.getStrength(), 3)).sum();
-
-        if (counterChance.size() > num_results) {
-            counterChance = counterChance.subList(0, num_results);
-        }
-
-
-        List<WebTarget> targets = new ObjectArrayList<>();
-        for (Map.Entry<DBNation, Double> entry : counterChance) {
-            DBNation other = entry.getKey();
-            double strength = entry.getValue();
-            double loot = other.lootTotal(cacheStore);
-            targets.add(new WebTarget(other, loot, loot, 100 * strength / myStrength));
-        }
-        WebTargets result = targets(nation, targets);
-        result.include_strength = true;
-        return result;
-    }
-
-    public WebTargets targets(DBNation self, List<WebTarget> targets) {
-        WebTargets result = new WebTargets(self);
-        result.targets = targets;
-        return result;
-    }
-
     @Command(desc = "Fetch bank transaction records for a nation", viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebTable.class)

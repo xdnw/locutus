@@ -3588,6 +3588,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public Set<Integer> getTreasureNationIds() {
+        synchronized (treasuresByNation) {
+            return new ObjectOpenHashSet<>(treasuresByNation.keySet());
+        }
+    }
+
     public Map<String, DBTreasure> getTreasuresByName() {
         return Collections.unmodifiableMap(treasuresByName);
     }

@@ -82,94 +82,36 @@ public class Damage extends Command {
         } else {
             nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         }
-        nations.removeIf(f -> f.getDef() >= 3);
-        nations.removeIf(f -> f.getVm_turns() != 0);
-        if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);
-        if (!includeInactives) nations.removeIf(f -> f.active_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
-        if (filterNoShips) nations.removeIf(f -> f.getShips() > 2);
-        if (!includeBeige) nations.removeIf(DBNation::isBeige);
-
-        if (score == null) score = me.getScore();
-        double minScore = score * 0.75;
-        double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
-
-        nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
-
         me = DiscordUtil.getNation(author);
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
-        double str = me.getGroundStrength(false, true);
-        str = Math.max(str, me.getCities() * 15000);
-        if (filterWeak) {
-            double finalStr = str;
-            nations.removeIf(f -> f.getGroundStrength(true, false) > finalStr * 0.4);
-        }
+        if (score == null) score = me.getScore();
 
-
-        Map<Integer, Double> maxInfraByNation = new HashMap<>();
-        Map<Integer, Double> damageEstByNation = new HashMap<>();
-        Map<Integer, Double> avgInfraByNation = new HashMap<>();
-
-        Map<Integer, List<Double>> cityInfraByNation = new HashMap<>();
-
-        {
-            for (DBNation nation : nations) {
-                Collection<JavaCity> cities = nation.getCityMap(false, false, false).values();
-                List<Double> allInfra = cities.stream().map(JavaCity::getInfra).collect(Collectors.toList());
-                double max = Collections.max(allInfra);
-                double average = allInfra.stream().mapToDouble(f -> f).average().orElse(0);
-                avgInfraByNation.put(nation.getNation_id(), average);
-                maxInfraByNation.put(nation.getNation_id(), max);
-                cityInfraByNation.put(nation.getNation_id(), allInfra);
-            }
-        }
-
-        {
-            for (Map.Entry<Integer, List<Double>> entry : cityInfraByNation.entrySet()) {
-                double cost = damageEstimate(me, entry.getKey(), entry.getValue());
-                if (cost <= 0) continue;
-                damageEstByNation.put(entry.getKey(), cost);
-            }
-
-        }
-
-        Map<Integer, Double> valueFunction;
-        if (flags.contains('m')) valueFunction = avgInfraByNation;
-        else if (flags.contains('c')) valueFunction = maxInfraByNation;
-        else valueFunction = damageEstByNation;
+        WarTargetFinder.DamageTargets damageTargets = WarTargetFinder.getDamageTargets(
+                me,
+                nations,
+                includeApps,
+                includeInactives,
+                filterWeak,
+                filterNoShips,
+                includeBeige,
+                score
+        );
 
         if (flags.contains('d')) {
             channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
 
-        if (valueFunction.isEmpty()) {
+        List<Map.Entry<DBNation, Double>> maxInfraSorted = damageTargets.topTargets(15, flags.contains('m'), flags.contains('c'), false);
+        if (maxInfraSorted.isEmpty()) {
             channel.sendMessage("No results (found", RateLimitedSources.COMMAND_RESULT);
             return null;
         }
-
-        List<Map.Entry<DBNation, Double>>  maxInfraSorted = new ArrayList<>();
-        for (Map.Entry<Integer, Double> entry : valueFunction.entrySet()) {
-            DBNation nation = DBNation.getById(entry.getKey());
-            double amt = entry.getValue();
-            maxInfraSorted.add(new KeyValue<>(nation, amt));
-        }
-        maxInfraSorted.sort((o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
 
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + ":**\n");
         for (int i = 0; i < Math.min(15, maxInfraSorted.size()); i++) {
             Map.Entry<DBNation, Double> entry = maxInfraSorted.get(i);
             DBNation nation = entry.getKey();
-
-            double numCities = 2;
-            if (nation.getGroundStrength(true, false) < me.getGroundStrength(true, false) * 0.4) {
-                numCities++;
-                if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
-            }
-            if (nation.active_m() > 2440) numCities++;
-            if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
-            if (nation.getCities() <= me.getCities() * 0.5) numCities++;
-            if (nation.active_m() > 10000) numCities++;
-
-            double cost = damageEstByNation.getOrDefault(nation.getNation_id(), 0d);
+            double cost = damageTargets.damageEstByNation().getOrDefault(nation.getNation_id(), 0d);
             String moneyStr = "$" + MathMan.format(cost);
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
@@ -178,43 +120,6 @@ public class Damage extends Command {
     }
 
     public double damageEstimate(DBNation me, int nationId, List<Double> cityInfra) {
-        DBNation nation = DBNation.getById(nationId);
-        if (nation == null) return 0;
-
-
-        double numCities = 0;
-        if (me.hasProject(Projects.MISSILE_LAUNCH_PAD)) {
-            numCities += 0.5;
-            if (nation.hasProject(Projects.IRON_DOME)) numCities -= 0.15;
-        }
-        if (me.hasProject(Projects.NUCLEAR_RESEARCH_FACILITY)) {
-            numCities += 1.5;
-            if (nation.hasProject(Projects.VITAL_DEFENSE_SYSTEM)) numCities -= 0.375;
-        }
-        if (nation.getGroundStrength(true, false) < me.getGroundStrength(true, false) * 0.4) {
-            numCities++;
-            if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
-        }
-        if (nation.active_m() > 2440) numCities+=0.5;
-        if (nation.active_m() > 4880) numCities+=0.5;
-        if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
-        if (nation.getCities() <= me.getCities() * 0.5) numCities++;
-        if (nation.active_m() > 10000) numCities += 10;
-
-        if (numCities == 0) return 0;
-
-        double cost = 0;
-        Collections.sort(cityInfra);
-        int i = cityInfra.size() - 1;
-        while (i >= 0 && numCities > 0) {
-            Double infra = cityInfra.get(i);
-            if (infra <= 600) break;
-            double factor = Math.min(numCities, 1);
-            cost += factor * PW.City.Infra.calculateInfra(infra * 0.6-500, infra);
-
-            i--;
-            numCities--;
-        }
-        return cost;
+        return WarTargetFinder.damageEstimate(me, nationId, cityInfra);
     }
 }

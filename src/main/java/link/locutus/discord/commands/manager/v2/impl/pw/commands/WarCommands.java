@@ -166,7 +166,7 @@ public class WarCommands {
         result.append("- mode:`").append(me.getBeigeAlertMode(null)).append("` (default:`NO_ALERTS`)\n");
         result.append("- score-leway:`").append(me.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY)).append("` (default:`0ns`)\n");
         result.append("- required-loot:`").append(me.getMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT)).append("` (default:`$15m`)\n");
-        result.append("- required-status:`").append(requiredStatus.name()).append("` (default:`ONLINE`)\n");
+        result.append("- required-status:`").append(requiredStatus.name()).append("` (default:`ONLINE`)");
         return result.toString();
     }
 
@@ -297,10 +297,9 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc = """
-            Find targets to raid
-            Sorted by best nation loot
-            Defaults to 7d inactive""", viewable = true,
+    @Command(desc = "Find targets to raid\n" +
+            "Sorted by best nation loot\n" +
+            "Defaults to 7d inactive", viewable = true,
     groups = {
             "Result Options",
             "Filter Options"
@@ -848,187 +847,6 @@ public class WarCommands {
 
     }
 
-    public static List<Map.Entry<DBNation, Double>> getCounterChance(GuildDB db, Set<DBNation> targets,
-                                                                     @Switch("r") @Default("10") @Range(min=1, max=25) Integer numResults,
-                                                                     @Switch("d") boolean ignoreDNR,
-                                                                     @Switch("a") boolean includeAllies,
-                                                                     @Switch("n") Set<DBNation> nationsToBlitzWith,
-                                                                     @Switch("s") @Default("1.2") Double maxRelativeTargetStrength,
-                                                                     @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
-                                                                     @Switch("w") boolean withinAllAttackersRange,
-                                                                     @Switch("o") boolean ignoreODP,
-                                                                     @Switch("f") boolean force) {
-        if (ignoreODP && !includeAllies) {
-            throw new IllegalArgumentException("Cannot use `ignoreODP` when `includeAllies` is false");
-        }
-        if (nationsToBlitzWith.stream().anyMatch(f -> f.active_m() > 7200 || f.getVm_turns() > 0) && !force) {
-            throw new IllegalArgumentException("You can't blitz with nations that are inactive or VM. Add `force: True` to bypass");
-        }
-        BiFunction<Double, Double, Integer> attScores = PW.getIsNationsInScoreRange(nationsToBlitzWith);
-
-//        double minScore = me.getScore() * 0.75;
-//        double maxScore = me.getScore() * PW.WAR_RANGE_MAX_MODIFIER;
-        List<DBNation> nations = new ArrayList<>(targets);
-        nations.removeIf(f -> f.getVm_turns() != 0);
-        nations.removeIf(f -> f.getDef() >= 3);
-        nations.removeIf(DBNation::isBeige);
-        if (withinAllAttackersRange) {
-            if (nationsToBlitzWith == null) {
-                throw new IllegalArgumentException("Please provide a list of nations for `nationsToBlitzWith`");
-            }
-            double minScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).max().orElse(0) * 0.75;
-            double maxScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).min().orElse(0) * PW.WAR_RANGE_MAX_MODIFIER;
-            if (minScore >= maxScore) {
-                throw new IllegalArgumentException("Nations `nationsToBlitzWith` do not share a score range.");
-            }
-            nations.removeIf(f -> f.getScore() < minScore || f.getScore() > maxScore);
-        } else {
-            nations.removeIf(f -> attScores.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() * 1.25) <= 0);
-        }
-
-        if (!ignoreDNR) {
-            Function<DBNation, Boolean> dnr = db == null ? f -> true : db.getCanRaid();
-            nations.removeIf(f -> !dnr.apply(f));
-        }
-
-        Set<Integer> aaIds = new IntOpenHashSet();
-        for (DBNation nation : nations) {
-            if (nation.active_m() < 10000 && nation.getPosition() >= Rank.MEMBER.id) {
-                aaIds.add(nation.getAlliance_id());
-            }
-        }
-
-        Map<Integer, List<DBNation>> countersByAlliance = new HashMap<>();
-
-        int maxCounterSize = nationsToBlitzWith.size() * 3;
-        for (DBNation nation : nationsToBlitzWith) {
-            maxCounterSize -= nation.getDef();
-        }
-        for (Integer aaId : aaIds) {
-            List<DBNation> canCounter = new ArrayList<>();
-            DBAlliance alliance = DBAlliance.getOrCreate(aaId);
-            Set<DBAlliance> alliances = new HashSet<>(Arrays.asList(alliance));
-            if (includeAllies) {
-                Set<DBAlliance> allies;
-                if (ignoreODP) {
-                    allies = alliance.getTreatiedAllies(f -> f != TreatyType.ODP && f.isDefensive(), false);
-                } else {
-                    allies = alliance.getTreatiedAllies();
-                }
-                alliances.addAll(allies);
-            }
-            for (DBAlliance ally : alliances) {
-                canCounter.addAll(ally.getNations(true, 10000, true));
-            }
-
-            canCounter.removeIf(f -> f.getVm_turns() > 0);
-            canCounter.removeIf(f -> f.getCities() < 10 && f.active_m() > 2880);
-            canCounter.removeIf(f -> f.getCities() == 10 && f.active_m() > 3000);
-            canCounter.removeIf(f -> f.getCities() > 10 && f.active_m() > 12000);
-            canCounter.removeIf(f -> attScores.apply(f.getScore() * 0.75, f.getScore() * PW.WAR_RANGE_MAX_MODIFIER) <= 0);
-            canCounter.removeIf(f -> f.getOff() >= f.getMaxOff());
-//            canCounter.removeIf(f -> f.getAircraft() < me.getAircraft() * 0.6);
-            canCounter.removeIf(f -> f.getNumWars() > 0 && f.getRelativeStrength() < 1);
-            canCounter.removeIf(f -> f.getAircraftPct() < 0.5 && f.getTankPct() < 0.5);
-
-            Collections.sort(canCounter, new Comparator<DBNation>() {
-                @Override
-                public int compare(DBNation o1, DBNation o2) {
-                    return Double.compare(o2.getStrength(), o1.getStrength());
-                }
-            });
-            if (canCounter.size() > maxCounterSize) canCounter = canCounter.subList(0, maxCounterSize);
-            countersByAlliance.put(aaId, canCounter);
-        }
-
-        Map<DBNation, Double> strength = new HashMap<>();
-        List<Map.Entry<DBNation, Double>> counterChance = new ArrayList<>();
-        for (DBNation nation : nations) {
-            if (nation.active_m() > 2880) {
-                if (nation.lostInactiveWar() || nation.getAlliance_id() == 0) {
-                    strength.put(nation, Math.pow(nation.getStrength(), 3) * 0.44);
-                    continue;
-                }
-                if (nation.getPosition() == Rank.APPLICANT.id) {
-                    strength.put(nation, Math.pow(nation.getStrength(), 3) * Math.max(0, 0.8 - 0.1 * nation.active_m() / 1440d));
-                    continue;
-                }
-                strength.put(nation, Math.pow(nation.getStrength(), 3) * Math.max(0, 0.8 - 0.1 * nation.active_m() / 1440d));
-                continue;
-            }
-            if (nation.getAlliance_id() == 0) {
-                strength.put(nation, Math.pow(nation.getStrength(), 3) * 0.66);
-                continue;
-            }
-            if (nation.getDef() > 0 && nation.getRelativeStrength(false) < 1) {
-                strength.put(nation, Math.pow(nation.getStrength(), 3) * 0.33);
-                continue;
-            }
-            if (nation.getAircraft() == 0 && nation.getSoldiers() == 0) {
-                strength.put(nation, Math.pow(nation.getStrength(), 3) * 0.22);
-                continue;
-            }
-            strength.put(nation, Math.pow(nation.getStrength(), 3));
-        }
-         for (DBNation nation : nations) {
-             double counterStrength = 0;
-             double inactive0 = 0;
-             double inactive1 = 0;
-             double inactive2 = 0;
-             if (nation.getAlliance_id() != 0) {
-                 List<DBNation> counters = countersByAlliance.get(nation.getAlliance_id());
-                 if (counters != null) {
-                     counters = new ArrayList<>(counters);
-                     counters.remove(nation);
-                     int i = 0;
-
-                     for (DBNation other : counters) {
-                         if (other.getId() == nation.getId()) continue;
-                         if (i++ >= maxCounterSize) break;
-                         if (other.active_m() > 2880) {
-                             inactive0 += (1 + ((other.active_m() - 2880d) / 1440d));
-                         } else if (other.active_m() > 1440) {
-                             inactive1 += (1 + (other.active_m() - 1440d) / 1440d);
-                         } else {
-                             inactive2 += (1 + (other.active_m()) / 1440d);
-                         }
-                         counterStrength += Math.pow(other.getStrength(), 3);
-                     }
-                 }
-             }
-             double logistics = inactive0 * 2 + inactive1 * 1 + inactive2 * 0.5;
-             if (logistics > 1) {
-                 counterStrength = counterStrength * Math.pow(logistics, 0.95);
-             }
-             counterStrength += strength.get(nation) * (Math.pow(0.85, Math.min(3, nationsToBlitzWith.size())) / 0.85);
-             counterChance.add(new KeyValue<>(nation, counterStrength));
-         }
-
-        // nationsToBlitzWith foreach nation.getStrength();
-        double myStrength = nationsToBlitzWith.stream().mapToDouble(f -> Math.pow(f.getStrength(), 3)).sum();
-
-        if (maxRelativeCounterStrength != null) {
-            counterChance.removeIf(f -> f.getKey().getStrength() > myStrength * maxRelativeCounterStrength);
-            counterChance.removeIf(f -> strength.getOrDefault(f.getKey(), 0d) > myStrength * maxRelativeTargetStrength);
-        }
-
-        if (counterChance.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        Map<DBNation, Double> valueWeighted = new HashMap<>();
-        for (Map.Entry<DBNation, Double> entry : counterChance) {
-            valueWeighted.put(entry.getKey(), entry.getValue());
-        }
-        Collections.sort(counterChance, new Comparator<Map.Entry<DBNation, Double>>() {
-            @Override
-            public int compare(Map.Entry<DBNation, Double> o1, Map.Entry<DBNation, Double> o2) {
-                return Double.compare(valueWeighted.get(o1.getKey()), valueWeighted.get(o2.getKey()));
-            }
-        });
-        return counterChance;
-    }
-
     @Command(desc = "Find nations who aren't protected, or are in an alliance unable to provide suitable counters\n" +
             "Not suitable if you have no military", viewable = true)
     @RolePermission(Roles.MEMBER)
@@ -1053,12 +871,13 @@ public class WarCommands {
 
         if (nationsToBlitzWith == null) nationsToBlitzWith = Collections.singleton(me);
 
-        List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, targets, numResults, ignoreDNR, includeAllies, nationsToBlitzWith, maxRelativeTargetStrength, maxRelativeCounterStrength, withinAllAttackersRange, ignoreODP, force);
+        WarTargetFinder.CounterChanceContext counterContext = WarTargetFinder.buildCounterChanceContext(db, targets, ignoreDNR, includeAllies, nationsToBlitzWith, withinAllAttackersRange, ignoreODP, force);
+        List<Map.Entry<DBNation, Double>> counterChance = WarTargetFinder.scoreCounterChance(counterContext, maxRelativeTargetStrength, maxRelativeCounterStrength);
 
         long currentTurn = TimeUtil.getTurn();
         Map<DBNation, Integer> beigeTurns = new HashMap<>();
 
-        double myStrength = nationsToBlitzWith.stream().mapToDouble(f -> Math.pow(f.getStrength(), 3)).sum();
+        double myStrength = counterContext.blitzStrength();
 
         StringBuilder response = new StringBuilder();
         numResults = Math.min(numResults, 25);
@@ -1106,7 +925,8 @@ public class WarCommands {
             int loginPct = (int) (loginChance * 100);
 
             response.append(" | log=" + loginPct + "%");
-            response.append(" | str=" + MathMan.format(100 * counterStrength / myStrength) + "%");
+            double strengthPercent = myStrength <= 0 ? 0 : 100 * counterStrength / myStrength;
+            response.append(" | str=" + MathMan.format(strengthPercent) + "%");
             response.append("```");
         }
 
@@ -1472,169 +1292,36 @@ public class WarCommands {
             throw new IllegalArgumentException("Please select only one targeting option: `targetMeanInfra`, `targetCityMax`, or `targetBeigeMax`.");
         }
 
-        List<String> removeNotes = new ObjectArrayList<>();
-        DBNation finalMe = me;
-        int prevSize;
-        int removedCount;
-
-        // Filter: Def >= 3
-        prevSize = nations.size();
-        nations.removeIf(f -> f.getDef() >= 3);
-        if ((removedCount = prevSize - nations.size()) > 0) {
-            removeNotes.add("Removed because `Def >= 3`: " + removedCount);
-        }
-
-        // Filter: VM Turns
-        prevSize = nations.size();
-        nations.removeIf(f -> f.getVm_turns() != 0);
-        if ((removedCount = prevSize - nations.size()) > 0) {
-            removeNotes.add("Removed because `VM Turns != 0`: " + removedCount);
-        }
-
-        // Filter: Apps (!includeApps)
-        if (!includeApps) {
-            prevSize = nations.size();
-            nations.removeIf(f -> f.getPosition() <= 1);
-            if ((removedCount = prevSize - nations.size()) > 0) {
-                removeNotes.add("Removed because `includeApps:False`: " + removedCount);
-            }
-        }
-
-        // Filter: Inactives (!includeInactives)
-        if (!includeInactives) {
-            prevSize = nations.size();
-            nations.removeIf(f -> f.active_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
-            if ((removedCount = prevSize - nations.size()) > 0) {
-                removeNotes.add("Removed because `includeInactives:False`: " + removedCount);
-            }
-        }
-
-        // Filter: No Navy
-        if (noNavy) {
-            prevSize = nations.size();
-            nations.removeIf(f -> f.getShips() > 2);
-            if ((removedCount = prevSize - nations.size()) > 0) {
-                removeNotes.add("Removed because `noNavy:True`: " + removedCount);
-            }
-        }
-
-        // Filter: Relative Naval Strength
-        if (relativeNavalStrength != null) {
-            prevSize = nations.size();
-            nations.removeIf(f -> f.getShips() > finalMe.getShips() * relativeNavalStrength);
-            if ((removedCount = prevSize - nations.size()) > 0) {
-                removeNotes.add("Removed because `relativeNavalStrength`: " + removedCount);
-            }
-        }
-
-// Filter: Beige
-        if (!includeBeige) {
-            prevSize = nations.size();
-            nations.removeIf(DBNation::isBeige);
-            if ((removedCount = prevSize - nations.size()) > 0) {
-                removeNotes.add("Removed because `includeBeige:False`: " + removedCount);
-            }
-        }
-
-        // Filter: Score Range
-        if (warRange == null || warRange == 0) warRange = me.getScore();
-        double minScore = warRange * 0.75;
-        double maxScore = warRange * PW.WAR_RANGE_MAX_MODIFIER;
-
-        prevSize = nations.size();
-        nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
-        if ((removedCount = prevSize - nations.size()) > 0) {
-            removeNotes.add("Removed because `Score Range`: " + removedCount);
-        }
-
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
-        double str = me.getGroundStrength(false, true);
-        str = Math.max(str, me.getCities() * 15000);
-        if (filterWeak) {
-            double finalStr = str;
-            prevSize = nations.size();
-            nations.removeIf(f -> f.getGroundStrength(true, false) > finalStr * 0.4);
-            if ((removedCount = prevSize - nations.size()) > 0) {
-                removeNotes.add("Removed because `filterWeak:True`: " + removedCount);
-            }
-        }
 
-        Map<Integer, Double> maxInfraByNation = new Int2DoubleOpenHashMap();
-        Map<Integer, Double> damageEstByNation = new Int2DoubleOpenHashMap();
-        Map<Integer, Double> avgInfraByNation = new Int2DoubleOpenHashMap();
-        Map<Integer, Double> avgBeigeInfraByNation = new Int2DoubleOpenHashMap();
-
-        Map<Integer, List<Double>> cityInfraByNation = new Int2ObjectOpenHashMap<>();
-
-        {
-            for (DBNation nation : nations) {
-                Collection<JavaCity> cities = nation.getCityMap(false, false, false).values();
-                List<Double> allInfra = cities.stream().map(JavaCity::getInfra).collect(Collectors.toList());
-                double max = Collections.max(allInfra);
-                double average = allInfra.stream().mapToDouble(f -> f).average().orElse(0);
-                double beigeDmg = 0;
-                double beigeFactor = nation.getBeigeDamageFactor();
-                double beigeAbs = 1 - (0.04 * beigeFactor);
-                for (JavaCity city : cities) {
-                    beigeDmg += PW.City.Infra.calculateInfra(city.getInfra() * beigeAbs, city.getInfra());
-                }
-                avgInfraByNation.put(nation.getNation_id(), average);
-                maxInfraByNation.put(nation.getNation_id(), max);
-                cityInfraByNation.put(nation.getNation_id(), allInfra);
-                avgBeigeInfraByNation.put(nation.getNation_id(), beigeDmg);
-            }
-        }
-
-        {
-            for (Map.Entry<Integer, List<Double>> entry : cityInfraByNation.entrySet()) {
-                double cost = damageEstimate(me, entry.getKey(), entry.getValue());
-                if (cost <= 0) continue;
-                damageEstByNation.put(entry.getKey(), cost);
-            }
-
-        }
-
-        Map<Integer, Double> valueFunction;
-        if (targetMeanInfra) valueFunction = avgInfraByNation;
-        else if (targetCityMax) valueFunction = maxInfraByNation;
-        else if (targetBeigeMax) valueFunction = avgBeigeInfraByNation;
-        else valueFunction = damageEstByNation;
+        WarTargetFinder.DamageTargets damageTargets = WarTargetFinder.getWarDamageTargets(
+                me,
+                nations,
+                includeApps,
+                includeInactives,
+                filterWeak,
+                noNavy,
+                includeBeige,
+                relativeNavalStrength,
+                warRange
+        );
 
         if (resultsInDm && author != null) {
             channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
 
-        String removeMsg = removeNotes.isEmpty() ? "" : "\n- " + String.join("\n- ", removeNotes);
-        if (valueFunction.isEmpty()) {
+        String removeMsg = damageTargets.removeNotes().isEmpty() ? "" : "\n- " + String.join("\n- ", damageTargets.removeNotes());
+        List<Map.Entry<DBNation, Double>> maxInfraSorted = damageTargets.topTargets(15, targetMeanInfra, targetCityMax, targetBeigeMax);
+        if (maxInfraSorted.isEmpty()) {
             return ("No results found." + removeMsg);
         }
-
-        List<Map.Entry<DBNation, Double>>  maxInfraSorted = new ArrayList<>();
-        for (Map.Entry<Integer, Double> entry : valueFunction.entrySet()) {
-            DBNation nation = DBNation.getById(entry.getKey());
-            double amt = entry.getValue();
-            maxInfraSorted.add(new KeyValue<>(nation, amt));
-        }
-        maxInfraSorted.sort((o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
 
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + ":**\n");
         for (int i = 0; i < Math.min(15, maxInfraSorted.size()); i++) {
             Map.Entry<DBNation, Double> entry = maxInfraSorted.get(i);
             DBNation nation = entry.getKey();
 
-            double numCities = 2;
-            if (nation.getGroundStrength(true, false) < me.getGroundStrength(true, false) * 0.4) {
-                numCities++;
-                if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
-            }
-            if (nation.active_m() > 2440) numCities++;
-            if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
-            if (nation.getCities() <= me.getCities() * 0.5) numCities++;
-            if (nation.active_m() > 10000) numCities++;
-
-            List<Double> cityInfra = new ArrayList<>();
-
-            double cost = damageEstByNation.getOrDefault(nation.getNation_id(), 0d);
+            double cost = damageTargets.damageEstByNation().getOrDefault(nation.getNation_id(), 0d);
             String moneyStr = "$" + MathMan.format(cost);
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
