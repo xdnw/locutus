@@ -37,7 +37,6 @@ import static link.locutus.discord.commands.manager.v2.impl.pw.binding.Permissio
 
 public class WarEndpoints extends PageHelper {
     @Command(desc = "Compute raid targets based on provided parameters", viewable = true)
-    @IsMemberIngameOrDiscord
     @ReturnType(value = WebTargets.class, cache = CacheType.SessionStorage, duration = 30)
     public WebTargets raid(@Me @Default GuildDB db, @Me @Default DBNation me, @Me @Default User user,
                            @Default DBNation nation,
@@ -86,7 +85,6 @@ public class WarEndpoints extends PageHelper {
     }
 
     @Command(desc = "List unprotected counter targets with various filters", viewable = true)
-    @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
     public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me, @Default @Me User user,
                                   ValueStore store,
@@ -135,7 +133,6 @@ public class WarEndpoints extends PageHelper {
     }
 
     @Command(desc = "Find damage targets with infra-based sorting", viewable = true)
-    @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
     public WebTargets damage(@Me @Default GuildDB db, @Me @Default DBNation me, @Me @Default User user,
                              @Default DBNation nation,
@@ -201,7 +198,6 @@ public class WarEndpoints extends PageHelper {
     }
 
     @Command(desc = "Find nations in war range that have a treasure", viewable = true)
-    @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
     public WebTargets treasure(@Me @Default GuildDB db, @Me @Default DBNation me, @Me @Default User user,
                                @Default DBNation nation,
@@ -238,7 +234,6 @@ public class WarEndpoints extends PageHelper {
     }
 
     @Command(desc = "Find nations with high bounties within your war range", viewable = true)
-    @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
     public WebTargets bounty(@Me @Default GuildDB db, @Me @Default DBNation me, @Me @Default User user,
                              @Default DBNation nation,
