@@ -980,117 +980,46 @@ public class WarCommands {
         if (resultsInDm && author != null) {
             channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
         }
-        if (attackerScore == null) attackerScore = me.getScore();
 
-        String aa = null;
+        List<Map.Entry<DBNation, Double>> nationNetValues = WarTargetFinder.getWarTargets(
+                me,
+                targets,
+                numResults,
+                attackerScore,
+                includeInactives,
+                includeApplicants,
+                onlyPriority,
+                onlyWeak,
+                onlyEasy,
+                onlyLessCities,
+                includeStrong
+        );
 
-        if (!includeApplicants) targets.removeIf(f -> f.active_m() > 1440 && f.getPosition() <= 1);
-        if (!includeInactives) targets.removeIf(n -> n.active_m() >= 2440);
-        targets.removeIf(n -> n.getVm_turns() != 0);
-//                nations.removeIf(n -> n.isBeige());
-
-        double minScore = attackerScore * 0.75;
-        double maxScore = attackerScore * PW.WAR_RANGE_MAX_MODIFIER;
-
-        List<DBNation> strong = new ArrayList<>();
-        DBNation finalMe = me;
-
-        ArrayList<DBNation> targetsStorted = new ArrayList<>();
-        for (DBNation nation : targets) {
-            if (nation.getScore() >= maxScore || nation.getScore() <= minScore) continue;
-            if (nation.active_m() > 2440 && !includeInactives) continue;
-            if (nation.getVm_turns() != 0) continue;
-            if (nation.getDef() >= 3) continue;
-            if (nation.getCities() >= me.getCities() * 1.5 && !includeStrong && me.getGroundStrength(false, true) > nation.getGroundStrength(true, false) * 2) continue;
-            if (nation.getCities() >= me.getCities() * 1.8 && !includeStrong && nation.active_m() < 2880) continue;
-            targetsStorted.add(nation);
-        }
-
-        if (onlyPriority) {
-            targetsStorted.removeIf(f -> f.getNumWars() == 0);
-            targetsStorted.removeIf(f -> f.getRelativeStrength() <= 1);
-        }
-
-        if (onlyWeak) {
-            targetsStorted.removeIf(f -> f.getGroundStrength(true, false) > finalMe.getGroundStrength(true, false));
-            targetsStorted.removeIf(f -> f.getAircraft() > finalMe.getAircraft());
-        }
-        if (onlyLessCities) {
-            targetsStorted.removeIf(f -> f.getCities() > finalMe.getCities());
-        }
-
-        Set<DBWar> wars = me.getActiveWars();
-        for (DBWar war : wars) {
-            targetsStorted.remove(war.getNation(true));
-            targetsStorted.remove(war.getNation(false));
-        }
-
-        int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.getUnitCap() * 5 * 2;
-
-        long currentTurn = TimeUtil.getTurn();
-
-        List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
-
-        for (DBNation nation : targetsStorted) {
-            if (nation.isBeige()) continue;
-            double value;
-            if (onlyEasy) {
-                value = BlitzGenerator.getAirStrength(nation, true);
+        if (nationNetValues.isEmpty()) {
+            String message;
+            if (onlyPriority) {
+                message = "No targets found. Try " + CM.war.find.enemy.cmd.toSlashMention();
             } else {
-//                        SimulatedWarNode origin = SimulatedWarNode.of(nation, me.getNation_id() + "", nation.getNation_id() + "", "raid");
-                 value = BlitzGenerator.getAirStrength(nation, true);
-                value *= 2 * (nation.getCities() / (double) me.getCities());
-                if (nation.getOff() > 0) value /= 4;
-                if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
-                if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
-                if (nation.active_m() > 1440) value *= 1 + Math.sqrt(nation.active_m() - 1440) / 250;
-                value /= (1 + nation.getOff() * 0.1);
-                if (nation.getScore() > attackerScore * 1.25) value /= 2;
-                if (nation.getOff() > 0) value /= nation.getRelativeStrength();
+                message = """
+                        No targets found:
+                        - Add `-i` to include inactives
+                        - Add `-a` to include applicants""";
             }
-
-            nationNetValues.add(new KeyValue<>(nation, value));
+            channel.send(message, RateLimitedSources.COMMAND_RESULT);
+            return;
         }
 
         Map<DBNation, Integer> beigeTurns = new HashMap<>();
-
-        if (nationNetValues.isEmpty()) {
-            for (DBNation nation : targetsStorted) {
-                if (nation.isBeige()) {
-                    int turns = beigeTurns.computeIfAbsent(nation, DBNation::getBeigeTurns);
-                    nationNetValues.add(new KeyValue<>(nation, (double) turns));
-                }
-            }
-            if (nationNetValues.isEmpty()) {
-                String message;
-                if (onlyPriority) {
-                    message = "No targets found. Try " + CM.war.find.enemy.cmd.toSlashMention();
-                } else {
-                    message = """
-                            No targets found:
-                            - Add `-i` to include inactives
-                            - Add `-a` to include applicants""";
-                }
-                channel.send(message, RateLimitedSources.COMMAND_RESULT);
-                return;
-            }
-        }
-
-        nationNetValues.sort(Comparator.comparingDouble(Map.Entry::getValue));
-
+        long currentTurn = TimeUtil.getTurn();
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
-
-        int count = 0;
 
         List<DBNation> viewedNations = nationNetValues.stream()
                 .map(Map.Entry::getKey)
-                .limit(numResults)
+                .limit(Math.max(0, numResults))
                 .toList();
         ValueStore cacheStore = PlaceholderCache.createCache(store, viewedNations, DBNation.class);
 
         for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
-            if (count++ == numResults) break;
-
             DBNation nation = nationNetValue.getKey();
 
             response.append('\n')
@@ -1126,16 +1055,21 @@ public class WarCommands {
             response.append("```");
         }
 
-        if (count == 0) {
-            channel.send("No results. Please ping a target (advisor)", RateLimitedSources.COMMAND_RESULT);
-        } else {
-            channel.send(response.toString(), RateLimitedSources.COMMAND_RESULT);
+        boolean isUpdeclare = nationNetValues.stream()
+                .anyMatch(f -> f.getKey().active_m() < 2880 && f.getKey().getCities() > Math.ceil(me.getCities() * 1.33));
+        if (isUpdeclare) {
+            response.append("\n**note: some of the targets have a lot more cities than you and may be unsuitable. It is not recommended to updeclare past " + Math.round(me.getCities() * 1.2) + " cities if there are more suitable attackers**");
         }
+
+        channel.send(response.toString().trim(), RateLimitedSources.COMMAND_RESULT);
     }
 
     @Command(desc = "Find nations in war range that have a treasure", viewable = true)
     @RolePermission(Roles.MEMBER)
-    public void findTreasureNations(@Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker, @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
+    public void findTreasureNations(@Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel,
+                                    @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker,
+                                    @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR,
+                                    @Switch("n") @Default("5") Integer numResults) {
 
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
@@ -1144,22 +1078,20 @@ public class WarCommands {
 
         nations.removeIf(f -> f.getVm_turns() != 0);
 
-        if(!ignoreDNR)
+        if (!ignoreDNR)
             nations.removeIf(f -> !canRaid.apply(f));
 
-        if(onlyWeaker)
+        if (onlyWeaker)
             nations.removeIf(f -> f.getStrength() > me.getStrength());
 
         Map<DBNation, Set<DBTreasure>> nationTreasures = new HashMap<>();
         for (DBNation nation : nations) {
-//            nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
             Set<DBTreasure> treasures = Locutus.imp().getNationDB().getTreasure(nation.getNation_id());
             if (!treasures.isEmpty()) {
                 nationTreasures.put(nation, treasures);
             }
         }
 
-        long currentTurn = TimeUtil.getTurn();
         for (Map.Entry<DBNation, Set<DBTreasure>> entry : nationTreasures.entrySet()) {
             DBNation nation = entry.getKey();
             Set<DBTreasure> treasures = entry.getValue();
@@ -1167,7 +1099,7 @@ public class WarCommands {
             response.append("treasure: " + treasureStr + " | ");
             response.append(nation.toMarkdown(true, true, true, false, false)).append("\n");
 
-            if(count >= numResults)
+            if (count >= numResults)
                 break;
 
             count++;

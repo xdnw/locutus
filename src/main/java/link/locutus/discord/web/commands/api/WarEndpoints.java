@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsMember
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.commands.war.WarTargetFinder;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBBounty;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTreasure;
@@ -22,6 +23,7 @@ import link.locutus.discord.web.commands.binding.value_types.CacheType;
 import link.locutus.discord.web.commands.binding.value_types.WebTarget;
 import link.locutus.discord.web.commands.binding.value_types.WebTargets;
 import link.locutus.discord.web.commands.page.PageHelper;
+import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.ArrayList;
@@ -82,6 +84,67 @@ public class WarEndpoints extends PageHelper {
             targets.add(new WebTarget(other, expected, loot, 0));
         }
         return targets(nation, targets);
+    }
+
+    @Command(desc = "Find a war target that you can hit", viewable = true)
+    @ReturnType(WebTargets.class)
+    public WebTargets war(@Me @Default DBNation me,
+                          ValueStore store,
+                          @Default DBNation nation,
+                          @Default("*") Set<DBNation> nations,
+                          @Default("8") int numResults,
+                          @Switch("r") Double attackerScore,
+                          @Switch("i") boolean includeInactives,
+                          @Switch("a") boolean includeApplicants,
+                          @Switch("p") boolean onlyPriority,
+                          @Switch("w") boolean onlyWeak,
+                          @Switch("e") boolean onlyEasy,
+                          @Switch("c") boolean onlyLessCities,
+                          @Switch("s") boolean includeStrong) {
+        if (nation == null) nation = me;
+        if (nation == null) {
+            throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
+        }
+
+        List<Map.Entry<DBNation, Double>> scoredTargets = WarTargetFinder.getWarTargets(
+                nation,
+                nations,
+                numResults,
+                attackerScore,
+                includeInactives,
+                includeApplicants,
+                onlyPriority,
+                onlyWeak,
+                onlyEasy,
+                onlyLessCities,
+                includeStrong
+        );
+
+        WebTargets result;
+        if (scoredTargets.isEmpty()) {
+            result = targets(nation, Collections.emptyList());
+            result.include_strength = true;
+            return result;
+        }
+
+        List<DBNation> viewedNations = scoredTargets.stream()
+                .map(Map.Entry::getKey)
+                .toList();
+        ValueStore cacheStore = PlaceholderCache.createCache(store, viewedNations, DBNation.class);
+        List<WebTarget> targets = new ObjectArrayList<>();
+        long currentTurn = TimeUtil.getTurn();
+        for (Map.Entry<DBNation, Double> entry : scoredTargets) {
+            DBNation other = entry.getKey();
+            double expected = entry.getValue();
+            double actual = other.lootTotal(cacheStore);
+            Activity activity = other.getActivity(14 * 12);
+            double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
+            targets.add(new WebTarget(other, expected, actual, (int) (loginChance * 100)));
+        }
+
+        result = targets(nation, targets);
+        result.include_strength = true;
+        return result;
     }
 
     @Command(desc = "List unprotected counter targets with various filters", viewable = true)

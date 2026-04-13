@@ -11,8 +11,10 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBBounty;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.battle.BlitzGenerator;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -250,6 +252,85 @@ public final class WarTargetFinder {
             }
         });
         return counterChance;
+    }
+
+    public static List<Map.Entry<DBNation, Double>> getWarTargets(DBNation me, Set<DBNation> targets, int numResults, Double attackerScore,
+                                                                  boolean includeInactives, boolean includeApplicants, boolean onlyPriority,
+                                                                  boolean onlyWeak, boolean onlyEasy, boolean onlyLessCities,
+                                                                  boolean includeStrong) {
+        if (me == null) {
+            throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
+        }
+
+        double score = attackerScore == null ? me.getScore() : attackerScore;
+        List<DBNation> filteredTargets = new ArrayList<>(targets == null ? Collections.emptySet() : targets);
+
+        filteredTargets.removeIf(f -> !includeApplicants && f.active_m() > 1440 && f.getPosition() <= 1);
+        filteredTargets.removeIf(f -> !includeInactives && f.active_m() >= 2440);
+        filteredTargets.removeIf(f -> f.getVm_turns() != 0);
+
+        double minScore = score * 0.75;
+        double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
+        filteredTargets.removeIf(f -> f.getScore() >= maxScore || f.getScore() <= minScore);
+        filteredTargets.removeIf(f -> f.getDef() >= 3);
+        filteredTargets.removeIf(f -> f.getCities() >= me.getCities() * 1.5 && !includeStrong && me.getGroundStrength(false, true) > f.getGroundStrength(true, false) * 2);
+        filteredTargets.removeIf(f -> f.getCities() >= me.getCities() * 1.8 && !includeStrong && f.active_m() < 2880);
+
+        if (onlyPriority) {
+            filteredTargets.removeIf(f -> f.getNumWars() == 0);
+            filteredTargets.removeIf(f -> f.getRelativeStrength() <= 1);
+        }
+
+        if (onlyWeak) {
+            filteredTargets.removeIf(f -> f.getGroundStrength(true, false) > me.getGroundStrength(true, false));
+            filteredTargets.removeIf(f -> f.getAircraft() > me.getAircraft());
+        }
+        if (onlyLessCities) {
+            filteredTargets.removeIf(f -> f.getCities() > me.getCities());
+        }
+
+        Set<DBWar> wars = me.getActiveWars();
+        for (DBWar war : wars) {
+            filteredTargets.remove(war.getNation(true));
+            filteredTargets.remove(war.getNation(false));
+        }
+
+        List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
+
+        for (DBNation nation : filteredTargets) {
+            if (nation.isBeige()) continue;
+            nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, scoreWarTarget(me, nation, onlyEasy, score)));
+        }
+
+        if (nationNetValues.isEmpty()) {
+            for (DBNation nation : filteredTargets) {
+                if (nation.isBeige()) {
+                    nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, (double) nation.getBeigeTurns()));
+                }
+            }
+        }
+
+        nationNetValues.sort(Comparator.comparingDouble(Map.Entry::getValue));
+
+        if (numResults >= 0 && nationNetValues.size() > numResults) {
+            nationNetValues = new ArrayList<>(nationNetValues.subList(0, numResults));
+        }
+        return nationNetValues;
+    }
+
+    private static double scoreWarTarget(DBNation me, DBNation nation, boolean onlyEasy, double attackerScore) {
+        double value = BlitzGenerator.getAirStrength(nation, true);
+        if (!onlyEasy) {
+            value *= 2 * (nation.getCities() / (double) me.getCities());
+            if (nation.getOff() > 0) value /= 4;
+            if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
+            if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
+            if (nation.active_m() > 1440) value *= 1 + Math.sqrt(nation.active_m() - 1440) / 250;
+            value /= (1 + nation.getOff() * 0.1);
+            if (nation.getScore() > attackerScore * 1.25) value /= 2;
+            if (nation.getOff() > 0) value /= nation.getRelativeStrength();
+        }
+        return value;
     }
 
     public static DamageTargets getDamageTargets(DBNation me, Set<DBNation> nations, boolean includeApplicants,
