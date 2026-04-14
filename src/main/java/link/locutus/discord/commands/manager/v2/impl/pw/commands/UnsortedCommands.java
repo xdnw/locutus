@@ -33,6 +33,8 @@ import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -1461,90 +1463,27 @@ public class UnsortedCommands {
             @Arg(value = "Upload the results as a file", group = 3) @Switch("u") boolean uploadFile,
             @Arg(value = "The number of results to show", group = 3) @Switch("r") Integer num_results,
             @Arg(value = "Highlight specific entries in the result", group = 3) @Switch("h") @AllowDeleted Set<NationOrAlliance> highlight) {
-        if (nationList == null)
-            nationList = new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*");
-        Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate,
-                guild);
-        if (!includeInactive)
-            nations.removeIf(f -> !f.isTaxable());
-
-        Map<DBNation, Number> profitByNation = new HashMap<>();
-
-        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-
-        Map<Integer, Map<Integer, DBCity>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
-        double[] profitBuffer = ResourceType.getBuffer();
-
-        Map<Integer, Integer> treasureByAA = new HashMap<>();
-        for (DBNation nation : nations) {
-            if (nation.getAlliance_id() == 0)
-                continue;
-            for (DBTreasure treasure : nation.getTreasures()) {
-                treasureByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
-            }
-        }
-
-        for (DBNation nation : nations) {
-            Map<Integer, DBCity> v3Cities = allCities.get(nation.getNation_id());
-            if (v3Cities == null || v3Cities.isEmpty())
-                continue;
-
-            int treasures = treasureByAA.getOrDefault(nation.getAlliance_id(), 0);
-            Set<DBTreasure> natTreasures = nation.getTreasures();
-            double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4))
-                    + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
-
-            Arrays.fill(profitBuffer, 0);
-            double[] profit = nation.getRevenue(null, 12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus,
-                    !ignoreNationBonus, false, false, treasureBonus, false);
-            double value;
-            if (resources.size() == 1) {
-                value = profit[resources.iterator().next().ordinal()];
-            } else {
-                value = 0;
-                for (ResourceType type : resources) {
-                    value += ResourceType.convertedTotal(type, profit[type.ordinal()]);
-                }
-            }
-            if (value > 0 || includeNegative) {
-                profitByNation.put(nation, value);
-            }
-        }
-
-        Set<Integer> highlightIds = highlight == null ? null
-                : highlight.stream().map(NationOrAlliance::getId).collect(Collectors.toSet());
-        SummedMapRankBuilder<Integer, Number> byNation = new SummedMapRankBuilder<>(profitByNation)
-                .adaptKeys((n, v) -> n.getNation_id());
-        RankBuilder<IShrink> ranks;
-        if (!listByNation) {
-            NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.group((entry, builder) -> {
-                DBNation nation = Locutus.imp().getNationDB().getNationById(entry.getKey());
-                if (nation != null) {
-                    builder.put(nation.getAlliance_id(), entry.getValue());
-                }
-            });
-            SummedMapRankBuilder<Integer, Number> byAA = listAverage ? byAAMap.average() : byAAMap.sum();
-            byAA.highlight(highlightIds);
-
-            // Sort descending
-            ranks = byAA.sort()
-                    // Change key to alliance name
-                    .nameKeys(id -> DBAlliance.getOrCreate(id).toShrink());
-        } else {
-            byNation.highlight(highlightIds);
-            ranks = byNation.sort()
-                    // Change key to nation name
-                    .nameKeys(id -> DBNation.getOrCreate(id).toShrink());
-        }
-
-        String rssNames = resources.size() >= ResourceType.values.length - 1 ? "market"
-                : StringMan.join(resources, ",");
-        String title = "Daily " + (includeNegative ? "net" : "gross") + " " + rssNames + " " + "production";
-        if (!listByNation && listAverage)
-            title += " per member";
-        if (resources.size() > 1)
-            title += " (market value)";
-        ranks.limit(num_results).build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                NationValueRankingService.productionRanking(
+                        NationValueRankingService.ProductionRequest.normalize(
+                                guild,
+                                resources,
+                                nationList,
+                                ignoreMilitaryUpkeep,
+                                ignoreTradeBonus,
+                                ignoreNationBonus,
+                                includeNegative,
+                                includeInactive,
+                                listByNation,
+                                listAverage,
+                                snapshotDate,
+                                highlight
+                        )
+                ),
+                new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
+        );
         return null;
     }
 

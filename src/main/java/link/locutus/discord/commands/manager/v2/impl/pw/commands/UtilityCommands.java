@@ -35,6 +35,8 @@ import link.locutus.discord.commands.manager.v2.command.LiveAppCommandSurface;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RecruitmentRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -2849,53 +2851,11 @@ public class UtilityCommands {
             @Arg("Date to start from") @Timestamp long cutoff,
             @Arg("Top X alliances to show in the ranking") @Range(min = 1, max = 150) @Default("80") int topX,
             @Switch("u") boolean uploadFile) {
-        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
-
-        Map<DBAlliance, Integer> rankings = new HashMap<DBAlliance, Integer>();
-
-        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
-        Map<Integer, List<AllianceChange>> removesByAlliance = Locutus.imp().getNationDB().getRemovesByAlliances(aaIds,
-                cutoff);
-
-        for (DBAlliance alliance : alliances) {
-            Map<Integer, Long> noneToApp = new Int2LongOpenHashMap();
-            Map<Integer, Long> appToMember = new Int2LongOpenHashMap();
-            Map<Integer, Long> removed = new Int2LongOpenHashMap();
-
-            List<AllianceChange> rankChanges = removesByAlliance.getOrDefault(alliance.getId(), new ArrayList<>());
-
-            for (AllianceChange change : rankChanges) {
-                int nationId = change.getNationId();
-                if (change.getFromId() != alliance.getId()) {
-                    if (change.getToId() == alliance.getId()) {
-                        noneToApp.put(nationId, Math.max(noneToApp.getOrDefault(nationId, 0L), change.getDate()));
-                        if (change.getToRank() != Rank.APPLICANT) {
-                            appToMember.put(nationId,
-                                    Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
-                        }
-                    }
-                } else if (change.getToId() != alliance.getId()) {
-                    removed.put(nationId, Math.max(removed.getOrDefault(nationId, 0L), change.getDate()));
-                } else if (change.getToRank() != Rank.APPLICANT) {
-                    appToMember.put(nationId, Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
-                }
-            }
-            noneToApp.entrySet().removeIf(f -> removed.getOrDefault(f.getKey(), 0L) > f.getValue());
-            appToMember.entrySet().removeIf(f -> removed.getOrDefault(f.getKey(), 0L) > f.getValue());
-
-            // set where number is in both noneToApp and appToMember
-            Set<Integer> both = noneToApp.keySet().stream().filter(appToMember::containsKey)
-                    .collect(Collectors.toSet());
-            int total = both.size();
-            if (total > 0) {
-                rankings.put(alliance, total);
-            }
-        }
-        if (rankings.isEmpty()) {
+        var result = RecruitmentRankingService.ranking(new RecruitmentRankingService.Request(cutoff, topX));
+        if (result.rowCount() == 0) {
             return "No new members found over the specified timeframe. Check your arguments are valid";
         }
-        new SummedMapRankBuilder<>(rankings).sort().nameKeys(DBAlliance::toShrink).build(author, channel, command,
-                "Most new members", uploadFile);
+        DiscordRankingAdapter.send(channel, command, result, new DiscordRankingAdapter.RenderOptions(null, uploadFile, author));
         return null;
     }
 

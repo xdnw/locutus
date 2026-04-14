@@ -4264,7 +4264,20 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new Object2ObjectOpenHashMap<>();
 
-        String query = "SELECT * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn <= ? ORDER BY turn DESC LIMIT " + allianceIds.size();
+        String query = """
+                SELECT m.*
+                FROM ALLIANCE_METRICS m
+                JOIN (
+                    SELECT alliance_id, metric, MAX(turn) AS max_turn
+                    FROM ALLIANCE_METRICS
+                    WHERE alliance_id in %s AND metric = ? AND turn <= ?
+                    GROUP BY alliance_id, metric
+                ) latest
+                    ON latest.alliance_id = m.alliance_id
+                   AND latest.metric = m.metric
+                   AND latest.max_turn = m.turn
+                """
+                .formatted(allianceQueryStr);
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws Exception {

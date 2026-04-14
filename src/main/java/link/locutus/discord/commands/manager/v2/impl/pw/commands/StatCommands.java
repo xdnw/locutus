@@ -34,6 +34,10 @@ import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.AllianceRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
@@ -670,19 +674,12 @@ public class StatCommands {
                                 AllianceMetric metric, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
                                 @Switch("n") Integer num_results,
                                 @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
-        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
-        long turn = TimeUtil.getTurn();
-        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
-
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metric, turn);
-
-        Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
-        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metrics.entrySet()) {
-            DBAlliance alliance = entry.getKey();
-            double diff = entry.getValue().get(metric).values().iterator().next();
-            metricsDiff.put(alliance, diff);
-        }
-        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile, num_results, highlight);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                AllianceRankingService.metricRanking(AllianceRankingService.MetricRequest.normalize(alliances, metric, reverseOrder, highlight)),
+                new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
+        );
     }
 
     @NoFormat
@@ -694,58 +691,26 @@ public class StatCommands {
                                          @Switch("r") boolean reverseOrder,
                                          @Switch("f") boolean uploadFile,
                                          @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
-        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
-        long turn = TimeUtil.getTurn();
-        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
-
-        Map<DBAlliance, Double> attributeByAlliance = new Object2DoubleOpenHashMap<>();
-        for (DBAlliance alliance : alliances) {
-            Double value = attribute.apply(alliance);
-            if (!Double.isFinite(value)) continue;
-            attributeByAlliance.put(alliance, value);
-        }
-
-        String title = command.getString("attribute");
-        displayAllianceRanking(channel, command, title, attributeByAlliance, reverseOrder, uploadFile, num_results, highlight);
-    }
-
-    public void displayAllianceRanking(IMessageIO channel, JSONObject command, String metricName, Map<DBAlliance, Double> metricsDiff, boolean reverseOrder, boolean uploadFile,
-                                       Integer numResults, Set<DBAlliance> highlight) {
-        SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>(metricsDiff);
-        if (reverseOrder) {
-            builder = builder.sortAsc();
-        } else {
-            builder = builder.sort();
-        }
-        String title = "Top " + metricName + " by alliance";
-        if (highlight != null) builder.highlight(highlight);
-        RankBuilder<IShrink> named = builder.nameKeys(DBAlliance::toShrink);
-        if (numResults != null) named = named.limit(numResults);
-        named.build(channel, command, title, uploadFile);
+        String attributeLabel = command == null ? null : command.optString("attribute", null);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                AllianceRankingService.attributeRanking(AllianceRankingService.AttributeRequest.normalize(alliances, attribute, attributeLabel, reverseOrder, highlight)),
+                new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
+        );
     }
 
     @Command(desc = "Rank alliances by a metric over a specified time period", viewable = true)
     public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command,
-                                    Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
+                                    @Default Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
                                     @Switch("n") Integer num_results,
                                     @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
-        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
-        long turnStart = TimeUtil.getTurn(timeStart);
-        long turnEnd = TimeUtil.getTurn(timeEnd);
-        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
-
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart = Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metric, turnStart);
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsEnd = Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metric, turnEnd);
-
-        Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
-        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metricsEnd.entrySet()) {
-            DBAlliance alliance = entry.getKey();
-            if (!metricsStart.containsKey(alliance)) continue;
-            double dataStart = metricsStart.get(alliance).get(metric).values().iterator().next();
-            double dataEnd = entry.getValue().get(metric).values().iterator().next();
-            metricsDiff.put(alliance, dataEnd - dataStart);
-        }
-        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile, num_results, highlight);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                AllianceRankingService.deltaRanking(AllianceRankingService.DeltaRequest.normalize(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)),
+                new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
+        );
     }
 
     @Command(desc = "Rank nations by an attribute", viewable = true)
@@ -759,36 +724,23 @@ public class StatCommands {
                               @Switch("s") @Timestamp Long snapshotDate,
                               @Arg("Total value instead of average per nation") @Switch("t") boolean total,
                               @Switch("n") String title) {
-        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
-        Map<DBNation, Double> attributeByNation = new Object2DoubleOpenHashMap<>();
-        for (DBNation nation : nationsSet) {
-            Double value = attribute.apply(nation);
-            if (!Double.isFinite(value)) continue;
-            attributeByNation.put(nation, value);
-        }
-
-        if (title == null) {
-            title = (total ? "Total" : groupByAlliance ? "Average" : "Top") + " " + attribute.getName() + " by " + (groupByAlliance ? "alliance" : "nation");
-        }
-
-        SummedMapRankBuilder<DBNation, Double> builder = new SummedMapRankBuilder<>(attributeByNation);
-
-        RankBuilder<IShrink> named;
-        if (groupByAlliance) {
-            NumericGroupRankBuilder<Integer, Double> grouped = builder.group((entry, builder1) -> builder1.put(entry.getKey().getAlliance_id(), entry.getValue()));
-            SummedMapRankBuilder<Integer, ? extends Number> summed;
-            if (total) {
-                summed = grouped.sum();
-            } else {
-                summed = grouped.average();
-            }
-            summed = reverseOrder ? summed.sortAsc() : summed.sort();
-            named = summed.nameKeys(f -> DBAlliance.getOrCreate(f).toShrink());
-        } else {
-            builder = reverseOrder ? builder.sortAsc() : builder.sort();
-            named = builder.nameKeys(DBNation::toShrink);
-        }
-        named.build(channel, command, title, true);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                NationValueRankingService.attributeRanking(
+                        NationValueRankingService.AttributeRequest.normalize(
+                                db == null ? null : db.getGuild(),
+                                nations,
+                                attribute,
+                                groupByAlliance,
+                                reverseOrder,
+                                snapshotDate,
+                                total,
+                                title
+                        )
+                ),
+                new DiscordRankingAdapter.RenderOptions(null, true, null)
+        );
     }
 
     @Command(desc = "List the radiation in each continent", viewable = true)
@@ -1335,47 +1287,12 @@ public class StatCommands {
     }
 
     public void warStatusRankingBy(boolean isAA, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
-        BiFunction<Boolean, DBWar, Integer> getId;
-        if (isAA) getId = (primary, war) -> primary ? war.getAttacker_aa() : war.getDefender_aa();
-        else getId = (primary, war) -> primary ? war.getAttacker_id() : war.getDefender_id();
-
-        WarParser parser = WarParser.ofAANatobj(null, attackers, null, defenders, time, Long.MAX_VALUE);
-
-        Map<Integer, Integer> victoryByEntity = new Int2IntOpenHashMap();
-        Map<Integer, Integer> lossesByEntity = new Int2IntOpenHashMap();
-        Map<Integer, Integer> expireByEntity = new Int2IntOpenHashMap();
-        Map<Integer, Integer> peaceByEntity = new Int2IntOpenHashMap();
-
-        for (Map.Entry<Integer, DBWar> entry : parser.getWars().entrySet()) {
-            DBWar war = entry.getValue();
-            boolean primary = parser.getIsPrimary().apply(war);
-
-            if (war.getStatus() == WarStatus.DEFENDER_VICTORY) primary = !primary;
-            int id = getId.apply(primary, war);
-
-            if (war.getStatus() == WarStatus.ATTACKER_VICTORY || war.getStatus() == WarStatus.DEFENDER_VICTORY) {
-                victoryByEntity.put(id, victoryByEntity.getOrDefault(id, 0) + 1);
-                int otherId = getId.apply(!primary, war);
-                lossesByEntity.put(otherId, lossesByEntity.getOrDefault(otherId, 0) + 1);
-            } else if (war.getStatus() == WarStatus.EXPIRED) {
-                expireByEntity.put(id, expireByEntity.getOrDefault(id, 0) + 1);
-            } else if (war.getStatus() == WarStatus.PEACE) {
-                peaceByEntity.put(id, peaceByEntity.getOrDefault(id, 0) + 1);
-            }
-        }
-
-        if (!victoryByEntity.isEmpty())
-            new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
-                    .build(channel, command, "Victories");
-        if (!lossesByEntity.isEmpty())
-            new SummedMapRankBuilder<>(lossesByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
-                    .build(channel, command, "Losses");
-        if (!expireByEntity.isEmpty())
-            new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
-                    .build(channel, command, "Expired");
-        if (!peaceByEntity.isEmpty())
-            new SummedMapRankBuilder<>(peaceByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
-                    .build(channel, command, "Peace");
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                WarStatusRankingService.ranking(WarStatusRankingService.Request.normalize(isAA, attackers, defenders, time)),
+                null
+        );
     }
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions", viewable = true)
@@ -2836,35 +2753,12 @@ public class StatCommands {
                                  @Switch("h") @AllowDeleted Set<DBAlliance> highlight,
                                  @Switch("n") Integer num_results
             ) {
-        String title = "AA loot/score";
-        if (show_total) title = "AA bank total";
-
-        Map<Integer, Double> lootPerScore = new HashMap<>();
-        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
-            double score = alliance.getScore();
-            if (score <= 0) continue;
-            if (min_score != null || max_score != null) {
-                Set<DBNation> nations = alliance.getNations(true, 0, true);
-                if (min_score != null) nations.removeIf(f -> f.getScore() < min_score);
-                if (max_score != null) nations.removeIf(f -> f.getScore() > max_score);
-                if (nations.isEmpty()) continue;
-            }
-            LootEntry loot = alliance.getLoot();
-            if (loot != null && loot.getDate() >= time) {
-                double value;
-                if (show_total) {
-                    value = loot.convertedTotal();
-                } else {
-                    value = ResourceType.convertedTotal(loot.getAllianceLootValue(1));
-                }
-                lootPerScore.put(alliance.getAlliance_id(), value);
-            }
-        }
-
-        SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
-        sorted.highlight(highlight == null ? null : highlight.stream().map(DBAlliance::getId).collect(Collectors.toSet()));
-        sorted.nameKeys(i -> DBAlliance.getOrCreate(i).toShrink()).limit(num_results).build(author, channel, command, title, attach_file);
-
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                AllianceRankingService.lootRanking(AllianceRankingService.LootRequest.normalize(time, show_total, min_score, max_score, highlight)),
+                new DiscordRankingAdapter.RenderOptions(num_results, attach_file, author)
+        );
         return null;
     }
 

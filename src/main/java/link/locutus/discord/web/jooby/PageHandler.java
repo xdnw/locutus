@@ -53,6 +53,7 @@ import link.locutus.discord.web.commands.api.EndpointPages;
 import link.locutus.discord.web.commands.api.GraphEndpoints;
 import link.locutus.discord.web.commands.api.IAEndpoints;
 import link.locutus.discord.web.commands.api.MultiEndpoints;
+import link.locutus.discord.web.commands.api.RankingEndpoints;
 import link.locutus.discord.web.commands.api.RoleEndpoints;
 import link.locutus.discord.web.commands.api.StatEndpoints;
 import link.locutus.discord.web.commands.api.WarEndpoints;
@@ -174,6 +175,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new ConflictEndpoints(), "api");
         this.commands.registerSubCommands(new CoalitionGraphEndpoints(), "api");
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
+        this.commands.registerSubCommands(new RankingEndpoints(), "api");
         this.commands.registerSubCommands(new TaxEndpoints(), "api");
         this.commands.registerSubCommands(new CoalitionEndpoints(), "api");
         this.commands.registerSubCommands(new RoleEndpoints(), "api");

@@ -1,0 +1,154 @@
+{
+  "responseKey" : "war_status_fixture",
+  "title" : "War Status by Nation",
+  "querySummary" : [ {
+    "key" : "start_ms",
+    "label" : "Start",
+    "value" : "1000"
+  } ],
+  "rowCount" : 3,
+  "asOfMs" : 54321,
+  "emptySectionPolicy" : "INCLUDE_EMPTY_SECTIONS",
+  "sections" : [ {
+    "sectionKey" : "victories",
+    "title" : "Victories",
+    "entityType" : "NATION",
+    "metrics" : [ {
+      "metricKey" : "count",
+      "label" : "Count",
+      "numericType" : "INTEGER",
+      "valueFormat" : "COUNT"
+    } ],
+    "sort" : {
+      "metricKey" : "count",
+      "direction" : "DESC",
+      "tieBreaker" : "ENTITY_ID_ASC"
+    },
+    "metadata" : [ {
+      "key" : "source_type",
+      "label" : "Source Type",
+      "value" : "WAR"
+    }, {
+      "key" : "aggregation_mode",
+      "label" : "Aggregation Mode",
+      "value" : "COUNT"
+    } ],
+    "notes" : [ ],
+    "rows" : [ {
+      "entity" : {
+        "entityKey" : "nation:11",
+        "entityType" : "NATION",
+        "entityId" : 11,
+        "displayHint" : "Nation 11"
+      },
+      "metricValues" : [ {
+        "metricKey" : "count",
+        "value" : {
+          "exactValue" : "3",
+          "numericType" : "INTEGER"
+        }
+      } ],
+      "sortValue" : {
+        "exactValue" : "3",
+        "numericType" : "INTEGER"
+      },
+      "highlighted" : false,
+      "annotation" : null
+    }, {
+      "entity" : {
+        "entityKey" : "nation:12",
+        "entityType" : "NATION",
+        "entityId" : 12,
+        "displayHint" : "Nation 12"
+      },
+      "metricValues" : [ {
+        "metricKey" : "count",
+        "value" : {
+          "exactValue" : "1",
+          "numericType" : "INTEGER"
+        }
+      } ],
+      "sortValue" : {
+        "exactValue" : "1",
+        "numericType" : "INTEGER"
+      },
+      "highlighted" : false,
+      "annotation" : null
+    } ],
+    "rowCount" : 2
+  }, {
+    "sectionKey" : "losses",
+    "title" : "Losses",
+    "entityType" : "NATION",
+    "metrics" : [ {
+      "metricKey" : "count",
+      "label" : "Count",
+      "numericType" : "INTEGER",
+      "valueFormat" : "COUNT"
+    } ],
+    "sort" : {
+      "metricKey" : "count",
+      "direction" : "DESC",
+      "tieBreaker" : "ENTITY_ID_ASC"
+    },
+    "metadata" : [ {
+      "key" : "source_type",
+      "label" : "Source Type",
+      "value" : "WAR"
+    }, {
+      "key" : "aggregation_mode",
+      "label" : "Aggregation Mode",
+      "value" : "COUNT"
+    } ],
+    "notes" : [ ],
+    "rows" : [ ],
+    "rowCount" : 0
+  }, {
+    "sectionKey" : "peace",
+    "title" : "Peace",
+    "entityType" : "NATION",
+    "metrics" : [ {
+      "metricKey" : "count",
+      "label" : "Count",
+      "numericType" : "INTEGER",
+      "valueFormat" : "COUNT"
+    } ],
+    "sort" : {
+      "metricKey" : "count",
+      "direction" : "DESC",
+      "tieBreaker" : "ENTITY_ID_ASC"
+    },
+    "metadata" : [ {
+      "key" : "source_type",
+      "label" : "Source Type",
+      "value" : "WAR"
+    }, {
+      "key" : "aggregation_mode",
+      "label" : "Aggregation Mode",
+      "value" : "COUNT"
+    } ],
+    "notes" : [ "Empty sections are retained." ],
+    "rows" : [ {
+      "entity" : {
+        "entityKey" : "nation:13",
+        "entityType" : "NATION",
+        "entityId" : 13,
+        "displayHint" : "Nation 13"
+      },
+      "metricValues" : [ {
+        "metricKey" : "count",
+        "value" : {
+          "exactValue" : "2",
+          "numericType" : "INTEGER"
+        }
+      } ],
+      "sortValue" : {
+        "exactValue" : "2",
+        "numericType" : "INTEGER"
+      },
+      "highlighted" : true,
+      "annotation" : null
+    } ],
+    "rowCount" : 1
+  } ]
+}

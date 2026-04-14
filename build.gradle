@@ -333,6 +333,7 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.WebWarFinder',
                 'link.locutus.discord.web.commands.binding.value_types.TaxExpenses',
                 'link.locutus.discord.web.commands.binding.value_types.WebPermission',
+                'link.locutus.discord.web.commands.binding.value_types.WebRankingResult',
                 'link.locutus.discord.util.task.multi.MultiResult',
                 'link.locutus.discord.util.task.multi.NetworkRow',
                 'link.locutus.discord.util.task.multi.SameNetworkTrade',

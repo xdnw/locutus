@@ -1,0 +1,92 @@
+package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
+
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.db.entities.AllianceChange;
+import link.locutus.discord.db.entities.DBAlliance;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+public final class RecruitmentRankingService {
+    private RecruitmentRankingService() {
+    }
+
+    public record Request(long cutoffMs, int topX) {
+    }
+
+    public static RankingResult ranking(Request request) {
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, request.topX());
+        Set<Integer> allianceIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+        Map<Integer, List<AllianceChange>> removesByAlliance = Locutus.imp().getNationDB().getRemovesByAlliances(allianceIds, request.cutoffMs());
+
+        Map<Integer, Integer> rankings = new LinkedHashMap<>();
+        for (DBAlliance alliance : alliances) {
+            Map<Integer, Long> noneToApplicant = new Int2LongOpenHashMap();
+            Map<Integer, Long> applicantToMember = new Int2LongOpenHashMap();
+            Map<Integer, Long> removed = new Int2LongOpenHashMap();
+
+            List<AllianceChange> rankChanges = removesByAlliance.getOrDefault(alliance.getId(), new ArrayList<>());
+            for (AllianceChange change : rankChanges) {
+                int nationId = change.getNationId();
+                if (change.getFromId() != alliance.getId()) {
+                    if (change.getToId() == alliance.getId()) {
+                        noneToApplicant.put(nationId, Math.max(noneToApplicant.getOrDefault(nationId, 0L), change.getDate()));
+                        if (change.getToRank() != Rank.APPLICANT) {
+                            applicantToMember.put(nationId, Math.max(applicantToMember.getOrDefault(nationId, 0L), change.getDate()));
+                        }
+                    }
+                } else if (change.getToId() != alliance.getId()) {
+                    removed.put(nationId, Math.max(removed.getOrDefault(nationId, 0L), change.getDate()));
+                } else if (change.getToRank() != Rank.APPLICANT) {
+                    applicantToMember.put(nationId, Math.max(applicantToMember.getOrDefault(nationId, 0L), change.getDate()));
+                }
+            }
+
+            noneToApplicant.entrySet().removeIf(entry -> removed.getOrDefault(entry.getKey(), 0L) > entry.getValue());
+            applicantToMember.entrySet().removeIf(entry -> removed.getOrDefault(entry.getKey(), 0L) > entry.getValue());
+
+            long total = noneToApplicant.keySet().stream().filter(applicantToMember::containsKey).count();
+            if (total > 0) {
+                rankings.put(alliance.getAlliance_id(), (int) total);
+            }
+        }
+
+        RankingMetricDescriptor metric = RankingSupport.metricDescriptor("new_members", "New Members", RankingValueFormat.COUNT, RankingNumericType.INTEGER);
+        RankingSection section = RankingBuilders.singleMetricSection(
+                "alliances",
+                "Alliances",
+                RankingEntityType.ALLIANCE,
+                metric,
+                RankingSortDirection.DESC,
+                rankings,
+                Set.of(),
+                RecruitmentRankingService::allianceName,
+                RankingSupport.sectionMetadata(RankingEntityType.NATION.name(), RankingAggregationMode.COUNT),
+                List.of()
+        );
+
+        return new RankingResult(
+                "recruitment_ranking",
+                "Most new members",
+                List.of(
+                        RankingSupport.field("cutoff_ms", "Start", request.cutoffMs()),
+                        RankingSupport.field("top_x", "Candidate Set Cap", request.topX())
+                ),
+                RankingBuilders.totalRowCount(List.of(section)),
+                System.currentTimeMillis(),
+                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
+                List.of(section)
+        );
+    }
+
+    private static String allianceName(int allianceId) {
+        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
+        return alliance == null ? null : alliance.getName();
+    }
+}
