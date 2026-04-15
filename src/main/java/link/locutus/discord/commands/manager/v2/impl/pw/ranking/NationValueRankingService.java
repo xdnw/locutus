@@ -197,6 +197,7 @@ public final class NationValueRankingService {
         }
 
         Map<Integer, Double> valuesByNationId = new LinkedHashMap<>();
+        Map<Integer, double[]> profitsByNationId = new LinkedHashMap<>();
         for (DBNation nation : snapshotNations) {
             int treasures = treasureByAllianceId.getOrDefault(nation.getAlliance_id(), 0);
             Set<DBTreasure> nationTreasures = nation.getTreasures();
@@ -208,6 +209,7 @@ public final class NationValueRankingService {
             double value = productionValue(request.resources(), profit);
             if (value > 0 || request.includeNegative()) {
                 valuesByNationId.put(nation.getNation_id(), value);
+                profitsByNationId.put(nation.getNation_id(), profit);
             }
         }
 
@@ -215,7 +217,11 @@ public final class NationValueRankingService {
                 ? RankingAggregationMode.IDENTITY
                 : request.listAverage() ? RankingAggregationMode.AVERAGE : RankingAggregationMode.SUM;
         RankingEntityType entityType = request.listByNation() ? RankingEntityType.NATION : RankingEntityType.ALLIANCE;
-        Map<Integer, Double> values = resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
+        Map<Integer, Double> values = entityType == RankingEntityType.ALLIANCE
+            && aggregationMode == RankingAggregationMode.SUM
+            && request.resources().size() > 1
+            ? resolveAllianceSummedConvertedValues(snapshotNations, profitsByNationId, request.resources())
+            : resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
         RankingValueFormat valueFormat = productionValueFormat(request.resources());
         String metricLabel = request.resources().size() == 1 ? request.resources().iterator().next().name() : "Market Value";
         RankingMetricDescriptor metric = RankingSupport.metricDescriptor(metricLabel, metricLabel, valueFormat, RankingNumericType.DECIMAL);
@@ -282,6 +288,39 @@ public final class NationValueRankingService {
                 },
                 aggregationMode
         );
+    }
+
+    private static Map<Integer, Double> resolveAllianceSummedConvertedValues(
+            Set<DBNation> snapshotNations,
+            Map<Integer, double[]> profitsByNationId,
+            Set<ResourceType> resources
+    ) {
+        Map<Integer, DBNation> nationById = new HashMap<>();
+        for (DBNation nation : snapshotNations) {
+            nationById.put(nation.getNation_id(), nation);
+        }
+
+        Map<Integer, double[]> totalsByAllianceId = new LinkedHashMap<>();
+        for (Map.Entry<Integer, double[]> entry : profitsByNationId.entrySet()) {
+            DBNation nation = nationById.get(entry.getKey());
+            if (nation == null) {
+                continue;
+            }
+            int allianceId = nation.getAlliance_id();
+            double[] allianceTotal = totalsByAllianceId.computeIfAbsent(allianceId,
+                    ignored -> new double[ResourceType.values.length]);
+            double[] profit = entry.getValue();
+            for (ResourceType resource : resources) {
+                int ordinal = resource.ordinal();
+                allianceTotal[ordinal] += profit[ordinal];
+            }
+        }
+
+        Map<Integer, Double> values = new LinkedHashMap<>();
+        for (Map.Entry<Integer, double[]> entry : totalsByAllianceId.entrySet()) {
+            values.put(entry.getKey(), productionValue(resources, entry.getValue()));
+        }
+        return values;
     }
 
     private static double productionValue(Set<ResourceType> resources, double[] profit) {

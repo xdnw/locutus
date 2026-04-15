@@ -1213,13 +1213,15 @@ public class UnsortedCommands {
             double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4))
                     + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
 
-            ResourceType.add(cityProfit, nation.getRevenue(cacheStore, 12, true, false, false, !excludeNationBonus,
-                    false, false, treasureBonus, rads, forceWarFlag, false));
-            ResourceType.add(milUp, nation.getRevenue(cacheStore, 12, false, true, false, false, false, false,
-                    treasureBonus, rads, forceWarFlag, false));
-                double[] tradeOnly = nation.getRevenue(cacheStore, 12, false, false, true, false, false, false,
+            double[] cityOnly = nation.getRevenue(cacheStore, 12, true, false, false, !excludeNationBonus,
+                    false, false, treasureBonus, rads, forceWarFlag, false);
+            ResourceType.add(cityProfit, cityOnly);
+            double[] militaryOnly = nation.getRevenue(cacheStore, 12, false, true, false, false, false, false,
                     treasureBonus, rads, forceWarFlag, false);
-                tradeBonusTotal += tradeOnly[ResourceType.MONEY.ordinal()];
+            ResourceType.add(milUp, militaryOnly);
+            double[] tradeOnly = nation.getRevenue(cacheStore, 12, false, false, true, false, false, false,
+                    treasureBonus, rads, forceWarFlag, false);
+            tradeBonusTotal += tradeOnly[ResourceType.MONEY.ordinal()];
         }
 
         double[] warsCost = ResourceType.getBuffer();
@@ -1256,7 +1258,7 @@ public class UnsortedCommands {
 
         response.append("\nCombined Total:")
                 .append("```").append(ResourceType.toString(total)).append("```")
-                .append("Converted total: $" + MathMan.format(ResourceType.convertedTotal(total)));
+            .append("Converted total: $" + MathMan.format(ResourceType.convertedTotal(total)));
 
         if (equilibriumTaxrate >= 0) {
             response.append("\nEquilibrium taxrate: `" + MathMan.format(equilibriumTaxrate) + "%`");
