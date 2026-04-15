@@ -2,6 +2,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -52,6 +54,7 @@ public final class WarRankingService {
             Set<WarType> allowedWarTypes,
             Set<WarStatus> allowedWarStatuses,
             Set<AttackType> allowedAttackTypes,
+            Set<Integer> warAllianceIds,
             boolean onlyOffensiveWars,
             boolean onlyDefensiveWars,
             Set<Integer> highlightedAllianceIds
@@ -75,6 +78,7 @@ public final class WarRankingService {
                 Set<WarType> allowedWarTypes,
                 Set<WarStatus> allowedWarStatuses,
                 Set<AttackType> allowedAttackTypes,
+                Set<DBAlliance> warAlliances,
                 boolean onlyOffensiveWars,
                 boolean onlyDefensiveWars,
                 Set<DBAlliance> highlight
@@ -113,6 +117,7 @@ public final class WarRankingService {
                     normalizeOptionalSet(allowedWarTypes),
                     normalizeOptionalSet(allowedWarStatuses),
                     normalizeOptionalSet(allowedAttackTypes),
+                    normalizeAllianceIds(warAlliances),
                     onlyOffensiveWars,
                     onlyDefensiveWars,
                     normalizeAllianceIds(highlight)
@@ -207,8 +212,12 @@ public final class WarRankingService {
             parser.addFilter((war, attack) -> !parser.getIsPrimary().apply(war));
         }
 
+        IntSet warAllianceIds = request.warAllianceIds().isEmpty() ? null : new IntOpenHashSet(request.warAllianceIds());
+
         Map<Integer, DBWar> wars = parser.getWars();
-        Map<Integer, Integer> warsByGroup = request.scalePerWar() ? countWarsByGroup(wars.values(), request.groupByAlliance()) : Map.of();
+        Map<Integer, Integer> warsByGroup = request.scalePerWar()
+            ? countWarsByGroup(wars.values(), request.groupByAlliance(), warAllianceIds)
+            : Map.of();
         TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc = request.stat().getFunction(
                 request.excludeUnits(),
                 request.excludeInfra(),
@@ -223,10 +232,10 @@ public final class WarRankingService {
         parser.getAttacks().accept((war, attack) -> {
             if (request.onlyRankCoalition1()) {
                 boolean isPrimary = parser.getIsPrimary().apply(war);
-                addWarCostValue(values, warsByGroup, request, war, attack, isPrimary, attackValueFunc);
+                addWarCostValue(values, warsByGroup, request, war, attack, isPrimary, attackValueFunc, warAllianceIds);
             } else {
-                addWarCostValue(values, warsByGroup, request, war, attack, true, attackValueFunc);
-                addWarCostValue(values, warsByGroup, request, war, attack, false, attackValueFunc);
+                addWarCostValue(values, warsByGroup, request, war, attack, true, attackValueFunc, warAllianceIds);
+                addWarCostValue(values, warsByGroup, request, war, attack, false, attackValueFunc, warAllianceIds);
             }
         });
 
@@ -264,6 +273,9 @@ public final class WarRankingService {
         querySummary.add(RankingSupport.field("only_rank_coalition1", "Only Rank Coalition 1", request.onlyRankCoalition1()));
         querySummary.add(RankingSupport.field("only_offensive_wars", "Only Offensive Wars", request.onlyOffensiveWars()));
         querySummary.add(RankingSupport.field("only_defensive_wars", "Only Defensive Wars", request.onlyDefensiveWars()));
+        if (!request.warAllianceIds().isEmpty()) {
+            querySummary.add(RankingSupport.field("war_alliance_filter", "War Alliance Filter", request.warAllianceIds().size() + " alliances"));
+        }
 
         return new RankingResult(
                 "war_cost_ranking",
@@ -464,8 +476,13 @@ public final class WarRankingService {
             DBWar war,
             AbstractCursor attack,
             boolean attackerSide,
-            TriFunction<Boolean, DBWar, AbstractCursor, Double> attackValueFunc
+            TriFunction<Boolean, DBWar, AbstractCursor, Double> attackValueFunc,
+            IntSet warAllianceIds
     ) {
+        if (!matchesWarAllianceFilter(war, warAllianceIds)) {
+            return;
+        }
+
         int entityId = request.groupByAlliance()
                 ? attackerSide ? war.getAttacker_aa() : war.getDefender_aa()
                 : attackerSide ? war.getAttacker_id() : war.getDefender_id();
@@ -513,9 +530,12 @@ public final class WarRankingService {
         return RankingValueFormat.MONEY;
     }
 
-    private static Map<Integer, Integer> countWarsByGroup(Iterable<DBWar> wars, boolean groupByAlliance) {
+    private static Map<Integer, Integer> countWarsByGroup(Iterable<DBWar> wars, boolean groupByAlliance, IntSet warAllianceIds) {
         Int2IntOpenHashMap counts = new Int2IntOpenHashMap();
         for (DBWar war : wars) {
+            if (!matchesWarAllianceFilter(war, warAllianceIds)) {
+                continue;
+            }
             if (groupByAlliance) {
                 counts.merge(war.getAttacker_aa(), 1, Integer::sum);
                 counts.merge(war.getDefender_aa(), 1, Integer::sum);
@@ -525,6 +545,16 @@ public final class WarRankingService {
             }
         }
         return counts;
+    }
+
+    private static boolean matchesWarAllianceFilter(DBWar war, IntSet warAllianceIds) {
+        if (warAllianceIds == null || warAllianceIds.isEmpty()) {
+            return true;
+        }
+        int attackerAllianceId = war.getAttacker_aa();
+        int defenderAllianceId = war.getDefender_aa();
+        return (attackerAllianceId != 0 && warAllianceIds.contains(attackerAllianceId))
+                || (defenderAllianceId != 0 && warAllianceIds.contains(defenderAllianceId));
     }
 
     private static int allianceMemberCount(int allianceId, boolean ignoreInactiveNations) {
@@ -611,6 +641,9 @@ public final class WarRankingService {
         metadata.add(RankingSupport.field("coalition_scope", "Coalition Scope", request.onlyRankCoalition1() ? "coalition_1_only" : "both"));
         metadata.add(RankingSupport.field("war_side_scope", "War Side Scope",
                 warSideScope(request.onlyOffensiveWars(), request.onlyDefensiveWars())));
+        if (!request.warAllianceIds().isEmpty()) {
+            metadata.add(RankingSupport.field("war_alliance_filter", "War Alliance Filter", request.warAllianceIds().size() + " alliances"));
+        }
         return List.copyOf(metadata);
     }
 

@@ -13007,6 +13007,10 @@ public class CM {
                 return set("allowedAttacks", value);
             }
 
+            public warCostRanking warAlliances(String value) {
+                return set("warAlliances", value);
+            }
+
             public warCostRanking onlyOffensiveWars(String value) {
                 return set("onlyOffensiveWars", value);
             }
