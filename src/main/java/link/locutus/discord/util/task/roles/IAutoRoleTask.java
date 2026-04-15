@@ -20,6 +20,16 @@ public interface IAutoRoleTask {
 
     AutoRoleInfo autoRole(Member member, DBNation nation);
 
+    void autoRoleCitiesAsync(Member member, DBNation nation);
+
+    void autoRoleConditionsAsync(Member member, DBNation nation);
+
+    void autoRoleMemberAppAsync(Member member, DBNation nation);
+
+    void updateTaxRoleAsync(Member member, TaxBracket bracket);
+
+    void autoRoleAsync(Member member, DBNation nation);
+
     Function<Integer, Boolean> getAllowedAlliances();
 
     AutoRoleSyncState syncDB();

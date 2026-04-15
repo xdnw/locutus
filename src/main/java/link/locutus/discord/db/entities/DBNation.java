@@ -960,7 +960,7 @@ public abstract class DBNation implements NationOrAlliance {
                 if (db != null && user != null) {
                     Member member = db.getGuild().getMember(user);
                     if (member != null) {
-                        db.getAutoRoleTask().updateTaxRole(member, bracket);
+                        db.getAutoRoleTask().updateTaxRoleAsync(member, bracket);
                     }
                 }
             }

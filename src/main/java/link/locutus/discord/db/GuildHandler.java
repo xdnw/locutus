@@ -528,7 +528,7 @@ public class GuildHandler {
             if (user != null) {
                 Member member = guild.getMember(user);
                 if (member != null) {
-                    db.getAutoRoleTask().autoRoleCities(member, nation);
+                    db.getAutoRoleTask().autoRoleCitiesAsync(member, nation);
                 }
             }
         }
@@ -758,7 +758,7 @@ public class GuildHandler {
         if (member == null)
             return;
         try {
-            db.getAutoRoleTask().autoRoleMemberApp(member, current);
+            db.getAutoRoleTask().autoRoleMemberAppAsync(member, current);
         } catch (RuntimeException e) {
             e.printStackTrace();
         }
@@ -837,7 +837,7 @@ public class GuildHandler {
         if (member == null)
             return;
         try {
-            db.getAutoRoleTask().autoRoleMemberApp(member, nation);
+            db.getAutoRoleTask().autoRoleMemberAppAsync(member, nation);
         } catch (RuntimeException ignore) {
             ignore.printStackTrace();
         }

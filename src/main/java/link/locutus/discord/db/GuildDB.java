@@ -59,6 +59,7 @@ import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
+import link.locutus.discord.util.task.roles.CoalescingAutoRoleTask;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import link.locutus.discord.util.task.roles.UnmaskedReason;
 import net.dv8tion.jda.api.Permission;
@@ -2361,7 +2362,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (this.autoRoleTask == null) {
             synchronized (this) {
                 if (this.autoRoleTask == null) {
-                    this.autoRoleTask = new AutoRoleTask(getGuild(), this);
+                    this.autoRoleTask = new CoalescingAutoRoleTask(new AutoRoleTask(getGuild(), this));
                 }
             }
         }

@@ -44,6 +44,31 @@ public class DelegateAutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
+    public void autoRoleCitiesAsync(Member member, DBNation nation) {
+        task.autoRoleCitiesAsync(member, nation);
+    }
+
+    @Override
+    public void autoRoleConditionsAsync(Member member, DBNation nation) {
+        task.autoRoleConditionsAsync(member, nation);
+    }
+
+    @Override
+    public void autoRoleMemberAppAsync(Member member, DBNation nation) {
+        task.autoRoleMemberAppAsync(member, nation);
+    }
+
+    @Override
+    public void updateTaxRoleAsync(Member member, TaxBracket bracket) {
+        task.updateTaxRoleAsync(member, bracket);
+    }
+
+    @Override
+    public void autoRoleAsync(Member member, DBNation nation) {
+        task.autoRoleAsync(member, nation);
+    }
+
+    @Override
     public Function<Integer, Boolean> getAllowedAlliances() {
         return task.getAllowedAlliances();
     }

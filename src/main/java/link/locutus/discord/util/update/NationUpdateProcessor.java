@@ -66,7 +66,6 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
@@ -767,8 +766,7 @@ public class NationUpdateProcessor {
 
                 if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.NATION) {
                     try {
-                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, event.getCurrent());
-                        task.execute();
+                        db.getAutoRoleTask().autoRoleAsync(member, event.getCurrent());
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
@@ -789,8 +787,7 @@ public class NationUpdateProcessor {
 
                 if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.LEADER) {
                     try {
-                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, event.getCurrent());
-                        task.execute();
+                        db.getAutoRoleTask().autoRoleAsync(member, event.getCurrent());
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }

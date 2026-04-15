@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.Collection;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
@@ -402,6 +403,36 @@ public class AutoRoleTask implements IAutoRoleTask {
         return info;
     }
 
+    @Override
+    public void autoRoleCitiesAsync(Member member, DBNation nation) {
+        Locutus.imp().runBackgroundAsync(() -> autoRoleCities(member, nation));
+    }
+
+    @Override
+    public void autoRoleConditionsAsync(Member member, DBNation nation) {
+        Locutus.imp().runBackgroundAsync(() -> autoRoleConditions(member, nation));
+    }
+
+    @Override
+    public void autoRoleMemberAppAsync(Member member, DBNation nation) {
+        Locutus.imp().runBackgroundAsync(() -> autoRoleMemberApp(member, nation));
+    }
+
+    @Override
+    public void updateTaxRoleAsync(Member member, TaxBracket bracket) {
+        Locutus.imp().runBackgroundAsync(() -> updateTaxRole(member, bracket));
+    }
+
+    @Override
+    public void autoRoleAsync(Member member, DBNation nation) {
+        Locutus.imp().runBackgroundAsync(() -> {
+            AutoRoleInfo info = autoRole(member, nation);
+            if (info != null) {
+                info.execute();
+            }
+        });
+    }
+
     public synchronized void autoNick(AutoRoleInfo info, boolean autoAll, Member member, DBNation nation) {
         if (nation == null) {
             return;
@@ -584,7 +615,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public AutoRoleInfo autoRoleCities(Member member, DBNation nation) {
+    public synchronized AutoRoleInfo autoRoleCities(Member member, DBNation nation) {
         AutoRoleInfo info = new AutoRoleInfo(db);
         autoRoleCities(info, member, nation);
         info.execute();
@@ -593,7 +624,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
 
     @Override
-    public AutoRoleInfo autoRoleConditions(Member member, DBNation nation) {
+    public synchronized AutoRoleInfo autoRoleConditions(Member member, DBNation nation) {
         AutoRoleInfo info = new AutoRoleInfo(db);
         autoRoleConditions(info, member, nation);
         info.execute();
@@ -601,7 +632,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public AutoRoleInfo autoRoleMemberApp(Member member, DBNation nation) {
+    public synchronized AutoRoleInfo autoRoleMemberApp(Member member, DBNation nation) {
         if (!autoRoleMembersApps) return null;
         AutoRoleInfo info = new AutoRoleInfo(db);
         setAutoRoleMemberApp(info, member, nation);
@@ -610,7 +641,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public AutoRoleInfo updateTaxRoles(Map<DBNation, TaxBracket> brackets) {
+    public synchronized AutoRoleInfo updateTaxRoles(Map<DBNation, TaxBracket> brackets) {
         AutoRoleInfo info = new AutoRoleInfo(db);
         updateTaxRoles(info, brackets);
         info.execute();
@@ -618,10 +649,38 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public AutoRoleInfo updateTaxRole(Member member, TaxBracket bracket) {
+    public synchronized AutoRoleInfo updateTaxRole(Member member, TaxBracket bracket) {
         AutoRoleInfo info = new AutoRoleInfo(db);
         updateTaxRole(info, member, bracket);
         info.execute();
+        return info;
+    }
+
+    synchronized AutoRoleInfo planQueuedUpdates(Collection<QueuedAutoRoleUpdate> updates) {
+        AutoRoleInfo info = new AutoRoleInfo(db);
+        for (QueuedAutoRoleUpdate update : updates) {
+            Member member = guild.getMemberById(update.getMemberId());
+            if (member == null) {
+                continue;
+            }
+            DBNation nation = update.resolveNation(member);
+            if (update.isAutoRole()) {
+                autoRole(info, member, nation, false);
+            } else {
+                if (update.isCities()) {
+                    autoRoleCities(info, member, nation);
+                }
+                if (update.isConditions()) {
+                    autoRoleConditions(info, member, nation);
+                }
+                if (update.isMemberApp()) {
+                    setAutoRoleMemberApp(info, member, nation);
+                }
+            }
+            if (update.isTaxRole()) {
+                updateTaxRole(info, member, update.getLatestTaxBracket());
+            }
+        }
         return info;
     }
 

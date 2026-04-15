@@ -332,7 +332,14 @@ public class AutoRoleInfo {
         if (cachedRole != null && member.getUnsortedRoles().contains(cachedRole)) {
             return;
         }
-        addRoles.computeIfAbsent(member, key -> new LinkedHashSet<>()).add(new RoleAdd(member, create));
+        removeConflictingRemoval(member, create);
+        Set<RoleAdd> plannedAdds = addRoles.computeIfAbsent(member, key -> new LinkedHashSet<>());
+        for (RoleAdd plannedAdd : plannedAdds) {
+            if (plannedAdd.matches(create)) {
+                return;
+            }
+        }
+        plannedAdds.add(new RoleAdd(member, create));
     }
 
     public void addRoleToMember(Member member, Role role) {
@@ -340,6 +347,7 @@ public class AutoRoleInfo {
     }
 
     public void removeRoleFromMember(Member member, Role role) {
+        removeConflictingAdd(member, role);
         removeRoles.computeIfAbsent(member, key -> new LinkedHashSet<>()).add(role);
     }
 
@@ -398,6 +406,33 @@ public class AutoRoleInfo {
 
     private synchronized void recordClearedNickname(Member member) {
         execution(member).clearedNickname = true;
+    }
+
+    private void removeConflictingRemoval(Member member, RoleOrCreate create) {
+        Set<Role> plannedRemovals = removeRoles.get(member);
+        if (plannedRemovals == null || plannedRemovals.isEmpty()) {
+            return;
+        }
+        plannedRemovals.removeIf(role -> matches(create, role));
+        if (plannedRemovals.isEmpty()) {
+            removeRoles.remove(member);
+        }
+    }
+
+    private void removeConflictingAdd(Member member, Role role) {
+        Set<RoleAdd> plannedAdds = addRoles.get(member);
+        if (plannedAdds == null || plannedAdds.isEmpty()) {
+            return;
+        }
+        plannedAdds.removeIf(add -> add.matches(role));
+        if (plannedAdds.isEmpty()) {
+            addRoles.remove(member);
+        }
+    }
+
+    private static boolean matches(RoleOrCreate create, Role role) {
+        Long createRoleId = create.getRoleIdOrNull();
+        return createRoleId != null && createRoleId == role.getIdLong();
     }
 
     public static class RoleAdd {
@@ -467,6 +502,26 @@ public class AutoRoleInfo {
 
         public boolean wasCreatedRole() {
             return createdRole;
+        }
+
+        public boolean matches(Role role) {
+            return AutoRoleInfo.matches(this.role, role);
+        }
+
+        public boolean matches(RoleOrCreate other) {
+            Long roleId = role.getRoleIdOrNull();
+            Long otherRoleId = other.getRoleIdOrNull();
+            if (roleId != null && otherRoleId != null) {
+                return roleId.equals(otherRoleId);
+            }
+
+            Integer allianceId = role.getAllianceId();
+            Integer otherAllianceId = other.getAllianceId();
+            if (allianceId != null && otherAllianceId != null) {
+                return allianceId.equals(otherAllianceId);
+            }
+
+            return this.role == other;
         }
     }
 

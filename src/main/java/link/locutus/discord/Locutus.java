@@ -53,7 +53,6 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.multi.MultiUpdater;
-import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -594,8 +593,7 @@ public final class Locutus extends ListenerAdapter {
                     Member member = guild.getMember(discordUser);
                     if (member != null) {
                         try {
-                            AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
-                            task.execute();
+                            db.getAutoRoleTask().autoRoleAsync(member, nation);
                         } catch (Throwable e) {
                             e.printStackTrace();
                         }
@@ -1080,8 +1078,7 @@ public final class Locutus extends ListenerAdapter {
 
             Member member = GuildShardManager.updateUserName(event.getMember());
             DBNation nation = DiscordUtil.getNation(member.getIdLong());
-            AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
-            task.execute();
+            db.getAutoRoleTask().autoRoleAsync(member, nation);
             db.getHandler().onGuildMemberJoin(event);
 
             eventBus.post(event);
