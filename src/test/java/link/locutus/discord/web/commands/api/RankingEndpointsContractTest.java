@@ -8,6 +8,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.binding.value_types.WebRankingResult;
 import link.locutus.discord.web.commands.binding.value_types.WebRankingRow;
 import link.locutus.discord.web.jooby.PageHandler;
@@ -44,6 +45,9 @@ class RankingEndpointsContractTest {
         CommandCallable recruitment = api.get("recruitmentRanking");
         CommandCallable warStatusByAlliance = api.get("warStatusRankingByAlliance");
         CommandCallable warStatusByNation = api.get("warStatusRankingByNation");
+        CommandCallable warCostRanking = api.get("warCostRanking");
+        CommandCallable warRanking = api.get("warRanking");
+        CommandCallable attackTypeRanking = api.get("attackTypeRanking");
 
         assertNotNull(allianceMetric);
         assertNotNull(allianceAttribute);
@@ -54,6 +58,16 @@ class RankingEndpointsContractTest {
         assertNotNull(recruitment);
         assertNotNull(warStatusByAlliance);
         assertNotNull(warStatusByNation);
+        assertNotNull(warCostRanking);
+        assertNotNull(warRanking);
+        assertNotNull(attackTypeRanking);
+    }
+
+    @Test
+    void generatedWebCommandRefsExposeWarRankingEndpoints() {
+        assertNotNull(WM.api.warCostRanking.cmd);
+        assertNotNull(WM.api.warRanking.cmd);
+        assertNotNull(WM.api.attackTypeRanking.cmd);
     }
 
     @Test

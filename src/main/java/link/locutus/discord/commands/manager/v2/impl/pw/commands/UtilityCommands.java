@@ -37,6 +37,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAllian
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RecruitmentRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -976,71 +977,24 @@ public class UtilityCommands {
             @Arg("Rank by nation instead of alliance") @Switch("a") boolean rankByNation,
             @Arg("Only rank these war types") @Switch("t") WarType warType,
             @Arg("Only rank wars with these statuses") @Switch("s") Set<WarStatus> statuses) {
-        WarParser parser = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
-        Map<Integer, DBWar> wars = parser.getWars();
-
-        SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values())
-                .group(new BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>() {
-                    @Override
-                    public void accept(DBWar dbWar, GroupedRankBuilder<Integer, DBWar> builder) {
-                        if (warType != null && dbWar.getWarType() != warType)
-                            return;
-                        if (statuses != null && !statuses.contains(dbWar.getStatus()))
-                            return;
-
-                        boolean includeAttacker;
-                        boolean includeDefender;
-                        if (only_rank_attackers) {
-                            if (parser.getIsPrimary().apply(dbWar)) {
-                                includeAttacker = true;
-                                includeDefender = false;
-                            } else {
-                                includeAttacker = false;
-                                includeDefender = true;
-                            }
-                        } else {
-                            includeAttacker = true;
-                            includeDefender = true;
-                        }
-                        if (!rankByNation) {
-                            if (includeAttacker && dbWar.getAttacker_aa() != 0 && !onlyDefensives)
-                                builder.put(dbWar.getAttacker_aa(), dbWar);
-                            if (includeDefender && dbWar.getDefender_aa() != 0 && !onlyOffensives)
-                                builder.put(dbWar.getDefender_aa(), dbWar);
-                        } else {
-                            if (includeAttacker && !onlyDefensives)
-                                builder.put(dbWar.getAttacker_id(), dbWar);
-                            if (includeDefender && !onlyOffensives)
-                                builder.put(dbWar.getDefender_id(), dbWar);
-                        }
-                    }
-                }).sumValues(f -> 1d);
-        if (normalizePerMember && !rankByNation) {
-            ranksUnsorted = ranksUnsorted.adapt((aaId, numWars) -> {
-                int num = DBAlliance.getOrCreate(aaId)
-                        .getNations(true, ignore2dInactives ? 2440 : Integer.MAX_VALUE, true).size();
-                if (num == 0)
-                    return 0d;
-                return numWars / (double) num;
-            });
-        }
-
-        RankBuilder<IShrink> ranks = ranksUnsorted.sort()
-                .nameKeys(i -> (rankByNation ? DBNation.getOrCreate(i) : DBAlliance.getOrCreate(i)).toShrink());
-        String offOrDef = "";
-        if (onlyOffensives != onlyDefensives) {
-            if (!onlyDefensives)
-                offOrDef = "offensive ";
-            else
-                offOrDef = "defensive ";
-        }
-
-        String title = "Most " + offOrDef + "wars ("
-                + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time) + ")";
-        if (normalizePerMember)
-            title += "(per " + (ignore2dInactives ? "active " : "") + "nation)";
-
-        ranks.build(channel, command, title, true);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                WarRankingService.warRanking(WarRankingService.WarCountRequest.normalize(
+                        time,
+                        attackers,
+                        defenders,
+                        onlyOffensives,
+                        onlyDefensives,
+                        only_rank_attackers,
+                        normalizePerMember,
+                        ignore2dInactives,
+                        rankByNation,
+                        warType,
+                        statuses
+                )),
+                new DiscordRankingAdapter.RenderOptions(null, true, null)
+        );
 
         return null;
     }

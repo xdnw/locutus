@@ -2,15 +2,21 @@ package link.locutus.discord.web.commands.api;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.AccessType;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
+import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsMemberIngameOrDiscord;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
-import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
@@ -29,15 +35,29 @@ import link.locutus.discord.util.task.roles.AutoRoleBulkResult;
 import link.locutus.discord.util.task.roles.AutoRoleResult;
 import link.locutus.discord.util.task.roles.AutoRoleService;
 import link.locutus.discord.web.commands.ReturnType;
-import link.locutus.discord.web.commands.binding.value_types.*;
+import link.locutus.discord.web.commands.binding.value_types.CacheType;
+import link.locutus.discord.web.commands.binding.value_types.WebAnnouncement;
+import link.locutus.discord.web.commands.binding.value_types.WebAnnouncements;
+import link.locutus.discord.web.commands.binding.value_types.WebAudit;
+import link.locutus.discord.web.commands.binding.value_types.WebAudits;
+import link.locutus.discord.web.commands.binding.value_types.WebBalance;
+import link.locutus.discord.web.commands.binding.value_types.WebBankAccess;
+import link.locutus.discord.web.commands.binding.value_types.WebInt;
+import link.locutus.discord.web.commands.binding.value_types.WebMyWars;
+import link.locutus.discord.web.commands.binding.value_types.WebSuccess;
+import link.locutus.discord.web.commands.binding.value_types.WebTable;
+import link.locutus.discord.web.commands.binding.value_types.WebTransferResult;
 import link.locutus.discord.web.commands.page.PageHelper;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -263,7 +283,7 @@ public class IAEndpoints extends PageHelper {
             throw new IllegalArgumentException("You can only view your own bank records.");
         }
         List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, true, 0, Long.MAX_VALUE, nation, false);
-        List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false);
+        List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false, true);
         return new WebTable(cells, null, null);
     }
 

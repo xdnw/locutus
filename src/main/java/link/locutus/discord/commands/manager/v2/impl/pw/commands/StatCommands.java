@@ -37,13 +37,13 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.AllianceRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.commands.manager.v2.table.imp.*;
-import link.locutus.discord.commands.rankings.WarCostRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
@@ -291,122 +291,34 @@ public class StatCommands {
                                  @Switch("n") Integer num_results,
                                  @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
-        if (timeEnd == null) timeEnd = Long.MAX_VALUE;
-        if (stat == null) stat = WarCostStat.WAR_VALUE;
-        if (type == null) type = WarCostMode.DEALT;
-
-        WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
-                .allowWarStatuses(allowedWarStatuses)
-                .allowedWarTypes(allowedWarTypes)
-                .allowedAttackTypes(allowedAttacks);
-        if (onlyOffensiveWars) {
-            parser.addFilter((war, attack) -> {
-                return parser.getIsPrimary().apply(war);
-            });
-        }
-        if (onlyDefensiveWars) {
-            parser.addFilter((war, attack) -> {
-                return !parser.getIsPrimary().apply(war);
-            });
-        }
-        if (type == WarCostMode.PROFIT && stat.unit() != null) {
-            throw new IllegalArgumentException("Cannot rank by `type: profit` with a unit stat");
-        }
-        if (type == WarCostMode.PROFIT && stat.isAttack()) {
-            throw new IllegalArgumentException("Cannot rank by `type: profit` with an attack type stat");
-        }
-
-        String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, (Math.min(System.currentTimeMillis(), timeEnd) - timeStart));
-
-        String title = (groupByAlliance ? "Alliance" : "Nation") + " " + stat.name() + " " + type.name();
-        if (scalePerWar && scalePerCity) {
-            title += "/war*city";
-        } else if (scalePerWar) {
-            title += "/war";
-        } else if (scalePerCity) {
-            title += "/city";
-        }
-        title += " (%s)";
-        title = String.format(title, diffStr);
-
-        Map<Integer, DBWar> wars = parser.getWars();
-
-        TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc = stat.getFunction(excludeUnits, excludeInfra, excludeConsumption, excludeLoot, excludeBuildings, type);
-
-        GroupedRankBuilder<Integer, AbstractCursor> nationAllianceGroup = new RankBuilder<>((Consumer<Consumer<Map.Entry<DBWar, AbstractCursor>>>) new Consumer<Consumer<Map.Entry<DBWar, AbstractCursor>>>() {
-            @Override
-            public void accept(Consumer<Map.Entry<DBWar, AbstractCursor>> o) {
-                Consumer<BiConsumer<DBWar, AbstractCursor>> attacks = parser.getAttacks();
-                attacks.accept((war, attack) -> {
-                    o.accept(KeyValue.of(war, attack));
-                });
-            }
-        }).group((entry, map) -> {
-                    AbstractCursor attack = entry.getValue();
-                    DBWar war = entry.getKey();
-                    // Group attacks into attacker and defender
-                    int attId,defId;
-                    if (groupByAlliance) {
-                        attId = war.getAttacker_aa();
-                        defId = war.getDefender_aa();
-                    } else {
-                        attId = war.getAttacker_id();
-                        defId = war.getDefender_id();
-                    }
-                    if (onlyRankCoalition1) {
-                        if (parser.getIsPrimary().apply(war)) {
-                            map.put(attId, attack);
-                        } else {
-                            map.put(defId, attack);
-                        }
-                    } else {
-                        map.put(attId, attack);
-                        map.put(defId, attack);
-                    }
-                });
-
-        // war
-        // nation
-        // alliance
-        BiFunction<Integer, AbstractCursor, Integer> groupBy;
-        if (groupByAlliance) groupBy = (attacker, attack) -> wars.get(attack.getWar_id()).getNationId(attacker);
-        else groupBy = (attacker, attack) -> attack.getWar_id();
-
-        NumericMappedRankBuilder<Integer, Integer, Double> byGroupMap;
-        TriFunction<Boolean, DBWar, AbstractCursor, Double> applyBoth = type.getAttackFunc(valueFunc);
-        Map<Integer, Integer> warsByGroup = null;
-        if (scalePerWar) {
-            warsByGroup = new Int2IntOpenHashMap();
-            if (groupByAlliance) {
-                for (DBWar war : wars.values()) {
-                    warsByGroup.merge(war.getAttacker_aa(), 1, Integer::sum);
-                    warsByGroup.merge(war.getDefender_aa(), 1, Integer::sum);
-                }
-            } else {
-                for (DBWar war : wars.values()) {
-                    warsByGroup.merge(war.getAttacker_id(), 1, Integer::sum);
-                    warsByGroup.merge(war.getDefender_id(), 1, Integer::sum);
-                }
-            }
-        }
-        TriFunction<Integer, DBWar, Double, Double> scaleFunc = WarCostRanking.getScaleFunction(scalePerCity, warsByGroup, groupByAlliance);
-
-        byGroupMap = nationAllianceGroup.map(groupBy, (byNatOrAA, attack) -> {
-            DBWar war = wars.get(attack.getWar_id());
-            int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
-            boolean isAttacker = attack.getAttacker_id() == nationId;
-            double totalVal = applyBoth.apply(isAttacker, war, attack);
-            return scaleFunc.apply(nationId, war, totalVal);
-        });
-
-        SummedMapRankBuilder<Integer, Number> byGroupSum;
-        byGroupSum = byGroupMap.sum();
-
-        RankBuilder<IShrink> ranks = byGroupSum
-                .sort()
-                .highlight(highlight == null ? null : highlight.stream().map(DBAlliance::getId).collect(Collectors.toSet()))
-                .nameKeys(id -> (groupByAlliance ? DBAlliance.getOrCreate(id) : DBNation.getOrCreate(id)).toShrink());
-        ranks.limit(num_results).build(io, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                io,
+                command,
+                WarRankingService.warCostRanking(WarRankingService.WarCostRequest.normalize(
+                        timeStart,
+                        timeEnd,
+                        coalition1,
+                        coalition2,
+                        onlyRankCoalition1,
+                        type,
+                        stat,
+                        excludeInfra,
+                        excludeConsumption,
+                        excludeLoot,
+                        excludeBuildings,
+                        excludeUnits,
+                        groupByAlliance,
+                        scalePerWar,
+                        scalePerCity,
+                        allowedWarTypes,
+                        allowedWarStatuses,
+                        allowedAttacks,
+                        onlyOffensiveWars,
+                        onlyDefensiveWars,
+                        highlight
+                )),
+                new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
+        );
         return null;
     }
 
@@ -2771,52 +2683,20 @@ public class StatCommands {
             @Switch("p") boolean percent,
             @Switch("o") boolean only_off_wars,
             @Switch("d") boolean only_def_wars) {
-        Set<Integer> allianceIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
-        AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withActiveWars(Predicates.alwaysTrue(), f -> {
-            if (!only_def_wars && allianceIds.contains(f.getAttacker_aa())) return true;
-            if (!only_off_wars && allianceIds.contains(f.getDefender_aa())) return true;
-            return false;
-        }).afterDate(time);
-        if (only_top_x != null) {
-            Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, only_top_x);
-            alliances.retainAll(topAlliances);
-        }
-        Map<Integer, Integer> totalAttacks = new HashMap<>();
-        Map<Integer, Integer> attackOfType = new HashMap<>();
-
-        query.iterateAttacks((war, attack) -> {
-            DBNation nat = Locutus.imp().getNationDB().getNationById(attack.getAttacker_id());
-            if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) return;
-            totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);
-
-            if (attack.getAttack_type() == type) {
-                attackOfType.put(nat.getAlliance_id(), attackOfType.getOrDefault(nat.getAlliance_id(), 0) + 1);
-            }
-        });
-
-        SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>();
-
-        for (Map.Entry<Integer, Integer> entry : attackOfType.entrySet()) {
-
-            if (!allianceIds.contains(entry.getKey())) continue;
-
-            int num = entry.getValue();
-            int total = totalAttacks.get(entry.getKey());
-
-            double value;
-            if (percent) {
-                value = 100d * num / total;
-            } else {
-                value = num;
-            }
-
-            builder.put(DBAlliance.getOrCreate(entry.getKey()), value);
-        }
-
-        String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
-        String title = " attacks of type: " + type.getName() + " (" + timeStr + ")";
-        title = (percent ? "Percent" : "Total") + title;
-        builder.sort().name(DBAlliance::toShrink, MathMan::format).build(io, command, title);
+        DiscordRankingAdapter.send(
+                io,
+                command,
+                WarRankingService.attackTypeRanking(WarRankingService.AttackTypeRequest.normalize(
+                        time,
+                        type,
+                        alliances,
+                        only_top_x,
+                        percent,
+                        only_off_wars,
+                        only_def_wars
+                )),
+                new DiscordRankingAdapter.RenderOptions(null, true, null)
+        );
         return null;
     }
 

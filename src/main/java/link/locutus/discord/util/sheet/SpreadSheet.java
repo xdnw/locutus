@@ -209,7 +209,7 @@ public class SpreadSheet {
     }
 
     public static List<List<Object>> generateTransactionsListCells(List<Transaction2> transactions,
-            boolean includeHeader, boolean ascending) {
+            boolean includeHeader, boolean ascending, boolean useBytes) {
         List<List<Object>> cells = new ObjectArrayList<>();
 
         List<Object> header = new ObjectArrayList<>(Arrays.asList(
@@ -238,7 +238,7 @@ public class SpreadSheet {
             transactions.sort((o1, o2) -> Long.compare(o2.tx_datetime, o1.tx_datetime));
         }
 
-        BitBuffer noteBuffer = Transaction2.createNoteBuffer();
+        BitBuffer noteBuffer = useBytes ? Transaction2.createNoteBuffer() : null;
         for (Transaction2 record : transactions) {
             String type;
             if (record.tx_id == -1) {
@@ -256,7 +256,8 @@ public class SpreadSheet {
             header.set(5, record.receiver_id + "");
             header.set(6, record.receiver_type);
             header.set(7, record.banker_nation);
-            header.set(8, record.getStructuredNote().toBytes(noteBuffer));
+            TransactionNote note = record.getStructuredNote();
+            header.set(8, useBytes ? note.toBytes(noteBuffer) : note.toDisplayString());
             int i = 9;
             for (ResourceType value : ResourceType.values()) {
                 if (value == ResourceType.CREDITS)
@@ -272,7 +273,7 @@ public class SpreadSheet {
 
     public CompletableFuture<IMessageBuilder> addTransactionsList(IMessageIO channel, List<Transaction2> transactions,
             boolean includeHeader) throws IOException {
-        List<List<Object>> cells = generateTransactionsListCells(transactions, includeHeader, true);
+        List<List<Object>> cells = generateTransactionsListCells(transactions, includeHeader, true, false);
         if (includeHeader) {
             reset();
         }

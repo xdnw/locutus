@@ -9,15 +9,21 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RecruitmentRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.AllianceRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WebRankingAdapter;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.WarCostMode;
+import link.locutus.discord.apiv1.enums.WarCostStat;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -169,6 +175,114 @@ public class RankingEndpoints {
             @Arg("Date to start from") @Timestamp long time) {
         return WebRankingAdapter.toWeb(WarStatusRankingService.ranking(
                 WarStatusRankingService.Request.normalize(false, attackers, defenders, time)
+        ));
+    }
+
+    @Command(desc = "Rank war costs between two parties", viewable = true)
+    @ReturnType(WebRankingResult.class)
+    public WebRankingResult warCostRanking(
+            @Timestamp long timeStart,
+            @Timestamp Long timeEnd,
+            @AllowDeleted @Default("*") Set<NationOrAlliance> coalition1,
+            @AllowDeleted @Default Set<NationOrAlliance> coalition2,
+            @Switch("a") boolean onlyRankCoalition1,
+            WarCostMode type,
+            WarCostStat stat,
+            @Switch("i") boolean excludeInfra,
+            @Switch("c") boolean excludeConsumption,
+            @Switch("l") boolean excludeLoot,
+            @Switch("b") boolean excludeBuildings,
+            @Switch("u") boolean excludeUnits,
+            @Switch("g") boolean groupByAlliance,
+            @Switch("w") boolean scalePerWar,
+            @Switch("p") boolean scalePerCity,
+            @Switch("wartype") Set<WarType> allowedWarTypes,
+            @Switch("status") Set<WarStatus> allowedWarStatuses,
+            @Switch("attacks") Set<AttackType> allowedAttacks,
+            @Switch("off") boolean onlyOffensiveWars,
+            @Switch("def") boolean onlyDefensiveWars,
+            @Switch("h") @AllowDeleted Set<DBAlliance> highlight
+    ) {
+        return WebRankingAdapter.toWeb(WarRankingService.warCostRanking(
+                WarRankingService.WarCostRequest.normalize(
+                        timeStart,
+                        timeEnd,
+                        coalition1,
+                        coalition2,
+                        onlyRankCoalition1,
+                        type,
+                        stat,
+                        excludeInfra,
+                        excludeConsumption,
+                        excludeLoot,
+                        excludeBuildings,
+                        excludeUnits,
+                        groupByAlliance,
+                        scalePerWar,
+                        scalePerCity,
+                        allowedWarTypes,
+                        allowedWarStatuses,
+                        allowedAttacks,
+                        onlyOffensiveWars,
+                        onlyDefensiveWars,
+                        highlight
+                )
+        ));
+    }
+
+    @Command(desc = "Rank the number of wars between two coalitions by nation or alliance", viewable = true)
+    @ReturnType(WebRankingResult.class)
+    public WebRankingResult warRanking(
+            @AllowDeleted Set<NationOrAlliance> attackers,
+            @AllowDeleted Set<NationOrAlliance> defenders,
+            @Arg("Date to start from") @Timestamp long time,
+            @Switch("o") boolean onlyOffensives,
+            @Switch("d") boolean onlyDefensives,
+            @Switch("c") boolean only_rank_attackers,
+            @Switch("n") boolean normalizePerMember,
+            @Switch("i") boolean ignore2dInactives,
+            @Switch("a") boolean rankByNation,
+            @Switch("t") WarType warType,
+            @Switch("s") Set<WarStatus> statuses
+    ) {
+        return WebRankingAdapter.toWeb(WarRankingService.warRanking(
+                WarRankingService.WarCountRequest.normalize(
+                        time,
+                        attackers,
+                        defenders,
+                        onlyOffensives,
+                        onlyDefensives,
+                        only_rank_attackers,
+                        normalizePerMember,
+                        ignore2dInactives,
+                        rankByNation,
+                        warType,
+                        statuses
+                )
+        ));
+    }
+
+    @Command(desc = "Rank the alliances by the % (or total) attacks by type.", viewable = true)
+    @ReturnType(WebRankingResult.class)
+    public WebRankingResult attackTypeRanking(
+            @Timestamp long time,
+            AttackType type,
+            Set<DBAlliance> alliances,
+            @Range(min = 1, max = 9999) @Switch("x") Integer only_top_x,
+            @Switch("p") boolean percent,
+            @Switch("o") boolean only_off_wars,
+            @Switch("d") boolean only_def_wars
+    ) {
+        return WebRankingAdapter.toWeb(WarRankingService.attackTypeRanking(
+                WarRankingService.AttackTypeRequest.normalize(
+                        time,
+                        type,
+                        alliances,
+                        only_top_x,
+                        percent,
+                        only_off_wars,
+                        only_def_wars
+                )
         ));
     }
 }

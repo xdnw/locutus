@@ -244,6 +244,38 @@ public class WM {
                 public static final announcements cmd = new announcements();
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="attackTypeRanking")
+            public static class attackTypeRanking extends CommandRef {
+                public static final attackTypeRanking cmd = new attackTypeRanking();
+            public attackTypeRanking time(String value) {
+                return set("time", value);
+            }
+
+            public attackTypeRanking type(String value) {
+                return set("type", value);
+            }
+
+            public attackTypeRanking alliances(String value) {
+                return set("alliances", value);
+            }
+
+            public attackTypeRanking only_top_x(String value) {
+                return set("only_top_x", value);
+            }
+
+            public attackTypeRanking percent(String value) {
+                return set("percent", value);
+            }
+
+            public attackTypeRanking only_off_wars(String value) {
+                return set("only_off_wars", value);
+            }
+
+            public attackTypeRanking only_def_wars(String value) {
+                return set("only_def_wars", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.IAEndpoints.class,method="autorole")
             public static class autorole extends CommandRef {
                 public static final autorole cmd = new autorole();
@@ -1603,6 +1635,94 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="warCostRanking")
+            public static class warCostRanking extends CommandRef {
+                public static final warCostRanking cmd = new warCostRanking();
+            public warCostRanking timeStart(String value) {
+                return set("timeStart", value);
+            }
+
+            public warCostRanking timeEnd(String value) {
+                return set("timeEnd", value);
+            }
+
+            public warCostRanking coalition1(String value) {
+                return set("coalition1", value);
+            }
+
+            public warCostRanking coalition2(String value) {
+                return set("coalition2", value);
+            }
+
+            public warCostRanking onlyRankCoalition1(String value) {
+                return set("onlyRankCoalition1", value);
+            }
+
+            public warCostRanking type(String value) {
+                return set("type", value);
+            }
+
+            public warCostRanking stat(String value) {
+                return set("stat", value);
+            }
+
+            public warCostRanking excludeInfra(String value) {
+                return set("excludeInfra", value);
+            }
+
+            public warCostRanking excludeConsumption(String value) {
+                return set("excludeConsumption", value);
+            }
+
+            public warCostRanking excludeLoot(String value) {
+                return set("excludeLoot", value);
+            }
+
+            public warCostRanking excludeBuildings(String value) {
+                return set("excludeBuildings", value);
+            }
+
+            public warCostRanking excludeUnits(String value) {
+                return set("excludeUnits", value);
+            }
+
+            public warCostRanking groupByAlliance(String value) {
+                return set("groupByAlliance", value);
+            }
+
+            public warCostRanking scalePerWar(String value) {
+                return set("scalePerWar", value);
+            }
+
+            public warCostRanking scalePerCity(String value) {
+                return set("scalePerCity", value);
+            }
+
+            public warCostRanking allowedWarTypes(String value) {
+                return set("allowedWarTypes", value);
+            }
+
+            public warCostRanking allowedWarStatuses(String value) {
+                return set("allowedWarStatuses", value);
+            }
+
+            public warCostRanking allowedAttacks(String value) {
+                return set("allowedAttacks", value);
+            }
+
+            public warCostRanking onlyOffensiveWars(String value) {
+                return set("onlyOffensiveWars", value);
+            }
+
+            public warCostRanking onlyDefensiveWars(String value) {
+                return set("onlyDefensiveWars", value);
+            }
+
+            public warCostRanking highlight(String value) {
+                return set("highlight", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="warCostsByDay")
             public static class warCostsByDay extends CommandRef {
                 public static final warCostsByDay cmd = new warCostsByDay();
@@ -1644,6 +1764,54 @@ public class WM {
 
             public warCostsByDay allowedVictoryTypes(String value) {
                 return set("allowedVictoryTypes", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="warRanking")
+            public static class warRanking extends CommandRef {
+                public static final warRanking cmd = new warRanking();
+            public warRanking attackers(String value) {
+                return set("attackers", value);
+            }
+
+            public warRanking defenders(String value) {
+                return set("defenders", value);
+            }
+
+            public warRanking time(String value) {
+                return set("time", value);
+            }
+
+            public warRanking onlyOffensives(String value) {
+                return set("onlyOffensives", value);
+            }
+
+            public warRanking onlyDefensives(String value) {
+                return set("onlyDefensives", value);
+            }
+
+            public warRanking only_rank_attackers(String value) {
+                return set("only_rank_attackers", value);
+            }
+
+            public warRanking normalizePerMember(String value) {
+                return set("normalizePerMember", value);
+            }
+
+            public warRanking ignore2dInactives(String value) {
+                return set("ignore2dInactives", value);
+            }
+
+            public warRanking rankByNation(String value) {
+                return set("rankByNation", value);
+            }
+
+            public warRanking warType(String value) {
+                return set("warType", value);
+            }
+
+            public warRanking statuses(String value) {
+                return set("statuses", value);
             }
 
             }
