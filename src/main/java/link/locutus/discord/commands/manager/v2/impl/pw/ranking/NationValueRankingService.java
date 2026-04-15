@@ -5,7 +5,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.pnw.NationList;
@@ -187,9 +186,6 @@ public final class NationValueRankingService {
             snapshotNations.removeIf(nation -> !nation.isTaxable());
         }
 
-        Set<Integer> nationIds = snapshotNations.stream().map(DBNation::getNation_id).collect(java.util.stream.Collectors.toSet());
-        Map<Integer, Map<Integer, DBCity>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
-
         Map<Integer, Integer> treasureByAllianceId = new HashMap<>();
         for (DBNation nation : snapshotNations) {
             if (nation.getAlliance_id() == 0) {
@@ -202,11 +198,6 @@ public final class NationValueRankingService {
 
         Map<Integer, Double> valuesByNationId = new LinkedHashMap<>();
         for (DBNation nation : snapshotNations) {
-            Map<Integer, DBCity> cities = allCities.get(nation.getNation_id());
-            if (cities == null || cities.isEmpty()) {
-                continue;
-            }
-
             int treasures = treasureByAllianceId.getOrDefault(nation.getAlliance_id(), 0);
             Set<DBTreasure> nationTreasures = nation.getTreasures();
             double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4))

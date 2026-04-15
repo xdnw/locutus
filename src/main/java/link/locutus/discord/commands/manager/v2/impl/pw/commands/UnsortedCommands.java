@@ -1194,7 +1194,7 @@ public class UnsortedCommands {
         }
         double[] cityProfit = new double[ResourceType.values.length];
         double[] milUp = new double[ResourceType.values.length];
-        int tradeBonusTotal = 0;
+        double tradeBonusTotal = 0d;
         Map<Integer, Integer> treasureByAA = new HashMap<>();
         if (snapshotDate == null) {
             for (DBNation nation : filtered) {
@@ -1216,9 +1216,10 @@ public class UnsortedCommands {
             ResourceType.add(cityProfit, nation.getRevenue(cacheStore, 12, true, false, false, !excludeNationBonus,
                     false, false, treasureBonus, rads, forceWarFlag, false));
             ResourceType.add(milUp, nation.getRevenue(cacheStore, 12, false, true, false, false, false, false,
-                    treasureBonus, rads, forceAtWar, false));
-            long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * nation.getGrossModifier());
-            tradeBonusTotal += nationColorBonus;
+                    treasureBonus, rads, forceWarFlag, false));
+                double[] tradeOnly = nation.getRevenue(cacheStore, 12, false, false, true, false, false, false,
+                    treasureBonus, rads, forceWarFlag, false);
+                tradeBonusTotal += tradeOnly[ResourceType.MONEY.ordinal()];
         }
 
         double[] warsCost = ResourceType.getBuffer();

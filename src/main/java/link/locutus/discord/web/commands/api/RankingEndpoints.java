@@ -65,7 +65,7 @@ public class RankingEndpoints {
     @Command(desc = "Rank alliances by a metric over a specified time period", viewable = true)
     @ReturnType(WebRankingResult.class)
     public WebRankingResult allianceMetricDeltaRanking(
-            @Default Set<DBAlliance> alliances,
+            Set<DBAlliance> alliances,
             AllianceMetric metric,
             @Timestamp long timeStart,
             @Timestamp long timeEnd,
