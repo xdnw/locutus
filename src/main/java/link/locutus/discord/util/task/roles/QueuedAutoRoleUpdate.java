@@ -6,6 +6,10 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Member;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
 final class QueuedAutoRoleUpdate {
     private final long memberId;
     private boolean autoRole;
@@ -18,6 +22,7 @@ final class QueuedAutoRoleUpdate {
     private boolean taxRole;
     @Nullable
     private TaxBracket latestTaxBracket;
+    private final List<CompletableFuture<AutoRoleInfo>> autoRoleFutures = new ArrayList<>();
 
     QueuedAutoRoleUpdate(long memberId) {
         this.memberId = memberId;
@@ -58,6 +63,12 @@ final class QueuedAutoRoleUpdate {
         conditions = false;
         memberApp = false;
         mergeNation(nation);
+    }
+
+    public void addAutoRoleFuture(CompletableFuture<AutoRoleInfo> future) {
+        if (future != null) {
+            autoRoleFutures.add(future);
+        }
     }
 
     public void mergeCities(@Nullable DBNation nation) {
@@ -103,5 +114,21 @@ final class QueuedAutoRoleUpdate {
         }
         explicitNullNation = false;
         latestNation = nation;
+    }
+
+    public void completeAutoRoleFutures(@Nullable AutoRoleInfo info, @Nullable Throwable error) {
+        if (autoRoleFutures.isEmpty()) {
+            return;
+        }
+        if (error != null) {
+            for (CompletableFuture<AutoRoleInfo> future : autoRoleFutures) {
+                future.completeExceptionally(error);
+            }
+        } else {
+            for (CompletableFuture<AutoRoleInfo> future : autoRoleFutures) {
+                future.complete(info);
+            }
+        }
+        autoRoleFutures.clear();
     }
 }

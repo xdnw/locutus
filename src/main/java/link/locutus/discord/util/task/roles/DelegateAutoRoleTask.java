@@ -5,6 +5,7 @@ import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.Member;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 public class DelegateAutoRoleTask implements IAutoRoleTask {
@@ -64,8 +65,8 @@ public class DelegateAutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public void autoRoleAsync(Member member, DBNation nation) {
-        task.autoRoleAsync(member, nation);
+    public CompletableFuture<AutoRoleInfo> autoRoleAsync(Member member, DBNation nation) {
+        return task.autoRoleAsync(member, nation);
     }
 
     @Override

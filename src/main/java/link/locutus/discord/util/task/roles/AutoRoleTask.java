@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -424,13 +425,24 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public void autoRoleAsync(Member member, DBNation nation) {
+    public CompletableFuture<AutoRoleInfo> autoRoleAsync(Member member, DBNation nation) {
+        if (member == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        CompletableFuture<AutoRoleInfo> future = new CompletableFuture<>();
         Locutus.imp().runBackgroundAsync(() -> {
-            AutoRoleInfo info = autoRole(member, nation);
-            if (info != null) {
-                info.execute();
+            try {
+                AutoRoleInfo info = autoRole(member, nation);
+                if (info != null) {
+                    info.execute();
+                }
+                future.complete(info);
+            } catch (Throwable e) {
+                future.completeExceptionally(e);
+                throw e;
             }
         });
+        return future;
     }
 
     public synchronized void autoNick(AutoRoleInfo info, boolean autoAll, Member member, DBNation nation) {

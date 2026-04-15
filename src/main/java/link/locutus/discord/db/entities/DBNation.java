@@ -144,7 +144,6 @@ import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.multi.GetUid;
-import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.AutoRoleTextFormatter;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.NationUpdateProcessor;
@@ -327,6 +326,11 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public String register(User user, GuildDB db, boolean isNewRegistration) {
+        return register(user, db, isNewRegistration, null);
+    }
+
+    public String register(User user, GuildDB db, boolean isNewRegistration,
+            @Nullable Consumer<String> onPostRegisterUpdate) {
         if (data()._nationId() == Settings.INSTANCE.NATION_ID) {
             if (Settings.INSTANCE.ADMIN_USER_ID != user.getIdLong()) {
                 if (Settings.INSTANCE.ADMIN_USER_ID > 0) {
@@ -371,42 +375,94 @@ public abstract class DBNation implements NationOrAlliance {
                 - Public banking/offshoring
                 - Requesting a feature
                 - General inquiries/feedback
-                <https://discord.gg/cUuskPDrB7>""")
-                .append("\n\nRunning auto role task...");
+                <https://discord.gg/cUuskPDrB7>""");
         if (db != null) {
-            try {
-                Role role = Roles.REGISTERED.toRole2(db);
-                if (role != null) {
-                    try {
-                        Member member = db.getGuild().getMember(user);
-                        if (member == null) {
-                            member = db.getGuild().retrieveMember(user).complete();
-                        }
-                        if (member != null) {
-                                    RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
-                            output.append("You have been assigned the role: " + role.getName());
-                            AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this);
-                            task.execute();
-                            output.append("\n" + AutoRoleTextFormatter.formatExecution(task));
-                        } else {
-                            output.append("Member " + DiscordUtil.getFullUsername(user) + " not found in guild: "
-                                    + db.getGuild());
-                        }
-                    } catch (InsufficientPermissionException e) {
-                        output.append(e.getMessage() + "\n");
-                    }
-                } else {
-                    if (Roles.ADMIN.has(user, db.getGuild())) {
-                        output.append("No REGISTERED role mapping found.");
-                        output.append("\nCreate a role mapping with " + CM.role.setAlias.cmd.toSlashMention());
-                    }
-                }
-            } catch (HierarchyException e) {
-                output.append("\nCannot add role (Make sure the Bot's role is high enough and has add role perms)\n- "
-                        + e.getMessage());
+            String postRegisterMessage = queuePostRegisterUpdates(user, db, onPostRegisterUpdate);
+            if (postRegisterMessage != null && !postRegisterMessage.isBlank()) {
+                output.append("\n\n").append(postRegisterMessage);
             }
         }
         return output.toString();
+    }
+
+    private @Nullable String queuePostRegisterUpdates(User user, GuildDB db,
+            @Nullable Consumer<String> onPostRegisterUpdate) {
+        Role role = Roles.REGISTERED.toRole2(db);
+        if (role == null) {
+            if (!Roles.ADMIN.has(user, db.getGuild())) {
+                return null;
+            }
+            return "No REGISTERED role mapping found.\nCreate a role mapping with "
+                    + CM.role.setAlias.cmd.toSlashMention();
+        }
+
+        getRegistrationMemberFuture(user, db).whenComplete((member, memberError) -> {
+            if (memberError != null) {
+                reportPostRegisterFailure(onPostRegisterUpdate, memberError);
+                return;
+            }
+            if (member == null) {
+                notifyPostRegisterUpdate(onPostRegisterUpdate,
+                        "Member "
+                                + DiscordUtil.getFullUsername(user) + " not found in guild: " + db.getGuild());
+                return;
+            }
+
+            try {
+                RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role), RateLimitedSources.DB_NATION_ROLE_ASSIGN)
+                        .thenCompose(v -> db.getAutoRoleTask().autoRoleAsync(member, this))
+                        .whenComplete((info, taskError) -> {
+                            if (taskError != null) {
+                                reportPostRegisterFailure(onPostRegisterUpdate, taskError);
+                                return;
+                            }
+
+                            StringBuilder update = new StringBuilder("Assigned role: ").append(role.getName());
+
+                            String autoRoleResult = AutoRoleTextFormatter.formatExecution(info, member);
+                            if (!"No changes".equals(autoRoleResult)) {
+                                update.append("\n").append(autoRoleResult);
+                            }
+                            notifyPostRegisterUpdate(onPostRegisterUpdate, update.toString());
+                        });
+            } catch (HierarchyException | InsufficientPermissionException e) {
+                reportPostRegisterFailure(onPostRegisterUpdate, e);
+            }
+        });
+
+        return null;
+    }
+
+    private CompletableFuture<Member> getRegistrationMemberFuture(User user, GuildDB db) {
+        Member member = db.getGuild().getMember(user);
+        if (member != null) {
+            return CompletableFuture.completedFuture(member);
+        }
+        return RateLimitUtil.queue(db.getGuild().retrieveMember(user), RateLimitedSources.DB_NATION_ROLE_ASSIGN);
+    }
+
+    private void notifyPostRegisterUpdate(@Nullable Consumer<String> onPostRegisterUpdate, String message) {
+        if (onPostRegisterUpdate == null || message == null || message.isBlank()) {
+            return;
+        }
+        try {
+            onPostRegisterUpdate.accept(message);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void reportPostRegisterFailure(@Nullable Consumer<String> onPostRegisterUpdate, Throwable throwable) {
+        Throwable root = throwable;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        root.printStackTrace();
+
+        String detail = StringMan.stripApiKey(root.getMessage());
+        if (detail != null && !detail.isBlank()) {
+            notifyPostRegisterUpdate(onPostRegisterUpdate, detail);
+        }
     }
 
     @Command(desc = "The absolute turn of leaving beige")

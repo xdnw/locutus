@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -13,6 +14,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -26,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class RegisterCommand extends Command {
 
@@ -64,7 +67,17 @@ public class RegisterCommand extends Command {
             if (me == null) {
                 return "Usage: " + CM.register.cmd.toSlashMention();
             } else {
-                return me.register(user, guildDb, false);
+                CompletableFuture<IMessageBuilder> resultMessage = new CompletableFuture<>();
+                String registerMessage = me.register(user, guildDb, false, update ->
+                        resultMessage.thenAccept(msg -> msg.append("\n\n" + update).send(RateLimitedSources.COMMAND_RESULT)));
+                channel.send(registerMessage, RateLimitedSources.COMMAND_RESULT).whenComplete((msg, error) -> {
+                    if (error != null) {
+                        resultMessage.completeExceptionally(error);
+                    } else {
+                        resultMessage.complete(msg);
+                    }
+                });
+                return null;
             }
         }
         if (args.size() == 2 && args.get(0).contains("<@") && args.get(0).contains(">")) {
@@ -98,7 +111,7 @@ public class RegisterCommand extends Command {
                     }
                 }
             }
-            return register(guild, guildDb, mention, nation, true);
+            return register(channel, guild, guildDb, mention, nation, true);
         }
         String nationName = StringMan.join(args, " ");
         if (nationName.equalsIgnoreCase("*")) {
@@ -144,10 +157,10 @@ public class RegisterCommand extends Command {
             return "Must be an nation id or link: ``" + nationName + "`" + "`";
         }
 
-        return register(guild, guildDb, user, nation, false);
+        return register(channel, guild, guildDb, user, nation, false);
     }
 
-    public String register(Guild guild, GuildDB db, User user, DBNation nation, boolean force) throws IOException {
+    public String register(IMessageIO channel, Guild guild, GuildDB db, User user, DBNation nation, boolean force) throws IOException {
         int nationId = nation.getNation_id();
         boolean notRegistered = DiscordUtil.getUserByNationId(nationId) == null;
 
@@ -181,7 +194,6 @@ public class RegisterCommand extends Command {
                 if (pnwDiscordName == null || pnwDiscordName.isEmpty()) {
                     return "Unable to fetch username. Please ensure you have `Discord Username` set in <" + Settings.PNW_URL() + "/nation/edit/>.";
                 }
-                boolean success = true;
 
                 String userName = DiscordUtil.getFullUsername(user);
                 if (checkId) {
@@ -193,12 +205,17 @@ public class RegisterCommand extends Command {
 
                 PNWUser pnwUser = new PNWUser(nationId, id, userName);
                 discordDb.addUser(pnwUser);
-                String registerMessage = nation.register(user, guild != null ? db : null, notRegistered);
-
-                if (!success) {
-                    registerMessage += "\n" + "Error: " + errorMsg;
-                }
-                return registerMessage;
+                CompletableFuture<IMessageBuilder> resultMessage = new CompletableFuture<>();
+                String registerMessage = nation.register(user, guild != null ? db : null, notRegistered, update ->
+                        resultMessage.thenAccept(msg -> msg.append("\n\n" + update).send(RateLimitedSources.COMMAND_RESULT)));
+                channel.send(registerMessage, RateLimitedSources.COMMAND_RESULT).whenComplete((msg, error) -> {
+                    if (error != null) {
+                        resultMessage.completeExceptionally(error);
+                    } else {
+                        resultMessage.complete(msg);
+                    }
+                });
+                return null;
             } catch (InsufficientPermissionException | HierarchyException | IOException e) {
                 return e.getMessage();
             } catch (Throwable e) {
@@ -209,6 +226,16 @@ public class RegisterCommand extends Command {
 
         PNWUser pnwUser = new PNWUser(nationId, id, fullDiscriminator);
         discordDb.addUser(pnwUser);
-        return nation.register(user, db, notRegistered);
+        CompletableFuture<IMessageBuilder> resultMessage = new CompletableFuture<>();
+        String registerMessage = nation.register(user, db, notRegistered, update ->
+                resultMessage.thenAccept(msg -> msg.append("\n\n" + update).send(RateLimitedSources.COMMAND_RESULT)));
+        channel.send(registerMessage, RateLimitedSources.COMMAND_RESULT).whenComplete((msg, error) -> {
+            if (error != null) {
+                resultMessage.completeExceptionally(error);
+            } else {
+                resultMessage.complete(msg);
+            }
+        });
+        return null;
     }
 }

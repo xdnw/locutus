@@ -5,6 +5,7 @@ import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.Member;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 public interface IAutoRoleTask {
@@ -28,7 +29,7 @@ public interface IAutoRoleTask {
 
     void updateTaxRoleAsync(Member member, TaxBracket bracket);
 
-    void autoRoleAsync(Member member, DBNation nation);
+    CompletableFuture<AutoRoleInfo> autoRoleAsync(Member member, DBNation nation);
 
     Function<Integer, Boolean> getAllowedAlliances();
 

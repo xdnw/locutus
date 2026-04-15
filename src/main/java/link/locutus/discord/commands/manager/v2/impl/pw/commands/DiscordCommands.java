@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -494,7 +495,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Register your discord user with your Politics And War nation.")
-    public String register(@Me @Default GuildDB db, @Me User user,
+    public String register(@Me @Default GuildDB db, @Me IMessageIO io, @Me User user,
             /* @Default("%user%") */ @AllowDeleted DBNation nation) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
         String fullDiscriminator = DiscordUtil.getFullUsername(user);
@@ -559,7 +560,17 @@ public class DiscordCommands {
 
             PNWUser pnwUser = new PNWUser(nation.getNation_id(), id, userName);
             Locutus.imp().getDiscordDB().addUser(pnwUser);
-            return nation.register(user, db, notRegistered);
+            CompletableFuture<IMessageBuilder> resultMessage = new CompletableFuture<>();
+            String registerMessage = nation.register(user, db, notRegistered, update ->
+                    resultMessage.thenAccept(msg -> msg.append("\n\n" + update).send(RateLimitedSources.COMMAND_RESULT)));
+            io.send(registerMessage, RateLimitedSources.COMMAND_RESULT).whenComplete((msg, error) -> {
+                if (error != null) {
+                    resultMessage.completeExceptionally(error);
+                } else {
+                    resultMessage.complete(msg);
+                }
+            });
+            return null;
         } catch (InsufficientPermissionException e) {
             return e.getMessage();
         } catch (Throwable e) {

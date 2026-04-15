@@ -36,6 +36,15 @@ public final class AutoRoleTextFormatter {
         return result.length() == 0 ? "No changes" : result.toString().trim();
     }
 
+    public static String formatExecution(AutoRoleInfo info, @Nullable Member member) {
+        if (info == null || member == null) {
+            return "No changes";
+        }
+        StringBuilder result = new StringBuilder();
+        appendMemberExecution(result, info, member);
+        return result.length() == 0 ? "No changes" : result.toString().trim();
+    }
+
     public static String formatSyncState(@Nullable AutoRoleSyncState sync, Map<Long, String> roleNames) {
         if (sync == null) {
             return "";

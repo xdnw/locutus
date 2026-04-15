@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.entities.Member;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -79,8 +80,16 @@ public class CoalescingAutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public void autoRoleAsync(Member member, DBNation nation) {
-        enqueue(member, update -> update.mergeAutoRole(nation));
+    public CompletableFuture<AutoRoleInfo> autoRoleAsync(Member member, DBNation nation) {
+        if (member == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        CompletableFuture<AutoRoleInfo> future = new CompletableFuture<>();
+        enqueue(member, update -> {
+            update.mergeAutoRole(nation);
+            update.addAutoRoleFuture(future);
+        });
+        return future;
     }
 
     @Override
@@ -120,11 +129,18 @@ public class CoalescingAutoRoleTask implements IAutoRoleTask {
                 pendingByMember.clear();
             }
 
+            AutoRoleInfo info = null;
+            Throwable failure = null;
             try {
-                AutoRoleInfo info = delegate.planQueuedUpdates(batch.values());
+                info = delegate.planQueuedUpdates(batch.values());
                 info.execute();
             } catch (Throwable e) {
+                failure = e;
                 e.printStackTrace();
+            } finally {
+                for (QueuedAutoRoleUpdate update : batch.values()) {
+                    update.completeAutoRoleFutures(info, failure);
+                }
             }
         }
     }

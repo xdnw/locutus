@@ -101,13 +101,9 @@ public class GuildHandler {
         });
         this.trackInvites = trackInvites;
         if (trackInvites) {
-            db.getGuild().retrieveInvites().queue(new Consumer<List<Invite>>() {
-                @Override
-                public void accept(List<Invite> invites) {
-                    for (Invite invite : invites) {
-                        addInvite(invite);
-                    }
-
+            RateLimitUtil.queue(db.getGuild().retrieveInvites(), RateLimitedSources.INVITE_SYNC).thenAccept(invites -> {
+                for (Invite invite : invites) {
+                    addInvite(invite);
                 }
             });
         }
