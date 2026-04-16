@@ -350,7 +350,7 @@ public class StatCommands {
                                  @Arg(value = "Filter the attack types included", group = 5)
                                  @Switch("attacks") Set<AttackType> allowedAttacks,
                                  @Arg(value = "Filter wars by the recorded alliance on each war side", group = 5)
-                                 @Switch("aa") Set<DBAlliance> warAlliances,
+                                 @Switch("aa") Set<DBAlliance> allowed_alliances,
                                  @Switch("off") @Arg(value = "Only include wars declared by coalition1", group = 5) boolean onlyOffensiveWars,
                                  @Switch("def") @Arg(value = "Only include wars declared by coalition2", group = 5) boolean onlyDefensiveWars,
                                  @Switch("f") boolean uploadFile,
@@ -379,7 +379,7 @@ public class StatCommands {
                         allowedWarTypes,
                         allowedWarStatuses,
                         allowedAttacks,
-                        warAlliances,
+                        allowed_alliances,
                         onlyOffensiveWars,
                         onlyDefensiveWars,
                         highlight

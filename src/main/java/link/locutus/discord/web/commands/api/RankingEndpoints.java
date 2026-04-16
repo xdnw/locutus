@@ -199,7 +199,7 @@ public class RankingEndpoints {
             @Switch("wartype") Set<WarType> allowedWarTypes,
             @Switch("status") Set<WarStatus> allowedWarStatuses,
             @Switch("attacks") Set<AttackType> allowedAttacks,
-            @Switch("aa") Set<DBAlliance> warAlliances,
+            @Switch("aa") Set<DBAlliance> allowed_alliances,
             @Switch("off") boolean onlyOffensiveWars,
             @Switch("def") boolean onlyDefensiveWars,
             @Switch("h") @AllowDeleted Set<DBAlliance> highlight
@@ -224,7 +224,7 @@ public class RankingEndpoints {
                         allowedWarTypes,
                         allowedWarStatuses,
                         allowedAttacks,
-                        warAlliances,
+                        allowed_alliances,
                         onlyOffensiveWars,
                         onlyDefensiveWars,
                         highlight
