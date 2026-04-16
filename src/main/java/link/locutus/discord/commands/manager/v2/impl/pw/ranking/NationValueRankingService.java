@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,10 +47,12 @@ public final class NationValueRankingService {
                 boolean total,
                 String title
         ) {
+
             boolean totalMode = groupByAlliance && total;
             String resolvedTitle = title == null || title.isBlank()
                     ? defaultAttributeTitle(attribute.getName(), groupByAlliance, totalMode)
                     : title;
+
             return new AttributeRequest(snapshotGuild, nations, attribute, groupByAlliance, ascending, snapshotDate, totalMode, resolvedTitle);
         }
     }
@@ -262,8 +265,17 @@ public final class NationValueRankingService {
     }
 
     private static Set<DBNation> snapshotNations(NationList nationList, Long snapshotDate, Guild snapshotGuild) {
-        Set<DBNation> snapshot = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, snapshotGuild);
-        return new java.util.LinkedHashSet<>(snapshot);
+        NationList resolvedNationList = nationList == null
+                ? new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*")
+                : nationList;
+
+        Set<DBNation> snapshot = PW.getNationsSnapshot(
+                resolvedNationList.getNations(),
+                resolvedNationList.getFilter(),
+                snapshotDate,
+                snapshotGuild
+        );
+        return new LinkedHashSet<>(snapshot);
     }
 
     private static Map<Integer, Double> resolveSectionValues(
