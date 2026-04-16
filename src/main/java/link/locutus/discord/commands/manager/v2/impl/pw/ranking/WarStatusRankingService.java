@@ -43,23 +43,28 @@ public final class WarStatusRankingService {
         Map<Integer, Integer> expireByEntity = new Int2IntOpenHashMap();
         Map<Integer, Integer> peaceByEntity = new Int2IntOpenHashMap();
 
-        for (Map.Entry<Integer, DBWar> entry : parser.getWars().entrySet()) {
-            DBWar war = entry.getValue();
+        for (DBWar war : parser.getWars().values()) {
             boolean primary = parser.getIsPrimary().apply(war);
-
             if (war.getStatus() == WarStatus.DEFENDER_VICTORY) {
                 primary = !primary;
             }
-            int id = getId.apply(primary, war);
+
+            int primaryId = getId.apply(primary, war);
+            int secondaryId = getId.apply(!primary, war);
 
             if (war.getStatus() == WarStatus.ATTACKER_VICTORY || war.getStatus() == WarStatus.DEFENDER_VICTORY) {
-                victoryByEntity.put(id, victoryByEntity.getOrDefault(id, 0) + 1);
-                int otherId = getId.apply(!primary, war);
-                lossesByEntity.put(otherId, lossesByEntity.getOrDefault(otherId, 0) + 1);
+                increment(victoryByEntity, primaryId);
+                increment(lossesByEntity, secondaryId);
             } else if (war.getStatus() == WarStatus.EXPIRED) {
-                expireByEntity.put(id, expireByEntity.getOrDefault(id, 0) + 1);
+                increment(expireByEntity, primaryId);
+                if (secondaryId != primaryId) {
+                    increment(expireByEntity, secondaryId);
+                }
             } else if (war.getStatus() == WarStatus.PEACE) {
-                peaceByEntity.put(id, peaceByEntity.getOrDefault(id, 0) + 1);
+                increment(peaceByEntity, primaryId);
+                if (secondaryId != primaryId) {
+                    increment(peaceByEntity, secondaryId);
+                }
             }
         }
 
@@ -83,6 +88,13 @@ public final class WarStatusRankingService {
                 RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
                 sections
         );
+    }
+
+    private static void increment(Map<Integer, Integer> values, int entityId) {
+        if (entityId == 0) {
+            return;
+        }
+        values.merge(entityId, 1, Integer::sum);
     }
 
     private static String allianceName(int allianceId) {

@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -265,17 +264,13 @@ public final class NationValueRankingService {
     }
 
     private static Set<DBNation> snapshotNations(NationList nationList, Long snapshotDate, Guild snapshotGuild) {
-        NationList resolvedNationList = nationList == null
-                ? new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*")
-                : nationList;
-
         Set<DBNation> snapshot = PW.getNationsSnapshot(
-                resolvedNationList.getNations(),
-                resolvedNationList.getFilter(),
+                nationList.getNations(),
+                nationList.getFilter(),
                 snapshotDate,
                 snapshotGuild
         );
-        return new LinkedHashSet<>(snapshot);
+        return new java.util.LinkedHashSet<>(snapshot);
     }
 
     private static Map<Integer, Double> resolveSectionValues(
@@ -296,7 +291,10 @@ public final class NationValueRankingService {
                 valuesByNationId,
                 nationId -> {
                     DBNation nation = nationById.get(nationId);
-                    return nation == null ? null : nation.getAlliance_id();
+                    if (nation == null || nation.getAlliance_id() == 0) {
+                        return null;
+                    }
+                    return nation.getAlliance_id();
                 },
                 aggregationMode
         );
@@ -319,6 +317,9 @@ public final class NationValueRankingService {
                 continue;
             }
             int allianceId = nation.getAlliance_id();
+            if (allianceId == 0) {
+                continue;
+            }
             double[] allianceTotal = totalsByAllianceId.computeIfAbsent(allianceId,
                     ignored -> new double[ResourceType.values.length]);
             double[] profit = entry.getValue();

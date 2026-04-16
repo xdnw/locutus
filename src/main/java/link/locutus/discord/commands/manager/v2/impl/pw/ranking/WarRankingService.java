@@ -98,9 +98,13 @@ public final class WarRankingService {
             if (type == WarCostMode.PROFIT && stat.isAttack()) {
                 throw new IllegalArgumentException("Cannot rank by `type: profit` with an attack type stat");
             }
+            long resolvedEndMs = timeEndMs == null ? Long.MAX_VALUE : timeEndMs;
+            if (resolvedEndMs < timeStartMs) {
+                throw new IllegalArgumentException("timeEndMs must be >= timeStartMs");
+            }
             return new WarCostRequest(
                     timeStartMs,
-                    timeEndMs == null ? Long.MAX_VALUE : timeEndMs,
+                    resolvedEndMs,
                     normalizeCoalition(coalition1),
                     normalizeCoalition(coalition2),
                     onlyRankCoalition1,
@@ -191,11 +195,29 @@ public final class WarRankingService {
             if (onlyOffWars && onlyDefWars) {
                 throw new IllegalArgumentException("Cannot combine `only_off_wars` and `only_def_wars`");
             }
-            Set<DBAlliance> selected = alliances == null ? Set.of() : new LinkedHashSet<>(alliances);
+
+            Set<DBAlliance> source = (alliances == null || alliances.isEmpty())
+                    ? Locutus.imp().getNationDB().getAlliances()
+                    : alliances;
+
+            Set<Integer> topAllianceIds = null;
             if (onlyTopX != null) {
-                Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, onlyTopX);
-                selected.retainAll(topAlliances);
+                topAllianceIds = Locutus.imp().getNationDB().getAlliances(true, true, true, onlyTopX).stream()
+                        .map(DBAlliance::getAlliance_id)
+                        .collect(Collectors.toSet());
             }
+
+            Set<DBAlliance> selected = new LinkedHashSet<>();
+            for (DBAlliance alliance : source) {
+                if (alliance == null) {
+                    continue;
+                }
+                if (topAllianceIds != null && !topAllianceIds.contains(alliance.getAlliance_id())) {
+                    continue;
+                }
+                selected.add(alliance);
+            }
+
             return new AttackTypeRequest(timeMs, type, Set.copyOf(selected), onlyTopX, percent, onlyOffWars, onlyDefWars);
         }
     }
@@ -216,8 +238,15 @@ public final class WarRankingService {
 
         Map<Integer, DBWar> wars = parser.getWars();
         Map<Integer, Integer> warsByGroup = request.scalePerWar()
-            ? countWarsByGroup(wars.values(), request.groupByAlliance(), warAllianceIds)
-            : Map.of();
+                ? countWarsByGroup(wars.values(), request.groupByAlliance(), warAllianceIds)
+                : Map.of();
+        Map<Integer, Integer> allianceCityCountCache = request.scalePerCity() && request.groupByAlliance()
+                ? new HashMap<>()
+                : Map.of();
+        Map<Integer, Integer> nationCityCountCache = request.scalePerCity() && !request.groupByAlliance()
+                ? new HashMap<>()
+                : Map.of();
+
         TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc = request.stat().getFunction(
                 request.excludeUnits(),
                 request.excludeInfra(),
@@ -232,10 +261,10 @@ public final class WarRankingService {
         parser.getAttacks().accept((war, attack) -> {
             if (request.onlyRankCoalition1()) {
                 boolean isPrimary = parser.getIsPrimary().apply(war);
-                addWarCostValue(values, warsByGroup, request, war, attack, isPrimary, attackValueFunc, warAllianceIds);
+                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, isPrimary, attackValueFunc, warAllianceIds);
             } else {
-                addWarCostValue(values, warsByGroup, request, war, attack, true, attackValueFunc, warAllianceIds);
-                addWarCostValue(values, warsByGroup, request, war, attack, false, attackValueFunc, warAllianceIds);
+                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, true, attackValueFunc, warAllianceIds);
+                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, false, attackValueFunc, warAllianceIds);
             }
         });
 
@@ -256,7 +285,7 @@ public final class WarRankingService {
                 metric,
                 RankingSortDirection.DESC,
                 values,
-                request.highlightedAllianceIds(),
+                entityType == RankingEntityType.ALLIANCE ? request.highlightedAllianceIds() : Set.of(),
                 entityType == RankingEntityType.ALLIANCE ? WarRankingService::allianceName : WarRankingService::nationName,
                 warCostSectionMetadata(request),
                 List.of()
@@ -390,27 +419,35 @@ public final class WarRankingService {
 
     public static RankingResult attackTypeRanking(AttackTypeRequest request) {
         Set<DBAlliance> selectedAlliances = request.alliances();
-        Set<Integer> allianceIds = selectedAlliances.stream().map(DBAlliance::getId).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Integer> allianceIds = selectedAlliances.stream()
+                .map(DBAlliance::getAlliance_id)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withActiveWars(Predicates.alwaysTrue(), war -> {
             if (!request.onlyDefWars() && allianceIds.contains(war.getAttacker_aa())) {
                 return true;
             }
-            if (!request.onlyOffWars() && allianceIds.contains(war.getDefender_aa())) {
-                return true;
-            }
-            return false;
+            return !request.onlyOffWars() && allianceIds.contains(war.getDefender_aa());
         }).afterDate(request.timeMs());
 
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();
+        Map<Integer, Integer> attackerAllianceCache = new HashMap<>();
 
         query.iterateAttacks((war, attack) -> {
-            DBNation nation = Locutus.imp().getNationDB().getNationById(attack.getAttacker_id());
-            if (nation == null || nation.getAlliance_id() == 0 || nation.getPosition() <= 1) {
+            int attackerId = attack.getAttacker_id();
+            int allianceId = attackerAllianceCache.computeIfAbsent(attackerId, id -> {
+                DBNation nation = Locutus.imp().getNationDB().getNationById(id);
+                if (nation == null || nation.getAlliance_id() == 0 || nation.getPosition() <= 1) {
+                    return 0;
+                }
+                return nation.getAlliance_id();
+            });
+
+            if (allianceId == 0 || !allianceIds.contains(allianceId)) {
                 return;
             }
-            int allianceId = nation.getAlliance_id();
+
             totalAttacks.merge(allianceId, 1, Integer::sum);
             if (attack.getAttack_type() == request.type()) {
                 attackOfType.merge(allianceId, 1, Integer::sum);
@@ -418,16 +455,16 @@ public final class WarRankingService {
         });
 
         Map<Integer, Double> values = new LinkedHashMap<>();
-        for (Map.Entry<Integer, Integer> entry : attackOfType.entrySet()) {
-            if (!allianceIds.contains(entry.getKey())) {
-                continue;
-            }
-            int total = totalAttacks.getOrDefault(entry.getKey(), 0);
+        for (Map.Entry<Integer, Integer> entry : totalAttacks.entrySet()) {
+            int allianceId = entry.getKey();
+            int total = entry.getValue();
             if (total <= 0) {
                 continue;
             }
-            double value = request.percent() ? entry.getValue() / (double) total : entry.getValue();
-            values.put(entry.getKey(), value);
+
+            int matching = attackOfType.getOrDefault(allianceId, 0);
+            double value = request.percent() ? matching / (double) total : matching;
+            values.put(allianceId, value);
         }
 
         RankingMetricDescriptor metric = RankingSupport.metricDescriptor(
@@ -436,6 +473,7 @@ public final class WarRankingService {
                 request.percent() ? RankingValueFormat.PERCENT : RankingValueFormat.COUNT,
                 request.percent() ? RankingNumericType.DECIMAL : RankingNumericType.INTEGER
         );
+
         RankingSection section = RankingBuilders.singleMetricSection(
                 "alliances",
                 "Alliances",
@@ -472,6 +510,8 @@ public final class WarRankingService {
     private static void addWarCostValue(
             Map<Integer, Double> values,
             Map<Integer, Integer> warsByGroup,
+            Map<Integer, Integer> allianceCityCountCache,
+            Map<Integer, Integer> nationCityCountCache,
             WarCostRequest request,
             DBWar war,
             AbstractCursor attack,
@@ -486,6 +526,7 @@ public final class WarRankingService {
         int entityId = request.groupByAlliance()
                 ? attackerSide ? war.getAttacker_aa() : war.getDefender_aa()
                 : attackerSide ? war.getAttacker_id() : war.getDefender_id();
+
         if (entityId == 0) {
             return;
         }
@@ -495,10 +536,22 @@ public final class WarRankingService {
             return;
         }
 
-        double scaled = scaleWarCostValue(entityId, war, attackerSide, value, request.groupByAlliance(), request.scalePerWar(), request.scalePerCity(), warsByGroup);
+        double scaled = scaleWarCostValue(
+                entityId,
+                war,
+                attackerSide,
+                value,
+                request.groupByAlliance(),
+                request.scalePerWar(),
+                request.scalePerCity(),
+                warsByGroup,
+                allianceCityCountCache,
+                nationCityCountCache
+        );
         if (!Double.isFinite(scaled)) {
             return;
         }
+
         values.merge(entityId, scaled, Double::sum);
     }
 
@@ -510,10 +563,19 @@ public final class WarRankingService {
             boolean groupByAlliance,
             boolean scalePerWar,
             boolean scalePerCity,
-            Map<Integer, Integer> warsByGroup
+            Map<Integer, Integer> warsByGroup,
+            Map<Integer, Integer> allianceCityCountCache,
+            Map<Integer, Integer> nationCityCountCache
     ) {
         int warCount = scalePerWar ? warsByGroup.getOrDefault(entityId, 0) : 1;
-        int cityCount = scalePerCity ? (groupByAlliance ? allianceCityCount(entityId) : nationCityCount(entityId, war, attackerSide)) : 1;
+
+        int cityCount = 1;
+        if (scalePerCity) {
+            cityCount = groupByAlliance
+                    ? allianceCityCountCache.computeIfAbsent(entityId, WarRankingService::allianceCityCount)
+                    : nationCityCount(entityId, war, attackerSide, nationCityCountCache);
+        }
+
         return applyNormalization(value, warCount, cityCount, scalePerWar, scalePerCity);
     }
 
@@ -577,16 +639,16 @@ public final class WarRankingService {
         return total;
     }
 
-    private static int nationCityCount(int nationId, DBWar war, boolean attackerSide) {
+    private static int nationCityCount(int nationId, DBWar war, boolean attackerSide, Map<Integer, Integer> nationCityCountCache) {
         int cities = war.getCities(attackerSide);
-        if (cities == 0) {
-            DBNation nation = DBNation.getById(nationId);
-            if (nation != null) {
-                return nation.getCities();
-            }
-            return 1;
+        if (cities != 0) {
+            return cities;
         }
-        return cities;
+
+        return nationCityCountCache.computeIfAbsent(nationId, id -> {
+            DBNation nation = DBNation.getById(id);
+            return nation == null ? 1 : Math.max(1, nation.getCities());
+        });
     }
 
     private static String buildWarCostTitle(WarCostRequest request, long timeEndMs) {
@@ -599,7 +661,7 @@ public final class WarRankingService {
         } else if (request.scalePerCity()) {
             title += "/city";
         }
-        return String.format(title + " (%s)", diffStr);
+        return title + " (" + diffStr + ")";
     }
 
     private static String buildWarTitle(WarCountRequest request) {
@@ -607,10 +669,9 @@ public final class WarRankingService {
         if (request.onlyOffensives() != request.onlyDefensives()) {
             offOrDef = request.onlyDefensives() ? "defensive " : "offensive ";
         }
-
         String title = "Most " + offOrDef + "wars (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - request.timeStartMs()) + ")";
         if (request.normalizePerMember()) {
-            title += "(per " + (request.ignoreInactiveNations() ? "active " : "") + "nation)";
+            title += " (per " + (request.ignoreInactiveNations() ? "active " : "") + "nation)";
         }
         return title;
     }
@@ -621,7 +682,7 @@ public final class WarRankingService {
     }
 
     static double applyNormalization(double value, int warCount, int cityCount, boolean scalePerWar, boolean scalePerCity) {
-        int factor = 1;
+        double factor = 1d;
         if (scalePerWar) {
             factor *= Math.max(1, warCount);
         }
@@ -708,13 +769,15 @@ public final class WarRankingService {
         return Set.copyOf(values);
     }
 
-    private static Set<Integer> normalizeAllianceIds(Set<DBAlliance> highlight) {
-        if (highlight == null || highlight.isEmpty()) {
+    private static Set<Integer> normalizeAllianceIds(Set<DBAlliance> alliances) {
+        if (alliances == null || alliances.isEmpty()) {
             return Set.of();
         }
         Set<Integer> result = new LinkedHashSet<>();
-        for (DBAlliance alliance : highlight) {
-            result.add(alliance.getId());
+        for (DBAlliance alliance : alliances) {
+            if (alliance != null) {
+                result.add(alliance.getAlliance_id());
+            }
         }
         return Set.copyOf(result);
     }

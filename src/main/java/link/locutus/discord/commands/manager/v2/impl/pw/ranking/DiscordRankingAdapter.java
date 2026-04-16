@@ -18,8 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 public final class DiscordRankingAdapter {
-    private static final DecimalFormat INT_FORMAT = new DecimalFormat("#,###");
-    private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#,###.00");
+    private static final int MAX_EMBED_DESCRIPTION_LENGTH = 4096;
+    private static final ThreadLocal<DecimalFormat> INT_FORMAT = ThreadLocal.withInitial(() -> new DecimalFormat("#,###"));
+    private static final ThreadLocal<DecimalFormat> DECIMAL_FORMAT = ThreadLocal.withInitial(() -> new DecimalFormat("#,###.00"));
 
     private DiscordRankingAdapter() {
     }
@@ -32,17 +33,33 @@ public final class DiscordRankingAdapter {
 
     public static void send(IMessageIO channel, JSONObject command, RankingResult result, RenderOptions options) {
         int rowLimit = options == null ? 25 : options.effectiveRowLimit();
-        IMessageBuilder message = channel.create();
+        boolean wantFile = options != null && options.uploadFile();
 
-        List<String> fileLines = new ArrayList<>();
+        IMessageBuilder message = channel.create();
+        List<String> fileLines = wantFile ? new ArrayList<>() : null;
         boolean attachFile = false;
+
         for (RankingSection section : result.sections()) {
             String title = result.sections().size() == 1 ? result.title() : result.title() + " | " + section.title();
-            message.embed(title, renderSectionBody(section, rowLimit));
+            String body = renderSectionBody(section, rowLimit);
 
-            fileLines.add("== " + title + " ==");
-            fileLines.addAll(renderAllRows(section));
-            fileLines.add("");
+            if (body.length() > MAX_EMBED_DESCRIPTION_LENGTH) {
+                body = body.substring(0, MAX_EMBED_DESCRIPTION_LENGTH - 3) + "...";
+                attachFile = true;
+            }
+
+            message.embed(title, body);
+
+            if (wantFile) {
+                fileLines.add("== " + title + " ==");
+                if (!section.notes().isEmpty()) {
+                    fileLines.addAll(section.notes());
+                    fileLines.add("");
+                }
+                fileLines.addAll(renderAllRows(section));
+                fileLines.add("");
+            }
+
             if (section.rowCount() > rowLimit) {
                 attachFile = true;
             }
@@ -54,7 +71,7 @@ public final class DiscordRankingAdapter {
         if (command != null) {
             message.commandButton(CommandBehavior.DELETE_MESSAGE, null, command.toString(), "Refresh");
         }
-        if (options != null && options.uploadFile() && attachFile) {
+        if (wantFile && attachFile) {
             message.file(result.responseKey() + ".txt", String.join("\n", fileLines));
         }
         message.send(RateLimitedSources.COMMAND_RESULT);
@@ -163,14 +180,14 @@ public final class DiscordRankingAdapter {
     }
 
     private static String formatInteger(BigDecimal value) {
-        return INT_FORMAT.format(value.toBigInteger());
+        return INT_FORMAT.get().format(value.toBigInteger());
     }
 
     private static String formatDecimal(BigDecimal value) {
         BigDecimal stripped = value.stripTrailingZeros();
         if (stripped.scale() <= 0) {
-            return INT_FORMAT.format(stripped.toBigInteger());
+            return INT_FORMAT.get().format(stripped.toBigInteger());
         }
-        return DECIMAL_FORMAT.format(value);
+        return DECIMAL_FORMAT.get().format(value);
     }
 }
