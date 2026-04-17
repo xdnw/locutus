@@ -114,11 +114,12 @@ class RankingEndpointsContractTest {
             assertEquals(List.of("alliances"), result.sectionKeys());
             assertEquals(List.of(0), result.sectionRowOffsets());
             assertEquals(List.of(2), result.sectionRowCounts());
+            assertEquals(List.of("ALLIANCE"), result.sectionSourceTypes());
+            assertEquals(List.of("IDENTITY"), result.sectionAggregationModes());
             assertEquals(List.of("score"), result.sectionSortValueKeys());
             assertEquals(List.of("DESC"), result.sectionSortDirections());
             assertEquals(List.of("ENTITY_ID_ASC"), result.sectionSortTieBreakers());
-            assertEquals(List.of("ALLIANCE"), result.sectionMetadata().get("source_type"));
-            assertEquals(List.of("IDENTITY"), result.sectionMetadata().get("aggregation_mode"));
+            assertTrue(result.sectionMetadata().isEmpty());
             assertEquals("SCORE", result.queryMetadata().get("metric"));
             assertTrue(result.queryMetadata().get("as_of_turn") instanceof BigDecimal);
             assertEquals(List.of(1L), result.highlightedKey1Ids());

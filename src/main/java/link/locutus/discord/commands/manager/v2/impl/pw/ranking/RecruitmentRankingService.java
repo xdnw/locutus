@@ -62,36 +62,28 @@ public final class RecruitmentRankingService {
             }
         }
 
-        RankingMetricDescriptor metric = RankingSupport.metricDescriptor("new_members", "New Members", RankingValueFormat.COUNT, RankingNumericType.INTEGER);
-        RankingSection section = RankingBuilders.singleMetricSection(
-                "alliances",
-                "Alliances",
-                RankingEntityType.ALLIANCE,
-                metric,
-                RankingSortDirection.DESC,
-                rankings,
-                Set.of(),
-                RecruitmentRankingService::allianceName,
-                RankingSupport.sectionMetadata(RankingEntityType.NATION.name(), RankingAggregationMode.COUNT),
-                List.of()
-        );
+        Map<String, Object> queryMetadata = new LinkedHashMap<>();
+        queryMetadata.put("cutoff_ms", request.cutoffMs());
+        queryMetadata.put("top_x", request.topX());
 
-        return new RankingResult(
+        return RankingBuilders.singleMetricRanking(
                 "recruitment_ranking",
-                "Most new members",
-                List.of(
-                        RankingSupport.field("cutoff_ms", "Start", request.cutoffMs()),
-                        RankingSupport.field("top_x", "Candidate Set Cap", request.topX())
-                ),
-                RankingBuilders.totalRowCount(List.of(section)),
+                RankingEntityType.ALLIANCE,
+                "new_members",
+                RankingValueFormat.COUNT,
+                RankingNumericType.INTEGER,
+                List.of(RankingBuilders.singleMetricSection(
+                        "alliances",
+                        RankingEntityType.NATION.name(),
+                        RankingAggregationMode.COUNT,
+                        RankingSortDirection.DESC,
+                        rankings,
+                        Map.of()
+                )),
+                queryMetadata,
+                Set.of(),
                 System.currentTimeMillis(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                List.of(section)
+                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
         );
-    }
-
-    private static String allianceName(int allianceId) {
-        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
-        return alliance == null ? null : alliance.getName();
     }
 }

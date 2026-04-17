@@ -6,10 +6,8 @@ import link.locutus.discord.apiv1.enums.WarCostStat;
 import link.locutus.discord.pnw.NationOrAlliance;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -158,11 +156,8 @@ class WarRankingServiceTest {
                 Set.of()
         );
 
-        Map<String, String> metadata = metadataByKey(WarRankingService.warCostSectionMetadata(request));
+        Map<String, Object> metadata = WarRankingService.warCostSectionMetadata(request);
 
-        assertEquals("WAR_ATTACK", metadata.get("source_type"));
-        assertEquals("SUM", metadata.get("aggregation_mode"));
-        assertEquals("ALLIANCE", metadata.get("result_entity_type"));
         assertEquals("GROUND", metadata.get("stat"));
         assertEquals("DEALT", metadata.get("value_mode"));
         assertEquals("per_war_per_city", metadata.get("normalization"));
@@ -185,8 +180,7 @@ class WarRankingServiceTest {
                 null,
                 null
         );
-        Map<String, String> countMetadata = metadataByKey(WarRankingService.warCountSectionMetadata(countRequest));
-        assertEquals("ALLIANCE", countMetadata.get("result_entity_type"));
+        Map<String, Object> countMetadata = WarRankingService.warCountSectionMetadata(countRequest);
         assertEquals("per_member", countMetadata.get("normalization"));
         assertEquals("offensive", countMetadata.get("war_side_scope"));
         assertEquals("attackers_only", countMetadata.get("coalition_scope"));
@@ -201,15 +195,9 @@ class WarRankingServiceTest {
                 false,
                 true
         );
-        Map<String, String> attackMetadata = metadataByKey(WarRankingService.attackTypeSectionMetadata(attackTypeRequest));
-        assertEquals("WAR_ATTACK", attackMetadata.get("source_type"));
-        assertEquals("COUNT", attackMetadata.get("aggregation_mode"));
+        Map<String, Object> attackMetadata = WarRankingService.attackTypeSectionMetadata(attackTypeRequest);
         assertEquals("GROUND", attackMetadata.get("attack_type"));
         assertEquals("percent", attackMetadata.get("value_mode"));
         assertEquals("defensive", attackMetadata.get("war_side_scope"));
-    }
-
-    private static Map<String, String> metadataByKey(List<RankingQueryField> fields) {
-        return fields.stream().collect(Collectors.toMap(RankingQueryField::key, RankingQueryField::value));
     }
 }

@@ -11,13 +11,12 @@
   "sectionKeys" : [ "alliances" ],
   "sectionRowOffsets" : [ 0 ],
   "sectionRowCounts" : [ 3 ],
+  "sectionSourceTypes" : [ "ALLIANCE" ],
+  "sectionAggregationModes" : [ "IDENTITY" ],
   "sectionSortValueKeys" : [ "score" ],
   "sectionSortDirections" : [ "DESC" ],
   "sectionSortTieBreakers" : [ "ENTITY_ID_ASC" ],
-  "sectionMetadata" : {
-    "source_type" : [ "ALLIANCE" ],
-    "aggregation_mode" : [ "IDENTITY" ]
-  },
+  "sectionMetadata" : { },
   "queryMetadata" : {
     "metric" : "score"
   },

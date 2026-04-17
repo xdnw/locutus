@@ -68,25 +68,22 @@ public final class WarStatusRankingService {
             }
         }
 
-        RankingMetricDescriptor metric = new RankingMetricDescriptor("count", "Count", RankingNumericType.INTEGER, RankingValueFormat.COUNT);
-        java.util.function.Function<Integer, String> displayHint = request.byAlliance() ? WarStatusRankingService::allianceName : WarStatusRankingService::nationName;
-        List<RankingQueryField> sectionMetadata = RankingSupport.sectionMetadata("WAR", RankingAggregationMode.COUNT);
-
-        List<RankingSection> sections = List.of(
-                RankingBuilders.singleMetricSection("victories", "Victories", entityType, metric, RankingSortDirection.DESC, victoryByEntity, Set.of(), displayHint, sectionMetadata, List.of()),
-                RankingBuilders.singleMetricSection("losses", "Losses", entityType, metric, RankingSortDirection.DESC, lossesByEntity, Set.of(), displayHint, sectionMetadata, List.of()),
-                RankingBuilders.singleMetricSection("expired", "Expired", entityType, metric, RankingSortDirection.DESC, expireByEntity, Set.of(), displayHint, sectionMetadata, List.of()),
-                RankingBuilders.singleMetricSection("peace", "Peace", entityType, metric, RankingSortDirection.DESC, peaceByEntity, Set.of(), displayHint, sectionMetadata, List.of())
-        );
-
-        return new RankingResult(
+        return RankingBuilders.singleMetricRanking(
                 request.byAlliance() ? "war_status_by_alliance" : "war_status_by_nation",
-                request.byAlliance() ? "War Status by Alliance" : "War Status by Nation",
-                List.of(RankingSupport.field("start_ms", "Start", request.timeStartMs())),
-                RankingBuilders.totalRowCount(sections),
+                entityType,
+                "count",
+                RankingValueFormat.COUNT,
+                RankingNumericType.INTEGER,
+                List.of(
+                        RankingBuilders.singleMetricSection("victories", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, victoryByEntity, Map.of()),
+                        RankingBuilders.singleMetricSection("losses", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, lossesByEntity, Map.of()),
+                        RankingBuilders.singleMetricSection("expired", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, expireByEntity, Map.of()),
+                        RankingBuilders.singleMetricSection("peace", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, peaceByEntity, Map.of())
+                ),
+                Map.of("start_ms", request.timeStartMs()),
+                Set.of(),
                 TimeUtil.getTimeFromTurn(TimeUtil.getTurn()),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                sections
+                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
         );
     }
 
@@ -95,15 +92,5 @@ public final class WarStatusRankingService {
             return;
         }
         values.merge(entityId, 1, Integer::sum);
-    }
-
-    private static String allianceName(int allianceId) {
-        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
-        return alliance == null ? null : alliance.getName();
-    }
-
-    private static String nationName(int nationId) {
-        DBNation nation = DBNation.getById(nationId);
-        return nation == null ? null : nation.getName();
     }
 }

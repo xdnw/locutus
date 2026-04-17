@@ -11,10 +11,8 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -33,8 +31,7 @@ public final class NationValueRankingService {
             boolean groupByAlliance,
             boolean ascending,
             Long snapshotDate,
-            boolean total,
-            String title
+            boolean total
     ) {
         public static AttributeRequest normalize(
                 Guild snapshotGuild,
@@ -43,16 +40,10 @@ public final class NationValueRankingService {
                 boolean groupByAlliance,
                 boolean ascending,
                 Long snapshotDate,
-                boolean total,
-                String title
+                boolean total
         ) {
-
             boolean totalMode = groupByAlliance && total;
-            String resolvedTitle = title == null || title.isBlank()
-                    ? defaultAttributeTitle(attribute.getName(), groupByAlliance, totalMode)
-                    : title;
-
-            return new AttributeRequest(snapshotGuild, nations, attribute, groupByAlliance, ascending, snapshotDate, totalMode, resolvedTitle);
+            return new AttributeRequest(snapshotGuild, nations, attribute, groupByAlliance, ascending, snapshotDate, totalMode);
         }
     }
 
@@ -150,35 +141,30 @@ public final class NationValueRankingService {
         Map<Integer, Double> values = resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
 
         String attributeLabel = request.attribute().getName();
-        RankingMetricDescriptor metric = RankingSupport.metricDescriptor(attributeLabel, attributeLabel, RankingValueFormat.NUMBER, RankingNumericType.DECIMAL);
-        RankingSection section = RankingBuilders.singleMetricSection(
-                entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
-                entityType == RankingEntityType.ALLIANCE ? "Alliances" : "Nations",
-                entityType,
-                metric,
-                request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
-                values,
-                Set.of(),
-                entityType == RankingEntityType.ALLIANCE ? NationValueRankingService::allianceName : NationValueRankingService::nationName,
-                RankingSupport.sectionMetadata(RankingEntityType.NATION.name(), aggregationMode),
-                List.of()
-        );
-
-        List<RankingQueryField> querySummary = new ArrayList<>();
-        querySummary.add(RankingSupport.field("attribute", "Attribute", attributeLabel));
-        querySummary.add(RankingSupport.field("result_entity_type", "Result Entity Type", entityType.name()));
+        Map<String, Object> queryMetadata = new LinkedHashMap<>();
+        queryMetadata.put("attribute", attributeLabel);
         if (request.snapshotDate() != null) {
-            querySummary.add(RankingSupport.field("snapshot_ms", "Snapshot", request.snapshotDate()));
+            queryMetadata.put("snapshot_ms", request.snapshotDate());
         }
 
-        return new RankingResult(
+        return RankingBuilders.singleMetricRanking(
                 "nation_attribute_ranking",
-                request.title(),
-                List.copyOf(querySummary),
-                RankingBuilders.totalRowCount(List.of(section)),
+                entityType,
+                RankingSupport.machineKey(attributeLabel),
+                RankingValueFormat.NUMBER,
+                RankingNumericType.DECIMAL,
+                List.of(RankingBuilders.singleMetricSection(
+                        entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
+                        RankingEntityType.NATION.name(),
+                        aggregationMode,
+                        request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
+                        values,
+                        Map.of()
+                )),
+                queryMetadata,
+                Set.of(),
                 request.snapshotDate() == null ? System.currentTimeMillis() : request.snapshotDate(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                List.of(section)
+                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
         );
     }
 
@@ -225,41 +211,38 @@ public final class NationValueRankingService {
             ? resolveAllianceSummedConvertedValues(snapshotNations, profitsByNationId, request.resources())
             : resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
         RankingValueFormat valueFormat = productionValueFormat(request.resources());
-        String metricLabel = request.resources().size() == 1 ? request.resources().iterator().next().name() : "Market Value";
-        RankingMetricDescriptor metric = RankingSupport.metricDescriptor(metricLabel, metricLabel, valueFormat, RankingNumericType.DECIMAL);
-        RankingSection section = RankingBuilders.singleMetricSection(
-                entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
-                entityType == RankingEntityType.ALLIANCE ? "Alliances" : "Nations",
-                entityType,
-                metric,
-                RankingSortDirection.DESC,
-                values,
-                request.highlights().idsFor(entityType),
-                entityType == RankingEntityType.ALLIANCE ? NationValueRankingService::allianceName : NationValueRankingService::nationName,
-                RankingSupport.sectionMetadata(RankingEntityType.NATION.name(), aggregationMode),
-                List.of()
-        );
-
-        List<RankingQueryField> querySummary = new ArrayList<>();
-        querySummary.add(RankingSupport.field("resources", "Resources", StringMan.join(request.resources(), ",")));
-        querySummary.add(RankingSupport.field("result_entity_type", "Result Entity Type", entityType.name()));
-        querySummary.add(RankingSupport.field("ignore_military_upkeep", "Ignore Military Upkeep", request.ignoreMilitaryUpkeep()));
-        querySummary.add(RankingSupport.field("ignore_trade_bonus", "Ignore Trade Bonus", request.ignoreTradeBonus()));
-        querySummary.add(RankingSupport.field("ignore_nation_bonus", "Ignore Nation Bonus", request.ignoreNationBonus()));
-        querySummary.add(RankingSupport.field("include_negative", "Include Negative", request.includeNegative()));
-        querySummary.add(RankingSupport.field("include_inactive", "Include Inactive", request.includeInactive()));
+        String metricKey = request.resources().size() == 1
+                ? RankingSupport.machineKey(request.resources().iterator().next().name())
+                : "market_value";
+        Map<String, Object> queryMetadata = new LinkedHashMap<>();
+        queryMetadata.put("resources", request.resources().stream().map(Enum::name).toList());
+        queryMetadata.put("ignore_military_upkeep", request.ignoreMilitaryUpkeep());
+        queryMetadata.put("ignore_trade_bonus", request.ignoreTradeBonus());
+        queryMetadata.put("ignore_nation_bonus", request.ignoreNationBonus());
+        queryMetadata.put("include_negative", request.includeNegative());
+        queryMetadata.put("include_inactive", request.includeInactive());
         if (request.snapshotDate() != null) {
-            querySummary.add(RankingSupport.field("snapshot_ms", "Snapshot", request.snapshotDate()));
+            queryMetadata.put("snapshot_ms", request.snapshotDate());
         }
 
-        return new RankingResult(
+        return RankingBuilders.singleMetricRanking(
                 "producer_ranking",
-                productionTitle(request.resources(), request.includeNegative(), request.listByNation(), request.listAverage()),
-                List.copyOf(querySummary),
-                RankingBuilders.totalRowCount(List.of(section)),
+                entityType,
+                metricKey,
+                valueFormat,
+                RankingNumericType.DECIMAL,
+                List.of(RankingBuilders.singleMetricSection(
+                        entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
+                        RankingEntityType.NATION.name(),
+                        aggregationMode,
+                        RankingSortDirection.DESC,
+                        values,
+                        Map.of()
+                )),
+                queryMetadata,
+                request.highlights().idsFor(entityType),
                 request.snapshotDate() == null ? System.currentTimeMillis() : request.snapshotDate(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                List.of(section)
+                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
         );
     }
 
@@ -352,32 +335,5 @@ public final class NationValueRankingService {
             return RankingValueFormat.MONEY;
         }
         return resources.iterator().next() == ResourceType.MONEY ? RankingValueFormat.MONEY : RankingValueFormat.NUMBER;
-    }
-
-    private static String productionTitle(Set<ResourceType> resources, boolean includeNegative, boolean listByNation, boolean listAverage) {
-        String resourceNames = resources.size() >= ResourceType.values.length - 1 ? "market" : StringMan.join(resources, ",");
-        String title = "Daily " + (includeNegative ? "net" : "gross") + " " + resourceNames + " production";
-        if (!listByNation && listAverage) {
-            title += " per member";
-        }
-        if (resources.size() > 1) {
-            title += " (market value)";
-        }
-        return title;
-    }
-
-    private static String defaultAttributeTitle(String attributeName, boolean groupByAlliance, boolean total) {
-        String prefix = groupByAlliance ? total ? "Total" : "Average" : "Top";
-        return prefix + " " + attributeName + " by " + (groupByAlliance ? "alliance" : "nation");
-    }
-
-    private static String allianceName(int allianceId) {
-        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
-        return alliance == null ? null : alliance.getName();
-    }
-
-    private static String nationName(int nationId) {
-        DBNation nation = DBNation.getOrCreate(nationId);
-        return nation == null ? null : nation.getName();
     }
 }

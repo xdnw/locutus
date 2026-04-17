@@ -18,32 +18,29 @@ class RankingWebAdapterFixtureTest {
 
     @Test
     void singleSectionFixtureMatchesExpectedContract() throws Exception {
-        RankingMetricDescriptor metric = new RankingMetricDescriptor("score", "Score", RankingNumericType.INTEGER, RankingValueFormat.COUNT);
         Map<Integer, Integer> values = new LinkedHashMap<>();
         values.put(2, 10);
         values.put(1, 10);
         values.put(3, 8);
 
-        RankingSection section = RankingBuilders.singleMetricSection(
-                "alliances",
-                "Alliances",
-                RankingEntityType.ALLIANCE,
-                metric,
-                RankingSortDirection.DESC,
-                values,
-                Set.of(3),
-                id -> "Alliance " + id,
-                RankingSupport.sectionMetadata(RankingEntityType.ALLIANCE.name(), RankingAggregationMode.IDENTITY),
-                List.of("Current snapshot.")
-        );
-        RankingResult result = new RankingResult(
+        RankingResult result = RankingBuilders.singleMetricRanking(
                 "alliance_metric_fixture",
-                "Top Score by alliance",
-                List.of(new RankingQueryField("metric", "Metric", "score")),
-                RankingBuilders.totalRowCount(List.of(section)),
+                RankingEntityType.ALLIANCE,
+                "score",
+                RankingValueFormat.COUNT,
+                RankingNumericType.INTEGER,
+                List.of(RankingBuilders.singleMetricSection(
+                        "alliances",
+                        RankingEntityType.ALLIANCE.name(),
+                        RankingAggregationMode.IDENTITY,
+                        RankingSortDirection.DESC,
+                        values,
+                        Map.of()
+                )),
+                Map.of("metric", "score"),
+                Set.of(3),
                 12345L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                List.of(section)
+                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
         );
 
         assertFixture("single-section-ranking.json", WebRankingAdapter.toWeb(result));
@@ -51,51 +48,21 @@ class RankingWebAdapterFixtureTest {
 
     @Test
     void multiSectionFixtureMatchesExpectedContract() throws Exception {
-        RankingMetricDescriptor metric = new RankingMetricDescriptor("count", "Count", RankingNumericType.INTEGER, RankingValueFormat.COUNT);
-        RankingSection victories = RankingBuilders.singleMetricSection(
-                "victories",
-                "Victories",
-                RankingEntityType.NATION,
-                metric,
-                RankingSortDirection.DESC,
-                Map.of(11, 3, 12, 1),
-                Set.of(),
-                id -> "Nation " + id,
-                RankingSupport.sectionMetadata("WAR", RankingAggregationMode.COUNT),
-                List.of()
-        );
-        RankingSection losses = RankingBuilders.singleMetricSection(
-                "losses",
-                "Losses",
-                RankingEntityType.NATION,
-                metric,
-                RankingSortDirection.DESC,
-                Map.of(),
-                Set.of(),
-                id -> "Nation " + id,
-                RankingSupport.sectionMetadata("WAR", RankingAggregationMode.COUNT),
-                List.of()
-        );
-        RankingSection peace = RankingBuilders.singleMetricSection(
-                "peace",
-                "Peace",
-                RankingEntityType.NATION,
-                metric,
-                RankingSortDirection.DESC,
-                Map.of(13, 2),
-                Set.of(13),
-                id -> "Nation " + id,
-                RankingSupport.sectionMetadata("WAR", RankingAggregationMode.COUNT),
-                List.of("Empty sections are retained.")
-        );
-        RankingResult result = new RankingResult(
+        RankingResult result = RankingBuilders.singleMetricRanking(
                 "war_status_fixture",
-                "War Status by Nation",
-                List.of(new RankingQueryField("start_ms", "Start", "1000")),
-                RankingBuilders.totalRowCount(List.of(victories, losses, peace)),
+                RankingEntityType.NATION,
+                "count",
+                RankingValueFormat.COUNT,
+                RankingNumericType.INTEGER,
+                List.of(
+                        RankingBuilders.singleMetricSection("victories", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, Map.of(11, 3, 12, 1), Map.of()),
+                        RankingBuilders.singleMetricSection("losses", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, Map.of(), Map.of()),
+                        RankingBuilders.singleMetricSection("peace", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, Map.of(13, 2), Map.of())
+                ),
+                Map.of("start_ms", 1000),
+                Set.of(13),
                 54321L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                List.of(victories, losses, peace)
+                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
         );
 
         assertFixture("multi-section-ranking.json", WebRankingAdapter.toWeb(result));

@@ -2,76 +2,145 @@ package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 public final class RankingBuilders {
     private RankingBuilders() {
     }
 
-    public static RankingSection singleMetricSection(
+    public static RankingSectionSpec singleMetricSection(
             String sectionKey,
-            String title,
-            RankingEntityType entityType,
-            RankingMetricDescriptor metric,
+            String sourceType,
+            RankingAggregationMode aggregationMode,
             RankingSortDirection direction,
             Map<Integer, ? extends Number> values,
-            Set<Integer> highlightedEntityIds,
-            Function<Integer, String> displayHintResolver,
-            List<RankingQueryField> metadata,
-            List<String> notes
+            Map<String, Object> metadata
     ) {
-        Set<Integer> highlights = highlightedEntityIds == null ? Set.of() : new IntOpenHashSet(highlightedEntityIds);
-        List<RankingRow> rows = new ArrayList<>(values.size());
-        for (Map.Entry<Integer, ? extends Number> entry : values.entrySet()) {
-            Number value = entry.getValue();
-            if (value == null || !isFinite(value)) {
-                continue;
+        Map<Integer, BigDecimal> numericValues = new LinkedHashMap<>();
+        if (values != null) {
+            for (Map.Entry<Integer, ? extends Number> entry : values.entrySet()) {
+                Number value = entry.getValue();
+                if (value == null || !isFinite(value)) {
+                    continue;
+                }
+                numericValues.put(entry.getKey(), RankingSupport.numericValue(value));
             }
-            int entityId = entry.getKey();
-            RankingNumericValue numericValue = RankingNumericValue.ofNumber(entry.getValue(), metric.numericType());
-            RankingEntityRef entity = new RankingEntityRef(
-                    entityType.key(entityId),
-                    entityType,
-                    entityId,
-                    displayHintResolver == null ? null : displayHintResolver.apply(entityId)
-            );
-            rows.add(new RankingRow(
-                    entity,
-                    List.of(new RankingMetricValue(metric.metricKey(), numericValue)),
-                    numericValue,
-                    highlights.contains(entityId),
-                    null
-            ));
+        }
+        return new RankingSectionSpec(sectionKey, sourceType, aggregationMode, direction, numericValues, metadata);
+    }
+
+    public static RankingResult singleMetricRanking(
+            String responseKey,
+            RankingEntityType key1Type,
+            String valueKey,
+            RankingValueFormat valueSemanticKind,
+            RankingNumericType valueNumericKind,
+            List<RankingSectionSpec> sections,
+            Map<String, Object> queryMetadata,
+            Set<Integer> highlightedKey1Ids,
+            Long asOfMs,
+            RankingEmptySectionPolicy emptySectionPolicy
+    ) {
+        List<RankingSectionSpec> normalizedSections = sections == null ? List.of() : List.copyOf(sections);
+        Set<Integer> highlightIds = highlightedKey1Ids == null ? Set.of() : new IntOpenHashSet(highlightedKey1Ids);
+
+        List<Long> key1Ids = new ArrayList<>();
+        List<BigDecimal> valueColumn = new ArrayList<>();
+        LinkedHashSet<Long> highlightedOrdered = new LinkedHashSet<>();
+        List<String> sectionKeys = new ArrayList<>(normalizedSections.size());
+        List<Integer> sectionRowOffsets = new ArrayList<>(normalizedSections.size());
+        List<Integer> sectionRowCounts = new ArrayList<>(normalizedSections.size());
+        List<String> sectionSourceTypes = new ArrayList<>(normalizedSections.size());
+        List<RankingAggregationMode> sectionAggregationModes = new ArrayList<>(normalizedSections.size());
+        List<String> sectionSortValueKeys = new ArrayList<>(normalizedSections.size());
+        List<RankingSortDirection> sectionSortDirections = new ArrayList<>(normalizedSections.size());
+        List<RankingTieBreaker> sectionSortTieBreakers = new ArrayList<>(normalizedSections.size());
+        List<Map<String, Object>> sectionMetadataRows = new ArrayList<>(normalizedSections.size());
+
+        Comparator<Map.Entry<Integer, BigDecimal>> comparator = Comparator
+                .comparing(Map.Entry<Integer, BigDecimal>::getValue);
+
+        for (RankingSectionSpec section : normalizedSections) {
+            sectionKeys.add(section.sectionKey());
+            sectionRowOffsets.add(key1Ids.size());
+            sectionSourceTypes.add(section.sourceType());
+            sectionAggregationModes.add(section.aggregationMode());
+            sectionSortValueKeys.add(valueKey);
+            sectionSortDirections.add(section.sortDirection());
+            sectionSortTieBreakers.add(RankingTieBreaker.ENTITY_ID_ASC);
+            sectionMetadataRows.add(section.metadata());
+
+            Comparator<Map.Entry<Integer, BigDecimal>> sectionComparator = section.sortDirection() == RankingSortDirection.DESC
+                    ? comparator.reversed()
+                    : comparator;
+            sectionComparator = sectionComparator.thenComparingInt(Map.Entry::getKey);
+
+            List<Map.Entry<Integer, BigDecimal>> rows = new ArrayList<>(section.values().entrySet());
+            rows.sort(sectionComparator);
+            sectionRowCounts.add(rows.size());
+
+            for (Map.Entry<Integer, BigDecimal> row : rows) {
+                long key1Id = row.getKey();
+                key1Ids.add(key1Id);
+                valueColumn.add(row.getValue());
+                if (highlightIds.contains(row.getKey())) {
+                    highlightedOrdered.add(key1Id);
+                }
+            }
         }
 
-        Comparator<RankingNumericValue> numericComparator = Comparator.comparing(RankingNumericValue::toBigDecimal);
-        if (direction == RankingSortDirection.DESC) {
-            numericComparator = numericComparator.reversed();
-        }
-        Comparator<RankingRow> comparator = Comparator.comparing(RankingRow::sortValue, numericComparator);
-        comparator = comparator.thenComparingLong(row -> row.entity().entityId());
-        rows.sort(comparator);
-
-        return new RankingSection(
-                sectionKey,
-                title,
-                entityType,
-                List.of(metric),
-                new RankingSort(metric.metricKey(), direction, RankingTieBreaker.ENTITY_ID_ASC),
-                metadata == null ? List.of() : List.copyOf(metadata),
-                notes == null ? List.of() : List.copyOf(notes),
-                List.copyOf(rows),
-                rows.size()
+        return new RankingResult(
+                responseKey,
+                key1Type,
+                null,
+                key1Ids,
+                List.of(),
+                List.of(valueKey),
+                List.of(valueSemanticKind),
+                List.of(valueNumericKind),
+                List.of(valueColumn),
+                sectionKeys,
+                sectionRowOffsets,
+                sectionRowCounts,
+                sectionSourceTypes,
+                sectionAggregationModes,
+                sectionSortValueKeys,
+                sectionSortDirections,
+                sectionSortTieBreakers,
+                transposeSectionMetadata(sectionMetadataRows),
+                RankingSupport.immutableMetadata(queryMetadata),
+                new ArrayList<>(highlightedOrdered),
+                asOfMs,
+                emptySectionPolicy,
+                key1Ids.size()
         );
     }
 
-    public static int totalRowCount(List<RankingSection> sections) {
-        return sections.stream().mapToInt(RankingSection::rowCount).sum();
+    private static Map<String, List<Object>> transposeSectionMetadata(List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, List<Object>> columns = new LinkedHashMap<>();
+        int rowCount = rows.size();
+        for (Map<String, Object> row : rows) {
+            for (String key : row.keySet()) {
+                columns.computeIfAbsent(key, ignored -> new ArrayList<>(java.util.Collections.nCopies(rowCount, null)));
+            }
+        }
+        for (int i = 0; i < rowCount; i++) {
+            for (Map.Entry<String, Object> entry : rows.get(i).entrySet()) {
+                columns.get(entry.getKey()).set(i, entry.getValue());
+            }
+        }
+        return columns;
     }
 
     private static boolean isFinite(Number value) {

@@ -11,13 +11,12 @@
   "sectionKeys" : [ "victories", "losses", "peace" ],
   "sectionRowOffsets" : [ 0, 2, 2 ],
   "sectionRowCounts" : [ 2, 0, 1 ],
+  "sectionSourceTypes" : [ "WAR", "WAR", "WAR" ],
+  "sectionAggregationModes" : [ "COUNT", "COUNT", "COUNT" ],
   "sectionSortValueKeys" : [ "count", "count", "count" ],
   "sectionSortDirections" : [ "DESC", "DESC", "DESC" ],
   "sectionSortTieBreakers" : [ "ENTITY_ID_ASC", "ENTITY_ID_ASC", "ENTITY_ID_ASC" ],
-  "sectionMetadata" : {
-    "source_type" : [ "WAR", "WAR", "WAR" ],
-    "aggregation_mode" : [ "COUNT", "COUNT", "COUNT" ]
-  },
+  "sectionMetadata" : { },
   "queryMetadata" : {
     "start_ms" : 1000
   },

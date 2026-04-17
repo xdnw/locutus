@@ -21,6 +21,8 @@ public record WebRankingResult(
         List<String> sectionKeys,
         List<Integer> sectionRowOffsets,
         List<Integer> sectionRowCounts,
+        List<String> sectionSourceTypes,
+        List<String> sectionAggregationModes,
         List<String> sectionSortValueKeys,
         List<String> sectionSortDirections,
         List<String> sectionSortTieBreakers,
@@ -44,6 +46,8 @@ public record WebRankingResult(
         sectionKeys = immutableList(sectionKeys);
         sectionRowOffsets = immutableList(sectionRowOffsets);
         sectionRowCounts = immutableList(sectionRowCounts);
+        sectionSourceTypes = immutableList(sectionSourceTypes);
+        sectionAggregationModes = immutableList(sectionAggregationModes);
         sectionSortValueKeys = immutableList(sectionSortValueKeys);
         sectionSortDirections = immutableList(sectionSortDirections);
         sectionSortTieBreakers = immutableList(sectionSortTieBreakers);
@@ -73,6 +77,8 @@ public record WebRankingResult(
         int sectionCount = sectionKeys.size();
         if (sectionRowOffsets.size() != sectionCount
                 || sectionRowCounts.size() != sectionCount
+                || sectionSourceTypes.size() != sectionCount
+                || sectionAggregationModes.size() != sectionCount
                 || sectionSortValueKeys.size() != sectionCount
                 || sectionSortDirections.size() != sectionCount
                 || sectionSortTieBreakers.size() != sectionCount) {
