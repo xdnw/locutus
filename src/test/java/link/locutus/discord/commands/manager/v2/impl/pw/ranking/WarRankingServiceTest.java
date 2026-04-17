@@ -38,6 +38,7 @@ class WarRankingServiceTest {
                 null,
                 null,
                 null,
+                null,
                 false,
                 false,
                 null
@@ -90,6 +91,7 @@ class WarRankingServiceTest {
                 false,
                 false,
                 false,
+                null,
                 null,
                 null,
                 null,
@@ -150,6 +152,7 @@ class WarRankingServiceTest {
                 null,
                 null,
                 null,
+                Set.of(),
                 false,
                 false,
                 Set.of()

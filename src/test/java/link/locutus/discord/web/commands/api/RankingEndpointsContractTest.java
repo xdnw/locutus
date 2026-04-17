@@ -1,5 +1,7 @@
 package link.locutus.discord.web.commands.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import link.locutus.discord.Locutus;
 import link.locutus.discord._main.ILoader;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -10,27 +12,29 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.binding.value_types.WebRankingResult;
-import link.locutus.discord.web.commands.binding.value_types.WebRankingRow;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 
+import java.math.BigDecimal;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Isolated
 class RankingEndpointsContractTest {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     @Test
     void rankingEndpointsAreRegisteredInStandalonePageHandler() {
         PageHandler handler = TsEndpointGenerator.createStandalonePageHandler();
@@ -98,26 +102,38 @@ class RankingEndpointsContractTest {
             );
 
             assertEquals("alliance_metric_ranking", result.responseKey());
+            assertEquals("ALLIANCE", result.key1Type());
             assertEquals(2, result.rowCount());
             assertEquals("INCLUDE_EMPTY_SECTIONS", result.emptySectionPolicy());
-            assertEquals(1, result.sections().size());
-            assertEquals("ALLIANCE", result.sections().get(0).entityType());
-            assertEquals(2, result.sections().get(0).rowCount());
-            assertEquals("ALLIANCE", result.sections().get(0).metadata().get(0).value());
-            assertEquals("IDENTITY", result.sections().get(0).metadata().get(1).value());
+            assertEquals(List.of(2L, 1L), result.key1Ids());
+            assertEquals(List.of("score"), result.valueKeys());
+            assertEquals(List.of("NUMBER"), result.valueSemanticKinds());
+            assertEquals(List.of("DECIMAL"), result.valueNumericKinds());
+            assertEquals(new BigDecimal("10"), result.valueColumns().get(0).get(0));
+            assertEquals(new BigDecimal("5"), result.valueColumns().get(0).get(1));
+            assertEquals(List.of("alliances"), result.sectionKeys());
+            assertEquals(List.of(0), result.sectionRowOffsets());
+            assertEquals(List.of(2), result.sectionRowCounts());
+            assertEquals(List.of("score"), result.sectionSortValueKeys());
+            assertEquals(List.of("DESC"), result.sectionSortDirections());
+            assertEquals(List.of("ENTITY_ID_ASC"), result.sectionSortTieBreakers());
+            assertEquals(List.of("ALLIANCE"), result.sectionMetadata().get("source_type"));
+            assertEquals(List.of("IDENTITY"), result.sectionMetadata().get("aggregation_mode"));
+            assertEquals("SCORE", result.queryMetadata().get("metric"));
+            assertTrue(result.queryMetadata().get("as_of_turn") instanceof BigDecimal);
+            assertEquals(List.of(1L), result.highlightedKey1Ids());
 
-            WebRankingRow firstRow = result.sections().get(0).rows().get(0);
-            WebRankingRow secondRow = result.sections().get(0).rows().get(1);
-
-            assertEquals(2L, firstRow.entity().entityId());
-            assertEquals("alliance:2", firstRow.entity().entityKey());
-            assertEquals("10", firstRow.sortValue().exactValue());
-            assertEquals("DECIMAL", firstRow.sortValue().numericType());
-            assertFalse(firstRow.highlighted());
-            assertEquals(1L, secondRow.entity().entityId());
-            assertTrue(secondRow.highlighted());
-            assertFalse(firstRow.entity().entityKey().contains("**"));
-            assertFalse(firstRow.sortValue().exactValue().contains(". "));
+            JsonNode json = MAPPER.valueToTree(result);
+            assertTrue(json.get("valueColumns").get(0).get(0).isNumber());
+            assertTrue(json.findPath("sections").isMissingNode());
+            assertTrue(json.findPath("rows").isMissingNode());
+            assertTrue(json.findPath("entity").isMissingNode());
+            assertTrue(json.findPath("metricValues").isMissingNode());
+            assertTrue(json.findPath("sortValue").isMissingNode());
+            assertTrue(json.findPath("displayHint").isMissingNode());
+            assertTrue(json.findPath("title").isMissingNode());
+            assertTrue(json.findPath("label").isMissingNode());
+            assertTrue(json.findPath("notes").isMissingNode());
         } finally {
             instanceField.set(null, previousInstance);
             Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY = previousDirectory;
