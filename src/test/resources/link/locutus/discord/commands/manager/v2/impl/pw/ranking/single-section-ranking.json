@@ -1,27 +1,24 @@
 {
-  "responseKey" : "alliance_metric_fixture",
+  "kind" : "ALLIANCE_METRIC",
   "key1Type" : "ALLIANCE",
   "key2Type" : null,
   "key1Ids" : [ 1, 2, 3 ],
   "key2Ids" : [ ],
-  "valueKeys" : [ "score" ],
-  "valueSemanticKinds" : [ "COUNT" ],
-  "valueNumericKinds" : [ "INTEGER" ],
-  "valueColumns" : [ [ 10, 10, 8 ] ],
-  "sectionKeys" : [ "alliances" ],
-  "sectionRowOffsets" : [ 0 ],
-  "sectionRowCounts" : [ 3 ],
-  "sectionSourceTypes" : [ "ALLIANCE" ],
-  "sectionAggregationModes" : [ "IDENTITY" ],
-  "sectionSortValueKeys" : [ "score" ],
-  "sectionSortDirections" : [ "DESC" ],
-  "sectionSortTieBreakers" : [ "ENTITY_ID_ASC" ],
-  "sectionMetadata" : { },
-  "queryMetadata" : {
-    "metric" : "score"
-  },
+  "valueColumns" : [ {
+    "descriptor" : {
+      "kind" : "ALLIANCE_METRIC",
+      "format" : "COUNT",
+      "numericType" : "INTEGER",
+      "aggregationMode" : "IDENTITY",
+      "allianceMetric" : "SCORE"
+    },
+    "values" : [ 10, 10, 8 ]
+  } ],
+  "sectionRanges" : [ {
+    "kind" : "ALLIANCES",
+    "rowOffset" : 0,
+    "rowCount" : 3
+  } ],
   "highlightedKey1Ids" : [ 3 ],
-  "asOfMs" : 12345,
-  "emptySectionPolicy" : "INCLUDE_EMPTY_SECTIONS",
-  "rowCount" : 3
+  "asOfMs" : 12345
 }

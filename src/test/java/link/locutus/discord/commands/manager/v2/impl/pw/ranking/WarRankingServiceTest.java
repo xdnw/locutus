@@ -6,7 +6,6 @@ import link.locutus.discord.apiv1.enums.WarCostStat;
 import link.locutus.discord.pnw.NationOrAlliance;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class WarRankingServiceTest {
     @Test
     void warCostRequestNormalizeAppliesDefaults() {
+        long before = System.currentTimeMillis();
         WarRankingService.WarCostRequest request = WarRankingService.WarCostRequest.normalize(
                 100L,
                 null,
@@ -41,9 +41,10 @@ class WarRankingServiceTest {
                 false,
                 null
         );
+        long after = System.currentTimeMillis();
 
         assertEquals(100L, request.timeStartMs());
-        assertEquals(Long.MAX_VALUE, request.timeEndMs());
+        assertTrue(request.timeEndMs() >= before && request.timeEndMs() <= after);
         assertEquals(WarCostMode.DEALT, request.type());
         assertEquals(WarCostStat.WAR_VALUE, request.stat());
         assertEquals(Set.of(), request.coalition1());
@@ -130,74 +131,42 @@ class WarRankingServiceTest {
     }
 
     @Test
-    void warCostSectionMetadataCarriesNormalizationAndScope() {
-        WarRankingService.WarCostRequest request = new WarRankingService.WarCostRequest(
-                0L,
-                1L,
-                Set.of(),
-                Set.of(),
-                true,
-                WarCostMode.DEALT,
-                WarCostStat.GROUND,
-                false,
-                false,
-                false,
-                false,
-                false,
-                true,
-                true,
-                true,
-                null,
-                null,
-                null,
-                Set.of(),
-                false,
-                false,
-                Set.of()
-        );
-
-        Map<String, Object> metadata = WarRankingService.warCostSectionMetadata(request);
-
-        assertEquals("GROUND", metadata.get("stat"));
-        assertEquals("DEALT", metadata.get("value_mode"));
-        assertEquals("per_war_per_city", metadata.get("normalization"));
-        assertEquals("coalition_1_only", metadata.get("coalition_scope"));
-        assertEquals("all", metadata.get("war_side_scope"));
+    void normalizationModeMapsToTypedSemantics() {
+        assertEquals(RankingNormalizationMode.NONE, WarRankingService.normalizationMode(false, false));
+        assertEquals(RankingNormalizationMode.PER_WAR, WarRankingService.normalizationMode(true, false));
+        assertEquals(RankingNormalizationMode.PER_CITY, WarRankingService.normalizationMode(false, true));
+        assertEquals(RankingNormalizationMode.PER_WAR_PER_CITY, WarRankingService.normalizationMode(true, true));
     }
 
     @Test
-    void warCountAndAttackTypeMetadataExposeFrontendSemantics() {
-        WarRankingService.WarCountRequest countRequest = new WarRankingService.WarCountRequest(
-                0L,
-                Set.of(),
-                Set.of(),
-                true,
-                false,
-                true,
-                true,
-                true,
-                false,
-                null,
-                null
+    void typedDescriptorsCarryWarFrontendSemantics() {
+        RankingValueDescriptor warCost = RankingValueDescriptor.warCost(
+                WarCostMode.DEALT,
+                WarCostStat.GROUND,
+                RankingValueFormat.NUMBER,
+                RankingNumericType.DECIMAL,
+                RankingNormalizationMode.PER_WAR_PER_CITY
         );
-        Map<String, Object> countMetadata = WarRankingService.warCountSectionMetadata(countRequest);
-        assertEquals("per_member", countMetadata.get("normalization"));
-        assertEquals("offensive", countMetadata.get("war_side_scope"));
-        assertEquals("attackers_only", countMetadata.get("coalition_scope"));
-        assertEquals("active_only", countMetadata.get("member_scope"));
+        assertEquals(RankingValueKind.WAR_COST, warCost.kind());
+        assertEquals(WarCostMode.DEALT, warCost.warCostMode());
+        assertEquals(WarCostStat.GROUND, warCost.warCostStat());
+        assertEquals(RankingNormalizationMode.PER_WAR_PER_CITY, warCost.normalizationMode());
 
-        WarRankingService.AttackTypeRequest attackTypeRequest = new WarRankingService.AttackTypeRequest(
-                0L,
-                AttackType.GROUND,
-                Set.of(),
-                80,
-                true,
-                false,
-                true
+        RankingValueDescriptor warCount = RankingValueDescriptor.warCount(
+                RankingValueFormat.NUMBER,
+                RankingNumericType.DECIMAL,
+                RankingNormalizationMode.PER_MEMBER
         );
-        Map<String, Object> attackMetadata = WarRankingService.attackTypeSectionMetadata(attackTypeRequest);
-        assertEquals("GROUND", attackMetadata.get("attack_type"));
-        assertEquals("percent", attackMetadata.get("value_mode"));
-        assertEquals("defensive", attackMetadata.get("war_side_scope"));
+        assertEquals(RankingValueKind.WAR_COUNT, warCount.kind());
+        assertEquals(RankingNormalizationMode.PER_MEMBER, warCount.normalizationMode());
+
+        RankingValueDescriptor attackType = RankingValueDescriptor.attackType(
+                AttackType.GROUND,
+                RankingValueFormat.PERCENT,
+                RankingNumericType.DECIMAL
+        );
+        assertEquals(RankingValueKind.ATTACK_TYPE, attackType.kind());
+        assertEquals(AttackType.GROUND, attackType.attackType());
+        assertEquals(RankingValueFormat.PERCENT, attackType.format());
     }
 }

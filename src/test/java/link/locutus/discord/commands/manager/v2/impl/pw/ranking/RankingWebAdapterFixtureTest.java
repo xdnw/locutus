@@ -1,6 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import link.locutus.discord.apiv1.enums.WarCostMode;
+import link.locutus.discord.apiv1.enums.WarCostStat;
+import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.web.commands.binding.value_types.WebRankingResult;
 import org.junit.jupiter.api.Test;
 
@@ -24,23 +27,16 @@ class RankingWebAdapterFixtureTest {
         values.put(3, 8);
 
         RankingResult result = RankingBuilders.singleMetricRanking(
-                "alliance_metric_fixture",
+                RankingKind.ALLIANCE_METRIC,
                 RankingEntityType.ALLIANCE,
-                "score",
-                RankingValueFormat.COUNT,
-                RankingNumericType.INTEGER,
+                RankingValueDescriptor.allianceMetric(AllianceMetric.SCORE, RankingValueFormat.COUNT, RankingNumericType.INTEGER),
                 List.of(RankingBuilders.singleMetricSection(
-                        "alliances",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                Map.of("metric", "score"),
                 Set.of(3),
-                12345L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                12345L
         );
 
         assertFixture("single-section-ranking.json", WebRankingAdapter.toWeb(result));
@@ -49,20 +45,16 @@ class RankingWebAdapterFixtureTest {
     @Test
     void multiSectionFixtureMatchesExpectedContract() throws Exception {
         RankingResult result = RankingBuilders.singleMetricRanking(
-                "war_status_fixture",
+                RankingKind.WAR_STATUS,
                 RankingEntityType.NATION,
-                "count",
-                RankingValueFormat.COUNT,
-                RankingNumericType.INTEGER,
+                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
                 List.of(
-                        RankingBuilders.singleMetricSection("victories", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, Map.of(11, 3, 12, 1), Map.of()),
-                        RankingBuilders.singleMetricSection("losses", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, Map.of(), Map.of()),
-                        RankingBuilders.singleMetricSection("peace", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, Map.of(13, 2), Map.of())
+                        RankingBuilders.singleMetricSection(RankingSectionKind.VICTORIES, RankingSortDirection.DESC, Map.of(11, 3, 12, 1)),
+                        RankingBuilders.singleMetricSection(RankingSectionKind.LOSSES, RankingSortDirection.DESC, Map.of()),
+                        RankingBuilders.singleMetricSection(RankingSectionKind.PEACE, RankingSortDirection.DESC, Map.of(13, 2))
                 ),
-                Map.of("start_ms", 1000),
                 Set.of(13),
-                54321L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                54321L
         );
 
         assertFixture("multi-section-ranking.json", WebRankingAdapter.toWeb(result));

@@ -1,27 +1,32 @@
 {
-  "responseKey" : "war_status_fixture",
+  "kind" : "WAR_STATUS",
   "key1Type" : "NATION",
   "key2Type" : null,
   "key1Ids" : [ 11, 12, 13 ],
   "key2Ids" : [ ],
-  "valueKeys" : [ "count" ],
-  "valueSemanticKinds" : [ "COUNT" ],
-  "valueNumericKinds" : [ "INTEGER" ],
-  "valueColumns" : [ [ 3, 1, 2 ] ],
-  "sectionKeys" : [ "victories", "losses", "peace" ],
-  "sectionRowOffsets" : [ 0, 2, 2 ],
-  "sectionRowCounts" : [ 2, 0, 1 ],
-  "sectionSourceTypes" : [ "WAR", "WAR", "WAR" ],
-  "sectionAggregationModes" : [ "COUNT", "COUNT", "COUNT" ],
-  "sectionSortValueKeys" : [ "count", "count", "count" ],
-  "sectionSortDirections" : [ "DESC", "DESC", "DESC" ],
-  "sectionSortTieBreakers" : [ "ENTITY_ID_ASC", "ENTITY_ID_ASC", "ENTITY_ID_ASC" ],
-  "sectionMetadata" : { },
-  "queryMetadata" : {
-    "start_ms" : 1000
-  },
+  "valueColumns" : [ {
+    "descriptor" : {
+      "kind" : "WAR_COUNT",
+      "format" : "COUNT",
+      "numericType" : "INTEGER",
+      "aggregationMode" : "COUNT",
+      "normalizationMode" : "NONE"
+    },
+    "values" : [ 3, 1, 2 ]
+  } ],
+  "sectionRanges" : [ {
+    "kind" : "VICTORIES",
+    "rowOffset" : 0,
+    "rowCount" : 2
+  }, {
+    "kind" : "LOSSES",
+    "rowOffset" : 2,
+    "rowCount" : 0
+  }, {
+    "kind" : "PEACE",
+    "rowOffset" : 2,
+    "rowCount" : 1
+  } ],
   "highlightedKey1Ids" : [ 13 ],
-  "asOfMs" : 54321,
-  "emptySectionPolicy" : "INCLUDE_EMPTY_SECTIONS",
-  "rowCount" : 3
+  "asOfMs" : 54321
 }

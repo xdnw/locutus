@@ -20,55 +20,41 @@ class RankingBuildersTest {
         values.put(3, BigInteger.ONE);
 
         RankingResult result = RankingBuilders.singleMetricRanking(
-                "fixture",
+                RankingKind.RECRUITMENT,
                 RankingEntityType.ALLIANCE,
-                "count",
-                RankingValueFormat.COUNT,
-                RankingNumericType.INTEGER,
+                RankingValueDescriptor.recruitment(),
                 List.of(RankingBuilders.singleMetricSection(
-                        "entities",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                Map.of("metric", "count"),
                 Set.of(5),
-                1L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                1L
         );
 
         assertEquals(List.of(2L, 5L, 3L), result.key1Ids());
-        assertEquals(new BigDecimal("9007199254740993"), result.valueColumns().get(0).get(0));
+        assertEquals(new BigDecimal("9007199254740993"), result.valueColumns().get(0).values().get(0));
         assertEquals(List.of(5L), result.highlightedKey1Ids());
-        assertEquals(List.of("entities"), result.sectionKeys());
+        assertEquals(List.of(new RankingSectionRange(RankingSectionKind.ALLIANCES, 0, 3)), result.sectionRanges());
     }
 
     @Test
     void numericValuesAndRowCountsAreCanonicalizedAtTheSharedSeam() {
         RankingResult result = RankingBuilders.singleMetricRanking(
-                "fixture",
+                RankingKind.WAR_COUNT,
                 RankingEntityType.ALLIANCE,
-                "count",
-                RankingValueFormat.COUNT,
-                RankingNumericType.INTEGER,
+                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
                 List.of(RankingBuilders.singleMetricSection(
-                        "entities",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
-                        Map.of(7, 1.0d),
-                        Map.of()
+                        Map.of(7, 1.0d)
                 )),
-                Map.of("sample", 1.0d),
                 Set.of(),
-                1L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                1L
         );
 
         assertEquals(1, result.rowCount());
-        assertEquals(new BigDecimal("1"), result.valueColumns().get(0).get(0));
-        assertEquals(new BigDecimal("1"), result.queryMetadata().get("sample"));
+        assertEquals(new BigDecimal("1"), result.valueColumns().get(0).values().get(0));
+        assertEquals(RankingValueKind.WAR_COUNT, result.valueColumns().get(0).descriptor().kind());
     }
 }

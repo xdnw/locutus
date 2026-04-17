@@ -62,28 +62,17 @@ public final class RecruitmentRankingService {
             }
         }
 
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("cutoff_ms", request.cutoffMs());
-        queryMetadata.put("top_x", request.topX());
-
         return RankingBuilders.singleMetricRanking(
-                "recruitment_ranking",
+                RankingKind.RECRUITMENT,
                 RankingEntityType.ALLIANCE,
-                "new_members",
-                RankingValueFormat.COUNT,
-                RankingNumericType.INTEGER,
+                RankingValueDescriptor.recruitment(),
                 List.of(RankingBuilders.singleMetricSection(
-                        "alliances",
-                        RankingEntityType.NATION.name(),
-                        RankingAggregationMode.COUNT,
+                        RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
-                        rankings,
-                        Map.of()
+                        rankings
                 )),
-                queryMetadata,
                 Set.of(),
-                System.currentTimeMillis(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                System.currentTimeMillis()
         );
     }
 }

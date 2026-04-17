@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.pnw.NationList;
@@ -16,6 +15,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -140,31 +140,17 @@ public final class NationValueRankingService {
         RankingEntityType entityType = request.groupByAlliance() ? RankingEntityType.ALLIANCE : RankingEntityType.NATION;
         Map<Integer, Double> values = resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
 
-        String attributeLabel = request.attribute().getName();
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("attribute", attributeLabel);
-        if (request.snapshotDate() != null) {
-            queryMetadata.put("snapshot_ms", request.snapshotDate());
-        }
-
         return RankingBuilders.singleMetricRanking(
-                "nation_attribute_ranking",
+                RankingKind.NATION_ATTRIBUTE,
                 entityType,
-                RankingSupport.machineKey(attributeLabel),
-                RankingValueFormat.NUMBER,
-                RankingNumericType.DECIMAL,
+                RankingValueDescriptor.attribute(request.attribute().getName(), RankingValueFormat.NUMBER, RankingNumericType.DECIMAL, aggregationMode),
                 List.of(RankingBuilders.singleMetricSection(
-                        entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
-                        RankingEntityType.NATION.name(),
-                        aggregationMode,
+                        RankingSectionKind.forEntityType(entityType),
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                queryMetadata,
                 Set.of(),
-                request.snapshotDate() == null ? System.currentTimeMillis() : request.snapshotDate(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                request.snapshotDate() == null ? System.currentTimeMillis() : request.snapshotDate()
         );
     }
 
@@ -206,43 +192,24 @@ public final class NationValueRankingService {
                 : request.listAverage() ? RankingAggregationMode.AVERAGE : RankingAggregationMode.SUM;
         RankingEntityType entityType = request.listByNation() ? RankingEntityType.NATION : RankingEntityType.ALLIANCE;
         Map<Integer, Double> values = entityType == RankingEntityType.ALLIANCE
-            && aggregationMode == RankingAggregationMode.SUM
-            && request.resources().size() > 1
-            ? resolveAllianceSummedConvertedValues(snapshotNations, profitsByNationId, request.resources())
-            : resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
+                && aggregationMode == RankingAggregationMode.SUM
+                && request.resources().size() > 1
+                ? resolveAllianceSummedConvertedValues(snapshotNations, profitsByNationId, request.resources())
+                : resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
         RankingValueFormat valueFormat = productionValueFormat(request.resources());
-        String metricKey = request.resources().size() == 1
-                ? RankingSupport.machineKey(request.resources().iterator().next().name())
-                : "market_value";
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("resources", request.resources().stream().map(Enum::name).toList());
-        queryMetadata.put("ignore_military_upkeep", request.ignoreMilitaryUpkeep());
-        queryMetadata.put("ignore_trade_bonus", request.ignoreTradeBonus());
-        queryMetadata.put("ignore_nation_bonus", request.ignoreNationBonus());
-        queryMetadata.put("include_negative", request.includeNegative());
-        queryMetadata.put("include_inactive", request.includeInactive());
-        if (request.snapshotDate() != null) {
-            queryMetadata.put("snapshot_ms", request.snapshotDate());
-        }
+        ResourceType resource = request.resources().size() == 1 ? request.resources().iterator().next() : null;
 
         return RankingBuilders.singleMetricRanking(
-                "producer_ranking",
+                RankingKind.PRODUCTION,
                 entityType,
-                metricKey,
-                valueFormat,
-                RankingNumericType.DECIMAL,
+                RankingValueDescriptor.production(resource, valueFormat, aggregationMode),
                 List.of(RankingBuilders.singleMetricSection(
-                        entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
-                        RankingEntityType.NATION.name(),
-                        aggregationMode,
+                        RankingSectionKind.forEntityType(entityType),
                         RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                queryMetadata,
                 request.highlights().idsFor(entityType),
-                request.snapshotDate() == null ? System.currentTimeMillis() : request.snapshotDate(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                request.snapshotDate() == null ? System.currentTimeMillis() : request.snapshotDate()
         );
     }
 
@@ -253,7 +220,7 @@ public final class NationValueRankingService {
                 snapshotDate,
                 snapshotGuild
         );
-        return new java.util.LinkedHashSet<>(snapshot);
+        return new LinkedHashSet<>(snapshot);
     }
 
     private static Map<Integer, Double> resolveSectionValues(

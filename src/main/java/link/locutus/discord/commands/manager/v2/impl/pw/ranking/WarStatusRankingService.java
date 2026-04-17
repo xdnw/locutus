@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
@@ -36,7 +35,8 @@ public final class WarStatusRankingService {
                 ? (primary, war) -> primary ? war.getAttacker_aa() : war.getDefender_aa()
                 : (primary, war) -> primary ? war.getAttacker_id() : war.getDefender_id();
 
-        WarParser parser = WarParser.ofAANatobj(null, request.attackers(), null, request.defenders(), request.timeStartMs(), Long.MAX_VALUE);
+        long endMs = System.currentTimeMillis();
+        WarParser parser = WarParser.ofAANatobj(null, request.attackers(), null, request.defenders(), request.timeStartMs(), endMs);
 
         Map<Integer, Integer> victoryByEntity = new Int2IntOpenHashMap();
         Map<Integer, Integer> lossesByEntity = new Int2IntOpenHashMap();
@@ -69,21 +69,17 @@ public final class WarStatusRankingService {
         }
 
         return RankingBuilders.singleMetricRanking(
-                request.byAlliance() ? "war_status_by_alliance" : "war_status_by_nation",
+                RankingKind.WAR_STATUS,
                 entityType,
-                "count",
-                RankingValueFormat.COUNT,
-                RankingNumericType.INTEGER,
+                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
                 List.of(
-                        RankingBuilders.singleMetricSection("victories", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, victoryByEntity, Map.of()),
-                        RankingBuilders.singleMetricSection("losses", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, lossesByEntity, Map.of()),
-                        RankingBuilders.singleMetricSection("expired", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, expireByEntity, Map.of()),
-                        RankingBuilders.singleMetricSection("peace", "WAR", RankingAggregationMode.COUNT, RankingSortDirection.DESC, peaceByEntity, Map.of())
+                        RankingBuilders.singleMetricSection(RankingSectionKind.VICTORIES, RankingSortDirection.DESC, victoryByEntity),
+                        RankingBuilders.singleMetricSection(RankingSectionKind.LOSSES, RankingSortDirection.DESC, lossesByEntity),
+                        RankingBuilders.singleMetricSection(RankingSectionKind.EXPIRED, RankingSortDirection.DESC, expireByEntity),
+                        RankingBuilders.singleMetricSection(RankingSectionKind.PEACE, RankingSortDirection.DESC, peaceByEntity)
                 ),
-                Map.of("start_ms", request.timeStartMs()),
                 Set.of(),
-                TimeUtil.getTimeFromTurn(TimeUtil.getTurn()),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                TimeUtil.getTimeFromTurn(TimeUtil.getTurn())
         );
     }
 

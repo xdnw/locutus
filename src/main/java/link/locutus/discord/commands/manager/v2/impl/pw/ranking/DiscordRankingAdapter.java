@@ -15,6 +15,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public final class DiscordRankingAdapter {
@@ -39,11 +40,11 @@ public final class DiscordRankingAdapter {
         List<String> fileLines = wantFile ? new ArrayList<>() : null;
         boolean attachFile = false;
 
-        String baseTitle = resolveTitle(command, result.responseKey());
-        for (int sectionIndex = 0; sectionIndex < result.sectionKeys().size(); sectionIndex++) {
-            String title = result.sectionKeys().size() == 1
+        String baseTitle = resolveTitle(command, result);
+        for (int sectionIndex = 0; sectionIndex < result.sectionRanges().size(); sectionIndex++) {
+            String title = result.sectionRanges().size() == 1
                     ? baseTitle
-                    : baseTitle + " | " + humanizeKey(result.sectionKeys().get(sectionIndex));
+                    : baseTitle + " | " + renderSectionLabel(result.sectionRanges().get(sectionIndex).kind());
             String body = renderSectionBody(result, sectionIndex, rowLimit);
 
             if (body.length() > MAX_EMBED_DESCRIPTION_LENGTH) {
@@ -59,7 +60,7 @@ public final class DiscordRankingAdapter {
                 fileLines.add("");
             }
 
-            if (result.sectionRowCounts().get(sectionIndex) > rowLimit) {
+            if (result.sectionRanges().get(sectionIndex).rowCount() > rowLimit) {
                 attachFile = true;
             }
         }
@@ -71,28 +72,27 @@ public final class DiscordRankingAdapter {
             message.commandButton(CommandBehavior.DELETE_MESSAGE, null, command.toString(), "Refresh");
         }
         if (wantFile && attachFile) {
-            message.file(result.responseKey() + ".txt", String.join("\n", fileLines));
+            message.file(result.kind().name().toLowerCase(Locale.ROOT) + ".txt", String.join("\n", fileLines));
         }
         message.send(RateLimitedSources.COMMAND_RESULT);
     }
 
     private static String renderSectionBody(RankingResult result, int sectionIndex, int rowLimit) {
-        int offset = result.sectionRowOffsets().get(sectionIndex);
-        int rowCount = result.sectionRowCounts().get(sectionIndex);
-        if (rowCount == 0) {
+        RankingSectionRange section = result.sectionRanges().get(sectionIndex);
+        if (section.rowCount() == 0) {
             return "No rows.";
         }
 
         List<String> lines = new ArrayList<>();
-        int visible = Math.min(rowLimit, rowCount);
+        int visible = Math.min(rowLimit, section.rowCount());
         for (int i = 0; i < visible; i++) {
-            lines.add(renderRow(result, offset + i, i));
+            lines.add(renderRow(result, section.rowOffset() + i, i));
         }
 
         Set<Long> highlights = new LinkedHashSet<>(result.highlightedKey1Ids());
         boolean addedEllipsis = false;
-        for (int i = rowLimit; i < rowCount; i++) {
-            long key1Id = result.key1Ids().get(offset + i);
+        for (int i = rowLimit; i < section.rowCount(); i++) {
+            long key1Id = result.key1Ids().get(section.rowOffset() + i);
             if (!highlights.contains(key1Id)) {
                 continue;
             }
@@ -100,29 +100,28 @@ public final class DiscordRankingAdapter {
                 lines.add("...");
                 addedEllipsis = true;
             }
-            lines.add(renderRow(result, offset + i, i));
+            lines.add(renderRow(result, section.rowOffset() + i, i));
         }
         return String.join("\n", lines);
     }
 
     private static List<String> renderAllRows(RankingResult result, int sectionIndex) {
-        int offset = result.sectionRowOffsets().get(sectionIndex);
-        int rowCount = result.sectionRowCounts().get(sectionIndex);
-        List<String> lines = new ArrayList<>(rowCount);
-        for (int i = 0; i < rowCount; i++) {
-            lines.add(renderRow(result, offset + i, i));
+        RankingSectionRange section = result.sectionRanges().get(sectionIndex);
+        List<String> lines = new ArrayList<>(section.rowCount());
+        for (int i = 0; i < section.rowCount(); i++) {
+            lines.add(renderRow(result, section.rowOffset() + i, i));
         }
         return lines;
     }
 
     private static String renderRow(RankingResult result, int globalRowIndex, int sectionRowIndex) {
-        List<String> renderedValues = new ArrayList<>(result.valueKeys().size());
-        boolean singleMetric = result.valueKeys().size() == 1;
-        for (int i = 0; i < result.valueKeys().size(); i++) {
-            BigDecimal value = result.valueColumns().get(i).get(globalRowIndex);
-            String rendered = renderNumeric(value, result.valueSemanticKinds().get(i), result.valueNumericKinds().get(i));
+        List<String> renderedValues = new ArrayList<>(result.valueColumns().size());
+        boolean singleMetric = result.valueColumns().size() == 1;
+        for (RankingValueColumn column : result.valueColumns()) {
+            BigDecimal value = column.values().get(globalRowIndex);
+            String rendered = renderNumeric(value, column.descriptor().format(), column.descriptor().numericType());
             if (!singleMetric) {
-                rendered = humanizeKey(result.valueKeys().get(i)) + ": " + rendered;
+                rendered = renderColumnLabel(column.descriptor()) + ": " + rendered;
             }
             renderedValues.add(rendered);
         }
@@ -146,7 +145,7 @@ public final class DiscordRankingAdapter {
                 }
             }
         }
-        return entityType.name().toLowerCase() + ":" + entityId;
+        return entityType.name().toLowerCase(Locale.ROOT) + ":" + entityId;
     }
 
     private static String renderNumeric(BigDecimal numeric, RankingValueFormat format, RankingNumericType numericType) {
@@ -158,29 +157,52 @@ public final class DiscordRankingAdapter {
         };
     }
 
-    private static String humanizeKey(String key) {
-        if (key == null || key.isBlank()) {
-            return "Ranking";
-        }
-        String[] parts = key.split("_");
-        List<String> words = new ArrayList<>(parts.length);
-        for (String part : parts) {
-            if (part.isBlank()) {
-                continue;
-            }
-            words.add(Character.toUpperCase(part.charAt(0)) + part.substring(1).toLowerCase());
-        }
-        return words.isEmpty() ? key : String.join(" ", words);
+    private static String renderSectionLabel(RankingSectionKind kind) {
+        return humanize(kind.name());
     }
 
-    private static String resolveTitle(JSONObject command, String responseKey) {
+    private static String renderColumnLabel(RankingValueDescriptor descriptor) {
+        return switch (descriptor.kind()) {
+            case ALLIANCE_METRIC -> humanize(descriptor.allianceMetric().name());
+            case ATTRIBUTE -> humanize(descriptor.attributeName());
+            case ALLIANCE_LOOT -> switch (descriptor.lootMode()) {
+                case BANK_TOTAL -> "Bank Total";
+                case PER_SCORE -> "Loot Per Score";
+            };
+            case PRODUCTION -> descriptor.resource() == null ? "Market Value" : humanize(descriptor.resource().name());
+            case RECRUITMENT -> "New Members";
+            case WAR_COUNT -> descriptor.normalizationMode() == RankingNormalizationMode.PER_MEMBER ? "Wars Per Member" : "Count";
+            case WAR_COST -> descriptor.normalizationMode() == RankingNormalizationMode.NONE
+                    ? humanize(descriptor.warCostStat().name())
+                    : humanize(descriptor.warCostStat().name()) + " (" + humanize(descriptor.normalizationMode().name()) + ")";
+            case ATTACK_TYPE -> humanize(descriptor.attackType().name());
+        };
+    }
+
+    private static String resolveTitle(JSONObject command, RankingResult result) {
         if (command != null) {
             String title = command.optString("title", null);
             if (title != null && !title.isBlank()) {
                 return title;
             }
         }
-        return humanizeKey(responseKey);
+        return humanize(result.kind().name());
+    }
+
+    private static String humanize(String value) {
+        if (value == null || value.isBlank()) {
+            return "Ranking";
+        }
+        String normalized = value.replace('.', '_').replace('-', '_').replace(' ', '_');
+        String[] parts = normalized.split("_+");
+        List<String> words = new ArrayList<>(parts.length);
+        for (String part : parts) {
+            if (part.isBlank()) {
+                continue;
+            }
+            words.add(Character.toUpperCase(part.charAt(0)) + part.substring(1).toLowerCase(Locale.ROOT));
+        }
+        return words.isEmpty() ? value : String.join(" ", words);
     }
 
     private static String formatInteger(BigDecimal value) {

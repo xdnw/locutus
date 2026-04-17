@@ -71,28 +71,17 @@ public final class AllianceRankingService {
             values.put(entry.getKey().getAlliance_id(), value);
         }
 
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("metric", request.metric());
-        queryMetadata.put("as_of_turn", turn);
-
         return RankingBuilders.singleMetricRanking(
-                "alliance_metric_ranking",
+                RankingKind.ALLIANCE_METRIC,
                 RankingEntityType.ALLIANCE,
-                RankingSupport.machineKey(request.metric().name()),
-                metricFormat(request.metric()),
-                RankingNumericType.DECIMAL,
+                RankingValueDescriptor.allianceMetric(request.metric(), metricFormat(request.metric()), RankingNumericType.DECIMAL),
                 List.of(RankingBuilders.singleMetricSection(
-                        "alliances",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                queryMetadata,
                 request.highlightedAllianceIds(),
-                TimeUtil.getTimeFromTurn(turn),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                TimeUtil.getTimeFromTurn(turn)
         );
     }
 
@@ -106,26 +95,17 @@ public final class AllianceRankingService {
             values.put(alliance.getAlliance_id(), value);
         }
 
-        String attributeKey = request.attribute().getName();
-        Map<String, Object> queryMetadata = Map.of("attribute", attributeKey);
         return RankingBuilders.singleMetricRanking(
-                "alliance_attribute_ranking",
+                RankingKind.ALLIANCE_ATTRIBUTE,
                 RankingEntityType.ALLIANCE,
-                RankingSupport.machineKey(attributeKey),
-                RankingValueFormat.NUMBER,
-                RankingNumericType.DECIMAL,
+                RankingValueDescriptor.attribute(request.attribute().getName(), RankingValueFormat.NUMBER, RankingNumericType.DECIMAL, RankingAggregationMode.IDENTITY),
                 List.of(RankingBuilders.singleMetricSection(
-                        "alliances",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                queryMetadata,
                 request.highlightedAllianceIds(),
-                System.currentTimeMillis(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                System.currentTimeMillis()
         );
     }
 
@@ -165,29 +145,17 @@ public final class AllianceRankingService {
             values.put(allianceId, delta);
         }
 
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("metric", request.metric());
-        queryMetadata.put("start_ms", request.timeStart());
-        queryMetadata.put("end_ms", request.timeEnd());
-
         return RankingBuilders.singleMetricRanking(
-                "alliance_metric_delta_ranking",
+                RankingKind.ALLIANCE_METRIC_DELTA,
                 RankingEntityType.ALLIANCE,
-                RankingSupport.machineKey(request.metric().name()),
-                metricFormat(request.metric()),
-                RankingNumericType.DECIMAL,
+                RankingValueDescriptor.allianceMetric(request.metric(), metricFormat(request.metric()), RankingNumericType.DECIMAL),
                 List.of(RankingBuilders.singleMetricSection(
-                        "alliances",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                queryMetadata,
                 request.highlightedAllianceIds(),
-                TimeUtil.getTimeFromTurn(turnEnd),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                TimeUtil.getTimeFromTurn(turnEnd)
         );
     }
 
@@ -228,34 +196,17 @@ public final class AllianceRankingService {
             values.put(alliance.getAlliance_id(), value);
         }
 
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("cutoff_ms", request.timeMs());
-        queryMetadata.put("mode", request.showTotal() ? "total" : "per_score");
-        if (request.minScore() != null) {
-            queryMetadata.put("min_score", request.minScore());
-        }
-        if (request.maxScore() != null) {
-            queryMetadata.put("max_score", request.maxScore());
-        }
-
         return RankingBuilders.singleMetricRanking(
-                "alliance_loot_ranking",
+                RankingKind.ALLIANCE_LOOT,
                 RankingEntityType.ALLIANCE,
-                request.showTotal() ? "bank_total" : "loot_per_score",
-                RankingValueFormat.MONEY,
-                RankingNumericType.DECIMAL,
+                RankingValueDescriptor.allianceLoot(request.showTotal() ? RankingLootMode.BANK_TOTAL : RankingLootMode.PER_SCORE),
                 List.of(RankingBuilders.singleMetricSection(
-                        "alliances",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                queryMetadata,
                 request.highlightedAllianceIds(),
-                System.currentTimeMillis(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                System.currentTimeMillis()
         );
     }
 
@@ -292,7 +243,7 @@ public final class AllianceRankingService {
             return RankingValueFormat.NUMBER;
         }
         return switch (format) {
-            case SI_UNIT,DECIMAL_ROUNDED -> RankingValueFormat.NUMBER;
+            case SI_UNIT, DECIMAL_ROUNDED -> RankingValueFormat.NUMBER;
             case PERCENTAGE_ONE, PERCENTAGE_100 -> RankingValueFormat.PERCENT;
         };
     }

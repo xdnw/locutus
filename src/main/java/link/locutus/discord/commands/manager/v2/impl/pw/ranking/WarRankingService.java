@@ -11,16 +11,15 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.apiv1.enums.WarCostStat;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.scheduler.TriFunction;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -96,7 +95,7 @@ public final class WarRankingService {
             if (type == WarCostMode.PROFIT && stat.isAttack()) {
                 throw new IllegalArgumentException("Cannot rank by `type: profit` with an attack type stat");
             }
-            long resolvedEndMs = timeEndMs == null ? Long.MAX_VALUE : timeEndMs;
+            long resolvedEndMs = timeEndMs == null ? System.currentTimeMillis() : timeEndMs;
             if (resolvedEndMs < timeStartMs) {
                 throw new IllegalArgumentException("timeEndMs must be >= timeStartMs");
             }
@@ -271,43 +270,29 @@ public final class WarRankingService {
         RankingNumericType numericType = valueFormat == RankingValueFormat.COUNT ? RankingNumericType.INTEGER : RankingNumericType.DECIMAL;
         RankingEntityType entityType = request.groupByAlliance() ? RankingEntityType.ALLIANCE : RankingEntityType.NATION;
 
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("start_ms", request.timeStartMs());
-        queryMetadata.put("end_ms", request.timeEndMs() == Long.MAX_VALUE ? System.currentTimeMillis() : request.timeEndMs());
-        queryMetadata.put("value_mode", request.type());
-        queryMetadata.put("stat", request.stat());
-        queryMetadata.put("scale_per_war", request.scalePerWar());
-        queryMetadata.put("scale_per_city", request.scalePerCity());
-        queryMetadata.put("only_rank_coalition1", request.onlyRankCoalition1());
-        queryMetadata.put("only_offensive_wars", request.onlyOffensiveWars());
-        queryMetadata.put("only_defensive_wars", request.onlyDefensiveWars());
-        if (!request.warAllianceIds().isEmpty()) {
-            queryMetadata.put("war_alliance_ids", request.warAllianceIds());
-        }
-
         return RankingBuilders.singleMetricRanking(
-                "war_cost_ranking",
+                RankingKind.WAR_COST,
                 entityType,
-                RankingSupport.machineKey(request.stat().name()),
-                valueFormat,
-                numericType,
+                RankingValueDescriptor.warCost(
+                        request.type(),
+                        request.stat(),
+                        valueFormat,
+                        numericType,
+                        normalizationMode(request.scalePerWar(), request.scalePerCity())
+                ),
                 List.of(RankingBuilders.singleMetricSection(
-                        entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
-                        "WAR_ATTACK",
-                        RankingAggregationMode.SUM,
+                        RankingSectionKind.forEntityType(entityType),
                         RankingSortDirection.DESC,
-                        values,
-                        warCostSectionMetadata(request)
+                        values
                 )),
-                queryMetadata,
                 entityType == RankingEntityType.ALLIANCE ? request.highlightedAllianceIds() : Set.of(),
-                Math.min(System.currentTimeMillis(), request.timeEndMs()),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                request.timeEndMs()
         );
     }
 
     public static RankingResult warRanking(WarCountRequest request) {
-        WarParser parser = WarParser.of(request.attackers(), request.defenders(), request.timeStartMs(), Long.MAX_VALUE);
+        long endMs = System.currentTimeMillis();
+        WarParser parser = WarParser.of(request.attackers(), request.defenders(), request.timeStartMs(), endMs);
         Map<Integer, DBWar> wars = parser.getWars();
 
         Map<Integer, Double> values = new LinkedHashMap<>();
@@ -364,38 +349,21 @@ public final class WarRankingService {
         RankingValueFormat valueFormat = request.normalizePerMember() ? RankingValueFormat.NUMBER : RankingValueFormat.COUNT;
         RankingNumericType numericType = request.normalizePerMember() ? RankingNumericType.DECIMAL : RankingNumericType.INTEGER;
 
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("start_ms", request.timeStartMs());
-        queryMetadata.put("only_offensives", request.onlyOffensives());
-        queryMetadata.put("only_defensives", request.onlyDefensives());
-        queryMetadata.put("only_rank_attackers", request.onlyRankAttackers());
-        queryMetadata.put("normalize_per_member", request.normalizePerMember());
-        queryMetadata.put("ignore_inactive_nations", request.ignoreInactiveNations());
-        if (request.warType() != null) {
-            queryMetadata.put("war_type", request.warType());
-        }
-        if (request.statuses() != null) {
-            queryMetadata.put("statuses", request.statuses().stream().map(Enum::name).toList());
-        }
-
         return RankingBuilders.singleMetricRanking(
-                "war_ranking",
+                RankingKind.WAR_COUNT,
                 entityType,
-                "count",
-                valueFormat,
-                numericType,
+                RankingValueDescriptor.warCount(
+                        valueFormat,
+                        numericType,
+                        request.normalizePerMember() ? RankingNormalizationMode.PER_MEMBER : RankingNormalizationMode.NONE
+                ),
                 List.of(RankingBuilders.singleMetricSection(
-                        entityType == RankingEntityType.ALLIANCE ? "alliances" : "nations",
-                        "WAR",
-                        RankingAggregationMode.COUNT,
+                        RankingSectionKind.forEntityType(entityType),
                         RankingSortDirection.DESC,
-                        values,
-                        warCountSectionMetadata(request)
+                        values
                 )),
-                queryMetadata,
                 Set.of(),
-                System.currentTimeMillis(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                endMs
         );
     }
 
@@ -449,32 +417,20 @@ public final class WarRankingService {
             values.put(allianceId, value);
         }
 
-        Map<String, Object> queryMetadata = new LinkedHashMap<>();
-        queryMetadata.put("time_ms", request.timeMs());
-        queryMetadata.put("attack_type", request.type());
-        queryMetadata.put("only_top_x", request.onlyTopX());
-        queryMetadata.put("selected_alliance_ids", allianceIds);
-        queryMetadata.put("only_off_wars", request.onlyOffWars());
-        queryMetadata.put("only_def_wars", request.onlyDefWars());
+        RankingValueFormat valueFormat = request.percent() ? RankingValueFormat.PERCENT : RankingValueFormat.COUNT;
+        RankingNumericType numericType = request.percent() ? RankingNumericType.DECIMAL : RankingNumericType.INTEGER;
 
         return RankingBuilders.singleMetricRanking(
-                "attack_type_ranking",
+                RankingKind.ATTACK_TYPE,
                 RankingEntityType.ALLIANCE,
-                request.percent() ? "percent" : "count",
-                request.percent() ? RankingValueFormat.PERCENT : RankingValueFormat.COUNT,
-                request.percent() ? RankingNumericType.DECIMAL : RankingNumericType.INTEGER,
+                RankingValueDescriptor.attackType(request.type(), valueFormat, numericType),
                 List.of(RankingBuilders.singleMetricSection(
-                        "alliances",
-                        "WAR_ATTACK",
-                        RankingAggregationMode.COUNT,
+                        RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
-                        values,
-                        attackTypeSectionMetadata(request)
+                        values
                 )),
-                queryMetadata,
                 Set.of(),
-                System.currentTimeMillis(),
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                System.currentTimeMillis()
         );
     }
 
@@ -633,59 +589,17 @@ public final class WarRankingService {
         return value / factor;
     }
 
-    static Map<String, Object> warCostSectionMetadata(WarCostRequest request) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("stat", request.stat());
-        metadata.put("value_mode", request.type());
-        metadata.put("normalization", normalizationMode(request.scalePerWar(), request.scalePerCity()));
-        metadata.put("coalition_scope", request.onlyRankCoalition1() ? "coalition_1_only" : "both");
-        metadata.put("war_side_scope", warSideScope(request.onlyOffensiveWars(), request.onlyDefensiveWars()));
-        if (!request.warAllianceIds().isEmpty()) {
-            metadata.put("war_alliance_ids", request.warAllianceIds());
-        }
-        return RankingSupport.immutableMetadata(metadata);
-    }
-
-    static Map<String, Object> warCountSectionMetadata(WarCountRequest request) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("normalization", request.normalizePerMember() ? "per_member" : "none");
-        metadata.put("war_side_scope", warSideScope(request.onlyOffensives(), request.onlyDefensives()));
-        metadata.put("coalition_scope", request.onlyRankAttackers() ? "attackers_only" : "both");
-        if (request.normalizePerMember()) {
-            metadata.put("member_scope", request.ignoreInactiveNations() ? "active_only" : "all_members");
-        }
-        return RankingSupport.immutableMetadata(metadata);
-    }
-
-    static Map<String, Object> attackTypeSectionMetadata(AttackTypeRequest request) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("attack_type", request.type());
-        metadata.put("value_mode", request.percent() ? "percent" : "count");
-        metadata.put("war_side_scope", warSideScope(request.onlyOffWars(), request.onlyDefWars()));
-        return RankingSupport.immutableMetadata(metadata);
-    }
-
-    static String normalizationMode(boolean scalePerWar, boolean scalePerCity) {
+    static RankingNormalizationMode normalizationMode(boolean scalePerWar, boolean scalePerCity) {
         if (scalePerWar && scalePerCity) {
-            return "per_war_per_city";
+            return RankingNormalizationMode.PER_WAR_PER_CITY;
         }
         if (scalePerWar) {
-            return "per_war";
+            return RankingNormalizationMode.PER_WAR;
         }
         if (scalePerCity) {
-            return "per_city";
+            return RankingNormalizationMode.PER_CITY;
         }
-        return "none";
-    }
-
-    static String warSideScope(boolean onlyOffensiveWars, boolean onlyDefensiveWars) {
-        if (onlyOffensiveWars) {
-            return "offensive";
-        }
-        if (onlyDefensiveWars) {
-            return "defensive";
-        }
-        return "all";
+        return RankingNormalizationMode.NONE;
     }
 
     private static Set<NationOrAlliance> normalizeCoalition(Set<NationOrAlliance> coalition) {

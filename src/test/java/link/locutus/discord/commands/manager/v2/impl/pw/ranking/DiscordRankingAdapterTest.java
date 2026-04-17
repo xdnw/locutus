@@ -22,23 +22,16 @@ class DiscordRankingAdapterTest {
         values.put(3, 1);
 
         RankingResult result = RankingBuilders.singleMetricRanking(
-                "ranking_fixture",
+                RankingKind.WAR_COUNT,
                 RankingEntityType.ALLIANCE,
-                "count",
-                RankingValueFormat.COUNT,
-                RankingNumericType.INTEGER,
+                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
                 List.of(RankingBuilders.singleMetricSection(
-                        "entities",
-                        RankingEntityType.ALLIANCE.name(),
-                        RankingAggregationMode.IDENTITY,
+                        RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
-                        values,
-                        Map.of()
+                        values
                 )),
-                Map.of(),
                 Set.of(3),
-                12345L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS
+                12345L
         );
 
         StringMessageIO io = new StringMessageIO(null, null);
@@ -52,7 +45,7 @@ class DiscordRankingAdapterTest {
         assertTrue(rendered.contains("2. alliance:2: 2"));
         assertTrue(rendered.contains("..."));
         assertTrue(rendered.contains("**3. alliance:3: 1**"));
-        assertTrue(message.getFiles().containsKey("ranking_fixture.txt"));
+        assertTrue(message.getFiles().containsKey("war_count.txt"));
         assertTrue(message.getButtons().containsValue("Refresh"));
     }
 }
