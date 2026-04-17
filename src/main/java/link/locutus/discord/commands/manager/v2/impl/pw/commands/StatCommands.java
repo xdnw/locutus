@@ -606,10 +606,11 @@ public class StatCommands {
                                          @Switch("r") boolean reverseOrder,
                                          @Switch("f") boolean uploadFile,
                                          @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
+        String attributeLabel = command == null ? null : command.optString("attribute", null);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.attributeRanking(AllianceRankingService.AttributeRequest.normalize(alliances, attribute, reverseOrder, highlight)),
+                AllianceRankingService.attributeRanking(AllianceRankingService.AttributeRequest.normalize(alliances, attribute, attributeLabel, reverseOrder, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -649,7 +650,8 @@ public class StatCommands {
                                 groupByAlliance,
                                 reverseOrder,
                                 snapshotDate,
-                                total
+                                total,
+                                title
                         )
                 ),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)

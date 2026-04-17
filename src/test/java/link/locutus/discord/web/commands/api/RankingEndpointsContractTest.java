@@ -1,22 +1,16 @@
 package link.locutus.discord.web.commands.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import link.locutus.discord.Locutus;
 import link.locutus.discord._main.ILoader;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
-import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingAggregationMode;
-import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingEntityType;
-import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingKind;
-import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingSectionKind;
-import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingValueFormat;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.binding.value_types.WebRankingResult;
+import link.locutus.discord.web.commands.binding.value_types.WebRankingRow;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
 import org.junit.jupiter.api.Test;
@@ -28,17 +22,15 @@ import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Isolated
 class RankingEndpointsContractTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     @Test
     void rankingEndpointsAreRegisteredInStandalonePageHandler() {
         PageHandler handler = TsEndpointGenerator.createStandalonePageHandler();
@@ -105,35 +97,27 @@ class RankingEndpointsContractTest {
                     Set.of(alpha)
             );
 
-            assertEquals(RankingKind.ALLIANCE_METRIC, result.kind());
-            assertEquals(RankingEntityType.ALLIANCE, result.key1Type());
+            assertEquals("alliance_metric_ranking", result.responseKey());
             assertEquals(2, result.rowCount());
-            assertEquals(List.of(2L, 1L), result.key1Ids());
-            assertEquals(1, result.valueColumns().size());
-            assertEquals(RankingValueFormat.NUMBER, result.valueColumns().get(0).format());
-            assertEquals(10d, result.valueColumns().get(0).values().get(0));
-            assertEquals(5d, result.valueColumns().get(0).values().get(1));
-            assertEquals(List.of(new link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingSectionRange(RankingSectionKind.ALLIANCES, 0, 2)), result.sectionRanges());
-            assertEquals(List.of(1L), result.highlightedKey1Ids());
+            assertEquals("INCLUDE_EMPTY_SECTIONS", result.emptySectionPolicy());
+            assertEquals(1, result.sections().size());
+            assertEquals("ALLIANCE", result.sections().get(0).entityType());
+            assertEquals(2, result.sections().get(0).rowCount());
+            assertEquals("ALLIANCE", result.sections().get(0).metadata().get(0).value());
+            assertEquals("IDENTITY", result.sections().get(0).metadata().get(1).value());
 
-            JsonNode json = MAPPER.valueToTree(result);
-            assertTrue(json.get("valueColumns").get(0).get("values").get(0).isNumber());
-            assertTrue(json.get("valueColumns").get(0).get("format").isTextual());
-            assertTrue(json.findPath("sections").isMissingNode());
-            assertTrue(json.findPath("rows").isMissingNode());
-            assertTrue(json.findPath("entity").isMissingNode());
-            assertTrue(json.findPath("metricValues").isMissingNode());
-            assertTrue(json.findPath("sortValue").isMissingNode());
-            assertTrue(json.findPath("displayHint").isMissingNode());
-            assertTrue(json.findPath("title").isMissingNode());
-            assertTrue(json.findPath("label").isMissingNode());
-            assertTrue(json.findPath("notes").isMissingNode());
-            assertTrue(json.findPath("responseKey").isMissingNode());
-            assertTrue(json.findPath("valueKeys").isMissingNode());
-            assertTrue(json.findPath("queryMetadata").isMissingNode());
-            assertTrue(json.findPath("sectionMetadata").isMissingNode());
-            assertTrue(json.findPath("emptySectionPolicy").isMissingNode());
-            assertTrue(json.findPath("descriptor").isMissingNode());
+            WebRankingRow firstRow = result.sections().get(0).rows().get(0);
+            WebRankingRow secondRow = result.sections().get(0).rows().get(1);
+
+            assertEquals(2L, firstRow.entity().entityId());
+            assertEquals("alliance:2", firstRow.entity().entityKey());
+            assertEquals("10", firstRow.sortValue().exactValue());
+            assertEquals("DECIMAL", firstRow.sortValue().numericType());
+            assertFalse(firstRow.highlighted());
+            assertEquals(1L, secondRow.entity().entityId());
+            assertTrue(secondRow.highlighted());
+            assertFalse(firstRow.entity().entityKey().contains("**"));
+            assertFalse(firstRow.sortValue().exactValue().contains(". "));
         } finally {
             instanceField.set(null, previousInstance);
             Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY = previousDirectory;

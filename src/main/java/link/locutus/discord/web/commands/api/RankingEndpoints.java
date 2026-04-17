@@ -29,6 +29,8 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.WebRankingResult;
+import org.json.JSONObject;
+
 import java.util.Set;
 
 public class RankingEndpoints {
@@ -48,13 +50,15 @@ public class RankingEndpoints {
     @Command(desc = "Rank alliances by an alliance attribute", viewable = true)
     @ReturnType(WebRankingResult.class)
     public WebRankingResult allianceAttributeRanking(
+            @Me JSONObject command,
             TypedFunction<DBAlliance, Double> attribute,
             @Default Set<DBAlliance> alliances,
             @Switch("r") boolean reverseOrder,
             @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
+        String attributeLabel = command == null || !command.has("attribute") ? null : command.getString("attribute");
         return WebRankingAdapter.toWeb(AllianceRankingService.attributeRanking(
-                AllianceRankingService.AttributeRequest.normalize(alliances, attribute, reverseOrder, highlight)
+                AllianceRankingService.AttributeRequest.normalize(alliances, attribute, attributeLabel, reverseOrder, highlight)
         ));
     }
 
@@ -96,7 +100,8 @@ public class RankingEndpoints {
             @Switch("a") boolean groupByAlliance,
             @Switch("r") boolean reverseOrder,
             @Switch("s") @Timestamp Long snapshotDate,
-            @Arg("Total value instead of average per nation") @Switch("t") boolean total
+            @Arg("Total value instead of average per nation") @Switch("t") boolean total,
+            @Switch("n") String title
     ) {
         return WebRankingAdapter.toWeb(NationValueRankingService.attributeRanking(
                 NationValueRankingService.AttributeRequest.normalize(
@@ -106,7 +111,8 @@ public class RankingEndpoints {
                         groupByAlliance,
                         reverseOrder,
                         snapshotDate,
-                        total
+                        total,
+                        title
                 )
         ));
     }
