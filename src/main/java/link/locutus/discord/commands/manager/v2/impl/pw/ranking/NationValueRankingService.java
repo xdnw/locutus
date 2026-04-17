@@ -1,23 +1,19 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public final class NationValueRankingService {
@@ -33,17 +29,12 @@ public final class NationValueRankingService {
             Long snapshotDate,
             boolean total
     ) {
-        public static AttributeRequest normalize(
-                Guild snapshotGuild,
-                NationList nations,
-                TypedFunction<DBNation, Double> attribute,
-                boolean groupByAlliance,
-                boolean ascending,
-                Long snapshotDate,
-                boolean total
-        ) {
-            boolean totalMode = groupByAlliance && total;
-            return new AttributeRequest(snapshotGuild, nations, attribute, groupByAlliance, ascending, snapshotDate, totalMode);
+        public AttributeRequest {
+            nations = Objects.requireNonNull(nations, "nations");
+            attribute = Objects.requireNonNull(attribute, "attribute");
+            if (total && !groupByAlliance) {
+                throw new IllegalArgumentException("total requires groupByAlliance");
+            }
         }
     }
 
@@ -61,61 +52,20 @@ public final class NationValueRankingService {
             Long snapshotDate,
             HighlightSelection highlights
     ) {
-        public static ProductionRequest normalize(
-                Guild snapshotGuild,
-                Set<ResourceType> resources,
-                NationList nationList,
-                boolean ignoreMilitaryUpkeep,
-                boolean ignoreTradeBonus,
-                boolean ignoreNationBonus,
-                boolean includeNegative,
-                boolean includeInactive,
-                boolean listByNation,
-                boolean listAverage,
-                Long snapshotDate,
-                Set<NationOrAlliance> highlight
-        ) {
-            Set<ResourceType> resolvedResources = resources == null || resources.isEmpty()
-                    ? EnumSet.allOf(ResourceType.class)
-                    : EnumSet.copyOf(resources);
-            NationList resolvedNationList = nationList == null
-                    ? new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*")
-                    : nationList;
-            return new ProductionRequest(
-                    snapshotGuild,
-                    Set.copyOf(resolvedResources),
-                    resolvedNationList,
-                    ignoreMilitaryUpkeep,
-                    ignoreTradeBonus,
-                    ignoreNationBonus,
-                    includeNegative,
-                    includeInactive,
-                    listByNation,
-                    !listByNation && listAverage,
-                    snapshotDate,
-                    HighlightSelection.normalize(highlight)
-            );
+        public ProductionRequest {
+            resources = Set.copyOf(Objects.requireNonNull(resources, "resources"));
+            nationList = Objects.requireNonNull(nationList, "nationList");
+            highlights = Objects.requireNonNull(highlights, "highlights");
+            if (listAverage && listByNation) {
+                throw new IllegalArgumentException("listAverage requires alliance rows");
+            }
         }
     }
 
     public record HighlightSelection(Set<Integer> nationIds, Set<Integer> allianceIds) {
-        public static HighlightSelection normalize(Set<NationOrAlliance> highlight) {
-            if (highlight == null || highlight.isEmpty()) {
-                return new HighlightSelection(Set.of(), Set.of());
-            }
-            Set<Integer> nationIds = new IntOpenHashSet();
-            Set<Integer> allianceIds = new IntOpenHashSet();
-            for (NationOrAlliance entry : highlight) {
-                if (entry == null) {
-                    continue;
-                }
-                if (entry.isAlliance()) {
-                    allianceIds.add(entry.getId());
-                } else if (entry.isNation()) {
-                    nationIds.add(entry.getId());
-                }
-            }
-            return new HighlightSelection(Set.copyOf(nationIds), Set.copyOf(allianceIds));
+        public HighlightSelection {
+            nationIds = Set.copyOf(Objects.requireNonNull(nationIds, "nationIds"));
+            allianceIds = Set.copyOf(Objects.requireNonNull(allianceIds, "allianceIds"));
         }
 
         public Set<Integer> idsFor(RankingEntityType entityType) {
@@ -197,7 +147,6 @@ public final class NationValueRankingService {
                 ? resolveAllianceSummedConvertedValues(snapshotNations, profitsByNationId, request.resources())
                 : resolveSectionValues(snapshotNations, valuesByNationId, entityType, aggregationMode);
         RankingValueFormat valueFormat = productionValueFormat(request.resources());
-        ResourceType resource = request.resources().size() == 1 ? request.resources().iterator().next() : null;
 
         return RankingBuilders.singleMetricRanking(
                 RankingKind.PRODUCTION,

@@ -39,6 +39,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAd
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.AllianceRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.NationRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarStatusRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
@@ -296,7 +300,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 io,
                 command,
-                WarRankingService.warCostRanking(WarRankingService.WarCostRequest.normalize(
+                WarRankingService.warCostRanking(WarRankingRequests.cost(
                         timeStart,
                         timeEnd,
                         coalition1,
@@ -592,7 +596,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.metricRanking(AllianceRankingService.MetricRequest.normalize(alliances, metric, reverseOrder, highlight)),
+                AllianceRankingService.metricRanking(AllianceRankingRequests.metric(alliances, metric, reverseOrder, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -606,11 +610,10 @@ public class StatCommands {
                                          @Switch("r") boolean reverseOrder,
                                          @Switch("f") boolean uploadFile,
                                          @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
-        String attributeLabel = command == null ? null : command.optString("attribute", null);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.attributeRanking(AllianceRankingService.AttributeRequest.normalize(alliances, attribute, attributeLabel, reverseOrder, highlight)),
+                AllianceRankingService.attributeRanking(AllianceRankingRequests.attribute(alliances, attribute, reverseOrder, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -623,7 +626,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.deltaRanking(AllianceRankingService.DeltaRequest.normalize(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)),
+                AllianceRankingService.deltaRanking(AllianceRankingRequests.delta(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -643,15 +646,14 @@ public class StatCommands {
                 channel,
                 command,
                 NationValueRankingService.attributeRanking(
-                        NationValueRankingService.AttributeRequest.normalize(
+                        NationRankingRequests.attribute(
                                 db == null ? null : db.getGuild(),
                                 nations,
                                 attribute,
                                 groupByAlliance,
                                 reverseOrder,
                                 snapshotDate,
-                                total,
-                                title
+                                total
                         )
                 ),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
@@ -1205,7 +1207,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                WarStatusRankingService.ranking(WarStatusRankingService.Request.normalize(isAA, attackers, defenders, time)),
+                WarStatusRankingService.ranking(WarStatusRankingRequests.status(isAA, attackers, defenders, time)),
                 null
         );
     }
@@ -2671,7 +2673,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.lootRanking(AllianceRankingService.LootRequest.normalize(time, show_total, min_score, max_score, highlight)),
+                AllianceRankingService.lootRanking(AllianceRankingRequests.loot(time, show_total, min_score, max_score, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, attach_file, author)
         );
         return null;
@@ -2689,7 +2691,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 io,
                 command,
-                WarRankingService.attackTypeRanking(WarRankingService.AttackTypeRequest.normalize(
+                WarRankingService.attackTypeRanking(WarRankingRequests.attackType(
                         time,
                         type,
                         alliances,

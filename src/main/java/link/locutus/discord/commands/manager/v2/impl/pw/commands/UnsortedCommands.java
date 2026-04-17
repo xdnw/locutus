@@ -35,6 +35,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.NationRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -1470,7 +1471,7 @@ public class UnsortedCommands {
                 channel,
                 command,
                 NationValueRankingService.productionRanking(
-                        NationValueRankingService.ProductionRequest.normalize(
+                        NationRankingRequests.production(
                                 guild,
                                 resources,
                                 nationList,

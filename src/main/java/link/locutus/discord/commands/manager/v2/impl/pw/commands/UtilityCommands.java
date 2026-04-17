@@ -38,6 +38,8 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RecruitmentRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.RecruitmentRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -980,7 +982,7 @@ public class UtilityCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                WarRankingService.warRanking(WarRankingService.WarCountRequest.normalize(
+                WarRankingService.warRanking(WarRankingRequests.count(
                         time,
                         attackers,
                         defenders,
@@ -2805,7 +2807,7 @@ public class UtilityCommands {
             @Arg("Date to start from") @Timestamp long cutoff,
             @Arg("Top X alliances to show in the ranking") @Range(min = 1, max = 150) @Default("80") int topX,
             @Switch("u") boolean uploadFile) {
-        var result = RecruitmentRankingService.ranking(new RecruitmentRankingService.Request(cutoff, topX));
+        var result = RecruitmentRankingService.ranking(RecruitmentRankingRequests.ranking(cutoff, topX));
         if (result.rowCount() == 0) {
             return "No new members found over the specified timeframe. Check your arguments are valid";
         }

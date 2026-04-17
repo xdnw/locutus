@@ -17,6 +17,11 @@ public final class RecruitmentRankingService {
     }
 
     public record Request(long cutoffMs, int topX) {
+        public Request {
+            if (topX < 1) {
+                throw new IllegalArgumentException("topX must be >= 1");
+            }
+        }
     }
 
     public static RankingResult ranking(Request request) {

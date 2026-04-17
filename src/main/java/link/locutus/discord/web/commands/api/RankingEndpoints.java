@@ -15,6 +15,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RecruitmentRanki
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.AllianceRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WebRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.AllianceRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.NationRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.RecruitmentRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarStatusRankingRequests;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.apiv1.enums.WarCostStat;
@@ -43,7 +48,7 @@ public class RankingEndpoints {
             @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
         return WebRankingAdapter.toWeb(AllianceRankingService.metricRanking(
-                AllianceRankingService.MetricRequest.normalize(alliances, metric, reverseOrder, highlight)
+                AllianceRankingRequests.metric(alliances, metric, reverseOrder, highlight)
         ));
     }
 
@@ -56,9 +61,8 @@ public class RankingEndpoints {
             @Switch("r") boolean reverseOrder,
             @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
-        String attributeLabel = command == null || !command.has("attribute") ? null : command.getString("attribute");
         return WebRankingAdapter.toWeb(AllianceRankingService.attributeRanking(
-                AllianceRankingService.AttributeRequest.normalize(alliances, attribute, attributeLabel, reverseOrder, highlight)
+                AllianceRankingRequests.attribute(alliances, attribute, reverseOrder, highlight)
         ));
     }
 
@@ -73,7 +77,7 @@ public class RankingEndpoints {
             @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
         return WebRankingAdapter.toWeb(AllianceRankingService.deltaRanking(
-                AllianceRankingService.DeltaRequest.normalize(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)
+                AllianceRankingRequests.delta(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)
         ));
     }
 
@@ -87,7 +91,7 @@ public class RankingEndpoints {
             @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
         return WebRankingAdapter.toWeb(AllianceRankingService.lootRanking(
-                AllianceRankingService.LootRequest.normalize(time, showTotal, minScore, maxScore, highlight)
+                AllianceRankingRequests.loot(time, showTotal, minScore, maxScore, highlight)
         ));
     }
 
@@ -104,15 +108,14 @@ public class RankingEndpoints {
             @Switch("n") String title
     ) {
         return WebRankingAdapter.toWeb(NationValueRankingService.attributeRanking(
-                NationValueRankingService.AttributeRequest.normalize(
+                NationRankingRequests.attribute(
                         db == null ? null : db.getGuild(),
                         nations,
                         attribute,
                         groupByAlliance,
                         reverseOrder,
                         snapshotDate,
-                        total,
-                        title
+                        total
                 )
         ));
     }
@@ -134,7 +137,7 @@ public class RankingEndpoints {
             @Arg("Highlight specific entries in the result") @Switch("h") @AllowDeleted Set<NationOrAlliance> highlight
     ) {
         return WebRankingAdapter.toWeb(NationValueRankingService.productionRanking(
-                NationValueRankingService.ProductionRequest.normalize(
+                NationRankingRequests.production(
                         db == null ? null : db.getGuild(),
                         resources,
                         nationList,
@@ -157,7 +160,7 @@ public class RankingEndpoints {
             @Arg("Date to start from") @Timestamp long cutoff,
             @Arg("Top X alliances to show in the ranking") @Range(min = 1, max = 150) @Default("80") int topX
     ) {
-        return WebRankingAdapter.toWeb(RecruitmentRankingService.ranking(new RecruitmentRankingService.Request(cutoff, topX)));
+        return WebRankingAdapter.toWeb(RecruitmentRankingService.ranking(RecruitmentRankingRequests.ranking(cutoff, topX)));
     }
 
     @Command(desc = "Generate ranking of war status by Alliance", viewable = true)
@@ -165,7 +168,7 @@ public class RankingEndpoints {
     public WebRankingResult warStatusRankingByAlliance(Set<DBNation> attackers, Set<DBNation> defenders,
             @Arg("Date to start from") @Timestamp long time) {
         return WebRankingAdapter.toWeb(WarStatusRankingService.ranking(
-                WarStatusRankingService.Request.normalize(true, attackers, defenders, time)
+                WarStatusRankingRequests.status(true, attackers, defenders, time)
         ));
     }
 
@@ -174,7 +177,7 @@ public class RankingEndpoints {
     public WebRankingResult warStatusRankingByNation(Set<DBNation> attackers, Set<DBNation> defenders,
             @Arg("Date to start from") @Timestamp long time) {
         return WebRankingAdapter.toWeb(WarStatusRankingService.ranking(
-                WarStatusRankingService.Request.normalize(false, attackers, defenders, time)
+                WarStatusRankingRequests.status(false, attackers, defenders, time)
         ));
     }
 
@@ -205,7 +208,7 @@ public class RankingEndpoints {
             @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
         return WebRankingAdapter.toWeb(WarRankingService.warCostRanking(
-                WarRankingService.WarCostRequest.normalize(
+                WarRankingRequests.cost(
                         timeStart,
                         timeEnd,
                         coalition1,
@@ -248,7 +251,7 @@ public class RankingEndpoints {
             @Switch("s") Set<WarStatus> statuses
     ) {
         return WebRankingAdapter.toWeb(WarRankingService.warRanking(
-                WarRankingService.WarCountRequest.normalize(
+                WarRankingRequests.count(
                         time,
                         attackers,
                         defenders,
@@ -276,7 +279,7 @@ public class RankingEndpoints {
             @Switch("d") boolean only_def_wars
     ) {
         return WebRankingAdapter.toWeb(WarRankingService.attackTypeRanking(
-                WarRankingService.AttackTypeRequest.normalize(
+                WarRankingRequests.attackType(
                         time,
                         type,
                         alliances,

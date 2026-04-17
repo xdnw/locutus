@@ -17,16 +17,14 @@ public final class WarStatusRankingService {
     }
 
     public record Request(boolean byAlliance, Set<DBNation> attackers, Set<DBNation> defenders, long timeStartMs) {
-        public static Request normalize(boolean byAlliance, Set<DBNation> attackers, Set<DBNation> defenders, long timeStartMs) {
-            return new Request(byAlliance, normalizeCoalition(attackers), normalizeCoalition(defenders), timeStartMs);
+        public Request {
+            if (attackers != null) {
+                attackers = Set.copyOf(attackers);
+            }
+            if (defenders != null) {
+                defenders = Set.copyOf(defenders);
+            }
         }
-    }
-
-    private static Set<DBNation> normalizeCoalition(Set<DBNation> coalition) {
-        if (coalition == null || coalition.isEmpty()) {
-            return null;
-        }
-        return Set.copyOf(coalition);
     }
 
     public static RankingResult ranking(Request request) {

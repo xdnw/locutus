@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
@@ -13,9 +12,9 @@ import link.locutus.discord.util.TimeUtil;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -24,32 +23,38 @@ public final class AllianceRankingService {
     }
 
     public record MetricRequest(Set<DBAlliance> alliances, AllianceMetric metric, boolean ascending, Set<Integer> highlightedAllianceIds) {
-        public static MetricRequest normalize(Set<DBAlliance> alliances, AllianceMetric metric, boolean ascending, Set<DBAlliance> highlight) {
-            return new MetricRequest(normalizeAlliances(alliances), metric, ascending, normalizeHighlight(highlight));
+        public MetricRequest {
+            alliances = Set.copyOf(Objects.requireNonNull(alliances, "alliances"));
+            metric = Objects.requireNonNull(metric, "metric");
+            highlightedAllianceIds = Set.copyOf(Objects.requireNonNull(highlightedAllianceIds, "highlightedAllianceIds"));
         }
     }
 
     public record AttributeRequest(Set<DBAlliance> alliances, TypedFunction<DBAlliance, Double> attribute, boolean ascending, Set<Integer> highlightedAllianceIds) {
-        public static AttributeRequest normalize(Set<DBAlliance> alliances, TypedFunction<DBAlliance, Double> attribute, boolean ascending, Set<DBAlliance> highlight) {
-            return new AttributeRequest(normalizeAlliances(alliances), attribute, ascending, normalizeHighlight(highlight));
+        public AttributeRequest {
+            alliances = Set.copyOf(Objects.requireNonNull(alliances, "alliances"));
+            attribute = Objects.requireNonNull(attribute, "attribute");
+            highlightedAllianceIds = Set.copyOf(Objects.requireNonNull(highlightedAllianceIds, "highlightedAllianceIds"));
         }
     }
 
     public record DeltaRequest(Set<DBAlliance> alliances, AllianceMetric metric, long timeStart, long timeEnd, boolean ascending, Set<Integer> highlightedAllianceIds) {
-        public static DeltaRequest normalize(Set<DBAlliance> alliances, AllianceMetric metric, long timeStart, long timeEnd, boolean ascending, Set<DBAlliance> highlight) {
+        public DeltaRequest {
+            alliances = Set.copyOf(Objects.requireNonNull(alliances, "alliances"));
+            metric = Objects.requireNonNull(metric, "metric");
+            highlightedAllianceIds = Set.copyOf(Objects.requireNonNull(highlightedAllianceIds, "highlightedAllianceIds"));
             if (timeEnd < timeStart) {
                 throw new IllegalArgumentException("timeEnd must be >= timeStart");
             }
-            return new DeltaRequest(normalizeAlliances(alliances), metric, timeStart, timeEnd, ascending, normalizeHighlight(highlight));
         }
     }
 
     public record LootRequest(long timeMs, boolean showTotal, Double minScore, Double maxScore, Set<Integer> highlightedAllianceIds) {
-        public static LootRequest normalize(long timeMs, boolean showTotal, Double minScore, Double maxScore, Set<DBAlliance> highlight) {
+        public LootRequest {
+            highlightedAllianceIds = Set.copyOf(Objects.requireNonNull(highlightedAllianceIds, "highlightedAllianceIds"));
             if (minScore != null && maxScore != null && minScore > maxScore) {
                 throw new IllegalArgumentException("minScore must be <= maxScore");
             }
-            return new LootRequest(timeMs, showTotal, minScore, maxScore, normalizeHighlight(highlight));
         }
     }
 
@@ -208,33 +213,6 @@ public final class AllianceRankingService {
                 request.highlightedAllianceIds(),
                 System.currentTimeMillis()
         );
-    }
-
-    private static Set<DBAlliance> normalizeAlliances(Set<DBAlliance> alliances) {
-        Set<DBAlliance> source = alliances == null || alliances.isEmpty()
-                ? Locutus.imp().getNationDB().getAlliances()
-                : alliances;
-
-        Set<DBAlliance> resolved = new LinkedHashSet<>();
-        for (DBAlliance alliance : source) {
-            if (alliance != null) {
-                resolved.add(alliance);
-            }
-        }
-        return Set.copyOf(resolved);
-    }
-
-    private static Set<Integer> normalizeHighlight(Set<DBAlliance> highlight) {
-        if (highlight == null || highlight.isEmpty()) {
-            return Set.of();
-        }
-        Set<Integer> result = new IntOpenHashSet();
-        for (DBAlliance alliance : highlight) {
-            if (alliance != null) {
-                result.add(alliance.getAlliance_id());
-            }
-        }
-        return Set.copyOf(result);
     }
 
     private static RankingValueFormat metricFormat(AllianceMetric metric) {

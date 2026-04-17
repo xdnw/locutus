@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.apiv1.enums.WarCostStat;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
 import link.locutus.discord.pnw.NationOrAlliance;
 import org.junit.jupiter.api.Test;
 
@@ -15,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WarRankingServiceTest {
     @Test
-    void warCostRequestNormalizeAppliesDefaults() {
+    void warCostRequestBuilderAppliesDefaults() {
         long before = System.currentTimeMillis();
-        WarRankingService.WarCostRequest request = WarRankingService.WarCostRequest.normalize(
+        WarRankingService.WarCostRequest request = WarRankingRequests.cost(
                 100L,
                 null,
                 Set.<NationOrAlliance>of(),
@@ -52,8 +53,8 @@ class WarRankingServiceTest {
     }
 
     @Test
-    void warCountRequestNormalizeDisablesPerMemberForNationRows() {
-        WarRankingService.WarCountRequest request = WarRankingService.WarCountRequest.normalize(
+    void warCountRequestBuilderDisablesPerMemberForNationRows() {
+        WarRankingService.WarCountRequest request = WarRankingRequests.count(
                 100L,
                 Set.<NationOrAlliance>of(),
                 Set.<NationOrAlliance>of(),
@@ -73,8 +74,8 @@ class WarRankingServiceTest {
     }
 
     @Test
-    void conflictingWarFiltersAreRejectedAtNormalization() {
-        assertThrows(IllegalArgumentException.class, () -> WarRankingService.WarCostRequest.normalize(
+    void conflictingWarFiltersAreRejectedAtBuilderBoundary() {
+        assertThrows(IllegalArgumentException.class, () -> WarRankingRequests.cost(
                 0L,
                 null,
                 Set.<NationOrAlliance>of(),
@@ -98,7 +99,7 @@ class WarRankingServiceTest {
                 true,
                 null
         ));
-        assertThrows(IllegalArgumentException.class, () -> WarRankingService.WarCountRequest.normalize(
+        assertThrows(IllegalArgumentException.class, () -> WarRankingRequests.count(
                 0L,
                 Set.<NationOrAlliance>of(),
                 Set.<NationOrAlliance>of(),
@@ -111,7 +112,7 @@ class WarRankingServiceTest {
                 null,
                 null
         ));
-        assertThrows(IllegalArgumentException.class, () -> WarRankingService.AttackTypeRequest.normalize(
+        assertThrows(IllegalArgumentException.class, () -> WarRankingRequests.attackType(
                 0L,
                 AttackType.GROUND,
                 Set.of(),

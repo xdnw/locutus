@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -56,38 +57,24 @@ public final class WarRankingService {
             boolean onlyDefensiveWars,
             Set<Integer> highlightedAllianceIds
     ) {
-        public static WarCostRequest normalize(
-                long timeStartMs,
-                Long timeEndMs,
-                Set<NationOrAlliance> coalition1,
-                Set<NationOrAlliance> coalition2,
-                boolean onlyRankCoalition1,
-                WarCostMode type,
-                WarCostStat stat,
-                boolean excludeInfra,
-                boolean excludeConsumption,
-                boolean excludeLoot,
-                boolean excludeBuildings,
-                boolean excludeUnits,
-                boolean groupByAlliance,
-                boolean scalePerWar,
-                boolean scalePerCity,
-                Set<WarType> allowedWarTypes,
-                Set<WarStatus> allowedWarStatuses,
-                Set<AttackType> allowedAttackTypes,
-                Set<DBAlliance> warAlliances,
-                boolean onlyOffensiveWars,
-                boolean onlyDefensiveWars,
-                Set<DBAlliance> highlight
-        ) {
+        public WarCostRequest {
+            coalition1 = Set.copyOf(Objects.requireNonNull(coalition1, "coalition1"));
+            coalition2 = Set.copyOf(Objects.requireNonNull(coalition2, "coalition2"));
+            type = Objects.requireNonNull(type, "type");
+            stat = Objects.requireNonNull(stat, "stat");
+            warAllianceIds = Set.copyOf(Objects.requireNonNull(warAllianceIds, "warAllianceIds"));
+            highlightedAllianceIds = Set.copyOf(Objects.requireNonNull(highlightedAllianceIds, "highlightedAllianceIds"));
+            if (allowedWarTypes != null) {
+                allowedWarTypes = Set.copyOf(allowedWarTypes);
+            }
+            if (allowedWarStatuses != null) {
+                allowedWarStatuses = Set.copyOf(allowedWarStatuses);
+            }
+            if (allowedAttackTypes != null) {
+                allowedAttackTypes = Set.copyOf(allowedAttackTypes);
+            }
             if (onlyOffensiveWars && onlyDefensiveWars) {
                 throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
-            }
-            if (type == null) {
-                type = WarCostMode.DEALT;
-            }
-            if (stat == null) {
-                stat = WarCostStat.WAR_VALUE;
             }
             if (type == WarCostMode.PROFIT && stat.unit() != null) {
                 throw new IllegalArgumentException("Cannot rank by `type: profit` with a unit stat");
@@ -95,34 +82,9 @@ public final class WarRankingService {
             if (type == WarCostMode.PROFIT && stat.isAttack()) {
                 throw new IllegalArgumentException("Cannot rank by `type: profit` with an attack type stat");
             }
-            long resolvedEndMs = timeEndMs == null ? System.currentTimeMillis() : timeEndMs;
-            if (resolvedEndMs < timeStartMs) {
+            if (timeEndMs < timeStartMs) {
                 throw new IllegalArgumentException("timeEndMs must be >= timeStartMs");
             }
-            return new WarCostRequest(
-                    timeStartMs,
-                    resolvedEndMs,
-                    normalizeCoalition(coalition1),
-                    normalizeCoalition(coalition2),
-                    onlyRankCoalition1,
-                    type,
-                    stat,
-                    excludeInfra,
-                    excludeConsumption,
-                    excludeLoot,
-                    excludeBuildings,
-                    excludeUnits,
-                    groupByAlliance,
-                    scalePerWar,
-                    scalePerCity,
-                    normalizeOptionalSet(allowedWarTypes),
-                    normalizeOptionalSet(allowedWarStatuses),
-                    normalizeOptionalSet(allowedAttackTypes),
-                    normalizeAllianceIds(warAlliances),
-                    onlyOffensiveWars,
-                    onlyDefensiveWars,
-                    normalizeAllianceIds(highlight)
-            );
         }
     }
 
@@ -139,35 +101,18 @@ public final class WarRankingService {
             WarType warType,
             Set<WarStatus> statuses
     ) {
-        public static WarCountRequest normalize(
-                long timeStartMs,
-                Set<NationOrAlliance> attackers,
-                Set<NationOrAlliance> defenders,
-                boolean onlyOffensives,
-                boolean onlyDefensives,
-                boolean onlyRankAttackers,
-                boolean normalizePerMember,
-                boolean ignoreInactiveNations,
-                boolean rankByNation,
-                WarType warType,
-                Set<WarStatus> statuses
-        ) {
+        public WarCountRequest {
+            attackers = Set.copyOf(Objects.requireNonNull(attackers, "attackers"));
+            defenders = Set.copyOf(Objects.requireNonNull(defenders, "defenders"));
+            if (statuses != null) {
+                statuses = Set.copyOf(statuses);
+            }
             if (onlyOffensives && onlyDefensives) {
                 throw new IllegalArgumentException("Cannot combine `onlyOffensives` and `onlyDefensives`");
             }
-            return new WarCountRequest(
-                    timeStartMs,
-                    normalizeCoalition(attackers),
-                    normalizeCoalition(defenders),
-                    onlyOffensives,
-                    onlyDefensives,
-                    onlyRankAttackers,
-                    !rankByNation && normalizePerMember,
-                    ignoreInactiveNations,
-                    rankByNation,
-                    warType,
-                    normalizeOptionalSet(statuses)
-            );
+            if (rankByNation && normalizePerMember) {
+                throw new IllegalArgumentException("normalizePerMember requires alliance rows");
+            }
         }
     }
 
@@ -180,42 +125,15 @@ public final class WarRankingService {
             boolean onlyOffWars,
             boolean onlyDefWars
     ) {
-        public static AttackTypeRequest normalize(
-                long timeMs,
-                AttackType type,
-                Set<DBAlliance> alliances,
-                Integer onlyTopX,
-                boolean percent,
-                boolean onlyOffWars,
-                boolean onlyDefWars
-        ) {
+        public AttackTypeRequest {
+            type = Objects.requireNonNull(type, "type");
+            alliances = Set.copyOf(Objects.requireNonNull(alliances, "alliances"));
             if (onlyOffWars && onlyDefWars) {
                 throw new IllegalArgumentException("Cannot combine `only_off_wars` and `only_def_wars`");
             }
-
-            Set<DBAlliance> source = (alliances == null || alliances.isEmpty())
-                    ? Locutus.imp().getNationDB().getAlliances()
-                    : alliances;
-
-            Set<Integer> topAllianceIds = null;
-            if (onlyTopX != null) {
-                topAllianceIds = Locutus.imp().getNationDB().getAlliances(true, true, true, onlyTopX).stream()
-                        .map(DBAlliance::getAlliance_id)
-                        .collect(Collectors.toSet());
+            if (onlyTopX != null && onlyTopX < 1) {
+                throw new IllegalArgumentException("onlyTopX must be >= 1");
             }
-
-            Set<DBAlliance> selected = new LinkedHashSet<>();
-            for (DBAlliance alliance : source) {
-                if (alliance == null) {
-                    continue;
-                }
-                if (topAllianceIds != null && !topAllianceIds.contains(alliance.getAlliance_id())) {
-                    continue;
-                }
-                selected.add(alliance);
-            }
-
-            return new AttackTypeRequest(timeMs, type, Set.copyOf(selected), onlyTopX, percent, onlyOffWars, onlyDefWars);
         }
     }
 
@@ -589,30 +507,4 @@ public final class WarRankingService {
         return RankingNormalizationMode.NONE;
     }
 
-    private static Set<NationOrAlliance> normalizeCoalition(Set<NationOrAlliance> coalition) {
-        if (coalition == null || coalition.isEmpty()) {
-            return Set.of();
-        }
-        return Set.copyOf(coalition);
-    }
-
-    private static <T> Set<T> normalizeOptionalSet(Set<T> values) {
-        if (values == null || values.isEmpty()) {
-            return null;
-        }
-        return Set.copyOf(values);
-    }
-
-    private static Set<Integer> normalizeAllianceIds(Set<DBAlliance> alliances) {
-        if (alliances == null || alliances.isEmpty()) {
-            return Set.of();
-        }
-        Set<Integer> result = new LinkedHashSet<>();
-        for (DBAlliance alliance : alliances) {
-            if (alliance != null) {
-                result.add(alliance.getAlliance_id());
-            }
-        }
-        return Set.copyOf(result);
-    }
 }
