@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -20,7 +19,7 @@ public final class RankingBuilders {
             RankingSortDirection direction,
             Map<Integer, ? extends Number> values
     ) {
-        Map<Integer, BigDecimal> numericValues = new LinkedHashMap<>();
+        Map<Integer, Double> numericValues = new LinkedHashMap<>();
         if (values != null) {
             for (Map.Entry<Integer, ? extends Number> entry : values.entrySet()) {
                 Number value = entry.getValue();
@@ -36,7 +35,7 @@ public final class RankingBuilders {
     public static RankingResult singleMetricRanking(
             RankingKind kind,
             RankingEntityType key1Type,
-            RankingValueDescriptor valueDescriptor,
+            RankingValueFormat valueFormat,
             List<RankingSectionSpec> sections,
             Set<Integer> highlightedKey1Ids,
             Long asOfMs
@@ -45,24 +44,24 @@ public final class RankingBuilders {
         Set<Integer> highlightIds = highlightedKey1Ids == null ? Set.of() : new IntOpenHashSet(highlightedKey1Ids);
 
         List<Long> key1Ids = new ArrayList<>();
-        List<BigDecimal> valueColumn = new ArrayList<>();
+        List<Double> valueColumn = new ArrayList<>();
         LinkedHashSet<Long> highlightedOrdered = new LinkedHashSet<>();
         List<RankingSectionRange> sectionRanges = new ArrayList<>(normalizedSections.size());
 
-        Comparator<Map.Entry<Integer, BigDecimal>> comparator = Comparator.comparing(Map.Entry<Integer, BigDecimal>::getValue);
+        Comparator<Map.Entry<Integer, Double>> comparator = Comparator.comparingDouble(Map.Entry::getValue);
 
         for (RankingSectionSpec section : normalizedSections) {
             int rowOffset = key1Ids.size();
-            Comparator<Map.Entry<Integer, BigDecimal>> sectionComparator = section.sortDirection() == RankingSortDirection.DESC
+            Comparator<Map.Entry<Integer, Double>> sectionComparator = section.sortDirection() == RankingSortDirection.DESC
                     ? comparator.reversed()
                     : comparator;
             sectionComparator = sectionComparator.thenComparingInt(Map.Entry::getKey);
 
-            List<Map.Entry<Integer, BigDecimal>> rows = new ArrayList<>(section.values().entrySet());
+            List<Map.Entry<Integer, Double>> rows = new ArrayList<>(section.values().entrySet());
             rows.sort(sectionComparator);
             sectionRanges.add(new RankingSectionRange(section.sectionKind(), rowOffset, rows.size()));
 
-            for (Map.Entry<Integer, BigDecimal> row : rows) {
+            for (Map.Entry<Integer, Double> row : rows) {
                 long key1Id = row.getKey();
                 key1Ids.add(key1Id);
                 valueColumn.add(row.getValue());
@@ -78,7 +77,7 @@ public final class RankingBuilders {
                 null,
                 key1Ids,
                 List.of(),
-                List.of(new RankingValueColumn(valueDescriptor, valueColumn)),
+                List.of(new RankingValueColumn(valueFormat, valueColumn)),
                 sectionRanges,
                 new ArrayList<>(highlightedOrdered),
                 asOfMs

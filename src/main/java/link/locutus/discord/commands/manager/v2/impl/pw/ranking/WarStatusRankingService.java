@@ -71,7 +71,7 @@ public final class WarStatusRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.WAR_STATUS,
                 entityType,
-                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
+                RankingValueFormat.COUNT,
                 List.of(
                         RankingBuilders.singleMetricSection(RankingSectionKind.VICTORIES, RankingSortDirection.DESC, victoryByEntity),
                         RankingBuilders.singleMetricSection(RankingSectionKind.LOSSES, RankingSortDirection.DESC, lossesByEntity),

@@ -5,14 +5,8 @@
   "key1Ids" : [ 1, 2, 3 ],
   "key2Ids" : [ ],
   "valueColumns" : [ {
-    "descriptor" : {
-      "kind" : "ALLIANCE_METRIC",
-      "format" : "COUNT",
-      "numericType" : "INTEGER",
-      "aggregationMode" : "IDENTITY",
-      "allianceMetric" : "SCORE"
-    },
-    "values" : [ 10, 10, 8 ]
+    "format" : "COUNT",
+    "values" : [ 10.0, 10.0, 8.0 ]
   } ],
   "sectionRanges" : [ {
     "kind" : "ALLIANCES",

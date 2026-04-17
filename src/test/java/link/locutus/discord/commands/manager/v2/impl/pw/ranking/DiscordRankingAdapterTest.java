@@ -24,7 +24,7 @@ class DiscordRankingAdapterTest {
         RankingResult result = RankingBuilders.singleMetricRanking(
                 RankingKind.WAR_COUNT,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
+                RankingValueFormat.COUNT,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,

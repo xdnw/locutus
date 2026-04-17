@@ -143,7 +143,7 @@ public final class NationValueRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.NATION_ATTRIBUTE,
                 entityType,
-                RankingValueDescriptor.attribute(request.attribute().getName(), RankingValueFormat.NUMBER, RankingNumericType.DECIMAL, aggregationMode),
+                RankingValueFormat.NUMBER,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.forEntityType(entityType),
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
@@ -202,7 +202,7 @@ public final class NationValueRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.PRODUCTION,
                 entityType,
-                RankingValueDescriptor.production(resource, valueFormat, aggregationMode),
+                valueFormat,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.forEntityType(entityType),
                         RankingSortDirection.DESC,

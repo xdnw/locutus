@@ -65,7 +65,7 @@ public final class RecruitmentRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.RECRUITMENT,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.recruitment(),
+                RankingValueFormat.COUNT,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,

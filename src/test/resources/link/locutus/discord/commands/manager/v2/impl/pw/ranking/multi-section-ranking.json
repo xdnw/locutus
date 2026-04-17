@@ -5,14 +5,8 @@
   "key1Ids" : [ 11, 12, 13 ],
   "key2Ids" : [ ],
   "valueColumns" : [ {
-    "descriptor" : {
-      "kind" : "WAR_COUNT",
-      "format" : "COUNT",
-      "numericType" : "INTEGER",
-      "aggregationMode" : "COUNT",
-      "normalizationMode" : "NONE"
-    },
-    "values" : [ 3, 1, 2 ]
+    "format" : "COUNT",
+    "values" : [ 3.0, 1.0, 2.0 ]
   } ],
   "sectionRanges" : [ {
     "kind" : "VICTORIES",

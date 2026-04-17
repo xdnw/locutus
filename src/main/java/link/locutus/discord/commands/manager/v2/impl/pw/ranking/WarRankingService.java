@@ -267,19 +267,12 @@ public final class WarRankingService {
 
         boolean scaled = request.scalePerWar() || request.scalePerCity();
         RankingValueFormat valueFormat = warCostValueFormat(request.stat(), scaled);
-        RankingNumericType numericType = valueFormat == RankingValueFormat.COUNT ? RankingNumericType.INTEGER : RankingNumericType.DECIMAL;
         RankingEntityType entityType = request.groupByAlliance() ? RankingEntityType.ALLIANCE : RankingEntityType.NATION;
 
         return RankingBuilders.singleMetricRanking(
                 RankingKind.WAR_COST,
                 entityType,
-                RankingValueDescriptor.warCost(
-                        request.type(),
-                        request.stat(),
-                        valueFormat,
-                        numericType,
-                        normalizationMode(request.scalePerWar(), request.scalePerCity())
-                ),
+                valueFormat,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.forEntityType(entityType),
                         RankingSortDirection.DESC,
@@ -347,16 +340,11 @@ public final class WarRankingService {
 
         RankingEntityType entityType = request.rankByNation() ? RankingEntityType.NATION : RankingEntityType.ALLIANCE;
         RankingValueFormat valueFormat = request.normalizePerMember() ? RankingValueFormat.NUMBER : RankingValueFormat.COUNT;
-        RankingNumericType numericType = request.normalizePerMember() ? RankingNumericType.DECIMAL : RankingNumericType.INTEGER;
 
         return RankingBuilders.singleMetricRanking(
                 RankingKind.WAR_COUNT,
                 entityType,
-                RankingValueDescriptor.warCount(
-                        valueFormat,
-                        numericType,
-                        request.normalizePerMember() ? RankingNormalizationMode.PER_MEMBER : RankingNormalizationMode.NONE
-                ),
+                valueFormat,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.forEntityType(entityType),
                         RankingSortDirection.DESC,
@@ -418,12 +406,11 @@ public final class WarRankingService {
         }
 
         RankingValueFormat valueFormat = request.percent() ? RankingValueFormat.PERCENT : RankingValueFormat.COUNT;
-        RankingNumericType numericType = request.percent() ? RankingNumericType.DECIMAL : RankingNumericType.INTEGER;
 
         return RankingBuilders.singleMetricRanking(
                 RankingKind.ATTACK_TYPE,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.attackType(request.type(), valueFormat, numericType),
+                valueFormat,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,

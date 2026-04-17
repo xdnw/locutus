@@ -10,7 +10,6 @@ import link.locutus.discord.util.RateLimitedSources;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
-import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -116,14 +115,9 @@ public final class DiscordRankingAdapter {
 
     private static String renderRow(RankingResult result, int globalRowIndex, int sectionRowIndex) {
         List<String> renderedValues = new ArrayList<>(result.valueColumns().size());
-        boolean singleMetric = result.valueColumns().size() == 1;
         for (RankingValueColumn column : result.valueColumns()) {
-            BigDecimal value = column.values().get(globalRowIndex);
-            String rendered = renderNumeric(value, column.descriptor().format(), column.descriptor().numericType());
-            if (!singleMetric) {
-                rendered = renderColumnLabel(column.descriptor()) + ": " + rendered;
-            }
-            renderedValues.add(rendered);
+            double value = column.values().get(globalRowIndex);
+            renderedValues.add(renderNumeric(value, column.format()));
         }
 
         long key1Id = result.key1Ids().get(globalRowIndex);
@@ -148,35 +142,17 @@ public final class DiscordRankingAdapter {
         return entityType.name().toLowerCase(Locale.ROOT) + ":" + entityId;
     }
 
-    private static String renderNumeric(BigDecimal numeric, RankingValueFormat format, RankingNumericType numericType) {
+    private static String renderNumeric(double numeric, RankingValueFormat format) {
         return switch (format) {
             case MONEY -> "$" + formatDecimal(numeric);
-            case PERCENT -> formatDecimal(numeric.multiply(BigDecimal.valueOf(100))) + "%";
+            case PERCENT -> formatDecimal(numeric * 100d) + "%";
             case COUNT -> formatInteger(numeric);
-            case NUMBER -> numericType == RankingNumericType.INTEGER ? formatInteger(numeric) : formatDecimal(numeric);
+            case NUMBER -> formatDecimal(numeric);
         };
     }
 
     private static String renderSectionLabel(RankingSectionKind kind) {
         return humanize(kind.name());
-    }
-
-    private static String renderColumnLabel(RankingValueDescriptor descriptor) {
-        return switch (descriptor.kind()) {
-            case ALLIANCE_METRIC -> humanize(descriptor.allianceMetric().name());
-            case ATTRIBUTE -> humanize(descriptor.attributeName());
-            case ALLIANCE_LOOT -> switch (descriptor.lootMode()) {
-                case BANK_TOTAL -> "Bank Total";
-                case PER_SCORE -> "Loot Per Score";
-            };
-            case PRODUCTION -> descriptor.resource() == null ? "Market Value" : humanize(descriptor.resource().name());
-            case RECRUITMENT -> "New Members";
-            case WAR_COUNT -> descriptor.normalizationMode() == RankingNormalizationMode.PER_MEMBER ? "Wars Per Member" : "Count";
-            case WAR_COST -> descriptor.normalizationMode() == RankingNormalizationMode.NONE
-                    ? humanize(descriptor.warCostStat().name())
-                    : humanize(descriptor.warCostStat().name()) + " (" + humanize(descriptor.normalizationMode().name()) + ")";
-            case ATTACK_TYPE -> humanize(descriptor.attackType().name());
-        };
     }
 
     private static String resolveTitle(JSONObject command, RankingResult result) {
@@ -205,15 +181,20 @@ public final class DiscordRankingAdapter {
         return words.isEmpty() ? value : String.join(" ", words);
     }
 
-    private static String formatInteger(BigDecimal value) {
-        return INT_FORMAT.get().format(value.toBigInteger());
+    private static String formatInteger(double value) {
+        return INT_FORMAT.get().format(value);
     }
 
-    private static String formatDecimal(BigDecimal value) {
-        BigDecimal stripped = value.stripTrailingZeros();
-        if (stripped.scale() <= 0) {
-            return INT_FORMAT.get().format(stripped.toBigInteger());
+    private static String formatDecimal(double value) {
+        if (isWholeNumber(value)) {
+            return INT_FORMAT.get().format(Math.rint(value));
         }
         return DECIMAL_FORMAT.get().format(value);
+    }
+
+    private static boolean isWholeNumber(double value) {
+        double nearestInteger = Math.rint(value);
+        double reference = nearestInteger == 0d ? 1d : Math.abs(nearestInteger);
+        return Math.abs(value - nearestInteger) <= Math.ulp(reference) * 4d;
     }
 }

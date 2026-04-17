@@ -29,7 +29,7 @@ class RankingWebAdapterFixtureTest {
         RankingResult result = RankingBuilders.singleMetricRanking(
                 RankingKind.ALLIANCE_METRIC,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.allianceMetric(AllianceMetric.SCORE, RankingValueFormat.COUNT, RankingNumericType.INTEGER),
+                RankingValueFormat.COUNT,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
@@ -47,7 +47,7 @@ class RankingWebAdapterFixtureTest {
         RankingResult result = RankingBuilders.singleMetricRanking(
                 RankingKind.WAR_STATUS,
                 RankingEntityType.NATION,
-                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
+                RankingValueFormat.COUNT,
                 List.of(
                         RankingBuilders.singleMetricSection(RankingSectionKind.VICTORIES, RankingSortDirection.DESC, Map.of(11, 3, 12, 1)),
                         RankingBuilders.singleMetricSection(RankingSectionKind.LOSSES, RankingSortDirection.DESC, Map.of()),

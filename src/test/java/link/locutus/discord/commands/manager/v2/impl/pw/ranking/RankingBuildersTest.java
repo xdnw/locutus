@@ -1,13 +1,12 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
-import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -22,7 +21,7 @@ class RankingBuildersTest {
         RankingResult result = RankingBuilders.singleMetricRanking(
                 RankingKind.RECRUITMENT,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.recruitment(),
+                RankingValueFormat.COUNT,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
@@ -33,7 +32,7 @@ class RankingBuildersTest {
         );
 
         assertEquals(List.of(2L, 5L, 3L), result.key1Ids());
-        assertEquals(new BigDecimal("9007199254740993"), result.valueColumns().get(0).values().get(0));
+        assertEquals(new BigInteger("9007199254740993").doubleValue(), result.valueColumns().get(0).values().get(0));
         assertEquals(List.of(5L), result.highlightedKey1Ids());
         assertEquals(List.of(new RankingSectionRange(RankingSectionKind.ALLIANCES, 0, 3)), result.sectionRanges());
     }
@@ -43,7 +42,7 @@ class RankingBuildersTest {
         RankingResult result = RankingBuilders.singleMetricRanking(
                 RankingKind.WAR_COUNT,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.warCount(RankingValueFormat.COUNT, RankingNumericType.INTEGER, RankingNormalizationMode.NONE),
+                RankingValueFormat.COUNT,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,
@@ -54,7 +53,7 @@ class RankingBuildersTest {
         );
 
         assertEquals(1, result.rowCount());
-        assertEquals(new BigDecimal("1"), result.valueColumns().get(0).values().get(0));
-        assertEquals(RankingValueKind.WAR_COUNT, result.valueColumns().get(0).descriptor().kind());
+        assertEquals(1d, result.valueColumns().get(0).values().get(0));
+        assertEquals(RankingValueFormat.COUNT, result.valueColumns().get(0).format());
     }
 }

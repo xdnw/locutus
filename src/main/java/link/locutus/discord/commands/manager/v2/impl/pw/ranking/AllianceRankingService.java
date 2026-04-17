@@ -74,7 +74,7 @@ public final class AllianceRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.ALLIANCE_METRIC,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.allianceMetric(request.metric(), metricFormat(request.metric()), RankingNumericType.DECIMAL),
+                metricFormat(request.metric()),
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
@@ -98,7 +98,7 @@ public final class AllianceRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.ALLIANCE_ATTRIBUTE,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.attribute(request.attribute().getName(), RankingValueFormat.NUMBER, RankingNumericType.DECIMAL, RankingAggregationMode.IDENTITY),
+                RankingValueFormat.NUMBER,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
@@ -148,7 +148,7 @@ public final class AllianceRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.ALLIANCE_METRIC_DELTA,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.allianceMetric(request.metric(), metricFormat(request.metric()), RankingNumericType.DECIMAL),
+                metricFormat(request.metric()),
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         request.ascending() ? RankingSortDirection.ASC : RankingSortDirection.DESC,
@@ -199,7 +199,7 @@ public final class AllianceRankingService {
         return RankingBuilders.singleMetricRanking(
                 RankingKind.ALLIANCE_LOOT,
                 RankingEntityType.ALLIANCE,
-                RankingValueDescriptor.allianceLoot(request.showTotal() ? RankingLootMode.BANK_TOTAL : RankingLootMode.PER_SCORE),
+                RankingValueFormat.MONEY,
                 List.of(RankingBuilders.singleMetricSection(
                         RankingSectionKind.ALLIANCES,
                         RankingSortDirection.DESC,

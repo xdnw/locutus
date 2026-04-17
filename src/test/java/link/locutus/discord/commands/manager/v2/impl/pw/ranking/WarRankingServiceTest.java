@@ -137,36 +137,4 @@ class WarRankingServiceTest {
         assertEquals(RankingNormalizationMode.PER_CITY, WarRankingService.normalizationMode(false, true));
         assertEquals(RankingNormalizationMode.PER_WAR_PER_CITY, WarRankingService.normalizationMode(true, true));
     }
-
-    @Test
-    void typedDescriptorsCarryWarFrontendSemantics() {
-        RankingValueDescriptor warCost = RankingValueDescriptor.warCost(
-                WarCostMode.DEALT,
-                WarCostStat.GROUND,
-                RankingValueFormat.NUMBER,
-                RankingNumericType.DECIMAL,
-                RankingNormalizationMode.PER_WAR_PER_CITY
-        );
-        assertEquals(RankingValueKind.WAR_COST, warCost.kind());
-        assertEquals(WarCostMode.DEALT, warCost.warCostMode());
-        assertEquals(WarCostStat.GROUND, warCost.warCostStat());
-        assertEquals(RankingNormalizationMode.PER_WAR_PER_CITY, warCost.normalizationMode());
-
-        RankingValueDescriptor warCount = RankingValueDescriptor.warCount(
-                RankingValueFormat.NUMBER,
-                RankingNumericType.DECIMAL,
-                RankingNormalizationMode.PER_MEMBER
-        );
-        assertEquals(RankingValueKind.WAR_COUNT, warCount.kind());
-        assertEquals(RankingNormalizationMode.PER_MEMBER, warCount.normalizationMode());
-
-        RankingValueDescriptor attackType = RankingValueDescriptor.attackType(
-                AttackType.GROUND,
-                RankingValueFormat.PERCENT,
-                RankingNumericType.DECIMAL
-        );
-        assertEquals(RankingValueKind.ATTACK_TYPE, attackType.kind());
-        assertEquals(AttackType.GROUND, attackType.attackType());
-        assertEquals(RankingValueFormat.PERCENT, attackType.format());
-    }
 }

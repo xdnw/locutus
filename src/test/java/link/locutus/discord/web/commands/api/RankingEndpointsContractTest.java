@@ -10,7 +10,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingAggregati
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingEntityType;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingKind;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingSectionKind;
-import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingValueKind;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingValueFormat;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -110,17 +110,15 @@ class RankingEndpointsContractTest {
             assertEquals(2, result.rowCount());
             assertEquals(List.of(2L, 1L), result.key1Ids());
             assertEquals(1, result.valueColumns().size());
-            assertEquals(RankingValueKind.ALLIANCE_METRIC, result.valueColumns().get(0).descriptor().kind());
-            assertEquals(AllianceMetric.SCORE, result.valueColumns().get(0).descriptor().allianceMetric());
-            assertEquals(RankingAggregationMode.IDENTITY, result.valueColumns().get(0).descriptor().aggregationMode());
-            assertEquals(new java.math.BigDecimal("10"), result.valueColumns().get(0).values().get(0));
-            assertEquals(new java.math.BigDecimal("5"), result.valueColumns().get(0).values().get(1));
+            assertEquals(RankingValueFormat.NUMBER, result.valueColumns().get(0).format());
+            assertEquals(10d, result.valueColumns().get(0).values().get(0));
+            assertEquals(5d, result.valueColumns().get(0).values().get(1));
             assertEquals(List.of(new link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingSectionRange(RankingSectionKind.ALLIANCES, 0, 2)), result.sectionRanges());
             assertEquals(List.of(1L), result.highlightedKey1Ids());
 
             JsonNode json = MAPPER.valueToTree(result);
             assertTrue(json.get("valueColumns").get(0).get("values").get(0).isNumber());
-            assertTrue(json.get("valueColumns").get(0).get("descriptor").get("allianceMetric").isTextual());
+            assertTrue(json.get("valueColumns").get(0).get("format").isTextual());
             assertTrue(json.findPath("sections").isMissingNode());
             assertTrue(json.findPath("rows").isMissingNode());
             assertTrue(json.findPath("entity").isMissingNode());
@@ -135,6 +133,7 @@ class RankingEndpointsContractTest {
             assertTrue(json.findPath("queryMetadata").isMissingNode());
             assertTrue(json.findPath("sectionMetadata").isMissingNode());
             assertTrue(json.findPath("emptySectionPolicy").isMissingNode());
+            assertTrue(json.findPath("descriptor").isMissingNode());
         } finally {
             instanceField.set(null, previousInstance);
             Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY = previousDirectory;
