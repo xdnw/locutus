@@ -810,6 +810,24 @@ public class ParametricCallable<T> implements ICommand<T> {
         }
     }
 
+    private RuntimeException findMeaningfulPartialParseError(RuntimeException... errors) {
+        for (RuntimeException error : errors) {
+            if (error instanceof IllegalArgumentException && error.getMessage() != null
+                    && !error.getMessage().isBlank()) {
+                return error;
+            }
+        }
+        return null;
+    }
+
+    private IllegalArgumentException partialParseFailure(ParameterData param, Object value, Class<?> typeClass,
+            RuntimeException cause) {
+        return new IllegalArgumentException(
+                "Cannot parse " + value.getClass() + " to " + typeClass + " for " + getFullPath()
+                        + " parameter " + param.getName() + "(value is: " + value + ")",
+                cause);
+    }
+
     public Object[] parseArgumentMap2(Map<String, Object> combined, ValueStore store, ValidatorStore validators, PermissionHandler permisser, boolean partialParse) {
         validatePermissions(store, permisser);
 
@@ -864,10 +882,19 @@ public class ParametricCallable<T> implements ICommand<T> {
                         if (o.getClass() != String.class) {
                             try {
                                 return parser.apply(store, normalizePartialParseValue(o));
-                            } catch (RuntimeException ignored) {
+                            } catch (RuntimeException secondError) {
+                                RuntimeException meaningful = findMeaningfulPartialParseError(secondError, firstError);
+                                if (meaningful != null) {
+                                    throw meaningful;
+                                }
+                                throw partialParseFailure(param, o, typeClass, secondError);
                             }
                         }
-                        throw new IllegalArgumentException("Cannot parse " + o.getClass() + " to " + typeClass + " for " + getFullPath() + " parameter " + param.getName() + "(value is: " + o + ")");
+                        RuntimeException meaningful = findMeaningfulPartialParseError(firstError);
+                        if (meaningful != null) {
+                            throw meaningful;
+                        }
+                        throw partialParseFailure(param, o, typeClass, firstError);
                     }
                 }
             };

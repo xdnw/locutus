@@ -151,6 +151,25 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
         return runtime.nationSnapshots().resolve(modifier);
     }
 
+    private static boolean isCoalitionSelector(String inputLower) {
+        return inputLower.startsWith("~") || inputLower.startsWith("coalition:");
+    }
+
+    private Set<Integer> parseCoalitionIds(Guild guild, String input) {
+        Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, input, true);
+        if (alliances != null && !alliances.isEmpty()) {
+            return alliances;
+        }
+        String coalitionName = input.startsWith("~")
+                ? input.substring(1).trim()
+                : input.substring("coalition:".length()).trim();
+        if (guild == null) {
+            throw new IllegalArgumentException(
+                    "Cannot resolve coalition `" + coalitionName + "` without guild context");
+        }
+        throw new IllegalArgumentException("No alliances found for coalition `" + coalitionName + "`");
+    }
+
     public Set<DBNation> parseSet(ValueStore store2, String input, INationSnapshot snapshot, boolean allowDeleted) {
         NationModifier modifier = new NationModifier(null, allowDeleted, false);
         modifier.resolvedSnapshot = snapshot;
@@ -196,6 +215,8 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         };
                     });
             return nations;
+        } else if (isCoalitionSelector(nameLower)) {
+            return snapshot.getNationsByAlliance(parseCoalitionIds(guild, name));
         } else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null)
@@ -323,6 +344,9 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                     });
             Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
             return f -> ids.contains(f.getId());
+        } else if (isCoalitionSelector(nameLower)) {
+            Set<Integer> alliances = parseCoalitionIds(guild, name);
+            return f -> alliances.contains(f.getAlliance_id());
         } else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null)
