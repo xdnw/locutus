@@ -174,6 +174,7 @@ class WarEndpointsContractTest {
             attacker.setPosition(Rank.MEMBER);
             attacker.setColor(NationColor.BLUE);
             DBNation target = nation(2, "Target", 1_000d, System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1));
+            target.setAlliance_id(2);
             target.setCities(4);
             target.setPosition(Rank.MEMBER);
             target.setColor(NationColor.BLUE);
@@ -195,6 +196,7 @@ class WarEndpointsContractTest {
                     false,
                     true);
                 assertEquals(Math.pow(attacker.getStrength(), 3), counterContext.blitzStrength(), 0.0001d);
+                double expectedStrengthPercent = 100 * Math.pow(target.getStrength(), 3) / counterContext.blitzStrength();
 
             WarEndpoints endpoints = new WarEndpoints();
             WebTargets endpointResult = endpoints.unprotected(null, attacker, null, null, attacker, candidates,
@@ -203,7 +205,67 @@ class WarEndpointsContractTest {
             assertEquals(1, endpointResult.targets.size());
             WebTarget webTarget = endpointResult.targets.get(0);
             assertEquals(target.getNation_id(), webTarget.id);
-            assertTrue(Double.isFinite(webTarget.strength));
+            assertEquals(expectedStrengthPercent, webTarget.strength, 0.0001d);
+        } finally {
+            instanceField.set(null, previousInstance);
+            Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY = previousDirectory;
+            deleteRecursively(tempDir);
+        }
+    }
+
+    @Test
+    void unprotectedCounterFilterUsesCombinedProtectionStrength() throws Exception {
+        Path tempDir = Files.createTempDirectory("war-unprotected-counter-filter-");
+        String previousDirectory = Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY;
+        Field instanceField = Locutus.class.getDeclaredField("INSTANCE");
+        instanceField.setAccessible(true);
+        Locutus previousInstance = (Locutus) instanceField.get(null);
+
+        Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY = tempDir.toString();
+
+        try (NationDB nationDb = new NationDB(); WarDB warDb = new WarDB("war-endpoint-unprotected-counter-filter-" + System.nanoTime())) {
+            DBNation attacker = nation(1, "Attacker", 1_000d, System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1));
+            attacker.setCities(10);
+            attacker.setPosition(Rank.MEMBER);
+            attacker.setColor(NationColor.BLUE);
+
+            DBNation target = nation(2, "Target", 1_000d, System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1));
+            target.setAlliance_id(2);
+            target.setCities(4);
+            target.setPosition(Rank.MEMBER);
+            target.setColor(NationColor.BLUE);
+
+            DBNation counter = nation(3, "Counter", 1_000d, System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1));
+            counter.setAlliance_id(2);
+            counter.setCities(12);
+            counter.setAircraft(100_000);
+            counter.setPosition(Rank.MEMBER);
+            counter.setColor(NationColor.BLUE);
+
+            seedNation(nationDb, attacker);
+            seedNation(nationDb, target);
+            seedNation(nationDb, counter);
+
+            instanceField.set(null, fakeLocutus(nationDb, warDb));
+
+            ObjectLinkedOpenHashSet<DBNation> candidates = new ObjectLinkedOpenHashSet<>();
+            candidates.add(target);
+            WarTargetFinder.CounterChanceContext counterContext = WarTargetFinder.buildCounterChanceContext(
+                    null,
+                    candidates,
+                    true,
+                    false,
+                    Set.of(attacker),
+                    false,
+                    false,
+                    true);
+
+            List<Map.Entry<DBNation, Double>> unfiltered = WarTargetFinder.scoreCounterChance(counterContext, null, null);
+            assertEquals(1, unfiltered.size());
+            assertTrue(unfiltered.get(0).getValue() > counterContext.blitzStrength() * 0.1);
+
+            List<Map.Entry<DBNation, Double>> filtered = WarTargetFinder.scoreCounterChance(counterContext, null, 0.1);
+            assertTrue(filtered.isEmpty());
         } finally {
             instanceField.set(null, previousInstance);
             Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY = previousDirectory;
@@ -339,6 +401,12 @@ class WarEndpointsContractTest {
         nationsByIdField.setAccessible(true);
         Map<Integer, DBNation> nationsById = (Map<Integer, DBNation>) nationsByIdField.get(nationDb);
         nationsById.put(nation.getNation_id(), nation);
+
+        Field nationsByAllianceField = NationDB.class.getDeclaredField("nationsByAlliance");
+        nationsByAllianceField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Integer, Map<Integer, DBNation>> nationsByAlliance = (Map<Integer, Map<Integer, DBNation>>) nationsByAllianceField.get(nationDb);
+        nationsByAlliance.computeIfAbsent(nation.getAlliance_id(), key -> new HashMap<>()).put(nation.getNation_id(), nation);
     }
 
     private static Locutus fakeLocutus(NationDB nationDb, WarDB warDb) throws Exception {

@@ -112,29 +112,13 @@ public final class WarTargetFinder {
 
         Int2DoubleOpenHashMap targetStrengthByNationId = new Int2DoubleOpenHashMap();
         targetStrengthByNationId.defaultReturnValue(0d);
+        for (DBNation nation : nations) {
+            targetStrengthByNationId.put(nation.getNation_id(), getEffectiveCounterNationStrength(nation));
+        }
+
         double blitzStrength = 0;
         for (DBNation nation : blitzers) {
-            double baseStrength = Math.pow(nation.getStrength(), 3);
-            double nationStrength;
-            if (nation.active_m() > 2880) {
-                if (nation.lostInactiveWar() || nation.getAlliance_id() == 0) {
-                    nationStrength = baseStrength * 0.44;
-                } else if (nation.getPosition() == Rank.APPLICANT.id) {
-                    nationStrength = baseStrength * Math.max(0, 0.8 - 0.1 * nation.active_m() / 1440d);
-                } else {
-                    nationStrength = baseStrength * Math.max(0, 0.8 - 0.1 * nation.active_m() / 1440d);
-                }
-            } else if (nation.getAlliance_id() == 0) {
-                nationStrength = baseStrength * 0.66;
-            } else if (nation.getDef() > 0 && nation.getRelativeStrength(false) < 1) {
-                nationStrength = baseStrength * 0.33;
-            } else if (nation.getAircraft() == 0 && nation.getSoldiers() == 0) {
-                nationStrength = baseStrength * 0.22;
-            } else {
-                nationStrength = baseStrength;
-            }
-            targetStrengthByNationId.put(nation.getNation_id(), nationStrength);
-            blitzStrength += baseStrength;
+            blitzStrength += Math.pow(nation.getStrength(), 3);
         }
 
         return new CounterChanceContext(nations, countersByAlliance, targetStrengthByNationId, blitzers, maxCounterSize, blitzStrength);
@@ -231,7 +215,7 @@ public final class WarTargetFinder {
         double blitzStrength = context.blitzStrength();
 
         if (maxRelativeCounterStrength != null) {
-            counterChance.removeIf(f -> f.getKey().getStrength() > blitzStrength * maxRelativeCounterStrength);
+            counterChance.removeIf(f -> f.getValue() > blitzStrength * maxRelativeCounterStrength);
         }
         if (maxRelativeTargetStrength != null) {
             counterChance.removeIf(f -> context.targetStrengthByNationId().get(f.getKey().getNation_id()) > blitzStrength * maxRelativeTargetStrength);
@@ -252,6 +236,26 @@ public final class WarTargetFinder {
             }
         });
         return counterChance;
+    }
+
+    private static double getEffectiveCounterNationStrength(DBNation nation) {
+        double baseStrength = Math.pow(nation.getStrength(), 3);
+        if (nation.active_m() > 2880) {
+            if (nation.lostInactiveWar() || nation.getAlliance_id() == 0) {
+                return baseStrength * 0.44;
+            }
+            return baseStrength * Math.max(0, 0.8 - 0.1 * nation.active_m() / 1440d);
+        }
+        if (nation.getAlliance_id() == 0) {
+            return baseStrength * 0.66;
+        }
+        if (nation.getDef() > 0 && nation.getRelativeStrength(false) < 1) {
+            return baseStrength * 0.33;
+        }
+        if (nation.getAircraft() == 0 && nation.getSoldiers() == 0) {
+            return baseStrength * 0.22;
+        }
+        return baseStrength;
     }
 
     public static List<Map.Entry<DBNation, Double>> getWarTargets(DBNation me, Set<DBNation> targets, int numResults, Double attackerScore,
