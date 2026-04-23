@@ -24,6 +24,46 @@ public enum ConflictMetric {
             return (int) nation.getInfra();
         }
     },
+    SOLDIER_CAPACITY(null, true) {
+        @Override
+        public int get(DBNation nation) {
+            return MilitaryUnit.SOLDIER.getMaxMMRCap(
+                    nation.getCities(),
+                    nation.getResearchBits(null),
+                    nation::hasProject
+            );
+        }
+    },
+    TANK_CAPACITY(null, true) {
+        @Override
+        public int get(DBNation nation) {
+            return MilitaryUnit.TANK.getMaxMMRCap(
+                    nation.getCities(),
+                    nation.getResearchBits(null),
+                    nation::hasProject
+            );
+        }
+    },
+    AIRCRAFT_CAPACITY(null, true) {
+        @Override
+        public int get(DBNation nation) {
+            return MilitaryUnit.AIRCRAFT.getMaxMMRCap(
+                    nation.getCities(),
+                    nation.getResearchBits(null),
+                    nation::hasProject
+            );
+        }
+    },
+    SHIP_CAPACITY(null, true) {
+        @Override
+        public int get(DBNation nation) {
+            return MilitaryUnit.SHIP.getMaxMMRCap(
+                    nation.getCities(),
+                    nation.getResearchBits(null),
+                    nation::hasProject
+            );
+        }
+    },
     SOLDIER(MilitaryUnit.SOLDIER, false),
     TANK(MilitaryUnit.TANK, false),
     AIRCRAFT(MilitaryUnit.AIRCRAFT, false),

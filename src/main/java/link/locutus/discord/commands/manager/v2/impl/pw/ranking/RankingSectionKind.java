@@ -3,6 +3,9 @@ package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 public enum RankingSectionKind {
     ALLIANCES,
     NATIONS,
+    INCENTIVE_REFERRERS,
+    INCENTIVE_INTERVIEWERS,
+    INCENTIVE_MENTORS,
     VICTORIES,
     LOSSES,
     EXPIRED,

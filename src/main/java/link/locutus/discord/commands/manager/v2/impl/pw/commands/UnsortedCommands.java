@@ -35,7 +35,9 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.OffshoreRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.NationRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.OffshoreRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -2733,39 +2735,12 @@ public class UnsortedCommands {
             @Range(min = 1, max = 365) int days,
             @Switch("f") boolean upload_file) {
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
-
-        Map<Integer, Long> aaCount = new HashMap<>();
-        Map<Integer, Long> aaCount1City = new HashMap<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
-        for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
-            int aaId = entry.getValue().getAlliance_id();
-            aaCount.put(aaId, 1 + aaCount.getOrDefault(aaId, 0L));
-            if (entry.getValue().getCities() == 1) {
-                aaCount1City.put(aaId, 1 + aaCount1City.getOrDefault(aaId, 0L));
-            }
-        }
-        aaCount.entrySet().removeIf(e -> e.getValue() > 2);
-        for (Map.Entry<Integer, Long> entry : aaCount.entrySet()) {
-            List<Transaction2> transfers = Locutus.imp().getBankDB().getAllianceTransfers(entry.getKey(), cutoffMs);
-            long sum = 0;
-            for (Transaction2 value : transfers) {
-                if (value.banker_nation == value.getReceiver())
-                    continue;
-                DBNation nation = nations.get((int) value.getReceiver());
-                if (nation == null)
-                    continue;
-                if (nation.getAlliance_id() == value.getSender())
-                    continue;
-                sum += (long) Math.abs(ResourceType.convertedTotal(value.resources));
-            }
-            entry.setValue(sum);
-        }
-
-        new SummedMapRankBuilder<>(aaCount)
-                .sort()
-                .nameKeys(f -> DBAlliance.getOrCreate(f).toShrink())
-                .limit(10)
-                .build(author, io, command, "Prolific Offshores (" + days + " days)", upload_file);
+        DiscordRankingAdapter.send(
+                io,
+                command,
+                OffshoreRankingService.prolificOffshoreRanking(OffshoreRankingRequests.prolific(cutoffMs)),
+                new DiscordRankingAdapter.RenderOptions(10, upload_file, author)
+        );
 
         return null;
     }

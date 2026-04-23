@@ -569,6 +569,61 @@ public class BlitzGenerator {
 
     }
 
+    /**
+     * Produces an assignment using the sim-based {@link link.locutus.discord.sim.planners.BlitzPlanner}.
+     *
+     * <p>This replaces the core heuristic in {@link #assignTargets()}.
+     * Sheet parsing ({@link #getTargets}) stays untouched; only the assignment step is replaced.
+     * The old {@link #assignTargets()} is preserved for callers not yet migrated.</p>
+     *
+     * @param tuning sim tuning (pass {@link link.locutus.discord.sim.SimTuning#defaults()} for defaults)
+     * @return attackerId → list of defenderIds assignment
+     */
+    public Map<DBNation, List<DBNation>> assignTargetsViaSim(link.locutus.discord.sim.SimTuning tuning) {
+        init();
+
+        List<link.locutus.discord.sim.planners.DBNationSnapshot> attackerSnaps = new ArrayList<>();
+        List<link.locutus.discord.sim.planners.DBNationSnapshot> defenderSnaps = new ArrayList<>();
+        Map<Integer, DBNation> nationById = new HashMap<>();
+
+        attackerSnaps.addAll(link.locutus.discord.sim.planners.DBNationSnapshot.of(colA, Map.of()));
+        for (DBNation nation : colA) {
+            nationById.put(nation.getNation_id(), nation);
+        }
+        defenderSnaps.addAll(link.locutus.discord.sim.planners.DBNationSnapshot.of(colB, Map.of()));
+        for (DBNation nation : colB) {
+            nationById.put(nation.getNation_id(), nation);
+        }
+
+        link.locutus.discord.sim.planners.TreatyProvider treaties = link.locutus.discord.sim.planners.TreatyProvider.sameAlliance(
+                nId -> {
+                    DBNation n = nationById.get(nId);
+                    return n == null ? 0 : n.getAlliance_id();
+                });
+
+        link.locutus.discord.sim.planners.BlitzPlanner planner = new link.locutus.discord.sim.planners.BlitzPlanner(
+                tuning, treaties, link.locutus.discord.sim.planners.OverrideSet.EMPTY,
+                new link.locutus.discord.sim.DamageObjective());
+
+        link.locutus.discord.sim.planners.BlitzAssignment result = planner.assign(attackerSnaps, defenderSnaps);
+
+        // Convert nationId-keyed result back to DBNation
+        Map<DBNation, List<DBNation>> assignment = new LinkedHashMap<>();
+        for (Map.Entry<Integer, List<Integer>> entry : result.assignment().entrySet()) {
+            DBNation attacker = nationById.get(entry.getKey());
+            if (attacker == null) continue;
+            List<DBNation> targets = new ArrayList<>();
+            for (int defId : entry.getValue()) {
+                DBNation def = nationById.get(defId);
+                if (def != null) targets.add(def);
+            }
+            if (!targets.isEmpty()) {
+                assignment.put(attacker, targets);
+            }
+        }
+        return assignment;
+    }
+
     public Map<DBNation, List<DBNation>> assignTargets() {
         init();
 

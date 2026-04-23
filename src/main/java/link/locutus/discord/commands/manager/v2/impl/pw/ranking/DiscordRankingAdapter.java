@@ -10,6 +10,7 @@ import link.locutus.discord.util.RateLimitedSources;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -40,6 +41,18 @@ public final class DiscordRankingAdapter {
         boolean attachFile = false;
 
         String baseTitle = resolveTitle(command, result);
+        if (result.sectionRanges().isEmpty()) {
+            message.embed(baseTitle, "No rows.");
+            if (options != null && options.mentionUser() != null) {
+                message.append("\n" + options.mentionUser().getAsMention());
+            }
+            if (command != null) {
+                message.commandButton(CommandBehavior.DELETE_MESSAGE, null, command.toString(), "Refresh");
+            }
+            message.send(RateLimitedSources.COMMAND_RESULT);
+            return;
+        }
+
         for (int sectionIndex = 0; sectionIndex < result.sectionRanges().size(); sectionIndex++) {
             String title = result.sectionRanges().size() == 1
                     ? baseTitle
@@ -88,11 +101,11 @@ public final class DiscordRankingAdapter {
             lines.add(renderRow(result, section.rowOffset() + i, i));
         }
 
-        Set<Long> highlights = new LinkedHashSet<>(result.highlightedKey1Ids());
+        Set<Long> highlights = new LinkedHashSet<>(result.highlightedIds());
         boolean addedEllipsis = false;
         for (int i = rowLimit; i < section.rowCount(); i++) {
-            long key1Id = result.key1Ids().get(section.rowOffset() + i);
-            if (!highlights.contains(key1Id)) {
+            long keyId = result.keyIds().get(section.rowOffset() + i);
+            if (!highlights.contains(keyId)) {
                 continue;
             }
             if (!addedEllipsis) {
@@ -114,15 +127,18 @@ public final class DiscordRankingAdapter {
     }
 
     private static String renderRow(RankingResult result, int globalRowIndex, int sectionRowIndex) {
+        boolean multipleColumns = result.valueColumns().size() > 1;
         List<String> renderedValues = new ArrayList<>(result.valueColumns().size());
         for (RankingValueColumn column : result.valueColumns()) {
-            double value = column.values().get(globalRowIndex);
-            renderedValues.add(renderNumeric(value, column.format()));
+            BigDecimal value = column.values().get(globalRowIndex);
+            String renderedNumeric = renderNumeric(value, column.format());
+            String label = multipleColumns ? renderValueLabel(column.kind()) : null;
+            renderedValues.add(label == null ? renderedNumeric : label + " " + renderedNumeric);
         }
 
-        long key1Id = result.key1Ids().get(globalRowIndex);
-        String line = (sectionRowIndex + 1) + ". " + entityMarkup(result.key1Type(), key1Id) + ": " + String.join(" | ", renderedValues);
-        return result.highlightedKey1Ids().contains(key1Id) ? "**" + line + "**" : line;
+        long keyId = result.keyIds().get(globalRowIndex);
+        String line = (sectionRowIndex + 1) + ". " + entityMarkup(result.keyType(), keyId) + ": " + String.join(" | ", renderedValues);
+        return result.highlightedIds().contains(keyId) ? "**" + line + "**" : line;
     }
 
     private static String entityMarkup(RankingEntityType entityType, long entityId) {
@@ -142,10 +158,10 @@ public final class DiscordRankingAdapter {
         return entityType.name().toLowerCase(Locale.ROOT) + ":" + entityId;
     }
 
-    private static String renderNumeric(double numeric, RankingValueFormat format) {
+    private static String renderNumeric(BigDecimal numeric, RankingValueFormat format) {
         return switch (format) {
             case MONEY -> "$" + formatDecimal(numeric);
-            case PERCENT -> formatDecimal(numeric * 100d) + "%";
+            case PERCENT -> formatDecimal(numeric.multiply(BigDecimal.valueOf(100L))) + "%";
             case COUNT -> formatInteger(numeric);
             case NUMBER -> formatDecimal(numeric);
         };
@@ -153,6 +169,14 @@ public final class DiscordRankingAdapter {
 
     private static String renderSectionLabel(RankingSectionKind kind) {
         return humanize(kind.name());
+    }
+
+    private static String renderValueLabel(RankingValueKind kind) {
+        return switch (kind) {
+            case PRIMARY -> null;
+            case AMOUNT -> "Amt";
+            case PRICE_PER_UNIT -> "PPU";
+        };
     }
 
     private static String resolveTitle(JSONObject command, RankingResult result) {
@@ -181,20 +205,15 @@ public final class DiscordRankingAdapter {
         return words.isEmpty() ? value : String.join(" ", words);
     }
 
-    private static String formatInteger(double value) {
+    private static String formatInteger(BigDecimal value) {
         return INT_FORMAT.get().format(value);
     }
 
-    private static String formatDecimal(double value) {
-        if (isWholeNumber(value)) {
-            return INT_FORMAT.get().format(Math.rint(value));
+    private static String formatDecimal(BigDecimal value) {
+        BigDecimal stripped = value.stripTrailingZeros();
+        if (stripped.scale() <= 0) {
+            return INT_FORMAT.get().format(stripped);
         }
         return DECIMAL_FORMAT.get().format(value);
-    }
-
-    private static boolean isWholeNumber(double value) {
-        double nearestInteger = Math.rint(value);
-        double reference = nearestInteger == 0d ? 1d : Math.abs(nearestInteger);
-        return Math.abs(value - nearestInteger) <= Math.ulp(reference) * 4d;
     }
 }

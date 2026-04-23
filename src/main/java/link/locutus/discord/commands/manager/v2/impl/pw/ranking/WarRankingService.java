@@ -149,11 +149,11 @@ public final class WarRankingService {
             parser.addFilter((war, attack) -> !parser.getIsPrimary().apply(war));
         }
 
-        IntSet warAllianceIds = request.warAllianceIds().isEmpty() ? null : new IntOpenHashSet(request.warAllianceIds());
+        IntSet allowedAllianceIds = request.warAllianceIds().isEmpty() ? null : new IntOpenHashSet(request.warAllianceIds());
 
         Map<Integer, DBWar> wars = parser.getWars();
         Map<Integer, Integer> warsByGroup = request.scalePerWar()
-                ? countWarsByGroup(wars.values(), request.groupByAlliance(), warAllianceIds)
+                ? countWarsByGroup(wars.values(), request.groupByAlliance(), allowedAllianceIds)
                 : Map.of();
         Map<Integer, Integer> allianceCityCountCache = request.scalePerCity() && request.groupByAlliance()
                 ? new HashMap<>()
@@ -176,10 +176,10 @@ public final class WarRankingService {
         parser.getAttacks().accept((war, attack) -> {
             if (request.onlyRankCoalition1()) {
                 boolean isPrimary = parser.getIsPrimary().apply(war);
-                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, isPrimary, attackValueFunc, warAllianceIds);
+                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, isPrimary, attackValueFunc, allowedAllianceIds);
             } else {
-                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, true, attackValueFunc, warAllianceIds);
-                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, false, attackValueFunc, warAllianceIds);
+                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, true, attackValueFunc, allowedAllianceIds);
+                addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, false, attackValueFunc, allowedAllianceIds);
             }
         });
 
@@ -349,16 +349,9 @@ public final class WarRankingService {
             AbstractCursor attack,
             boolean attackerSide,
             TriFunction<Boolean, DBWar, AbstractCursor, Double> attackValueFunc,
-            IntSet warAllianceIds
+            IntSet allowedAllianceIds
     ) {
-        if (!matchesWarAllianceFilter(war, warAllianceIds)) {
-            return;
-        }
-
-        int entityId = request.groupByAlliance()
-                ? attackerSide ? war.getAttacker_aa() : war.getDefender_aa()
-                : attackerSide ? war.getAttacker_id() : war.getDefender_id();
-
+        int entityId = rankedEntityId(war, request.groupByAlliance(), attackerSide, allowedAllianceIds);
         if (entityId == 0) {
             return;
         }
@@ -424,31 +417,37 @@ public final class WarRankingService {
         return RankingValueFormat.MONEY;
     }
 
-    private static Map<Integer, Integer> countWarsByGroup(Iterable<DBWar> wars, boolean groupByAlliance, IntSet warAllianceIds) {
+    static Map<Integer, Integer> countWarsByGroup(Iterable<DBWar> wars, boolean groupByAlliance, IntSet allowedAllianceIds) {
         Int2IntOpenHashMap counts = new Int2IntOpenHashMap();
         for (DBWar war : wars) {
-            if (!matchesWarAllianceFilter(war, warAllianceIds)) {
-                continue;
+            int attackerEntityId = rankedEntityId(war, groupByAlliance, true, allowedAllianceIds);
+            if (attackerEntityId != 0) {
+                counts.merge(attackerEntityId, 1, Integer::sum);
             }
-            if (groupByAlliance) {
-                counts.merge(war.getAttacker_aa(), 1, Integer::sum);
-                counts.merge(war.getDefender_aa(), 1, Integer::sum);
-            } else {
-                counts.merge(war.getAttacker_id(), 1, Integer::sum);
-                counts.merge(war.getDefender_id(), 1, Integer::sum);
+            int defenderEntityId = rankedEntityId(war, groupByAlliance, false, allowedAllianceIds);
+            if (defenderEntityId != 0) {
+                counts.merge(defenderEntityId, 1, Integer::sum);
             }
         }
         return counts;
     }
 
-    private static boolean matchesWarAllianceFilter(DBWar war, IntSet warAllianceIds) {
-        if (warAllianceIds == null || warAllianceIds.isEmpty()) {
+    static int rankedEntityId(DBWar war, boolean groupByAlliance, boolean attackerSide, IntSet allowedAllianceIds) {
+        if (!matchesAllowedAllianceSide(war, attackerSide, allowedAllianceIds)) {
+            return 0;
+        }
+        int allianceId = attackerSide ? war.getAttacker_aa() : war.getDefender_aa();
+        return groupByAlliance
+                ? allianceId
+                : attackerSide ? war.getAttacker_id() : war.getDefender_id();
+    }
+
+    static boolean matchesAllowedAllianceSide(DBWar war, boolean attackerSide, IntSet allowedAllianceIds) {
+        if (allowedAllianceIds == null || allowedAllianceIds.isEmpty()) {
             return true;
         }
-        int attackerAllianceId = war.getAttacker_aa();
-        int defenderAllianceId = war.getDefender_aa();
-        return (attackerAllianceId != 0 && warAllianceIds.contains(attackerAllianceId))
-                || (defenderAllianceId != 0 && warAllianceIds.contains(defenderAllianceId));
+        int allianceId = attackerSide ? war.getAttacker_aa() : war.getDefender_aa();
+        return allianceId != 0 && allowedAllianceIds.contains(allianceId);
     }
 
     private static int allianceMemberCount(int allianceId, boolean ignoreInactiveNations) {

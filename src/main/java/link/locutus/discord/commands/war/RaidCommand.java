@@ -24,6 +24,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
@@ -438,8 +439,7 @@ public class RaidCommand extends Command {
             return 0;
         }
 
-        double ratio = ((attackerScore * 10000) / allianceScore) / 2d;
-        double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
+        double percent = WarOutcomeMath.expectedAllianceLootPercent(attackerScore, allianceScore);
         double convertedTotal = 0;
         for (ResourceType type : ResourceType.values) {
             double amt = aaLoot.getTotal_rss()[type.ordinal()];

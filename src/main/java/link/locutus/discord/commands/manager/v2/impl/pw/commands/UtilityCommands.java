@@ -36,8 +36,10 @@ import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.OffshoreRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RecruitmentRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.OffshoreRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.RecruitmentRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
@@ -399,37 +401,14 @@ public class UtilityCommands {
     public static String findOffshore(@Me IMessageIO channel, @Me JSONObject command, @AllowDeleted DBAlliance alliance,
             @Default @Timestamp Long cutoffMs,
             @Switch("c") @Arg("Display the transfer count instead of value") boolean transfer_count) {
-        if (cutoffMs == null)
-            cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(200);
-
-        List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
-        long now = System.currentTimeMillis();
-        transactions.removeIf(t -> {
-            DBNation nation = DBNation.getById((int) t.getReceiver());
-            return nation == null || t.getDate() > now || t.getSender() == alliance.getAlliance_id()
-                    || nation.getAlliance_id() != alliance.getAlliance_id() || t.isLootTransfer();
-        });
-        Map<Integer, Integer> numTransactions = new HashMap<>();
-        Map<Integer, Double> valueTransferred = new HashMap<>();
-
-        for (Transaction2 t : transactions) {
-            numTransactions.put((int) t.getSender(), numTransactions.getOrDefault((int) t.getSender(), 0) + 1);
-
-            double value = ResourceType.convertedTotal(t.resources);
-
-            valueTransferred.put((int) t.getSender(), valueTransferred.getOrDefault((int) t.getSender(), 0d) + value);
-        }
-
-        new SummedMapRankBuilder<>(numTransactions).sort().name(new Function<Map.Entry<Integer, Integer>, IShrink>() {
-            @Override
-            public IShrink apply(Map.Entry<Integer, Integer> e) {
-                Number value = transfer_count ? e.getValue() : valueTransferred.getOrDefault(e.getKey(), 0d);
-                IShrink key = DBAlliance.getOrCreate(e.getKey()).toShrink();
-                key.append(": $" + MathMan.format(value));
-                return key;
-            }
-        }).build(channel, command, "Potential offshores", true);
-
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                OffshoreRankingService.potentialOffshoreRanking(
+                        OffshoreRankingRequests.potential(alliance, cutoffMs, transfer_count)
+                ),
+                new DiscordRankingAdapter.RenderOptions(null, true, null)
+        );
         return null;
     }
 

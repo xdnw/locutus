@@ -1,23 +1,17 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 
 public record RankingValueColumn(
+        RankingValueKind kind,
         RankingValueFormat format,
-        List<Double> values
+    List<BigDecimal> values
 ) {
     public RankingValueColumn {
+        kind = Objects.requireNonNull(kind, "kind");
         format = Objects.requireNonNull(format, "format");
-        values = immutableList(values);
-    }
-
-    private static List<Double> immutableList(List<Double> source) {
-        if (source == null || source.isEmpty()) {
-            return List.of();
-        }
-        return Collections.unmodifiableList(new ArrayList<>(source));
+        values = RankingResultSupport.immutableList(values);
     }
 }

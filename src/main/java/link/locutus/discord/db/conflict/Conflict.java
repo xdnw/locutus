@@ -66,10 +66,19 @@ public class Conflict {
         final int aircraft;
         final int ship;
         final int spy;
+        final int soldierCap;
+        final int tankCap;
+        final int aircraftCap;
+        final int shipCap;
 
         NationSlice(DBNation nation) {
+            this(nation, nation.getResearchBits(null));
+        }
+
+        NationSlice(DBNation nation, int researchBits) {
             this.allianceId = nation.getAlliance_id();
-            this.cities = (byte) nation.getCities();
+            int cityCount = nation.getCities();
+            this.cities = (byte) cityCount;
             this.infra = (int) Math.round(nation.getInfra());
             this.beige = nation.isBeige();
             this.positionId = nation.getPositionEnum().id;
@@ -79,6 +88,10 @@ public class Conflict {
             this.aircraft = nation.getUnits(MilitaryUnit.AIRCRAFT);
             this.ship = nation.getUnits(MilitaryUnit.SHIP);
             this.spy = nation.getUnits(MilitaryUnit.SPIES);
+            this.soldierCap = MilitaryUnit.SOLDIER.getMaxMMRCap(cityCount, researchBits, nation::hasProject);
+            this.tankCap = MilitaryUnit.TANK.getMaxMMRCap(cityCount, researchBits, nation::hasProject);
+            this.aircraftCap = MilitaryUnit.AIRCRAFT.getMaxMMRCap(cityCount, researchBits, nation::hasProject);
+            this.shipCap = MilitaryUnit.SHIP.getMaxMMRCap(cityCount, researchBits, nation::hasProject);
         }
     }
 
@@ -378,6 +391,7 @@ public class Conflict {
             if (day < dayStart || day > dayEnd)
                 continue;
             Map<Integer, DBNationSnapshot> nations = parser.getNations(day, true);
+            Map<Integer, DBNationSnapshot> includedNations = new Int2ObjectOpenHashMap<>();
             for (Map.Entry<Integer, DBNationSnapshot> entry : nations.entrySet()) {
                 int nationId = entry.getKey();
                 DBNationSnapshot nation = entry.getValue();
@@ -391,7 +405,21 @@ public class Conflict {
                     if (window[0] == 0)
                         continue;
                 }
-                nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nationId, new NationSlice(nation));
+                includedNations.put(nationId, nation);
+            }
+            if (!includedNations.isEmpty()) {
+                long dayTurn = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
+                Map<Integer, Integer> researchByNation = Locutus.imp().getNationDB()
+                        .getResearch(includedNations.keySet(), dayTurn, true);
+                Map<Integer, NationSlice> slicesByNation = nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>());
+                for (Map.Entry<Integer, DBNationSnapshot> includedEntry : includedNations.entrySet()) {
+                    int nationId = includedEntry.getKey();
+                    DBNationSnapshot nation = includedEntry.getValue();
+                    slicesByNation.put(
+                            nationId,
+                            new NationSlice(nation, researchByNation.getOrDefault(nationId, 0))
+                    );
+                }
                 if (day > lastDay) {
                     lastDay = day;
                 }
@@ -418,8 +446,8 @@ public class Conflict {
 
         // save day data
         {
-            Map<Integer, Map<Byte, int[]>> col1ByAllianceByTier = new Int2ObjectOpenHashMap<>();
-            Map<Integer, Map<Byte, int[]>> col2ByAllianceByTier = new Int2ObjectOpenHashMap<>();
+            Map<Integer, Map<Byte, WarStatistics.DayTierMetrics>> col1ByAllianceByTier = new Int2ObjectOpenHashMap<>();
+            Map<Integer, Map<Byte, WarStatistics.DayTierMetrics>> col2ByAllianceByTier = new Int2ObjectOpenHashMap<>();
             for (Map.Entry<Long, Map<Integer, NationSlice>> entry : nationsByDay.entrySet()) {
                 long day = entry.getKey();
                 long dayStartTurn = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
@@ -439,15 +467,19 @@ public class Conflict {
                         continue;
                     if (window[2] != turnEnd && window[2] < dayStartTurn)
                         continue;
-                    Map<Integer, Map<Byte, int[]>> target = window[0] == 1 ? col1ByAllianceByTier : col2ByAllianceByTier;
-                    int[] agg = target
+                    Map<Integer, Map<Byte, WarStatistics.DayTierMetrics>> target = window[0] == 1 ? col1ByAllianceByTier : col2ByAllianceByTier;
+                    WarStatistics.DayTierMetrics agg = target
                             .computeIfAbsent(aaId, f -> new Byte2ObjectOpenHashMap<>())
-                            .computeIfAbsent(nation.cities, f -> new int[3]);
-                    agg[0]++;
-                    agg[1] += nation.infra;
+                            .computeIfAbsent(nation.cities, f -> new WarStatistics.DayTierMetrics());
+                    agg.nationCount++;
+                    agg.infra += nation.infra;
                     if (nation.beige) {
-                        agg[2]++;
+                        agg.beigeCount++;
                     }
+                    agg.soldierCapacity += nation.soldierCap;
+                    agg.tankCapacity += nation.tankCap;
+                    agg.aircraftCapacity += nation.aircraftCap;
+                    agg.shipCapacity += nation.shipCap;
                 }
                 col1Wars.updateDayTierGraph(manager, day, col1ByAllianceByTier, true, false);
                 col2Wars.updateDayTierGraph(manager, day, col2ByAllianceByTier, true, false);

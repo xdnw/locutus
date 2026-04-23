@@ -5,14 +5,20 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.nation.SimpleDBNation;
+import link.locutus.discord.sim.combat.AttackResolver;
+import link.locutus.discord.sim.combat.OddsModel;
+import link.locutus.discord.sim.combat.ProjectileDefenseMath;
+import link.locutus.discord.sim.combat.state.BasicCombatCityView;
+import link.locutus.discord.sim.combat.state.BasicCombatantView;
+import link.locutus.discord.sim.combat.state.BasicWarStateView;
+import link.locutus.discord.sim.combat.state.CombatantView;
+import link.locutus.discord.sim.combat.state.WarStateView;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.battle.CombatantViewAdapter;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class AttackCommands {
     @Command(aliases = "groundsim", desc = """
@@ -25,21 +31,35 @@ public class AttackCommands {
         if (defSoldiers != 0 && defSoldiersUnarmed != 0)
             return "You cannot defend with both armed and unarmed soldiers.";
 
-        double attStr = attSoldiers * 1.7_5 + attSoldiersUnarmed + attTanks * 40;
-        double defStr = defSoldiers * 1.7_5 + defSoldiersUnarmed + defTanks * 40;
+        boolean equipAttackerSoldiers = attSoldiers != 0;
+        boolean equipDefenderSoldiers = defSoldiers != 0;
+
+        CombatantView attacker = syntheticCombatant(1, attSoldiers + attSoldiersUnarmed, attTanks, 0, 0);
+        CombatantView defender = syntheticCombatant(2, defSoldiers + defSoldiersUnarmed, defTanks, 0, 0);
+
+        double[] oddsVector = AttackResolver.oddsVector(
+                attacker,
+                defender,
+                AttackType.GROUND,
+                BasicWarStateView.simple(WarType.RAID),
+                new AttackResolver.EngagementOptions(equipAttackerSoldiers, equipDefenderSoldiers),
+                OddsModel.DEFAULT
+        );
 
         StringBuilder response = new StringBuilder("**Ground**: " + attSoldiersUnarmed + "/" + attSoldiers + "/" + attTanks + " -> " + defSoldiersUnarmed + "/" + defSoldiers + "/" + defTanks);
-        if (defStr * 0.4 > attStr) {
+        if (oddsVector[SuccessType.UTTER_FAILURE.ordinal()] >= 0.999999d) {
             response.append("\n" + SuccessType.UTTER_FAILURE);
         } else {
-            for (int success = 0; success <= 3; success++) {
-                double odds = PW.getOdds(attStr, defStr, success);
+            for (SuccessType success : SuccessType.values) {
+                double odds = oddsVector[success.ordinal()];
                 if (odds <= 0) continue;
                 odds = Math.min(1, odds);
                 String pctStr = MathMan.format(odds * 100) + "%";
-                response.append("\n").append(SuccessType.values[success]).append("=").append(pctStr);
+                response.append("\n").append(success).append("=").append(pctStr);
             }
         }
+
+        double defStr = (equipDefenderSoldiers ? defSoldiers * 1.75d : defSoldiersUnarmed) + defTanks * 40d;
 
         int reqUnarmedIT = (int) Math.ceil(defStr * 3.4);
         int reqArmedIT = (int) Math.ceil(defStr * 3.4 / 1.7_5);
@@ -58,16 +78,25 @@ public class AttackCommands {
 
     @Command(aliases = {"airsim", "airstrikesim", "planesim"}, desc = "Simulate an airstrike with the given attacker and defender aircraft", viewable = true)
     public String airSim(int attAircraft, int defAircraft) {
-        double attStr = attAircraft;
-        double defStr = defAircraft;
+        CombatantView attacker = syntheticCombatant(1, 0, 0, attAircraft, 0);
+        CombatantView defender = syntheticCombatant(2, 0, 0, defAircraft, 0);
+
+        double[] oddsVector = AttackResolver.oddsVector(
+                attacker,
+                defender,
+                AttackType.AIRSTRIKE_AIRCRAFT,
+                BasicWarStateView.simple(WarType.RAID),
+                AttackResolver.EngagementOptions.defaults(),
+                OddsModel.DEFAULT
+        );
 
         StringBuilder response = new StringBuilder("**Airstrike**: " + attAircraft + " -> " + defAircraft);
-        for (int success = 0; success <= 3; success++) {
-            double odds = PW.getOdds(attStr, defStr, success);
+        for (SuccessType success : SuccessType.values) {
+            double odds = oddsVector[success.ordinal()];
             if (odds <= 0) continue;
             odds = Math.min(1, odds);
             String pctStr = MathMan.format(odds * 100) + "%";
-            response.append("\n").append(SuccessType.values[success]).append("=").append(pctStr);
+            response.append("\n").append(success).append("=").append(pctStr);
         }
 
         response.append("\n\nNote: For a guaranteed IT, you need 3.4x enemy strength.");
@@ -143,22 +172,6 @@ public class AttackCommands {
         }
         DBNation attacker = (selfIsDefender ? enemy : me).copy();
         DBNation defender = (selfIsDefender ? me : enemy).copy();
-        if (attacker_infra != null) {
-            attacker = new SimpleDBNation(((SimpleDBNation) attacker).getData()) {
-                @Override
-                public double maxCityInfra() {
-                    return attacker_infra;
-                }
-            };
-        }
-        if (defender_infra != null) {
-            defender = new SimpleDBNation(((SimpleDBNation) defender).getData()) {
-                @Override
-                public double maxCityInfra() {
-                    return defender_infra;
-                }
-            };
-        }
 
         if (attackerMilitary != null) {
             for (Map.Entry<MilitaryUnit, Long> entry : attackerMilitary.entrySet()) {
@@ -189,47 +202,50 @@ public class AttackCommands {
             }
         }
 
+        CombatantView attackerView = CombatantViewAdapter.of(attacker, attacker_infra == null ? null : attacker_infra.doubleValue());
+        CombatantView defenderView = CombatantViewAdapter.of(defender, defender_infra == null ? null : defender_infra.doubleValue());
+        AttackResolver.EngagementOptions options = new AttackResolver.EngagementOptions(
+                !unequipAttackerSoldiers,
+                !unequipDefenderSoldiers
+        );
+        WarStateView war = BasicWarStateView.ofRelative(
+                warType,
+                attAirControl,
+                defAirControl,
+                att_ground_control,
+                defFortified
+        );
+
         StringBuilder response = new StringBuilder();
         response.append("**" + attack.name() + "**: ");
 
-        DBNation finalDefender = defender;
-        BiFunction<MilitaryUnit, Integer, Double> getCost = (unit, amount) -> {
-            if (unit == MilitaryUnit.INFRASTRUCTURE) {
-                double start = finalDefender.maxCityInfra();
-                double end = Math.max(start - amount, 0);
-                return PW.City.Infra.calculateInfra(end, start);
-            }
-            return unit.getConvertedCost(f -> finalDefender.getResearch(null, f)) * amount;
-        };
-        Function<Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>>, String> getAvgStr = (entry) -> {
-            long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
-            MilitaryUnit unit = entry.getKey();
-            String avgValue = MathMan.format(getCost.apply(unit, (int) avg));
-            String avgStr = avg + " worth $" + avgValue;
-            return ("- " + entry.getKey().name()) + ("=") + ("`[" + entry.getValue().getKey()) + ("- ") + (entry.getValue().getValue()) + ("] (avg:" + avgStr + ")`\n");
-        };
-        Map<ResourceType, Double> attConsume = attack.getConsumption(attacker::getUnits, !unequipAttackerSoldiers);
-        double attConsumeValue = attConsume.entrySet().stream().mapToDouble(e -> e.getValue() * e.getKey().getMarketValue()).sum();
+        AttackResolver.AttackRanges immense = AttackResolver.rangesForSuccess(
+                attackerView,
+                defenderView,
+                war,
+                attack,
+                SuccessType.IMMENSE_TRIUMPH,
+                options,
+                OddsModel.DEFAULT
+        );
+        double[] attConsume = immense.consumption();
+        double attConsumeValue = ResourceType.convertedTotal(attConsume);
         response.append("Attacker Consumption (worth: ~$" + MathMan.format(attConsumeValue) + "):\n" +
-                "`" + ResourceType.toString(attConsume) + "`\n");
+            "`" + ResourceType.toString(attConsume) + "`\n");
 
         switch (attack) {
             case MISSILE, NUKE: {
                 response.append("\n");
                 Project project = attack == AttackType.NUKE ? Projects.VITAL_DEFENSE_SYSTEM : Projects.IRON_DOME;
                 if (defender.hasProject(project)) {
-                    response.append("Defender has project " + Projects.IRON_DOME.name() + " (30% interception)\n");
+                    double interceptionChance = ProjectileDefenseMath.interceptionChance(attack, defender::hasProject) * 100d;
+                    response.append("Defender has project " + project.name() + " ("
+                            + MathMan.format(interceptionChance)
+                            + "% interception)\n");
                 }
-                Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties
-                        = attack.getCasualties(attacker, defender, SuccessType.IMMENSE_TRIUMPH, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers, att_ground_control);
-                response.append("Attacker losses: ");
-                for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
-                    response.append(getAvgStr.apply(entry));
-                }
-                response.append("Defender losses: ");
-                for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
-                    response.append(getAvgStr.apply(entry));
-                }
+
+                appendLossRanges(response, "Attacker losses: ", attackerView, immense.attackerLossRanges());
+                appendLossRanges(response, "Defender losses: ", defenderView, immense.defenderLossRanges());
                 break;
             }
             case GROUND:
@@ -243,37 +259,33 @@ public class AttackCommands {
             case NAVAL_GROUND:
             case NAVAL_AIR:
             case NAVAL: {
-                double attStr = 0;
-                double defStr = 0;
                 if (attack == AttackType.GROUND) {
                     response.append(" (soldier: " + attacker.getSoldiers() + ", tanks: " + attacker.getTanks() +") -> (soldier: " + defender.getSoldiers() + ", tanks: " + defender.getTanks() + ")");
-                    attStr = attacker.getGroundStrength(!unequipAttackerSoldiers, defAirControl);
-                    defStr = defender.getGroundStrength(!unequipDefenderSoldiers, attAirControl);
                 } else {
                     MilitaryUnit unit = attack.getUnits()[0];
                     response.append(attacker.getUnits(unit) + " -> " + defender.getUnits(unit));
-                    attStr = attacker.getUnits(unit);
-                    defStr = defender.getUnits(unit);
                 }
                 response.append("\n");
 
+                double[] oddsVector = AttackResolver.oddsVector(attackerView, defenderView, attack, war, options, OddsModel.DEFAULT);
                 for (SuccessType success : SuccessType.values) {
-                    double odds = PW.getOdds(attStr, defStr, success.ordinal());
+                    double odds = oddsVector[success.ordinal()];
                     if (odds <= 0) continue;
                     odds = Math.min(1, odds);
                     String pctStr = MathMan.format(odds * 100) + "%";
                     response.append("\n").append(success.name()).append("=").append(pctStr).append("\n");
 
-                    Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties
-                            = attack.getCasualties(attacker, defender, success, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers, att_ground_control);
-                    response.append("Attacker losses: ");
-                    for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
-                        response.append(getAvgStr.apply(entry));
-                    }
-                    response.append("Defender losses: ");
-                    for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
-                        response.append(getAvgStr.apply(entry));
-                    }
+                    AttackResolver.AttackRanges ranges = AttackResolver.rangesForSuccess(
+                            attackerView,
+                            defenderView,
+                            war,
+                            attack,
+                            success,
+                            options,
+                            OddsModel.DEFAULT
+                    );
+                    appendLossRanges(response, "Attacker losses: ", attackerView, ranges.attackerLossRanges());
+                    appendLossRanges(response, "Defender losses: ", defenderView, ranges.defenderLossRanges());
                     response.append("\n");
                 }
                 break;
@@ -288,20 +300,95 @@ public class AttackCommands {
 
     @Command(aliases = {"shipSim", "navalSim"}, desc = "Simulate a naval battle with the given attacker and defender ships", viewable = true)
     public String navalSim(int attShips, int defShips) {
-        double attStr = attShips;
-        double defStr = defShips;
+        CombatantView attacker = syntheticCombatant(1, 0, 0, 0, attShips);
+        CombatantView defender = syntheticCombatant(2, 0, 0, 0, defShips);
+
+        double[] oddsVector = AttackResolver.oddsVector(
+                attacker,
+                defender,
+                AttackType.NAVAL,
+                BasicWarStateView.simple(WarType.RAID),
+                AttackResolver.EngagementOptions.defaults(),
+                OddsModel.DEFAULT
+        );
 
         StringBuilder response = new StringBuilder("**Naval**: " + attShips + " -> " + defShips);
-        for (int success = 0; success <= 3; success++) {
-            double odds = PW.getOdds(attStr, defStr, success);
+        for (SuccessType success : SuccessType.values) {
+            double odds = oddsVector[success.ordinal()];
             if (odds <= 0) continue;
             odds = Math.min(1, odds);
             String pctStr = MathMan.format(odds * 100) + "%";
-            response.append("\n- ").append(SuccessType.values[success]).append("=").append(pctStr);
+            response.append("\n").append(success).append("=").append(pctStr);
         }
 
         response.append("\n\nNote: For a guaranteed IT, you need 3.4x enemy strength");
 
         return response.toString();
+    }
+
+    private static void appendLossRanges(
+            StringBuilder response,
+            String header,
+            CombatantView owner,
+            Map<MilitaryUnit, Map.Entry<Integer, Integer>> ranges
+    ) {
+        response.append(header);
+        if (ranges == null || ranges.isEmpty()) {
+            response.append("none\n");
+            return;
+        }
+        for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : ranges.entrySet()) {
+            response.append(formatRange(owner, entry));
+        }
+    }
+
+    private static String formatRange(
+            CombatantView owner,
+            Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry
+    ) {
+        MilitaryUnit unit = entry.getKey();
+        int min = entry.getValue().getKey();
+        int max = entry.getValue().getValue();
+        long avg = Math.round((min + max) / 2d);
+        String avgValue = MathMan.format(lossValue(owner, unit, avg));
+        return "- " + unit.name() + "=`[" + min + " - " + max + "] (avg:" + avg + " worth $" + avgValue + ")`\n";
+    }
+
+    private static double lossValue(CombatantView owner, MilitaryUnit unit, long amount) {
+        if (amount <= 0) {
+            return 0d;
+        }
+        if (unit == MilitaryUnit.INFRASTRUCTURE) {
+            double start = owner.maxCityInfra();
+            double end = Math.max(0d, start - amount);
+            return PW.City.Infra.calculateInfra(end, start);
+        }
+        if (unit == MilitaryUnit.MONEY) {
+            return amount;
+        }
+        return owner.getUnitConvertedCost(unit) * amount;
+    }
+
+    private static CombatantView syntheticCombatant(
+            int nationId,
+            int soldiers,
+            int tanks,
+            int aircraft,
+            int ships
+    ) {
+        return BasicCombatantView.builder()
+                .nationId(nationId)
+                .cities(1)
+                .researchBits(0)
+                .unit(MilitaryUnit.SOLDIER, soldiers)
+                .unit(MilitaryUnit.TANK, tanks)
+                .unit(MilitaryUnit.AIRCRAFT, aircraft)
+                .unit(MilitaryUnit.SHIP, ships)
+                .capacity(MilitaryUnit.SOLDIER, soldiers)
+                .capacity(MilitaryUnit.TANK, tanks)
+                .capacity(MilitaryUnit.AIRCRAFT, aircraft)
+                .capacity(MilitaryUnit.SHIP, ships)
+                .city(BasicCombatCityView.ofInfra(2000d))
+                .build();
     }
 }

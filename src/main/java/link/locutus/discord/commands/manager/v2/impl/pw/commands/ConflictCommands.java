@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.conflict.CoalitionSide;
+import link.locutus.discord.db.conflict.ConflictStartDetector;
 import link.locutus.discord.db.conflict.CtownedFetcher;
 import link.locutus.discord.db.conflict.ConflictUtil;
 import link.locutus.discord.db.entities.*;
@@ -430,6 +431,98 @@ public class ConflictCommands {
         conflict.pushChanges(manager, null, true, false, true, false, true, System.currentTimeMillis());
         return "Set `" + conflict.getName() + "` start to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) +
                 "\nNote: this does not recalculate conflict data";
+    }
+
+    @Command(desc = """
+            Scan declared wars to find nearby candidate start turns for a conflict.
+
+            The trigger is distinct attacker nations declaring onto the opposing
+            coalition during a turn, not raw war count. A turn qualifies when at
+            least three distinct nations on one side declared that turn.
+
+            Without `force`, surfaces nearby qualifying turns plus declaration
+            totals and per-alliance sums, then issues a confirmation token that
+            applies the earliest surfaced candidate without re-detecting.
+            Does not load conflict war stats or push to the site.""")
+    public String detectConflictStart(ConflictManager manager, @Me JSONObject command, @Me IMessageIO io,
+            @Me DBNation me, @Me User user, @Me Guild guild, @Me GuildDB db, Conflict conflict,
+            @Switch("t") Integer turn_allowance, @Switch("f") boolean force,
+            @Switch("k") UUID token) {
+        requireConflictWritePerm(conflict, me, user, guild, db);
+        int allowance = turn_allowance == null ? 0 : Math.max(0, turn_allowance);
+        String conflictRef = conflict.isVirtual() ? getConflictWebId(conflict) : "#" + conflict.getId();
+        String currentStr = DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(conflict.getStartTurn()), null);
+
+        if (force) {
+            ConflictStartDetector.Candidate applied = ConflictStartDetector.resolveCandidate(conflict, token, null);
+            long appliedMs = applied.turnMs();
+            conflict.setStart(appliedMs);
+            return "Applied start turn " + applied.turn() + " (" + DiscordUtil.timestamp(appliedMs, null)
+                    + ") to `" + conflict.getName() + "` (" + conflictRef + ").\n"
+                    + "Previous start: " + currentStr + "\n"
+                    + "Declarations on applied turn: `" + applied.totalDeclarations() + "` total "
+                    + "(C1 `" + applied.coal1Declarations() + "` from `" + applied.coal1Nations() + "` nations, "
+                    + "C2 `" + applied.coal2Declarations() + "` from `" + applied.coal2Nations() + "` nations)\n"
+                    + "Note: this does NOT push the data to the site or recalculate conflict stats.";
+        }
+
+        ConflictStartDetector.Result result = ConflictStartDetector.detect(conflict, allowance);
+        String searchedStr = DiscordUtil.timestamp(result.searchedFromMs(), null);
+
+        if (result.candidates().isEmpty()) {
+            return "No candidates for `" + conflict.getName() + "` (" + conflictRef + ").\n"
+                    + "Current start: " + currentStr + "\n"
+                    + "Searched from: " + searchedStr + "\n"
+                    + "No turn within the window had at least `" + ConflictStartDetector.MIN_TRIGGER_NATIONS
+                    + "` distinct nations on one coalition declaring on the opposing coalition.";
+        }
+
+        UUID previewToken = ConflictStartDetector.createToken(conflict, result);
+        StringBuilder body = new StringBuilder();
+        body.append("Conflict: `").append(conflict.getName()).append("` (").append(conflictRef).append(")\n");
+        body.append("Current start: ").append(currentStr).append("\n");
+        body.append("Searched from: ").append(searchedStr).append("\n\n");
+        body.append("**Candidates** (qualifying turns within `")
+                .append(ConflictStartDetector.CANDIDATE_WINDOW_TURNS)
+                .append("` turns of the first hit):\n");
+        for (int i = 0; i < result.candidates().size(); i++) {
+            ConflictStartDetector.Candidate c = result.candidates().get(i);
+            body.append(i == 0 ? "• **" : "• ")
+                    .append(DiscordUtil.timestamp(c.turnMs(), null))
+                    .append(i == 0 ? "**" : "")
+                    .append(" (`turn ").append(c.turn()).append("`)")
+                    .append(" — ").append(c.totalDeclarations()).append(" declarations total")
+                    .append(" | C1: ").append(c.coal1Declarations()).append(" declarations from ")
+                    .append(c.coal1Nations()).append(" nations")
+                    .append(" | C2: ").append(c.coal2Declarations()).append(" declarations from ")
+                    .append(c.coal2Nations()).append(" nations\n");
+            appendAllianceBreakdown(body, manager, "  C1", c.coal1Alliances());
+            appendAllianceBreakdown(body, manager, "  C2", c.coal2Alliances());
+        }
+        body.append("\nConfirming will apply the first (earliest) candidate without recalculating.");
+
+        command.remove("token");
+        command.put("token", previewToken.toString());
+        command.put("force", "true");
+        io.create().confirmation("Detect conflict start", body.toString(), command)
+                .send(RateLimitedSources.COMMAND_RESULT);
+        return null;
+    }
+
+    private static void appendAllianceBreakdown(StringBuilder out, ConflictManager manager, String prefix,
+            List<ConflictStartDetector.AllianceSummary> byAlliance) {
+        if (byAlliance.isEmpty()) return;
+        out.append(prefix).append(": ");
+        boolean firstEntry = true;
+        for (ConflictStartDetector.AllianceSummary entry : byAlliance) {
+            if (!firstEntry) out.append(", ");
+            firstEntry = false;
+            String name = manager.getAllianceNameOrNull(entry.allianceId());
+            out.append(name == null ? ("AA:" + entry.allianceId()) : name)
+                    .append(" ").append(entry.declarations()).append(" decl / ")
+                    .append(entry.nations()).append(" nations");
+        }
+        out.append("\n");
     }
 
     @Command(desc = "Set the name of a conflict, or the name of a conflict's coalition")

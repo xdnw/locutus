@@ -35,11 +35,13 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.AllianceRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.BaseballRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.AllianceRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.BaseballRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.NationRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarStatusRankingRequests;
@@ -1055,48 +1057,23 @@ public class StatCommands {
     public void baseballRanking(BaseballDB db, @Me JSONObject command, @Me IMessageIO channel,
                                 @Arg("Date to start from")
                                 @Timestamp long date, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
-
-        Map<Integer, Integer> mostGames = new Int2IntOpenHashMap();
-        for (BBGame game : games) {
-            if (byAlliance) {
-                DBNation home = DBNation.getById(game.getHome_nation_id());
-                DBNation away = DBNation.getById(game.getAway_nation_id());
-                if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
-                if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
-            } else {
-                mostGames.merge(game.getHome_nation_id(), 1, Integer::sum);
-                mostGames.merge(game.getAway_nation_id(), 1, Integer::sum);
-            }
-        }
-
-        String title = "# BB Games (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.games(date, byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "Rank of nations by number of challenge baseball games", viewable = true)
     public void baseballChallengeRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                          @Arg("Group the rankings by alliance instead of nations") @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
-
-        Map<Integer, Integer> mostGames = new Int2IntOpenHashMap();
-        for (BBGame game : games) {
-            if (byAlliance) {
-
-                DBNation home = DBNation.getById(game.getHome_nation_id());
-                DBNation away = DBNation.getById(game.getAway_nation_id());
-                if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
-                if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
-            } else {
-                mostGames.merge(game.getHome_nation_id(), 1, Integer::sum);
-                mostGames.merge(game.getAway_nation_id(), 1, Integer::sum);
-            }
-        }
-
-        String title = "# Challenge BB Games";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.challengeGames(byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "List the baseball wager inflows for a nation id", viewable = true)
@@ -1137,56 +1114,24 @@ public class StatCommands {
                                         @Timestamp long date, @Switch("f") boolean uploadFile,
                                         @Arg("Group the rankings by alliance instead of nations")
                                         @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
-
-        Map<Integer, Long> mostWageredWinnings = new Int2LongOpenHashMap();
-        for (BBGame game : games) {
-            int id;
-            if (game.getHome_score() > game.getAway_score()) {
-                id = game.getHome_nation_id();
-
-            } else if (game.getAway_score() > game.getHome_score()) {
-                id = game.getAway_nation_id();
-            } else continue;
-            if (byAlliance) {
-                DBNation nation = DBNation.getById(id);
-                if (nation == null) continue;
-                id = nation.getAlliance_id();
-            }
-            mostWageredWinnings.merge(id, game.getSpoils().longValue(), Long::sum);
-        }
-
-        String title = "BB Earnings $ (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.earnings(date, byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "Rank of nations by challenge baseball challenge earnings", viewable = true)
     public void baseballChallengeEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                                  @Arg("Group the rankings by alliance instead of nations")
                                                  @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
-
-        Map<Integer, Long> mostWageredWinnings = new Int2LongOpenHashMap();
-        for (BBGame game : games) {
-            int id;
-            if (game.getHome_score() > game.getAway_score()) {
-                id = game.getHome_nation_id();
-
-            } else if (game.getAway_score() > game.getHome_score()) {
-                id = game.getAway_nation_id();
-            } else continue;
-            if (byAlliance) {
-                DBNation nation = DBNation.getById(id);
-                if (nation == null) continue;
-                id = nation.getAlliance_id();
-            }
-            mostWageredWinnings.merge(id, game.getWager().longValue(), Long::sum);
-        }
-
-        String title = "BB Challenge Earnings $";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.challengeEarnings(byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "Generate ranking of war status by Alliance", viewable = true)

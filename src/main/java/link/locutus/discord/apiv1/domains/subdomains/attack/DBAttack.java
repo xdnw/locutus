@@ -7,6 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -137,7 +138,7 @@ public class DBAttack {
             setLoot(new double[ResourceType.values.length]);
             setLoot(parseNationLoot(note, loot));
             setLooted(getAttacker_id());
-            setLootPercent(0.1);
+            setLootPercent(WarOutcomeMath.victoryNationLootPercent(1.0));
 
             String end = "% of the infrastructure in each of their cities.";
             String[] split = note.substring(0, note.length() - end.length()).split(" ");

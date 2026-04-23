@@ -429,73 +429,37 @@ public class WarCommands {
                         @Arg("The score range of the nation gathering intel")
                         @Switch("s") Double score) {
         DBNation finalNation = attacker == null ? me : attacker;
-        double finalScore = score == null ? finalNation.getScore() : score;
-        if (dnrTopX == null) {
-            dnrTopX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
-            if (dnrTopX == null) dnrTopX = 0;
+        if (finalNation == null) {
+            throw new IllegalArgumentException("Please sign in or provide an attacker nation");
         }
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
-
-        Set<Integer> allies = db.getAllies(true);
-
-        Function<DBNation, Boolean> raidList = db.getCanRaid(dnrTopX, true);
-        Set<Integer> enemyCoalitions = db.getCoalition("enemies");
-        Set<Integer> targetCoalitions = db.getCoalition("targets");
-
-        if (!ignoreDNR) {
-            enemies.removeIf(f -> !raidList.apply(f));
+        if (db == null) {
+            db = finalNation.getGuildDB();
         }
 
-        enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
-        enemies.removeIf(f -> f.active_m() < 4320);
-        enemies.removeIf(f -> f.getVm_turns() > 0);
-        enemies.removeIf(DBNation::isBeige);
-        if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
-        enemies.removeIf(f -> f.getDef() == 3);
-        enemies.removeIf(nation ->
-                nation.active_m() < 12000 &&
-                        nation.getGroundStrength(true, false) > finalNation.getGroundStrength(true, false) &&
-                        nation.getAircraft() > finalNation.getAircraft() &&
-                        nation.getShips() > finalNation.getShips() + 2);
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(30);
-        enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
+        Set<Integer> recentlySpiedNationIds = alreadySpied.entrySet().stream()
+                .filter(entry -> entry.getValue() > cutoff)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
 
-        if (false) {
-            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(finalNation.getAlliance_id()));
-            myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
-            BiFunction<Double, Double, Integer> range = PW.getIsNationsInScoreRange(myAlliance);
-            enemies.removeIf(f -> range.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
-        } else {
-            List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < finalScore * 0.75 || f.getScore() > finalScore * PW.WAR_RANGE_MAX_MODIFIER);
-            if (tmp.isEmpty()) {
-                enemies.removeIf(f -> !f.isInSpyRange(finalNation));
-            } else {
-                enemies = tmp;
-            }
-
+        SpyOpsService.IntelResult result = SpyOpsService.findIntelTargets(
+                finalNation,
+                db,
+                dnrTopX,
+                ignoreDNR,
+                score,
+                recentlySpiedNationIds,
+                1);
+        if (result.hasError()) {
+            return result.message();
         }
 
-        List<Map.Entry<DBNation, Double>> noData = new ArrayList<>();
-        List<Map.Entry<DBNation, Double>> outDated = new ArrayList<>();
-
-        for (DBNation enemy : enemies) {
-            Map.Entry<Double, Boolean> opValue = enemy.getIntelOpValue();
-            if (opValue != null) {
-                List<Map.Entry<DBNation, Double>> list = opValue.getValue() ? outDated : noData;
-                list.add(new KeyValue<>(enemy, opValue.getKey()));
-            }
-        }
-
-        Collections.sort(noData, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
-        Collections.sort(outDated, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
-        noData.addAll(outDated);
-        for (Map.Entry<DBNation, Double> entry : noData) {
-            DBNation nation = entry.getKey();
+        for (SpyOpsService.IntelRecommendation recommendation : result.recommendations()) {
+            DBNation nation = recommendation.target();
             alreadySpied.put(nation.getNation_id(), System.currentTimeMillis());
 
-            String title = "Gather Intelligence for: " + me.getNation();
+            String title = "Gather Intelligence for: " + finalNation.getNation();
             String response = nation.toEmbedString();
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";
@@ -1421,7 +1385,7 @@ public class WarCommands {
             
             e.g. `{prefix}spy find target targets:enemies operations:spies`""", viewable = true)
     @RolePermission(Roles.MEMBER)
-    public String Spyops(@Me @Default User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
+    public String spyops(@Me @Default User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
                          @Arg("The allowed targets")
                          Set<DBNation> targets,
                          @Arg("The allowed operations")
@@ -1433,14 +1397,11 @@ public class WarCommands {
                          @Arg("Prioritize by unit kills (including spies) instead of net damage")
                          @Switch("k") boolean prioritizeKills,
                          @Arg("The nation doing the spy operation\n" +
-                                 "Defaults to your nation")
-                         @Switch("n") DBNation attacker) throws ExecutionException, InterruptedException, IOException {
+                             "Defaults to your nation")
+                         @Switch("n") DBNation attacker) {
         DBNation finalNation = attacker == null ? me : attacker;
-
-        targets.removeIf(f -> f.active_m() > 2880);
-        targets.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         String title = "Recommended ops";
-        String body = runSpyOps(finalNation, db, targets, operations, requiredSuccess, prioritizeKills);
+                String body = runSpyOps(finalNation, db, targets, operations, requiredSuccess, prioritizeKills);
 
         if (directMesssage && author != null) {
             channel = DiscordChannelIO.privateOutput(author, RateLimitedSources.COMMAND_RESULT);
@@ -1453,153 +1414,9 @@ public class WarCommands {
         return null;
     }
 
-    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<Operation> operations, int requiredSuccess, boolean prioritizeKills) throws IOException {
-        double minSuccess = requiredSuccess > 0 ? requiredSuccess : 50;
-
-        if (me == null) {
-            return "Please use " + CM.register.cmd.toSlashMention();
-        }
-
-        boolean findOptimal = true;
-
-        Set<Integer> allies = new IntOpenHashSet();
-        Set<Integer> alliesCoalition = db.getCoalition("allies");
-        if (alliesCoalition != null) allies.addAll(alliesCoalition);
-        if (me.getAlliance_id() != 0) allies.add(me.getAlliance_id());
-        Set<Integer> aaIds = db.getAllianceIds();
-        allies.addAll(aaIds);
-
-        Set<Integer> myEnemies = me.getActiveWars().stream()
-                .map(dbWar -> dbWar.getAttacker_id() == me.getNation_id() ? dbWar.getDefender_id() : dbWar.getAttacker_id())
-                .collect(Collectors.toSet());
-
-        Function<DBNation, Boolean> isInSpyRange = nation -> me.isInSpyRange(nation) || myEnemies.contains(nation.getNation_id());
-
-        Function<Integer, Boolean> isInvolved = integer -> {
-            if (integer == me.getNation_id()) return true;
-            DBNation nation = Locutus.imp().getNationDB().getNationById(integer);
-            return nation != null && allies.contains(nation.getAlliance_id());
-        };
-
-        enemies.removeIf(nation -> {
-            if (!isInSpyRange.apply(nation)) return true;
-            if (nation.getVm_turns() > 0) return true;
-            if (nation.isEspionageFull()) return true;
-            return false;
-        });
-
-        if (enemies.isEmpty()) {
-            return "No nations found (1)";
-        }
-
-        int mySpies = me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
-        long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
-
-        List<Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
-
-        for (DBNation nation : enemies) {
-            Integer spies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, false);
-            if (spies == null) {
-                continue;
-            }
-            if (spies == -1) {
-                continue;
-            }
-            ArrayList<Operation> opTypesList = new ArrayList<>(operations);
-
-            if (spies == 0) opTypesList.remove(Operation.SPIES);
-            if (nation.getSoldiers() == 0) opTypesList.remove(Operation.SOLDIER);
-            if (nation.getTanks() == 0) opTypesList.remove(Operation.TANKS);
-            if (nation.getAircraft() == 0) opTypesList.remove(Operation.AIRCRAFT);
-            if (nation.getShips() == 0) opTypesList.remove(Operation.SHIPS);
-
-            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, f -> nation.getResearch(null, f));
-            if (opTypesList.contains(Operation.MISSILE) && nation.getMissiles() > 0 && nation.getMissiles() <= maxMissile) {
-                Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
-                if (!purchases.isEmpty()) opTypesList.remove(Operation.MISSILE);
-            }
-
-            int maxNukes = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, f -> nation.getResearch(null, f));
-            if (opTypesList.contains(Operation.NUKE) && nation.getNukes() > 0 && nation.getNukes() <= maxNukes) {
-                Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
-                if (!purchases.isEmpty()) opTypesList.remove(Operation.NUKE);
-            }
-            Operation[] opTypes = opTypesList.toArray(new Operation[0]);
-
-            Map.Entry<Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!prioritizeKills, mySpies, nation, me.hasProject(Projects.SPY_SATELLITE), opTypes);
-            if (best != null) {
-                double netDamageCost = best.getValue().getValue();
-                if (nation.hasProject(Projects.INTELLIGENCE_AGENCY)) {
-                    netDamageCost *= 2;
-                }
-                if (nation.hasProject(Projects.SPY_SATELLITE)) {
-                    netDamageCost *= 2;
-                }
-                best.getValue().setValue(netDamageCost);
-                netDamage.add(new KeyValue<>(nation, best));
-            }
-        }
-
-        Collections.sort(netDamage, (o1, o2) -> Double.compare(o2.getValue().getValue().getValue(), o1.getValue().getValue().getValue()));
-
-        if (netDamage.isEmpty()) {
-            return "No nations found (2)";
-        }
-
-        StringBuilder body = new StringBuilder("Results for " + me.getNation() + ":\n");
-        int nationCount = 0;
-
-        ArrayList<Map.Entry<DBNation, Runnable>> targets = new ArrayList<>();
-
-        for (Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
-            Map.Entry<Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
-            Operation op = opinfo.getKey();
-            Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();
-
-            DBNation nation = entry.getKey();
-            Integer safety = safetyDamage.getKey();
-            Double damage = safetyDamage.getValue();
-
-            int spiesUsed = mySpies;
-            if (op != Operation.SPIES) {
-                Integer enemySpies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, false);
-                spiesUsed = SpyCount.getRecommendedSpies(spiesUsed, enemySpies, safety, op, nation);
-            }
-
-            double kills = SpyCount.getKills(spiesUsed, nation, op, me.hasProject(Projects.SPY_SATELLITE));
-
-            Integer enemySpies = nation.getSpies();
-            double odds = SpyCount.getOdds(spiesUsed, enemySpies, safety, op, nation);
-            if (odds <= minSuccess) continue;
-
-            int finalSpiesUsed = spiesUsed;
-            Runnable task = new Runnable() {
-                @Override
-                public void run() {
-                    String nationUrl = PW.getMarkdownUrl(nation.getNation_id(), false);
-                    String allianceUrl = PW.getMarkdownUrl(nation.getAlliance_id(), true);
-                    body.append(nationUrl).append(" | ")
-                            .append(allianceUrl).append("\n");
-
-                    body.append("Op: " + op.name()).append("\n")
-                            .append("Safety: " + Safety.byId(safety)).append("\n")
-                            .append("Enemy \uD83D\uDD0E: " + nation.getSpies()).append("\n")
-                            .append("Attacker \uD83D\uDD0E: " + finalSpiesUsed).append("\n")
-                            .append("Dmg: $" + MathMan.format(damage)).append("\n")
-                            .append("Kills: " + MathMan.format(kills)).append("\n")
-                            .append("Success: " + MathMan.format(odds)).append("%\n\n")
-                    ;
-                }
-            };
-            targets.add(new KeyValue<>(nation, task));
-        }
-
-        targets.removeIf(f -> f.getKey().isEspionageFull());
-
-        for (int i = 0; i < Math.min(5, targets.size()); i++) {
-            targets.get(i).getValue().run();
-        }
-        return body.toString();
+    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<Operation> operations, int requiredSuccess, boolean prioritizeKills) {
+        SpyOpsService.SpyOpsResult result = SpyOpsService.findSpyOps(me, db, enemies, operations, requiredSuccess, prioritizeKills, 5);
+        return SpyOpsService.toDiscordBody(result);
     }
 
     @Command(desc = "Generate a sheet of raid targets", viewable = true)

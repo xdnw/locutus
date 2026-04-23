@@ -1,10 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import link.locutus.discord.apiv1.enums.WarCostMode;
-import link.locutus.discord.apiv1.enums.WarCostStat;
-import link.locutus.discord.db.entities.metric.AllianceMetric;
-import link.locutus.discord.web.commands.binding.value_types.WebRankingResult;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -39,7 +35,7 @@ class RankingWebAdapterFixtureTest {
                 12345L
         );
 
-        assertFixture("single-section-ranking.json", WebRankingAdapter.toWeb(result));
+        assertFixture("single-section-ranking.json", result);
     }
 
     @Test
@@ -57,10 +53,10 @@ class RankingWebAdapterFixtureTest {
                 54321L
         );
 
-        assertFixture("multi-section-ranking.json", WebRankingAdapter.toWeb(result));
+        assertFixture("multi-section-ranking.json", result);
     }
 
-    private void assertFixture(String fixtureName, WebRankingResult result) throws IOException {
+    private void assertFixture(String fixtureName, RankingResult result) throws IOException {
         String expected = readFixture(fixtureName).trim();
         String actual = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(result).replace("\r\n", "\n").trim();
         assertEquals(expected, actual);

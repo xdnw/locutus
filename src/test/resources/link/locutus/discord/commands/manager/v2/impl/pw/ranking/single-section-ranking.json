@@ -1,10 +1,9 @@
 {
   "kind" : "ALLIANCE_METRIC",
-  "key1Type" : "ALLIANCE",
-  "key2Type" : null,
-  "key1Ids" : [ 1, 2, 3 ],
-  "key2Ids" : [ ],
+  "keyType" : "ALLIANCE",
+  "keyIds" : [ 1, 2, 3 ],
   "valueColumns" : [ {
+    "kind" : "PRIMARY",
     "format" : "COUNT",
     "values" : [ 10.0, 10.0, 8.0 ]
   } ],
@@ -13,6 +12,6 @@
     "rowOffset" : 0,
     "rowCount" : 3
   } ],
-  "highlightedKey1Ids" : [ 3 ],
+  "highlightedIds" : [ 3 ],
   "asOfMs" : 12345
 }

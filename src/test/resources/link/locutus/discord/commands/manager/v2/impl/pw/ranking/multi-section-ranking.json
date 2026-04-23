@@ -1,10 +1,9 @@
 {
   "kind" : "WAR_STATUS",
-  "key1Type" : "NATION",
-  "key2Type" : null,
-  "key1Ids" : [ 11, 12, 13 ],
-  "key2Ids" : [ ],
+  "keyType" : "NATION",
+  "keyIds" : [ 11, 12, 13 ],
   "valueColumns" : [ {
+    "kind" : "PRIMARY",
     "format" : "COUNT",
     "values" : [ 3.0, 1.0, 2.0 ]
   } ],
@@ -21,6 +20,6 @@
     "rowOffset" : 2,
     "rowCount" : 1
   } ],
-  "highlightedKey1Ids" : [ 13 ],
+  "highlightedIds" : [ 13 ],
   "asOfMs" : 54321
 }

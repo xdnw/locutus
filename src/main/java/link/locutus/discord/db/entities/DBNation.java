@@ -325,6 +325,11 @@ public abstract class DBNation implements NationOrAlliance {
             cache.lastCheckUnitMS = timestamp;
     }
 
+    public int currentTurnUnitBuys(MilitaryUnit unit) {
+        DBNationCache cache = data()._cache();
+        return cache != null ? cache.currentTurnUnitBuys(unit) : 0;
+    }
+
     public String register(User user, GuildDB db, boolean isNewRegistration) {
         return register(user, db, isNewRegistration, null);
     }

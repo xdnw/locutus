@@ -11,7 +11,7 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PW;
+import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
 
@@ -105,16 +105,12 @@ public class VictoryCursor extends FailedCursor {
         if (infra_destroyed_value_cents > 0) {
             return infra_destroyed_value_cents * 0.01d;
         } else if (!city_infra_before_cents.isEmpty() && infra_percent_decimal > 0) {
-            double pct = (1 - infra_percent_decimal * 0.001);
-            for (Map.Entry<Integer, Integer> entry : city_infra_before_cents.entrySet()) {
-                int before = entry.getValue();
-                int after = (int) Math.round(before * pct);
-                if (after < before) {
-                    double value = PW.City.Infra.calculateInfra(after * 0.01, before * 0.01);
-                    infra_destroyed_cents += (before - after);
-                    infra_destroyed_value_cents += (value * 100);
-                }
-            }
+            WarOutcomeMath.VictoryInfraTotals totals = WarOutcomeMath.victoryInfraTotals(
+                    city_infra_before_cents.values(),
+                    infra_percent_decimal
+            );
+            infra_destroyed_cents = totals.infraDestroyedCents();
+            infra_destroyed_value_cents = totals.infraDestroyedValueCents();
         }
         return infra_destroyed_value_cents * 0.01;
     }
@@ -137,7 +133,7 @@ public class VictoryCursor extends FailedCursor {
         }
         city_infra_before_cents.clear();
         this.infra_destroyed_cents = (int) ArrayUtil.toCents(legacy.getInfra_destroyed());
-        infra_percent_decimal = (int) Math.round(legacy.infraPercent_cached * 1000);
+        infra_percent_decimal = WarOutcomeMath.victoryInfraPercentMilli(legacy.infraPercent_cached);
         infra_destroyed_value_cents = (long) ArrayUtil.toCents(legacy.getInfra_destroyed_value());
     }
 
@@ -155,8 +151,22 @@ public class VictoryCursor extends FailedCursor {
     public void load(WarAttack attack, WarDB db) {
         super.load(attack, db);
 
+        DBWar war = getWar(db);
         List<CityInfraDamage> infraBefore = attack.getCities_infra_before();
-        infra_percent_decimal = (int) (attack.getInfra_destroyed_percentage() * 1000);
+        infra_percent_decimal = WarOutcomeMath.victoryInfraPercentMilli(attack.getInfra_destroyed_percentage());
+        if (war != null) {
+            boolean winnerIsOriginalAttacker = war.getAttacker_id() == getAttacker_id();
+            DBNation winner = winnerIsOriginalAttacker ? war.getNation(true) : war.getNation(false);
+            DBNation loser = winnerIsOriginalAttacker ? war.getNation(false) : war.getNation(true);
+            infra_percent_decimal = WarOutcomeMath.victoryInfraPercentMilli(
+                WarOutcomeMath.victoryInfraPercent(
+                    winner == null ? 1.0 : winner.infraAttackModifier(AttackType.VICTORY),
+                    loser == null ? 1.0 : loser.infraDefendModifier(AttackType.VICTORY),
+                    war.getWarType(),
+                    winnerIsOriginalAttacker
+                )
+            );
+        }
         city_infra_before_cents.clear();
         infra_destroyed_value_cents = 0;
         infra_destroyed_cents = 0;
@@ -170,12 +180,14 @@ public class VictoryCursor extends FailedCursor {
             }
             for (CityInfraDamage cityInfraDamage : infraBefore) {
                 double before = cityInfraDamage.getInfrastructure();
-                double after = before * (1 - attack.getInfra_destroyed_percentage());
-                double value = PW.City.Infra.calculateInfra(after, before);
-                infra_destroyed_cents += (before - after) * 100;
-                infra_destroyed_value_cents += (value * 100);
-                city_infra_before_cents.put(cityInfraDamage.getId(), (int) (before * 100));
+                city_infra_before_cents.put(cityInfraDamage.getId(), Math.max(0, (int) Math.round(before * 100d)));
             }
+            WarOutcomeMath.VictoryInfraTotals totals = WarOutcomeMath.victoryInfraTotals(
+                    city_infra_before_cents.values(),
+                    infra_percent_decimal
+            );
+            infra_destroyed_cents = totals.infraDestroyedCents();
+            infra_destroyed_value_cents = totals.infraDestroyedValueCents();
         }
 
         // loot
@@ -200,23 +212,16 @@ public class VictoryCursor extends FailedCursor {
         }
 
         if (hasLoot) {
-            // get war
-            DBWar war = getWar(db);
-
             if (war != null) {
-                DBNation attacker = war.getNation(true);
-                DBNation defender = war.getNation(false);
-
-                double baseLoot = 0.1 * war.getWarType().lootModifier();
-                double modifier = 1;
-                if (attacker != null) {
-                    modifier += attacker.looterModifier(false) - 1;
-                }
-                if (defender != null) {
-                    modifier += defender.lootModifier() - 1;
-                }
-
-                loot_percent_cents = (int) Math.round(100 * baseLoot * modifier);
+                boolean winnerIsOriginalAttacker = war.getAttacker_id() == getAttacker_id();
+                DBNation winner = winnerIsOriginalAttacker ? war.getNation(true) : war.getNation(false);
+                DBNation loser = winnerIsOriginalAttacker ? war.getNation(false) : war.getNation(true);
+                loot_percent_cents = (int) Math.round(100 * WarOutcomeMath.victoryNationLootPercent(
+                        winner == null ? 1.0 : winner.looterModifier(false),
+                        loser == null ? 1.0 : loser.lootModifier(),
+                        war.getWarType(),
+                        winnerIsOriginalAttacker
+                ));
             }
 
         } else {
