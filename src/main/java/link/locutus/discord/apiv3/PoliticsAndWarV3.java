@@ -389,7 +389,9 @@ public class PoliticsAndWarV3 {
             } catch (HttpClientErrorException.Unauthorized e) {
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 try {
-                    if (badKey++ >= 4 || pool.size() <= 1) {
+                    boolean poolEmpty = pool.size() <= 1;
+                    if (poolEmpty || badKey++ >= 4) {
+                        if (poolEmpty) pair.deleteApiKey();
                         e.printStackTrace();
                         AlertUtil.error("Unauthorized", e);
                         rethrow(e, pair, false);
