@@ -78,6 +78,30 @@ class ConflictUtilTest {
         assertEquals(Arrays.asList(null, 9L), result.get(0).get(0).get(2));
     }
 
+    @Test
+    void toGraphMapPartStartsAllianceTimelineAtStartOffset() {
+        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data = new HashMap<>();
+        put(data, 10L, 7, 101, (byte) 1, 5L);
+        put(data, 12L, 7, 202, (byte) 2, 9L);
+
+        List<List<List<List<Long>>>> result = ConflictUtil.toGraphMapPart(
+                List.of(7),
+                data,
+                10L,
+                13L,
+                List.of(101, 202),
+                List.of((byte) 1, (byte) 2),
+                List.of(0, 2),
+                null
+        );
+
+        assertEquals(1, result.get(0).get(0).size());
+        assertEquals(Arrays.asList(5L, null), result.get(0).get(0).get(0));
+
+        assertEquals(1, result.get(0).get(1).size());
+        assertEquals(Arrays.asList(null, 9L), result.get(0).get(1).get(0));
+    }
+
     private static void put(
             Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
             long turn,

@@ -410,8 +410,12 @@ public class WarStatistics {
         long maxTurn = turnRange[1];
         Map<String, Object> turnRoot = new LinkedHashMap<>();
         turnRoot.put("range", List.of(minTurn, maxTurn));
-        List<Integer> turnStartOffsets = buildTimelineStartOffsets(allianceIds, minTurn, maxTurn, false);
-        List<Integer> turnEndOffsets = buildTimelineEndOffsets(allianceIds, minTurn, maxTurn, false);
+        List<Integer> turnStartOffsets = turnData.isEmpty()
+                ? null
+                : buildTimelineStartOffsets(allianceIds, minTurn, maxTurn, false);
+        List<Integer> turnEndOffsets = turnData.isEmpty()
+                ? null
+                : buildTimelineEndOffsets(allianceIds, minTurn, maxTurn, false);
         turnRoot.put("data", ConflictUtil.toGraphMapPart(metricsTurn, turnData, minTurn, maxTurn, allianceIds, citiesSorted, turnStartOffsets, turnEndOffsets));
         if (turnStartOffsets != null) {
             turnRoot.put("start_offsets", turnStartOffsets);
@@ -426,8 +430,12 @@ public class WarStatistics {
         long maxDay = dayRange[1];
         Map<String, Object> dayRoot = new LinkedHashMap<>();
         dayRoot.put("range", List.of(minDay, maxDay));
-        List<Integer> dayStartOffsets = buildTimelineStartOffsets(allianceIds, minDay, maxDay, true);
-        List<Integer> dayEndOffsets = buildTimelineEndOffsets(allianceIds, minDay, maxDay, true);
+        List<Integer> dayStartOffsets = dayData.isEmpty()
+                ? null
+                : buildTimelineStartOffsets(allianceIds, minDay, maxDay, true);
+        List<Integer> dayEndOffsets = dayData.isEmpty()
+                ? null
+                : buildTimelineEndOffsets(allianceIds, minDay, maxDay, true);
         dayRoot.put("data", ConflictUtil.toGraphMapPart(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted, dayStartOffsets, dayEndOffsets));
         if (dayStartOffsets != null) {
             dayRoot.put("start_offsets", dayStartOffsets);
