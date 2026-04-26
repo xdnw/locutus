@@ -1280,6 +1280,11 @@ public class ConflictManager {
                 });
     }
 
+    public void clearGraphRecalc(int conflictId) {
+        db.update("UPDATE conflicts SET " + RECALC_GRAPH + " = 0 WHERE id = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId));
+    }
+
     public void clearGraphData(ConflictMetric metric, int conflictId, boolean side, long turn) {
         db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND side = ? AND metric = ? AND turn = ?",
                 (ThrowingConsumer<PreparedStatement>) stmt -> {
@@ -1411,6 +1416,7 @@ public class ConflictManager {
             toInvalidate.add(HeaderGroup.GRAPH_DATA);
 
             flagGraphRecalc(conflict.getId());
+            conflict.markGraphsInvalid();
         }
         invalidateConflictRowCache(conflict.getId(), toInvalidate.toArray(new HeaderGroup[0]));
 

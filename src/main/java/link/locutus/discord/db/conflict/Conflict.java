@@ -634,7 +634,11 @@ public class Conflict {
                     recalcGraph = false;
                     try {
                         updateGraphsLegacy(ConflictManager.get());
+                        if (id > 0) {
+                            ConflictManager.get().clearGraphRecalc(id);
+                        }
                     } catch (IOException | ParseException e) {
+                        recalcGraph = true;
                         throw new RuntimeException(e);
                     }
                 }
@@ -1194,7 +1198,7 @@ public class Conflict {
         });
     }
 
-    private void markGraphsInvalid() {
+    void markGraphsInvalid() {
         this.recalcGraph = true;
     }
 

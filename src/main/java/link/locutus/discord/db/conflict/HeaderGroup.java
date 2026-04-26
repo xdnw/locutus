@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -333,8 +332,7 @@ public enum HeaderGroup {
                 for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
                     HeaderGroup group = entry.getKey();
                     boolean force = entry.getValue();
-                    byte[] groupBytes = group.getGroupBytes(manager, conflict.getId(), now, force, conflict, mapper);
-                    writeSerializedMapEntries(factory, out, groupBytes);
+                    group.writeGroupEntries(manager, conflict.getId(), now, force, conflict, mapper, factory, out);
                 }
                 out.writeNumberField("update_ms", now);
                 out.writeEndObject();
@@ -349,33 +347,46 @@ public enum HeaderGroup {
         }
     }
 
-    private byte[] getGroupBytes(
+    private void writeGroupEntries(
             ConflictManager manager,
             int conflictId,
             long now,
             boolean forceUpdate,
             Conflict conflict,
-            ObjectMapper mapper
+            ObjectMapper mapper,
+            JsonFactory factory,
+            JsonGenerator out
     ) throws IOException {
-        if (conflictId <= 0) {
-            return writeMsgpackBytes(mapper, this.write(manager, conflict));
-        }
-
-        if (!forceUpdate) {
+        if (!forceUpdate && conflictId > 0) {
             Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedMap =
                     manager.loadConflictRowCache(conflictId, Set.of(this));
             Map.Entry<Long, byte[]> cachedEntry = cachedMap.get(this);
             if (cachedEntry != null) {
-                return cachedEntry.getValue();
+                writeSerializedMapEntries(factory, out, cachedEntry.getValue());
+                return;
             }
         }
 
-        byte[] freshBytes = writeMsgpackBytes(mapper, this.write(manager, conflict));
+        Map<String, Object> freshData = this.write(manager, conflict);
+        writeMapEntries(out, freshData);
+
+        if (conflictId <= 0) {
+            return;
+        }
+
+        byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
         manager.saveConflictRowCache(conflictId, freshBytes, this, now);
-        return freshBytes;
     }
 
-    private static void writeSerializedMapEntries(JsonFactory factory, JsonGenerator out, byte[] mapBytes)
+    private static void writeMapEntries(JsonGenerator out, Map<String, Object> map)
+            throws IOException {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            out.writeFieldName(entry.getKey());
+            out.writeObject(entry.getValue());
+        }
+    }
+
+    static void writeSerializedMapEntries(JsonFactory factory, JsonGenerator out, byte[] mapBytes)
             throws IOException {
         try (JsonParser parser = factory.createParser(mapBytes)) {
             if (parser.nextToken() != JsonToken.START_OBJECT) {
