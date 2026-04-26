@@ -11,8 +11,6 @@ import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.jooby.JteUtil;
-import org.msgpack.core.MessagePack;
-import org.msgpack.core.MessagePacker;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -318,38 +316,41 @@ public enum HeaderGroup {
     ) {
         ObjectMapper mapper = JteUtil.getSerializer();
 
-        int totalFields = 1; // update_ms
-        for (HeaderGroup group : forceUpdate.keySet()) {
-            totalFields += group.getHeaders().size();
-        }
-
+        // Deep-merge each group's field map into a single combined payload so
+        // colliding keys (notably "coalitions" between PAGE_META/PAGE_STATS and
+        // between GRAPH_META/GRAPH_DATA) keep both sides' fields. Frontend
+        // types depend on this merged shape (see lc_stats_svelte types.Conflict
+        // and types.GraphCoalitionData).
+        Map<String, Object> combined = new Object2ObjectLinkedOpenHashMap<>();
         try {
+            for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
+                HeaderGroup group = entry.getKey();
+                boolean force = entry.getValue();
+                Map<String, Object> groupData = group.getGroupData(manager, conflict.getId(), now, force, conflict, mapper);
+                JteUtil.merge(combined, groupData);
+            }
+            combined.put("update_ms", now);
+
             ByteArrayOutputStream compressedOut = new ByteArrayOutputStream(16 * 1024);
             try (GZIPOutputStream gzipOut = new GZIPOutputStream(compressedOut, 1_048_576) {
                 {
                     def.setLevel(Deflater.BEST_COMPRESSION);
                 }
-            }; MessagePacker packer = MessagePack.newDefaultPacker(gzipOut)) {
-                packer.packMapHeader(totalFields);
-
-                for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
-                    HeaderGroup group = entry.getKey();
-                    boolean force = entry.getValue();
-                    byte[] groupBytes = group.getGroupBytes(manager, conflict.getId(), now, force, conflict, mapper);
-                    appendMapEntries(packer, groupBytes, group.getHeaders().size(), group);
-                }
-
-                packer.packString("update_ms");
-                packer.packLong(now);
+            }) {
+                // Single MessagePackGenerator at a time: avoids the
+                // jackson-dataformat-msgpack ThreadLocal buffer hijack between
+                // outer/inner generators. We already finished any inner cache
+                // serialization (writeMsgpackBytes) before this point.
+                mapper.writeValue(gzipOut, combined);
             }
-
             return compressedOut.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private byte[] getGroupBytes(
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> getGroupData(
             ConflictManager manager,
             int conflictId,
             long now,
@@ -362,57 +363,16 @@ public enum HeaderGroup {
                     manager.loadConflictRowCache(conflictId, Set.of(this));
             Map.Entry<Long, byte[]> cachedEntry = cachedMap.get(this);
             if (cachedEntry != null) {
-                return cachedEntry.getValue();
+                return mapper.readValue(cachedEntry.getValue(), Map.class);
             }
         }
 
         Map<String, Object> freshData = this.write(manager, conflict);
-        byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
 
         if (conflictId > 0) {
+            byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
             manager.saveConflictRowCache(conflictId, freshBytes, this, now);
         }
-        return freshBytes;
-    }
-
-    /**
-     * Strip the leading msgpack map header from {@code mapBytes} and stream the
-     * remaining {@code (key,value)} pairs through {@code packer}. The outer
-     * container's {@code packMapHeader} already reserved {@code expectedFields}
-     * slots for these entries.
-     */
-    static void appendMapEntries(MessagePacker packer, byte[] mapBytes, int expectedFields, HeaderGroup group)
-            throws IOException {
-        if (mapBytes == null || mapBytes.length == 0) {
-            throw new IOException("Group " + group + " produced empty msgpack bytes");
-        }
-        int b = mapBytes[0] & 0xFF;
-        int count;
-        int offset;
-        if ((b & 0xF0) == 0x80) {
-            count = b & 0x0F;
-            offset = 1;
-        } else if (b == 0xDE) {
-            if (mapBytes.length < 3) {
-                throw new IOException("Group " + group + " has truncated map16 header");
-            }
-            count = ((mapBytes[1] & 0xFF) << 8) | (mapBytes[2] & 0xFF);
-            offset = 3;
-        } else if (b == 0xDF) {
-            if (mapBytes.length < 5) {
-                throw new IOException("Group " + group + " has truncated map32 header");
-            }
-            count = ((mapBytes[1] & 0xFF) << 24) | ((mapBytes[2] & 0xFF) << 16)
-                    | ((mapBytes[3] & 0xFF) << 8) | (mapBytes[4] & 0xFF);
-            offset = 5;
-        } else {
-            throw new IOException("Group " + group + " bytes do not start with a msgpack map header (first byte=0x"
-                    + Integer.toHexString(b) + ")");
-        }
-        if (count != expectedFields) {
-            throw new IOException("Group " + group + " field-count mismatch: encoded=" + count
-                    + " expected=" + expectedFields);
-        }
-        packer.writePayload(mapBytes, offset, mapBytes.length - offset);
+        return freshData;
     }
 }
