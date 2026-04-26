@@ -1,9 +1,5 @@
 package link.locutus.discord.db.conflict;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -15,6 +11,8 @@ import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.jooby.JteUtil;
+import org.msgpack.core.MessagePack;
+import org.msgpack.core.MessagePacker;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -319,7 +317,11 @@ public enum HeaderGroup {
             long now
     ) {
         ObjectMapper mapper = JteUtil.getSerializer();
-        JsonFactory factory = mapper.getFactory();
+
+        int totalFields = 1; // update_ms
+        for (HeaderGroup group : forceUpdate.keySet()) {
+            totalFields += group.getHeaders().size();
+        }
 
         try {
             ByteArrayOutputStream compressedOut = new ByteArrayOutputStream(16 * 1024);
@@ -327,86 +329,90 @@ public enum HeaderGroup {
                 {
                     def.setLevel(Deflater.BEST_COMPRESSION);
                 }
-            }; JsonGenerator out = factory.createGenerator(gzipOut)) {
-                out.setCodec(mapper);
-                out.writeStartObject();
+            }; MessagePacker packer = MessagePack.newDefaultPacker(gzipOut)) {
+                packer.packMapHeader(totalFields);
+
                 for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
                     HeaderGroup group = entry.getKey();
                     boolean force = entry.getValue();
-                    group.writeGroupEntries(manager, conflict.getId(), now, force, conflict, mapper, factory, out);
+                    byte[] groupBytes = group.getGroupBytes(manager, conflict.getId(), now, force, conflict, mapper);
+                    appendMapEntries(packer, groupBytes, group.getHeaders().size(), group);
                 }
-                out.writeNumberField("update_ms", now);
-                out.writeEndObject();
+
+                packer.packString("update_ms");
+                packer.packLong(now);
             }
 
-            byte[] compressed = compressedOut.toByteArray();
-            System.out.println("Generated conflict " + conflict.getId() +
-                    " compressed=" + compressed.length + " (streamed msgpack)");
-            return compressed;
+            return compressedOut.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void writeGroupEntries(
+    private byte[] getGroupBytes(
             ConflictManager manager,
             int conflictId,
             long now,
             boolean forceUpdate,
             Conflict conflict,
-            ObjectMapper mapper,
-            JsonFactory factory,
-            JsonGenerator out
+            ObjectMapper mapper
     ) throws IOException {
         if (!forceUpdate && conflictId > 0) {
             Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedMap =
                     manager.loadConflictRowCache(conflictId, Set.of(this));
             Map.Entry<Long, byte[]> cachedEntry = cachedMap.get(this);
             if (cachedEntry != null) {
-                writeSerializedMapEntries(factory, out, cachedEntry.getValue());
-                return;
+                return cachedEntry.getValue();
             }
         }
 
         Map<String, Object> freshData = this.write(manager, conflict);
-        writeMapEntries(out, freshData);
-
-        if (conflictId <= 0) {
-            return;
-        }
-
         byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
-        manager.saveConflictRowCache(conflictId, freshBytes, this, now);
+
+        if (conflictId > 0) {
+            manager.saveConflictRowCache(conflictId, freshBytes, this, now);
+        }
+        return freshBytes;
     }
 
-    static void writeMapEntries(JsonGenerator out, Map<String, Object> map)
+    /**
+     * Strip the leading msgpack map header from {@code mapBytes} and stream the
+     * remaining {@code (key,value)} pairs through {@code packer}. The outer
+     * container's {@code packMapHeader} already reserved {@code expectedFields}
+     * slots for these entries.
+     */
+    static void appendMapEntries(MessagePacker packer, byte[] mapBytes, int expectedFields, HeaderGroup group)
             throws IOException {
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            out.writeFieldName(entry.getKey());
-            out.writeObject(entry.getValue());
+        if (mapBytes == null || mapBytes.length == 0) {
+            throw new IOException("Group " + group + " produced empty msgpack bytes");
         }
-    }
-
-    static void writeSerializedMapEntries(JsonFactory factory, JsonGenerator out, byte[] mapBytes)
-            throws IOException {
-        try (JsonParser parser = factory.createParser(mapBytes)) {
-            if (parser.nextToken() != JsonToken.START_OBJECT) {
-                throw new IOException("Cached part is not an object");
+        int b = mapBytes[0] & 0xFF;
+        int count;
+        int offset;
+        if ((b & 0xF0) == 0x80) {
+            count = b & 0x0F;
+            offset = 1;
+        } else if (b == 0xDE) {
+            if (mapBytes.length < 3) {
+                throw new IOException("Group " + group + " has truncated map16 header");
             }
-
-            while (parser.nextToken() != JsonToken.END_OBJECT) {
-                String fieldName = parser.currentName();
-                if (fieldName == null) {
-                    throw new IOException("Serialized object entry missing field name");
-                }
-
-                if (parser.nextToken() == null) {
-                    throw new IOException("Serialized object entry missing value");
-                }
-
-                out.writeFieldName(fieldName);
-                out.copyCurrentStructure(parser);
+            count = ((mapBytes[1] & 0xFF) << 8) | (mapBytes[2] & 0xFF);
+            offset = 3;
+        } else if (b == 0xDF) {
+            if (mapBytes.length < 5) {
+                throw new IOException("Group " + group + " has truncated map32 header");
             }
+            count = ((mapBytes[1] & 0xFF) << 24) | ((mapBytes[2] & 0xFF) << 16)
+                    | ((mapBytes[3] & 0xFF) << 8) | (mapBytes[4] & 0xFF);
+            offset = 5;
+        } else {
+            throw new IOException("Group " + group + " bytes do not start with a msgpack map header (first byte=0x"
+                    + Integer.toHexString(b) + ")");
         }
+        if (count != expectedFields) {
+            throw new IOException("Group " + group + " field-count mismatch: encoded=" + count
+                    + " expected=" + expectedFields);
+        }
+        packer.writePayload(mapBytes, offset, mapBytes.length - offset);
     }
 }
