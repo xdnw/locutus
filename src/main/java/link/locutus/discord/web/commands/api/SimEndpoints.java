@@ -210,11 +210,11 @@ public class SimEndpoints {
             throw new IllegalArgumentException("Nations cannot be on both blitz sides: " + overlap);
         }
 
-        Map<Integer, BlitzDraftEdit> editsByNationId = editsByNationId(request, attackerById, defenderById);
-        OverrideSet overrides = plannerOverrides(editsByNationId);
         Set<DBNation> allNations = new LinkedHashSet<>();
         allNations.addAll(attackers);
         allNations.addAll(defenders);
+        Map<Integer, BlitzDraftEdit> editsByNationId = editsByNationId(request, attackerById, defenderById);
+        OverrideSet overrides = plannerOverrides(editsByNationId, allNations, request.includeExistingWars());
         Map<Integer, Map<MilitaryUnit, Integer>> currentBuys = switch (BlitzRebuyMode.values()[request.rebuyModeOrdinal()]) {
             case CURRENT_BUYS -> Locutus.imp().getNationDB().getSimUnitBuysToday(allNations);
             case FULL_REBUYS -> Map.of();
@@ -263,11 +263,21 @@ public class SimEndpoints {
         );
     }
 
-    private static OverrideSet plannerOverrides(Map<Integer, BlitzDraftEdit> editsByNationId) {
+    private static OverrideSet plannerOverrides(
+            Map<Integer, BlitzDraftEdit> editsByNationId,
+            Collection<DBNation> allNations,
+            boolean includeExistingWars
+    ) {
         OverrideSet.Builder builder = OverrideSet.builder();
         for (BlitzDraftEdit edit : editsByNationId.values()) {
             if (edit.forceActive() != null) {
                 builder.active(edit.nationId(), edit.forceActive() ? ActiveOverride.TRUE : ActiveOverride.FALSE);
+            }
+        }
+        if (!includeExistingWars) {
+            for (DBNation nation : allNations) {
+                builder.forceFreeOff(nation.getNation_id(), nation.getMaxOff());
+                builder.forceFreeDefSlots(nation.getNation_id(), WarSlotRules.defensiveSlotCap());
             }
         }
         return builder.build();

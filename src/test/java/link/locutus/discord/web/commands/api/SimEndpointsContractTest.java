@@ -275,6 +275,38 @@ class SimEndpointsContractTest {
     }
 
     @Test
+    void blitzPlanRunIgnoresLiveWarSlotsWhenExistingWarsAreExcluded() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            DBNation attacker = nation(101, "Attacker", 1_000d);
+            attacker.setCities(10);
+            attacker.setAircraft(500);
+            DBNation defender = nation(202, "Defender", 1_000d);
+            defender.setCities(10);
+            defender.setAircraft(200);
+            for (int index = 0; index < attacker.getMaxOff(); index++) {
+                DBWar activeWar = new DBWar(9100 + index, 101, 301 + index, 1, 2, false, false, WarType.ORD, WarStatus.ACTIVE,
+                        System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1), 10, 10, 0);
+                warDb.saveWars(List.of(activeWar), true);
+                addActiveWar(warDb, activeWar);
+            }
+
+            BlitzPlannedWar plannedWar = new BlitzPlannedWar(101, 202, WarType.ORD.ordinal(), true);
+            BlitzPlanResponse response = SimEndpoints.runBlitzPlan(
+                    warDb,
+                    requestRun(new BlitzDraftEdit[0], new BlitzPlannedWar[]{plannedWar}, false, false),
+                    List.of(attacker),
+                    List.of(defender)
+            );
+
+            assertEquals(0, response.existingWars().length);
+            assertEquals(attacker.getMaxOff(), row(response, 101).freeOffensiveSlots());
+            assertEquals(1, response.assignments().length);
+            assertEquals(101, response.assignments()[0].declarerNationId());
+            assertEquals(202, response.assignments()[0].targetNationId());
+        });
+    }
+
+    @Test
         void blitzPlanRunEmitsReplayTraceWhenRequested() throws Exception {
         withFixture((nationDb, warDb) -> {
             DBNation attacker = nation(101, "Attacker", 1_000d);
@@ -446,8 +478,16 @@ class SimEndpointsContractTest {
     }
 
     private static BlitzPlanRequest requestRun(BlitzSideMode sideMode, BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace) {
+        return requestRun(sideMode, edits, plannedWars, captureTrace, true);
+    }
+
+    private static BlitzPlanRequest requestRun(BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace, boolean includeExistingWars) {
+        return requestRun(BlitzSideMode.ATTACKERS_ONLY, edits, plannedWars, captureTrace, includeExistingWars);
+    }
+
+    private static BlitzPlanRequest requestRun(BlitzSideMode sideMode, BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace, boolean includeExistingWars) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, sideMode.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, new int[0], true, captureTrace);
+                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, includeExistingWars, true, 1L, 5, new int[0], true, captureTrace);
     }
 
     private static BlitzPlanRequest requestRunWithHorizon(BlitzSideMode sideMode, BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace, int horizonTurns) {
