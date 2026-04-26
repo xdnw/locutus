@@ -290,6 +290,12 @@ public class WarStatistics {
             } else {
                 endValue = isDayTimeline ? TimeUtil.getDayFromTurn(endTurn) : endTurn;
             }
+            // Clamp against rangeEnd so a stale or sentinel-near alliance end
+            // turn cannot push the per-alliance timeline past the published
+            // range (which itself is now capped at the current turn/day).
+            if (endValue > rangeEnd) {
+                endValue = rangeEnd;
+            }
 
             long clamped = Math.max(-1L, Math.min(endValue - rangeStart, defaultOffset));
             int offset = (int) clamped;
@@ -405,9 +411,18 @@ public class WarStatistics {
         root.put("cities", citiesSorted);
 
         List<Integer> allianceIds = getSortedAllianceIds();
+        // Cap published ranges at the current turn / day so that an in-progress
+        // conflict (turnEnd == Long.MAX_VALUE) or any stale future-keyed graph
+        // entry cannot push range[1] far past the present and cause the
+        // frontend to iterate hundreds of millions of empty time indices.
+        long currentTurn = TimeUtil.getTurn();
+        long currentDay = TimeUtil.getDayFromTurn(currentTurn);
         long[] turnRange = ConflictUtil.computeRange(turnData);
         long minTurn = turnRange[0];
-        long maxTurn = turnRange[1];
+        long maxTurn = turnData.isEmpty() ? turnRange[1] : Math.min(turnRange[1], currentTurn);
+        if (maxTurn < minTurn) {
+            maxTurn = minTurn;
+        }
         Map<String, Object> turnRoot = new LinkedHashMap<>();
         turnRoot.put("range", List.of(minTurn, maxTurn));
         turnRoot.put("encoding", "sparse_patch_v3");
@@ -425,7 +440,10 @@ public class WarStatistics {
 
         long[] dayRange = ConflictUtil.computeRange(dayData);
         long minDay = dayRange[0];
-        long maxDay = dayRange[1];
+        long maxDay = dayData.isEmpty() ? dayRange[1] : Math.min(dayRange[1], currentDay);
+        if (maxDay < minDay) {
+            maxDay = minDay;
+        }
         Map<String, Object> dayRoot = new LinkedHashMap<>();
         dayRoot.put("range", List.of(minDay, maxDay));
         dayRoot.put("encoding", "sparse_patch_v3");
