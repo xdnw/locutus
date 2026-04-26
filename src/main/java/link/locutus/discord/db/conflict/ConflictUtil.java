@@ -274,14 +274,31 @@ public class ConflictUtil {
             List<Integer> aaIds,
             List<Byte> cities,
             List<Integer> endOffsets) {
+        return toGraphMapPart(keys, data, start, end, aaIds, cities, null, endOffsets);
+    }
+
+    public static List<List<List<List<Long>>>> toGraphMapPart(List<Integer> keys,
+            Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
+            long start, long end,
+            List<Integer> aaIds,
+            List<Byte> cities,
+            List<Integer> startOffsets,
+            List<Integer> endOffsets) {
         List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>();
         for (int metricOrdinal : keys) {
             List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>();
             for (int aaIndex = 0; aaIndex < aaIds.size(); aaIndex++) {
                 int aaId = aaIds.get(aaIndex);
-                List<List<Long>> metricCitiesTable = new ObjectArrayList<>();
+                long timelineStart = getTimelineStart(start, end, startOffsets, aaIndex);
                 long timelineEnd = getTimelineEnd(start, end, endOffsets, aaIndex);
-                for (long turnOrDay = start; turnOrDay <= timelineEnd; turnOrDay++) {
+                long lastDataTime = getLastDataTime(data, metricOrdinal, aaId, timelineStart, timelineEnd);
+                if (lastDataTime < timelineStart) {
+                    metricCitiesTableByAA.add(Collections.emptyList());
+                    continue;
+                }
+
+                List<List<Long>> metricCitiesTable = new ObjectArrayList<>();
+                for (long turnOrDay = timelineStart; turnOrDay <= lastDataTime; turnOrDay++) {
                     Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
                     if (dataAtTime == null) {
                         metricCitiesTable.add(Collections.emptyList());
@@ -308,12 +325,24 @@ public class ConflictUtil {
                     }
                     metricCitiesTable.add(values);
                 }
-                trimTrailingEmptyFrames(metricCitiesTable);
                 metricCitiesTableByAA.add(metricCitiesTable);
             }
             turnMetricCitiesTables.add(metricCitiesTableByAA);
         }
         return turnMetricCitiesTables;
+    }
+
+    private static long getTimelineStart(long start, long end, List<Integer> startOffsets, int aaIndex) {
+        if (startOffsets == null || aaIndex >= startOffsets.size()) {
+            return start;
+        }
+
+        Integer startOffset = startOffsets.get(aaIndex);
+        if (startOffset == null) {
+            return start;
+        }
+
+        return Math.min(end + 1, start + Math.max(startOffset, 0));
     }
 
     private static long getTimelineEnd(long start, long end, List<Integer> endOffsets, int aaIndex) {
@@ -329,11 +358,38 @@ public class ConflictUtil {
         return Math.min(end, start + endOffset);
     }
 
-    private static void trimTrailingEmptyFrames(List<List<Long>> timeline) {
-        int lastIndex = timeline.size() - 1;
-        while (lastIndex >= 0 && timeline.get(lastIndex).isEmpty()) {
-            timeline.remove(lastIndex);
-            lastIndex--;
+    private static long getLastDataTime(
+            Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
+            int metricOrdinal,
+            int aaId,
+            long start,
+            long end
+    ) {
+        if (end < start) {
+            return start - 1;
         }
+
+        long lastDataTime = start - 1;
+        for (long turnOrDay : data.keySet()) {
+            if (turnOrDay < start || turnOrDay > end || turnOrDay <= lastDataTime) {
+                continue;
+            }
+
+            Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
+            if (dataAtTime == null) {
+                continue;
+            }
+
+            Map<Integer, Map<Byte, Long>> metricDataByAA = dataAtTime.get(metricOrdinal);
+            if (metricDataByAA == null) {
+                continue;
+            }
+
+            Map<Byte, Long> metricData = metricDataByAA.get(aaId);
+            if (metricData != null && !metricData.isEmpty()) {
+                lastDataTime = turnOrDay;
+            }
+        }
+        return lastDataTime;
     }
 }
