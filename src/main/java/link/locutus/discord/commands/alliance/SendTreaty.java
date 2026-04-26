@@ -62,6 +62,6 @@ public class SendTreaty extends Command {
         if (message.isEmpty() && !Roles.ADMIN.has(author, guild)) {
             return "Admin is required to send a treaty with a message.";
         }
-        return FACommands.sendTreaty(runtimeServices().allianceLookup(), author, db, db.getAllianceList(), DBAlliance.getOrCreate(aaId), type, days, message);
+        return FACommands.sendTreaty(runtimeServices().allianceLookup(), channel, author, db, db.getAllianceList(), Set.of(DBAlliance.getOrCreate(aaId)), type, days, message);
     }
 }

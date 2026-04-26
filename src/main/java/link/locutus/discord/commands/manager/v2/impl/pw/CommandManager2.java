@@ -263,6 +263,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importCloudData",
                 "cloud_providers");
 
+//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "acceptTradeId","acceptTradeId");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearAllApiKeys","clearAllApiKeys");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearInvalidAccounts",
                 "clearInvalidAccounts");

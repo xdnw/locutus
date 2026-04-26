@@ -3291,7 +3291,7 @@ public class BankCommands {
     @RolePermission(value = { Roles.ECON_WITHDRAW_SELF, Roles.ECON }, alliance = true, any = true)
     public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me,
             @Me GuildDB db,
-            @Arg(value = "The transfer sheet to use\nExpects a `nation` or `leader` column and either columns for each resource name or `resources`", group = 0) @Switch("s") TransferSheet sheet,
+            @Arg(value = "The transfer sheet to use\nExpects a `nation` or `leader` column and either columns for each resource name or `resources`", group = 0) TransferSheet sheet,
             @Arg(value = "The deposit type to use for the transfer\nDefaults to `#deposit`", group = 0) @Switch("bn") DepositTypeInfo bank_note,
 
             @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,

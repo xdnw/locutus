@@ -2894,6 +2894,17 @@ public class AdminCommands {
         return "Done!";
     }
 
+//    @Command(desc = "Accept a trade by id")
+//    @RolePermission(value = Roles.ADMIN, root = true)
+//    public String acceptTradeId(@Me DBNation me, int nationId) {
+//        Auth auth = me.getAuth(true);
+//        try {
+//            return auth.acceptTradesDebug(nationId, true) + "";
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+
     @Command(desc = "Fetch and save forum post topic names, optionally for a specific section id/section name")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncForum(@Default Integer sectionId, @Default String sectionName)
