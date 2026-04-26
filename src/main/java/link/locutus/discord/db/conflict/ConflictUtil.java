@@ -1,5 +1,6 @@
 package link.locutus.discord.db.conflict;
 
+import it.unimi.dsi.fastutil.bytes.Byte2IntOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.Byte2LongArrayMap;
 import it.unimi.dsi.fastutil.bytes.Byte2LongMap;
 import it.unimi.dsi.fastutil.bytes.Byte2LongOpenHashMap;
@@ -284,47 +285,39 @@ public class ConflictUtil {
             List<Byte> cities,
             List<Integer> startOffsets,
             List<Integer> endOffsets) {
-        List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>();
+        LongArrayList timeValues = new LongArrayList(data.keySet());
+        timeValues.sort(null);
+
+        Byte2IntOpenHashMap cityIndexById = new Byte2IntOpenHashMap(cities.size());
+        cityIndexById.defaultReturnValue(-1);
+        for (int cityIndex = 0; cityIndex < cities.size(); cityIndex++) {
+            Byte cityId = cities.get(cityIndex);
+            if (cityId != null) {
+                cityIndexById.put(cityId.byteValue(), cityIndex);
+            }
+        }
+
+        List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>(keys.size());
         for (int metricOrdinal : keys) {
-            List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>();
+            List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>(aaIds.size());
             for (int aaIndex = 0; aaIndex < aaIds.size(); aaIndex++) {
                 int aaId = aaIds.get(aaIndex);
                 long timelineStart = getTimelineStart(start, end, startOffsets, aaIndex);
                 long timelineEnd = getTimelineEnd(start, end, endOffsets, aaIndex);
-                long lastDataTime = getLastDataTime(data, metricOrdinal, aaId, timelineStart, timelineEnd);
-                if (lastDataTime < timelineStart) {
+                if (timelineEnd < timelineStart) {
                     metricCitiesTableByAA.add(Collections.emptyList());
                     continue;
                 }
 
-                List<List<Long>> metricCitiesTable = new ObjectArrayList<>();
-                for (long turnOrDay = timelineStart; turnOrDay <= lastDataTime; turnOrDay++) {
-                    Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
-                    if (dataAtTime == null) {
-                        metricCitiesTable.add(Collections.emptyList());
-                        continue;
-                    }
-                    Map<Integer, Map<Byte, Long>> metricDataByAA = dataAtTime.get(metricOrdinal);
-                    if (metricDataByAA == null) {
-                        metricCitiesTable.add(Collections.emptyList());
-                        continue;
-                    }
-                    Map<Byte, Long> metricData = metricDataByAA.get(aaId);
-                    if (metricData == null) {
-                        metricCitiesTable.add(Collections.emptyList());
-                        continue;
-                    }
-                    List<Long> values = new ObjectArrayList<>(cities.size());
-                    for (byte city : cities) {
-                        Long value = metricData.get(city);
-                        if (value == null && !metricData.containsKey(city)) {
-                            values.add(null);
-                        } else {
-                            values.add(value);
-                        }
-                    }
-                    metricCitiesTable.add(values);
-                }
+                List<List<Long>> metricCitiesTable = buildSparseTimeline(
+                        data,
+                        timeValues,
+                        metricOrdinal,
+                        aaId,
+                        start,
+                        timelineStart,
+                        timelineEnd,
+                        cityIndexById);
                 metricCitiesTableByAA.add(metricCitiesTable);
             }
             turnMetricCitiesTables.add(metricCitiesTableByAA);
@@ -358,21 +351,23 @@ public class ConflictUtil {
         return Math.min(end, start + endOffset);
     }
 
-    private static long getLastDataTime(
+    private static List<List<Long>> buildSparseTimeline(
             Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
+            LongArrayList timeValues,
             int metricOrdinal,
             int aaId,
-            long start,
-            long end
+            long rangeStart,
+            long timelineStart,
+            long timelineEnd,
+            Byte2IntOpenHashMap cityIndexById
     ) {
-        if (end < start) {
-            return start - 1;
-        }
-
-        long lastDataTime = start - 1;
-        for (long turnOrDay : data.keySet()) {
-            if (turnOrDay < start || turnOrDay > end || turnOrDay <= lastDataTime) {
+        List<List<Long>> timeline = new ObjectArrayList<>();
+        for (long turnOrDay : timeValues) {
+            if (turnOrDay < timelineStart) {
                 continue;
+            }
+            if (turnOrDay > timelineEnd) {
+                break;
             }
 
             Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
@@ -386,10 +381,59 @@ public class ConflictUtil {
             }
 
             Map<Byte, Long> metricData = metricDataByAA.get(aaId);
-            if (metricData != null && !metricData.isEmpty()) {
-                lastDataTime = turnOrDay;
+            if (metricData == null || metricData.isEmpty()) {
+                continue;
+            }
+
+            List<Long> encodedFrame = encodeIndexedPatchFrame(
+                    turnOrDay - rangeStart,
+                    metricData,
+                    cityIndexById);
+            if (!encodedFrame.isEmpty()) {
+                timeline.add(encodedFrame);
             }
         }
-        return lastDataTime;
+
+        return timeline.isEmpty() ? Collections.emptyList() : timeline;
+    }
+
+    private static List<Long> encodeIndexedPatchFrame(
+            long timeOffset,
+            Map<Byte, Long> metricData,
+            Byte2IntOpenHashMap cityIndexById
+    ) {
+        LongArrayList encoded = new LongArrayList(1 + metricData.size() * 2);
+        encoded.add(timeOffset);
+
+        if (metricData instanceof Byte2LongMap byteMetricData) {
+            ObjectIterator<Byte2LongMap.Entry> iterator = byteMetricData.byte2LongEntrySet().iterator();
+            while (iterator.hasNext()) {
+                Byte2LongMap.Entry cityEntry = iterator.next();
+                int cityIndex = cityIndexById.get(cityEntry.getByteKey());
+                if (cityIndex < 0) {
+                    continue;
+                }
+                encoded.add(cityIndex);
+                encoded.add(cityEntry.getLongValue());
+            }
+        } else {
+            for (Map.Entry<Byte, Long> cityEntry : metricData.entrySet()) {
+                Byte cityId = cityEntry.getKey();
+                Long value = cityEntry.getValue();
+                if (cityId == null || value == null) {
+                    continue;
+                }
+
+                int cityIndex = cityIndexById.get(cityId.byteValue());
+                if (cityIndex < 0) {
+                    continue;
+                }
+
+                encoded.add(cityIndex);
+                encoded.add(value.longValue());
+            }
+        }
+
+        return encoded.size() > 1 ? encoded : Collections.emptyList();
     }
 }

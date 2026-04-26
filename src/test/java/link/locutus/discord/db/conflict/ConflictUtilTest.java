@@ -29,7 +29,7 @@ class ConflictUtilTest {
 
         List<List<Long>> alliance101Timeline = result.get(0).get(0);
         assertEquals(1, alliance101Timeline.size());
-        assertEquals(Arrays.asList(5L, null), alliance101Timeline.get(0));
+        assertEquals(Arrays.asList(0L, 0L, 5L), alliance101Timeline.get(0));
 
         List<List<Long>> alliance202Timeline = result.get(0).get(1);
         assertEquals(0, alliance202Timeline.size());
@@ -51,10 +51,9 @@ class ConflictUtilTest {
                 null
         );
 
-        assertEquals(3, result.get(0).get(0).size());
-        assertEquals(Arrays.asList(5L, null), result.get(0).get(0).get(0));
-        assertEquals(List.of(), result.get(0).get(0).get(1));
-        assertEquals(Arrays.asList(null, 9L), result.get(0).get(0).get(2));
+        assertEquals(2, result.get(0).get(0).size());
+        assertEquals(Arrays.asList(0L, 0L, 5L), result.get(0).get(0).get(0));
+        assertEquals(Arrays.asList(2L, 1L, 9L), result.get(0).get(0).get(1));
     }
 
     @Test
@@ -72,10 +71,8 @@ class ConflictUtilTest {
                 null
         );
 
-        assertEquals(3, result.get(0).get(0).size());
-        assertEquals(List.of(), result.get(0).get(0).get(0));
-        assertEquals(List.of(), result.get(0).get(0).get(1));
-        assertEquals(Arrays.asList(null, 9L), result.get(0).get(0).get(2));
+        assertEquals(1, result.get(0).get(0).size());
+        assertEquals(Arrays.asList(2L, 1L, 9L), result.get(0).get(0).get(0));
     }
 
     @Test
@@ -96,10 +93,10 @@ class ConflictUtilTest {
         );
 
         assertEquals(1, result.get(0).get(0).size());
-        assertEquals(Arrays.asList(5L, null), result.get(0).get(0).get(0));
+        assertEquals(Arrays.asList(0L, 0L, 5L), result.get(0).get(0).get(0));
 
         assertEquals(1, result.get(0).get(1).size());
-        assertEquals(Arrays.asList(null, 9L), result.get(0).get(1).get(0));
+        assertEquals(Arrays.asList(2L, 1L, 9L), result.get(0).get(1).get(0));
     }
 
     private static void put(
