@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -271,26 +272,29 @@ public class ConflictUtil {
             Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
             long start, long end,
             List<Integer> aaIds,
-            List<Byte> cities) {
+            List<Byte> cities,
+            List<Integer> endOffsets) {
         List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>();
         for (int metricOrdinal : keys) {
             List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>();
-            for (int aaId : aaIds) {
+            for (int aaIndex = 0; aaIndex < aaIds.size(); aaIndex++) {
+                int aaId = aaIds.get(aaIndex);
                 List<List<Long>> metricCitiesTable = new ObjectArrayList<>();
-                for (long turnOrDay = start; turnOrDay <= end; turnOrDay++) {
+                long timelineEnd = getTimelineEnd(start, end, endOffsets, aaIndex);
+                for (long turnOrDay = start; turnOrDay <= timelineEnd; turnOrDay++) {
                     Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
                     if (dataAtTime == null) {
-                        metricCitiesTable.add(new ObjectArrayList<>());
+                        metricCitiesTable.add(Collections.emptyList());
                         continue;
                     }
                     Map<Integer, Map<Byte, Long>> metricDataByAA = dataAtTime.get(metricOrdinal);
                     if (metricDataByAA == null) {
-                        metricCitiesTable.add(new ObjectArrayList<>());
+                        metricCitiesTable.add(Collections.emptyList());
                         continue;
                     }
                     Map<Byte, Long> metricData = metricDataByAA.get(aaId);
                     if (metricData == null) {
-                        metricCitiesTable.add(new ObjectArrayList<>());
+                        metricCitiesTable.add(Collections.emptyList());
                         continue;
                     }
                     List<Long> values = new ObjectArrayList<>(cities.size());
@@ -304,10 +308,32 @@ public class ConflictUtil {
                     }
                     metricCitiesTable.add(values);
                 }
+                trimTrailingEmptyFrames(metricCitiesTable);
                 metricCitiesTableByAA.add(metricCitiesTable);
             }
             turnMetricCitiesTables.add(metricCitiesTableByAA);
         }
         return turnMetricCitiesTables;
+    }
+
+    private static long getTimelineEnd(long start, long end, List<Integer> endOffsets, int aaIndex) {
+        if (endOffsets == null || aaIndex >= endOffsets.size()) {
+            return end;
+        }
+
+        Integer endOffset = endOffsets.get(aaIndex);
+        if (endOffset == null) {
+            return end;
+        }
+
+        return Math.min(end, start + endOffset);
+    }
+
+    private static void trimTrailingEmptyFrames(List<List<Long>> timeline) {
+        int lastIndex = timeline.size() - 1;
+        while (lastIndex >= 0 && timeline.get(lastIndex).isEmpty()) {
+            timeline.remove(lastIndex);
+            lastIndex--;
+        }
     }
 }

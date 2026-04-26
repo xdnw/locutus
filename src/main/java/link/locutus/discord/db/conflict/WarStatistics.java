@@ -303,20 +303,27 @@ public class WarStatistics {
     }
 
     public Map<String, Object> toGraphMap(List<Integer> metricsTurn, List<Integer> metricsDay, List<Function<DamageStatGroup, Object>> damageHeaders, int columnMetricOffset) {
-        List<ConflictMetric.Entry> entries = getGraphEntries();
         Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData = new Long2ObjectArrayMap<>();
         Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> dayData = new Long2ObjectArrayMap<>();
 
         Set<Byte> cities = new ByteOpenHashSet();
 
-        for (ConflictMetric.Entry entry : entries) {
-            Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> map = entry.metric().isDay() ? dayData : turnData;
-            map.computeIfAbsent(entry.turnOrDay(), k -> new Int2ObjectOpenHashMap<>())
-                    .computeIfAbsent(entry.metric().ordinal(), k -> new Int2ObjectOpenHashMap<>())
-                    .computeIfAbsent(entry.allianceId(), k -> new Byte2LongOpenHashMap())
-                    .put((byte) entry.city(), (long) entry.value());
-            cities.add((byte) entry.city());
-        }
+        graphDataByTurn.forEach((turn, graphData) ->
+                graphData.forEachEntry((metric, allianceId, city, value) -> {
+                    turnData.computeIfAbsent(turn, k -> new Int2ObjectOpenHashMap<>())
+                            .computeIfAbsent(metric.ordinal(), k -> new Int2ObjectOpenHashMap<>())
+                            .computeIfAbsent(allianceId, k -> new Byte2LongOpenHashMap())
+                            .put(city, (long) value);
+                    cities.add(city);
+                }));
+        graphDataByDay.forEach((day, graphData) ->
+                graphData.forEachEntry((metric, allianceId, city, value) -> {
+                    dayData.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>())
+                            .computeIfAbsent(metric.ordinal(), k -> new Int2ObjectOpenHashMap<>())
+                            .computeIfAbsent(allianceId, k -> new Byte2LongOpenHashMap())
+                            .put(city, (long) value);
+                    cities.add(city);
+                }));
 
         ConflictUtil.trimTimeData(turnData);
         ConflictUtil.trimTimeData(dayData);
@@ -374,8 +381,8 @@ public class WarStatistics {
         long maxTurn = turnRange[1];
         Map<String, Object> turnRoot = new LinkedHashMap<>();
         turnRoot.put("range", List.of(minTurn, maxTurn));
-        turnRoot.put("data", ConflictUtil.toGraphMapPart(metricsTurn, turnData, minTurn, maxTurn, allianceIds, citiesSorted));
         List<Integer> turnEndOffsets = buildTimelineEndOffsets(allianceIds, minTurn, maxTurn, false);
+        turnRoot.put("data", ConflictUtil.toGraphMapPart(metricsTurn, turnData, minTurn, maxTurn, allianceIds, citiesSorted, turnEndOffsets));
         if (turnEndOffsets != null) {
             turnRoot.put("end_offsets", turnEndOffsets);
         }
@@ -386,8 +393,8 @@ public class WarStatistics {
         long maxDay = dayRange[1];
         Map<String, Object> dayRoot = new LinkedHashMap<>();
         dayRoot.put("range", List.of(minDay, maxDay));
-        dayRoot.put("data", ConflictUtil.toGraphMapPart(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted));
         List<Integer> dayEndOffsets = buildTimelineEndOffsets(allianceIds, minDay, maxDay, true);
+        dayRoot.put("data", ConflictUtil.toGraphMapPart(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted, dayEndOffsets));
         if (dayEndOffsets != null) {
             dayRoot.put("end_offsets", dayEndOffsets);
         }

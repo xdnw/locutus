@@ -64,6 +64,14 @@ public class ConflictCommands {
         return Integer.toString(conflict.getId());
     }
 
+    private long toParticipantStartTurn(long time) {
+        return time == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(time);
+    }
+
+    private long toParticipantEndTurn(long time) {
+        return time == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(time) + 1;
+    }
+
     private boolean hasStandardConflictPerms(User user, Guild guild, GuildDB db) {
         boolean hasMilcom = user != null
                 && (Roles.MILCOM.hasOnRoot(user) || (guild != null && Roles.MILCOM.has(user, guild)));
@@ -393,7 +401,7 @@ public class ConflictCommands {
             if (side == null) {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
             }
-            conflict.addParticipant(alliance.getAlliance_id(), side, null, time);
+            conflict.addParticipant(alliance.getAlliance_id(), side, null, toParticipantEndTurn(time));
             return "Set `" + conflict.getName() + "` end to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) + " for "
                     + alliance.getMarkdownUrl();
         }
@@ -423,7 +431,7 @@ public class ConflictCommands {
             if (side == null) {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
             }
-            conflict.addParticipant(alliance.getAlliance_id(), side, time, null);
+            conflict.addParticipant(alliance.getAlliance_id(), side, toParticipantStartTurn(time), null);
             return "Set `" + conflict.getName() + "` start to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) + " for "
                     + alliance.getMarkdownUrl();
         }

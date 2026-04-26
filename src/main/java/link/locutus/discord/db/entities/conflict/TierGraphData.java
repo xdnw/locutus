@@ -12,6 +12,11 @@ import java.util.Map;
 public class TierGraphData {
     protected final Map<ConflictMetric, Map<Integer, Map<Byte, Integer>>> metricByTier = new EnumMap<>(ConflictMetric.class);
 
+    @FunctionalInterface
+    public interface EntryConsumer {
+        void accept(ConflictMetric metric, int allianceId, byte tier, int value);
+    }
+
     public Map<Byte, Integer> getOrCreate(ConflictMetric metric, int allianceId) {
         return metricByTier.computeIfAbsent(metric, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(allianceId, k -> new Byte2IntOpenHashMap());
     }
@@ -22,6 +27,12 @@ public class TierGraphData {
 
     public List<ConflictMetric.Entry> getEntries(int conflictId, boolean isPrimary, long turn) {
         List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
+        forEachEntry((metric, allianceId, tier, value) ->
+                entries.add(new ConflictMetric.Entry(metric, conflictId, allianceId, isPrimary, turn, tier, value)));
+        return entries;
+    }
+
+    public void forEachEntry(EntryConsumer consumer) {
         for (Map.Entry<ConflictMetric, Map<Integer, Map<Byte, Integer>>> conflictEntry : metricByTier.entrySet()) {
             ConflictMetric metric = conflictEntry.getKey();
             for (Map.Entry<Integer, Map<Byte, Integer>> allianceEntry : conflictEntry.getValue().entrySet()) {
@@ -29,11 +40,10 @@ public class TierGraphData {
                 for (Map.Entry<Byte, Integer> tierEntry : allianceEntry.getValue().entrySet()) {
                     int tier = tierEntry.getKey();
                     int value = tierEntry.getValue();
-                    entries.add(new ConflictMetric.Entry(metric, conflictId, allianceId, isPrimary, turn, tier, value));
+                    consumer.accept(metric, allianceId, (byte) tier, value);
                 }
             }
         }
-        return entries;
     }
 
     public void clear() {
