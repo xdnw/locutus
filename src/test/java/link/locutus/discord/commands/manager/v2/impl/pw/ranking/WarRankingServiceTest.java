@@ -38,6 +38,7 @@ class WarRankingServiceTest {
                 null,
                 null,
                 null,
+                null,
                 false,
                 false,
                 null
@@ -90,6 +91,7 @@ class WarRankingServiceTest {
                 false,
                 false,
                 false,
+                null,
                 null,
                 null,
                 null,
@@ -147,6 +149,7 @@ class WarRankingServiceTest {
                 true,
                 true,
                 true,
+                null,
                 null,
                 null,
                 null,

@@ -694,10 +694,135 @@ public class Auth {
         }, this);
     }
 
+    public Set<TradeResult> acceptTradesDebug(int expectedNationId, boolean login) throws Exception {
+        if (expectedNationId == getNationId()) throw new IllegalArgumentException("Buyer and seller cannot be the same");
+        Auth auth = this;
+        if (!TimeUtil.checkTurnChange()) return Collections.singleton(new TradeResult("cannot accept during turn change", TradeResultType.TURN_CHANGE));
+
+        DBNation me = auth.getNation();
+        if (me == null) throw new IllegalArgumentException("Invalid nation: " + auth.getNationId());
+
+        Callable<Set<TradeResult>> task = new Callable<Set<TradeResult>>() {
+            @Override
+            public Set<TradeResult> call() throws Exception {
+                Set<TradeResult> responses = new ObjectLinkedOpenHashSet<>();
+
+                boolean moreTrades = true;
+                int max = 14;
+                while (moreTrades && (max-- > 0)) {
+                    moreTrades = false;
+
+                    String url = Settings.PNW_URL() + "/nation/trade/";
+                    String html = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
+                    Document dom = Jsoup.parse(html);
+
+                    Elements tables = dom.getElementsByClass("nationtable");
+                    if (tables.size() == 0) {
+                        Logg.text("Error fetching trades\n\n---BODY TEXT\n\n" + html + "\n\n---\n\n");
+                        return Collections.singleton(new TradeResult("Could not load trade page", TradeResultType.CAPTCHA));
+                    }
+                    Element table = tables.get(0);
+                    Elements rows = table.getElementsByTag("tr");
+
+                    if (rows.size() < 2) {
+                        return Collections.singleton(new TradeResult("No trades found", TradeResultType.NO_TRADES));
+                    }
+
+                    if (!rows.get(0).child(1).text().contains("Selling Nation") || !rows.get(0).child(2).text().contains("Buying Nation")) {
+                        return Collections.singleton(new TradeResult("No trade table found", TradeResultType.NO_TRADES));
+                    }
+
+                    for (int i = 1; i < rows.size(); i++) {
+                        Element row = rows.get(i);
+                        Elements forms = row.getElementsByClass("tradeForm");
+                        if (forms.isEmpty()) {
+                            continue;
+                        }
+                        Element form = forms.get(0).parent();
+                        String ver = form.getElementsByAttributeValue("name", "ver").get(0).attr("value");
+                        String token = form.getElementsByAttributeValue("name", "token").get(0).attr("value");
+                        if (ver == null || token == null) continue;
+                        long tradeaccid = Long.parseLong(form.getElementsByAttributeValue("name", "tradeaccid").get(0).attr("value"));
+
+                        Elements columns = row.getElementsByTag("td");
+
+                        String senderUrl = columns.get(1).getElementsByTag("a").first().attr("href");
+                        String receiverUrl = columns.get(2).getElementsByTag("a").first().attr("href");
+                        DBNation seller = DiscordUtil.parseNation(senderUrl, false, null);
+                        DBNation buyer = DiscordUtil.parseNation(receiverUrl, false, null);
+
+                        if (columns.get(6).text().toLowerCase().contains("accepted")) continue;
+
+                        if (seller == null) continue;
+                        if (buyer == null) continue;
+                        if (seller.getNation_id() != expectedNationId && buyer.getNation_id() != expectedNationId) {
+                            continue;
+                        }
+                        if (seller.getNation_id() != auth.getNationId() && buyer.getNation_id() != auth.getNationId()) {
+                            continue;
+                        }
+                        DBNation other = seller.getNation_id() == me.getNation_id() ? buyer : seller;
+
+                        Integer amount = MathMan.parseInt(columns.get(4).text().trim());
+
+                        String rssSrc = columns.get(4).children().first().attr("src");
+                        String[] rssSplit = rssSrc.split("[\\./]");
+                        String rssName = rssSplit[rssSplit.length - 2];
+                        ResourceType type = ResourceType.parse(rssName);
+
+                        Integer ppu = MathMan.parseInt(columns.get(5).text().split("/")[0].trim());
+
+                        TradeResult response = new TradeResult(seller, buyer);
+                        response.setAmount(amount);
+                        response.setResource(type);
+                        response.setPPU(ppu);
+                        responses.add(response);
+
+                        Map<String, String> post = new HashMap<>();
+                        post.put("rcustomamount", amount + "");
+                        post.put("tradeaccid", tradeaccid + "");
+                        post.put("ver", ver);
+                        post.put("token", token);
+                        post.put("acctrade", "");
+
+                        String tradeAlert = PW.getAlert(Jsoup.parse(Auth.this.readStringFromURL(PagePriority.TOKEN, url, post)));
+                        if (tradeAlert == null) {
+                            response.setResult(TradeResultType.UNKNOWN_ERROR);
+                            continue;
+                        }
+
+                        response.setMessage(tradeAlert);
+
+                        if (tradeAlert.contains("You can't accept trade offers because a nation has a naval blockade on you.")) {
+                            response.setResult(TradeResultType.BLOCKADED);
+                            continue;
+                        }
+                        if (tradeAlert.contains("You can't enter in an amount greater than the offer.")
+                                || tradeAlert.contains("You do not have enough ")
+                                || tradeAlert.contains("The nation posting that trade offer does not have enough resources on hand to sell.")) {
+                            response.setResult(TradeResultType.INSUFFICIENT_RESOURCES);
+                        }
+                        if (tradeAlert.contains("You successfully accepted a trade offer")) {
+                            response.setResult(TradeResultType.SUCCESS);
+                        } else {
+                            response.setResult(TradeResultType.UNCATEGORIZED_ERROR);
+                        }
+
+                        moreTrades = true;
+                        break;
+                    }
+                }
+
+                return responses;
+            }
+        };
+        return login ? PW.withLogin(task, auth) : task.call();
+    }
+
     public Set<TradeResult> acceptTrades(int expectedNationId, boolean login) throws Exception {
         if (expectedNationId == getNationId()) throw new IllegalArgumentException("Buyer and seller cannot be the same");
         Auth auth = this;
-        if (!TimeUtil.checkTurnChange()) return Collections.singleton(new TradeResult("cannot accept during turn change", TradeResultType.BLOCKADED));
+        if (!TimeUtil.checkTurnChange()) return Collections.singleton(new TradeResult("cannot accept during turn change", TradeResultType.TURN_CHANGE));
 
         DBNation me = auth.getNation();
         if (me == null) throw new IllegalArgumentException("Invalid nation: " + auth.getNationId());

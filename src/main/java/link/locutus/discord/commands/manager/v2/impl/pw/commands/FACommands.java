@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -95,13 +96,38 @@ public class FACommands {
     @Command(desc = "Send a treaty to an alliance")
     @IsAlliance
     @RolePermission(value = Roles.FOREIGN_AFFAIRS, alliance = true)
-    public static String sendTreaty(AllianceLookup lookup, @Me User user, @Me GuildDB db, @Arg("The alliance to send a treaty from\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender, @Arg("Alliance to send treaty to") DBAlliance receiver, TreatyType type, int days, @Default String message) {
+    public static String sendTreaty(AllianceLookup lookup, @Me IMessageIO io,
+                                    @Me User user, @Me GuildDB db,
+                                    @Arg("The alliance to send a treaty from\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender,
+                                    @Arg("Alliance to send treaty to") Set<DBAlliance> receivers,
+                                    TreatyType type, int days, @Default String message) {
+        if (receivers.size() > 100) {
+            throw new IllegalArgumentException("Too many alliances: " + receivers.size() + " (max: 100)");
+        }
         if (message != null && !message.isEmpty() && !Roles.ADMIN.has(user, db.getGuild())) {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
-        Set<Treaty> result = sender.sendTreaty(lookup, receiver.getAlliance_id(), type, message, days * 12);
-        return "Sent:\n- " + StringMan.join(result, "\n- ");
+
+
+        List<String> full = new ObjectArrayList<>();
+        CompletableFuture<IMessageBuilder> msgFuture = receivers.size() == 1 ? null : io.sendMessage("Please wait...", RateLimitedSources.COMMAND_RESULT);
+        long start = System.currentTimeMillis();
+        for (DBAlliance receiver : receivers) {
+            try {
+                Set<Treaty> result = sender.sendTreaty(lookup, receiver.getAlliance_id(), type, message, days * 12);
+                if (result != null) {
+                    List<String> lineStrings = result.stream().map(Treaty::toLineString).toList();
+                    if (msgFuture != null && System.currentTimeMillis() - start > 10_000) {
+                        io.updateOptionally(msgFuture, "Processing\n- " + StringMan.join(lineStrings, "\n- ") + "...", RateLimitedSources.COMMAND_PROGRESS);
+                    }
+                    full.addAll(lineStrings);
+                }
+            } catch (Exception e) {
+                full.add(receiver.getMarkdownUrl() + ": " + StringMan.stripApiKey(e.getMessage()));
+            }
+        }
+        return "Sent:\n- " + StringMan.join(full, "\n- ");
     }
 
     @Command(desc = "Approve a pending treaty from an alliance")
