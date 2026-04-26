@@ -19,14 +19,13 @@ import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.zip.Deflater;
+import java.util.zip.GZIPOutputStream;
 
 import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 
@@ -321,71 +320,81 @@ public enum HeaderGroup {
             long now
     ) {
         ObjectMapper mapper = JteUtil.getSerializer();
-
-        Map<String, Object> combined = new Object2ObjectLinkedOpenHashMap<>();
+        JsonFactory factory = mapper.getFactory();
 
         try {
-            for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
-                HeaderGroup group = entry.getKey();
-                boolean force = entry.getValue();
-                Map<String, Object> groupData = group.getGroupData(manager, conflict.getId(), now, force, conflict);
-                JteUtil.merge(combined, groupData);
+            ByteArrayOutputStream compressedOut = new ByteArrayOutputStream(16 * 1024);
+            try (GZIPOutputStream gzipOut = new GZIPOutputStream(compressedOut, 1_048_576) {
+                {
+                    def.setLevel(Deflater.BEST_COMPRESSION);
+                }
+            }; JsonGenerator out = factory.createGenerator(gzipOut)) {
+                out.writeStartObject();
+                for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
+                    HeaderGroup group = entry.getKey();
+                    boolean force = entry.getValue();
+                    byte[] groupBytes = group.getGroupBytes(manager, conflict.getId(), now, force, conflict, mapper);
+                    writeSerializedMapEntries(factory, out, groupBytes);
+                }
+                out.writeNumberField("update_ms", now);
+                out.writeEndObject();
             }
-            combined.put("update_ms", now);
 
-            ByteArrayOutputStream out = new ByteArrayOutputStream(16 * 1024);
-            mapper.writeValue(out, combined);
-
-            byte[] arr = out.toByteArray();
-            byte[] compressed = JteUtil.compress(arr);
+            byte[] compressed = compressedOut.toByteArray();
             System.out.println("Generated conflict " + conflict.getId() +
-                    " compressed=" + compressed.length + " uncompressed=" + arr.length);
+                    " compressed=" + compressed.length + " (streamed msgpack)");
             return compressed;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public Map<String, Object> getGroupData(
+    private byte[] getGroupBytes(
             ConflictManager manager,
             int conflictId,
             long now,
             boolean forceUpdate,
-            Conflict conflict
+            Conflict conflict,
+            ObjectMapper mapper
     ) throws IOException {
-        ObjectMapper mapper = JteUtil.getSerializer();
-        Map<String, Object> freshData = this.write(manager, conflict);
-
         if (conflictId <= 0) {
-            return freshData;
+            return writeMsgpackBytes(mapper, this.write(manager, conflict));
         }
 
-        byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
-
-        Map.Entry<Long, byte[]> cachedEntry = null;
         if (!forceUpdate) {
             Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedMap =
                     manager.loadConflictRowCache(conflictId, Set.of(this));
-            cachedEntry = cachedMap.get(this);
+            Map.Entry<Long, byte[]> cachedEntry = cachedMap.get(this);
+            if (cachedEntry != null) {
+                return cachedEntry.getValue();
+            }
         }
 
-        if (cachedEntry == null) {
-            manager.saveConflictRowCache(conflictId, freshBytes, this, now);
-            return freshData;
-        }
-
-        byte[] cachedBytes = cachedEntry.getValue();
-
-        if (Arrays.equals(cachedBytes, freshBytes)) {
-            return freshData;
-        }
-
-        // Mismatch: deserialize cached, merge with fresh (fresh wins on conflict)
-        Map<String, Object> cachedData = mapper.readValue(cachedBytes, mapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, Object.class));
-        // same semantics as mergeObjectFlat: cached base, fresh wins per key, new fresh keys added
-        cachedData.putAll(freshData);
-
+        byte[] freshBytes = writeMsgpackBytes(mapper, this.write(manager, conflict));
         manager.saveConflictRowCache(conflictId, freshBytes, this, now);
-        return cachedData;
+        return freshBytes;
+    }
+
+    private static void writeSerializedMapEntries(JsonFactory factory, JsonGenerator out, byte[] mapBytes)
+            throws IOException {
+        try (JsonParser parser = factory.createParser(mapBytes)) {
+            if (parser.nextToken() != JsonToken.START_OBJECT) {
+                throw new IOException("Cached part is not an object");
+            }
+
+            while (parser.nextToken() != JsonToken.END_OBJECT) {
+                String fieldName = parser.currentName();
+                if (fieldName == null) {
+                    throw new IOException("Serialized object entry missing field name");
+                }
+
+                if (parser.nextToken() == null) {
+                    throw new IOException("Serialized object entry missing value");
+                }
+
+                out.writeFieldName(fieldName);
+                out.copyCurrentStructure(parser);
+            }
+        }
     }
 }

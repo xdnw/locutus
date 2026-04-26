@@ -410,7 +410,7 @@ public class WarStatistics {
         long maxTurn = turnRange[1];
         Map<String, Object> turnRoot = new LinkedHashMap<>();
         turnRoot.put("range", List.of(minTurn, maxTurn));
-        turnRoot.put("encoding", "indexed_patch_v2");
+        turnRoot.put("encoding", "sparse_patch_v3");
         List<Integer> turnStartOffsets = turnData.isEmpty()
                 ? null
                 : buildTimelineStartOffsets(allianceIds, minTurn, maxTurn, false);
@@ -428,7 +428,7 @@ public class WarStatistics {
         long maxDay = dayRange[1];
         Map<String, Object> dayRoot = new LinkedHashMap<>();
         dayRoot.put("range", List.of(minDay, maxDay));
-        dayRoot.put("encoding", "indexed_patch_v2");
+        dayRoot.put("encoding", "sparse_patch_v3");
         List<Integer> dayStartOffsets = dayData.isEmpty()
                 ? null
                 : buildTimelineStartOffsets(allianceIds, minDay, maxDay, true);

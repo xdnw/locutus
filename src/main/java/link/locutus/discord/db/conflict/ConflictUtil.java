@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.bytes.Byte2IntOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.Byte2LongArrayMap;
 import it.unimi.dsi.fastutil.bytes.Byte2LongMap;
 import it.unimi.dsi.fastutil.bytes.Byte2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
@@ -19,6 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ConflictUtil {
+    private static final int PATCH_MASK_BITS = 30;
     private static final Pattern TEMP_CONFLICT_KEY = Pattern
             .compile("^conflicts/n/([0-9]+)/([0-9a-fA-F-]{36})\\.gzip$");
     private static final Pattern TEMP_CONFLICT_PATH = Pattern
@@ -297,31 +299,88 @@ public class ConflictUtil {
             }
         }
 
-        List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>(keys.size());
-        for (int metricOrdinal : keys) {
-            List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>(aaIds.size());
-            for (int aaIndex = 0; aaIndex < aaIds.size(); aaIndex++) {
-                int aaId = aaIds.get(aaIndex);
-                long timelineStart = getTimelineStart(start, end, startOffsets, aaIndex);
-                long timelineEnd = getTimelineEnd(start, end, endOffsets, aaIndex);
-                if (timelineEnd < timelineStart) {
-                    metricCitiesTableByAA.add(Collections.emptyList());
+        Int2IntOpenHashMap metricIndexByOrdinal = new Int2IntOpenHashMap(keys.size());
+        metricIndexByOrdinal.defaultReturnValue(-1);
+        for (int metricIndex = 0; metricIndex < keys.size(); metricIndex++) {
+            Integer metricOrdinal = keys.get(metricIndex);
+            if (metricOrdinal != null) {
+                metricIndexByOrdinal.put(metricOrdinal.intValue(), metricIndex);
+            }
+        }
+
+        Int2IntOpenHashMap allianceIndexById = new Int2IntOpenHashMap(aaIds.size());
+        allianceIndexById.defaultReturnValue(-1);
+        long[] timelineStarts = new long[aaIds.size()];
+        long[] timelineEnds = new long[aaIds.size()];
+        for (int aaIndex = 0; aaIndex < aaIds.size(); aaIndex++) {
+            Integer aaId = aaIds.get(aaIndex);
+            if (aaId != null) {
+                allianceIndexById.put(aaId.intValue(), aaIndex);
+            }
+            timelineStarts[aaIndex] = getTimelineStart(start, end, startOffsets, aaIndex);
+            timelineEnds[aaIndex] = getTimelineEnd(start, end, endOffsets, aaIndex);
+        }
+
+        List<List<List<List<Long>>>> turnMetricCitiesTables = initializeSparseGraphTables(keys.size(), aaIds.size());
+
+        for (long turnOrDay : timeValues) {
+            if (turnOrDay < start) {
+                continue;
+            }
+            if (turnOrDay > end) {
+                break;
+            }
+
+            Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
+            if (dataAtTime == null || dataAtTime.isEmpty()) {
+                continue;
+            }
+
+            for (Map.Entry<Integer, Map<Integer, Map<Byte, Long>>> metricEntry : dataAtTime.entrySet()) {
+                int metricIndex = metricIndexByOrdinal.get(metricEntry.getKey());
+                if (metricIndex < 0) {
                     continue;
                 }
 
-                List<List<Long>> metricCitiesTable = buildSparseTimeline(
-                        data,
-                        timeValues,
-                        metricOrdinal,
-                        aaId,
-                        start,
-                        timelineStart,
-                        timelineEnd,
-                        cityIndexById);
-                metricCitiesTableByAA.add(metricCitiesTable);
+                List<List<List<Long>>> metricCitiesTableByAA = turnMetricCitiesTables.get(metricIndex);
+                Map<Integer, Map<Byte, Long>> metricDataByAA = metricEntry.getValue();
+                if (metricDataByAA == null || metricDataByAA.isEmpty()) {
+                    continue;
+                }
+
+                for (Map.Entry<Integer, Map<Byte, Long>> allianceEntry : metricDataByAA.entrySet()) {
+                    int aaIndex = allianceIndexById.get(allianceEntry.getKey());
+                    if (aaIndex < 0) {
+                        continue;
+                    }
+                    if (turnOrDay < timelineStarts[aaIndex] || turnOrDay > timelineEnds[aaIndex]) {
+                        continue;
+                    }
+
+                    Map<Byte, Long> metricData = allianceEntry.getValue();
+                    if (metricData == null || metricData.isEmpty()) {
+                        continue;
+                    }
+
+                    List<Long> encodedFrame = encodeSparsePatchFrame(
+                            turnOrDay - start,
+                            metricData,
+                            cityIndexById);
+                    if (encodedFrame.isEmpty()) {
+                        continue;
+                    }
+
+                    List<List<Long>> timeline = metricCitiesTableByAA.get(aaIndex);
+                    if (timeline == null) {
+                        timeline = new ObjectArrayList<>();
+                        metricCitiesTableByAA.set(aaIndex, timeline);
+                    }
+                    timeline.add(encodedFrame);
+                }
             }
-            turnMetricCitiesTables.add(metricCitiesTableByAA);
         }
+
+        finalizeSparseGraphTables(turnMetricCitiesTables);
         return turnMetricCitiesTables;
     }
 
@@ -351,59 +410,78 @@ public class ConflictUtil {
         return Math.min(end, start + endOffset);
     }
 
-    private static List<List<Long>> buildSparseTimeline(
-            Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
-            LongArrayList timeValues,
-            int metricOrdinal,
-            int aaId,
-            long rangeStart,
-            long timelineStart,
-            long timelineEnd,
-            Byte2IntOpenHashMap cityIndexById
-    ) {
-        List<List<Long>> timeline = new ObjectArrayList<>();
-        for (long turnOrDay : timeValues) {
-            if (turnOrDay < timelineStart) {
-                continue;
+    private static List<List<List<List<Long>>>> initializeSparseGraphTables(int metricCount, int aaCount) {
+        List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>(metricCount);
+        for (int metricIndex = 0; metricIndex < metricCount; metricIndex++) {
+            List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>(aaCount);
+            for (int aaIndex = 0; aaIndex < aaCount; aaIndex++) {
+                metricCitiesTableByAA.add(null);
             }
-            if (turnOrDay > timelineEnd) {
-                break;
-            }
-
-            Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
-            if (dataAtTime == null) {
-                continue;
-            }
-
-            Map<Integer, Map<Byte, Long>> metricDataByAA = dataAtTime.get(metricOrdinal);
-            if (metricDataByAA == null) {
-                continue;
-            }
-
-            Map<Byte, Long> metricData = metricDataByAA.get(aaId);
-            if (metricData == null || metricData.isEmpty()) {
-                continue;
-            }
-
-            List<Long> encodedFrame = encodeIndexedPatchFrame(
-                    turnOrDay - rangeStart,
-                    metricData,
-                    cityIndexById);
-            if (!encodedFrame.isEmpty()) {
-                timeline.add(encodedFrame);
-            }
+            turnMetricCitiesTables.add(metricCitiesTableByAA);
         }
-
-        return timeline.isEmpty() ? Collections.emptyList() : timeline;
+        return turnMetricCitiesTables;
     }
 
-    private static List<Long> encodeIndexedPatchFrame(
+    private static void finalizeSparseGraphTables(List<List<List<List<Long>>>> turnMetricCitiesTables) {
+        for (List<List<List<Long>>> metricCitiesTableByAA : turnMetricCitiesTables) {
+            for (int aaIndex = 0; aaIndex < metricCitiesTableByAA.size(); aaIndex++) {
+                if (metricCitiesTableByAA.get(aaIndex) == null) {
+                    metricCitiesTableByAA.set(aaIndex, Collections.emptyList());
+                }
+            }
+        }
+    }
+
+    private static List<Long> encodeSparsePatchFrame(
             long timeOffset,
             Map<Byte, Long> metricData,
             Byte2IntOpenHashMap cityIndexById
     ) {
-        LongArrayList encoded = new LongArrayList(1 + metricData.size() * 2);
-        encoded.add(timeOffset);
+        int estimatedChanges = metricData.size();
+        if (estimatedChanges <= 0) {
+            return Collections.emptyList();
+        }
+
+        int[] cityIndexes = new int[estimatedChanges];
+        long[] cityValues = new long[estimatedChanges];
+        int changeCount = collectChangedCities(metricData, cityIndexById, cityIndexes, cityValues);
+        if (changeCount == 0) {
+            return Collections.emptyList();
+        }
+
+        sortChangedCities(cityIndexes, cityValues, changeCount);
+
+        int highestCityIndex = cityIndexes[changeCount - 1];
+        int maskWordCount = highestCityIndex / PATCH_MASK_BITS + 1;
+        long[] maskWords = buildMaskWords(cityIndexes, changeCount, maskWordCount);
+        int indexedEncodedSize = estimateIndexedPatchFrameSize(timeOffset, cityIndexes, cityValues, changeCount);
+        int maskedEncodedSize = estimateMaskedPatchFrameSize(timeOffset, maskWords, cityValues, changeCount);
+
+        if (indexedEncodedSize <= maskedEncodedSize) {
+            return encodeIndexedPatchFrame(timeOffset, cityIndexes, cityValues, changeCount);
+        }
+
+        return encodeMaskedPatchFrame(timeOffset, maskWords, cityValues, changeCount);
+    }
+
+    private static long[] buildMaskWords(int[] cityIndexes, int changeCount, int maskWordCount) {
+        long[] maskWords = new long[maskWordCount];
+        for (int i = 0; i < changeCount; i++) {
+            int cityIndex = cityIndexes[i];
+            int wordIndex = cityIndex / PATCH_MASK_BITS;
+            int bitIndex = cityIndex % PATCH_MASK_BITS;
+            maskWords[wordIndex] |= 1L << bitIndex;
+        }
+        return maskWords;
+    }
+
+    private static int collectChangedCities(
+            Map<Byte, Long> metricData,
+            Byte2IntOpenHashMap cityIndexById,
+            int[] cityIndexes,
+            long[] cityValues
+    ) {
+        int changeCount = 0;
 
         if (metricData instanceof Byte2LongMap byteMetricData) {
             ObjectIterator<Byte2LongMap.Entry> iterator = byteMetricData.byte2LongEntrySet().iterator();
@@ -413,8 +491,10 @@ public class ConflictUtil {
                 if (cityIndex < 0) {
                     continue;
                 }
-                encoded.add(cityIndex);
-                encoded.add(cityEntry.getLongValue());
+
+                cityIndexes[changeCount] = cityIndex;
+                cityValues[changeCount] = cityEntry.getLongValue();
+                changeCount++;
             }
         } else {
             for (Map.Entry<Byte, Long> cityEntry : metricData.entrySet()) {
@@ -429,11 +509,137 @@ public class ConflictUtil {
                     continue;
                 }
 
-                encoded.add(cityIndex);
-                encoded.add(value.longValue());
+                cityIndexes[changeCount] = cityIndex;
+                cityValues[changeCount] = value.longValue();
+                changeCount++;
             }
         }
 
-        return encoded.size() > 1 ? encoded : Collections.emptyList();
+        return changeCount;
+    }
+
+    private static void sortChangedCities(int[] cityIndexes, long[] cityValues, int changeCount) {
+        for (int i = 1; i < changeCount; i++) {
+            int cityIndex = cityIndexes[i];
+            long cityValue = cityValues[i];
+            int insertIndex = i - 1;
+            while (insertIndex >= 0 && cityIndexes[insertIndex] > cityIndex) {
+                cityIndexes[insertIndex + 1] = cityIndexes[insertIndex];
+                cityValues[insertIndex + 1] = cityValues[insertIndex];
+                insertIndex--;
+            }
+            cityIndexes[insertIndex + 1] = cityIndex;
+            cityValues[insertIndex + 1] = cityValue;
+        }
+    }
+
+    private static List<Long> encodeIndexedPatchFrame(
+            long timeOffset,
+            int[] cityIndexes,
+            long[] cityValues,
+            int changeCount
+    ) {
+        LongArrayList encoded = new LongArrayList(1 + changeCount * 2);
+        encoded.add(timeOffset);
+        for (int i = 0; i < changeCount; i++) {
+            encoded.add(cityIndexes[i]);
+            encoded.add(cityValues[i]);
+        }
+
+        return encoded;
+    }
+
+    private static int estimateIndexedPatchFrameSize(
+            long timeOffset,
+            int[] cityIndexes,
+            long[] cityValues,
+            int changeCount
+    ) {
+        int size = estimateMsgpackArrayHeaderSize(1 + changeCount * 2);
+        size += estimateMsgpackIntegerSize(timeOffset);
+        for (int i = 0; i < changeCount; i++) {
+            size += estimateMsgpackIntegerSize(cityIndexes[i]);
+            size += estimateMsgpackIntegerSize(cityValues[i]);
+        }
+        return size;
+    }
+
+    private static int estimateMaskedPatchFrameSize(
+            long timeOffset,
+            long[] maskWords,
+            long[] cityValues,
+            int changeCount
+    ) {
+        int size = estimateMsgpackArrayHeaderSize(2 + maskWords.length + changeCount);
+        size += estimateMsgpackIntegerSize(timeOffset);
+        size += estimateMsgpackIntegerSize(-maskWords.length);
+        for (long maskWord : maskWords) {
+            size += estimateMsgpackIntegerSize(maskWord);
+        }
+        for (int i = 0; i < changeCount; i++) {
+            size += estimateMsgpackIntegerSize(cityValues[i]);
+        }
+        return size;
+    }
+
+    private static int estimateMsgpackArrayHeaderSize(int elementCount) {
+        if (elementCount <= 15) {
+            return 1;
+        }
+        if (elementCount <= 0xFFFF) {
+            return 3;
+        }
+        return 5;
+    }
+
+    private static int estimateMsgpackIntegerSize(long value) {
+        if (value >= 0) {
+            if (value <= 0x7FL) {
+                return 1;
+            }
+            if (value <= 0xFFL) {
+                return 2;
+            }
+            if (value <= 0xFFFFL) {
+                return 3;
+            }
+            if (value <= 0xFFFF_FFFFL) {
+                return 5;
+            }
+            return 9;
+        }
+
+        if (value >= -32L) {
+            return 1;
+        }
+        if (value >= Byte.MIN_VALUE) {
+            return 2;
+        }
+        if (value >= Short.MIN_VALUE) {
+            return 3;
+        }
+        if (value >= Integer.MIN_VALUE) {
+            return 5;
+        }
+        return 9;
+    }
+
+    private static List<Long> encodeMaskedPatchFrame(
+            long timeOffset,
+            long[] maskWords,
+            long[] cityValues,
+            int changeCount
+    ) {
+        LongArrayList encoded = new LongArrayList(2 + maskWords.length + changeCount);
+        encoded.add(timeOffset);
+        encoded.add(-maskWords.length);
+        for (long maskWord : maskWords) {
+            encoded.add(maskWord);
+        }
+        for (int i = 0; i < changeCount; i++) {
+            encoded.add(cityValues[i]);
+        }
+
+        return encoded;
     }
 }
