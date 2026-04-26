@@ -328,6 +328,7 @@ public enum HeaderGroup {
                     def.setLevel(Deflater.BEST_COMPRESSION);
                 }
             }; JsonGenerator out = factory.createGenerator(gzipOut)) {
+                out.setCodec(mapper);
                 out.writeStartObject();
                 for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
                     HeaderGroup group = entry.getKey();
@@ -378,7 +379,7 @@ public enum HeaderGroup {
         manager.saveConflictRowCache(conflictId, freshBytes, this, now);
     }
 
-    private static void writeMapEntries(JsonGenerator out, Map<String, Object> map)
+    static void writeMapEntries(JsonGenerator out, Map<String, Object> map)
             throws IOException {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             out.writeFieldName(entry.getKey());

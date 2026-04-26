@@ -15,6 +15,43 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class HeaderGroupTest {
     @Test
+    void writeMapEntriesRoundTripsFreshNestedMsgpackObject() throws Exception {
+        ObjectMapper mapper = JteUtil.getSerializer();
+
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("name", "test");
+        nested.put("metrics", java.util.List.of(1, 2, 3));
+        nested.put("coalitions", java.util.List.of(
+                java.util.Map.of("id", 1, "cities", java.util.List.of(10, 11)),
+                java.util.Map.of("id", 2, "cities", java.util.List.of(12, 13))));
+
+        ByteArrayOutputStream compressedOut = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzipOut = new GZIPOutputStream(compressedOut, 1024) {
+            {
+                def.setLevel(Deflater.BEST_COMPRESSION);
+            }
+        }; JsonGenerator out = mapper.getFactory().createGenerator(gzipOut)) {
+            out.setCodec(mapper);
+            out.writeStartObject();
+            HeaderGroup.writeMapEntries(out, nested);
+            out.writeEndObject();
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> decoded = mapper.readValue(
+                JteUtil.decompress(compressedOut.toByteArray()),
+                Map.class);
+
+        assertEquals("test", decoded.get("name"));
+        assertEquals(java.util.List.of(1, 2, 3), decoded.get("metrics"));
+        assertEquals(
+                java.util.List.of(
+                        java.util.Map.of("id", 1, "cities", java.util.List.of(10, 11)),
+                        java.util.Map.of("id", 2, "cities", java.util.List.of(12, 13))),
+                decoded.get("coalitions"));
+    }
+
+    @Test
     void writeSerializedMapEntriesRoundTripsMergedMsgpackObject() throws Exception {
         ObjectMapper mapper = JteUtil.getSerializer();
 
