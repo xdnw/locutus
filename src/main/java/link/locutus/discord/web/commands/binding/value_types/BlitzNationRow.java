@@ -18,6 +18,8 @@ public record BlitzNationRow(
         int policyOrdinal,
         long projectBits,
         int researchBits,
-        int activeOrdinal
+        int activeOrdinal,
+        int resetHourUtc,
+        boolean resetHourUtcFallback
 ) {
 }

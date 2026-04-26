@@ -225,12 +225,13 @@ public class SimEndpoints {
 
         List<BlitzWarning> warnings = new ArrayList<>();
         List<BlitzLegalEdge> legalEdges = new ArrayList<>();
-        Set<String> activePairs = request.includeExistingWars() ? activePairKeys(warDB, allNations) : Set.of();
+        Set<Integer> excludedWarIds = excludedWarIds(request);
+        Set<String> activePairs = request.includeExistingWars() ? activePairKeys(warDB, allNations, excludedWarIds) : Set.of();
         buildLegalEdges(sideMode, attackers, defenders, activePairs, legalEdges, warnings);
         List<BlitzPlannedWar> acceptedPlannedWars = validatePlannedWars(request, sideMode, attackerById, defenderById, legalEdges, warnings);
 
         BlitzExistingWar[] existingWars = request.includeExistingWars()
-                ? existingWars(warDB, allNations)
+                ? existingWars(warDB, allNations, excludedWarIds)
                 : new BlitzExistingWar[0];
         int currentTurn = request.currentTurnOverride() == null ? currentWeekTurnUtc() : request.currentTurnOverride();
         CompositeBlitzActivityModel activityModel = CompositeBlitzActivityModel.build(
@@ -711,6 +712,21 @@ public class SimEndpoints {
         int activeOrdinal = edit == null || edit.forceActive() == null
                 ? ActiveOverride.AUTO.ordinal()
                 : (edit.forceActive() ? ActiveOverride.TRUE : ActiveOverride.FALSE).ordinal();
+        int resetHourUtc;
+        boolean resetHourUtcFallback;
+        if (edit != null && edit.resetHour() != null) {
+            resetHourUtc = Math.max(0, Math.min(23, edit.resetHour()));
+            resetHourUtcFallback = false;
+        } else {
+            int dcTurn = nation.getDc_turn();
+            if (dcTurn >= 0 && dcTurn < 12) {
+                resetHourUtc = dcTurn * 2;
+                resetHourUtcFallback = false;
+            } else {
+                resetHourUtc = 0;
+                resetHourUtcFallback = true;
+            }
+        }
         long projectBits = Math.max(0, nation.getProjectBitMask());
         int researchBits = nation.getResearchBits(null);
         if (edit != null) {
@@ -735,7 +751,9 @@ public class SimEndpoints {
                 edit != null && edit.policyOrdinal() != null ? edit.policyOrdinal() : (nation.getWarPolicy() == null ? -1 : nation.getWarPolicy().ordinal()),
                 projectBits,
                 researchBits,
-                activeOrdinal
+                activeOrdinal,
+                resetHourUtc,
+                resetHourUtcFallback
         );
     }
 
@@ -993,13 +1011,26 @@ public class SimEndpoints {
         ).assign(declarers, targets, currentTurn, fixedEdges);
     }
 
-    private static Set<String> activePairKeys(WarDB warDB, Collection<DBNation> nations) {
+    private static Set<Integer> excludedWarIds(BlitzPlanRequest request) {
+        Set<Integer> ids = new LinkedHashSet<>();
+        for (int warId : request.excludedWarIds()) {
+            if (warId > 0) {
+                ids.add(warId);
+            }
+        }
+        return ids;
+    }
+
+    private static Set<String> activePairKeys(WarDB warDB, Collection<DBNation> nations, Set<Integer> excludedWarIds) {
         Set<Integer> nationIds = new LinkedHashSet<>(nationIds(nations).length);
         for (DBNation nation : nations) {
             nationIds.add(nation.getNation_id());
         }
         Set<String> pairs = new LinkedHashSet<>();
         for (DBWar war : warDB.getActiveWars(nationIds::contains, null)) {
+            if (excludedWarIds.contains(war.getWarId())) {
+                continue;
+            }
             pairs.add(pairKey(war.getAttacker_id(), war.getDefender_id()));
             pairs.add(pairKey(war.getDefender_id(), war.getAttacker_id()));
         }
@@ -1014,12 +1045,13 @@ public class SimEndpoints {
         return Math.min(nationIdOne, nationIdTwo) + ":" + Math.max(nationIdOne, nationIdTwo);
     }
 
-    private static BlitzExistingWar[] existingWars(WarDB warDB, Collection<DBNation> nations) {
+    private static BlitzExistingWar[] existingWars(WarDB warDB, Collection<DBNation> nations, Set<Integer> excludedWarIds) {
         Set<Integer> nationIds = new LinkedHashSet<>();
         for (DBNation nation : nations) {
             nationIds.add(nation.getNation_id());
         }
         return warDB.getActiveWars(nationIds::contains, null).stream()
+                .filter(war -> !excludedWarIds.contains(war.getWarId()))
                 .sorted(Comparator.comparingInt(DBWar::getWarId))
                 .map(SimEndpoints::existingWar)
                 .toArray(BlitzExistingWar[]::new);

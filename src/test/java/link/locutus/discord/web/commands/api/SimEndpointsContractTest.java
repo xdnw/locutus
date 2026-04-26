@@ -408,6 +408,7 @@ class SimEndpointsContractTest {
                 assume5553Buildings,
                 1L,
                 5,
+                new int[0],
                 false,
                 false
         );
@@ -416,28 +417,28 @@ class SimEndpointsContractTest {
     private static BlitzPlanRequest request(boolean runAssignment, boolean captureTrace) {
         return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
                 BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, false, true, 1L, 5,
-                runAssignment, captureTrace);
+                new int[0], runAssignment, captureTrace);
     }
 
     private static BlitzPlanRequest request(int sideModeOrdinal, int rebuyModeOrdinal, boolean runAssignment, boolean captureTrace) {
         return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
-                sideModeOrdinal, rebuyModeOrdinal, 6, false, true, 1L, 5, runAssignment, captureTrace);
+                sideModeOrdinal, rebuyModeOrdinal, 6, false, true, 1L, 5, new int[0], runAssignment, captureTrace);
     }
 
     private static BlitzPlanRequest requestWithHorizon(int horizonTurns) {
         return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
                 BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), horizonTurns, false, true, 1L, 5,
-                false, false);
+                new int[0], false, false);
     }
 
     private static BlitzPlanRequest request(BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, BlitzSideMode.ATTACKERS_ONLY.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, false, false);
+                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, new int[0], false, false);
     }
 
     private static BlitzPlanRequest request(BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, BlitzSideMode sideMode) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, sideMode.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, false, false);
+                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, new int[0], false, false);
     }
 
     private static BlitzPlanRequest requestRun(BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace) {
@@ -446,12 +447,12 @@ class SimEndpointsContractTest {
 
     private static BlitzPlanRequest requestRun(BlitzSideMode sideMode, BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, sideMode.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, true, captureTrace);
+                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, new int[0], true, captureTrace);
     }
 
     private static BlitzPlanRequest requestRunWithHorizon(BlitzSideMode sideMode, BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace, int horizonTurns) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, sideMode.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), horizonTurns, true, true, 1L, 5, true, captureTrace);
+                BlitzRebuyMode.FULL_REBUYS.ordinal(), horizonTurns, true, true, 1L, 5, new int[0], true, captureTrace);
     }
 
     private static BlitzDraftEdit edit(int nationId, int[] units, int[] buys) {

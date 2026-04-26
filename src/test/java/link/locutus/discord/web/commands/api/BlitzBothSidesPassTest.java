@@ -116,6 +116,7 @@ class BlitzBothSidesPassTest {
                 true,
                 1L,
                 5,
+                new int[0],
                 true,
                 false
         );
