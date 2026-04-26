@@ -10,6 +10,7 @@ import link.locutus.discord.sim.SimWar;
 import link.locutus.discord.sim.SimWorld;
 import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.actions.SimAction;
+import link.locutus.discord.sim.combat.CombatKernel;
 
 /**
  * Convert a controlled air war into direct loot pressure.
@@ -18,7 +19,7 @@ public class RaidLootMode extends OffensiveWarPrimitive {
 
     @Override
     protected boolean canConsiderWar(SimWorld world, SimNation self, DecisionContext ctx, SimWar war) {
-        return self.units(MilitaryUnit.AIRCRAFT) > 0
+        return CombatKernel.canUseAttackType(self, AttackType.AIRSTRIKE_MONEY)
                 && war.airSuperiorityOwner() == SimSide.ATTACKER;
     }
 

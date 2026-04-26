@@ -175,7 +175,7 @@ class StrategyPrimitiveIntegrationTest {
         world.declareWar(2013, 1, 2, WarType.ORD);
         world.declareWar(2014, 1, 3, WarType.ORD);
 
-        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 48);
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 50);
         world.requireNation(1).setUnitCount(MilitaryUnit.TANK, 20);
 
         world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 24);
@@ -206,7 +206,7 @@ class StrategyPrimitiveIntegrationTest {
         world.declareWar(2015, 1, 2, WarType.ORD);
         world.declareWar(2016, 1, 3, WarType.ORD);
 
-        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 48);
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 50);
         world.requireNation(1).setUnitCount(MilitaryUnit.TANK, 20);
 
         world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 24);
@@ -305,7 +305,25 @@ class StrategyPrimitiveIntegrationTest {
         assertEquals(1, strikeActions.size());
         AttackAction attackAction = assertInstanceOf(AttackAction.class, strikeActions.get(0));
         assertEquals(2009, attackAction.warId());
-        assertEquals(AttackType.GROUND, attackAction.attackType());
+        assertEquals(AttackType.AIRSTRIKE_INFRA, attackAction.attackType());
+    }
+
+    @Test
+    void saveAndStrikeStaysInactiveWhenNoWarHasLegalStrike() {
+        SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(22));
+        world.addNation(nation(1, WarPolicy.FORTRESS, 5_000d, 140d, 140d));
+        world.addNation(nation(2, WarPolicy.TURTLE, 5_000d, 140d, 140d));
+
+        world.declareWar(2010, 1, 2, WarType.ORD);
+        world.requireNation(1).setUnitCount(MilitaryUnit.SHIP, 4);
+        world.requireNation(2).setUnitCount(MilitaryUnit.SHIP, 0);
+
+        RuleBasedActor actor = new RuleBasedActor();
+        actor.addPrimitive(new SaveAndStrike());
+
+        DecisionContext ctx = new DecisionContext(world, world.currentTurn(), Set.of(2), Objective.DAMAGE);
+
+        assertTrue(actor.decide(world, world.requireNation(1), ctx).isEmpty());
     }
 
     @Test

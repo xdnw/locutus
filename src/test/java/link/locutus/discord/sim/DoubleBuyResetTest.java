@@ -56,6 +56,7 @@ class DoubleBuyResetTest {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(0));
         SimNation nation = new SimNation(6, WarPolicy.TURTLE, 0d, 100d, 2, (byte) 0);
         nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 2);
+        nation.setUnitCap(MilitaryUnit.SOLDIER, 10);
         world.addNation(nation);
 
         assertThrows(IllegalStateException.class, () -> world.apply(new BuyUnitsAction(6, Map.of(MilitaryUnit.SOLDIER, 1))));
@@ -70,6 +71,8 @@ class DoubleBuyResetTest {
     void buyPlacementRejectsWhenNonMoneyResourceIsMissing() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(0));
         SimNation nation = new SimNation(8, WarPolicy.FORTRESS, 1_000_000_000d, 100d, 2, (byte) 0);
+        nation.setDailyBuyCap(MilitaryUnit.SHIP, 5);
+        nation.setUnitCap(MilitaryUnit.SHIP, 10);
         world.addNation(nation);
 
         assertThrows(IllegalStateException.class, () -> world.apply(new BuyUnitsAction(8, Map.of(MilitaryUnit.SHIP, 1))));
@@ -85,6 +88,8 @@ class DoubleBuyResetTest {
         SimNation nation = new SimNation(7, WarPolicy.FORTRESS, 1_000_000d, 100d, 2, (byte) 0);
         nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 5);
         nation.setDailyBuyCap(MilitaryUnit.AIRCRAFT, 0);
+        nation.setUnitCap(MilitaryUnit.SOLDIER, 10);
+        nation.setUnitCap(MilitaryUnit.AIRCRAFT, 10);
         world.addNation(nation);
 
         assertThrows(

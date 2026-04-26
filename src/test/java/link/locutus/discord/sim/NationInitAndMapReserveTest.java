@@ -1,14 +1,23 @@
 package link.locutus.discord.sim;
 
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.actions.ReleaseMapAction;
 import link.locutus.discord.sim.actions.ReserveMapAction;
 import link.locutus.discord.sim.input.NationInit;
 import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -42,6 +51,122 @@ class NationInitAndMapReserveTest {
         assertEquals(4, nation.maxOffSlots());
         assertEquals(6, nation.resetHourUtc());
         assertEquals(7, nation.teamId());
+    }
+
+    @Test
+    void offensiveSlotRuleCountsPirateProjects() {
+        long pirateBits = (1L << Projects.PIRATE_ECONOMY.ordinal())
+                | (1L << Projects.ADVANCED_PIRATE_ECONOMY.ordinal());
+
+        assertEquals(5, WarSlotRules.offensiveSlotCap(0L));
+        assertEquals(6, WarSlotRules.offensiveSlotCap(1L << Projects.PIRATE_ECONOMY.ordinal()));
+        assertEquals(7, WarSlotRules.offensiveSlotCap(pirateBits));
+    }
+
+    @Test
+    void nationCapacityRulesDeriveAndRespectExplicitOverrides() {
+        long pirateBits = 1L << Projects.PIRATE_ECONOMY.ordinal();
+
+        assertEquals(6, NationCapacityRules.maxOffSlots(NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE, pirateBits));
+        assertEquals(4, NationCapacityRules.maxOffSlots(4, pirateBits));
+    }
+
+    @Test
+    void liveNationUsesDerivedDailyBuyCapsUntilExplicitlyOverridden() {
+        SimNation nation = new SimNation(new NationInit(
+                55,
+                55,
+                WarPolicy.FORTRESS,
+                ResourceType.getBuffer(),
+                0d,
+                new double[]{1_000d, 1_000d},
+                5,
+                (byte) 0
+        ));
+
+        int derivedCap = MilitaryUnit.SOLDIER.getMaxPerDay(2);
+        assertEquals(derivedCap, nation.dailyBuyCap(MilitaryUnit.SOLDIER));
+
+        nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 7);
+        assertEquals(7, nation.dailyBuyCap(MilitaryUnit.SOLDIER));
+
+        nation.clearDailyBuyCapOverride(MilitaryUnit.SOLDIER);
+        assertEquals(derivedCap, nation.dailyBuyCap(MilitaryUnit.SOLDIER));
+    }
+
+    @Test
+    void liveNationDerivesExactUnitCapsFromStoredCityProfilesUntilOverridden() {
+        SpecialistCityProfile lowCapacityCity = new SpecialistCityProfile(
+                2_000d,
+                250,
+                100,
+                0,
+                0d,
+                0d,
+                1,
+                0,
+                0,
+                0
+        );
+        SimNation nation = new SimNation(new NationInit(
+                56,
+                56,
+                WarPolicy.FORTRESS,
+                ResourceType.getBuffer(),
+                0d,
+                new double[]{1_000d},
+                5,
+                (byte) 0,
+                0L,
+                new SpecialistCityProfile[]{lowCapacityCity}
+        ));
+
+        assertEquals(3_000, nation.unitCap(MilitaryUnit.SOLDIER));
+        assertEquals(0, nation.unitCap(MilitaryUnit.TANK));
+
+        nation.setUnitCap(MilitaryUnit.SOLDIER, 7);
+        assertEquals(7, nation.unitCap(MilitaryUnit.SOLDIER));
+
+        nation.clearUnitCapOverride(MilitaryUnit.SOLDIER);
+        assertEquals(3_000, nation.unitCap(MilitaryUnit.SOLDIER));
+    }
+
+    @Test
+    void nationCapacityRulesMatchLegacyUnitCapSemanticsWithoutCityViews() {
+        SpecialistCityProfile[] profiles = {
+                new SpecialistCityProfile(2_500d, 300, 95, 0, 0d, 0d, 5, 2, 1, 0),
+                new SpecialistCityProfile(2_100d, 180, 88, 3, 0d, 0d, 2, 1, 3, 1)
+        };
+        double[] cityInfra = {1_450d, 1_075d};
+        int researchBits = 1 << (Research.GROUND_CAPACITY.ordinal() * 5);
+        Predicate<Project> hasProject = project -> project == Projects.MISSILE_LAUNCH_PAD || project == Projects.INTELLIGENCE_AGENCY;
+        List<link.locutus.discord.apiv1.enums.city.ICity> cities = new ArrayList<>(profiles.length);
+        for (int i = 0; i < profiles.length; i++) {
+            cities.add(profiles[i].cityView(cityInfra[i]));
+        }
+
+        for (MilitaryUnit unit : new MilitaryUnit[]{
+                MilitaryUnit.SOLDIER,
+                MilitaryUnit.TANK,
+                MilitaryUnit.AIRCRAFT,
+                MilitaryUnit.SHIP,
+                MilitaryUnit.MISSILE,
+                MilitaryUnit.NUKE,
+                MilitaryUnit.SPIES
+        }) {
+            int expected = unit.getCap(() -> cities, hasProject, researchBits);
+            int actual = NationCapacityRules.unitCap(
+                    NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE,
+                    unit,
+                    profiles,
+                    cityInfra,
+                    0,
+                    profiles.length,
+                    hasProject,
+                    researchBits
+            );
+            assertEquals(expected, actual, () -> "unit cap mismatch for " + unit);
+        }
     }
 
     @Test

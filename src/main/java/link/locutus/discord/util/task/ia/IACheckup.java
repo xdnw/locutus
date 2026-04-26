@@ -1009,7 +1009,7 @@ public class IACheckup {
             }
         }
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
-        StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
+        StringBuilder resposnse = new StringBuilder("You have " + Math.max(0, nation.getMaxOff() - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
             String warPriority = CM.war.find.enemy.cmd.onlyEasy("true").toSlashCommand(false);
             resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention());

@@ -105,6 +105,31 @@ class CompiledScenarioTest {
         assertEquals(0.5f, scenario.defenderActivityWeight(0));
     }
 
+        @Test
+        void estimatesAllianceCounterRiskFromIndexedAllianceGroups() {
+                DBNationSnapshot attacker = nation(1, 1_000.0).allianceId(10).build();
+                DBNationSnapshot sameAllianceInRange = nation(101, 950.0).allianceId(77).build();
+                DBNationSnapshot sameAllianceOutOfRange = nation(102, 4_000.0).allianceId(77).build();
+                DBNationSnapshot otherAlliance = nation(103, 900.0).allianceId(88).build();
+
+                CompiledScenario scenario = compiler.compile(
+                                List.of(attacker),
+                                List.of(sameAllianceInRange, sameAllianceOutOfRange, otherAlliance),
+                                OverrideSet.EMPTY,
+                                TreatyProvider.NONE,
+                                Map.of(
+                                                attacker.nationId(), 1.0f,
+                                                sameAllianceInRange.nationId(), 0.75f,
+                                                sameAllianceOutOfRange.nationId(), 0.25f,
+                                                otherAlliance.nationId(), 1.0f
+                                )
+                );
+
+                assertEquals(0.75d, scenario.estimateAllianceCounterRisk(0, 0), 0.000001d);
+                assertEquals(0.75d, scenario.estimateAllianceCounterRisk(0, 1), 0.000001d);
+                assertEquals(1.0d, scenario.estimateAllianceCounterRisk(0, 2), 0.000001d);
+        }
+
     @Test
     void compilesAuthoritativeUnitsAndCityInfraSlices() {
         DBNationSnapshot attacker = nation(1, 1_000.0)

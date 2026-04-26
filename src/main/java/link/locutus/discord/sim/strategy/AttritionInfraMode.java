@@ -9,6 +9,7 @@ import link.locutus.discord.sim.SimWar;
 import link.locutus.discord.sim.SimWorld;
 import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.actions.SimAction;
+import link.locutus.discord.sim.combat.CombatKernel;
 
 /**
  * Pressure the defender's infrastructure once air superiority is already secured.
@@ -17,7 +18,7 @@ public class AttritionInfraMode extends OffensiveWarPrimitive {
 
     @Override
     protected boolean canConsiderWar(SimWorld world, SimNation self, DecisionContext ctx, SimWar war) {
-        return self.units(MilitaryUnit.AIRCRAFT) > 0
+        return CombatKernel.canUseAttackType(self, AttackType.AIRSTRIKE_INFRA)
                 && war.airSuperiorityOwner() == SimSide.ATTACKER;
     }
 

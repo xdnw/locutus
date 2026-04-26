@@ -8,13 +8,11 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.sim.combat.NationCombatProfile;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
-import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.input.NationInit;
-import link.locutus.discord.sim.combat.state.BasicCombatCityView;
-import link.locutus.discord.sim.combat.state.BasicCombatantView;
 import link.locutus.discord.sim.combat.state.CombatCityView;
 import link.locutus.discord.sim.combat.state.CombatantView;
+import link.locutus.discord.sim.combat.state.CombatantSnapshots;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -168,7 +166,7 @@ public final class SimNation implements CombatantView {
     }
 
     public int maxOffSlots() {
-        return storage.maxOffSlots[nationIndex];
+        return NationCapacityRules.maxOffSlots(storage.maxOffSlotOverrides[nationIndex], projectBits());
     }
 
     public byte resetHourUtc() {
@@ -253,12 +251,29 @@ public final class SimNation implements CombatantView {
     }
 
     public int dailyBuyCap(MilitaryUnit unit) {
-        int baseCap = storage.dailyBuyCapsFlat[storage.unitBase(nationIndex) + requirePurchasableIndex(unit)];
-        return UnitEconomy.applyBeigeDailyBuyBonus(baseCap, unit, beigeTurns(), hasActiveWars());
+        return NationCapacityRules.dailyBuyCap(
+                storage.dailyBuyCapOverridesFlat[storage.unitBase(nationIndex) + requirePurchasableIndex(unit)],
+                cities(),
+                unit,
+                this::hasProject,
+                researchBits(),
+                beigeTurns(),
+                hasActiveWars()
+        );
     }
 
     public int unitCap(MilitaryUnit unit) {
-        return storage.unitCapsFlat[storage.unitBase(nationIndex) + requirePurchasableIndex(unit)];
+        int cityOffset = storage.cityInfraOffsets[nationIndex];
+        return NationCapacityRules.unitCap(
+                storage.unitCapOverridesFlat[storage.unitBase(nationIndex) + requirePurchasableIndex(unit)],
+                unit,
+                storage.citySpecialistProfilesFlat,
+                storage.cityInfraFlat,
+                cityOffset,
+                storage.cityCounts[nationIndex],
+                this::hasProject,
+                researchBits()
+        );
     }
 
     @Override
@@ -310,7 +325,12 @@ public final class SimNation implements CombatantView {
         if (cap < 0) {
             throw new IllegalArgumentException("cap must be >= 0");
         }
-        storage.dailyBuyCapsFlat[storage.unitBase(nationIndex) + idx] = cap;
+        storage.dailyBuyCapOverridesFlat[storage.unitBase(nationIndex) + idx] = cap;
+    }
+
+    public void clearDailyBuyCapOverride(MilitaryUnit unit) {
+        int idx = requirePurchasableIndex(unit);
+        storage.dailyBuyCapOverridesFlat[storage.unitBase(nationIndex) + idx] = NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE;
     }
 
     public void setUnitCap(MilitaryUnit unit, int cap) {
@@ -318,7 +338,12 @@ public final class SimNation implements CombatantView {
         if (cap < 0) {
             throw new IllegalArgumentException("cap must be >= 0");
         }
-        storage.unitCapsFlat[storage.unitBase(nationIndex) + idx] = cap;
+        storage.unitCapOverridesFlat[storage.unitBase(nationIndex) + idx] = cap;
+    }
+
+    public void clearUnitCapOverride(MilitaryUnit unit) {
+        int idx = requirePurchasableIndex(unit);
+        storage.unitCapOverridesFlat[storage.unitBase(nationIndex) + idx] = NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE;
     }
 
     public void queueUnitBuy(MilitaryUnit unit, int amount) {
@@ -336,7 +361,7 @@ public final class SimNation implements CombatantView {
 
         int current = storage.unitsFlat[unitBase + idx];
         int pending = storage.pendingBuysNextTurnFlat[unitBase + idx];
-        int unitCap = storage.unitCapsFlat[unitBase + idx];
+        int unitCap = unitCap(unit);
         if (current + pending + amount > unitCap) {
             throw new IllegalStateException("Unit cap exceeded for " + unit + " on nation " + nationId());
         }
@@ -356,7 +381,7 @@ public final class SimNation implements CombatantView {
                 continue;
             }
             int current = storage.unitsFlat[unitBase + idx];
-            int cap = storage.unitCapsFlat[unitBase + idx];
+            int cap = unitCap(unit);
             int next = Math.min(cap, current + pending);
             storage.unitsFlat[unitBase + idx] = next;
             storage.pendingBuysNextTurnFlat[unitBase + idx] = 0;
@@ -561,6 +586,26 @@ public final class SimNation implements CombatantView {
                 .missileDamage(infra, this::hasProject);
     }
 
+    @Override
+    public int cityMissileDamageMin(int cityIndex) {
+        if (cityIndex < 0 || cityIndex >= cities()) {
+            return 0;
+        }
+        double infra = cityInfra(cityIndex);
+        return storage.citySpecialistProfilesFlat[storage.cityInfraOffsets[nationIndex] + cityIndex]
+                .missileDamageMin(infra, this::hasProject);
+    }
+
+    @Override
+    public int cityMissileDamageMax(int cityIndex) {
+        if (cityIndex < 0 || cityIndex >= cities()) {
+            return 0;
+        }
+        double infra = cityInfra(cityIndex);
+        return storage.citySpecialistProfilesFlat[storage.cityInfraOffsets[nationIndex] + cityIndex]
+                .missileDamageMax(infra, this::hasProject);
+    }
+
     public Map.Entry<Integer, Integer> cityNukeDamage(int cityIndex) {
         if (cityIndex < 0 || cityIndex >= cities()) {
             return ZERO_DAMAGE_RANGE;
@@ -568,6 +613,26 @@ public final class SimNation implements CombatantView {
         double infra = cityInfra(cityIndex);
         return storage.citySpecialistProfilesFlat[storage.cityInfraOffsets[nationIndex] + cityIndex]
                 .nukeDamage(infra, this::hasProject);
+    }
+
+    @Override
+    public int cityNukeDamageMin(int cityIndex) {
+        if (cityIndex < 0 || cityIndex >= cities()) {
+            return 0;
+        }
+        double infra = cityInfra(cityIndex);
+        return storage.citySpecialistProfilesFlat[storage.cityInfraOffsets[nationIndex] + cityIndex]
+                .nukeDamageMin(infra, this::hasProject);
+    }
+
+    @Override
+    public int cityNukeDamageMax(int cityIndex) {
+        if (cityIndex < 0 || cityIndex >= cities()) {
+            return 0;
+        }
+        double infra = cityInfra(cityIndex);
+        return storage.citySpecialistProfilesFlat[storage.cityInfraOffsets[nationIndex] + cityIndex]
+                .nukeDamageMax(infra, this::hasProject);
     }
 
     @Override
@@ -617,47 +682,7 @@ public final class SimNation implements CombatantView {
     // Returns a snapshot CombatantView backed by this nation's current per-city infra and unit counts.
     // Callers can still override the stored combat profile when a test or boundary adapter needs it.
     public CombatantView asCombatantView(NationCombatProfile combatProfile, Collection<Project> projects) {
-        NationCombatProfile validatedProfile = Objects.requireNonNull(combatProfile, "combatProfile");
-        int cityCount = storage.cityCounts[nationIndex];
-        Set<Project> projectSet = projects == null || projects.isEmpty()
-                ? Collections.emptySet()
-                : Set.copyOf(projects);
-        Predicate<Project> hasProject = projectSet::contains;
-        BasicCombatantView.Builder builder = BasicCombatantView.builder()
-                .nationId(nationId())
-                .cities(cityCount)
-                .researchBits(validatedProfile.researchBits())
-                .blitzkrieg(validatedProfile.blitzkriegActive())
-                .lootModifier(validatedProfile.lootModifier())
-                .looterModifier(true, validatedProfile.groundLooterModifier())
-                .looterModifier(false, validatedProfile.nonGroundLooterModifier())
-                .addProjects(projectSet);
-        for (AttackType type : AttackType.values) {
-            builder.infraAttackModifier(type, validatedProfile.infraAttackModifier(type));
-            builder.infraDefendModifier(type, validatedProfile.infraDefendModifier(type));
-        }
-        builder.unit(MilitaryUnit.MONEY, (int) Math.round(resource(ResourceType.MONEY)));
-        builder.unit(MilitaryUnit.INFRASTRUCTURE, (int) Math.round(totalInfra()));
-        int unitBase = storage.unitBase(nationIndex);
-        for (MilitaryUnit unit : SimUnits.PURCHASABLE_UNITS) {
-            builder.unit(unit, storage.unitsFlat[unitBase + SimUnits.purchasableIndex(unit)]);
-            builder.capacity(unit, unitCap(unit));
-        }
-        int cityOffset = storage.cityInfraOffsets[nationIndex];
-        for (int i = 0; i < cityCount; i++) {
-            double infra = storage.cityInfraFlat[cityOffset + i];
-            SpecialistCityProfile profile = storage.citySpecialistProfilesFlat[cityOffset + i];
-            var missileDamage = profile.missileDamage(infra, hasProject);
-            var nukeDamage = profile.nukeDamage(infra, hasProject);
-            builder.city(BasicCombatCityView.of(
-                    infra,
-                    missileDamage.getKey(),
-                    missileDamage.getValue(),
-                    nukeDamage.getKey(),
-                    nukeDamage.getValue()
-            ));
-        }
-        return builder.build();
+        return CombatantSnapshots.snapshotOf(this, Objects.requireNonNull(combatProfile, "combatProfile"), projects);
     }
 
     public CombatantView asCombatantView(
@@ -778,7 +803,7 @@ public final class SimNation implements CombatantView {
     }
 
     public void occupyOffensiveSlot() {
-        if (storage.offSlotsUsed[nationIndex] >= storage.maxOffSlots[nationIndex]) {
+        if (storage.offSlotsUsed[nationIndex] >= maxOffSlots()) {
             throw new IllegalStateException("No free offensive slots for nation " + nationId());
         }
         storage.offSlotsUsed[nationIndex]++;

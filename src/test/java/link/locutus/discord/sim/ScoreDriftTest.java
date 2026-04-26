@@ -45,6 +45,8 @@ class ScoreDriftTest {
         SimNation attacker = new SimNation(10, WarPolicy.PIRATE, 0d, 100d, 2);
         SimNation defender = new SimNation(20, WarPolicy.TURTLE, 1_000_000d, 245d, 2);
         defender.addResource(ResourceType.STEEL, 500d);
+        defender.setDailyBuyCap(MilitaryUnit.SHIP, 10);
+        defender.setUnitCap(MilitaryUnit.SHIP, 20);
 
         world.addNation(attacker);
         world.addNation(defender);

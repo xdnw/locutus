@@ -8,8 +8,6 @@ public record SimTuning(
         double wartimeActivityUplift,
         double activityActThreshold,
         int policyCooldownTurns,
-        int peaceOfferLifetimeTurns,
-        int mapReserveLifetimeTurns,
         long localSearchBudgetMs,
         int localSearchMaxIterations,
         int candidatesPerAttacker,
@@ -24,8 +22,6 @@ public record SimTuning(
     public static final double DEFAULT_WARTIME_ACTIVITY_UPLIFT = 0.15d;
     public static final double DEFAULT_ACTIVITY_ACT_THRESHOLD = 0.5d;
     public static final int DEFAULT_POLICY_COOLDOWN_TURNS = 60;
-    public static final int DEFAULT_PEACE_OFFER_LIFETIME_TURNS = 6;
-    public static final int DEFAULT_MAP_RESERVE_LIFETIME_TURNS = 1;
     public static final long DEFAULT_LOCAL_SEARCH_BUDGET_MS = 250L;
     public static final int DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS = 500;
     public static final int DEFAULT_CANDIDATES_PER_ATTACKER = 8;
@@ -49,12 +45,6 @@ public record SimTuning(
         }
         if (policyCooldownTurns <= 0) {
             throw new IllegalArgumentException("policyCooldownTurns must be > 0");
-        }
-        if (peaceOfferLifetimeTurns <= 0) {
-            throw new IllegalArgumentException("peaceOfferLifetimeTurns must be > 0");
-        }
-        if (mapReserveLifetimeTurns <= 0) {
-            throw new IllegalArgumentException("mapReserveLifetimeTurns must be > 0");
         }
         if (localSearchBudgetMs <= 0L) {
             throw new IllegalArgumentException("localSearchBudgetMs must be > 0");
@@ -82,8 +72,6 @@ public record SimTuning(
             double wartimeActivityUplift,
             double activityActThreshold,
             int policyCooldownTurns,
-            int peaceOfferLifetimeTurns,
-            int mapReserveLifetimeTurns,
             long localSearchBudgetMs,
             int localSearchMaxIterations,
             int candidatesPerAttacker,
@@ -95,8 +83,6 @@ public record SimTuning(
                 wartimeActivityUplift,
                 activityActThreshold,
                 policyCooldownTurns,
-                peaceOfferLifetimeTurns,
-                mapReserveLifetimeTurns,
                 localSearchBudgetMs,
                 localSearchMaxIterations,
                 candidatesPerAttacker,
@@ -113,8 +99,6 @@ public record SimTuning(
             double wartimeActivityUplift,
             double activityActThreshold,
             int policyCooldownTurns,
-            int peaceOfferLifetimeTurns,
-            int mapReserveLifetimeTurns,
             long localSearchBudgetMs,
             int localSearchMaxIterations,
             int candidatesPerAttacker,
@@ -128,8 +112,6 @@ public record SimTuning(
                 wartimeActivityUplift,
                 activityActThreshold,
                 policyCooldownTurns,
-                peaceOfferLifetimeTurns,
-                mapReserveLifetimeTurns,
                 localSearchBudgetMs,
                 localSearchMaxIterations,
                 candidatesPerAttacker,
@@ -147,8 +129,6 @@ public record SimTuning(
                 DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 policyCooldownTurns,
-                DEFAULT_PEACE_OFFER_LIFETIME_TURNS,
-                DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 DEFAULT_CANDIDATES_PER_ATTACKER,
@@ -159,15 +139,13 @@ public record SimTuning(
         );
     }
 
-    public SimTuning(int policyCooldownTurns, int peaceOfferLifetimeTurns, int beigeTurnsOnDefeat) {
+    public SimTuning(int policyCooldownTurns, int beigeTurnsOnDefeat) {
         this(
                 DEFAULT_INTRA_TURN_PASSES,
                 DEFAULT_TURN1_DECLARE_POLICY,
                 DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 policyCooldownTurns,
-                peaceOfferLifetimeTurns,
-                DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 DEFAULT_CANDIDATES_PER_ATTACKER,
@@ -185,8 +163,6 @@ public record SimTuning(
                 DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 DEFAULT_POLICY_COOLDOWN_TURNS,
-                DEFAULT_PEACE_OFFER_LIFETIME_TURNS,
-                DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 DEFAULT_CANDIDATES_PER_ATTACKER,
@@ -204,8 +180,6 @@ public record SimTuning(
                 wartimeActivityUplift,
                 activityActThreshold,
                 policyCooldownTurns,
-                peaceOfferLifetimeTurns,
-                mapReserveLifetimeTurns,
                 localSearchBudgetMs,
                 localSearchMaxIterations,
                 candidatesPerAttacker,
@@ -223,8 +197,6 @@ public record SimTuning(
                 wartimeActivityUplift,
                 activityActThreshold,
                 policyCooldownTurns,
-                peaceOfferLifetimeTurns,
-                mapReserveLifetimeTurns,
                 localSearchBudgetMs,
                 localSearchMaxIterations,
                 candidatesPerAttacker,
@@ -242,8 +214,6 @@ public record SimTuning(
                 wartimeActivityUplift,
                 activityActThreshold,
                 policyCooldownTurns,
-                peaceOfferLifetimeTurns,
-                mapReserveLifetimeTurns,
                 localSearchBudgetMs,
                 localSearchMaxIterations,
                 candidatesPerAttacker,
@@ -261,8 +231,6 @@ public record SimTuning(
                 DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 DEFAULT_POLICY_COOLDOWN_TURNS,
-                DEFAULT_PEACE_OFFER_LIFETIME_TURNS,
-                DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 DEFAULT_CANDIDATES_PER_ATTACKER,

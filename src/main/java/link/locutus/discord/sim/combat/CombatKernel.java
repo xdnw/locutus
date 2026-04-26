@@ -99,21 +99,28 @@ public final class CombatKernel {
     }
 
     public interface PrimitiveCityAccess extends NationState {
+        @Override
+        default int cityCount() {
+            return cities();
+        }
+
         default double cityInfra(int cityIndex) {
             throw new UnsupportedOperationException("Primitive city infra access is not available");
         }
 
+        @Override
         default Map.Entry<Integer, Integer> cityMissileDamage(int cityIndex) {
             throw new UnsupportedOperationException("Primitive city missile damage access is not available");
         }
 
+        @Override
         default Map.Entry<Integer, Integer> cityNukeDamage(int cityIndex) {
             throw new UnsupportedOperationException("Primitive city nuke damage access is not available");
         }
 
         @Override
         default Collection<? extends AttackType.CasualtyCityView> getCityViews() {
-            int cityCount = cities();
+            int cityCount = cityCount();
             return new AbstractList<>() {
                 @Override
                 public AttackType.CasualtyCityView get(int index) {
@@ -503,6 +510,28 @@ public final class CombatKernel {
         return signal;
     }
 
+    /**
+     * Shared attack admission owner for the current attack-type-only action surface.
+     *
+     * <p>Ground currently enforces the verified `50`-soldier floor here rather than letting
+     * live strategy, planner-local execution, and runtime callers each guess their own unit
+     * gate. Air minimums beyond stocked aircraft remain unverified and are intentionally not
+     * guessed here.</p>
+     */
+    public static boolean canUseAttackType(NationState attacker, AttackType type) {
+        Objects.requireNonNull(attacker, "attacker");
+        Objects.requireNonNull(type, "type");
+        return switch (type) {
+            case GROUND -> attacker.getUnits(MilitaryUnit.SOLDIER) >= 50;
+            case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY,
+                    AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT -> attacker.getUnits(MilitaryUnit.AIRCRAFT) > 0;
+            case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND -> attacker.getUnits(MilitaryUnit.SHIP) > 0;
+            case MISSILE, NUKE -> isLegalSpecialistAttack(attacker, type);
+            case FORTIFY -> true;
+            default -> false;
+        };
+    }
+
     public static boolean isLegalSpecialistAttack(NationState attacker, AttackType type) {
         Objects.requireNonNull(attacker, "attacker");
         Objects.requireNonNull(type, "type");
@@ -548,24 +577,13 @@ public final class CombatKernel {
         fillOddsVector(attacker, defender, context, type, finalOptions, oddsModel, scratch.odds);
         type.writeConsumption(attacker::getUnits, finalOptions.equipAttackerSoldiers(), scratch.consumption);
 
-        CasualtyProvider casualties = success -> type.getCasualties(
-                attacker,
-                defender,
-                success,
-                context.warType(),
-            context.attackerIsOriginalAttacker(),
-                context.defenderHasAirControl(),
-                context.attackerHasAirControl(),
-                context.defenderFortified(),
-                finalOptions.equipAttackerSoldiers(),
-                finalOptions.equipDefenderSoldiers(),
-                context.attackerHasGroundControl()
-        );
-
         resolveInternalInto(
-            casualties,
+            attacker,
+            defender,
+            context,
             success -> computeControlDelta(context, type, success),
             type,
+            finalOptions,
             scratch.odds,
             mode,
             rng,
@@ -608,9 +626,12 @@ public final class CombatKernel {
     }
 
     private static void resolveInternalInto(
-            CasualtyProvider casualtyProvider,
+            NationState attacker,
+            NationState defender,
+            AttackContext context,
             ControlDeltaProvider controlDeltaProvider,
             AttackType type,
+            EngagementOptions options,
             double[] odds,
             ResolutionMode mode,
             RandomSource rng,
@@ -640,16 +661,32 @@ public final class CombatKernel {
                     if (weight <= 0d) continue;
 
                     SuccessType success = SUCCESS_TYPES[s];
-                    var casualties = casualtyProvider.casualties(success);
+                    writeCasualtyRanges(attacker, defender, context, type, options, success, scratch);
 
-                    DoubleBox infraBox = new DoubleBox();
-                    DoubleBox lootBox = new DoubleBox();
+                    scratch.casualtyScalars[AttackScratch.INFRA_SCALAR] = 0d;
+                    scratch.casualtyScalars[AttackScratch.LOOT_SCALAR] = 0d;
 
-                    accumulateMidpoint(casualties.getKey(), scratch.attackerLossesWork, weight, null, null);
-                    accumulateMidpoint(casualties.getValue(), scratch.defenderLossesWork, weight, infraBox, lootBox);
+                    accumulateMidpoint(
+                            scratch.attackerRangeUnits,
+                            scratch.attackerRangeMin,
+                            scratch.attackerRangeMax,
+                            scratch.attackerRangeCount,
+                            scratch.attackerLossesWork,
+                            weight,
+                            null
+                    );
+                    accumulateMidpoint(
+                            scratch.defenderRangeUnits,
+                            scratch.defenderRangeMin,
+                            scratch.defenderRangeMax,
+                            scratch.defenderRangeCount,
+                            scratch.defenderLossesWork,
+                            weight,
+                            scratch.casualtyScalars
+                    );
 
-                    infraSum += infraBox.value;
-                    lootSum += lootBox.value;
+                    infraSum += scratch.casualtyScalars[AttackScratch.INFRA_SCALAR];
+                    lootSum += scratch.casualtyScalars[AttackScratch.LOOT_SCALAR];
                     defenderResistanceDelta += -weight * type.getResistance(success);
                 }
 
@@ -668,15 +705,31 @@ public final class CombatKernel {
             }
             case MOST_LIKELY -> {
                 SuccessType success = successHint;
-                var casualties = casualtyProvider.casualties(success);
+                writeCasualtyRanges(attacker, defender, context, type, options, success, scratch);
 
                 Arrays.fill(scratch.attackerLossesWork, 0d);
                 Arrays.fill(scratch.defenderLossesWork, 0d);
-                DoubleBox infraBox = new DoubleBox();
-                DoubleBox lootBox = new DoubleBox();
+                scratch.casualtyScalars[AttackScratch.INFRA_SCALAR] = 0d;
+                scratch.casualtyScalars[AttackScratch.LOOT_SCALAR] = 0d;
 
-                accumulateMidpoint(casualties.getKey(), scratch.attackerLossesWork, 1d, null, null);
-                accumulateMidpoint(casualties.getValue(), scratch.defenderLossesWork, 1d, infraBox, lootBox);
+                accumulateMidpoint(
+                        scratch.attackerRangeUnits,
+                        scratch.attackerRangeMin,
+                        scratch.attackerRangeMax,
+                        scratch.attackerRangeCount,
+                        scratch.attackerLossesWork,
+                        1d,
+                        null
+                );
+                accumulateMidpoint(
+                        scratch.defenderRangeUnits,
+                        scratch.defenderRangeMin,
+                        scratch.defenderRangeMax,
+                        scratch.defenderRangeCount,
+                        scratch.defenderLossesWork,
+                        1d,
+                        scratch.casualtyScalars
+                );
                 roundToInt(scratch.attackerLossesWork, scratch.attackerLossesInt);
                 roundToInt(scratch.defenderLossesWork, scratch.defenderLossesInt);
 
@@ -685,8 +738,8 @@ public final class CombatKernel {
                         ResolutionMode.MOST_LIKELY,
                         scratch.attackerLossesInt,
                         scratch.defenderLossesInt,
-                        infraBox.value,
-                        lootBox.value,
+                        scratch.casualtyScalars[AttackScratch.INFRA_SCALAR],
+                        scratch.casualtyScalars[AttackScratch.LOOT_SCALAR],
                         0d,
                         clampResistanceDelta(-type.getResistance(success)),
                         type.getMapUsed(),
@@ -696,15 +749,33 @@ public final class CombatKernel {
             }
             case STOCHASTIC -> {
                 SuccessType success = sampleSuccess(odds, rng, streamKey);
-                var casualties = casualtyProvider.casualties(success);
+                writeCasualtyRanges(attacker, defender, context, type, options, success, scratch);
 
                 Arrays.fill(scratch.attackerLossesWork, 0d);
                 Arrays.fill(scratch.defenderLossesWork, 0d);
-                DoubleBox infraBox = new DoubleBox();
-                DoubleBox lootBox = new DoubleBox();
+                scratch.casualtyScalars[AttackScratch.INFRA_SCALAR] = 0d;
+                scratch.casualtyScalars[AttackScratch.LOOT_SCALAR] = 0d;
 
-                accumulateSampled(casualties.getKey(), scratch.attackerLossesWork, rng, streamKey ^ 0x41AL, null, null);
-                accumulateSampled(casualties.getValue(), scratch.defenderLossesWork, rng, streamKey ^ 0xDEFL, infraBox, lootBox);
+                accumulateSampled(
+                        scratch.attackerRangeUnits,
+                        scratch.attackerRangeMin,
+                        scratch.attackerRangeMax,
+                        scratch.attackerRangeCount,
+                        scratch.attackerLossesWork,
+                        rng,
+                        streamKey ^ 0x41AL,
+                        null
+                );
+                accumulateSampled(
+                        scratch.defenderRangeUnits,
+                        scratch.defenderRangeMin,
+                        scratch.defenderRangeMax,
+                        scratch.defenderRangeCount,
+                        scratch.defenderLossesWork,
+                        rng,
+                        streamKey ^ 0xDEFL,
+                        scratch.casualtyScalars
+                );
                 roundToInt(scratch.attackerLossesWork, scratch.attackerLossesInt);
                 roundToInt(scratch.defenderLossesWork, scratch.defenderLossesInt);
 
@@ -713,8 +784,8 @@ public final class CombatKernel {
                         ResolutionMode.STOCHASTIC,
                         scratch.attackerLossesInt,
                         scratch.defenderLossesInt,
-                        infraBox.value,
-                        lootBox.value,
+                        scratch.casualtyScalars[AttackScratch.INFRA_SCALAR],
+                        scratch.casualtyScalars[AttackScratch.LOOT_SCALAR],
                         0d,
                         clampResistanceDelta(-type.getResistance(success)),
                         type.getMapUsed(),
@@ -729,6 +800,31 @@ public final class CombatKernel {
         return WarControlRules.controlDelta(context, type, success);
     }
 
+    private static void writeCasualtyRanges(
+            NationState attacker,
+            NationState defender,
+            AttackContext context,
+            AttackType type,
+            EngagementOptions options,
+            SuccessType success,
+            AttackScratch scratch
+    ) {
+        type.writeCasualties(
+                attacker,
+                defender,
+                success,
+                context.warType(),
+                context.attackerIsOriginalAttacker(),
+                context.defenderHasAirControl(),
+                context.attackerHasAirControl(),
+                context.defenderFortified(),
+                options.equipAttackerSoldiers(),
+                options.equipDefenderSoldiers(),
+                context.attackerHasGroundControl(),
+                scratch
+        );
+    }
+
     private static void requireOddsVector(double[] odds) {
         if (odds == null || odds.length != SUCCESS_TYPES.length) {
             throw new IllegalArgumentException("odds must be sized to SuccessType.values.length");
@@ -736,25 +832,23 @@ public final class CombatKernel {
     }
 
     private static void accumulateMidpoint(
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> casualties,
+            int[] unitOrdinals,
+            int[] mins,
+            int[] maxes,
+            int count,
             double[] unitLosses,
             double weight,
-            DoubleBox infraOut,
-            DoubleBox lootOut
+            double[] scalarOut
     ) {
-        if (casualties == null) return;
-
-        for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> casualtyEntry : casualties.entrySet()) {
-            MilitaryUnit unit = casualtyEntry.getKey();
-            Map.Entry<Integer, Integer> range = casualtyEntry.getValue();
-
-            double midpoint = (range.getKey() + range.getValue()) * 0.5d;
+        for (int i = 0; i < count; i++) {
+            MilitaryUnit unit = MilitaryUnit.values[unitOrdinals[i]];
+            double midpoint = (mins[i] + maxes[i]) * 0.5d;
             switch (unit) {
                 case INFRASTRUCTURE -> {
-                    if (infraOut != null) infraOut.value += weight * midpoint;
+                    if (scalarOut != null) scalarOut[AttackScratch.INFRA_SCALAR] += weight * midpoint;
                 }
                 case MONEY -> {
-                    if (lootOut != null) lootOut.value += weight * midpoint;
+                    if (scalarOut != null) scalarOut[AttackScratch.LOOT_SCALAR] += weight * midpoint;
                 }
                 default -> unitLosses[unit.ordinal()] += weight * midpoint;
             }
@@ -762,29 +856,27 @@ public final class CombatKernel {
     }
 
     private static void accumulateSampled(
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> casualties,
+            int[] unitOrdinals,
+            int[] mins,
+            int[] maxes,
+            int count,
             double[] unitLosses,
             RandomSource rng,
             long baseKey,
-            DoubleBox infraOut,
-            DoubleBox lootOut
+            double[] scalarOut
     ) {
-        if (casualties == null) return;
-
         int offset = 0;
-        for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> casualtyEntry : casualties.entrySet()) {
-            MilitaryUnit unit = casualtyEntry.getKey();
-            Map.Entry<Integer, Integer> range = casualtyEntry.getValue();
-
-            int min = range.getKey();
-            int max = range.getValue();
+        for (int i = 0; i < count; i++) {
+            MilitaryUnit unit = MilitaryUnit.values[unitOrdinals[i]];
+            int min = mins[i];
+            int max = maxes[i];
             double sample = min == max ? min : min + (max - min) * rng.nextDouble(baseKey + offset++);
             switch (unit) {
                 case INFRASTRUCTURE -> {
-                    if (infraOut != null) infraOut.value += sample;
+                    if (scalarOut != null) scalarOut[AttackScratch.INFRA_SCALAR] += sample;
                 }
                 case MONEY -> {
-                    if (lootOut != null) lootOut.value += sample;
+                    if (scalarOut != null) scalarOut[AttackScratch.LOOT_SCALAR] += sample;
                 }
                 default -> unitLosses[unit.ordinal()] = sample;
             }
@@ -892,16 +984,7 @@ public final class CombatKernel {
         return h;
     }
 
-    @FunctionalInterface
-    private interface CasualtyProvider {
-        Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>,
-                Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties(SuccessType success);
-    }
-
     private record StrengthPair(double attacker, double defender) {
     }
 
-    private static final class DoubleBox {
-        double value;
-    }
 }

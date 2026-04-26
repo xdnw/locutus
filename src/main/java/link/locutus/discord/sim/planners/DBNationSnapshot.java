@@ -55,6 +55,7 @@ public final class DBNationSnapshot {
     private final double nonInfraScoreBase;
     private final double[] cityInfra;
     private final SpecialistCityProfile[] citySpecialistProfiles;
+    private final double totalInfra;
     private final byte resetHourUtc;
     private final boolean resetHourUtcFallback;
     private final Set<Integer> activeOpponentNationIds;
@@ -86,6 +87,7 @@ public final class DBNationSnapshot {
         this.nonInfraScoreBase = b.nonInfraScoreBase;
         this.cityInfra = b.cityInfra.clone();
         this.citySpecialistProfiles = b.citySpecialistProfiles.clone();
+        this.totalInfra = totalInfra(this.cityInfra);
         this.resetHourUtc = b.resetHourUtc;
         this.resetHourUtcFallback = b.resetHourUtcFallback;
         this.activeOpponentNationIds = Set.copyOf(b.activeOpponentNationIds);
@@ -136,7 +138,6 @@ public final class DBNationSnapshot {
         b.cities(nation.getCities());
         b.currentOffensiveWars(nation.getOff());
         b.currentDefensiveWars(nation.getDef());
-        b.maxOff(nation.getMaxOff());
         b.warPolicy(nation.getWarPolicy());
         b.beigeTurns(nation.getBeigeTurns());
         long projectBits = nation.data()._projects();
@@ -154,6 +155,12 @@ public final class DBNationSnapshot {
             var city = cityEntries.get(i).getValue();
             cityInfra[i] = city.getInfra();
             cityProfiles[i] = SpecialistCityProfile.fromCity(city, nation::hasProject);
+        }
+        if (cityInfra.length == 0 && nation.getCities() > 0) {
+            cityInfra = new double[nation.getCities()];
+            java.util.Arrays.fill(cityInfra, nation.getAvg_infra());
+            cityProfiles = new SpecialistCityProfile[cityInfra.length];
+            java.util.Arrays.fill(cityProfiles, SpecialistCityProfile.DEFAULT);
         }
         b.cityInfra(cityInfra);
         b.citySpecialistProfiles(cityProfiles);
@@ -216,9 +223,19 @@ public final class DBNationSnapshot {
     public WarPolicy warPolicy() { return warPolicy; }
     public int unit(MilitaryUnit u) { return units.getOrDefault(u, 0); }
     public double[] resources() { return resources.clone(); }
+    /** Copies resources into caller-owned storage without allocating a clone. */
+    public void copyResourcesInto(double[] target, int targetOffset) {
+        System.arraycopy(resources, 0, target, targetOffset, resources.length);
+    }
     public double resource(ResourceType type) { return resources[type.ordinal()]; }
     public double nonInfraScoreBase() { return nonInfraScoreBase; }
     public double[] cityInfra() { return cityInfra.clone(); }
+    /** Returns the city-infra length without allocating a cloned array. */
+    public int cityInfraCount() { return cityInfra.length; }
+    /** Copies city infra into caller-owned storage without allocating a clone. */
+    public void copyCityInfraInto(double[] target, int targetOffset) {
+        System.arraycopy(cityInfra, 0, target, targetOffset, cityInfra.length);
+    }
     public SpecialistCityProfile[] citySpecialistProfiles() { return citySpecialistProfiles.clone(); }
     public byte resetHourUtc() { return resetHourUtc; }
     public boolean resetHourUtcFallback() { return resetHourUtcFallback; }
@@ -262,6 +279,9 @@ public final class DBNationSnapshot {
 
     double cityInfraAt(int cityIndex) { return cityInfra[cityIndex]; }
     SpecialistCityProfile citySpecialistProfileAt(int cityIndex) { return citySpecialistProfiles[cityIndex]; }
+    double[] cityInfraRaw() { return cityInfra; }
+    SpecialistCityProfile[] citySpecialistProfilesRaw() { return citySpecialistProfiles; }
+    double totalInfraRaw() { return totalInfra; }
     boolean hasProject(Project project) { return (projectBits & (1L << project.ordinal())) != 0L; }
 
     /**
@@ -331,6 +351,14 @@ public final class DBNationSnapshot {
         return builder;
     }
 
+    private static double totalInfra(double[] cityInfra) {
+        double total = 0d;
+        for (double infra : cityInfra) {
+            total += infra;
+        }
+        return total;
+    }
+
     public static final class Builder {
         private final int nationId;
         private int allianceId;
@@ -339,7 +367,7 @@ public final class DBNationSnapshot {
         private int cities;
         private int currentOffensiveWars;
         private int currentDefensiveWars;
-        private int maxOff = 5;
+        private int maxOff = -1;
         private WarPolicy warPolicy = WarPolicy.ATTRITION;
         private final EnumMap<MilitaryUnit, Integer> units = new EnumMap<>(MilitaryUnit.class);
         private double[] resources = new double[ResourceType.values.length];
@@ -487,6 +515,9 @@ public final class DBNationSnapshot {
                 citySpecialistProfiles = SpecialistCityProfile.defaults(cityInfra.length);
             } else if (citySpecialistProfiles.length != cityInfra.length) {
                 throw new IllegalArgumentException("citySpecialistProfiles must match cityInfra length");
+            }
+            if (maxOff < 0) {
+                maxOff = WarSlotRules.offensiveSlotCap(projectBits);
             }
             if (!combatProfileExplicit) {
                 applyDerivedCombatProfile();

@@ -21,7 +21,7 @@ final class SimNationArrayStore {
     int cityInfraSize;
     int[] nationIds;
     int[] teamIds;
-    int[] maxOffSlots;
+    int[] maxOffSlotOverrides;
     long[] projectBits;
     NationCombatProfile[] combatProfiles;
     int[] cityInfraOffsets;
@@ -39,8 +39,8 @@ final class SimNationArrayStore {
     int[] unitsFlat;
     int[] unitBuysTodayFlat;
     int[] pendingBuysNextTurnFlat;
-    int[] dailyBuyCapsFlat;
-    int[] unitCapsFlat;
+    int[] dailyBuyCapOverridesFlat;
+    int[] unitCapOverridesFlat;
     double[] cityInfraFlat;
     SpecialistCityProfile[] citySpecialistProfilesFlat;
 
@@ -49,7 +49,7 @@ final class SimNationArrayStore {
         int safeCityCapacity = Math.max(0, cityCapacity);
         nationIds = new int[safeNationCapacity];
         teamIds = new int[safeNationCapacity];
-        maxOffSlots = new int[safeNationCapacity];
+        maxOffSlotOverrides = new int[safeNationCapacity];
         projectBits = new long[safeNationCapacity];
         combatProfiles = new NationCombatProfile[safeNationCapacity];
         cityInfraOffsets = new int[safeNationCapacity];
@@ -67,8 +67,11 @@ final class SimNationArrayStore {
         unitsFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
         unitBuysTodayFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
         pendingBuysNextTurnFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
-        dailyBuyCapsFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
-        unitCapsFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
+        dailyBuyCapOverridesFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
+        unitCapOverridesFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
+        Arrays.fill(maxOffSlotOverrides, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
+        Arrays.fill(dailyBuyCapOverridesFlat, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
+        Arrays.fill(unitCapOverridesFlat, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
         cityInfraFlat = new double[safeCityCapacity];
         citySpecialistProfilesFlat = new SpecialistCityProfile[safeCityCapacity];
     }
@@ -95,7 +98,7 @@ final class SimNationArrayStore {
 
         nationIds[nationIndex] = init.nationId();
         teamIds[nationIndex] = init.teamId();
-        maxOffSlots[nationIndex] = init.maxOffSlots();
+        maxOffSlotOverrides[nationIndex] = NationCapacityRules.normalizeMaxOffOverride(init.maxOffSlots(), init.projectBits());
         projectBits[nationIndex] = init.projectBits();
         combatProfiles[nationIndex] = init.combatProfile();
         resetHoursUtc[nationIndex] = init.resetHourUtc();
@@ -117,8 +120,8 @@ final class SimNationArrayStore {
         System.arraycopy(snapshot.units(), 0, unitsFlat, unitBase, PURCHASABLE_COUNT);
         System.arraycopy(snapshot.unitBuysToday(), 0, unitBuysTodayFlat, unitBase, PURCHASABLE_COUNT);
         System.arraycopy(snapshot.pendingBuysNextTurn(), 0, pendingBuysNextTurnFlat, unitBase, PURCHASABLE_COUNT);
-        System.arraycopy(snapshot.dailyBuyCaps(), 0, dailyBuyCapsFlat, unitBase, PURCHASABLE_COUNT);
-        System.arraycopy(snapshot.unitCaps(), 0, unitCapsFlat, unitBase, PURCHASABLE_COUNT);
+        System.arraycopy(snapshot.dailyBuyCapOverrides(), 0, dailyBuyCapOverridesFlat, unitBase, PURCHASABLE_COUNT);
+        System.arraycopy(snapshot.unitCapOverrides(), 0, unitCapOverridesFlat, unitBase, PURCHASABLE_COUNT);
 
         double[] cityInfra = init.cityInfra();
         System.arraycopy(cityInfra, 0, cityInfraFlat, cityInfraSize, cityCount);
@@ -142,7 +145,7 @@ final class SimNationArrayStore {
         copy.cityInfraSize = cityInfraSize;
         copy.nationIds = nationIds;
         copy.teamIds = teamIds;
-        copy.maxOffSlots = maxOffSlots;
+        copy.maxOffSlotOverrides = maxOffSlotOverrides;
         copy.projectBits = projectBits;
         copy.combatProfiles = Arrays.copyOf(combatProfiles, size);
         copy.cityInfraOffsets = cityInfraOffsets;
@@ -160,8 +163,8 @@ final class SimNationArrayStore {
         copy.unitsFlat = Arrays.copyOf(unitsFlat, size * PURCHASABLE_COUNT);
         copy.unitBuysTodayFlat = Arrays.copyOf(unitBuysTodayFlat, size * PURCHASABLE_COUNT);
         copy.pendingBuysNextTurnFlat = Arrays.copyOf(pendingBuysNextTurnFlat, size * PURCHASABLE_COUNT);
-        copy.dailyBuyCapsFlat = Arrays.copyOf(dailyBuyCapsFlat, size * PURCHASABLE_COUNT);
-        copy.unitCapsFlat = Arrays.copyOf(unitCapsFlat, size * PURCHASABLE_COUNT);
+        copy.dailyBuyCapOverridesFlat = Arrays.copyOf(dailyBuyCapOverridesFlat, size * PURCHASABLE_COUNT);
+        copy.unitCapOverridesFlat = Arrays.copyOf(unitCapOverridesFlat, size * PURCHASABLE_COUNT);
         copy.cityInfraFlat = Arrays.copyOf(cityInfraFlat, cityInfraSize);
         copy.citySpecialistProfilesFlat = Arrays.copyOf(citySpecialistProfilesFlat, cityInfraSize);
         return copy;
@@ -176,7 +179,7 @@ final class SimNationArrayStore {
                         copyResources(nationIndex),
                         nonInfraScoreBase[nationIndex],
                         copyCityInfra(nationIndex),
-                        maxOffSlots[nationIndex],
+                        NationCapacityRules.maxOffSlots(maxOffSlotOverrides[nationIndex], projectBits[nationIndex]),
                         resetHoursUtc[nationIndex],
                         projectBits[nationIndex],
                         copyCitySpecialistProfiles(nationIndex),
@@ -190,8 +193,8 @@ final class SimNationArrayStore {
                 copyUnitSlice(unitsFlat, nationIndex),
                 copyUnitSlice(unitBuysTodayFlat, nationIndex),
                 copyUnitSlice(pendingBuysNextTurnFlat, nationIndex),
-                copyUnitSlice(dailyBuyCapsFlat, nationIndex),
-                copyUnitSlice(unitCapsFlat, nationIndex)
+                copyUnitSlice(dailyBuyCapOverridesFlat, nationIndex),
+                copyUnitSlice(unitCapOverridesFlat, nationIndex)
         );
     }
 
@@ -243,7 +246,9 @@ final class SimNationArrayStore {
                     : nationIds.length;
             nationIds = Arrays.copyOf(nationIds, nextCapacity);
             teamIds = Arrays.copyOf(teamIds, nextCapacity);
-            maxOffSlots = Arrays.copyOf(maxOffSlots, nextCapacity);
+            int oldLength = maxOffSlotOverrides.length;
+            maxOffSlotOverrides = Arrays.copyOf(maxOffSlotOverrides, nextCapacity);
+            Arrays.fill(maxOffSlotOverrides, oldLength, nextCapacity, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
             projectBits = Arrays.copyOf(projectBits, nextCapacity);
             combatProfiles = Arrays.copyOf(combatProfiles, nextCapacity);
             cityInfraOffsets = Arrays.copyOf(cityInfraOffsets, nextCapacity);
@@ -268,8 +273,11 @@ final class SimNationArrayStore {
             unitsFlat = Arrays.copyOf(unitsFlat, nextCapacity * PURCHASABLE_COUNT);
             unitBuysTodayFlat = Arrays.copyOf(unitBuysTodayFlat, nextCapacity * PURCHASABLE_COUNT);
             pendingBuysNextTurnFlat = Arrays.copyOf(pendingBuysNextTurnFlat, nextCapacity * PURCHASABLE_COUNT);
-            dailyBuyCapsFlat = Arrays.copyOf(dailyBuyCapsFlat, nextCapacity * PURCHASABLE_COUNT);
-            unitCapsFlat = Arrays.copyOf(unitCapsFlat, nextCapacity * PURCHASABLE_COUNT);
+            int oldUnitLength = dailyBuyCapOverridesFlat.length;
+            dailyBuyCapOverridesFlat = Arrays.copyOf(dailyBuyCapOverridesFlat, nextCapacity * PURCHASABLE_COUNT);
+            unitCapOverridesFlat = Arrays.copyOf(unitCapOverridesFlat, nextCapacity * PURCHASABLE_COUNT);
+            Arrays.fill(dailyBuyCapOverridesFlat, oldUnitLength, dailyBuyCapOverridesFlat.length, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
+            Arrays.fill(unitCapOverridesFlat, oldUnitLength, unitCapOverridesFlat.length, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
         }
 
         int minimumCityCapacity = cityInfraSize + Math.max(0, additionalCities);
@@ -296,16 +304,16 @@ record SimNationSnapshot(
         int[] units,
         int[] unitBuysToday,
         int[] pendingBuysNextTurn,
-        int[] dailyBuyCaps,
-        int[] unitCaps
+        int[] dailyBuyCapOverrides,
+        int[] unitCapOverrides
 ) {
     SimNationSnapshot {
         init = Objects.requireNonNull(init, "init");
         units = validateArray(units, "units");
         unitBuysToday = validateArray(unitBuysToday, "unitBuysToday");
         pendingBuysNextTurn = validateArray(pendingBuysNextTurn, "pendingBuysNextTurn");
-        dailyBuyCaps = validateArray(dailyBuyCaps, "dailyBuyCaps");
-        unitCaps = validateArray(unitCaps, "unitCaps");
+        dailyBuyCapOverrides = validateArray(dailyBuyCapOverrides, "dailyBuyCapOverrides");
+        unitCapOverrides = validateArray(unitCapOverrides, "unitCapOverrides");
         if (policyCooldownTurnsRemaining < 0) {
             throw new IllegalArgumentException("policyCooldownTurnsRemaining must be >= 0");
         }
@@ -324,10 +332,10 @@ record SimNationSnapshot(
     }
 
     static SimNationSnapshot initial(NationInit init) {
-        int[] dailyBuyCaps = new int[SimNationArrayStore.PURCHASABLE_COUNT];
-        int[] unitCaps = new int[SimNationArrayStore.PURCHASABLE_COUNT];
-        Arrays.fill(dailyBuyCaps, Integer.MAX_VALUE);
-        Arrays.fill(unitCaps, Integer.MAX_VALUE);
+        int[] dailyBuyCapOverrides = new int[SimNationArrayStore.PURCHASABLE_COUNT];
+        int[] unitCapOverrides = new int[SimNationArrayStore.PURCHASABLE_COUNT];
+        Arrays.fill(dailyBuyCapOverrides, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
+        Arrays.fill(unitCapOverrides, NationCapacityRules.UNSPECIFIED_CAP_OVERRIDE);
         return new SimNationSnapshot(
                 init,
                 0,
@@ -338,8 +346,8 @@ record SimNationSnapshot(
                 new int[SimNationArrayStore.PURCHASABLE_COUNT],
                 new int[SimNationArrayStore.PURCHASABLE_COUNT],
                 new int[SimNationArrayStore.PURCHASABLE_COUNT],
-                dailyBuyCaps,
-                unitCaps
+                dailyBuyCapOverrides,
+                unitCapOverrides
         );
     }
 

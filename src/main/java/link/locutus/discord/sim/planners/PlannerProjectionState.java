@@ -91,8 +91,8 @@ final class PlannerProjectionState {
             DBNationSnapshot projectedSnapshot = entry.getValue();
             DBNationSnapshot priorBaseSnapshot = baseSnapshotsById.get(nationId);
             double[] baseCityInfra = priorBaseSnapshot != null
-                    ? priorBaseSnapshot.cityInfra()
-                    : projectedSnapshot.cityInfra();
+                    ? priorBaseSnapshot.cityInfraRaw()
+                    : projectedSnapshot.cityInfraRaw();
             nextBaseSnapshots.put(
                     nationId,
                     projectedSnapshot.toBuilder().cityInfra(baseCityInfra).build()
@@ -177,7 +177,7 @@ final class PlannerProjectionState {
             if (merged == null) {
                 continue;
             }
-            PlannerCityInfraOverlay compactedOverlay = merged.compactAgainst(snapshotEntry.getValue().cityInfra());
+            PlannerCityInfraOverlay compactedOverlay = merged.compactAgainst(snapshotEntry.getValue().cityInfraRaw());
             if (!compactedOverlay.isEmpty()) {
                 compact.put(nationId, compactedOverlay);
             }

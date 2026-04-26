@@ -115,6 +115,51 @@ class BlitzPlannerTest {
         assertEquals(r1.assignment(), r2.assignment(), "BlitzPlanner must be deterministic for same inputs");
     }
 
+        @Test
+        void excludesReciprocalAssignmentsWhenAttackerAndDefenderPoolsOverlap() {
+        DBNationSnapshot attackerSide = DBNationSnapshot.synthetic(1)
+            .teamId(ATTACKER_TEAM)
+            .allianceId(ATTACKER_TEAM)
+            .score(ATTACKER_SCORE)
+            .cities(10)
+            .nonInfraScoreBase(ATTACKER_SCORE)
+            .cityInfra(uniformInfra(10, 1000.0))
+            .maxOff(5)
+            .currentOffensiveWars(0)
+            .currentDefensiveWars(0)
+            .unit(MilitaryUnit.AIRCRAFT, 500)
+            .unit(MilitaryUnit.SOLDIER, 500)
+            .warPolicy(WarPolicy.ATTRITION)
+            .build();
+        DBNationSnapshot defenderSide = DBNationSnapshot.synthetic(101)
+            .teamId(9999)
+            .allianceId(9999)
+            .score(DEFENDER_SCORE)
+            .cities(10)
+            .nonInfraScoreBase(DEFENDER_SCORE)
+            .cityInfra(uniformInfra(10, 1000.0))
+            .maxOff(5)
+            .currentOffensiveWars(0)
+            .currentDefensiveWars(0)
+            .unit(MilitaryUnit.AIRCRAFT, 500)
+            .unit(MilitaryUnit.SOLDIER, 500)
+            .warPolicy(WarPolicy.ATTRITION)
+            .build();
+
+        List<DBNationSnapshot> combined = List.of(attackerSide, defenderSide);
+        TreatyProvider oppositeSideOnly = (attackerId, defenderId) -> attackerId == defenderId
+            || ((attackerId < 100) == (defenderId < 100));
+        BlitzAssignment result = new BlitzPlanner(
+            SimTuning.defaults(),
+            oppositeSideOnly,
+            OverrideSet.EMPTY,
+            new DamageObjective()
+        ).assign(combined, combined);
+
+        assertEquals(1, result.pairCount(), "Overlapping pools should keep only one direction of the same nation pair");
+        assertFalse(result.targetsFor(1).contains(101) && result.targetsFor(101).contains(1));
+        }
+
     @Test
     void noAssignmentAcrossOutOfRangeNations() {
         // Build defenders with 10x the score (clearly out of range for attackers)

@@ -1,15 +1,14 @@
 package link.locutus.discord.sim.planners.compile;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.util.PW;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.IntConsumer;
 import java.util.Arrays;
+import java.util.List;
+import java.util.function.IntConsumer;
 
 /**
  * Dense compiled planner input for legality and range filtering.
@@ -34,20 +33,21 @@ public final class CompiledScenario {
     private final double[] defenderCityInfraFlat;
     private final byte[] attackerFreeOffSlots;
     private final byte[] defenderFreeDefSlots;
-    private final int[] defenderAllianceIds;
     private final float[] attackerActivityWeights;
     private final float[] defenderActivityWeights;
     private final int[] attackerResearchBits;
     private final int[] defenderResearchBits;
     private final long[] attackerProjectBits;
     private final long[] defenderProjectBits;
-    private final Map<Integer, Integer> attackerIndexByNationId;
-    private final Map<Integer, Integer> defenderIndexByNationId;
+    private final Int2IntOpenHashMap attackerIndexByNationId;
+    private final Int2IntOpenHashMap defenderIndexByNationId;
     private final int[][] treatedDefenderIndexesByAttacker;
-    private final Set<Long> activePairConflicts;
+    private final long[][] activePairConflictWordsByAttacker;
     private final int[][] defenderIndexesByScoreBucket;
     private final int minDefenderBucket;
-    private final Map<Integer, int[]> defenderIndexesByAllianceId;
+    private final int[] defenderAllianceGroupStarts;
+    private final int[] defenderAllianceGroupLengths;
+    private final int[] defenderAllianceFlatIndexes;
     private final int[][] relevantDefenderIndexesByAttacker;
 
     CompiledScenario(
@@ -67,20 +67,21 @@ public final class CompiledScenario {
             double[] defenderCityInfraFlat,
             byte[] attackerFreeOffSlots,
             byte[] defenderFreeDefSlots,
-            int[] defenderAllianceIds,
             float[] attackerActivityWeights,
             float[] defenderActivityWeights,
             int[] attackerResearchBits,
             int[] defenderResearchBits,
             long[] attackerProjectBits,
             long[] defenderProjectBits,
-            Map<Integer, Integer> attackerIndexByNationId,
-            Map<Integer, Integer> defenderIndexByNationId,
+            Int2IntOpenHashMap attackerIndexByNationId,
+            Int2IntOpenHashMap defenderIndexByNationId,
             int[][] treatedDefenderIndexesByAttacker,
-            Set<Long> activePairConflicts,
+            long[][] activePairConflictWordsByAttacker,
             int[][] defenderIndexesByScoreBucket,
             int minDefenderBucket,
-            Map<Integer, int[]> defenderIndexesByAllianceId,
+            int[] defenderAllianceGroupStarts,
+            int[] defenderAllianceGroupLengths,
+            int[] defenderAllianceFlatIndexes,
             int[][] relevantDefenderIndexesByAttacker
     ) {
         this.attackers = attackers;
@@ -99,7 +100,6 @@ public final class CompiledScenario {
         this.defenderCityInfraFlat = defenderCityInfraFlat;
         this.attackerFreeOffSlots = attackerFreeOffSlots;
         this.defenderFreeDefSlots = defenderFreeDefSlots;
-        this.defenderAllianceIds = defenderAllianceIds;
         this.attackerActivityWeights = attackerActivityWeights;
         this.defenderActivityWeights = defenderActivityWeights;
         this.attackerResearchBits = attackerResearchBits;
@@ -109,10 +109,12 @@ public final class CompiledScenario {
         this.attackerIndexByNationId = attackerIndexByNationId;
         this.defenderIndexByNationId = defenderIndexByNationId;
         this.treatedDefenderIndexesByAttacker = treatedDefenderIndexesByAttacker;
-        this.activePairConflicts = activePairConflicts;
+        this.activePairConflictWordsByAttacker = activePairConflictWordsByAttacker;
         this.defenderIndexesByScoreBucket = defenderIndexesByScoreBucket;
         this.minDefenderBucket = minDefenderBucket;
-        this.defenderIndexesByAllianceId = defenderIndexesByAllianceId;
+        this.defenderAllianceGroupStarts = defenderAllianceGroupStarts;
+        this.defenderAllianceGroupLengths = defenderAllianceGroupLengths;
+        this.defenderAllianceFlatIndexes = defenderAllianceFlatIndexes;
         this.relevantDefenderIndexesByAttacker = relevantDefenderIndexesByAttacker;
     }
 
@@ -215,7 +217,10 @@ public final class CompiledScenario {
     }
 
     public boolean hasActivePairConflict(int attackerIndex, int defenderIndex) {
-        return activePairConflicts.contains(pairKey(attackerNationIds[attackerIndex], defenderNationIds[defenderIndex]));
+        long[] words = activePairConflictWordsByAttacker[attackerIndex];
+        int wordIndex = defenderIndex >>> 6;
+        return wordIndex < words.length
+                && (words[wordIndex] & (1L << (defenderIndex & 63))) != 0L;
     }
 
     public void forEachDefenderIndexInRange(int attackerIndex, IntConsumer consumer) {
@@ -240,20 +245,18 @@ public final class CompiledScenario {
     }
 
     public double estimateAllianceCounterRisk(int attackerIndex, int defenderIndex) {
-        int allianceId = defenderAllianceIds[defenderIndex];
-        if (allianceId == 0) {
+        int sameAllianceCount = defenderAllianceGroupLengths[defenderIndex];
+        if (sameAllianceCount == 0) {
             return 0.0;
         }
-        int[] sameAllianceDefenders = defenderIndexesByAllianceId.get(allianceId);
-        if (sameAllianceDefenders == null || sameAllianceDefenders.length == 0) {
-            return 0.0;
-        }
+        int sameAllianceOffset = defenderAllianceGroupStarts[defenderIndex];
         double attackerScore = attackerScores[attackerIndex];
         double minScore = attackerScore * PW.WAR_RANGE_MIN_MODIFIER;
         double maxScore = attackerScore * PW.WAR_RANGE_MAX_MODIFIER;
         double totalWeight = 0.0;
         double inRangeWeight = 0.0;
-        for (int sameAllianceDefenderIndex : sameAllianceDefenders) {
+        for (int i = 0; i < sameAllianceCount; i++) {
+            int sameAllianceDefenderIndex = defenderAllianceFlatIndexes[sameAllianceOffset + i];
             double weight = defenderActivityWeights[sameAllianceDefenderIndex];
             totalWeight += weight;
             double candidateScore = defenderScores[sameAllianceDefenderIndex];
@@ -265,15 +268,13 @@ public final class CompiledScenario {
     }
 
     public Integer attackerIndex(int nationId) {
-        return attackerIndexByNationId.get(nationId);
+        int attackerIndex = attackerIndexByNationId.get(nationId);
+        return attackerIndex >= 0 ? attackerIndex : null;
     }
 
     public Integer defenderIndex(int nationId) {
-        return defenderIndexByNationId.get(nationId);
-    }
-
-    public static long pairKey(int attackerId, int defenderId) {
-        return ((long) attackerId << 32) | (defenderId & 0xFFFFFFFFL);
+        int defenderIndex = defenderIndexByNationId.get(nationId);
+        return defenderIndex >= 0 ? defenderIndex : null;
     }
 
     static int scoreBucket(double score) {

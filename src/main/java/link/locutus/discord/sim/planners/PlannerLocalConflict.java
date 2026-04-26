@@ -369,6 +369,28 @@ final class PlannerLocalConflict implements TeamScoreView {
         }
     }
 
+    void applyReplayTurn(Map<Integer, List<Integer>> assignment, boolean initialTurn) {
+        if (assignment.isEmpty()) {
+            advanceTurn();
+            return;
+        }
+        if (!initialTurn) {
+            advanceTurn();
+        }
+        for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
+            int attackerId = entry.getKey();
+            for (int defenderId : entry.getValue()) {
+                LocalWar war = warsByPair.get(pairKey(attackerId, defenderId));
+                if (war == null) {
+                    war = declareWar(attackerId, defenderId);
+                }
+                if (war.isActive()) {
+                    simulateOpeningAttacks(war);
+                }
+            }
+        }
+    }
+
     void applyAssignmentOpenings(Map<Integer, List<Integer>> assignment) {
         if (assignment.isEmpty()) {
             return;
@@ -382,6 +404,25 @@ final class PlannerLocalConflict implements TeamScoreView {
             }
         }
         simulateDeclaredWarOpenings(assignment, declaredWars);
+    }
+
+    void applyAssignmentOpenings(PlannerConflictBundle.PlannerAssignmentView assignment) {
+        if (assignment.isEmpty()) {
+            return;
+        }
+        LocalWar[] declaredWars = new LocalWar[assignment.edgeCount()];
+        int edgeIndex = 0;
+        for (int attackerIndex = 0; attackerIndex < assignment.attackerCount(); attackerIndex++) {
+            int attackerId = assignment.attackerIdAt(attackerIndex);
+            for (int defenderIndex = 0; defenderIndex < assignment.defenderCountAt(attackerIndex); defenderIndex++) {
+                declaredWars[edgeIndex++] = declareWar(attackerId, assignment.defenderIdAt(attackerIndex, defenderIndex));
+            }
+        }
+        for (LocalWar war : declaredWars) {
+            if (war != null && war.isActive()) {
+                simulateOpeningAttacks(war);
+            }
+        }
     }
 
     void simulateDeclaredWar(int attackerNationId, int defenderNationId, WarType warType, int horizonTurns) {
@@ -1052,6 +1093,30 @@ final class PlannerLocalConflict implements TeamScoreView {
         return currentTurn;
     }
 
+    Map<Long, PlannerReplayTrace.WarState> replayWarStatesByPair() {
+        Map<Long, PlannerReplayTrace.WarState> result = new LinkedHashMap<>(warsByPair.size());
+        for (Map.Entry<Long, LocalWar> entry : warsByPair.entrySet()) {
+            LocalWar war = entry.getValue();
+            result.put(entry.getKey(), new PlannerReplayTrace.WarState(
+                    war.attackerNationId(),
+                    war.defenderNationId(),
+                    war.warType().ordinal(),
+                    war.startTurn(),
+                    war.warBuffers.status(war.warIndex).ordinal(),
+                    war.attackerMapsValue(),
+                    war.defenderMapsValue(),
+                    war.attackerResistanceValue(),
+                    war.defenderResistanceValue(),
+                    LocalWarBuffers.controlOwner(war.warBuffers.groundControlOwner[war.warIndex]).ordinal(),
+                    LocalWarBuffers.controlOwner(war.warBuffers.airSuperiorityOwner[war.warIndex]).ordinal(),
+                    LocalWarBuffers.controlOwner(war.warBuffers.blockadeOwner[war.warIndex]).ordinal(),
+                    war.warBuffers.attackerFortified(war.warIndex),
+                    war.warBuffers.defenderFortified(war.warIndex)
+            ));
+        }
+        return result;
+    }
+
     static final class Mark {
         private final ConflictSnapshot snapshot;
 
@@ -1096,7 +1161,13 @@ final class PlannerLocalConflict implements TeamScoreView {
             int[] pendingBuysFlat,
             double[] resourcesFlat,
             double[] cityInfraFlat,
-            Map<Integer, Map<Integer, Double>> touchedCityInfraByNationIndex
+            TouchedCityInfraSnapshot touchedCityInfra
+    ) {
+    }
+
+    private record TouchedCityInfraSnapshot(
+            int[] touchedGlobalCityIndexes,
+            double[] touchedInfraValues
     ) {
     }
 
@@ -1139,11 +1210,11 @@ final class PlannerLocalConflict implements TeamScoreView {
         private final int[] resourceBaseOffsets;
         private final int[] cityInfraBaseOffsets;
         private final int[] cityCounts;
-        private final Map<Integer, Map<Integer, Double>> touchedCityInfraByNationIndex;
+        private final TouchedCityInfraLog touchedCityInfra;
 
         private LocalNationBuffers(
                 int[] unitsFlat,
-            int[] unitBuysTodayFlat,
+                int[] unitBuysTodayFlat,
                 int[] pendingBuysFlat,
                 double[] resourcesFlat,
                 double[] cityInfraFlat,
@@ -1152,7 +1223,7 @@ final class PlannerLocalConflict implements TeamScoreView {
                 int[] resourceBaseOffsets,
                 int[] cityInfraBaseOffsets,
                 int[] cityCounts,
-                Map<Integer, Map<Integer, Double>> touchedCityInfraByNationIndex
+                TouchedCityInfraLog touchedCityInfra
         ) {
             this.unitsFlat = unitsFlat;
             this.unitBuysTodayFlat = unitBuysTodayFlat;
@@ -1164,7 +1235,7 @@ final class PlannerLocalConflict implements TeamScoreView {
             this.resourceBaseOffsets = resourceBaseOffsets;
             this.cityInfraBaseOffsets = cityInfraBaseOffsets;
             this.cityCounts = cityCounts;
-            this.touchedCityInfraByNationIndex = touchedCityInfraByNationIndex;
+            this.touchedCityInfra = touchedCityInfra;
         }
 
         static LocalNationBuffers fromSnapshots(List<DBNationSnapshot> snapshots, OverrideSet overrides) {
@@ -1177,7 +1248,7 @@ final class PlannerLocalConflict implements TeamScoreView {
             int totalCities = 0;
             for (int i = 0; i < nationCount; i++) {
                 DBNationSnapshot snapshot = snapshots.get(i);
-                double[] cityInfra = snapshot.cityInfra();
+                double[] cityInfra = snapshot.cityInfraRaw();
                 cityInfraByNation[i] = cityInfra;
                 cityInfraBaseOffsets[i] = totalCities;
                 int cityCount = cityInfra.length;
@@ -1207,14 +1278,13 @@ final class PlannerLocalConflict implements TeamScoreView {
                     pendingBuysFlat[unitBase + unit.ordinal()] = Math.max(0, snapshot.pendingBuysNextTurn(unit));
                 }
 
-                double[] resources = snapshot.resources();
                 int resourceBase = resourceBaseOffsets[i];
-                System.arraycopy(resources, 0, resourcesFlat, resourceBase, RESOURCE_STRIDE);
+                snapshot.copyResourcesInto(resourcesFlat, resourceBase);
 
                 double[] cityInfra = cityInfraByNation[i];
                 int cityBase = cityInfraBaseOffsets[i];
                 System.arraycopy(cityInfra, 0, cityInfraFlat, cityBase, cityCounts[i]);
-                System.arraycopy(snapshot.citySpecialistProfiles(), 0, citySpecialistProfilesFlat, cityBase, cityCounts[i]);
+                System.arraycopy(snapshot.citySpecialistProfilesRaw(), 0, citySpecialistProfilesFlat, cityBase, cityCounts[i]);
             }
 
             return new LocalNationBuffers(
@@ -1228,34 +1298,34 @@ final class PlannerLocalConflict implements TeamScoreView {
                     resourceBaseOffsets,
                     cityInfraBaseOffsets,
                     cityCounts,
-                    new LinkedHashMap<>()
+                    new TouchedCityInfraLog(totalCities)
             );
         }
 
         static Map<Integer, PlannerCityInfraOverlay> exportCityInfraOverlays(Collection<LocalNation> nations) {
             Map<Integer, PlannerCityInfraOverlay> overlays = new LinkedHashMap<>();
             for (LocalNation nation : nations) {
-                Map<Integer, Double> byCity = nation.buffers.touchedCityInfraByNationIndex.get(nation.nationIndex);
-                if (byCity == null || byCity.isEmpty()) {
+                PlannerCityInfraOverlay overlay = nation.buffers.touchedCityInfra.exportOverlay(
+                        nation.nationId,
+                        nation.buffers.cityInfraBaseOffsets[nation.nationIndex],
+                        nation.buffers.cityCounts[nation.nationIndex]
+                );
+                if (overlay == null || overlay.isEmpty()) {
                     continue;
                 }
-                overlays.put(nation.nationId, new PlannerCityInfraOverlay(nation.nationId, byCity));
+                overlays.put(nation.nationId, overlay);
             }
             return overlays;
         }
 
         LocalNationBufferSnapshot snapshot() {
-            Map<Integer, Map<Integer, Double>> touchedCopy = new LinkedHashMap<>();
-            for (Map.Entry<Integer, Map<Integer, Double>> entry : touchedCityInfraByNationIndex.entrySet()) {
-                touchedCopy.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
-            }
             return new LocalNationBufferSnapshot(
                     java.util.Arrays.copyOf(unitsFlat, unitsFlat.length),
                     java.util.Arrays.copyOf(unitBuysTodayFlat, unitBuysTodayFlat.length),
                     java.util.Arrays.copyOf(pendingBuysFlat, pendingBuysFlat.length),
                     java.util.Arrays.copyOf(resourcesFlat, resourcesFlat.length),
                     java.util.Arrays.copyOf(cityInfraFlat, cityInfraFlat.length),
-                    touchedCopy
+                    touchedCityInfra.snapshot()
             );
         }
 
@@ -1272,17 +1342,11 @@ final class PlannerLocalConflict implements TeamScoreView {
             System.arraycopy(snapshot.pendingBuysFlat(), 0, pendingBuysFlat, 0, pendingBuysFlat.length);
             System.arraycopy(snapshot.resourcesFlat(), 0, resourcesFlat, 0, resourcesFlat.length);
             System.arraycopy(snapshot.cityInfraFlat(), 0, cityInfraFlat, 0, cityInfraFlat.length);
-
-            touchedCityInfraByNationIndex.clear();
-            for (Map.Entry<Integer, Map<Integer, Double>> entry : snapshot.touchedCityInfraByNationIndex().entrySet()) {
-                touchedCityInfraByNationIndex.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
-            }
+            touchedCityInfra.restore(snapshot.touchedCityInfra());
         }
 
         void recordCityInfraOverlay(int nationIndex, int cityIndex, double absoluteInfra) {
-            touchedCityInfraByNationIndex
-                    .computeIfAbsent(nationIndex, ignored -> new LinkedHashMap<>())
-                    .put(cityIndex, absoluteInfra);
+            touchedCityInfra.record(cityInfraBaseOffsets[nationIndex] + cityIndex, absoluteInfra);
         }
 
         int pendingBuys(int nationIndex, MilitaryUnit unit) {
@@ -1359,6 +1423,83 @@ final class PlannerLocalConflict implements TeamScoreView {
         @Override
         public int cityCount(int nationIndex) {
             return cityCounts[nationIndex];
+        }
+
+        private static final class TouchedCityInfraLog {
+            private final boolean[] touched;
+            private final double[] infraValues;
+            private final int[] touchedGlobalCityIndexes;
+            private int touchedCount;
+
+            private TouchedCityInfraLog(int totalCities) {
+                this.touched = new boolean[totalCities];
+                this.infraValues = new double[totalCities];
+                this.touchedGlobalCityIndexes = new int[totalCities];
+            }
+
+            void record(int globalCityIndex, double absoluteInfra) {
+                if (!touched[globalCityIndex]) {
+                    touched[globalCityIndex] = true;
+                    touchedGlobalCityIndexes[touchedCount++] = globalCityIndex;
+                }
+                infraValues[globalCityIndex] = absoluteInfra;
+            }
+
+            TouchedCityInfraSnapshot snapshot() {
+                int[] indexes = java.util.Arrays.copyOf(touchedGlobalCityIndexes, touchedCount);
+                double[] values = new double[touchedCount];
+                for (int i = 0; i < touchedCount; i++) {
+                    values[i] = infraValues[indexes[i]];
+                }
+                return new TouchedCityInfraSnapshot(indexes, values);
+            }
+
+            void restore(TouchedCityInfraSnapshot snapshot) {
+                clear();
+                int[] indexes = snapshot.touchedGlobalCityIndexes();
+                double[] values = snapshot.touchedInfraValues();
+                if (indexes.length != values.length) {
+                    throw new IllegalStateException("Touched city infra snapshot shape mismatch");
+                }
+                for (int i = 0; i < indexes.length; i++) {
+                    int globalCityIndex = indexes[i];
+                    touched[globalCityIndex] = true;
+                    infraValues[globalCityIndex] = values[i];
+                    touchedGlobalCityIndexes[touchedCount++] = globalCityIndex;
+                }
+            }
+
+            PlannerCityInfraOverlay exportOverlay(int nationId, int cityBase, int cityCount) {
+                int count = 0;
+                for (int i = 0; i < cityCount; i++) {
+                    if (touched[cityBase + i]) {
+                        count++;
+                    }
+                }
+                if (count == 0) {
+                    return null;
+                }
+                int[] cityIndexes = new int[count];
+                double[] values = new double[count];
+                int next = 0;
+                for (int i = 0; i < cityCount; i++) {
+                    int globalCityIndex = cityBase + i;
+                    if (!touched[globalCityIndex]) {
+                        continue;
+                    }
+                    cityIndexes[next] = i;
+                    values[next] = infraValues[globalCityIndex];
+                    next++;
+                }
+                return new PlannerCityInfraOverlay(nationId, cityIndexes, values);
+            }
+
+            private void clear() {
+                for (int i = 0; i < touchedCount; i++) {
+                    touched[touchedGlobalCityIndexes[i]] = false;
+                }
+                touchedCount = 0;
+            }
         }
     }
 
@@ -1716,12 +1857,48 @@ final class PlannerLocalConflict implements TeamScoreView {
         }
 
         @Override
+        public int cityMissileDamageMin(int cityIndex) {
+            if (cityIndex < 0 || cityIndex >= buffers.cityCount(nationIndex)) {
+                return 0;
+            }
+            double infra = cityInfra(cityIndex);
+            return buffers.citySpecialistProfile(nationIndex, cityIndex).missileDamageMin(infra, this::hasProject);
+        }
+
+        @Override
+        public int cityMissileDamageMax(int cityIndex) {
+            if (cityIndex < 0 || cityIndex >= buffers.cityCount(nationIndex)) {
+                return 0;
+            }
+            double infra = cityInfra(cityIndex);
+            return buffers.citySpecialistProfile(nationIndex, cityIndex).missileDamageMax(infra, this::hasProject);
+        }
+
+        @Override
         public Map.Entry<Integer, Integer> cityNukeDamage(int cityIndex) {
             if (cityIndex < 0 || cityIndex >= buffers.cityCount(nationIndex)) {
                 return ZERO_DAMAGE_RANGE;
             }
             double infra = cityInfra(cityIndex);
             return buffers.citySpecialistProfile(nationIndex, cityIndex).nukeDamage(infra, this::hasProject);
+        }
+
+        @Override
+        public int cityNukeDamageMin(int cityIndex) {
+            if (cityIndex < 0 || cityIndex >= buffers.cityCount(nationIndex)) {
+                return 0;
+            }
+            double infra = cityInfra(cityIndex);
+            return buffers.citySpecialistProfile(nationIndex, cityIndex).nukeDamageMin(infra, this::hasProject);
+        }
+
+        @Override
+        public int cityNukeDamageMax(int cityIndex) {
+            if (cityIndex < 0 || cityIndex >= buffers.cityCount(nationIndex)) {
+                return 0;
+            }
+            double infra = cityInfra(cityIndex);
+            return buffers.citySpecialistProfile(nationIndex, cityIndex).nukeDamageMax(infra, this::hasProject);
         }
 
         @Override
@@ -1750,15 +1927,7 @@ final class PlannerLocalConflict implements TeamScoreView {
         }
 
         boolean canUseAttackType(AttackType type) {
-            return switch (type) {
-                case GROUND -> getUnits(MilitaryUnit.SOLDIER) > 0 || getUnits(MilitaryUnit.TANK) > 0;
-                case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY,
-                        AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT -> getUnits(MilitaryUnit.AIRCRAFT) > 0;
-                case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND -> getUnits(MilitaryUnit.SHIP) > 0;
-                case MISSILE -> getUnits(MilitaryUnit.MISSILE) > 0 && hasProject(Projects.MISSILE_LAUNCH_PAD);
-                case NUKE -> getUnits(MilitaryUnit.NUKE) > 0 && hasProject(Projects.NUCLEAR_RESEARCH_FACILITY);
-                default -> true;
-            };
+            return CombatKernel.canUseAttackType(this, type);
         }
 
         @Override

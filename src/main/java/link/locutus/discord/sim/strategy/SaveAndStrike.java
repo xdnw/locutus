@@ -10,6 +10,7 @@ import link.locutus.discord.sim.SimWorld;
 import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.actions.WaitAction;
+import link.locutus.discord.sim.combat.CombatKernel;
 
 import java.util.List;
 
@@ -18,6 +19,13 @@ import java.util.List;
  * opens again.
  */
 public class SaveAndStrike implements StrategyPrimitive {
+
+    private static final List<AttackType> STRIKE_PRIORITY = List.of(
+            AttackType.GROUND,
+            AttackType.AIRSTRIKE_AIRCRAFT,
+            AttackType.NAVAL,
+            AttackType.AIRSTRIKE_INFRA
+    );
 
     @Override
     public boolean isActive(SimWorld world, SimNation self, DecisionContext ctx) {
@@ -44,9 +52,6 @@ public class SaveAndStrike implements StrategyPrimitive {
         if (!StrategyTiming.isSaveWindow(self) && !StrategyTiming.isStrikeWindow(self)) {
             return null;
         }
-        if (!hasStrikeCapacity(self)) {
-            return null;
-        }
 
         Plan best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
@@ -55,9 +60,14 @@ public class SaveAndStrike implements StrategyPrimitive {
                 continue;
             }
 
+            AttackType strikeType = selectStrikeType(world, self, war);
+            if (strikeType == null) {
+                continue;
+            }
+
             SimAction action = phase == 11
                     ? new WaitAction(self.nationId())
-                    : createStrikeAction(world, self, war);
+                    : new AttackAction(war.warId(), self.nationId(), strikeType);
             double score = scoreWar(world, self, war, phase);
             if (score > bestScore) {
                 bestScore = score;
@@ -66,13 +76,6 @@ public class SaveAndStrike implements StrategyPrimitive {
         }
 
         return best;
-    }
-
-    private static boolean hasStrikeCapacity(SimNation self) {
-        return self.units(MilitaryUnit.SOLDIER) > 0
-                || self.units(MilitaryUnit.TANK) > 0
-                || self.units(MilitaryUnit.AIRCRAFT) > 0
-                || self.units(MilitaryUnit.SHIP) > 0;
     }
 
     private static double scoreWar(SimWorld world, SimNation self, SimWar war, int phase) {
@@ -87,23 +90,25 @@ public class SaveAndStrike implements StrategyPrimitive {
         return targetValue + timingBonus + controlBonus + unitPressure;
     }
 
-    private static SimAction createStrikeAction(SimWorld world, SimNation self, SimWar war) {
+    private static AttackType selectStrikeType(SimWorld world, SimNation self, SimWar war) {
         SimNation defender = world.requireNation(war.defenderNationId());
 
-        if (war.airSuperiorityOwner() == SimSide.ATTACKER
-                && (self.units(MilitaryUnit.SOLDIER) > 0 || self.units(MilitaryUnit.TANK) > 0)) {
-            return new AttackAction(war.warId(), self.nationId(), AttackType.GROUND);
+        for (AttackType attackType : STRIKE_PRIORITY) {
+            if (!CombatKernel.canUseAttackType(self, attackType)) {
+                continue;
+            }
+            if (attackType == AttackType.GROUND && war.airSuperiorityOwner() != SimSide.ATTACKER) {
+                continue;
+            }
+            if (attackType == AttackType.AIRSTRIKE_AIRCRAFT && defender.units(MilitaryUnit.AIRCRAFT) <= 0) {
+                continue;
+            }
+            if (attackType == AttackType.NAVAL && defender.units(MilitaryUnit.SHIP) <= 0) {
+                continue;
+            }
+            return attackType;
         }
-        if (self.units(MilitaryUnit.AIRCRAFT) > 0 && defender.units(MilitaryUnit.AIRCRAFT) > 0) {
-            return new AttackAction(war.warId(), self.nationId(), AttackType.AIRSTRIKE_AIRCRAFT);
-        }
-        if (self.units(MilitaryUnit.SHIP) > 0 && defender.units(MilitaryUnit.SHIP) > 0) {
-            return new AttackAction(war.warId(), self.nationId(), AttackType.NAVAL);
-        }
-        if (self.units(MilitaryUnit.AIRCRAFT) > 0) {
-            return new AttackAction(war.warId(), self.nationId(), AttackType.AIRSTRIKE_INFRA);
-        }
-        return new AttackAction(war.warId(), self.nationId(), AttackType.GROUND);
+        return null;
     }
 
     private record Plan(SimAction action, double score) {

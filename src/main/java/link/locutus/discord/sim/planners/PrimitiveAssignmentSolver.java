@@ -67,6 +67,85 @@ final class PrimitiveAssignmentSolver {
             int[] attackerNationIds,
             int[] defenderNationIds
     ) {
+        return solveAssignment(edges, nAtt, nDef, supply, capacity, attStrengthRank, attackerNationIds, defenderNationIds, List.of());
+    }
+
+    static Map<Integer, List<Integer>> solveAssignment(
+            CandidateEdgeTable edges,
+            int nAtt,
+            int nDef,
+            int[] supply,
+            int[] capacity,
+            int[] attStrengthRank,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            List<BlitzFixedEdge> fixedEdges
+    ) {
+        int[] residualSupply = Arrays.copyOf(supply, supply.length);
+        int[] residualCapacity = Arrays.copyOf(capacity, capacity.length);
+        Map<Integer, Integer> attackerSlotByNationId = slotByNationId(attackerNationIds);
+        Map<Integer, Integer> defenderSlotByNationId = slotByNationId(defenderNationIds);
+        Map<Integer, List<Integer>> fixedAssignment = new LinkedHashMap<>();
+        for (BlitzFixedEdge fixedEdge : fixedEdges) {
+            Integer attackerSlot = attackerSlotByNationId.get(fixedEdge.attackerNationId());
+            Integer defenderSlot = defenderSlotByNationId.get(fixedEdge.defenderNationId());
+            if (attackerSlot == null || defenderSlot == null) {
+                continue;
+            }
+            fixedAssignment.computeIfAbsent(fixedEdge.attackerNationId(), ignored -> new ArrayList<>())
+                    .add(fixedEdge.defenderNationId());
+            residualSupply[attackerSlot] = Math.max(0, residualSupply[attackerSlot] - 1);
+            residualCapacity[defenderSlot] = Math.max(0, residualCapacity[defenderSlot] - 1);
+        }
+
+        Map<Integer, List<Integer>> residualAssignment = solveResidualAssignment(
+                edges,
+                nAtt,
+                nDef,
+                residualSupply,
+                residualCapacity,
+                attStrengthRank,
+                attackerNationIds,
+                defenderNationIds,
+                fixedPairKeys(fixedEdges)
+        );
+        if (fixedAssignment.isEmpty()) {
+            return residualAssignment;
+        }
+        if (residualAssignment.isEmpty()) {
+            return fixedAssignment;
+        }
+        Map<Integer, List<Integer>> merged = new LinkedHashMap<>(fixedAssignment);
+        for (Map.Entry<Integer, List<Integer>> entry : residualAssignment.entrySet()) {
+            merged.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>()).addAll(entry.getValue());
+        }
+        return merged;
+    }
+
+    private static Map<Integer, List<Integer>> solveResidualAssignment(
+            CandidateEdgeTable edges,
+            int nAtt,
+            int nDef,
+            int[] supply,
+            int[] capacity,
+            int[] attStrengthRank,
+            int[] attackerNationIds,
+            int[] defenderNationIds
+    ) {
+        return solveResidualAssignment(edges, nAtt, nDef, supply, capacity, attStrengthRank, attackerNationIds, defenderNationIds, java.util.Set.of());
+    }
+
+    private static Map<Integer, List<Integer>> solveResidualAssignment(
+            CandidateEdgeTable edges,
+            int nAtt,
+            int nDef,
+            int[] supply,
+            int[] capacity,
+            int[] attStrengthRank,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            java.util.Set<Long> excludedPairKeys
+    ) {
         int totalSupply = 0;
         for (int ai = 0; ai < nAtt; ai++) totalSupply += supply[ai];
         if (totalSupply == 0 || edges.edgeCount() == 0) return Map.of();
@@ -117,6 +196,7 @@ final class PrimitiveAssignmentSolver {
             int ai = edges.attackerIndex(e);
             int di = edges.defenderIndex(e);
             if (supply[ai] <= 0 || capacity[di] <= 0) continue;
+            if (excludedPairKeys.contains(pairKey(attackerNationIds[ai], defenderNationIds[di]))) continue;
             int rank = (attStrengthRank != null && ai < attStrengthRank.length) ? attStrengthRank[ai] : 0;
             double edgeCost = edges.edgeCost(e, EPS1, EPS2, rank);
             candidateFwdSlot[e] = ptr;
@@ -182,6 +262,26 @@ final class PrimitiveAssignmentSolver {
             }
         }
         return assignment;
+    }
+
+    private static Map<Integer, Integer> slotByNationId(int[] nationIds) {
+        Map<Integer, Integer> slots = new LinkedHashMap<>(Math.max(16, nationIds.length * 2));
+        for (int index = 0; index < nationIds.length; index++) {
+            slots.put(nationIds[index], index);
+        }
+        return slots;
+    }
+
+    private static java.util.Set<Long> fixedPairKeys(List<BlitzFixedEdge> fixedEdges) {
+        java.util.Set<Long> keys = new java.util.HashSet<>(Math.max(16, fixedEdges.size() * 2));
+        for (BlitzFixedEdge fixedEdge : fixedEdges) {
+            keys.add(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()));
+        }
+        return keys;
+    }
+
+    private static long pairKey(int attackerNationId, int defenderNationId) {
+        return ((long) attackerNationId << 32) | (defenderNationId & 0xFFFFFFFFL);
     }
 
     // ---- Graph helper ------------------------------------------------------

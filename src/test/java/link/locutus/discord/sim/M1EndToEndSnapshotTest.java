@@ -41,8 +41,6 @@ class M1EndToEndSnapshotTest {
                 0.15, // wartimeActivityUplift
                 SimTuning.DEFAULT_ACTIVITY_ACT_THRESHOLD, // activityActThreshold
                 60, // policyCooldownTurns
-                6, // peaceOfferLifetimeTurns
-                1, // mapReserveLifetimeTurns
                 250L, // localSearchBudgetMs
                 500, // localSearchMaxIterations
                 8, // candidatesPerAttacker
@@ -69,6 +67,8 @@ class M1EndToEndSnapshotTest {
 
         SimNation attacker = world.requireNation(1);
         SimNation defender = world.requireNation(2);
+        attacker.setDailyBuyCap(MilitaryUnit.SOLDIER, 100);
+        attacker.setUnitCap(MilitaryUnit.SOLDIER, 200);
 
         // Test 1: Verify providers are accessible
         assertTrue(world.activityProvider() instanceof ActivityProvider);
@@ -170,8 +170,6 @@ class M1EndToEndSnapshotTest {
                 0.25, // High wartime uplift
                 SimTuning.DEFAULT_ACTIVITY_ACT_THRESHOLD, // activityActThreshold
                 60,
-                6,
-                1,
                 250L,
                 500,
                 8,

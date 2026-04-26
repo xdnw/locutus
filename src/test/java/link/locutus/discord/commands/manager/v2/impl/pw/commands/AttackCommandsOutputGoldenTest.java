@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AttackCommandsOutputGoldenTest {
@@ -25,14 +26,7 @@ class AttackCommandsOutputGoldenTest {
 
         String actual = commands.groundSim(0, 0, 0, 0, 1000, 50);
 
-        String expected = String.join("\n",
-            "**Ground**: 0/0/0 -> 0/1000/50",
-            "UTTER_FAILURE",
-            "Note:",
-            "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed",
-            "- Guaranteed IT needs 3.4x enemy (12750 unarmed, 7286 armed)",
-            "- Guaranteed UF needs 0.29x enemy (1103 unarmed, 631 armed)"
-        );
+        String expected = "Attacker cannot use GROUND with current units/projects.";
 
         assertEquals(expected, actual);
     }
@@ -43,11 +37,7 @@ class AttackCommandsOutputGoldenTest {
 
         String actual = commands.airSim(0, 1000);
 
-        String expected = """
-                **Airstrike**: 0 -> 1000
-                UTTER_FAILURE=100%
-
-                Note: For a guaranteed IT, you need 3.4x enemy strength.""";
+        String expected = "Attacker cannot use AIRSTRIKE_AIRCRAFT with current units/projects.";
 
         assertEquals(expected, actual);
     }
@@ -58,13 +48,40 @@ class AttackCommandsOutputGoldenTest {
 
         String actual = commands.navalSim(0, 500);
 
-        String expected = """
-                **Naval**: 0 -> 500
-                UTTER_FAILURE=100%
-
-                Note: For a guaranteed IT, you need 3.4x enemy strength""";
+        String expected = "Attacker cannot use NAVAL with current units/projects.";
 
         assertEquals(expected, actual);
+    }
+
+    @Test
+    void casualtiesRejectsIllegalAttackTypeForCurrentUnits() {
+        AttackCommands commands = new AttackCommands();
+        DBNation attacker = nation(1, 9, 49, 2_000, 0, 0, 2_000_000, WarPolicy.BLITZKRIEG);
+        DBNation defender = nation(2, 8, 45_000, 1_700, 1_700, 10, 1_500_000, WarPolicy.FORTRESS);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> commands.casualties(
+                AttackType.GROUND,
+                WarType.ORD,
+                defender,
+                attacker,
+                false,
+                Map.of(),
+                Map.of(),
+                false,
+                false,
+                WarPolicy.BLITZKRIEG,
+                WarPolicy.FORTRESS,
+                false,
+                false,
+                false,
+                false,
+                Set.of(),
+                Set.of(),
+                2000,
+                2000
+        ));
+
+        assertEquals("Attacker cannot use GROUND with current units/projects.", error.getMessage());
     }
 
     @Test

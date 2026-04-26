@@ -24,7 +24,7 @@ class PeaceOfferAcceptStateTest {
 
     @Test
     void oppositeSideCanAcceptPeaceOfferAndWarTransitionsToPeace() {
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24));
+        SimWorld world = new SimWorld(new SimTuning(60, 24));
         addPair(world, 1, 2);
         SimWar war = new SimWar(101, 1, 2, WarType.ORD);
         world.addWar(war);
@@ -40,7 +40,7 @@ class PeaceOfferAcceptStateTest {
 
     @Test
     void sameSideCannotAcceptItsOwnPeaceOffer() {
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24));
+        SimWorld world = new SimWorld(new SimTuning(60, 24));
         addPair(world, 11, 22);
         SimWar war = new SimWar(102, 11, 22, WarType.ORD);
         world.addWar(war);
@@ -52,7 +52,7 @@ class PeaceOfferAcceptStateTest {
 
     @Test
     void pendingPeaceOfferCannotBeOverwrittenBySecondOffer() {
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24));
+        SimWorld world = new SimWorld(new SimTuning(60, 24));
         addPair(world, 31, 41);
         SimWar war = new SimWar(104, 31, 41, WarType.ORD);
         world.addWar(war);
@@ -64,7 +64,7 @@ class PeaceOfferAcceptStateTest {
 
     @Test
     void endedWarRejectsFurtherPeaceActions() {
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24));
+        SimWorld world = new SimWorld(new SimTuning(60, 24));
         addPair(world, 100, 200);
         SimWar war = new SimWar(105, 100, 200, WarType.ORD);
         world.addWar(war);
@@ -78,7 +78,7 @@ class PeaceOfferAcceptStateTest {
 
     @Test
     void realAttackClearsPendingPeaceOfferBackToActive() {
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24));
+        SimWorld world = new SimWorld(new SimTuning(60, 24));
         addPair(world, 301, 302);
         SimWar war = new SimWar(106, 301, 302, WarType.ORD);
         world.addWar(war);

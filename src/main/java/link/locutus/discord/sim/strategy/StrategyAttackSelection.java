@@ -2,7 +2,6 @@ package link.locutus.discord.sim.strategy;
 
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.sim.DecisionContext;
 import link.locutus.discord.sim.SimNation;
 import link.locutus.discord.sim.SimSide;
@@ -76,27 +75,25 @@ final class StrategyAttackSelection {
 
     static List<AttackType> candidateAttackTypes(SimNation self) {
         List<AttackType> candidates = new ArrayList<>();
-        if (self.units(MilitaryUnit.SOLDIER) > 0 || self.units(MilitaryUnit.TANK) > 0) {
+        if (CombatKernel.canUseAttackType(self, AttackType.GROUND)) {
             candidates.add(AttackType.GROUND);
         }
-        if (self.units(MilitaryUnit.AIRCRAFT) > 0) {
-            candidates.add(AttackType.AIRSTRIKE_INFRA);
+        if (CombatKernel.canUseAttackType(self, AttackType.AIRSTRIKE_AIRCRAFT)) {
             candidates.add(AttackType.AIRSTRIKE_SOLDIER);
             candidates.add(AttackType.AIRSTRIKE_TANK);
-            candidates.add(AttackType.AIRSTRIKE_MONEY);
             candidates.add(AttackType.AIRSTRIKE_SHIP);
             candidates.add(AttackType.AIRSTRIKE_AIRCRAFT);
         }
-        if (self.units(MilitaryUnit.SHIP) > 0) {
+        if (CombatKernel.canUseAttackType(self, AttackType.NAVAL)) {
             candidates.add(AttackType.NAVAL);
             candidates.add(AttackType.NAVAL_INFRA);
             candidates.add(AttackType.NAVAL_AIR);
             candidates.add(AttackType.NAVAL_GROUND);
         }
-        if (self.units(MilitaryUnit.MISSILE) > 0 && self.hasProject(Projects.MISSILE_LAUNCH_PAD)) {
+        if (CombatKernel.canUseAttackType(self, AttackType.MISSILE)) {
             candidates.add(AttackType.MISSILE);
         }
-        if (self.units(MilitaryUnit.NUKE) > 0 && self.hasProject(Projects.NUCLEAR_RESEARCH_FACILITY)) {
+        if (CombatKernel.canUseAttackType(self, AttackType.NUKE)) {
             candidates.add(AttackType.NUKE);
         }
         return candidates;

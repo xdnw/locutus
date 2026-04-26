@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.sim.combat.state.CombatantView;
+import link.locutus.discord.sim.combat.state.WarStateView;
 import link.locutus.discord.util.battle.CombatantViewAdapter;
 import org.junit.jupiter.api.Test;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -284,6 +286,64 @@ class AttackResolverTest {
         assertEquals(AttackType.GROUND.getMapUsed(), ground.mapCost());
         assertEquals(AttackType.AIRSTRIKE_INFRA.getMapUsed(), airstrike.mapCost());
     }
+
+    @Test
+    void flagsFacadeMatchesExplicitWarStateFacade() {
+        CombatantView attacker = cv(nation(7, 18_000, 800, 220, 9));
+        CombatantView defender = cv(nation(7, 16_500, 760, 210, 8));
+        AttackResolver.Flags flags = AttackResolver.Flags.relative(true, false, true, true, false, true);
+
+        double[] expectedOdds = AttackResolver.oddsVector(
+                attacker,
+                defender,
+                AttackType.GROUND,
+                flags.toWarState(WarType.ORD),
+                flags.toEngagementOptions(),
+                OddsModel.DEFAULT
+        );
+        double[] actualOdds = AttackResolver.oddsVector(
+                attacker,
+                defender,
+                AttackType.GROUND,
+                WarType.ORD,
+                flags,
+                OddsModel.DEFAULT
+        );
+        assertArrayEquals(expectedOdds, actualOdds, 1e-12);
+
+        AttackResolver.AttackRanges expectedRanges = AttackResolver.rangesForSuccess(
+                attacker,
+                defender,
+                flags.toWarState(WarType.ORD),
+                AttackType.GROUND,
+                SuccessType.MODERATE_SUCCESS,
+                flags.toEngagementOptions(),
+                OddsModel.DEFAULT
+        );
+        AttackResolver.AttackRanges actualRanges = AttackResolver.rangesForSuccess(
+                attacker,
+                defender,
+                AttackType.GROUND,
+                WarType.ORD,
+                flags,
+                SuccessType.MODERATE_SUCCESS,
+                OddsModel.DEFAULT
+        );
+        assertEquals(expectedRanges.controlDelta(), actualRanges.controlDelta());
+        assertArrayEquals(expectedRanges.consumption(), actualRanges.consumption(), 1e-12);
+        assertEquals(expectedRanges.attackerLossRanges(), actualRanges.attackerLossRanges());
+        assertEquals(expectedRanges.defenderLossRanges(), actualRanges.defenderLossRanges());
+    }
+
+        @Test
+        void flagsFacadeKeepsAttackerAndDefenderAirControlSemantics() {
+                AttackResolver.Flags flags = AttackResolver.Flags.relative(true, false, false, false, true, true);
+
+                WarStateView war = flags.toWarState(WarType.ORD);
+
+                assertTrue(war.attackerHasAirControl());
+                assertFalse(war.defenderHasAirControl());
+        }
 
     @Test
     void resistanceDeltaIsNonPositiveForDefenderOnSuccessfulGround() {
@@ -566,7 +626,7 @@ class AttackResolverTest {
             DBNation att, DBNation def,
             AttackType type, WarType wt,
             AttackResolver.Flags flags, ResolutionMode mode) {
-        return AttackResolver.resolve(cv(att), cv(def), flags.toWarState(wt), type, mode);
+                return AttackResolver.resolve(cv(att), cv(def), type, wt, flags, mode);
     }
 
     private static AttackOutcome resolve(
@@ -574,7 +634,7 @@ class AttackResolverTest {
             AttackType type, WarType wt,
             AttackResolver.Flags flags, ResolutionMode mode,
             RandomSource rng, long streamKey) {
-        return AttackResolver.resolve(cv(att), cv(def), flags.toWarState(wt), type, mode, rng, streamKey);
+                return AttackResolver.resolve(cv(att), cv(def), type, wt, flags, mode, rng, streamKey);
     }
 
     private static AttackOutcome resolve(
@@ -582,14 +642,13 @@ class AttackResolverTest {
             AttackType type, WarType wt,
             AttackResolver.Flags flags, ResolutionMode mode,
             RandomSource rng, long streamKey, OddsModel oddsModel) {
-        return AttackResolver.resolve(cv(att), cv(def), flags.toWarState(wt), type, mode,
-                flags.toEngagementOptions(), rng, streamKey, oddsModel);
+        return AttackResolver.resolve(cv(att), cv(def), type, wt, flags, mode, rng, streamKey, oddsModel);
     }
 
     private static double[] oddsVector(
             DBNation att, DBNation def,
             AttackType type, AttackResolver.Flags flags) {
         // WarType does not affect strength-based odds; ORD is a safe default.
-        return AttackResolver.oddsVector(cv(att), cv(def), type, flags.toWarState(WarType.ORD));
+                return AttackResolver.oddsVector(cv(att), cv(def), type, WarType.ORD, flags);
     }
 }

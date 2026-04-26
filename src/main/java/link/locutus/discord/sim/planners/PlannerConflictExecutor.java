@@ -7,6 +7,7 @@ import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.TeamScoreObjective;
 
+import java.util.LinkedHashMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +93,7 @@ final class PlannerConflictExecutor {
         }
         PlannerLocalConflict conflict = PlannerLocalConflict.create(overrides, attackers, defenders, tuning);
         int attackerTeamId = attackers.isEmpty() ? 1 : attackers.get(0).teamId();
-        conflict.applyAssignmentOpenings(assignment);
+        conflict.applyAssignmentOpenings(orderAssignmentByAttackers(assignment, attackers));
         return objective.scoreTerminal(conflict, attackerTeamId);
     }
 
@@ -115,22 +116,70 @@ final class PlannerConflictExecutor {
         }
     }
 
+    static double scoreAssignment(
+            PlannerLocalConflict conflict,
+            TeamScoreObjective objective,
+            int attackerTeamId,
+            PlannerConflictBundle.PlannerAssignmentView assignment
+    ) {
+        if (assignment.isEmpty()) {
+            return 0.0;
+        }
+
+        PlannerLocalConflict.Mark mark = conflict.mark();
+        try {
+            conflict.applyAssignmentOpenings(assignment);
+            return objective.scoreTerminal(conflict, attackerTeamId);
+        } finally {
+            conflict.rollback(mark);
+        }
+    }
+
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
             TeamScoreObjective objective,
             Map<Integer, List<Integer>> currentAssignment,
-            Map<Integer, List<Integer>> candidateAssignment,
+            PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
             int attackerTeamId
     ) {
-        PlannerConflictBundle bundle = PlannerConflictBundle.extract(
-                currentAssignment,
-                candidateAssignment,
-                attackers,
-                defenders
+            return scoreAssignmentDelta(
+                tuning,
+                overrides,
+                objective,
+                attackerTeamId,
+                PlannerConflictBundle.extract(currentAssignment, candidateChange, attackers, defenders)
+            );
+    }
+
+    static double scoreAssignmentDelta(
+            SimTuning tuning,
+            OverrideSet overrides,
+            TeamScoreObjective objective,
+            PlannerAssignmentSession currentAssignment,
+            PlannerAssignmentChange candidateChange,
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            int attackerTeamId
+    ) {
+        return scoreAssignmentDelta(
+                tuning,
+                overrides,
+                objective,
+                attackerTeamId,
+                PlannerConflictBundle.extract(currentAssignment, candidateChange, attackers, defenders)
         );
+    }
+
+    private static double scoreAssignmentDelta(
+            SimTuning tuning,
+            OverrideSet overrides,
+            TeamScoreObjective objective,
+            int attackerTeamId,
+            PlannerConflictBundle bundle
+    ) {
         if (bundle.isEmpty()) {
             return 0.0;
         }
@@ -144,6 +193,29 @@ final class PlannerConflictExecutor {
         double currentScore = scoreAssignment(conflict, objective, attackerTeamId, bundle.currentAssignment());
         double candidateScore = scoreAssignment(conflict, objective, attackerTeamId, bundle.candidateAssignment());
         return candidateScore - currentScore;
+    }
+
+    private static Map<Integer, List<Integer>> orderAssignmentByAttackers(
+            Map<Integer, List<Integer>> assignment,
+            Collection<DBNationSnapshot> attackers
+    ) {
+        if (assignment.isEmpty()) {
+            return Map.of();
+        }
+        LinkedHashMap<Integer, List<Integer>> ordered = new LinkedHashMap<>(assignment.size());
+        for (DBNationSnapshot attacker : attackers) {
+            List<Integer> defenderIds = assignment.get(attacker.nationId());
+            if (defenderIds != null && !defenderIds.isEmpty()) {
+                ordered.put(attacker.nationId(), defenderIds);
+            }
+        }
+        for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
+            List<Integer> defenderIds = entry.getValue();
+            if (!ordered.containsKey(entry.getKey()) && defenderIds != null && !defenderIds.isEmpty()) {
+                ordered.put(entry.getKey(), defenderIds);
+            }
+        }
+        return ordered.isEmpty() ? Map.of() : ordered;
     }
 
     static double evaluateDeclaredWar(
@@ -399,11 +471,7 @@ final class PlannerConflictExecutor {
         }
 
     private static double totalInfra(DBNationSnapshot snapshot) {
-        double total = 0.0;
-        for (double cityInfra : snapshot.cityInfra()) {
-            total += cityInfra;
-        }
-        return total;
+        return snapshot.totalInfraRaw();
     }
 
     private static PlannerProjectedWar projectedWar(

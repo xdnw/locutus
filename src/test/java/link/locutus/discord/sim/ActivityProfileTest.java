@@ -33,8 +33,6 @@ class ActivityProfileTest {
                 SimTuning.DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 SimTuning.DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 SimTuning.DEFAULT_POLICY_COOLDOWN_TURNS,
-                SimTuning.DEFAULT_PEACE_OFFER_LIFETIME_TURNS,
-                SimTuning.DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 SimTuning.DEFAULT_CANDIDATES_PER_ATTACKER,
@@ -74,8 +72,6 @@ class ActivityProfileTest {
                 SimTuning.DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 SimTuning.DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 SimTuning.DEFAULT_POLICY_COOLDOWN_TURNS,
-                1, // peaceOfferLifetimeTurns
-                SimTuning.DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 SimTuning.DEFAULT_CANDIDATES_PER_ATTACKER,
@@ -144,8 +140,6 @@ class ActivityProfileTest {
                 0.0,
                 0.7,
                 60,
-                6,
-                1,
                 250L,
                 100,
                 8,
@@ -157,9 +151,9 @@ class ActivityProfileTest {
     @Test
     void activityActThresholdValidation() {
         assertThrows(IllegalArgumentException.class, () -> new SimTuning(
-                1, SimTuning.DEFAULT_TURN1_DECLARE_POLICY, 0.0, -0.1, 60, 6, 1, 250L, 100, 8, 24));
+            1, SimTuning.DEFAULT_TURN1_DECLARE_POLICY, 0.0, -0.1, 60, 250L, 100, 8, 24));
         assertThrows(IllegalArgumentException.class, () -> new SimTuning(
-                1, SimTuning.DEFAULT_TURN1_DECLARE_POLICY, 0.0, 1.1, 60, 6, 1, 250L, 100, 8, 24));
+            1, SimTuning.DEFAULT_TURN1_DECLARE_POLICY, 0.0, 1.1, 60, 250L, 100, 8, 24));
     }
 
     @Test

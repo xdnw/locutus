@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.sim.combat.state.CombatCityView;
@@ -41,6 +42,18 @@ class CombatantViewAdapterTest {
         Collection<? extends CombatCityView> cities = view.getCityViews();
         assertEquals(5, cities.size());
         assertTrue(cities.stream().allMatch(c -> c.getInfra() == 1234d));
+    }
+
+    @Test
+    void partialCityMapStillProducesOneCityViewPerDeclaredCity() {
+        DBNation nation = nationWithPartialCityMap(5, 1_800d, 1_250d);
+
+        CombatantView view = CombatantViewAdapter.of(nation);
+
+        Collection<? extends CombatCityView> cities = view.getCityViews();
+        assertEquals(5, cities.size(), "adapter should fill missing city rows up to declared city count");
+        assertEquals(1_250d, cities.iterator().next().getInfra());
+        assertEquals(4L, cities.stream().filter(c -> c.getInfra() == 1_800d).count());
     }
 
     @Test
@@ -82,6 +95,27 @@ class CombatantViewAdapterTest {
             @Override
             public Map<Integer, DBCity> _getCitiesV3() {
                 return Collections.emptyMap();
+            }
+
+            @Override
+            public double maxCityInfra() {
+                return maxInfra;
+            }
+        };
+        nation.edit().setCities(cities);
+        return nation;
+    }
+
+    private static DBNation nationWithPartialCityMap(int cities, double maxInfra, double knownCityInfra) {
+        DBNationData data = new DBNationData();
+        data.setWar_policy(WarPolicy.ATTRITION);
+        SimpleDBCity city = new SimpleDBCity(77);
+        city.setId(1);
+        city.setInfra(knownCityInfra);
+        SimpleDBNation nation = new SimpleDBNation(data) {
+            @Override
+            public Map<Integer, DBCity> _getCitiesV3() {
+                return Map.of(city.getId(), city);
             }
 
             @Override

@@ -378,9 +378,13 @@ public final class SimWorld {
     }
 
     private void ensureAttackAllowed(int nationId, AttackType attackType) {
-        ScenarioActionPolicy.NationActionPolicy policy = scenarioActionPolicy.resolve(this, requireNation(nationId));
+        SimNation attacker = requireNation(nationId);
+        ScenarioActionPolicy.NationActionPolicy policy = scenarioActionPolicy.resolve(this, attacker);
         if (!policy.allowsAttack(attackType)) {
             throw new IllegalStateException("Scenario policy blocks attack type " + attackType + " for nation " + nationId);
+        }
+        if (!CombatKernel.canUseAttackType(attacker, attackType)) {
+            throw new IllegalStateException("Nation " + nationId + " cannot use attack type " + attackType + " with current units/projects");
         }
     }
 

@@ -345,37 +345,25 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
      */
     public WarStateView asWarStateViewFor(SimSide actorSide) {
         boolean actorIsAttacker = actorSide == SimSide.ATTACKER;
-        int blockade;
-        if (blockadeOwner == null) {
-            blockade = WarStateView.BLOCKADE_NONE;
-        } else if (blockadeOwner == SimSide.ATTACKER) {
-            blockade = actorIsAttacker ? WarStateView.BLOCKADE_ATTACKER : WarStateView.BLOCKADE_DEFENDER;
-        } else {
-            blockade = actorIsAttacker ? WarStateView.BLOCKADE_DEFENDER : WarStateView.BLOCKADE_ATTACKER;
-        }
-        boolean resolverAttHasAir  = actorIsAttacker ? (airSuperiorityOwner == SimSide.ATTACKER) : (airSuperiorityOwner == SimSide.DEFENDER);
-        boolean resolverDefHasAir  = actorIsAttacker ? (airSuperiorityOwner == SimSide.DEFENDER) : (airSuperiorityOwner == SimSide.ATTACKER);
-        boolean resolverAttHasGround = actorIsAttacker ? (groundControlOwner == SimSide.ATTACKER) : (groundControlOwner == SimSide.DEFENDER);
-        boolean resolverDefFortified = actorIsAttacker ? defenderFortified : attackerFortified;
-        boolean resolverAttFortified = actorIsAttacker ? attackerFortified : defenderFortified;
-        int resolverAttMaps = actorIsAttacker ? attackerSpendableMaps() : defenderSpendableMaps();
-        int resolverDefMaps = actorIsAttacker ? defenderSpendableMaps() : attackerSpendableMaps();
-        int resolverAttRes  = actorIsAttacker ? attackerResistance : defenderResistance;
-        int resolverDefRes  = actorIsAttacker ? defenderResistance : attackerResistance;
-        return new BasicWarStateView(
+        int originalBlockadeOwner = blockadeOwner == null
+                ? WarStateView.BLOCKADE_NONE
+                : blockadeOwner == SimSide.ATTACKER
+                ? WarStateView.BLOCKADE_ATTACKER
+                : WarStateView.BLOCKADE_DEFENDER;
+        return BasicWarStateView.ofActorPerspective(
                 warType,
-            actorIsAttacker,
-                resolverAttHasAir,
-                resolverDefHasAir,
-                resolverAttHasGround,
-                false, // defenderHasGroundControl not tracked separately
-                resolverAttFortified,
-                resolverDefFortified,
-                resolverAttMaps,
-                resolverDefMaps,
-                resolverAttRes,
-                resolverDefRes,
-                blockade
+                actorIsAttacker,
+                airSuperiorityOwner == SimSide.ATTACKER,
+                airSuperiorityOwner == SimSide.DEFENDER,
+                groundControlOwner == SimSide.ATTACKER,
+                groundControlOwner == SimSide.DEFENDER,
+                attackerFortified,
+                defenderFortified,
+                attackerSpendableMaps(),
+                defenderSpendableMaps(),
+                attackerResistance,
+                defenderResistance,
+                originalBlockadeOwner
         );
     }
 

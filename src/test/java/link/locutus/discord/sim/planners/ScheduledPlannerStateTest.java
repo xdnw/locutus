@@ -411,15 +411,16 @@ class ScheduledPlannerStateTest {
         assertFalse(firstOverlay.isEmpty());
         assertFalse(state.cityInfraOverlaysByNation().containsKey(attacker.nationId()));
 
-        for (Map.Entry<Integer, Double> entry : firstOverlay.cityInfraByIndex().entrySet()) {
-            assertEquals(entry.getValue(), defenderAfterFirstBucket.cityInfra()[entry.getKey()]);
+        double[] defenderCityInfra = defenderAfterFirstBucket.cityInfra();
+        for (int i = 0; i < firstOverlay.size(); i++) {
+            assertEquals(firstOverlay.cityInfraValueAt(i), defenderCityInfra[firstOverlay.cityIndexAt(i)]);
         }
 
         state = state.advance(SimTuning.defaults(), Map.of(), 1);
 
         PlannerCityInfraOverlay carriedOverlay = state.cityInfraOverlaysByNation().get(defender.nationId());
         assertNotNull(carriedOverlay);
-        assertEquals(firstOverlay.cityInfraByIndex(), carriedOverlay.cityInfraByIndex());
+        assertEquals(firstOverlay, carriedOverlay);
 
         DBNationSnapshot defenderAfterSecondBucket = state.snapshotsFor(List.of(defender.nationId())).get(0);
         assertArrayEquals(defenderAfterFirstBucket.cityInfra(), defenderAfterSecondBucket.cityInfra());

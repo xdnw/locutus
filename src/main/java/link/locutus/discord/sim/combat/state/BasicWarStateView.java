@@ -32,9 +32,9 @@ public record BasicWarStateView(
     }
 
     public static BasicWarStateView simple(WarType warType) {
-        return new BasicWarStateView(
+        return ofActorPerspective(
                 warType,
-            true,
+                true,
                 false,
                 false,
                 false,
@@ -56,9 +56,9 @@ public record BasicWarStateView(
             boolean attackerHasGroundControl,
             boolean defenderFortified
     ) {
-        return new BasicWarStateView(
+        return ofActorPerspective(
                 warType,
-            true,
+                true,
                 attackerHasAirControl,
                 defenderHasAirControl,
                 attackerHasGroundControl,
@@ -71,6 +71,72 @@ public record BasicWarStateView(
                 100,
                 BLOCKADE_NONE
         );
+    }
+
+    public static BasicWarStateView ofActorPerspective(
+            WarType warType,
+            boolean actorIsOriginalAttacker,
+            boolean originalAttackerHasAirControl,
+            boolean originalDefenderHasAirControl,
+            boolean originalAttackerHasGroundControl,
+            boolean originalDefenderHasGroundControl,
+            boolean originalAttackerFortified,
+            boolean originalDefenderFortified,
+            int originalAttackerMaps,
+            int originalDefenderMaps,
+            int originalAttackerResistance,
+            int originalDefenderResistance,
+            int originalBlockadeOwner
+    ) {
+        boolean attackerHasAirControl = actorIsOriginalAttacker
+                ? originalAttackerHasAirControl
+                : originalDefenderHasAirControl;
+        boolean defenderHasAirControl = actorIsOriginalAttacker
+                ? originalDefenderHasAirControl
+                : originalAttackerHasAirControl;
+        boolean attackerHasGroundControl = actorIsOriginalAttacker
+                ? originalAttackerHasGroundControl
+                : originalDefenderHasGroundControl;
+        boolean defenderHasGroundControl = actorIsOriginalAttacker
+                ? originalDefenderHasGroundControl
+                : originalAttackerHasGroundControl;
+        boolean attackerFortified = actorIsOriginalAttacker
+                ? originalAttackerFortified
+                : originalDefenderFortified;
+        boolean defenderFortified = actorIsOriginalAttacker
+                ? originalDefenderFortified
+                : originalAttackerFortified;
+        int attackerMaps = actorIsOriginalAttacker ? originalAttackerMaps : originalDefenderMaps;
+        int defenderMaps = actorIsOriginalAttacker ? originalDefenderMaps : originalAttackerMaps;
+        int attackerResistance = actorIsOriginalAttacker
+                ? originalAttackerResistance
+                : originalDefenderResistance;
+        int defenderResistance = actorIsOriginalAttacker
+                ? originalDefenderResistance
+                : originalAttackerResistance;
+        int blockadeOwner = relativeBlockadeOwner(actorIsOriginalAttacker, originalBlockadeOwner);
+        return new BasicWarStateView(
+                warType,
+                actorIsOriginalAttacker,
+                attackerHasAirControl,
+                defenderHasAirControl,
+                attackerHasGroundControl,
+                defenderHasGroundControl,
+                attackerFortified,
+                defenderFortified,
+                attackerMaps,
+                defenderMaps,
+                attackerResistance,
+                defenderResistance,
+                blockadeOwner
+        );
+    }
+
+    private static int relativeBlockadeOwner(boolean actorIsOriginalAttacker, int originalBlockadeOwner) {
+        if (originalBlockadeOwner == BLOCKADE_NONE || actorIsOriginalAttacker) {
+            return originalBlockadeOwner;
+        }
+        return originalBlockadeOwner == BLOCKADE_ATTACKER ? BLOCKADE_DEFENDER : BLOCKADE_ATTACKER;
     }
 
     private static int clampResistance(int value) {

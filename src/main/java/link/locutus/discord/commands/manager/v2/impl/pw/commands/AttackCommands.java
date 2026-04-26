@@ -5,14 +5,12 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.AttackResolver;
 import link.locutus.discord.sim.combat.OddsModel;
 import link.locutus.discord.sim.combat.ProjectileDefenseMath;
-import link.locutus.discord.sim.combat.state.BasicCombatCityView;
-import link.locutus.discord.sim.combat.state.BasicCombatantView;
-import link.locutus.discord.sim.combat.state.BasicWarStateView;
 import link.locutus.discord.sim.combat.state.CombatantView;
-import link.locutus.discord.sim.combat.state.WarStateView;
+import link.locutus.discord.sim.combat.state.CombatantSnapshots;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.battle.CombatantViewAdapter;
@@ -36,13 +34,25 @@ public class AttackCommands {
 
         CombatantView attacker = syntheticCombatant(1, attSoldiers + attSoldiersUnarmed, attTanks, 0, 0);
         CombatantView defender = syntheticCombatant(2, defSoldiers + defSoldiersUnarmed, defTanks, 0, 0);
+        String legalityError = attackLegalityError(attacker, AttackType.GROUND);
+        if (legalityError != null) {
+            return legalityError;
+        }
+        AttackResolver.Flags flags = AttackResolver.Flags.relative(
+            false,
+            false,
+            false,
+            false,
+            equipAttackerSoldiers,
+            equipDefenderSoldiers
+        );
 
         double[] oddsVector = AttackResolver.oddsVector(
                 attacker,
                 defender,
                 AttackType.GROUND,
-                BasicWarStateView.simple(WarType.RAID),
-                new AttackResolver.EngagementOptions(equipAttackerSoldiers, equipDefenderSoldiers),
+            WarType.RAID,
+            flags,
                 OddsModel.DEFAULT
         );
 
@@ -80,13 +90,17 @@ public class AttackCommands {
     public String airSim(int attAircraft, int defAircraft) {
         CombatantView attacker = syntheticCombatant(1, 0, 0, attAircraft, 0);
         CombatantView defender = syntheticCombatant(2, 0, 0, defAircraft, 0);
+        String legalityError = attackLegalityError(attacker, AttackType.AIRSTRIKE_AIRCRAFT);
+        if (legalityError != null) {
+            return legalityError;
+        }
 
         double[] oddsVector = AttackResolver.oddsVector(
                 attacker,
                 defender,
                 AttackType.AIRSTRIKE_AIRCRAFT,
-                BasicWarStateView.simple(WarType.RAID),
-                AttackResolver.EngagementOptions.defaults(),
+            WarType.RAID,
+            AttackResolver.Flags.defaults(),
                 OddsModel.DEFAULT
         );
 
@@ -204,16 +218,17 @@ public class AttackCommands {
 
         CombatantView attackerView = CombatantViewAdapter.of(attacker, attacker_infra == null ? null : attacker_infra.doubleValue());
         CombatantView defenderView = CombatantViewAdapter.of(defender, defender_infra == null ? null : defender_infra.doubleValue());
-        AttackResolver.EngagementOptions options = new AttackResolver.EngagementOptions(
+        String legalityError = attackLegalityError(attackerView, attack);
+        if (legalityError != null) {
+            throw new IllegalArgumentException(legalityError);
+        }
+        AttackResolver.Flags flags = AttackResolver.Flags.relative(
+            attAirControl,
+            defAirControl,
+            att_ground_control,
+            defFortified,
                 !unequipAttackerSoldiers,
                 !unequipDefenderSoldiers
-        );
-        WarStateView war = BasicWarStateView.ofRelative(
-                warType,
-                attAirControl,
-                defAirControl,
-                att_ground_control,
-                defFortified
         );
 
         StringBuilder response = new StringBuilder();
@@ -222,10 +237,10 @@ public class AttackCommands {
         AttackResolver.AttackRanges immense = AttackResolver.rangesForSuccess(
                 attackerView,
                 defenderView,
-                war,
                 attack,
+            warType,
+            flags,
                 SuccessType.IMMENSE_TRIUMPH,
-                options,
                 OddsModel.DEFAULT
         );
         double[] attConsume = immense.consumption();
@@ -267,7 +282,14 @@ public class AttackCommands {
                 }
                 response.append("\n");
 
-                double[] oddsVector = AttackResolver.oddsVector(attackerView, defenderView, attack, war, options, OddsModel.DEFAULT);
+                double[] oddsVector = AttackResolver.oddsVector(
+                    attackerView,
+                    defenderView,
+                    attack,
+                    warType,
+                    flags,
+                    OddsModel.DEFAULT
+                );
                 for (SuccessType success : SuccessType.values) {
                     double odds = oddsVector[success.ordinal()];
                     if (odds <= 0) continue;
@@ -278,10 +300,10 @@ public class AttackCommands {
                     AttackResolver.AttackRanges ranges = AttackResolver.rangesForSuccess(
                             attackerView,
                             defenderView,
-                            war,
                             attack,
+                            warType,
+                            flags,
                             success,
-                            options,
                             OddsModel.DEFAULT
                     );
                     appendLossRanges(response, "Attacker losses: ", attackerView, ranges.attackerLossRanges());
@@ -302,13 +324,17 @@ public class AttackCommands {
     public String navalSim(int attShips, int defShips) {
         CombatantView attacker = syntheticCombatant(1, 0, 0, 0, attShips);
         CombatantView defender = syntheticCombatant(2, 0, 0, 0, defShips);
+        String legalityError = attackLegalityError(attacker, AttackType.NAVAL);
+        if (legalityError != null) {
+            return legalityError;
+        }
 
         double[] oddsVector = AttackResolver.oddsVector(
                 attacker,
                 defender,
                 AttackType.NAVAL,
-                BasicWarStateView.simple(WarType.RAID),
-                AttackResolver.EngagementOptions.defaults(),
+            WarType.RAID,
+            AttackResolver.Flags.defaults(),
                 OddsModel.DEFAULT
         );
 
@@ -369,6 +395,13 @@ public class AttackCommands {
         return owner.getUnitConvertedCost(unit) * amount;
     }
 
+    private static String attackLegalityError(CombatantView attacker, AttackType attackType) {
+        if (CombatKernel.canUseAttackType(attacker, attackType)) {
+            return null;
+        }
+        return "Attacker cannot use " + attackType.name() + " with current units/projects.";
+    }
+
     private static CombatantView syntheticCombatant(
             int nationId,
             int soldiers,
@@ -376,19 +409,6 @@ public class AttackCommands {
             int aircraft,
             int ships
     ) {
-        return BasicCombatantView.builder()
-                .nationId(nationId)
-                .cities(1)
-                .researchBits(0)
-                .unit(MilitaryUnit.SOLDIER, soldiers)
-                .unit(MilitaryUnit.TANK, tanks)
-                .unit(MilitaryUnit.AIRCRAFT, aircraft)
-                .unit(MilitaryUnit.SHIP, ships)
-                .capacity(MilitaryUnit.SOLDIER, soldiers)
-                .capacity(MilitaryUnit.TANK, tanks)
-                .capacity(MilitaryUnit.AIRCRAFT, aircraft)
-                .capacity(MilitaryUnit.SHIP, ships)
-                .city(BasicCombatCityView.ofInfra(2000d))
-                .build();
+        return CombatantSnapshots.syntheticSingleCity(nationId, soldiers, tanks, aircraft, ships);
     }
 }

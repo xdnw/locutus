@@ -29,8 +29,6 @@ class PlannerSimSupportTest {
                 0.25,
                 defaults.activityActThreshold(),
                 defaults.policyCooldownTurns(),
-                defaults.peaceOfferLifetimeTurns(),
-                defaults.mapReserveLifetimeTurns(),
                 defaults.localSearchBudgetMs(),
                 defaults.localSearchMaxIterations(),
                 defaults.candidatesPerAttacker(),

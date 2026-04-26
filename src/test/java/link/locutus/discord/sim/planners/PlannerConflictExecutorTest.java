@@ -507,10 +507,14 @@ class PlannerConflictExecutorTest {
                 attackerTwo.nationId(), List.of(defenderOne.nationId()),
                 unrelatedAttacker.nationId(), List.of(unrelatedDefender.nationId())
         );
+        PlannerAssignmentChange candidateChange = PlannerAssignmentChange.single(
+                attackerOne.nationId(),
+                List.of(defenderTwo.nationId())
+        );
 
         PlannerConflictBundle bundle = PlannerConflictBundle.extract(
                 currentAssignment,
-                candidateAssignment,
+                candidateChange,
                 attackers,
                 defenders
         );
@@ -522,14 +526,14 @@ class PlannerConflictExecutorTest {
                         attackerOne.nationId(), List.of(defenderOne.nationId()),
                         attackerTwo.nationId(), List.of(defenderOne.nationId())
                 ),
-                bundle.currentAssignment()
+                bundle.currentAssignment().toAssignmentMap()
         );
         assertEquals(
                 Map.of(
                         attackerOne.nationId(), List.of(defenderTwo.nationId()),
                         attackerTwo.nationId(), List.of(defenderOne.nationId())
                 ),
-                bundle.candidateAssignment()
+                bundle.candidateAssignment().toAssignmentMap()
         );
 
         double fullCurrentScore = PlannerConflictExecutor.scoreAssignment(
@@ -556,7 +560,47 @@ class PlannerConflictExecutorTest {
                         OverrideSet.EMPTY,
                         new DamageObjective(),
                         currentAssignment,
-                        candidateAssignment,
+                        candidateChange,
+                        attackers,
+                        defenders,
+                        attackerOne.teamId()
+                ),
+                1e-9
+        );
+
+        PlannerAssignmentSession session = PlannerAssignmentSession.create(
+                currentAssignment,
+                attackers,
+                defenders,
+                Map.of(
+                        attackerOne.nationId(), 1,
+                        attackerTwo.nationId(), 1,
+                        unrelatedAttacker.nationId(), 1
+                ),
+                Map.of(
+                        defenderOne.nationId(), 2,
+                        defenderTwo.nationId(), 1,
+                        unrelatedDefender.nationId(), 1
+                )
+        );
+        PlannerConflictBundle sessionBundle = PlannerConflictBundle.extract(
+                session,
+                candidateChange,
+                attackers,
+                defenders
+        );
+        assertEquals(bundle.attackers(), sessionBundle.attackers());
+        assertEquals(bundle.defenders(), sessionBundle.defenders());
+        assertEquals(bundle.currentAssignment(), sessionBundle.currentAssignment());
+        assertEquals(bundle.candidateAssignment(), sessionBundle.candidateAssignment());
+        assertEquals(
+                fullCandidateScore - fullCurrentScore,
+                PlannerConflictExecutor.scoreAssignmentDelta(
+                        new SimTuning(ResolutionMode.MOST_LIKELY),
+                        OverrideSet.EMPTY,
+                        new DamageObjective(),
+                        session,
+                        candidateChange,
                         attackers,
                         defenders,
                         attackerOne.teamId()
@@ -599,7 +643,7 @@ class PlannerConflictExecutorTest {
         PlannerCityInfraOverlay carriedOverlay = secondProjection.cityInfraOverlaysByNation().get(defender.nationId());
 
         assertNotNull(carriedOverlay);
-        assertEquals(firstOverlay.cityInfraByIndex(), carriedOverlay.cityInfraByIndex());
+        assertEquals(firstOverlay, carriedOverlay);
     }
 
     @Test
@@ -625,6 +669,25 @@ class PlannerConflictExecutorTest {
         assertEquals(1.0, attacker.infraDefendModifier(AttackType.GROUND), 1e-9);
         assertFalse(attacker.blitzkriegActive());
     }
+
+        @Test
+        void snapshotDerivesMaxOffFromProjectBitsWhenNotExplicitlySet() {
+                long pirateBits = (1L << Projects.PIRATE_ECONOMY.ordinal())
+                                | (1L << Projects.ADVANCED_PIRATE_ECONOMY.ordinal());
+                DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
+                                .teamId(1)
+                                .allianceId(1)
+                                .score(1_000)
+                                .cities(3)
+                                .nonInfraScoreBase(700)
+                                .cityInfra(new double[]{1_200, 1_100, 1_000})
+                                .warPolicy(WarPolicy.ATTRITION)
+                                .projectBits(pirateBits)
+                                .build();
+
+                assertEquals(7, attacker.maxOff());
+                assertEquals(7, attacker.rawFreeOff());
+        }
 
     @Test
     void snapshotRoundTripPreservesResearchAndProjectBits() {

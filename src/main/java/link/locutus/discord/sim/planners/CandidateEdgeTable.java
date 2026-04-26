@@ -154,6 +154,10 @@ final class CandidateEdgeTable {
         return scalarScores[edge];
     }
 
+    void scaleScalarScore(int edge, float factor) {
+        scalarScores[edge] *= factor;
+    }
+
     float counterRisk(int edge) {
         return counterRisks[edge];
     }

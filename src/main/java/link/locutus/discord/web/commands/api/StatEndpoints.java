@@ -7,6 +7,9 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCach
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegistry;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
+import link.locutus.discord.db.WarDB;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
@@ -27,9 +30,6 @@ public class StatEndpoints {
                               String selection_str,
                               @TextArea List<String> columns) {
         Class<T> typeCasted = (Class<T>) type;
-        Map<Integer, List<WebTableError>> errors = new LinkedHashMap<>();
-        int maxPerCol = 500;
-
         Placeholders<T, Object> ph = registry.get(typeCasted);
         Object modifier = null;
         if (selection_str.startsWith("{") && selection_str.endsWith("}")) {
@@ -43,7 +43,69 @@ public class StatEndpoints {
         }
 
         Set<T> selection = ph.parseSet(store, selection_str, modifier);
-        ValueStore cacheStore = PlaceholderCache.createCache(store, selection, typeCasted);
+        return renderTable(store, registry, typeCasted, selection, columns);
+    }
+
+    @Command(desc = "Render active wars involving any selected nations as a WebTable", viewable = true)
+    @ReturnType(WebTable.class)
+    public WebTable warsInvolving(ValueStore store, PlaceholderRegistry registry, WarDB warDB,
+                                  @Default("*") Set<DBNation> nations,
+                                  @TextArea List<String> columns) {
+        List<DBWar> wars = activeWarsInvolving(warDB, nations);
+        return renderTable(store, registry, DBWar.class, new LinkedHashSet<>(wars), columns);
+    }
+
+    @Command(desc = "Render active wars between two selected nation populations as a WebTable", viewable = true)
+    @ReturnType(WebTable.class)
+    public WebTable warsBetween(ValueStore store, PlaceholderRegistry registry, WarDB warDB,
+                                @Default("*") Set<DBNation> sideA,
+                                @Default("*") Set<DBNation> sideB,
+                                @TextArea List<String> columns) {
+        List<DBWar> wars = activeWarsBetween(warDB, sideA, sideB);
+        return renderTable(store, registry, DBWar.class, new LinkedHashSet<>(wars), columns);
+    }
+
+    static List<DBWar> activeWarsInvolving(WarDB warDB, Set<DBNation> nations) {
+        if (nations == null || nations.isEmpty()) {
+            throw new IllegalArgumentException("Please provide at least one nation");
+        }
+        Set<Integer> nationIds = nationIds(nations);
+        return warDB.getActiveWars(nationIds::contains, null).stream()
+                .sorted(Comparator.comparingInt(DBWar::getWarId))
+                .toList();
+    }
+
+    static List<DBWar> activeWarsBetween(WarDB warDB, Set<DBNation> sideA, Set<DBNation> sideB) {
+        if (sideA == null || sideA.isEmpty()) {
+            throw new IllegalArgumentException("Please provide at least one sideA nation");
+        }
+        if (sideB == null || sideB.isEmpty()) {
+            throw new IllegalArgumentException("Please provide at least one sideB nation");
+        }
+        Set<Integer> sideAIds = nationIds(sideA);
+        Set<Integer> sideBIds = nationIds(sideB);
+        return warDB.getActiveWars(nationId -> sideAIds.contains(nationId) || sideBIds.contains(nationId), war ->
+                        (sideAIds.contains(war.getAttacker_id()) && sideBIds.contains(war.getDefender_id()))
+                                || (sideBIds.contains(war.getAttacker_id()) && sideAIds.contains(war.getDefender_id())))
+                .stream()
+                .sorted(Comparator.comparingInt(DBWar::getWarId))
+                .toList();
+    }
+
+    private static Set<Integer> nationIds(Set<DBNation> nations) {
+        Set<Integer> nationIds = new LinkedHashSet<>();
+        for (DBNation nation : nations) {
+            nationIds.add(nation.getNation_id());
+        }
+        return nationIds;
+    }
+
+    private static <T> WebTable renderTable(ValueStore store, PlaceholderRegistry registry, Class<T> type,
+                                            Set<T> selection, List<String> columns) {
+        Map<Integer, List<WebTableError>> errors = new LinkedHashMap<>();
+        int maxPerCol = 500;
+        Placeholders<T, Object> ph = registry.get(type);
+        ValueStore cacheStore = PlaceholderCache.createCache(store, selection, type);
 
         List<String> renderers = new ObjectArrayList<>(columns.size());
         List<TypedFunction<T, ?>> formatters = new ObjectArrayList<>(columns.size());

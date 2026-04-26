@@ -19,32 +19,42 @@ public final class AttackResolver {
     }
 
     public record Flags(
-            boolean defAirControl,
             boolean attAirControl,
+            boolean defAirControl,
             boolean attGroundControl,
             boolean defFortified,
             boolean equipAttackerSoldiers,
             boolean equipDefenderSoldiers
     ) {
-        public static Flags defaults() {
-            return new Flags(false, false, false, false, true, true);
-        }
-
-        public WarStateView toWarState(WarType warType) {
-            return new BasicWarStateView(
-                    warType,
-                    true,
+        public static Flags relative(
+                boolean attAirControl,
+                boolean defAirControl,
+                boolean attGroundControl,
+                boolean defFortified,
+                boolean equipAttackerSoldiers,
+                boolean equipDefenderSoldiers
+        ) {
+            return new Flags(
                     attAirControl,
                     defAirControl,
                     attGroundControl,
-                    false,
-                    false,
                     defFortified,
-                    0,
-                    0,
-                    100,
-                    100,
-                    WarStateView.BLOCKADE_NONE
+                    equipAttackerSoldiers,
+                    equipDefenderSoldiers
+            );
+        }
+
+        public static Flags defaults() {
+            return relative(false, false, false, false, true, true);
+        }
+
+        public WarStateView toWarState(WarType warType) {
+            return BasicWarStateView.ofRelative(
+                    warType,
+                    attAirControl,
+                    defAirControl,
+                    attGroundControl,
+                    defFortified
             );
         }
 
@@ -110,6 +120,18 @@ public final class AttackResolver {
         return resolve(new ViewAttackContext(attacker, defender, war), type, mode);
     }
 
+    public static AttackOutcome resolve(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
+            WarType warType,
+            Flags flags,
+            ResolutionMode mode
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        return resolve(attacker, defender, resolvedFlags.toWarState(warType), type, mode);
+    }
+
     static AttackOutcome resolve(
             CombatKernel.AttackContext context,
             AttackType type,
@@ -128,6 +150,20 @@ public final class AttackResolver {
             long streamKey
     ) {
         return resolve(new ViewAttackContext(attacker, defender, war), type, mode, rng, streamKey);
+    }
+
+    public static AttackOutcome resolve(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
+            WarType warType,
+            Flags flags,
+            ResolutionMode mode,
+            RandomSource rng,
+            long streamKey
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        return resolve(attacker, defender, resolvedFlags.toWarState(warType), type, mode, rng, streamKey);
     }
 
     static AttackOutcome resolve(
@@ -215,6 +251,31 @@ public final class AttackResolver {
         return resolve(new ViewAttackContext(attacker, defender, war), type, mode, options, rng, streamKey, oddsModel);
     }
 
+    public static AttackOutcome resolve(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
+            WarType warType,
+            Flags flags,
+            ResolutionMode mode,
+            RandomSource rng,
+            long streamKey,
+            OddsModel oddsModel
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        return resolve(
+                attacker,
+                defender,
+                resolvedFlags.toWarState(warType),
+                type,
+                mode,
+                resolvedFlags.toEngagementOptions(),
+                rng,
+                streamKey,
+                oddsModel
+        );
+    }
+
     public static AttackRanges rangesForSuccess(
             CombatantView attacker,
             CombatantView defender,
@@ -223,6 +284,47 @@ public final class AttackResolver {
             SuccessType success
     ) {
         return rangesForSuccess(attacker, defender, war, type, success, EngagementOptions.defaults(), OddsModel.DEFAULT);
+    }
+
+    public static AttackRanges rangesForSuccess(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
+            WarType warType,
+            Flags flags,
+            SuccessType success
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        return rangesForSuccess(
+                attacker,
+                defender,
+                resolvedFlags.toWarState(warType),
+                type,
+                success,
+                resolvedFlags.toEngagementOptions(),
+                OddsModel.DEFAULT
+        );
+    }
+
+    public static AttackRanges rangesForSuccess(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
+            WarType warType,
+            Flags flags,
+            SuccessType success,
+            OddsModel oddsModel
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        return rangesForSuccess(
+                attacker,
+                defender,
+                resolvedFlags.toWarState(warType),
+                type,
+                success,
+                resolvedFlags.toEngagementOptions(),
+                oddsModel
+        );
     }
 
     static AttackRanges rangesForSuccess(
@@ -312,6 +414,43 @@ public final class AttackResolver {
             CombatantView attacker,
             CombatantView defender,
             AttackType type,
+            WarType warType,
+            Flags flags
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        return oddsVector(
+                attacker,
+                defender,
+                type,
+                resolvedFlags.toWarState(warType),
+                resolvedFlags.toEngagementOptions(),
+                OddsModel.DEFAULT
+        );
+    }
+
+    public static double[] oddsVector(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
+            WarType warType,
+            Flags flags,
+            OddsModel oddsModel
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        return oddsVector(
+                attacker,
+                defender,
+                type,
+                resolvedFlags.toWarState(warType),
+                resolvedFlags.toEngagementOptions(),
+                oddsModel
+        );
+    }
+
+    public static double[] oddsVector(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
             WarStateView war,
             EngagementOptions options,
             OddsModel oddsModel
@@ -334,5 +473,9 @@ public final class AttackResolver {
                 resolved.equipAttackerSoldiers(),
                 resolved.equipDefenderSoldiers()
         );
+    }
+
+    private static Flags resolveFlags(Flags flags) {
+        return flags == null ? Flags.defaults() : flags;
     }
 }

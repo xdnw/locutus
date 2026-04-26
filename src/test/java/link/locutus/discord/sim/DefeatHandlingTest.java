@@ -33,7 +33,7 @@ class DefeatHandlingTest {
         final int[] allianceLootCalls = {0};
         AllianceLootProvider allianceLootProvider = (winner, loser, war) -> allianceLootCalls[0]++;
 
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24), economyProvider, allianceLootProvider);
+        SimWorld world = new SimWorld(new SimTuning(60, 24), economyProvider, allianceLootProvider);
         SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 100d);
         double[] defenderResources = ResourceType.getBuffer();
         defenderResources[ResourceType.MONEY.ordinal()] = 500d;
@@ -61,7 +61,7 @@ class DefeatHandlingTest {
 
     @Test
     void attackerDefeatTransitionsToDefenderVictory() {
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24));
+        SimWorld world = new SimWorld(new SimTuning(60, 24));
         SimNation attacker = new SimNation(10, WarPolicy.FORTRESS, 300d);
         SimNation defender = new SimNation(20, WarPolicy.TURTLE, 50d);
         SimWar war = new SimWar(202, 10, 20, WarType.ORD);
@@ -92,7 +92,7 @@ class DefeatHandlingTest {
             }
         };
 
-        SimWorld world = new SimWorld(new SimTuning(60, 6, 24), economyProvider, AllianceLootProvider.NO_OP);
+        SimWorld world = new SimWorld(new SimTuning(60, 24), economyProvider, AllianceLootProvider.NO_OP);
         long pirateProjectBits = (1L << Projects.ADVANCED_PIRATE_ECONOMY.ordinal())
                 | (1L << Projects.PIRATE_ECONOMY.ordinal());
         SimNation attacker = new SimNation(new NationInit(

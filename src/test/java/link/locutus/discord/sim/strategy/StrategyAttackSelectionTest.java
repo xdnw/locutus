@@ -38,6 +38,35 @@ class StrategyAttackSelectionTest {
         assertTrue(unlockedCandidates.contains(AttackType.NUKE));
     }
 
+    @Test
+    void genericAirCandidateSurfaceSkipsInfraAndMoneyVariants() {
+        SimNation nation = nationWithSpecialists(0L);
+        nation.setUnitCount(MilitaryUnit.AIRCRAFT, 8);
+
+        List<AttackType> candidates = StrategyAttackSelection.candidateAttackTypes(nation);
+
+        assertFalse(candidates.contains(AttackType.AIRSTRIKE_INFRA));
+        assertFalse(candidates.contains(AttackType.AIRSTRIKE_MONEY));
+        assertTrue(candidates.contains(AttackType.AIRSTRIKE_SOLDIER));
+        assertTrue(candidates.contains(AttackType.AIRSTRIKE_TANK));
+        assertTrue(candidates.contains(AttackType.AIRSTRIKE_SHIP));
+        assertTrue(candidates.contains(AttackType.AIRSTRIKE_AIRCRAFT));
+    }
+
+    @Test
+    void groundCandidateRequiresVerifiedSoldierFloor() {
+        SimNation belowFloor = nationWithSpecialists(0L);
+        belowFloor.setUnitCount(MilitaryUnit.SOLDIER, 49);
+        belowFloor.setUnitCount(MilitaryUnit.TANK, 12);
+
+        SimNation legalGround = nationWithSpecialists(0L);
+        legalGround.setUnitCount(MilitaryUnit.SOLDIER, 50);
+        legalGround.setUnitCount(MilitaryUnit.TANK, 12);
+
+        assertFalse(StrategyAttackSelection.candidateAttackTypes(belowFloor).contains(AttackType.GROUND));
+        assertTrue(StrategyAttackSelection.candidateAttackTypes(legalGround).contains(AttackType.GROUND));
+    }
+
     private static SimNation nationWithSpecialists(long projectBits) {
         return new SimNation(new NationInit(
                 901,

@@ -4002,7 +4002,7 @@ public class WarCommands {
     @RolePermission(value = {Roles.MEMBER, Roles.MILCOM}, any = true)
     @Command(desc= """
             Get a list of nations to counter a war
-            Add `-o` to ignore nations with 5 offensive slots
+            Add `-o` to ignore nations already at max offensive slots
             Add `-w` to filter out weak attackers
             Add `-a` to only list active nations (past hour)""", viewable = true)
     public String counterWar(@Me DBNation me, @Me GuildDB db,

@@ -1,6 +1,7 @@
 package link.locutus.discord.sim;
 
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.actions.AttackAction;
@@ -25,8 +26,6 @@ class SimWorldActorExecutionTest {
                 SimTuning.DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 SimTuning.DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 SimTuning.DEFAULT_POLICY_COOLDOWN_TURNS,
-                SimTuning.DEFAULT_PEACE_OFFER_LIFETIME_TURNS,
-                SimTuning.DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 SimTuning.DEFAULT_CANDIDATES_PER_ATTACKER,
@@ -37,6 +36,7 @@ class SimWorldActorExecutionTest {
         world.addNation(new SimNation(1, WarPolicy.FORTRESS));
         world.addNation(new SimNation(2, WarPolicy.TURTLE));
         world.declareWar(101, 1, 2, WarType.ORD);
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 60);
 
         AtomicInteger decideCalls = new AtomicInteger();
         Actor actor = new CountingAttackActor(decideCalls, 1);
@@ -55,8 +55,6 @@ class SimWorldActorExecutionTest {
                 SimTuning.DEFAULT_WARTIME_ACTIVITY_UPLIFT,
                 SimTuning.DEFAULT_ACTIVITY_ACT_THRESHOLD,
                 SimTuning.DEFAULT_POLICY_COOLDOWN_TURNS,
-                SimTuning.DEFAULT_PEACE_OFFER_LIFETIME_TURNS,
-                SimTuning.DEFAULT_MAP_RESERVE_LIFETIME_TURNS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_BUDGET_MS,
                 SimTuning.DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS,
                 SimTuning.DEFAULT_CANDIDATES_PER_ATTACKER,
@@ -67,6 +65,7 @@ class SimWorldActorExecutionTest {
         world.addNation(new SimNation(1, WarPolicy.FORTRESS));
         world.addNation(new SimNation(2, WarPolicy.TURTLE));
         world.declareWar(202, 1, 2, WarType.ORD);
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 60);
 
         AtomicInteger decideCalls = new AtomicInteger();
         Actor actor = new CountingAttackActor(decideCalls, 2);
@@ -83,8 +82,21 @@ class SimWorldActorExecutionTest {
         world.addNation(new SimNation(1, WarPolicy.FORTRESS));
         world.addNation(new SimNation(2, WarPolicy.TURTLE));
         world.declareWar(303, 1, 2, WarType.ORD);
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 60);
 
         assertThrows(IllegalStateException.class, () -> world.resolveAttack(303, 1, AttackType.GROUND));
+    }
+
+    @Test
+    void liveRuntimeRejectsGroundAttackBelowSharedSoldierFloor() {
+        SimWorld world = new SimWorld();
+        world.addNation(new SimNation(1, WarPolicy.FORTRESS));
+        world.addNation(new SimNation(2, WarPolicy.TURTLE));
+        world.declareWar(404, 1, 2, WarType.ORD);
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 49);
+        world.requireNation(1).setUnitCount(MilitaryUnit.TANK, 12);
+
+        assertThrows(IllegalStateException.class, () -> world.resolveAttack(404, 1, AttackType.GROUND));
     }
 
     private static final class CountingAttackActor implements Actor {

@@ -12,7 +12,6 @@ import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.sim.combat.WarRoleModifiers;
 
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -53,6 +52,38 @@ public enum AttackType {
         int getUnits(MilitaryUnit unit);
         Collection<? extends CasualtyCityView> getCityViews();
 
+        default int cityCount() {
+            return getCityViews().size();
+        }
+
+        default double cityInfra(int cityIndex) {
+            return cityViewAt(cityIndex).getInfra();
+        }
+
+        default Map.Entry<Integer, Integer> cityMissileDamage(int cityIndex) {
+            return cityViewAt(cityIndex).getMissileDamage(this::hasProject);
+        }
+
+        default int cityMissileDamageMin(int cityIndex) {
+            return cityMissileDamage(cityIndex).getKey();
+        }
+
+        default int cityMissileDamageMax(int cityIndex) {
+            return cityMissileDamage(cityIndex).getValue();
+        }
+
+        default Map.Entry<Integer, Integer> cityNukeDamage(int cityIndex) {
+            return cityViewAt(cityIndex).getNukeDamage(this::hasProject);
+        }
+
+        default int cityNukeDamageMin(int cityIndex) {
+            return cityNukeDamage(cityIndex).getKey();
+        }
+
+        default int cityNukeDamageMax(int cityIndex) {
+            return cityNukeDamage(cityIndex).getValue();
+        }
+
         default int getSoldiers() {
             return getUnits(MilitaryUnit.SOLDIER);
         }
@@ -71,10 +102,77 @@ public enum AttackType {
 
         default double maxCityInfra() {
             double max = 0;
-            for (CasualtyCityView city : getCityViews()) {
-                max = Math.max(max, city.getInfra());
+            for (int cityIndex = 0; cityIndex < cityCount(); cityIndex++) {
+                max = Math.max(max, cityInfra(cityIndex));
             }
             return max;
+        }
+
+        private CasualtyCityView cityViewAt(int cityIndex) {
+            Collection<? extends CasualtyCityView> cities = getCityViews();
+            if (cityIndex < 0 || cityIndex >= cities.size()) {
+                throw new IndexOutOfBoundsException(cityIndex);
+            }
+            if (cities instanceof List<?> cityList) {
+                return (CasualtyCityView) cityList.get(cityIndex);
+            }
+            int currentIndex = 0;
+            for (CasualtyCityView city : cities) {
+                if (currentIndex == cityIndex) {
+                    return city;
+                }
+                currentIndex++;
+            }
+            throw new IndexOutOfBoundsException(cityIndex);
+        }
+    }
+
+    public interface CasualtyRangeWriter {
+        void clearCasualtyRanges();
+        void putAttackerRange(MilitaryUnit unit, int min, int max);
+        void putDefenderRange(MilitaryUnit unit, int min, int max);
+    }
+
+    private static final class MapCasualtyRangeWriter implements CasualtyRangeWriter {
+        private final Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties;
+        private final Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties;
+
+        private MapCasualtyRangeWriter(
+                Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties,
+                Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties
+        ) {
+            this.attackerCasualties = attackerCasualties;
+            this.defenderCasualties = defenderCasualties;
+        }
+
+        @Override
+        public void clearCasualtyRanges() {
+            attackerCasualties.clear();
+            defenderCasualties.clear();
+        }
+
+        @Override
+        public void putAttackerRange(MilitaryUnit unit, int min, int max) {
+            putRange(attackerCasualties, unit, min, max);
+        }
+
+        @Override
+        public void putDefenderRange(MilitaryUnit unit, int min, int max) {
+            putRange(defenderCasualties, unit, min, max);
+        }
+
+        private static void putRange(
+                Map<MilitaryUnit, Map.Entry<Integer, Integer>> target,
+                MilitaryUnit unit,
+                int min,
+                int max
+        ) {
+            if (unit == null || (min == 0 && max == 0)) {
+                return;
+            }
+            int normalizedMin = Math.max(0, min);
+            int normalizedMax = Math.max(normalizedMin, max);
+            target.put(unit, KeyValue.of(normalizedMin, normalizedMax));
         }
     }
 
@@ -306,6 +404,65 @@ public enum AttackType {
         return scaleRange(range.getKey(), range.getValue(), factor);
     }
 
+    private static long packRange(int min, int max) {
+        return ((long) min << 32) | (max & 0xffffffffL);
+    }
+
+    private static int rangeMin(long range) {
+        return (int) (range >> 32);
+    }
+
+    private static int rangeMax(long range) {
+        return (int) range;
+    }
+
+    private static long scaleRangePacked(double min, double max, double factor) {
+        return packRange((int) Math.round(min * factor), (int) Math.round(max * factor));
+    }
+
+    private static long scaleRangePacked(long range, double factor) {
+        return scaleRangePacked(rangeMin(range), rangeMax(range), factor);
+    }
+
+    private static long scaleRangePacked(Map.Entry<Integer, Integer> range, double factor) {
+        return scaleRangePacked(range.getKey(), range.getValue(), factor);
+    }
+
+    private static void putIfNonZero(
+            CasualtyRangeWriter writer,
+            boolean attackerSide,
+            MilitaryUnit unit,
+            int min,
+            int max
+    ) {
+        if (min == 0 && max == 0) {
+            return;
+        }
+        if (attackerSide) {
+            writer.putAttackerRange(unit, min, max);
+        } else {
+            writer.putDefenderRange(unit, min, max);
+        }
+    }
+
+    private static void putIfNonZero(
+            CasualtyRangeWriter writer,
+            boolean attackerSide,
+            MilitaryUnit unit,
+            long range
+    ) {
+        putIfNonZero(writer, attackerSide, unit, rangeMin(range), rangeMax(range));
+    }
+
+    private static void putIfNonZero(
+            CasualtyRangeWriter writer,
+            boolean attackerSide,
+            MilitaryUnit unit,
+            Map.Entry<Integer, Integer> range
+    ) {
+        putIfNonZero(writer, attackerSide, unit, range.getKey(), range.getValue());
+    }
+
     private static void putIfNonZero(
             Map<MilitaryUnit, Map.Entry<Integer, Integer>> map,
             MilitaryUnit unit,
@@ -316,21 +473,37 @@ public enum AttackType {
         }
     }
 
-    private static Map.Entry<Integer, Integer> maxCityDamage(
-            CasualtyNationView defender,
-            BiFunction<CasualtyCityView, Predicate<Project>, Map.Entry<Integer, Integer>> damageFn
-    ) {
+    private static Map.Entry<Integer, Integer> maxCityDamage(CasualtyNationView defender, boolean nuke) {
         int min = 0;
         int max = 0;
-        Predicate<Project> hasProject = defender::hasProject;
 
-        for (CasualtyCityView city : defender.getCityViews()) {
-            Map.Entry<Integer, Integer> damage = damageFn.apply(city, hasProject);
+        for (int cityIndex = 0; cityIndex < defender.cityCount(); cityIndex++) {
+            Map.Entry<Integer, Integer> damage = nuke
+                    ? defender.cityNukeDamage(cityIndex)
+                    : defender.cityMissileDamage(cityIndex);
             min = Math.max(min, damage.getKey());
             max = Math.max(max, damage.getValue());
         }
 
         return KeyValue.of(min, max);
+    }
+
+    private static long maxCityDamagePacked(CasualtyNationView defender, boolean nuke) {
+        int min = 0;
+        int max = 0;
+
+        for (int cityIndex = 0; cityIndex < defender.cityCount(); cityIndex++) {
+            int damageMin = nuke
+                    ? defender.cityNukeDamageMin(cityIndex)
+                    : defender.cityMissileDamageMin(cityIndex);
+            int damageMax = nuke
+                    ? defender.cityNukeDamageMax(cityIndex)
+                    : defender.cityMissileDamageMax(cityIndex);
+            min = Math.max(min, damageMin);
+            max = Math.max(max, damageMax);
+        }
+
+        return packRange(min, max);
     }
 
     private Map.Entry<Integer, Integer> getAirTargetCasualties(
@@ -359,9 +532,111 @@ public enum AttackType {
         return KeyValue.of(min, max);
     }
 
+    private long airTargetCasualtiesPacked(
+            MilitaryUnit unit,
+            double killRatio,
+            int baseUnits,
+            double baseFactor,
+            int attAir,
+            int defAir,
+            CasualtyNationView defender,
+            SuccessType victory,
+            double defModifier
+    ) {
+        if (victory == SuccessType.UTTER_FAILURE) {
+            return packRange(0, 0);
+        }
+
+        double factor = victoryFactor(victory);
+        int enemyUnits = defender.getUnits(unit);
+        double randMin = (attAir - defAir * 0.5) * killRatio * 0.85 * defModifier;
+        double randMax = (attAir - defAir * 0.5) * killRatio * 1.05 * defModifier;
+        long upperBound = Math.round(Math.max(Math.min(enemyUnits, enemyUnits * baseFactor + baseUnits), 0));
+
+        int min = (int) (Math.min(upperBound, randMin) * factor);
+        int max = (int) (Math.min(upperBound, randMax) * factor);
+        return packRange(min, max);
+    }
+
+    private static long scaledAirInfraCasualtiesPacked(
+            int attAir,
+            int defAir,
+            boolean airVsInfra,
+            SuccessType success,
+            double infra,
+            double infraModifier
+    ) {
+        int victoryType = success.ordinal();
+        if (victoryType == 0) {
+            return packRange(0, 0);
+        }
+
+        double min = Math.max(
+                Math.min((attAir - (defAir * 0.5)) * 0.35353535 * 0.85 * (victoryType / 3d), infra * 0.5 + 100),
+                0
+        );
+        double max = Math.max(
+                Math.min((attAir - (defAir * 0.5)) * 0.35353535 * 1.05 * (victoryType / 3d), infra * 0.5 + 100),
+                0
+        );
+
+        if (!airVsInfra) {
+            min /= 3;
+            max /= 3;
+        }
+
+        return scaleRangePacked(min, max, infraModifier);
+    }
+
+    private static void writeAirstrikeCasualties(
+            CasualtyRangeWriter casualties,
+            int attUnits,
+            int defUnits,
+            SuccessType victory,
+            boolean airVsAir,
+            double attModifier,
+            double defModifier
+    ) {
+        double attStr = attUnits * 3;
+        double defStr = defUnits * 3;
+        int minAtt = 0;
+        int minDef = 0;
+        int maxAtt = 0;
+        int maxDef = 0;
+
+        double attCasualties = airVsAir ? 0.01 : 0.015385;
+        double defCasualties = airVsAir ? 0.018337 : 0.009091;
+
+        int failures = 3 - victory.ordinal();
+        int successes = victory.ordinal();
+
+        for (int i = 0; i < failures; i++) {
+            maxAtt += defStr * attCasualties * attModifier;
+            minAtt += Math.max(defStr * 0.4, attStr * 0.4 + 1) * attCasualties * attModifier;
+
+            maxDef += Math.min(attStr, defStr - 1) * defCasualties * defModifier;
+            minDef += attStr * 0.4 * defCasualties * defModifier;
+        }
+
+        for (int i = 0; i < successes; i++) {
+            maxAtt += Math.min(defStr, attStr - 1) * attCasualties * attModifier;
+            minAtt += defStr * 0.4 * attCasualties * attModifier;
+
+            maxDef += attStr * defCasualties * defModifier;
+            minDef += Math.max(attStr * 0.4, defStr * 0.4 + 1) * defCasualties * defModifier;
+        }
+
+        minAtt = Math.min(attUnits, minAtt);
+        maxAtt = Math.min(attUnits, maxAtt);
+        minDef = Math.min(defUnits, minDef);
+        maxDef = Math.min(defUnits, maxDef);
+
+        putIfNonZero(casualties, true, MilitaryUnit.AIRCRAFT, minAtt, maxAtt);
+        putIfNonZero(casualties, false, MilitaryUnit.AIRCRAFT, minDef, maxDef);
+    }
+
     private void inputAirCasualties(
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties,
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties,
+            CasualtyRangeWriter casualties,
             CasualtyNationView attacker,
             CasualtyNationView defender,
             SuccessType victory,
@@ -374,58 +649,55 @@ public enum AttackType {
         boolean vsAir = this == AIRSTRIKE_AIRCRAFT;
         boolean vsInfra = this == AIRSTRIKE_INFRA;
 
-        Map.Entry<Map.Entry<Integer, Integer>, Map.Entry<Integer, Integer>> airCasualties =
-                getAirstrikeCasualties(attAir, defAir, victory, vsAir, attModifier, defModifier);
-
-        putIfNonZero(attackerCasualties, MilitaryUnit.AIRCRAFT, airCasualties.getKey());
-        putIfNonZero(defenderCasualties, MilitaryUnit.AIRCRAFT, airCasualties.getValue());
+        writeAirstrikeCasualties(casualties, attAir, defAir, victory, vsAir, attModifier, defModifier);
 
         if (victory == SuccessType.UTTER_FAILURE) {
             return;
         }
 
-        Map.Entry<Double, Double> infraCasualties =
-                getAirInfraCasualties(attAir, defAir, vsInfra, victory, defender.maxCityInfra());
         putIfNonZero(
-                defenderCasualties,
+                casualties,
+                false,
                 MilitaryUnit.INFRASTRUCTURE,
-                scaleRange(infraCasualties.getKey(), infraCasualties.getValue(), infraModifier)
+                scaledAirInfraCasualtiesPacked(attAir, defAir, vsInfra, victory, defender.maxCityInfra(), infraModifier)
         );
 
         switch (this) {
             case AIRSTRIKE_SOLDIER -> putIfNonZero(
-                    defenderCasualties,
+                    casualties,
+                    false,
                     MilitaryUnit.SOLDIER,
-                    getAirTargetCasualties(
+                    airTargetCasualtiesPacked(
                             MilitaryUnit.SOLDIER, 35, 1000, 0.75,
-                            attAir, defAir, defender::getUnits, victory, defModifier
+                            attAir, defAir, defender, victory, defModifier
                     )
             );
             case AIRSTRIKE_TANK -> putIfNonZero(
-                    defenderCasualties,
+                    casualties,
+                    false,
                     MilitaryUnit.TANK,
-                    getAirTargetCasualties(
+                    airTargetCasualtiesPacked(
                             MilitaryUnit.TANK, 1.25, 10, 0.75,
-                            attAir, defAir, defender::getUnits, victory, defModifier
+                            attAir, defAir, defender, victory, defModifier
                     )
             );
             case AIRSTRIKE_MONEY -> {
                 double factor = victoryFactor(victory);
                 putIfNonZero(
-                        defenderCasualties,
+                        casualties,
+                        false,
                         MilitaryUnit.MONEY,
-                        KeyValue.of(
-                                (int) (attAir * 0.85 * 3000 * factor),
-                                (int) (attAir * 1.05 * 3000 * factor)
-                        )
+                        (int) (attAir * 0.85 * 3000 * factor),
+                        (int) (attAir * 1.05 * 3000 * factor)
                 );
             }
             case AIRSTRIKE_SHIP -> putIfNonZero(
-                    defenderCasualties,
+                    casualties,
+                    false,
                     MilitaryUnit.SHIP,
-                    getAirTargetCasualties(
+                    airTargetCasualtiesPacked(
                             MilitaryUnit.SHIP, 0.0285, 4, 0.5,
-                            attAir, defAir, defender::getUnits, victory, defModifier
+                            attAir, defAir, defender, victory, defModifier
                     )
             );
             case AIRSTRIKE_AIRCRAFT, AIRSTRIKE_INFRA -> {
@@ -435,8 +707,7 @@ public enum AttackType {
     }
 
     private void inputNavalCasualties(
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties,
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties,
+            CasualtyRangeWriter casualties,
             CasualtyNationView attacker,
             CasualtyNationView defender,
             SuccessType victory,
@@ -466,7 +737,7 @@ public enum AttackType {
             double maxCityInfra = defender.maxCityInfra();
             double infraMin = Math.max(Math.min((attShips - (defShips * 0.5)) * 2.625 * 0.85 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
             double infraMax = Math.max(Math.min((attShips - (defShips * 0.5)) * 2.625 * 1.05 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
-            putIfNonZero(defenderCasualties, MilitaryUnit.INFRASTRUCTURE, scaleRange(infraMin, infraMax, infraFactor));
+            putIfNonZero(casualties, false, MilitaryUnit.INFRASTRUCTURE, scaleRangePacked(infraMin, infraMax, infraFactor));
         }
 
         int failures = 3 - victory.ordinal();
@@ -507,13 +778,12 @@ public enum AttackType {
         defLossMin = Math.min(defLossMin, defShips);
         defLossMax = Math.min(defLossMax, defShips);
 
-        putIfNonZero(attackerCasualties, MilitaryUnit.SHIP, KeyValue.of(attLossMin, attLossMax));
-        putIfNonZero(defenderCasualties, MilitaryUnit.SHIP, KeyValue.of(defLossMin, defLossMax));
+        putIfNonZero(casualties, true, MilitaryUnit.SHIP, attLossMin, attLossMax);
+        putIfNonZero(casualties, false, MilitaryUnit.SHIP, defLossMin, defLossMax);
     }
 
     private void inputGroundCasualties(
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties,
-            Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties,
+            CasualtyRangeWriter casualties,
             CasualtyNationView attacker,
             CasualtyNationView defender,
             SuccessType victory,
@@ -532,12 +802,12 @@ public enum AttackType {
             double tankStoleMoney = attacker.getTanks() * 25.15;
             double minStolen = (soldiersStoleMoney + tankStoleMoney) * victory.ordinal() * 0.8 * lootFactor;
             double maxStolen = (soldiersStoleMoney + tankStoleMoney) * victory.ordinal() * 1.1 * lootFactor;
-            putIfNonZero(defenderCasualties, MilitaryUnit.MONEY, KeyValue.of((int) Math.round(minStolen), (int) Math.round(maxStolen)));
+            putIfNonZero(casualties, false, MilitaryUnit.MONEY, (int) Math.round(minStolen), (int) Math.round(maxStolen));
 
             double maxCityInfra = defender.maxCityInfra();
             double infraMin = Math.max(Math.min(((attacker.getSoldiers() - (defender.getSoldiers() * 0.5)) * 0.000606061 + (attacker.getTanks() - (defender.getTanks() * 0.5)) * 0.01) * 0.85 * (victory.ordinal() / 3d), maxCityInfra * 0.2 + 25), 0);
             double infraMax = Math.max(Math.min(((attacker.getSoldiers() - (defender.getSoldiers() * 0.5)) * 0.000606061 + (attacker.getTanks() - (defender.getTanks() * 0.5)) * 0.01) * 1.05 * (victory.ordinal() / 3d), maxCityInfra * 0.2 + 25), 0);
-            putIfNonZero(defenderCasualties, MilitaryUnit.INFRASTRUCTURE, scaleRange(infraMin, infraMax, infraFactor));
+            putIfNonZero(casualties, false, MilitaryUnit.INFRASTRUCTURE, scaleRangePacked(infraMin, infraMax, infraFactor));
         }
 
         double attStrS = attacker.getSoldiers() * (equipAttackerSoldiers ? 1.75 : 1);
@@ -595,7 +865,7 @@ public enum AttackType {
                 };
                 int killed = Math.min(defender.getAircraft(), (int) Math.round(attacker.getTanks() * factor));
                 if (killed > 0) {
-                    defenderCasualties.put(MilitaryUnit.AIRCRAFT, KeyValue.of(killed, killed));
+                    casualties.putDefenderRange(MilitaryUnit.AIRCRAFT, killed, killed);
                 }
             }
 
@@ -632,10 +902,10 @@ public enum AttackType {
         attTankLossMin = Math.min(attacker.getTanks(), attTankLossMin * attModifier);
         attTankLossMax = Math.min(attacker.getTanks(), attTankLossMax * attModifier);
 
-        putIfNonZero(defenderCasualties, MilitaryUnit.SOLDIER, KeyValue.of((int) Math.round(defSoldierLossMin), (int) Math.round(defSoldierLossMax)));
-        putIfNonZero(defenderCasualties, MilitaryUnit.TANK, KeyValue.of((int) Math.round(defTankLossMin), (int) Math.round(defTankLossMax)));
-        putIfNonZero(attackerCasualties, MilitaryUnit.SOLDIER, KeyValue.of((int) Math.round(attSoldierLossMin), (int) Math.round(attSoldierLossMax)));
-        putIfNonZero(attackerCasualties, MilitaryUnit.TANK, KeyValue.of((int) Math.round(attTankLossMin), (int) Math.round(attTankLossMax)));
+        putIfNonZero(casualties, false, MilitaryUnit.SOLDIER, (int) Math.round(defSoldierLossMin), (int) Math.round(defSoldierLossMax));
+        putIfNonZero(casualties, false, MilitaryUnit.TANK, (int) Math.round(defTankLossMin), (int) Math.round(defTankLossMax));
+        putIfNonZero(casualties, true, MilitaryUnit.SOLDIER, (int) Math.round(attSoldierLossMin), (int) Math.round(attSoldierLossMax));
+        putIfNonZero(casualties, true, MilitaryUnit.TANK, (int) Math.round(attTankLossMin), (int) Math.round(attTankLossMax));
     }
 
     @Command(desc = "Get the minimum unit casualties for the attacker.")
@@ -733,7 +1003,39 @@ public enum AttackType {
     ) {
         Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties = new Object2ObjectArrayMap<>(6);
         Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties = new Object2ObjectArrayMap<>(6);
+        writeCasualties(
+                attacker,
+                defender,
+                victory,
+                type,
+                attackerIsOriginalAttacker,
+                defAirControl,
+                attAirControl,
+                defFortified,
+                equipAttackerSoldiers,
+                equipDefenderSoldiers,
+                attGroundControl,
+                new MapCasualtyRangeWriter(attackerCasualties, defenderCasualties)
+        );
 
+        return KeyValue.of(attackerCasualties, defenderCasualties);
+    }
+
+    public void writeCasualties(
+            CasualtyNationView attacker,
+            CasualtyNationView defender,
+            SuccessType victory,
+            WarType type,
+            boolean attackerIsOriginalAttacker,
+            boolean defAirControl,
+            boolean attAirControl,
+            boolean defFortified,
+            boolean equipAttackerSoldiers,
+            boolean equipDefenderSoldiers,
+            boolean attGroundControl,
+            CasualtyRangeWriter casualties
+    ) {
+        casualties.clearCasualtyRanges();
         double infraFactor = (1 + (attacker.infraAttackModifier(this) - 1) + (defender.infraDefendModifier(this) - 1))
             * WarRoleModifiers.infraModifier(type, attackerIsOriginalAttacker);
         double lootFactor = (1 + (attacker.looterModifier(true) - 1) + (defender.lootModifier() - 1))
@@ -743,40 +1045,40 @@ public enum AttackType {
 
         switch (this) {
             case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND ->
-                    inputNavalCasualties(attackerCasualties, defenderCasualties, attacker, defender, victory, infraFactor, attModifier, defModifier);
+                    inputNavalCasualties(casualties, attacker, defender, victory, infraFactor, attModifier, defModifier);
 
             case GROUND ->
-                    inputGroundCasualties(attackerCasualties, defenderCasualties, attacker, defender, victory, lootFactor, infraFactor, attModifier, defModifier, defAirControl, attAirControl, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl);
+                    inputGroundCasualties(casualties, attacker, defender, victory, lootFactor, infraFactor, attModifier, defModifier, defAirControl, attAirControl, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl);
 
             case NUKE -> {
-                attackerCasualties.put(MilitaryUnit.NUKE, KeyValue.of(1, 1));
+                casualties.putAttackerRange(MilitaryUnit.NUKE, 1, 1);
                 if (!ProjectileDefenseMath.isIntercepted(this, victory)) {
                     putIfNonZero(
-                            defenderCasualties,
+                            casualties,
+                            false,
                             MilitaryUnit.INFRASTRUCTURE,
-                            scaleRange(maxCityDamage(defender, CasualtyCityView::getNukeDamage), infraFactor)
+                            scaleRangePacked(maxCityDamagePacked(defender, true), infraFactor)
                     );
                 }
             }
 
             case MISSILE -> {
-                attackerCasualties.put(MilitaryUnit.MISSILE, KeyValue.of(1, 1));
+                casualties.putAttackerRange(MilitaryUnit.MISSILE, 1, 1);
                 if (!ProjectileDefenseMath.isIntercepted(this, victory)) {
                     putIfNonZero(
-                            defenderCasualties,
+                            casualties,
+                            false,
                             MilitaryUnit.INFRASTRUCTURE,
-                            scaleRange(maxCityDamage(defender, CasualtyCityView::getMissileDamage), infraFactor)
+                            scaleRangePacked(maxCityDamagePacked(defender, false), infraFactor)
                     );
                 }
             }
 
             case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT ->
-                    inputAirCasualties(attackerCasualties, defenderCasualties, attacker, defender, victory, infraFactor, attModifier, defModifier);
+                    inputAirCasualties(casualties, attacker, defender, victory, infraFactor, attModifier, defModifier);
 
             default -> throw new IllegalArgumentException("Cannot get casualties for " + this);
         }
-
-        return KeyValue.of(attackerCasualties, defenderCasualties);
     }
 
     public Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> getCasualties(

@@ -2,6 +2,7 @@ package link.locutus.discord.sim.input;
 
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.combat.NationCombatProfile;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 
@@ -20,7 +21,7 @@ public record NationInit(
         SpecialistCityProfile[] citySpecialistProfiles,
         NationCombatProfile combatProfile
 ) {
-    public static final int DEFAULT_MAX_OFF_SLOTS = 5;
+    public static final int DEFAULT_MAX_OFF_SLOTS = WarSlotRules.baseOffensiveSlotCap();
     public static final byte DEFAULT_RESET_HOUR_UTC = 0;
 
     public NationInit {

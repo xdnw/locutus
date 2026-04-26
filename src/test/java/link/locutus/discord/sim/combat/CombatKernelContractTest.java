@@ -16,6 +16,7 @@ import link.locutus.discord.sim.SimNation;
 import link.locutus.discord.sim.SimSide;
 import link.locutus.discord.sim.SimWar;
 import link.locutus.discord.sim.combat.state.CombatantView;
+import link.locutus.discord.sim.combat.state.WarStateView;
 import link.locutus.discord.util.battle.CombatantViewAdapter;
 import org.junit.jupiter.api.Test;
 
@@ -148,6 +149,34 @@ class CombatKernelContractTest {
         assertTrue(CombatKernel.isLegalSpecialistAttack(attacker, AttackType.MISSILE));
         assertFalse(CombatKernel.isLegalSpecialistAttack(attacker, AttackType.GROUND));
         }
+
+    @Test
+    void sharedAttackLegalityOwnsGroundSoldierFloor() {
+        int[] belowFloorUnits = new int[MilitaryUnit.values.length];
+        belowFloorUnits[MilitaryUnit.SOLDIER.ordinal()] = 49;
+        belowFloorUnits[MilitaryUnit.TANK.ordinal()] = 20;
+        PrimitiveNationState belowFloor = new PrimitiveNationState(
+            6,
+            belowFloorUnits,
+            new double[]{1_200d},
+            ranges(Map.entry(0, 0)),
+            ranges(Map.entry(0, 0))
+        );
+
+        int[] legalUnits = belowFloorUnits.clone();
+        legalUnits[MilitaryUnit.SOLDIER.ordinal()] = 50;
+        PrimitiveNationState legalGround = new PrimitiveNationState(
+            7,
+            legalUnits,
+            new double[]{1_200d},
+            ranges(Map.entry(0, 0)),
+            ranges(Map.entry(0, 0))
+        );
+
+        assertFalse(CombatKernel.canUseAttackType(belowFloor, AttackType.GROUND));
+        assertTrue(CombatKernel.canUseAttackType(legalGround, AttackType.GROUND));
+        assertFalse(CombatKernel.canUseAttackType(belowFloor, AttackType.AIRSTRIKE_AIRCRAFT));
+    }
 
         @Test
         void projectileDefenseOwnerAppliesSharedInterceptionAndProtection() {
@@ -304,6 +333,29 @@ class CombatKernelContractTest {
 
         assertLiveParity(warAttacker, warDefender, war, SimSide.ATTACKER, AttackType.GROUND);
         assertLiveParity(warDefender, warAttacker, war, SimSide.DEFENDER, AttackType.AIRSTRIKE_AIRCRAFT);
+    }
+
+    @Test
+    void snapshotWarViewRetainsDefenderHeldGroundControl() {
+        SimNation warAttacker = simNation(21, 50_000, 2_000, 700, 22, 1_350d, 1_180d);
+        SimNation warDefender = simNation(22, 47_000, 1_850, 620, 24, 1_460d, 1_205d);
+        SimWar war = new SimWar(8, warAttacker.nationId(), warDefender.nationId(), WarType.ORD);
+        war.applyControlFlagChanges(warDefender.nationId(), 1, 0, 0);
+
+        WarStateView snapshotWar = war.asWarStateViewFor(SimSide.ATTACKER);
+        assertTrue(snapshotWar.defenderHasGroundControl());
+
+        CombatKernel.AttackContext liveContext = new LiveAttackContext().bind(warAttacker, warDefender, war, SimSide.ATTACKER);
+        AttackResolver.AttackRanges snapshotRanges = AttackResolver.rangesForSuccess(
+                warAttacker.asCombatantView(),
+                warDefender.asCombatantView(),
+                snapshotWar,
+                AttackType.GROUND,
+                SuccessType.MODERATE_SUCCESS
+        );
+        ControlFlagDelta liveDelta = WarControlRules.controlDelta(liveContext, AttackType.GROUND, SuccessType.MODERATE_SUCCESS);
+
+        assertEquals(liveDelta, snapshotRanges.controlDelta());
     }
 
     private static void assertAllZero(int[] values) {
@@ -511,6 +563,11 @@ class CombatKernelContractTest {
         @Override
         public int getUnits(MilitaryUnit unit) {
             return units[unitBaseOffset + unit.ordinal()];
+        }
+
+        @Override
+        public java.util.Collection<? extends AttackType.CasualtyCityView> getCityViews() {
+            throw new UnsupportedOperationException("Primitive tests should stay on indexed city access");
         }
     }
 

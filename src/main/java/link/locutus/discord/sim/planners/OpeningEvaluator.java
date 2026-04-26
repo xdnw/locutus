@@ -115,6 +115,7 @@ final class OpeningEvaluator {
                 resolveAdmissionPolicy(objective),
                 probeResult,
                 specialistProbeResult,
+                new ViabilityProbeEvaluator(),
                 new SpecialistProbeEvaluator()
         )) {
             return REJECTED_EDGE;
@@ -208,6 +209,7 @@ final class OpeningEvaluator {
         private final EdgeEvaluation edgeEvaluation = new EdgeEvaluation();
         private final ProbeResult probeResult = new ProbeResult();
         private final SpecialistProbeResult specialistProbeResult = new SpecialistProbeResult();
+        private final ViabilityProbeEvaluator viabilityProbeEvaluator = new ViabilityProbeEvaluator();
         private final SpecialistProbeEvaluator specialistProbeEvaluator = new SpecialistProbeEvaluator();
 
         CandidateOpeningEvaluator(TeamScoreObjective objective, int actionBudget) {
@@ -218,7 +220,15 @@ final class OpeningEvaluator {
         }
 
         EvaluatedEdge evaluate(DBNationSnapshot attacker, DBNationSnapshot defender) {
-            if (!admitCandidate(attacker, defender, admissionPolicy, probeResult, specialistProbeResult, specialistProbeEvaluator)) {
+            if (!admitCandidate(
+                    attacker,
+                    defender,
+                    admissionPolicy,
+                    probeResult,
+                    specialistProbeResult,
+                    viabilityProbeEvaluator,
+                    specialistProbeEvaluator
+            )) {
                 return REJECTED_EDGE;
             }
             return evaluateAdmittedOpening(
@@ -289,6 +299,7 @@ final class OpeningEvaluator {
         private final EdgeComponents edgeComponents;
         private final ProbeResult probeResult;
         private final SpecialistProbeResult specialistProbeResult;
+        private final ViabilityProbeEvaluator viabilityProbeEvaluator;
         private final SpecialistProbeEvaluator specialistProbeEvaluator;
         private final RolloutEdgeEvaluator rolloutEdgeEvaluator;
         private final EdgeEvaluation edgeEvaluation;
@@ -312,6 +323,7 @@ final class OpeningEvaluator {
             this.edgeComponents = new EdgeComponents();
             this.probeResult = new ProbeResult();
             this.specialistProbeResult = new SpecialistProbeResult();
+            this.viabilityProbeEvaluator = new ViabilityProbeEvaluator();
             this.specialistProbeEvaluator = new SpecialistProbeEvaluator();
             this.rolloutEdgeEvaluator = new RolloutEdgeEvaluator(DEFAULT_ACTION_BUDGET);
             this.edgeEvaluation = new EdgeEvaluation();
@@ -336,7 +348,15 @@ final class OpeningEvaluator {
             }
 
             DBNationSnapshot defender = scenario.defender(defenderIndex);
-            if (!admitCandidate(attacker, defender, admissionPolicy, probeResult, specialistProbeResult, specialistProbeEvaluator)) {
+            if (!admitCandidate(
+                    attacker,
+                    defender,
+                    admissionPolicy,
+                    probeResult,
+                    specialistProbeResult,
+                    viabilityProbeEvaluator,
+                    specialistProbeEvaluator
+            )) {
                 return;
             }
             float probe = probeResult.probe();
@@ -412,10 +432,11 @@ final class OpeningEvaluator {
             CandidateEdgeAdmissionPolicy admissionPolicy,
             ProbeResult conventionalProbeResult,
             SpecialistProbeResult specialistProbeResult,
+            ViabilityProbeEvaluator viabilityProbeEvaluator,
             SpecialistProbeEvaluator specialistProbeEvaluator
     ) {
         double minimumViabilityProbe = admissionPolicy.minimumViabilityProbe();
-        viabilityProbe(attacker, defender, conventionalProbeResult);
+        viabilityProbeEvaluator.evaluate(attacker, defender, conventionalProbeResult);
         if (conventionalProbeResult.probe() >= minimumViabilityProbe) {
             return true;
         }
@@ -833,6 +854,32 @@ final class OpeningEvaluator {
         }
     }
 
+    private static final class ViabilityProbeEvaluator {
+        private final PairAttackContext context = new PairAttackContext();
+        private final AttackScratch scratch = new AttackScratch();
+
+        void evaluate(DBNationSnapshot attacker, DBNationSnapshot defender, ProbeResult out) {
+            double best = 0d;
+            byte bestWarTypeId = (byte) -1;
+            byte bestAttackTypeId = (byte) -1;
+            for (WarType warType : OPENING_WAR_TYPES) {
+                context.bind(attacker, defender, warType);
+                for (AttackType type : OPENING_ATTACK_TYPES) {
+                    if (isSpecialist(type) || !isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
+                        continue;
+                    }
+                    double candidate = CombatKernel.admissionSignal(context, type, scratch);
+                    if (candidate > best) {
+                        best = candidate;
+                        bestWarTypeId = (byte) warType.ordinal();
+                        bestAttackTypeId = (byte) type.ordinal();
+                    }
+                }
+            }
+            out.set((float) best, bestWarTypeId, bestAttackTypeId);
+        }
+    }
+
     private static final class SpecialistProbeEvaluator {
         private final PairAttackContext context = new PairAttackContext();
         private final AttackScratch scratch = new AttackScratch();
@@ -1024,6 +1071,9 @@ final class OpeningEvaluator {
         private final PairAttackContext context = new PairAttackContext();
         private final AttackScratch scratch = new AttackScratch();
         private final MutableAttackResult result = new MutableAttackResult();
+        private final OpeningMetricVector.Mutable currentMetrics = new OpeningMetricVector.Mutable();
+        private final OpeningMetricVector.Mutable bestMetrics = new OpeningMetricVector.Mutable();
+        private final OpeningMetricVector.Mutable projectedMetrics = new OpeningMetricVector.Mutable();
 
         private RolloutEdgeEvaluator(int actionBudget) {
             this.maxActionBudget = Math.max(1, actionBudget);
@@ -1066,25 +1116,25 @@ final class OpeningEvaluator {
             context.bind(attacker, defender, warType);
 
             byte firstAttackTypeId = (byte) -1;
-            OpeningMetricVector currentMetrics = OpeningMetricVector.ZERO;
+            currentMetrics.clear();
             float currentScore = scoreObjective(objective, attacker.teamId(), currentMetrics);
 
             for (int action = 0; action < actionBudget; action++) {
                 float bestNextScore = currentScore;
                 AttackType bestType = null;
-                OpeningMetricVector bestMetrics = currentMetrics;
+                bestMetrics.copyFrom(currentMetrics);
 
                 for (AttackType type : OPENING_ATTACK_TYPES) {
                     if (!isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
                         continue;
                     }
                     CombatKernel.resolveInto(context, type, ResolutionMode.DETERMINISTIC_EV, scratch, result);
-                    OpeningMetricVector projectedMetrics = projectedMetrics(baseline, currentMetrics, result);
+                    projectMetrics(baseline, currentMetrics, result, projectedMetrics);
                     float projectedScore = scoreObjective(objective, attacker.teamId(), projectedMetrics);
                     if (projectedScore > bestNextScore) {
                         bestNextScore = projectedScore;
                         bestType = type;
-                        bestMetrics = projectedMetrics;
+                        bestMetrics.copyFrom(projectedMetrics);
                     }
                 }
 
@@ -1094,7 +1144,7 @@ final class OpeningEvaluator {
 
                 CombatKernel.resolveInto(context, bestType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
                 context.applyExpectedResult(bestType, result);
-                currentMetrics = bestMetrics;
+                currentMetrics.copyFrom(bestMetrics);
                 currentScore = bestNextScore;
                 if (firstAttackTypeId < 0) {
                     firstAttackTypeId = (byte) bestType.ordinal();
@@ -1119,10 +1169,11 @@ final class OpeningEvaluator {
             }
         }
 
-        private OpeningMetricVector projectedMetrics(
+        private void projectMetrics(
                 OpeningBaseline baseline,
                 OpeningMetricVector currentMetrics,
-                MutableAttackResult result
+                MutableAttackResult result,
+                OpeningMetricVector.Mutable out
         ) {
             boolean attackerHasGroundControl = projectedAttackerHasGroundControl(result.controlDelta());
             boolean attackerHasAirControl = projectedAttackerHasAirControl(result.controlDelta());
@@ -1161,7 +1212,7 @@ final class OpeningEvaluator {
                     Math.max(0d, context.defender().totalInfra() - result.infraDestroyed()),
                     projectedDefenderResistance(result)
             );
-            return new OpeningMetricVector(
+            out.set(
                     immediateHarm,
                     selfExposure,
                     resourceSwing,
@@ -1231,17 +1282,7 @@ final class OpeningEvaluator {
         if (type.getMapUsed() > attackerMaps) {
             return false;
         }
-        return switch (type) {
-            case GROUND -> attacker.getUnits(MilitaryUnit.SOLDIER) > 0 || attacker.getUnits(MilitaryUnit.TANK) > 0;
-            case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY,
-                    AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT -> attacker.getUnits(MilitaryUnit.AIRCRAFT) > 0;
-            case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND -> attacker.getUnits(MilitaryUnit.SHIP) > 0;
-            case MISSILE -> attacker.getUnits(MilitaryUnit.MISSILE) > 0
-                    && attacker.hasProject(link.locutus.discord.apiv1.enums.city.project.Projects.MISSILE_LAUNCH_PAD);
-            case NUKE -> attacker.getUnits(MilitaryUnit.NUKE) > 0
-                    && attacker.hasProject(link.locutus.discord.apiv1.enums.city.project.Projects.NUCLEAR_RESEARCH_FACILITY);
-            default -> false;
-        };
+        return CombatKernel.canUseAttackType(attacker, type);
     }
 
     private static boolean isSpecialist(AttackType type) {
@@ -1249,11 +1290,7 @@ final class OpeningEvaluator {
     }
 
     private static double totalInfra(DBNationSnapshot snapshot) {
-        double total = 0d;
-        for (double cityInfra : snapshot.cityInfra()) {
-            total += cityInfra;
-        }
-        return total;
+        return snapshot.totalInfraRaw();
     }
 
     private static final class MutableNationState implements CombatKernel.PrimitiveCityAccess {
@@ -1268,15 +1305,14 @@ final class OpeningEvaluator {
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 unitCounts[unit.ordinal()] = snapshot.unit(unit);
             }
-            if (cityInfra.length < snapshot.cityInfra().length) {
-                cityInfra = new double[snapshot.cityInfra().length];
+            double[] snapshotCityInfra = snapshot.cityInfraRaw();
+            int cityCount = snapshotCityInfra.length;
+            if (cityInfra.length < cityCount) {
+                cityInfra = new double[cityCount];
             }
-            System.arraycopy(snapshot.cityInfra(), 0, cityInfra, 0, snapshot.cityInfra().length);
-            cityProfiles = snapshot.citySpecialistProfiles();
-            totalInfra = 0d;
-            for (int i = 0; i < snapshot.cityInfra().length; i++) {
-                totalInfra += cityInfra[i];
-            }
+            System.arraycopy(snapshotCityInfra, 0, cityInfra, 0, cityCount);
+            cityProfiles = snapshot.citySpecialistProfilesRaw();
+            totalInfra = snapshot.totalInfraRaw();
         }
 
         void applyLosses(double[] losses) {
@@ -1317,7 +1353,7 @@ final class OpeningEvaluator {
         private int highestInfraCityIndex() {
             int bestIndex = -1;
             double bestInfra = 0d;
-            for (int i = 0; i < snapshot.cityInfra().length; i++) {
+            for (int i = 0; i < snapshot.cities(); i++) {
                 if (cityInfra[i] > bestInfra) {
                     bestInfra = cityInfra[i];
                     bestIndex = i;
@@ -1353,9 +1389,33 @@ final class OpeningEvaluator {
         }
 
         @Override
+        public int cityMissileDamageMin(int cityIndex) {
+            double infra = cityInfra[cityIndex];
+            return cityProfiles[cityIndex].missileDamageMin(infra, this::hasProject);
+        }
+
+        @Override
+        public int cityMissileDamageMax(int cityIndex) {
+            double infra = cityInfra[cityIndex];
+            return cityProfiles[cityIndex].missileDamageMax(infra, this::hasProject);
+        }
+
+        @Override
         public Map.Entry<Integer, Integer> cityNukeDamage(int cityIndex) {
             double infra = cityInfra[cityIndex];
             return cityProfiles[cityIndex].nukeDamage(infra, this::hasProject);
+        }
+
+        @Override
+        public int cityNukeDamageMin(int cityIndex) {
+            double infra = cityInfra[cityIndex];
+            return cityProfiles[cityIndex].nukeDamageMin(infra, this::hasProject);
+        }
+
+        @Override
+        public int cityNukeDamageMax(int cityIndex) {
+            double infra = cityInfra[cityIndex];
+            return cityProfiles[cityIndex].nukeDamageMax(infra, this::hasProject);
         }
 
         @Override
@@ -1414,27 +1474,7 @@ final class OpeningEvaluator {
     }
 
     static void viabilityProbe(DBNationSnapshot attacker, DBNationSnapshot defender, ProbeResult out) {
-        PairAttackContext context = new PairAttackContext();
-        AttackScratch scratch = new AttackScratch();
-
-        double best = 0d;
-        byte bestWarTypeId = (byte) -1;
-        byte bestAttackTypeId = (byte) -1;
-        for (WarType warType : OPENING_WAR_TYPES) {
-            context.bind(attacker, defender, warType);
-            for (AttackType type : OPENING_ATTACK_TYPES) {
-                if (isSpecialist(type) || !isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
-                    continue;
-                }
-                double candidate = CombatKernel.admissionSignal(context, type, scratch);
-                if (candidate > best) {
-                    best = candidate;
-                    bestWarTypeId = (byte) warType.ordinal();
-                    bestAttackTypeId = (byte) type.ordinal();
-                }
-            }
-        }
-        out.set((float) best, bestWarTypeId, bestAttackTypeId);
+        new ViabilityProbeEvaluator().evaluate(attacker, defender, out);
     }
 
 }
