@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.planners.OverrideSet.ActiveOverride;
 import link.locutus.discord.sim.planners.AdHocPlan;
 import link.locutus.discord.sim.planners.AdHocSimulationOptions;
@@ -59,6 +60,7 @@ import link.locutus.discord.web.commands.binding.value_types.WebSimAdHocPlan;
 import link.locutus.discord.web.commands.binding.value_types.WebSimAdHocTarget;
 import link.locutus.discord.web.commands.binding.value_types.WebTarget;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzDraftNation;
 import link.locutus.discord.util.battle.BlitzValidator;
 import link.locutus.discord.util.battle.BlitzWarning;
@@ -226,8 +228,8 @@ public class SimEndpoints {
         List<BlitzWarning> warnings = new ArrayList<>();
         List<BlitzLegalEdge> legalEdges = new ArrayList<>();
         Set<Integer> excludedWarIds = excludedWarIds(request);
-        Set<String> activePairs = request.includeExistingWars() ? activePairKeys(warDB, allNations, excludedWarIds) : Set.of();
-        buildLegalEdges(sideMode, attackers, defenders, activePairs, legalEdges, warnings);
+        Set<String> sameOpponentBlockedPairs = sameOpponentBlockedPairKeys(warDB, allNations, excludedWarIds);
+        buildLegalEdges(sideMode, attackers, defenders, sameOpponentBlockedPairs, request.includeExistingWars(), legalEdges, warnings);
         List<BlitzPlannedWar> acceptedPlannedWars = validatePlannedWars(request, sideMode, attackerById, defenderById, legalEdges, warnings);
 
         BlitzExistingWar[] existingWars = request.includeExistingWars()
@@ -253,7 +255,7 @@ public class SimEndpoints {
                 nationIds(defenders),
                 overrides,
                 activityModel,
-                nationRows(allNations, editsByNationId, currentBuys, request.assume5553Buildings(), activityModel),
+                nationRows(allNations, editsByNationId, currentBuys, request.assume5553Buildings(), request.includeExistingWars(), activityModel),
                 existingWars,
                 legalEdges.toArray(BlitzLegalEdge[]::new),
                 warnings.toArray(BlitzWarning[]::new),
@@ -675,6 +677,7 @@ public class SimEndpoints {
             Map<Integer, BlitzDraftEdit> editsByNationId,
             Map<Integer, Map<MilitaryUnit, Integer>> currentBuys,
             boolean assume5553Buildings,
+                boolean includeExistingWars,
             CompositeBlitzActivityModel activityModel
     ) {
         return nations.stream()
@@ -683,8 +686,9 @@ public class SimEndpoints {
                         nation,
                         editsByNationId.get(nation.getNation_id()),
                         currentBuys.getOrDefault(nation.getNation_id(), Map.of()),
-                assume5553Buildings,
-                activityModel))
+                        assume5553Buildings,
+                        includeExistingWars,
+                        activityModel))
                 .toArray(BlitzNationRow[]::new);
     }
 
@@ -693,6 +697,7 @@ public class SimEndpoints {
             BlitzDraftEdit edit,
             Map<MilitaryUnit, Integer> currentBuys,
             boolean assume5553Buildings,
+                boolean includeExistingWars,
             CompositeBlitzActivityModel activityModel
     ) {
         MilitaryUnit[] units = MilitaryUnit.values();
@@ -745,8 +750,8 @@ public class SimEndpoints {
                 nation.getVm_turns(),
                 nation.active_m(),
                 activityModel.activityBasisPoints(nation.getNation_id()),
-                nation.getFreeOffensiveSlots(),
-                nation.getFreeDefensiveSlots(),
+                includeExistingWars ? nation.getFreeOffensiveSlots() : nation.getMaxOff(),
+                includeExistingWars ? nation.getFreeDefensiveSlots() : WarSlotRules.defensiveSlotCap(),
                 nation.getMaxOff(),
                 edit != null && edit.policyOrdinal() != null ? edit.policyOrdinal() : (nation.getWarPolicy() == null ? -1 : nation.getWarPolicy().ordinal()),
                 projectBits,
@@ -770,14 +775,15 @@ public class SimEndpoints {
             Collection<DBNation> attackers,
             Collection<DBNation> defenders,
             Set<String> activePairs,
+            boolean includeExistingWars,
             List<BlitzLegalEdge> legalEdges,
             List<BlitzWarning> warnings
     ) {
         if (sideMode == BlitzSideMode.ATTACKERS_ONLY || sideMode == BlitzSideMode.BOTH) {
-            buildLegalEdgesOneWay(attackers, defenders, activePairs, legalEdges, warnings);
+            buildLegalEdgesOneWay(attackers, defenders, activePairs, includeExistingWars, legalEdges, warnings);
         }
         if (sideMode == BlitzSideMode.DEFENDERS_ONLY || sideMode == BlitzSideMode.BOTH) {
-            buildLegalEdgesOneWay(defenders, attackers, activePairs, legalEdges, warnings);
+            buildLegalEdgesOneWay(defenders, attackers, activePairs, includeExistingWars, legalEdges, warnings);
         }
     }
 
@@ -785,10 +791,11 @@ public class SimEndpoints {
             Collection<DBNation> declarers,
             Collection<DBNation> targets,
             Set<String> activePairs,
+            boolean includeExistingWars,
             List<BlitzLegalEdge> legalEdges,
             List<BlitzWarning> warnings
     ) {
-        BlitzValidator.Rules rules = new BlitzValidator.Rules(0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false);
+        BlitzValidator.Rules rules = new BlitzValidator.Rules(0.75, PW.WAR_RANGE_MAX_MODIFIER, true, includeExistingWars, false);
         for (DBNation declarer : declarers) {
             for (DBNation target : targets) {
                 List<BlitzWarning> edgeWarnings = new ArrayList<>(BlitzValidator.validatePair(
@@ -1021,16 +1028,21 @@ public class SimEndpoints {
         return ids;
     }
 
-    private static Set<String> activePairKeys(WarDB warDB, Collection<DBNation> nations, Set<Integer> excludedWarIds) {
+    private static Set<String> sameOpponentBlockedPairKeys(WarDB warDB, Collection<DBNation> nations, Set<Integer> excludedWarIds) {
         Set<Integer> nationIds = new LinkedHashSet<>(nationIds(nations).length);
         for (DBNation nation : nations) {
             nationIds.add(nation.getNation_id());
         }
+        long currentTurn = TimeUtil.getTurn();
+        long minBlockedStartTurn = currentTurn - 72;
+        Collection<DBWar> wars = warDB.getWarsForNationOrAlliance(nationIds::contains, null, war -> {
+            if (excludedWarIds.contains(war.getWarId())) return false;
+            if (war.isActive()) return true;
+            return TimeUtil.getTurn(war.getDate()) >= minBlockedStartTurn;
+        }).values();
+
         Set<String> pairs = new LinkedHashSet<>();
-        for (DBWar war : warDB.getActiveWars(nationIds::contains, null)) {
-            if (excludedWarIds.contains(war.getWarId())) {
-                continue;
-            }
+        for (DBWar war : wars) {
             pairs.add(pairKey(war.getAttacker_id(), war.getDefender_id()));
             pairs.add(pairKey(war.getDefender_id(), war.getAttacker_id()));
         }
