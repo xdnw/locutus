@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import io.javalin.http.Context;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.BlitzPlanRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,11 @@ public class JavalinBindings extends BindingHelper {
     @Binding
     public Map<String, Object> jsonMap(String input) {
         return WebUtil.GSON.fromJson(input, Map.class);
+    }
+
+    @Binding
+    public BlitzPlanRequest blitzPlanRequest(String input) {
+        return WebUtil.GSON.fromJson(input, BlitzPlanRequest.class);
     }
 
     private static final TypeToken<List<List<Object>>> LIST_TOKEN = new TypeToken<>() {};

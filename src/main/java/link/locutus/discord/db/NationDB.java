@@ -5102,6 +5102,91 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public Map<Integer, Map<MilitaryUnit, Integer>> getSimUnitBuysToday(Collection<DBNation> nations) {
+        Map<Integer, Map<MilitaryUnit, Integer>> result = new Int2ObjectOpenHashMap<>();
+        if (nations == null || nations.isEmpty()) {
+            return result;
+        }
+
+        Map<Integer, DBNation> nationById = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Long> cutoffByNationId = new Int2ObjectOpenHashMap<>();
+        IntOpenHashSet nationIds = new IntOpenHashSet();
+        long currentTurn = TimeUtil.getTurn();
+        int currentDayTurn = (int) Math.floorMod(currentTurn, 12L);
+        for (DBNation nation : nations) {
+            if (nation == null) {
+                continue;
+            }
+            int nationId = nation.getNation_id();
+            nationById.put(nationId, nation);
+            nationIds.add(nationId);
+
+            int dcTurn = nation.getDc_turn();
+            int turnsFromDc;
+            if (dcTurn < 0 || dcTurn >= 12) {
+                turnsFromDc = currentDayTurn;
+            } else if (currentDayTurn >= dcTurn) {
+                turnsFromDc = currentDayTurn - dcTurn;
+            } else {
+                turnsFromDc = currentDayTurn + 12 - dcTurn;
+            }
+            cutoffByNationId.put(nationId, TimeUtil.getTimeFromTurn(currentTurn - turnsFromDc));
+        }
+
+        if (nationIds.isEmpty()) {
+            return result;
+        }
+
+        String query = "SELECT id, unit, date, amount FROM NATION_MIL_HISTORY WHERE id in "
+                + StringMan.getString(nationIds)
+                + " AND unit IN (0,1,2,3,4,5,6) ORDER BY id ASC, unit ASC, date DESC";
+        try (PreparedStatement stmt = prepareQuery(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                int currentNationId = -1;
+                int currentUnitOrdinal = -1;
+                int currentAmount = 0;
+                long currentCutoff = 0L;
+                boolean currentGroupDone = false;
+
+                while (rs.next()) {
+                    int nationId = rs.getInt("id");
+                    int unitOrdinal = rs.getInt("unit");
+                    if (unitOrdinal < 0 || unitOrdinal >= MilitaryUnit.values.length) {
+                        continue;
+                    }
+                    if (nationId != currentNationId || unitOrdinal != currentUnitOrdinal) {
+                        currentNationId = nationId;
+                        currentUnitOrdinal = unitOrdinal;
+                        currentGroupDone = false;
+                        DBNation nation = nationById.get(nationId);
+                        MilitaryUnit unit = MilitaryUnit.values[unitOrdinal];
+                        currentAmount = nation == null ? rs.getInt("amount") : nation.getUnits(unit);
+                        Long cutoff = cutoffByNationId.get(nationId);
+                        currentCutoff = cutoff == null ? 0L : cutoff;
+                    }
+                    if (currentGroupDone) {
+                        continue;
+                    }
+
+                    int amount = rs.getInt("amount");
+                    if (amount < currentAmount) {
+                        MilitaryUnit unit = MilitaryUnit.values[currentUnitOrdinal];
+                        result.computeIfAbsent(currentNationId, ignored -> new EnumMap<>(MilitaryUnit.class))
+                                .merge(unit, currentAmount - amount, Integer::sum);
+                    }
+                    currentAmount = amount;
+                    if (rs.getLong("date") < currentCutoff) {
+                        currentGroupDone = true;
+                    }
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public int getMilitary(DBNation nation, MilitaryUnit unit, long time) {
         return getMilitary(nation, unit, time, true);
     }

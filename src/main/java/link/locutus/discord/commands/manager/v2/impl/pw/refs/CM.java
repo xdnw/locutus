@@ -3345,6 +3345,26 @@ public class CM {
                 }
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="detectConflictStart")
+                public static class detect_start extends CommandRef {
+                    public static final detect_start cmd = new detect_start();
+                public detect_start conflict(String value) {
+                    return set("conflict", value);
+                }
+
+                public detect_start turn_allowance(String value) {
+                    return set("turn_allowance", value);
+                }
+
+                public detect_start force(String value) {
+                    return set("force", value);
+                }
+
+                public detect_start token(String value) {
+                    return set("token", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setStatus")
                 public static class status extends CommandRef {
                     public static final status cmd = new status();

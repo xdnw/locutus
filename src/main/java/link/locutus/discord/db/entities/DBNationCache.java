@@ -24,40 +24,16 @@ public class DBNationCache {
     public long firstCheckThisTurnMS;
     public long lastCheckUnitMS;
     /**
-     * Char array, 12 long. First 6 = buys last turn, second 6 = buys this turn
-     * Order: Soldier, Tank, Aircraft, Ship, Missile, Nuke
-     * An array is used to improve performance and reduce memory usage
+     * Int array, 14 long. First 7 = buys last turn, second 7 = buys this turn.
+     * Order: Soldier, Tank, Aircraft, Ship, Missile, Nuke, Spies.
      *
-     * Note: Unit buys are not counted if there is no previous turn info, to avoid cases of accumulating the count of multiple previous turns
+     * <p>An array is used to improve performance and reduce memory usage. Unit buys are not counted
+     * if there is no previous turn info, to avoid accumulating the count of multiple previous turns.</p>
      */
     public int[] unitBuys;
 
     public void processUnitChange(DBNation parent, MilitaryUnit unit, int previous, int current) {
-        // Index for each unit type in the unit buy array
-        int index = -1;
-        switch (unit) {
-            case SOLDIER:
-                index = 0;
-                break;
-            case TANK:
-                index = 1;
-                break;
-            case AIRCRAFT:
-                index = 2;
-                break;
-            case SHIP:
-                index = 3;
-                break;
-            case MISSILE:
-                index = 4;
-                break;
-            case NUKE:
-                index = 5;
-                break;
-            case SPIES:
-                index = 6;
-                break;
-        }
+        int index = trackedUnitBuyIndex(unit);
         if (index != -1) {
             long now = System.currentTimeMillis();
             long diff = now - firstCheckThisTurnMS;
@@ -134,8 +110,30 @@ public class DBNationCache {
         }
     }
 
+    public int currentTurnUnitBuys(MilitaryUnit unit) {
+        int index = trackedUnitBuyIndex(unit);
+        if (index < 0 || unitBuys == null) {
+            return 0;
+        }
+        int currentTurnIndex = 7 + index;
+        return currentTurnIndex < unitBuys.length ? Math.max(0, unitBuys[currentTurnIndex]) : 0;
+    }
+
     private int[] getOrCreateUnitBuys() {
         if (unitBuys == null) unitBuys = new int[14];
         return unitBuys;
+    }
+
+    private static int trackedUnitBuyIndex(MilitaryUnit unit) {
+        return switch (unit) {
+            case SOLDIER -> 0;
+            case TANK -> 1;
+            case AIRCRAFT -> 2;
+            case SHIP -> 3;
+            case MISSILE -> 4;
+            case NUKE -> 5;
+            case SPIES -> 6;
+            default -> -1;
+        };
     }
 }

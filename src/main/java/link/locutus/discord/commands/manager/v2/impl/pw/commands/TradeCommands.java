@@ -20,6 +20,10 @@ import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.TradeProfitRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.TradeRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.TradeRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.imp.RssTradeByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.StockpileValueByDay;
@@ -701,83 +705,14 @@ public class TradeCommands {
                                @Timestamp long time,
                                @Arg("Group by alliance instead of nation")
                                @Switch("a") boolean groupByAlliance, @Switch("u") boolean uploadFile) {
-        Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = DBNation::getAlliance_id : DBNation::getNation_id;
-        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-        Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
-
-        List<DBTrade> trades = nationIds.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(time) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, time);
-
-        for (DBTrade trade : trades) {
-            Integer buyer = trade.getBuyer();
-            Integer seller = trade.getSeller();
-
-            if (!nationIds.contains(buyer) && !nationIds.contains(seller)) {
-                continue;
-            }
-
-            double per = trade.getPpu();
-            ResourceType type = trade.getResource();
-
-            if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000))) {
-                continue;
-            }
-
-            for (int nationId : new int[]{buyer, seller}) {
-                if (!nationIds.contains(nationId)) continue;
-                DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
-                if (nation == null) continue;
-                if (groupByAlliance && nation.getAlliance_id() == 0) continue;
-                int groupId = groupBy.apply(nation);
-
-                int sign = (nationId == seller ^ trade.isBuy()) ? 1 : -1;
-                long total = trade.getQuantity() * (long) trade.getPpu();
-
-                TradeRanking.TradeProfitContainer container = tradeContainers.computeIfAbsent(groupId, f -> new TradeRanking.TradeProfitContainer());
-
-                if (sign > 0) {
-                    container.inflows.put(type, trade.getQuantity() + container.inflows.getOrDefault(type, 0L));
-                    container.sales.put(type, trade.getQuantity() + container.sales.getOrDefault(type, 0L));
-                    container.salesPrice.put(type, total + container.salesPrice.getOrDefault(type, 0L));
-                } else {
-                    container.outflow.put(type, trade.getQuantity() + container.inflows.getOrDefault(type, 0L));
-                    container.purchases.put(type, trade.getQuantity() + container.purchases.getOrDefault(type, 0L));
-                    container.purchasesPrice.put(type, total + container.purchasesPrice.getOrDefault(type, 0L));
-                }
-
-                container.netOutflows.put(type, ((-1) * sign * trade.getQuantity()) + container.netOutflows.getOrDefault(type, 0L));
-                container.netOutflows.put(ResourceType.MONEY, (sign * total) + container.netOutflows.getOrDefault(ResourceType.MONEY, 0L));
-            }
-        }
-
-        Map<Integer, Double> profitByGroup = new HashMap<>();
-        for (Map.Entry<Integer, TradeRanking.TradeProfitContainer> containerEntry : tradeContainers.entrySet()) {
-            TradeRanking.TradeProfitContainer container = containerEntry.getValue();
-            Map<ResourceType, Double> ppuBuy = new HashMap<>();
-            Map<ResourceType, Double> ppuSell = new HashMap<>();
-
-            for (Map.Entry<ResourceType, Long> entry : container.purchases.entrySet()) {
-                ResourceType type = entry.getKey();
-                ppuBuy.put(type, (double) container.purchasesPrice.get(type) / entry.getValue());
-            }
-
-            for (Map.Entry<ResourceType, Long> entry : container.sales.entrySet()) {
-                ResourceType type = entry.getKey();
-                ppuSell.put(type, (double) container.salesPrice.get(type) / entry.getValue());
-            }
-
-            double profitTotal = ResourceType.convertedTotal(container.netOutflows);
-            double profitMin = 0;
-            for (Map.Entry<ResourceType, Long> entry : container.netOutflows.entrySet()) {
-                profitMin += -ResourceType.convertedTotal(entry.getKey(), -entry.getValue());
-            }
-            profitTotal = Math.min(profitTotal, profitMin);
-            profitByGroup.put(containerEntry.getKey(), profitTotal);
-        }
-
-
-        String title = (groupByAlliance ? "Alliance" : "") + "trade profit (" + profitByGroup.size() + ")";
-        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> (groupByAlliance ? DBAlliance.getOrCreate(id) : DBNation.getOrCreate(id)).toShrink())
-                .build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                TradeProfitRankingService.ranking(
+                        TradeRankingRequests.tradeProfit(nations, time, groupByAlliance)
+                ),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
         return null;
     }
 
@@ -1307,57 +1242,24 @@ public class TradeCommands {
                              @Switch("p") boolean includeMoneyTrades,
                              @Switch("s") boolean show_absolute,
                              @Switch("n") Set<DBNation> nations) {
-        if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
-        List<DBTrade> offers;
-        if (nations == null) {
-            offers = db.getTrades(type, cutoff, Long.MAX_VALUE);
-        } else {
-            Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(IntOpenHashSet::new, IntOpenHashSet::add, IntOpenHashSet::addAll);
-            offers = db.getTrades(nationIds, cutoff);
-        }
-        if (!includeMoneyTrades) {
-            offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
-        }
-        int findsign = buyOrSell.equalsIgnoreCase("SOLD") ? -1 : 1;
-
-        Collection<Transfer> transfers = manager.toTransfers(offers, false);
-        boolean includeSender = !show_absolute || findsign == -1;
-        boolean includeReceiver = !show_absolute || findsign == 1;
-        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, includeSender, includeReceiver);
-        Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
-
-        Map<Integer, Double> newMap = new Int2DoubleOpenHashMap();
-        for (Map.Entry<Integer, double[]> entry : inflows.entrySet()) {
-            double value = entry.getValue()[type.ordinal()];
-            if (value != 0 && Math.signum(value) == findsign) {
-                newMap.put(entry.getKey(), Math.abs(value));
-            }
-        }
-        SummedMapRankBuilder<Integer, Double> builder = new SummedMapRankBuilder<>(newMap);
-        Map<Integer, Double> sorted = builder.sort().get();
-
-        List<String> nationName = new ArrayList<>();
-        List<String> amtList = new ArrayList<>();
-        List<String> ppuList = new ArrayList<>();
-
-        int i = 0;
-        for (Map.Entry<Integer, Double> entry : sorted.entrySet()) {
-            if (i++ >= 25) break;
-            int nationId = entry.getKey();
-            double amount = Math.abs(entry.getValue());
-            double myPpu = ppu.get(nationId)[type.ordinal()];
-//                nationName.add(MarkupUtil.markdownUrl(PW.getName(nationId, false), PW.getUrl(nationId, false)));
-            nationName.add(PW.getName(nationId, groupByAlliance));
-            amtList.add(MathMan.format(amount));
-            ppuList.add("$" + MathMan.format(myPpu));
-        }
-
-        channel.create().embed(new EmbedShrink()
-                .setTitle("Trade Price")
-                .addField("Nation", StringMan.join(nationName, "\n"), true)
-                .addField("Amt", StringMan.join(amtList, "\n"), true)
-                .addField("Ppu", StringMan.join(ppuList, "\n"), true)
-        ).commandButton(command, "Refresh").send(RateLimitedSources.COMMAND_RESULT);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                TradeRankingService.ranking(
+                        manager,
+                        db,
+                        TradeRankingRequests.findTrader(
+                                type,
+                                cutoff,
+                                buyOrSell,
+                                groupByAlliance,
+                                includeMoneyTrades,
+                                show_absolute,
+                                nations
+                        )
+                ),
+                new DiscordRankingAdapter.RenderOptions(null, true, null)
+        );
         return null;
     }
 

@@ -38,7 +38,7 @@ public class Counter extends Command {
     public String desc() {
         return """
                 Get a list of nations to counter
-                Add `-o` to ignore nations with 5 offensive slots
+                Add `-o` to ignore nations already at max offensive slots
                 Add `-w` to filter out weak attackers
                 Add `-a` to only list active nations (past hour)
                 Add `-d` to require discord

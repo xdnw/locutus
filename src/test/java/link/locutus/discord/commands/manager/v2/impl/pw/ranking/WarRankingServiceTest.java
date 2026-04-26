@@ -1,15 +1,19 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.apiv1.enums.WarCostStat;
+import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.NationOrAlliance;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -18,8 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WarRankingServiceTest {
     @Test
-    void warCostRequestNormalizeAppliesDefaults() {
-        WarRankingService.WarCostRequest request = WarRankingService.WarCostRequest.normalize(
+    void warCostRequestBuilderAppliesDefaults() {
+        long before = System.currentTimeMillis();
+        WarRankingService.WarCostRequest request = WarRankingRequests.cost(
                 100L,
                 null,
                 Set.<NationOrAlliance>of(),
@@ -43,9 +48,10 @@ class WarRankingServiceTest {
                 false,
                 null
         );
+        long after = System.currentTimeMillis();
 
         assertEquals(100L, request.timeStartMs());
-        assertEquals(Long.MAX_VALUE, request.timeEndMs());
+        assertTrue(request.timeEndMs() >= before && request.timeEndMs() <= after);
         assertEquals(WarCostMode.DEALT, request.type());
         assertEquals(WarCostStat.WAR_VALUE, request.stat());
         assertEquals(Set.of(), request.coalition1());
@@ -53,8 +59,8 @@ class WarRankingServiceTest {
     }
 
     @Test
-    void warCountRequestNormalizeDisablesPerMemberForNationRows() {
-        WarRankingService.WarCountRequest request = WarRankingService.WarCountRequest.normalize(
+    void warCountRequestBuilderDisablesPerMemberForNationRows() {
+        WarRankingService.WarCountRequest request = WarRankingRequests.count(
                 100L,
                 Set.<NationOrAlliance>of(),
                 Set.<NationOrAlliance>of(),
@@ -74,8 +80,8 @@ class WarRankingServiceTest {
     }
 
     @Test
-    void conflictingWarFiltersAreRejectedAtNormalization() {
-        assertThrows(IllegalArgumentException.class, () -> WarRankingService.WarCostRequest.normalize(
+    void conflictingWarFiltersAreRejectedAtBuilderBoundary() {
+        assertThrows(IllegalArgumentException.class, () -> WarRankingRequests.cost(
                 0L,
                 null,
                 Set.<NationOrAlliance>of(),
@@ -99,7 +105,7 @@ class WarRankingServiceTest {
                 true,
                 null
         ));
-        assertThrows(IllegalArgumentException.class, () -> WarRankingService.WarCountRequest.normalize(
+        assertThrows(IllegalArgumentException.class, () -> WarRankingRequests.count(
                 0L,
                 Set.<NationOrAlliance>of(),
                 Set.<NationOrAlliance>of(),
@@ -112,7 +118,7 @@ class WarRankingServiceTest {
                 null,
                 null
         ));
-        assertThrows(IllegalArgumentException.class, () -> WarRankingService.AttackTypeRequest.normalize(
+        assertThrows(IllegalArgumentException.class, () -> WarRankingRequests.attackType(
                 0L,
                 AttackType.GROUND,
                 Set.of(),
@@ -132,84 +138,54 @@ class WarRankingServiceTest {
     }
 
     @Test
-    void warCostSectionMetadataCarriesNormalizationAndScope() {
-        WarRankingService.WarCostRequest request = new WarRankingService.WarCostRequest(
-                0L,
-                1L,
-                Set.of(),
-                Set.of(),
-                true,
-                WarCostMode.DEALT,
-                WarCostStat.GROUND,
-                false,
-                false,
-                false,
-                false,
-                false,
-                true,
-                true,
-                true,
-                null,
-                null,
-                null,
-                null,
-                false,
-                false,
-                Set.of()
-        );
-
-        Map<String, String> metadata = metadataByKey(WarRankingService.warCostSectionMetadata(request));
-
-        assertEquals("WAR_ATTACK", metadata.get("source_type"));
-        assertEquals("SUM", metadata.get("aggregation_mode"));
-        assertEquals("ALLIANCE", metadata.get("result_entity_type"));
-        assertEquals("GROUND", metadata.get("stat"));
-        assertEquals("DEALT", metadata.get("value_mode"));
-        assertEquals("per_war_per_city", metadata.get("normalization"));
-        assertEquals("coalition_1_only", metadata.get("coalition_scope"));
-        assertEquals("all", metadata.get("war_side_scope"));
+    void normalizationModeMapsToTypedSemantics() {
+        assertEquals(RankingNormalizationMode.NONE, WarRankingService.normalizationMode(false, false));
+        assertEquals(RankingNormalizationMode.PER_WAR, WarRankingService.normalizationMode(true, false));
+        assertEquals(RankingNormalizationMode.PER_CITY, WarRankingService.normalizationMode(false, true));
+        assertEquals(RankingNormalizationMode.PER_WAR_PER_CITY, WarRankingService.normalizationMode(true, true));
     }
 
     @Test
-    void warCountAndAttackTypeMetadataExposeFrontendSemantics() {
-        WarRankingService.WarCountRequest countRequest = new WarRankingService.WarCountRequest(
-                0L,
-                Set.of(),
-                Set.of(),
-                true,
-                false,
-                true,
-                true,
-                true,
-                false,
-                null,
-                null
-        );
-        Map<String, String> countMetadata = metadataByKey(WarRankingService.warCountSectionMetadata(countRequest));
-        assertEquals("ALLIANCE", countMetadata.get("result_entity_type"));
-        assertEquals("per_member", countMetadata.get("normalization"));
-        assertEquals("offensive", countMetadata.get("war_side_scope"));
-        assertEquals("attackers_only", countMetadata.get("coalition_scope"));
-        assertEquals("active_only", countMetadata.get("member_scope"));
+    void allowedAllianceFilterAppliesToRankedWarSide() {
+        DBWar war = war(1, 101, 202, 11, 22);
+        IntOpenHashSet allowedAllianceIds = new IntOpenHashSet(new int[]{11});
 
-        WarRankingService.AttackTypeRequest attackTypeRequest = new WarRankingService.AttackTypeRequest(
-                0L,
-                AttackType.GROUND,
-                Set.of(),
-                80,
-                true,
-                false,
-                true
-        );
-        Map<String, String> attackMetadata = metadataByKey(WarRankingService.attackTypeSectionMetadata(attackTypeRequest));
-        assertEquals("WAR_ATTACK", attackMetadata.get("source_type"));
-        assertEquals("COUNT", attackMetadata.get("aggregation_mode"));
-        assertEquals("GROUND", attackMetadata.get("attack_type"));
-        assertEquals("percent", attackMetadata.get("value_mode"));
-        assertEquals("defensive", attackMetadata.get("war_side_scope"));
+        assertTrue(WarRankingService.matchesAllowedAllianceSide(war, true, allowedAllianceIds));
+        assertFalse(WarRankingService.matchesAllowedAllianceSide(war, false, allowedAllianceIds));
+        assertEquals(11, WarRankingService.rankedEntityId(war, true, true, allowedAllianceIds));
+        assertEquals(101, WarRankingService.rankedEntityId(war, false, true, allowedAllianceIds));
+        assertEquals(0, WarRankingService.rankedEntityId(war, true, false, allowedAllianceIds));
+        assertEquals(0, WarRankingService.rankedEntityId(war, false, false, allowedAllianceIds));
     }
 
-    private static Map<String, String> metadataByKey(List<RankingQueryField> fields) {
-        return fields.stream().collect(Collectors.toMap(RankingQueryField::key, RankingQueryField::value));
+    @Test
+    void perWarScalingCountsOnlyAllowedRankedSides() {
+        List<DBWar> wars = List.of(
+                war(1, 101, 202, 11, 22),
+                war(2, 303, 104, 33, 11),
+                war(3, 205, 306, 22, 33)
+        );
+        IntOpenHashSet allowedAllianceIds = new IntOpenHashSet(new int[]{11});
+
+        assertEquals(Map.of(11, 2), WarRankingService.countWarsByGroup(wars, true, allowedAllianceIds));
+        assertEquals(Map.of(101, 1, 104, 1), WarRankingService.countWarsByGroup(wars, false, allowedAllianceIds));
+    }
+
+    private static DBWar war(int warId, int attackerId, int defenderId, int attackerAllianceId, int defenderAllianceId) {
+        return new DBWar(
+                warId,
+                attackerId,
+                defenderId,
+                attackerAllianceId,
+                defenderAllianceId,
+                false,
+                false,
+                WarType.RAID,
+                WarStatus.ACTIVE,
+                1000L,
+                10,
+                10,
+                0
+        );
     }
 }

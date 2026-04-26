@@ -37,6 +37,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLookupContext;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.IncentiveRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.IncentiveRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -1363,32 +1366,12 @@ public class IACommands {
     @RolePermission(value = { Roles.INTERNAL_AFFAIRS, Roles.ECON }, any = true)
     public String incentiveRanking(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
             @Timestamp long timestamp) {
-        List<Transaction2> transactions = db.getTransactions(timestamp, false);
-
-        Map<NationMeta, Map<DBNation, Integer>> incentivesByGov = new HashMap<>();
-
-        for (Transaction2 transaction : transactions) {
-            if (!transaction.hasNoteTag(DepositType.INCENTIVE))
-                continue;
-            NationMeta incentive = (NationMeta) transaction.getStructuredNote().get(DepositType.INCENTIVE);
-            if (incentive == null)
-                continue;
-            DBNation gov = DBNation.getById((int) transaction.sender_id);
-
-            if (gov != null) {
-                Map<DBNation, Integer> byIncentive = incentivesByGov.computeIfAbsent(incentive,
-                        f -> new Object2IntOpenHashMap<>());
-                byIncentive.put(gov, byIncentive.getOrDefault(gov, 0) + 1);
-            }
-        }
-
-        for (Map.Entry<NationMeta, Map<DBNation, Integer>> entry : incentivesByGov.entrySet()) {
-            String title = entry.getKey().name();
-            new SummedMapRankBuilder<>(entry.getValue())
-                    .sort()
-                    .nameKeys(NationOrAllianceOrGuildOrTaxid::toShrink)
-                    .build(io, command, title, true);
-        }
+        DiscordRankingAdapter.send(
+                io,
+                command,
+                IncentiveRankingService.ranking(db, IncentiveRankingRequests.ranking(timestamp)),
+                new DiscordRankingAdapter.RenderOptions(null, true, null)
+        );
         return null;
     }
 

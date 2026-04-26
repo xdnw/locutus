@@ -1696,6 +1696,38 @@ public final class PW {
         return estimateScore(null, nation, null, null, null, null, null);
     }
 
+    /**
+     * Computes the static (non-infra, non-unit) score component from the three immutable sim inputs.
+     * <p>
+     * Score decomposition (PnW formula):
+     * <pre>
+     *   totalScore = computeNonInfraScoreBase(cities, numProjects, researchBits)
+     *              + totalInfra / 40.0          // changes as infra is damaged
+     *              + sum(unit.getScore(count))   // changes as units are bought / killed
+     * </pre>
+     * Callers (planners) should call this once at nation-init time, after applying any overrides to
+     * cities/projects/research, and pass the result as {@code nonInfraScoreBase} to {@code SimNation}.
+     * Score then recomputes cheaply inside SimNation whenever infra or unit counts change.
+     *
+     * @param cities       number of cities (>= 1)
+     * @param numProjects  number of projects owned
+     * @param researchBits bitmask of research levels (see {@link Research})
+     */
+    public static double computeNonInfraScoreBase(int cities, int numProjects, int researchBits) {
+        double base = 10d;
+        if (researchBits > 0) {
+            for (Research rs : Research.values) {
+                int level = rs.getLevel(researchBits);
+                if (level > 0) {
+                    base += rs.getScore() * level;
+                }
+            }
+        }
+        base += numProjects * Projects.getScore();
+        base += (cities - 1) * 100d;
+        return base;
+    }
+
     public enum ScoreType {
         TOTAL(0),
         BASE(1),
@@ -1823,19 +1855,7 @@ public final class PW {
         if (cities == null)
             cities = nation.getCities();
 
-        double base = 10;
-
-        if (researchBits > 0) {
-            for (Research rs : Research.values) {
-                int level = rs.getLevel(researchBits);
-                if (level > 0) {
-                    base += rs.getScore() * level;
-                }
-            }
-        }
-
-        base += projects * Projects.getScore();
-        base += (cities - 1) * 100;
+        double base = computeNonInfraScoreBase(cities, projects, researchBits);
         base += infra / 40d;
         for (MilitaryUnit unit : MilitaryUnit.values) {
             if (unit == MilitaryUnit.INFRASTRUCTURE)

@@ -5,11 +5,11 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -20,7 +20,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -44,6 +43,8 @@ public class BlitzGenerator {
     private Function<DBNation, Activity> weeklyCache;
     Set<DBNation> colA = new HashSet<>();
     Set<DBNation> colB = new HashSet<>();
+
+    public record BlitzSheetAttackerCell(String nationToken, WarType warType) {}
 
     public BlitzGenerator(int turn, int maxAttacksPerNation, double sameAAPriority, double activityMatchupPriority, double attActiveThreshold, double defActiveThreshold, Set<Long> guildsIds, boolean parseExisting) {
         this.sameAAPriority = sameAAPriority;
@@ -76,33 +77,59 @@ public class BlitzGenerator {
     }
 
     private static void process(DBNation attacker, DBNation defender, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlots, boolean checkSpySlots, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut, Set<String> outMessages) {
-        double minScore = attacker.getScore() * minScoreMultiplier;
-        double maxScore = attacker.getScore() * maxScoreMultiplier;
-
-        String response;
-        if (defender.getScore() < minScore) {
-            double diff = ArrayUtil.toCents((minScore - defender.getScore())) / 100d;
-            response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns below " + "`" + attacker.getNation() + "`");
-        } else if (defender.getScore() > maxScore) {
-            double diff = ArrayUtil.toCents((defender.getScore() - maxScore)) / 100d;
-            response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns above " + "`" + attacker.getNation() + "`");
-        } else if (checkUpdeclare && getAirStrength(defender, false) > getAirStrength(attacker, true) * 1.33) {
-            double ratio = getAirStrength(defender, false) / getAirStrength(attacker, true);
-            response = ("`" + defender.getNation() + "` is " + MathMan.format(ratio) + "x stronger than " + "`" + attacker.getNation() + "`");
-        } else if (checkWarSlots && defender.getDef() == 3) {
-            response = ("`" + defender.getNation() + "` is slotted");
-        } else if (checkSpySlots && !defender.isEspionageAvailable()) {
-            response = ("`" + defender.getNation() + "` is spy slotted");
-        } else {
-            return;
+        BlitzValidator.Rules rules = new BlitzValidator.Rules(minScoreMultiplier, maxScoreMultiplier, checkUpdeclare, checkWarSlots, checkSpySlots);
+        for (BlitzWarning warning : BlitzValidator.validatePair(BlitzDraftNation.of(attacker), BlitzDraftNation.of(defender), rules)) {
+            emitWarning(warning, defender, attacker, invalidOut, outMessages);
         }
-        if (outMessages.add(response)) {
-            invalidOut.accept(new KeyValue<>(defender, attacker), response);
+    }
+
+    private static void emitWarning(BlitzWarning warning, DBNation defender, DBNation attacker, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut, Set<String> outMessages) {
+        if (outMessages.add(warning.detail())) {
+            invalidOut.accept(new KeyValue<>(defender, attacker), warning.detail());
         }
     }
 
     public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, boolean isLeader, int headerRow) {
         return getTargets(sheet, isLeader, headerRow, f -> Integer.MAX_VALUE, 0, Integer.MAX_VALUE, false, false, false, f -> true, (a, b) -> {}, a -> {});
+    }
+
+    public static BlitzSheetAttackerCell parseAttackerCell(Object cell) {
+        if (cell == null) {
+            return new BlitzSheetAttackerCell("", null);
+        }
+
+        String nationToken = "";
+        WarType warType = null;
+        for (String rawPart : cell.toString().split("\\|")) {
+            String part = rawPart.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+
+            int separator = part.indexOf(':');
+            if (separator > 0) {
+                String key = part.substring(0, separator).trim();
+                String value = part.substring(separator + 1).trim();
+                if (key.equalsIgnoreCase("att")) {
+                    nationToken = value;
+                    continue;
+                }
+                if (key.equalsIgnoreCase("type")) {
+                    try {
+                        warType = WarType.parse(value);
+                    } catch (IllegalArgumentException ignored) {
+                        warType = null;
+                    }
+                    continue;
+                }
+            }
+
+            if (nationToken.isEmpty()) {
+                nationToken = part;
+            }
+        }
+
+        return new BlitzSheetAttackerCell(nationToken, warType);
     }
 
     public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, boolean isLeader, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlotted, boolean checkSpySlotted, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut2, Consumer<Map<String, Object>> debugInfo) {
@@ -124,6 +151,7 @@ public class BlitzGenerator {
 
         Map<Integer, String> duplicateColumns = new LinkedHashMap<>();
         boolean isReverse = false;
+        Set<String> outMessages = new HashSet<>();
         for (int i = 0; i < header.size(); i++) {
             Object obj = header.get(i);
             if (obj == null) continue;
@@ -184,8 +212,8 @@ public class BlitzGenerator {
                 duplicates.computeIfAbsent(entry.getValue(), f -> new ArrayList<>()).add(cell);
             }
             for (Map.Entry<String, List<String>> entry : duplicates.entrySet()) {
-                String response = ("Duplicate columns found for: " + entry.getKey() + " at " + String.join(", ", entry.getValue()));
-                invalidOut.accept(new KeyValue<>(null, null), response);
+                BlitzWarning warning = BlitzValidator.duplicateSheetColumnWarning(entry.getKey(), entry.getValue());
+                emitWarning(warning, null, null, invalidOut, outMessages);
             }
 
 
@@ -195,7 +223,6 @@ public class BlitzGenerator {
         Set<DBNation> allDefenders = new ObjectLinkedOpenHashSet<>();
         Map<DBNation, Set<DBNation>> targets = new LinkedHashMap<>();
         Map<DBNation, Set<DBNation>> offensiveWars = new LinkedHashMap<>();
-        Set<String> outMessages = new HashSet<>();
 
         for (int i = headerRow + 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
@@ -212,23 +239,19 @@ public class BlitzGenerator {
             DBNation defender = !isReverse ? nation : null;
 
             if (nation == null) {
-                String response = ("`" + cell.toString() + "` is an invalid nation");
-                if (outMessages.add(response)) {
-                    invalidOut.accept(new KeyValue<>(defender, attacker), response);
-                }
+                BlitzWarning warning = BlitzValidator.unknownNationWarning(cell.toString());
+                emitWarning(warning, defender, attacker, invalidOut, outMessages);
                 continue;
             }
 
-            if (allianceI != null && rows.size() > allianceI) {
+            if (allianceI != null && row.size() > allianceI) {
                 Object aaCell = row.get(allianceI);
                 if (aaCell != null) {
                     String allianceStr = aaCell.toString();
                     DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(allianceStr);
                     if (alliance != null && nation.getAlliance_id() != alliance.getAlliance_id()) {
-                        String response = ("Nation: `" + nationStr + "` is no longer in alliance: `" + allianceStr + "`");
-                        if (outMessages.add(response)) {
-                            invalidOut.accept(new KeyValue<>(defender, attacker), response);
-                        }
+                        BlitzWarning warning = BlitzValidator.allianceMismatchWarning(BlitzDraftNation.of(nation), nationStr, allianceStr);
+                        emitWarning(warning, defender, attacker, invalidOut, outMessages);
                     }
                 }
             }
@@ -246,7 +269,8 @@ public class BlitzGenerator {
                         DBNation attackerMutable = finalAttacker;
                         Object cell = row.get(j);
                         if (cell == null || cell.toString().isEmpty()) return;
-                        DBNation other = DiscordUtil.parseNation(cell.toString().split("\\|")[0], false, finalUseLeader, null);
+                        BlitzSheetAttackerCell attackerCell = parseAttackerCell(cell);
+                        DBNation other = DiscordUtil.parseNation(attackerCell.nationToken(), false, finalUseLeader, null);
 
                         if (finalIsReverse) {
                             defenderMutable = other;
@@ -255,10 +279,8 @@ public class BlitzGenerator {
                         }
 
                         if (other == null) {
-                            String response = ("`" + cell.toString() + "` is an invalid nation");
-                            if (outMessages.add(response)) {
-                                invalidOut.accept(new KeyValue<>(defenderMutable, attackerMutable), response);
-                            }
+                            BlitzWarning warning = BlitzValidator.unknownNationWarning(cell.toString());
+                            emitWarning(warning, defenderMutable, attackerMutable, invalidOut, outMessages);
                             return;
                         }
 
@@ -285,17 +307,16 @@ public class BlitzGenerator {
                 for (Integer j : targetsIndexesRoseFormat) {
                     cell = row.get(j);
                     if (cell == null || cell.toString().isEmpty()) continue;
-                    DBNation other = DiscordUtil.parseNation(cell.toString().split(" / ")[0], false, useLeader, null);
+                    BlitzSheetAttackerCell attackerCell = parseAttackerCell(cell.toString().split(" / ")[0]);
+                    DBNation other = DiscordUtil.parseNation(attackerCell.nationToken(), false, useLeader, null);
                     if (isReverse) {
                         defender = other;
                     } else {
                         attacker = other;
                     }
                     if (other == null) {
-                        String response = ("`" + cell.toString() + "` is an invalid nation");
-                        if (outMessages.add(response)) {
-                            invalidOut.accept(new KeyValue<>(defender, attacker), response);
-                        }
+                        BlitzWarning warning = BlitzValidator.unknownNationWarning(cell.toString());
+                        emitWarning(warning, defender, attacker, invalidOut, outMessages);
                         continue;
                     }
                     DBNation tmp = attacker;
@@ -318,42 +339,20 @@ public class BlitzGenerator {
             DBNation attacker = entry.getKey();
             Set<DBNation> defenders = entry.getValue();
             if (defenders.size() > maxWars.apply(attacker)) {
-                String response = ("`" + attacker.getNation() + "` has " + entry.getValue().size() + " targets");
-                if (outMessages.add(response)) {
-                    invalidOut.accept(new KeyValue<>(null, attacker), response);
-                }
+                BlitzWarning warning = BlitzValidator.maxOffensivesWarning(BlitzDraftNation.of(attacker), entry.getValue().size());
+                emitWarning(warning, null, attacker, invalidOut, outMessages);
             }
         }
 
         for (DBNation attacker : allAttackers) {
-            String response;
-            if (attacker.active_m() > 4880) {
-                response = ("Attacker: `" + attacker.getNation() + "` is inactive");
-            } else if (attacker.getVm_turns() > 1) {
-                response = ("Attacker: `" + attacker.getNation() + "` is in VM for " + attacker.getVm_turns() + " turns");
-            } else {
-                continue;
-            }
-            if (outMessages.add(response)) {
-                invalidOut.accept(new KeyValue<>(null, attacker), response);
+            for (BlitzWarning warning : BlitzValidator.validateAttacker(BlitzDraftNation.of(attacker))) {
+                emitWarning(warning, null, attacker, invalidOut, outMessages);
             }
         }
 
         for (DBNation defender : allDefenders) {
-            String response;
-            if (!isValidTarget.apply(defender)) {
-                response = ("Defender: `" + defender.getNation() + "` is not an enemy");
-            } else if (defender.active_m() > TimeUnit.DAYS.toMinutes(8)) {
-                response = ("Defender: `" + defender.getNation() + "` is inactive");
-            } else if (defender.getVm_turns() > 1) {
-                response = ("Defender: `" + defender.getNation() + "` is in VM for " + defender.getVm_turns() + " turns");
-            } else if (defender.isBeige()) {
-                response = ("Defender: `" + defender.getNation() + "` is beige");
-            } else {
-                continue;
-            }
-            if (outMessages.add(response)) {
-                invalidOut.accept(new KeyValue<>(defender, null), response);
+            for (BlitzWarning warning : BlitzValidator.validateDefender(BlitzDraftNation.of(defender), ignored -> isValidTarget.apply(defender))) {
+                emitWarning(warning, defender, null, invalidOut, outMessages);
             }
         }
 
@@ -567,6 +566,61 @@ public class BlitzGenerator {
 
         return defTargets;
 
+    }
+
+    /**
+     * Produces an assignment using the sim-based {@link link.locutus.discord.sim.planners.BlitzPlanner}.
+     *
+     * <p>This replaces the core heuristic in {@link #assignTargets()}.
+     * Sheet parsing ({@link #getTargets}) stays untouched; only the assignment step is replaced.
+     * The old {@link #assignTargets()} is preserved for callers not yet migrated.</p>
+     *
+     * @param tuning sim tuning (pass {@link link.locutus.discord.sim.SimTuning#defaults()} for defaults)
+     * @return attackerId → list of defenderIds assignment
+     */
+    public Map<DBNation, List<DBNation>> assignTargetsViaSim(link.locutus.discord.sim.SimTuning tuning) {
+        init();
+
+        List<link.locutus.discord.sim.planners.DBNationSnapshot> attackerSnaps = new ArrayList<>();
+        List<link.locutus.discord.sim.planners.DBNationSnapshot> defenderSnaps = new ArrayList<>();
+        Map<Integer, DBNation> nationById = new HashMap<>();
+
+        attackerSnaps.addAll(link.locutus.discord.sim.planners.DBNationSnapshot.of(colA, Map.of()));
+        for (DBNation nation : colA) {
+            nationById.put(nation.getNation_id(), nation);
+        }
+        defenderSnaps.addAll(link.locutus.discord.sim.planners.DBNationSnapshot.of(colB, Map.of()));
+        for (DBNation nation : colB) {
+            nationById.put(nation.getNation_id(), nation);
+        }
+
+        link.locutus.discord.sim.planners.TreatyProvider treaties = link.locutus.discord.sim.planners.TreatyProvider.sameAlliance(
+                nId -> {
+                    DBNation n = nationById.get(nId);
+                    return n == null ? 0 : n.getAlliance_id();
+                });
+
+        link.locutus.discord.sim.planners.BlitzPlanner planner = new link.locutus.discord.sim.planners.BlitzPlanner(
+                tuning, treaties, link.locutus.discord.sim.planners.OverrideSet.EMPTY,
+                new link.locutus.discord.sim.DamageObjective());
+
+        link.locutus.discord.sim.planners.BlitzAssignment result = planner.assign(attackerSnaps, defenderSnaps);
+
+        // Convert nationId-keyed result back to DBNation
+        Map<DBNation, List<DBNation>> assignment = new LinkedHashMap<>();
+        for (Map.Entry<Integer, List<Integer>> entry : result.assignment().entrySet()) {
+            DBNation attacker = nationById.get(entry.getKey());
+            if (attacker == null) continue;
+            List<DBNation> targets = new ArrayList<>();
+            for (int defId : entry.getValue()) {
+                DBNation def = nationById.get(defId);
+                if (def != null) targets.add(def);
+            }
+            if (!targets.isEmpty()) {
+                assignment.put(attacker, targets);
+            }
+        }
+        return assignment;
     }
 
     public Map<DBNation, List<DBNation>> assignTargets() {

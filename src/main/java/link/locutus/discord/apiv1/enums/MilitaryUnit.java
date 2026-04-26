@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.enums;
 
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2DoubleFunction;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -233,12 +234,26 @@ public enum MilitaryUnit {
             return cap;
         }
         Research research = this.rebuyResearch;
+        if (research != null) {
+            Integer level = getResearch.apply(research);
+            if (level != null && level > 0) {
+                cap += rebuyAmount * level;
+            }
+        }
         return cap;
     }
 
     public int getCap(DBNation nation, boolean update) {
         int researchBits = nation.getResearchBits(null);
         return getCap(() -> nation.getCityMap(update).values(), nation::hasProject, researchBits);
+    }
+
+    public int capacityBonus(int researchBits) {
+        if (capacityResearch == null) {
+            return 0;
+        }
+        int level = capacityResearch.getLevel(researchBits);
+        return level > 0 ? capacityAmount * level : 0;
     }
 
     /**
@@ -258,12 +273,7 @@ public enum MilitaryUnit {
                 MilitaryBuilding building = getBuilding();
                 if (building == null) throw new IllegalArgumentException("Unknown building: " + this);
                 int cap = building.getUnitCap() * building.cap(hasProject) * numCities;
-                if (this.capacityResearch != null) {
-                    int level = this.capacityResearch.getLevel(research);
-                    if (level > 0) {
-                        cap += this.capacityAmount * level;
-                    }
-                }
+                cap += capacityBonus(research);
                 return cap;
             case MISSILE:
             case NUKE:
@@ -275,7 +285,7 @@ public enum MilitaryUnit {
         }
     }
 
-    public int getCap(Supplier<Collection<JavaCity>> citiesSupplier, Predicate<Project> hasProject, int researchBits) {
+    public int getCap(Supplier<? extends Collection<? extends ICity>> citiesSupplier, Predicate<Project> hasProject, int researchBits) {
         switch (this) {
             case MONEY,INFRASTRUCTURE:
                 return Integer.MAX_VALUE;
@@ -288,24 +298,40 @@ public enum MilitaryUnit {
 
                 int amt = 0;
                 double pop = 0;
-                Collection<JavaCity> cities = citiesSupplier.get();
-                for (JavaCity city : cities) {
+                Collection<? extends ICity> cities = citiesSupplier.get();
+                for (ICity city : cities) {
                     amt += city.getBuilding(building);
                     if (building.getCitizensPerUnit() > 0) {
                         pop += city.calcPopulation(hasProject);
                     }
                 }
-                int cap = building.cap(hasProject) * amt;
+                return getCap(amt, pop, hasProject, researchBits);
+            case MISSILE:
+                return hasProject.test(Projects.MISSILE_LAUNCH_PAD) ? Integer.MAX_VALUE : 0;
+            case NUKE:
+                return hasProject.test(Projects.NUCLEAR_RESEARCH_FACILITY) ? Integer.MAX_VALUE : 0;
+            case SPIES:
+                return hasProject.test(Projects.INTELLIGENCE_AGENCY) ? 60 : 50;
+            default:
+                throw new IllegalArgumentException("Unknown cap: " + this);
+        }
+    }
+
+    public int getCap(int builtAmount, double totalPopulation, Predicate<Project> hasProject, int researchBits) {
+        switch (this) {
+            case MONEY, INFRASTRUCTURE:
+                return Integer.MAX_VALUE;
+            case SOLDIER:
+            case TANK:
+            case AIRCRAFT:
+            case SHIP:
+                MilitaryBuilding building = getBuilding();
+                if (building == null) throw new IllegalArgumentException("Unknown building: " + this);
+                int cap = building.getUnitCap() * Math.max(0, builtAmount);
                 if (cap > 0 && building.getCitizensPerUnit() > 0) {
-                    cap = (int) Math.min(pop / building.getCitizensPerUnit(), cap);
+                    cap = (int) Math.min(Math.max(0d, totalPopulation) / building.getCitizensPerUnit(), cap);
                 }
-                if (this.capacityResearch != null) {
-                    int level = this.capacityResearch.getLevel(researchBits);
-                    if (level > 0) {
-                        cap += this.capacityAmount * level;
-                    }
-                }
-                return cap;
+                return cap + capacityBonus(researchBits);
             case MISSILE:
                 return hasProject.test(Projects.MISSILE_LAUNCH_PAD) ? Integer.MAX_VALUE : 0;
             case NUKE:

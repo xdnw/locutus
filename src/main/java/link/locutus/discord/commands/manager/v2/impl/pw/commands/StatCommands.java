@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.util.RateLimitedSources;
 import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
@@ -10,53 +11,23 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
-import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.WarCostByDayMode;
-import link.locutus.discord.apiv1.enums.WarCostMode;
-import link.locutus.discord.apiv1.enums.WarCostStat;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
-import link.locutus.discord.commands.manager.v2.builder.GroupedRankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
@@ -64,53 +35,36 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.AllianceRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.BaseballRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.AllianceRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.BaseballRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.NationRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarRankingRequests;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.WarStatusRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
-import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
-import link.locutus.discord.commands.manager.v2.table.imp.EntityGroup;
-import link.locutus.discord.commands.manager.v2.table.imp.MultiCoalitionMetricGraph;
-import link.locutus.discord.commands.manager.v2.table.imp.NthBeigeLoot;
-import link.locutus.discord.commands.manager.v2.table.imp.OrbisMetricGraph;
-import link.locutus.discord.commands.manager.v2.table.imp.RadiationByTurn;
-import link.locutus.discord.commands.manager.v2.table.imp.ScoreTierGraph;
-import link.locutus.discord.commands.manager.v2.table.imp.StrengthTierGraph;
-import link.locutus.discord.commands.manager.v2.table.imp.WarAttacksByDay;
-import link.locutus.discord.commands.manager.v2.table.imp.WarCostByDay;
-import link.locutus.discord.commands.manager.v2.table.imp.WarCostRankingByDay;
+import link.locutus.discord.commands.manager.v2.table.imp.*;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.AttackTypeBreakdown;
-import link.locutus.discord.db.entities.CoalitionWarStatus;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.MMRDouble;
-import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitedSources;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -134,24 +88,12 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class StatCommands {
@@ -360,7 +302,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 io,
                 command,
-                WarRankingService.warCostRanking(WarRankingService.WarCostRequest.normalize(
+                WarRankingService.warCostRanking(WarRankingRequests.cost(
                         timeStart,
                         timeEnd,
                         coalition1,
@@ -656,7 +598,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.metricRanking(AllianceRankingService.MetricRequest.normalize(alliances, metric, reverseOrder, highlight)),
+                AllianceRankingService.metricRanking(AllianceRankingRequests.metric(alliances, metric, reverseOrder, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -670,11 +612,10 @@ public class StatCommands {
                                          @Switch("r") boolean reverseOrder,
                                          @Switch("f") boolean uploadFile,
                                          @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
-        String attributeLabel = command == null ? null : command.optString("attribute", null);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.attributeRanking(AllianceRankingService.AttributeRequest.normalize(alliances, attribute, attributeLabel, reverseOrder, highlight)),
+                AllianceRankingService.attributeRanking(AllianceRankingRequests.attribute(alliances, attribute, reverseOrder, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -687,7 +628,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.deltaRanking(AllianceRankingService.DeltaRequest.normalize(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)),
+                AllianceRankingService.deltaRanking(AllianceRankingRequests.delta(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -707,15 +648,14 @@ public class StatCommands {
                 channel,
                 command,
                 NationValueRankingService.attributeRanking(
-                        NationValueRankingService.AttributeRequest.normalize(
+                        NationRankingRequests.attribute(
                                 db == null ? null : db.getGuild(),
                                 nations,
                                 attribute,
                                 groupByAlliance,
                                 reverseOrder,
                                 snapshotDate,
-                                total,
-                                title
+                                total
                         )
                 ),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
@@ -1117,48 +1057,23 @@ public class StatCommands {
     public void baseballRanking(BaseballDB db, @Me JSONObject command, @Me IMessageIO channel,
                                 @Arg("Date to start from")
                                 @Timestamp long date, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
-
-        Map<Integer, Integer> mostGames = new Int2IntOpenHashMap();
-        for (BBGame game : games) {
-            if (byAlliance) {
-                DBNation home = DBNation.getById(game.getHome_nation_id());
-                DBNation away = DBNation.getById(game.getAway_nation_id());
-                if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
-                if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
-            } else {
-                mostGames.merge(game.getHome_nation_id(), 1, Integer::sum);
-                mostGames.merge(game.getAway_nation_id(), 1, Integer::sum);
-            }
-        }
-
-        String title = "# BB Games (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.games(date, byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "Rank of nations by number of challenge baseball games", viewable = true)
     public void baseballChallengeRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                          @Arg("Group the rankings by alliance instead of nations") @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
-
-        Map<Integer, Integer> mostGames = new Int2IntOpenHashMap();
-        for (BBGame game : games) {
-            if (byAlliance) {
-
-                DBNation home = DBNation.getById(game.getHome_nation_id());
-                DBNation away = DBNation.getById(game.getAway_nation_id());
-                if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
-                if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
-            } else {
-                mostGames.merge(game.getHome_nation_id(), 1, Integer::sum);
-                mostGames.merge(game.getAway_nation_id(), 1, Integer::sum);
-            }
-        }
-
-        String title = "# Challenge BB Games";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.challengeGames(byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "List the baseball wager inflows for a nation id", viewable = true)
@@ -1199,56 +1114,24 @@ public class StatCommands {
                                         @Timestamp long date, @Switch("f") boolean uploadFile,
                                         @Arg("Group the rankings by alliance instead of nations")
                                         @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
-
-        Map<Integer, Long> mostWageredWinnings = new Int2LongOpenHashMap();
-        for (BBGame game : games) {
-            int id;
-            if (game.getHome_score() > game.getAway_score()) {
-                id = game.getHome_nation_id();
-
-            } else if (game.getAway_score() > game.getHome_score()) {
-                id = game.getAway_nation_id();
-            } else continue;
-            if (byAlliance) {
-                DBNation nation = DBNation.getById(id);
-                if (nation == null) continue;
-                id = nation.getAlliance_id();
-            }
-            mostWageredWinnings.merge(id, game.getSpoils().longValue(), Long::sum);
-        }
-
-        String title = "BB Earnings $ (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.earnings(date, byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "Rank of nations by challenge baseball challenge earnings", viewable = true)
     public void baseballChallengeEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                                  @Arg("Group the rankings by alliance instead of nations")
                                                  @Switch("a") boolean byAlliance) {
-        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
-
-        Map<Integer, Long> mostWageredWinnings = new Int2LongOpenHashMap();
-        for (BBGame game : games) {
-            int id;
-            if (game.getHome_score() > game.getAway_score()) {
-                id = game.getHome_nation_id();
-
-            } else if (game.getAway_score() > game.getHome_score()) {
-                id = game.getAway_nation_id();
-            } else continue;
-            if (byAlliance) {
-                DBNation nation = DBNation.getById(id);
-                if (nation == null) continue;
-                id = nation.getAlliance_id();
-            }
-            mostWageredWinnings.merge(id, game.getWager().longValue(), Long::sum);
-        }
-
-        String title = "BB Challenge Earnings $";
-        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
-        ranks.build(channel, command, title, uploadFile);
+        DiscordRankingAdapter.send(
+                channel,
+                command,
+                BaseballRankingService.ranking(db, BaseballRankingRequests.challengeEarnings(byAlliance)),
+                new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
+        );
     }
 
     @Command(desc = "Generate ranking of war status by Alliance", viewable = true)
@@ -1269,7 +1152,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                WarStatusRankingService.ranking(WarStatusRankingService.Request.normalize(isAA, attackers, defenders, time)),
+                WarStatusRankingService.ranking(WarStatusRankingRequests.status(isAA, attackers, defenders, time)),
                 null
         );
     }
@@ -2735,7 +2618,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.lootRanking(AllianceRankingService.LootRequest.normalize(time, show_total, min_score, max_score, highlight)),
+                AllianceRankingService.lootRanking(AllianceRankingRequests.loot(time, show_total, min_score, max_score, highlight)),
                 new DiscordRankingAdapter.RenderOptions(num_results, attach_file, author)
         );
         return null;
@@ -2753,7 +2636,7 @@ public class StatCommands {
         DiscordRankingAdapter.send(
                 io,
                 command,
-                WarRankingService.attackTypeRanking(WarRankingService.AttackTypeRequest.normalize(
+                WarRankingService.attackTypeRanking(WarRankingRequests.attackType(
                         time,
                         type,
                         alliances,

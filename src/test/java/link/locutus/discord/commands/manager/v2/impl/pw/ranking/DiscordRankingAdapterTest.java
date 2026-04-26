@@ -2,8 +2,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
-import org.junit.jupiter.api.Test;
 import org.json.JSONObject;
+import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,36 +15,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DiscordRankingAdapterTest {
     @Test
-    void adapterOwnsNotesNumberingEllipsisAndFileUpload() {
-        RankingMetricDescriptor metric = new RankingMetricDescriptor("count", "Count", RankingNumericType.INTEGER, RankingValueFormat.COUNT);
+    void adapterOwnsNumberingEllipsisAndFileUpload() {
         Map<Integer, Integer> values = new LinkedHashMap<>();
         values.put(1, 3);
         values.put(2, 2);
         values.put(3, 1);
-        RankingSection section = RankingBuilders.singleMetricSection(
-                "entities",
-                "Entities",
+
+        RankingResult result = RankingBuilders.singleMetricRanking(
+                RankingKind.WAR_COUNT,
                 RankingEntityType.ALLIANCE,
-                metric,
-                RankingSortDirection.DESC,
-                values,
+                RankingValueFormat.COUNT,
+                List.of(RankingBuilders.singleMetricSection(
+                        RankingSectionKind.ALLIANCES,
+                        RankingSortDirection.DESC,
+                        values
+                )),
                 Set.of(3),
-                id -> switch (id) {
-                    case 1 -> "One";
-                    case 2 -> "Two";
-                    default -> "Three";
-                },
-                List.of(),
-                List.of("Values are deltas between the requested start and end turns.")
-        );
-        RankingResult result = new RankingResult(
-                "ranking_fixture",
-                "Alliance Ranking",
-                List.of(),
-                section.rowCount(),
-                12345L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                List.of(section)
+                12345L
         );
 
         StringMessageIO io = new StringMessageIO(null, null);
@@ -54,12 +41,11 @@ class DiscordRankingAdapterTest {
         StringMessageBuilder message = io.getMessages().get(0);
         String rendered = message.toString();
 
-        assertTrue(rendered.contains("Values are deltas between the requested start and end turns."));
-        assertTrue(rendered.contains("1. One: 3"));
-        assertTrue(rendered.contains("2. Two: 2"));
+        assertTrue(rendered.contains("1. alliance:1: 3"));
+        assertTrue(rendered.contains("2. alliance:2: 2"));
         assertTrue(rendered.contains("..."));
-        assertTrue(rendered.contains("**3. Three: 1**"));
-        assertTrue(message.getFiles().containsKey("ranking_fixture.txt"));
+        assertTrue(rendered.contains("**3. alliance:3: 1**"));
+        assertTrue(message.getFiles().containsKey("war_count.txt"));
         assertTrue(message.getButtons().containsValue("Refresh"));
     }
 }

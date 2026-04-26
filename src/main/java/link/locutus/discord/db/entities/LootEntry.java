@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.event.Event;
+import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 
@@ -48,8 +49,7 @@ public class LootEntry {
         double aaScore = aa.getScore();
         if (aaScore == 0) return ResourceType.getBuffer();
 
-        double ratio = ((score * 10000) / aaScore) / 2d;
-        double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
+        double percent = WarOutcomeMath.expectedAllianceLootPercent(score, aaScore);
         double[] yourLoot = total_rss.clone();
         return PW.multiply(yourLoot, percent);
     }

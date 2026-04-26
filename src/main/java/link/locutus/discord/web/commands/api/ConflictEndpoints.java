@@ -8,9 +8,11 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
+import link.locutus.discord.db.conflict.ConflictStartDetector;
 import link.locutus.discord.db.conflict.ConflictUtil;
 import link.locutus.discord.db.conflict.VirtualConflictStorageManager;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
 import link.locutus.discord.web.commands.page.PageHelper;
@@ -155,6 +157,94 @@ public class ConflictEndpoints extends PageHelper {
         VirtualConflictStorageManager storageManager = new VirtualConflictStorageManager(manager.getCloud());
         storageManager.deleteConflict(virtualId);
         return success();
+    }
+
+    private boolean hasConflictWritePerm(Conflict conflict, DBNation me, User user, Guild guild, GuildDB db) {
+        if (hasVirtualConflictAdminPerms(user, guild, db)) {
+            return true;
+        }
+        ConflictUtil.VirtualConflictId virtualId = conflict == null ? null : conflict.getVirtualConflictId();
+        return virtualId != null && me != null && me.getId() == virtualId.nationId();
+    }
+
+    @Command(desc = """
+            Scan declared wars to produce nearby candidate start turns for a conflict.
+
+            With `force=false` (or omitted): runs detection, stores a token, and
+            returns nearby qualifying candidate turns without mutating the conflict.
+            The trigger is at least three distinct attacker nations on one side
+            declaring onto the opposing coalition during that turn.
+
+            With `force=true`: applies a previously surfaced candidate using the
+            supplied token and optional `candidate_turn`, without recomputing.""")
+    @ReturnType(value = WebConflictStartDetection.class)
+    public Object detectConflictStart(ConflictManager manager, Conflict conflict, @Me @Default GuildDB db,
+            @Me @Default Guild guild, @Me @Default User user, @Me @Default DBNation me,
+            @Switch("t") Integer turn_allowance, @Switch("f") boolean force,
+            @Switch("k") UUID token, @Switch("c") Long candidate_turn) {
+        if (conflict == null) {
+            throw new IllegalArgumentException("Please provide a conflict");
+        }
+        if (!hasConflictWritePerm(conflict, me, user, guild, db)) {
+            throw new IllegalArgumentException("You do not have permission to modify this conflict");
+        }
+
+        String webId = conflict.isVirtual()
+                ? conflict.getVirtualConflictId().toWebId()
+                : Integer.toString(conflict.getId());
+        long currentStartTurn = conflict.getStartTurn();
+
+        if (force) {
+            ConflictStartDetector.Candidate applied = ConflictStartDetector.resolveCandidate(conflict, token, candidate_turn);
+            long appliedMs = applied.turnMs();
+            conflict.setStart(appliedMs);
+            return new WebConflictStartDetection(
+                    webId,
+                    currentStartTurn,
+                    currentStartTurn,
+                    applied.turn(),
+                    true,
+                    null,
+                    Collections.emptyList());
+        }
+
+        ConflictStartDetector.Result result = ConflictStartDetector.detect(
+                conflict, turn_allowance == null ? 0 : turn_allowance);
+        UUID previewToken = result.candidates().isEmpty() ? null : ConflictStartDetector.createToken(conflict, result);
+        List<WebConflictStartDetection.Candidate> candidates = new ArrayList<>(result.candidates().size());
+        for (ConflictStartDetector.Candidate c : result.candidates()) {
+            candidates.add(new WebConflictStartDetection.Candidate(
+                    c.turn(),
+                    c.coal1Nations(),
+                    c.coal2Nations(),
+                    c.coal1Declarations(),
+                    c.coal2Declarations(),
+                    c.totalDeclarations(),
+                    toAllianceList(manager, c.coal1Alliances()),
+                    toAllianceList(manager, c.coal2Alliances())));
+        }
+        return new WebConflictStartDetection(
+                webId,
+                currentStartTurn,
+                result.searchedFromTurn(),
+                null,
+                false,
+                previewToken == null ? null : previewToken.toString(),
+                candidates);
+    }
+
+    private static List<WebConflictStartDetection.AllianceSummary> toAllianceList(
+            ConflictManager manager,
+            List<ConflictStartDetector.AllianceSummary> src) {
+        List<WebConflictStartDetection.AllianceSummary> out = new ArrayList<>(src.size());
+        for (ConflictStartDetector.AllianceSummary entry : src) {
+            out.add(new WebConflictStartDetection.AllianceSummary(
+                    entry.allianceId(),
+                    manager.getAllianceNameOrNull(entry.allianceId()),
+                    entry.nations(),
+                    entry.declarations()));
+        }
+        return out;
     }
 
     @Command(desc = "Fetch forum announcement posts for given conflicts", viewable = true)

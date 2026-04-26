@@ -1,100 +1,17 @@
 {
-  "responseKey" : "alliance_metric_fixture",
-  "title" : "Top Score by alliance",
-  "querySummary" : [ {
-    "key" : "metric",
-    "label" : "Metric",
-    "value" : "score"
+  "kind" : "ALLIANCE_METRIC",
+  "keyType" : "ALLIANCE",
+  "keyIds" : [ 1, 2, 3 ],
+  "valueColumns" : [ {
+    "kind" : "PRIMARY",
+    "format" : "COUNT",
+    "values" : [ 10.0, 10.0, 8.0 ]
   } ],
-  "rowCount" : 3,
-  "asOfMs" : 12345,
-  "emptySectionPolicy" : "INCLUDE_EMPTY_SECTIONS",
-  "sections" : [ {
-    "sectionKey" : "alliances",
-    "title" : "Alliances",
-    "entityType" : "ALLIANCE",
-    "metrics" : [ {
-      "metricKey" : "score",
-      "label" : "Score",
-      "numericType" : "INTEGER",
-      "valueFormat" : "COUNT"
-    } ],
-    "sort" : {
-      "metricKey" : "score",
-      "direction" : "DESC",
-      "tieBreaker" : "ENTITY_ID_ASC"
-    },
-    "metadata" : [ {
-      "key" : "source_type",
-      "label" : "Source Type",
-      "value" : "ALLIANCE"
-    }, {
-      "key" : "aggregation_mode",
-      "label" : "Aggregation Mode",
-      "value" : "IDENTITY"
-    } ],
-    "notes" : [ "Current snapshot." ],
-    "rows" : [ {
-      "entity" : {
-        "entityKey" : "alliance:1",
-        "entityType" : "ALLIANCE",
-        "entityId" : 1,
-        "displayHint" : "Alliance 1"
-      },
-      "metricValues" : [ {
-        "metricKey" : "score",
-        "value" : {
-          "exactValue" : "10",
-          "numericType" : "INTEGER"
-        }
-      } ],
-      "sortValue" : {
-        "exactValue" : "10",
-        "numericType" : "INTEGER"
-      },
-      "highlighted" : false,
-      "annotation" : null
-    }, {
-      "entity" : {
-        "entityKey" : "alliance:2",
-        "entityType" : "ALLIANCE",
-        "entityId" : 2,
-        "displayHint" : "Alliance 2"
-      },
-      "metricValues" : [ {
-        "metricKey" : "score",
-        "value" : {
-          "exactValue" : "10",
-          "numericType" : "INTEGER"
-        }
-      } ],
-      "sortValue" : {
-        "exactValue" : "10",
-        "numericType" : "INTEGER"
-      },
-      "highlighted" : false,
-      "annotation" : null
-    }, {
-      "entity" : {
-        "entityKey" : "alliance:3",
-        "entityType" : "ALLIANCE",
-        "entityId" : 3,
-        "displayHint" : "Alliance 3"
-      },
-      "metricValues" : [ {
-        "metricKey" : "score",
-        "value" : {
-          "exactValue" : "8",
-          "numericType" : "INTEGER"
-        }
-      } ],
-      "sortValue" : {
-        "exactValue" : "8",
-        "numericType" : "INTEGER"
-      },
-      "highlighted" : true,
-      "annotation" : null
-    } ],
+  "sectionRanges" : [ {
+    "kind" : "ALLIANCES",
+    "rowOffset" : 0,
     "rowCount" : 3
-  } ]
+  } ],
+  "highlightedIds" : [ 3 ],
+  "asOfMs" : 12345
 }

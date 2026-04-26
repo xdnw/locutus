@@ -129,15 +129,7 @@ public interface ICity {
     }
 
     default Map.Entry<Integer, Integer> getMissileDamage(Predicate<Project> hasProject) {
-        double density = calcPopulation(hasProject) / getLand();
-        double infra = getInfra();
-        double factor = 1;
-        if (hasProject.test(Projects.GUIDING_SATELLITE)) {
-            factor = 1.2;
-        }
-        double destroyedMin = Math.min(infra, Math.min(1700, infra * 0.8 + 150)) * factor;
-        double destroyedMax = Math.min(infra, Math.max(Math.max(2000, density * 13.5), infra * 0.8 + 150)) * factor;
-        return new KeyValue<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
+        return missileDamageRange(getInfra(), getLand(), calcPopulation(hasProject), hasProject.test(Projects.GUIDING_SATELLITE));
     }
 
     int getNuke_turn();
@@ -155,15 +147,69 @@ public interface ICity {
     }
 
     default Map.Entry<Integer, Integer> getNukeDamage(Predicate<Project> hasProject) {
-        double density = calcPopulation(hasProject) / getLand();
-        double infra = getInfra();
-        double factor = 1;
-        if (hasProject.test(Projects.GUIDING_SATELLITE)) {
-            factor = 1.2;
+        return nukeDamageRange(getInfra(), getLand(), calcPopulation(hasProject), hasProject.test(Projects.GUIDING_SATELLITE));
+    }
+
+    static Map.Entry<Integer, Integer> missileDamageRange(double infra, double land, int population, boolean guidingSatellite) {
+        return projectileDamageRange(infra, land, population, guidingSatellite, true);
+    }
+
+    static Map.Entry<Integer, Integer> nukeDamageRange(double infra, double land, int population, boolean guidingSatellite) {
+        return projectileDamageRange(infra, land, population, guidingSatellite, false);
+    }
+
+    static int missileDamageMin(double infra, double land, int population, boolean guidingSatellite) {
+        return projectileDamageBound(infra, land, population, guidingSatellite, true, true);
+    }
+
+    static int missileDamageMax(double infra, double land, int population, boolean guidingSatellite) {
+        return projectileDamageBound(infra, land, population, guidingSatellite, true, false);
+    }
+
+    static int nukeDamageMin(double infra, double land, int population, boolean guidingSatellite) {
+        return projectileDamageBound(infra, land, population, guidingSatellite, false, true);
+    }
+
+    static int nukeDamageMax(double infra, double land, int population, boolean guidingSatellite) {
+        return projectileDamageBound(infra, land, population, guidingSatellite, false, false);
+    }
+
+    private static Map.Entry<Integer, Integer> projectileDamageRange(
+            double infra,
+            double land,
+            int population,
+            boolean guidingSatellite,
+            boolean missile
+    ) {
+        return new KeyValue<>(
+                projectileDamageBound(infra, land, population, guidingSatellite, missile, true),
+                projectileDamageBound(infra, land, population, guidingSatellite, missile, false)
+        );
+    }
+
+    private static int projectileDamageBound(
+            double infra,
+            double land,
+            int population,
+            boolean guidingSatellite,
+            boolean missile,
+            boolean minBound
+    ) {
+        double normalizedInfra = Math.max(0d, infra);
+        double normalizedLand = Math.max(1d, land);
+        double density = population / normalizedLand;
+        double factor = guidingSatellite ? 1.2d : 1d;
+        double destroyed;
+        if (missile) {
+            destroyed = minBound
+                    ? Math.min(normalizedInfra, Math.min(1700d, normalizedInfra * 0.8d + 150d)) * factor
+                    : Math.min(normalizedInfra, Math.max(Math.max(2000d, density * 13.5d), normalizedInfra * 0.8d + 150d)) * factor;
+        } else {
+            destroyed = minBound
+                    ? Math.min(normalizedInfra, Math.min(300d, normalizedInfra * 0.3d + 100d)) * factor
+                    : Math.min(normalizedInfra, Math.max(Math.max(350d, density * 3d), normalizedInfra * 0.8d + 150d)) * factor;
         }
-        double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100)) * factor;
-        double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150)) * factor;
-        return new KeyValue<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
+        return (int) Math.round(destroyed);
     }
 
     @Command(desc = """

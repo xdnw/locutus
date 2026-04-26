@@ -31,6 +31,26 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class WarStatistics {
+    private static final List<ConflictMetric> DAY_GRAPH_METRICS = List.of(
+            ConflictMetric.NATION,
+            ConflictMetric.BEIGE,
+            ConflictMetric.INFRA,
+            ConflictMetric.SOLDIER_CAPACITY,
+            ConflictMetric.TANK_CAPACITY,
+            ConflictMetric.AIRCRAFT_CAPACITY,
+            ConflictMetric.SHIP_CAPACITY
+    );
+
+    public static final class DayTierMetrics {
+        public int nationCount;
+        public int infra;
+        public int beigeCount;
+        public int soldierCapacity;
+        public int tankCapacity;
+        public int aircraftCapacity;
+        public int shipCapacity;
+    }
+
     private final CoalitionSide parent;
 
     public volatile long latestGraphTurn = -1L;
@@ -120,7 +140,7 @@ public class WarStatistics {
             if (graphDataByDay.containsKey(day)) return;
         } else {
             if (save && graphDataByDay.containsKey(day)) {
-                manager.clearGraphData(List.of(ConflictMetric.INFRA, ConflictMetric.BEIGE, ConflictMetric.NATION), getParent().getId(), getParent().isPrimary(), day);
+                manager.clearGraphData(DAY_GRAPH_METRICS, getParent().getId(), getParent().isPrimary(), day);
             }
         }
         DayTierGraphData dayGraph = graphDataByDay.computeIfAbsent(day, k -> new DayTierGraphData());
@@ -130,32 +150,48 @@ public class WarStatistics {
         }
     }
 
-    public void updateDayTierGraph(ConflictManager manager, long day, Map<Integer, Map<Byte, int[]>> data, boolean force, boolean save) {
+    public void updateDayTierGraph(ConflictManager manager, long day, Map<Integer, Map<Byte, DayTierMetrics>> data, boolean force, boolean save) {
         if (!force) {
             if (graphDataByDay.containsKey(day)) return;
         } else {
             if (save && graphDataByDay.containsKey(day)) {
-                manager.clearGraphData(List.of(ConflictMetric.INFRA, ConflictMetric.BEIGE, ConflictMetric.NATION), getParent().getId(), getParent().isPrimary(), day);
+                manager.clearGraphData(DAY_GRAPH_METRICS, getParent().getId(), getParent().isPrimary(), day);
             }
         }
 
         DayTierGraphData graphData = new DayTierGraphData();
-        for (Map.Entry<Integer, Map<Byte, int[]>> allianceEntry : data.entrySet()) {
+        for (Map.Entry<Integer, Map<Byte, DayTierMetrics>> allianceEntry : data.entrySet()) {
             int allianceId = allianceEntry.getKey();
             Map<Byte, Integer> nationByTier = graphData.getOrCreate(ConflictMetric.NATION, allianceId);
             Map<Byte, Integer> infraByTier = graphData.getOrCreate(ConflictMetric.INFRA, allianceId);
             Map<Byte, Integer> beigeByTier = graphData.getOrCreate(ConflictMetric.BEIGE, allianceId);
-            for (Map.Entry<Byte, int[]> tierEntry : allianceEntry.getValue().entrySet()) {
+            Map<Byte, Integer> soldierCapacityByTier = graphData.getOrCreate(ConflictMetric.SOLDIER_CAPACITY, allianceId);
+            Map<Byte, Integer> tankCapacityByTier = graphData.getOrCreate(ConflictMetric.TANK_CAPACITY, allianceId);
+            Map<Byte, Integer> aircraftCapacityByTier = graphData.getOrCreate(ConflictMetric.AIRCRAFT_CAPACITY, allianceId);
+            Map<Byte, Integer> shipCapacityByTier = graphData.getOrCreate(ConflictMetric.SHIP_CAPACITY, allianceId);
+            for (Map.Entry<Byte, DayTierMetrics> tierEntry : allianceEntry.getValue().entrySet()) {
                 byte cityTier = tierEntry.getKey();
-                int[] values = tierEntry.getValue();
-                if (values[0] > 0) {
-                    nationByTier.put(cityTier, values[0]);
+                DayTierMetrics values = tierEntry.getValue();
+                if (values.nationCount > 0) {
+                    nationByTier.put(cityTier, values.nationCount);
                 }
-                if (values[1] > 0) {
-                    infraByTier.put(cityTier, values[1]);
+                if (values.infra > 0) {
+                    infraByTier.put(cityTier, values.infra);
                 }
-                if (values[2] > 0) {
-                    beigeByTier.put(cityTier, values[2]);
+                if (values.beigeCount > 0) {
+                    beigeByTier.put(cityTier, values.beigeCount);
+                }
+                if (values.soldierCapacity > 0) {
+                    soldierCapacityByTier.put(cityTier, values.soldierCapacity);
+                }
+                if (values.tankCapacity > 0) {
+                    tankCapacityByTier.put(cityTier, values.tankCapacity);
+                }
+                if (values.aircraftCapacity > 0) {
+                    aircraftCapacityByTier.put(cityTier, values.aircraftCapacity);
+                }
+                if (values.shipCapacity > 0) {
+                    shipCapacityByTier.put(cityTier, values.shipCapacity);
                 }
             }
         }
@@ -225,6 +261,47 @@ public class WarStatistics {
                 .orElse(-1L);
     }
 
+    private List<Integer> getSortedAllianceIds() {
+        List<Integer> allianceIds = new ArrayList<>(getParent().getAllianceIds());
+        Collections.sort(allianceIds);
+        return allianceIds;
+    }
+
+    private List<Integer> buildTimelineEndOffsets(
+            List<Integer> allianceIds,
+            long rangeStart,
+            long rangeEnd,
+            boolean isDayTimeline
+    ) {
+        if (allianceIds.isEmpty() || rangeEnd < rangeStart) {
+            return null;
+        }
+
+        Conflict conflict = parent.getParent();
+        int defaultOffset = (int) Math.max(rangeEnd - rangeStart, 0L);
+        List<Integer> offsets = new IntArrayList(allianceIds.size());
+        boolean trimmed = false;
+
+        for (int allianceId : allianceIds) {
+            long endTurn = conflict.getEndTurn(allianceId);
+            long endValue;
+            if (endTurn == Long.MAX_VALUE) {
+                endValue = rangeEnd;
+            } else {
+                endValue = isDayTimeline ? TimeUtil.getDayFromTurn(endTurn) : endTurn;
+            }
+
+            long clamped = Math.max(-1L, Math.min(endValue - rangeStart, defaultOffset));
+            int offset = (int) clamped;
+            offsets.add(offset);
+            if (offset != defaultOffset) {
+                trimmed = true;
+            }
+        }
+
+        return trimmed ? offsets : null;
+    }
+
     public Map<String, Object> toGraphMap(List<Integer> metricsTurn, List<Integer> metricsDay, List<Function<DamageStatGroup, Object>> damageHeaders, int columnMetricOffset) {
         List<ConflictMetric.Entry> entries = getGraphEntries();
         Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData = new Long2ObjectArrayMap<>();
@@ -291,14 +368,17 @@ public class WarStatistics {
         citiesSorted.sort(Byte::compareTo);
         root.put("cities", citiesSorted);
 
-        List<Integer> allianceIds = new ArrayList<>(getParent().getAllianceIds());
-        Collections.sort(allianceIds);
+        List<Integer> allianceIds = getSortedAllianceIds();
         long[] turnRange = ConflictUtil.computeRange(turnData);
         long minTurn = turnRange[0];
         long maxTurn = turnRange[1];
         Map<String, Object> turnRoot = new LinkedHashMap<>();
         turnRoot.put("range", List.of(minTurn, maxTurn));
         turnRoot.put("data", ConflictUtil.toGraphMapPart(metricsTurn, turnData, minTurn, maxTurn, allianceIds, citiesSorted));
+        List<Integer> turnEndOffsets = buildTimelineEndOffsets(allianceIds, minTurn, maxTurn, false);
+        if (turnEndOffsets != null) {
+            turnRoot.put("end_offsets", turnEndOffsets);
+        }
         root.put("turn", turnRoot);
 
         long[] dayRange = ConflictUtil.computeRange(dayData);
@@ -307,6 +387,10 @@ public class WarStatistics {
         Map<String, Object> dayRoot = new LinkedHashMap<>();
         dayRoot.put("range", List.of(minDay, maxDay));
         dayRoot.put("data", ConflictUtil.toGraphMapPart(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted));
+        List<Integer> dayEndOffsets = buildTimelineEndOffsets(allianceIds, minDay, maxDay, true);
+        if (dayEndOffsets != null) {
+            dayRoot.put("end_offsets", dayEndOffsets);
+        }
         root.put("day", dayRoot);
 
         return root;

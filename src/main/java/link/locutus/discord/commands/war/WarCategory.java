@@ -27,6 +27,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.sim.combat.ControlFlagDelta;
+import link.locutus.discord.sim.combat.WarControlRules;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -429,7 +431,7 @@ public class WarCategory {
         WarRoom room = roomTmp;
 
         boolean value = room.target.getNation_id() == attack.getAttacker_id();
-        boolean change = attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH || (attack.getSuccess() != SuccessType.UTTER_FAILURE && !value);
+        RoomControlUpdate roomControlUpdate = roomControlUpdate(attack.getAttack_type(), attack.getSuccess(), value);
 
         DBNation attacker = Locutus.imp().getNationDB().getNationById(attackerId);
         DBNation defender = Locutus.imp().getNationDB().getNationById(defenderId);
@@ -513,22 +515,15 @@ public class WarCategory {
                 break;
         }
 
-        if (change) {
-            switch (attack.getAttack_type()) {
-                case GROUND:
-                    room.setGC(value);
-                    break;
-                case AIRSTRIKE_INFRA:
-                case AIRSTRIKE_SOLDIER:
-                case AIRSTRIKE_TANK:
-                case AIRSTRIKE_MONEY:
-                case AIRSTRIKE_SHIP:
-                case AIRSTRIKE_AIRCRAFT:
-                    room.setAC(value);
-                    break;
-                case NAVAL:
-                    room.setBlockade(value);
-                    break;
+        if (!roomControlUpdate.isEmpty()) {
+            if (roomControlUpdate.groundControl() != null) {
+                room.setGC(roomControlUpdate.groundControl());
+            }
+            if (roomControlUpdate.airSuperiority() != null) {
+                room.setAC(roomControlUpdate.airSuperiority());
+            }
+            if (roomControlUpdate.blockade() != null) {
+                room.setBlockade(roomControlUpdate.blockade());
             }
         }
 
@@ -866,6 +861,59 @@ public class WarCategory {
             if (room.target.equals(targetOrParticipant) || room.participants.contains(targetOrParticipant)) {
                 onEach.accept(room);
             }
+        }
+    }
+
+    private static RoomControlUpdate roomControlUpdate(
+            AttackType attackType,
+            SuccessType success,
+            boolean trackedNationIsAttacker
+    ) {
+        ControlFlagDelta delta = WarControlRules.controlDelta(
+                attackType,
+                success,
+                !trackedNationIsAttacker,
+                !trackedNationIsAttacker,
+                !trackedNationIsAttacker
+        );
+        if (delta == ControlFlagDelta.NONE) {
+            return RoomControlUpdate.NONE;
+        }
+
+        Boolean groundControl = null;
+        Boolean airSuperiority = null;
+        Boolean blockade = null;
+
+        if (delta.clearGroundControl()) {
+            groundControl = Boolean.FALSE;
+        }
+        if (delta.clearAirSuperiority()) {
+            airSuperiority = Boolean.FALSE;
+        }
+        if (delta.clearBlockade()) {
+            blockade = Boolean.FALSE;
+        }
+        if (delta.groundControl() != 0) {
+            groundControl = trackedNationIsAttacker == (delta.groundControl() > 0);
+        }
+        if (delta.airSuperiority() != 0) {
+            airSuperiority = trackedNationIsAttacker == (delta.airSuperiority() > 0);
+        }
+        if (delta.blockade() != 0) {
+            blockade = trackedNationIsAttacker == (delta.blockade() > 0);
+        }
+        return new RoomControlUpdate(groundControl, airSuperiority, blockade);
+    }
+
+    private record RoomControlUpdate(
+            Boolean groundControl,
+            Boolean airSuperiority,
+            Boolean blockade
+    ) {
+        private static final RoomControlUpdate NONE = new RoomControlUpdate(null, null, null);
+
+        private boolean isEmpty() {
+            return groundControl == null && airSuperiority == null && blockade == null;
         }
     }
 

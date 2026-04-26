@@ -1,77 +1,139 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
-import org.junit.jupiter.api.Test;
-
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RankingBuildersTest {
     @Test
-    void singleMetricSectionSortsByExactValueThenEntityIdAndMarksHighlights() {
-        RankingMetricDescriptor metric = new RankingMetricDescriptor("count", "Count", RankingNumericType.INTEGER, RankingValueFormat.COUNT);
+    void singleMetricRankingSortsByExactValueThenEntityIdAndMarksHighlights() {
         Map<Integer, BigInteger> values = new LinkedHashMap<>();
-                values.put(5, new BigInteger("9007199254740993"));
-                values.put(2, new BigInteger("9007199254740993"));
+        values.put(5, new BigInteger("9007199254740993"));
+        values.put(2, new BigInteger("9007199254740993"));
         values.put(3, BigInteger.ONE);
 
-        RankingSection section = RankingBuilders.singleMetricSection(
-                "entities",
-                "Entities",
+        RankingResult result = RankingBuilders.singleMetricRanking(
+                RankingKind.RECRUITMENT,
                 RankingEntityType.ALLIANCE,
-                metric,
-                RankingSortDirection.DESC,
-                values,
+                RankingValueFormat.COUNT,
+                List.of(RankingBuilders.singleMetricSection(
+                        RankingSectionKind.ALLIANCES,
+                        RankingSortDirection.DESC,
+                        values
+                )),
                 Set.of(5),
-                id -> "Entity " + id,
-                List.of(),
-                List.of()
+                1L
         );
 
-        assertEquals(List.of(2L, 5L, 3L), section.rows().stream().map(row -> row.entity().entityId()).toList());
-        assertEquals("9007199254740993", section.rows().get(0).sortValue().exactValue());
-                assertTrue(section.rows().get(1).highlighted());
-        assertEquals("alliance:2", section.rows().get(0).entity().entityKey());
+        assertEquals(List.of(2L, 5L, 3L), result.keyIds());
+        assertEquals(RankingValueKind.PRIMARY, result.valueColumns().get(0).kind());
+        assertEquals(new BigDecimal("9007199254740993"), result.valueColumns().get(0).values().get(0));
+        assertEquals(List.of(5L), result.highlightedIds());
+        assertEquals(List.of(new RankingSectionRange(RankingSectionKind.ALLIANCES, 0, 3)), result.sectionRanges());
     }
 
     @Test
     void numericValuesAndRowCountsAreCanonicalizedAtTheSharedSeam() {
-        RankingNumericValue numericValue = RankingNumericValue.ofNumber(1.0d, RankingNumericType.INTEGER);
-        RankingRow row = new RankingRow(
-                new RankingEntityRef("alliance:7", RankingEntityType.ALLIANCE, 7, "Seven"),
-                List.of(new RankingMetricValue("count", numericValue)),
-                numericValue,
-                false,
-                null
-        );
-        RankingSection section = new RankingSection(
-                "entities",
-                "Entities",
+        RankingResult result = RankingBuilders.singleMetricRanking(
+                RankingKind.WAR_COUNT,
                 RankingEntityType.ALLIANCE,
-                List.of(new RankingMetricDescriptor("count", "Count", RankingNumericType.INTEGER, RankingValueFormat.COUNT)),
-                new RankingSort("count", RankingSortDirection.DESC, RankingTieBreaker.ENTITY_ID_ASC),
-                null,
-                null,
-                List.of(row),
-                999
-        );
-        RankingResult result = new RankingResult(
-                "fixture",
-                "Fixture",
-                null,
-                999,
-                1L,
-                RankingEmptySectionPolicy.INCLUDE_EMPTY_SECTIONS,
-                List.of(section)
+                RankingValueFormat.COUNT,
+                List.of(RankingBuilders.singleMetricSection(
+                        RankingSectionKind.ALLIANCES,
+                        RankingSortDirection.DESC,
+                        Map.of(7, 1.0d)
+                )),
+                Set.of(),
+                1L
         );
 
-        assertEquals("1", numericValue.exactValue());
-        assertEquals(1, section.rowCount());
         assertEquals(1, result.rowCount());
+        assertEquals(new BigDecimal("1.0"), result.valueColumns().get(0).values().get(0));
+        assertEquals(RankingValueKind.PRIMARY, result.valueColumns().get(0).kind());
+        assertEquals(RankingValueFormat.COUNT, result.valueColumns().get(0).format());
+    }
+
+    @Test
+    void multiMetricRankingAlignsSecondaryColumnsToPrimarySortOrder() {
+        RankingResult result = RankingBuilders.multiMetricRanking(
+                RankingKind.TRADE_FLOW,
+                RankingEntityType.NATION,
+                List.of(RankingBuilders.multiMetricSection(
+                        RankingSectionKind.NATIONS,
+                        RankingSortDirection.DESC,
+                        List.of(
+                                RankingBuilders.metricColumn(RankingValueKind.AMOUNT, RankingValueFormat.COUNT, Map.of(7, 20, 5, 10)),
+                                RankingBuilders.metricColumn(RankingValueKind.PRICE_PER_UNIT, RankingValueFormat.MONEY, Map.of(7, 80, 5, 60))
+                        )
+                )),
+                Set.of(),
+                1L
+        );
+
+        assertEquals(List.of(7L, 5L), result.keyIds());
+        assertEquals(RankingValueKind.AMOUNT, result.valueColumns().get(0).kind());
+        assertEquals(List.of(new BigDecimal("20"), new BigDecimal("10")), result.valueColumns().get(0).values());
+        assertEquals(RankingValueKind.PRICE_PER_UNIT, result.valueColumns().get(1).kind());
+        assertEquals(List.of(new BigDecimal("80"), new BigDecimal("60")), result.valueColumns().get(1).values());
+    }
+
+    @Test
+    void multiMetricRankingCanSortBySeparateBuilderOnlyMetric() {
+        RankingResult result = RankingBuilders.multiMetricRanking(
+                RankingKind.TRADE_FLOW,
+                RankingEntityType.NATION,
+                List.of(RankingBuilders.multiMetricSectionSortedBy(
+                        RankingSectionKind.NATIONS,
+                        RankingSortDirection.DESC,
+                        Map.of(5, 999, 7, 100),
+                        List.of(
+                                RankingBuilders.metricColumn(RankingValueKind.AMOUNT, RankingValueFormat.COUNT, Map.of(7, 20, 5, 10)),
+                                RankingBuilders.metricColumn(RankingValueKind.PRICE_PER_UNIT, RankingValueFormat.MONEY, Map.of(7, 80, 5, 60))
+                        )
+                )),
+                Set.of(),
+                1L
+        );
+
+        assertEquals(List.of(5L, 7L), result.keyIds());
+        assertEquals(List.of(new BigDecimal("10"), new BigDecimal("20")), result.valueColumns().get(0).values());
+        assertEquals(List.of(new BigDecimal("60"), new BigDecimal("80")), result.valueColumns().get(1).values());
+    }
+
+    @Test
+    void resultRejectsHighlightedIdsThatDoNotExistInRows() {
+        assertThrows(IllegalArgumentException.class, () -> new RankingResult(
+                RankingKind.WAR_COUNT,
+                RankingEntityType.ALLIANCE,
+                List.of(7L),
+                List.of(new RankingValueColumn(RankingValueKind.PRIMARY, RankingValueFormat.COUNT, List.of(new BigDecimal("1")))),
+                List.of(new RankingSectionRange(RankingSectionKind.ALLIANCES, 0, 1)),
+                List.of(9L),
+                1L
+        ));
+    }
+
+    @Test
+    void resultRejectsNonContiguousSectionRanges() {
+        assertThrows(IllegalArgumentException.class, () -> new RankingResult(
+                RankingKind.WAR_STATUS,
+                RankingEntityType.NATION,
+                List.of(7L, 8L),
+                List.of(new RankingValueColumn(RankingValueKind.PRIMARY, RankingValueFormat.COUNT, List.of(new BigDecimal("1"), new BigDecimal("2")))),
+                List.of(
+                        new RankingSectionRange(RankingSectionKind.VICTORIES, 0, 1),
+                        new RankingSectionRange(RankingSectionKind.LOSSES, 2, 1)
+                ),
+                List.of(),
+                1L
+        ));
     }
 }

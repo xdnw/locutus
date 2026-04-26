@@ -1,27 +1,34 @@
 package link.locutus.discord.web.commands.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import link.locutus.discord.Locutus;
 import link.locutus.discord._main.ILoader;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingEntityType;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingKind;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingResult;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingSectionKind;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingSectionRange;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingValueKind;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.web.commands.WM;
-import link.locutus.discord.web.commands.binding.value_types.WebRankingResult;
-import link.locutus.discord.web.commands.binding.value_types.WebRankingRow;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 
+import java.math.BigDecimal;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,6 +47,15 @@ class RankingEndpointsContractTest {
         CommandCallable allianceAttribute = api.get("allianceAttributeRanking");
         CommandCallable allianceDelta = api.get("allianceMetricDeltaRanking");
         CommandCallable allianceLoot = api.get("allianceLootRanking");
+        CommandCallable baseballRanking = api.get("baseballRanking");
+        CommandCallable baseballChallengeRanking = api.get("baseballChallengeRanking");
+        CommandCallable baseballEarningsRanking = api.get("baseballEarningsRanking");
+        CommandCallable baseballChallengeEarningsRanking = api.get("baseballChallengeEarningsRanking");
+        CommandCallable incentiveRanking = api.get("incentiveRanking");
+        CommandCallable findTraderRanking = api.get("findTraderRanking");
+        CommandCallable tradeProfitRanking = api.get("tradeProfitRanking");
+        CommandCallable findOffshoreRanking = api.get("findOffshoreRanking");
+        CommandCallable prolificOffshoresRanking = api.get("prolificOffshoresRanking");
         CommandCallable nationAttribute = api.get("nationAttributeRanking");
         CommandCallable producer = api.get("producerRanking");
         CommandCallable recruitment = api.get("recruitmentRanking");
@@ -53,6 +69,15 @@ class RankingEndpointsContractTest {
         assertNotNull(allianceAttribute);
         assertNotNull(allianceDelta);
         assertNotNull(allianceLoot);
+        assertNotNull(baseballRanking);
+        assertNotNull(baseballChallengeRanking);
+        assertNotNull(baseballEarningsRanking);
+        assertNotNull(baseballChallengeEarningsRanking);
+        assertNotNull(incentiveRanking);
+        assertNotNull(findTraderRanking);
+        assertNotNull(tradeProfitRanking);
+        assertNotNull(findOffshoreRanking);
+        assertNotNull(prolificOffshoresRanking);
         assertNotNull(nationAttribute);
         assertNotNull(producer);
         assertNotNull(recruitment);
@@ -71,7 +96,7 @@ class RankingEndpointsContractTest {
     }
 
     @Test
-    void allianceMetricEndpointReturnsStructuredRankingPayload() throws Exception {
+    void allianceMetricEndpointReturnsFlatStructuredRankingPayload() throws Exception {
         Path tempDir = Files.createTempDirectory("ranking-endpoint-contract-");
         String previousDirectory = Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY;
         Field instanceField = Locutus.class.getDeclaredField("INSTANCE");
@@ -90,34 +115,33 @@ class RankingEndpointsContractTest {
             instanceField.set(null, fakeLocutus(nationDb));
 
             RankingEndpoints endpoints = new RankingEndpoints();
-            WebRankingResult result = endpoints.allianceMetricRanking(
+            RankingResult result = endpoints.allianceMetricRanking(
                     AllianceMetric.SCORE,
                     Set.of(alpha, beta),
                     false,
                     Set.of(alpha)
             );
 
-            assertEquals("alliance_metric_ranking", result.responseKey());
+            assertEquals(RankingKind.ALLIANCE_METRIC, result.kind());
+            assertEquals(RankingEntityType.ALLIANCE, result.keyType());
             assertEquals(2, result.rowCount());
-            assertEquals("INCLUDE_EMPTY_SECTIONS", result.emptySectionPolicy());
-            assertEquals(1, result.sections().size());
-            assertEquals("ALLIANCE", result.sections().get(0).entityType());
-            assertEquals(2, result.sections().get(0).rowCount());
-            assertEquals("ALLIANCE", result.sections().get(0).metadata().get(0).value());
-            assertEquals("IDENTITY", result.sections().get(0).metadata().get(1).value());
+            assertEquals(List.of(2L, 1L), result.keyIds());
+            assertEquals(1, result.valueColumns().size());
+            assertEquals(RankingValueKind.PRIMARY, result.valueColumns().get(0).kind());
+            assertEquals(List.of(new BigDecimal("10.0"), new BigDecimal("5.0")), result.valueColumns().get(0).values());
+            assertEquals(List.of(new RankingSectionRange(RankingSectionKind.ALLIANCES, 0, 2)), result.sectionRanges());
+            assertEquals(List.of(1L), result.highlightedIds());
+            assertNotNull(result.asOfMs());
 
-            WebRankingRow firstRow = result.sections().get(0).rows().get(0);
-            WebRankingRow secondRow = result.sections().get(0).rows().get(1);
-
-            assertEquals(2L, firstRow.entity().entityId());
-            assertEquals("alliance:2", firstRow.entity().entityKey());
-            assertEquals("10", firstRow.sortValue().exactValue());
-            assertEquals("DECIMAL", firstRow.sortValue().numericType());
-            assertFalse(firstRow.highlighted());
-            assertEquals(1L, secondRow.entity().entityId());
-            assertTrue(secondRow.highlighted());
-            assertFalse(firstRow.entity().entityKey().contains("**"));
-            assertFalse(firstRow.sortValue().exactValue().contains(". "));
+            String json = new ObjectMapper().writeValueAsString(result);
+            assertTrue(json.contains("\"kind\":\"ALLIANCE_METRIC\""));
+            assertTrue(json.contains("\"keyIds\":[2,1]"));
+            assertTrue(json.contains("\"values\":[10.0,5.0]"));
+            assertTrue(json.contains("\"highlightedIds\":[1]"));
+            assertFalse(json.contains("responseKey"));
+            assertFalse(json.contains("sections"));
+            assertFalse(json.contains("entityKey"));
+            assertFalse(json.contains("sortValue"));
         } finally {
             instanceField.set(null, previousInstance);
             Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY = previousDirectory;

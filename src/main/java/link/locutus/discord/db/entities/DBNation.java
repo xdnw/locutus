@@ -118,6 +118,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FetchDeposit;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -323,6 +324,11 @@ public abstract class DBNation implements NationOrAlliance {
         DBNationCache cache = data()._cache();
         if (cache != null)
             cache.lastCheckUnitMS = timestamp;
+    }
+
+    public int currentTurnUnitBuys(MilitaryUnit unit) {
+        DBNationCache cache = data()._cache();
+        return cache != null ? cache.currentTurnUnitBuys(unit) : 0;
     }
 
     public String register(User user, GuildDB db, boolean isNewRegistration) {
@@ -6854,14 +6860,17 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Maximum offensive war slots")
     public int getMaxOff() {
-        int slots = 5;
-        if (hasProject(Projects.PIRATE_ECONOMY)) {
-            slots++;
-        }
-        if (hasProject(Projects.ADVANCED_PIRATE_ECONOMY)) {
-            slots++;
-        }
-        return slots;
+        return WarSlotRules.offensiveSlotCap(this::hasProject);
+    }
+
+    @Command(desc = "Free defensive war slots")
+    public int getFreeDefensiveSlots() {
+        return WarSlotRules.freeDefensiveSlots(getDef());
+    }
+
+    @Command(desc = "Maximum defensive war slots")
+    public int getMaxDef() {
+        return WarSlotRules.defensiveSlotCap();
     }
 
     public void setEspionageFull(boolean value) {

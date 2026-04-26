@@ -12,21 +12,16 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class IntelOp extends Command {
     public IntelOp() {
@@ -77,64 +72,26 @@ public class IntelOp extends Command {
             if (dnr != null) topX = dnr;
         }
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
-
-        Set<Integer> allies = db.getAllies(true);
-
-        Function<DBNation, Boolean> raidList = db.getCanRaid(topX, true);
-        Set<Integer> enemyCoalitions = db.getCoalition("enemies");
-        Set<Integer> targetCoalitions = db.getCoalition("targets");
-
-        if (!flags.contains('d')) {
-            enemies.removeIf(f -> !raidList.apply(f));
-        }
-
-        enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
-        enemies.removeIf(f -> f.active_m() < 4320);
-        enemies.removeIf(f -> f.getVm_turns() > 0);
-        enemies.removeIf(DBNation::isBeige);
-        if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
-        enemies.removeIf(f -> f.getDef() == 3);
-        enemies.removeIf(nation ->
-                nation.active_m() < 12000 &&
-                        nation.getGroundStrength(true, false) > finalNation.getGroundStrength(true, false) &&
-                        nation.getAircraft() > finalNation.getAircraft() &&
-                        nation.getShips() > finalNation.getShips() + 2);
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(30);
-        enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
+        Set<Integer> recentlySpiedNationIds = alreadySpied.entrySet().stream()
+                .filter(entry -> entry.getValue() > cutoff)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
 
-        if (false) {
-            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(finalNation.getAlliance_id()));
-            myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
-            BiFunction<Double, Double, Integer> range = PW.getIsNationsInScoreRange(myAlliance);
-            enemies.removeIf(f -> range.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
-        } else {
-            List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < score * 0.75 || f.getScore() > score * PW.WAR_RANGE_MAX_MODIFIER);
-            if (tmp.isEmpty()) {
-                enemies.removeIf(f -> !f.isInSpyRange(finalNation));
-            } else {
-                enemies = tmp;
-            }
-
+        SpyOpsService.IntelResult result = SpyOpsService.findIntelTargets(
+                finalNation,
+                db,
+                topX,
+                flags.contains('d'),
+                score,
+                recentlySpiedNationIds,
+                1);
+        if (result.hasError()) {
+            return result.message();
         }
 
-        List<Map.Entry<DBNation, Double>> noData = new ArrayList<>();
-        List<Map.Entry<DBNation, Double>> outDated = new ArrayList<>();
-
-        for (DBNation enemy : enemies) {
-            Map.Entry<Double, Boolean> opValue = enemy.getIntelOpValue();
-            if (opValue != null) {
-                List<Map.Entry<DBNation, Double>> list = opValue.getValue() ? outDated : noData;
-                list.add(new KeyValue<>(enemy, opValue.getKey()));
-            }
-        }
-
-        Collections.sort(noData, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
-        Collections.sort(outDated, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
-        noData.addAll(outDated);
-        for (Map.Entry<DBNation, Double> entry : noData) {
-            DBNation nation = entry.getKey();
+        for (SpyOpsService.IntelRecommendation recommendation : result.recommendations()) {
+            DBNation nation = recommendation.target();
             alreadySpied.put(nation.getNation_id(), System.currentTimeMillis());
 
             String title = "Gather Intelligence for: " + finalNation.getNation();

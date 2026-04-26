@@ -4,20 +4,25 @@ import java.util.List;
 import java.util.Objects;
 
 public record RankingResult(
-        String responseKey,
-        String title,
-        List<RankingQueryField> querySummary,
-        int rowCount,
-        Long asOfMs,
-        RankingEmptySectionPolicy emptySectionPolicy,
-        List<RankingSection> sections
+        RankingKind kind,
+        RankingEntityType keyType,
+        List<Long> keyIds,
+        List<RankingValueColumn> valueColumns,
+        List<RankingSectionRange> sectionRanges,
+        List<Long> highlightedIds,
+        Long asOfMs
 ) {
     public RankingResult {
-        responseKey = Objects.requireNonNull(responseKey, "responseKey");
-        title = Objects.requireNonNull(title, "title");
-        querySummary = querySummary == null ? List.of() : List.copyOf(querySummary);
-        emptySectionPolicy = Objects.requireNonNull(emptySectionPolicy, "emptySectionPolicy");
-        sections = sections == null ? List.of() : List.copyOf(sections);
-        rowCount = sections.stream().mapToInt(RankingSection::rowCount).sum();
+        kind = Objects.requireNonNull(kind, "kind");
+        keyType = Objects.requireNonNull(keyType, "keyType");
+        keyIds = RankingResultSupport.immutableList(keyIds);
+        valueColumns = RankingResultSupport.immutableList(valueColumns);
+        sectionRanges = RankingResultSupport.immutableList(sectionRanges);
+        highlightedIds = RankingResultSupport.immutableList(highlightedIds);
+        RankingResultSupport.validate(keyIds, valueColumns, sectionRanges, highlightedIds, asOfMs);
+    }
+
+    public int rowCount() {
+        return keyIds.size();
     }
 }

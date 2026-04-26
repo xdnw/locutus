@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
+import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.util.PW;
 
 import java.lang.reflect.Method;
@@ -195,7 +196,7 @@ public class WarNation {
     }
 
     public int calculateVictoryLoot(WarNation other) {
-        return (int) (getMoney() * 0.14);
+        return (int) Math.round(getMoney() * WarOutcomeMath.victoryNationLootPercent(getLootFactor()));
     }
 
     public boolean isGroundControl() {
