@@ -286,6 +286,8 @@ java {
 if (useTs) {
     // ./gradlew -Pts generateTypeScript
     apply plugin: "cz.habarta.typescript-generator"
+    def reactApiTypesFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
+    def svelteApiTypesFile = file('../lc_stats_svelte/src/lib/apitypes.d.ts')
     tasks.named('generateTypeScript') {
         jsonLibrary = 'jackson2'
         classes = [
@@ -336,11 +338,15 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.BlitzDraftEdit',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzExistingWar',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzLegalEdge',
+                'link.locutus.discord.web.commands.binding.value_types.BlitzMilitaryRules',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzNationRow',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzObjectiveSummary',
+                'link.locutus.discord.web.commands.binding.value_types.BlitzPairLockout',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzPlanRequest',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzPlanResponse',
+                'link.locutus.discord.web.commands.binding.value_types.BlitzPlanWarning',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzPlannedWar',
+                'link.locutus.discord.sim.BlitzObjective',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzRebuyMode',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzReplayConcludedWar',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzReplayDeclaredWar',
@@ -350,7 +356,7 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzWarReplayState',
                 'link.locutus.discord.web.commands.binding.value_types.BlitzSideMode',
-                'link.locutus.discord.util.battle.BlitzWarning',
+                'link.locutus.discord.sim.Turn1DeclarePolicy',
                 'link.locutus.discord.util.battle.BlitzWarningCode',
                 'link.locutus.discord.web.commands.binding.value_types.WebTransferResult',
                 'link.locutus.discord.web.commands.binding.value_types.WebUrl',
@@ -407,11 +413,17 @@ if (useTs) {
         nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
         nullabilityDefinition = 'undefinedInlineUnion'
         // set output file
-        outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
+        outputFile = reactApiTypesFile
     }
     tasks.named('generateTypeScript', cz.habarta.typescript.generator.gradle.GenerateTask).configure {
         notCompatibleWithConfigurationCache("cz.habarta.typescript-generator task is not configuration-cache compatible.")
         dependsOn(tasks.named('classes'))
+        doLast {
+            if (svelteApiTypesFile.parentFile != null) {
+                svelteApiTypesFile.parentFile.mkdirs()
+            }
+            svelteApiTypesFile.bytes = reactApiTypesFile.bytes
+        }
     }
 }
 

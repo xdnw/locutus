@@ -2,7 +2,9 @@ package link.locutus.discord.web.commands.binding.value_types;
 
 public record BlitzNationRow(
         int nationId,
+        String nationName,
         int allianceId,
+        String allianceName,
         int cities,
         int[] unitsByMilitaryUnitOrdinal,
         int[] unitCapsByMilitaryUnitOrdinal,
@@ -12,6 +14,8 @@ public record BlitzNationRow(
         int vmTurns,
         int inactiveMinutes,
         int activityBp,
+        int loginDayChangeBp,
+        int weeklyActivityBp,
         int freeOffensiveSlots,
         int freeDefensiveSlots,
         int maxOffensiveSlots,
@@ -20,6 +24,7 @@ public record BlitzNationRow(
         int researchBits,
         int activeOrdinal,
         int resetHourUtc,
-        boolean resetHourUtcFallback
+        boolean resetHourUtcFallback,
+        int colorOrdinal
 ) {
 }

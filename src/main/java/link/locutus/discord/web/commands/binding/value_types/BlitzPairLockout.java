@@ -1,10 +1,9 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
-public record BlitzAssignedWar(
+public record BlitzPairLockout(
         int declarerNationId,
         int targetNationId,
-        int warTypeOrdinal,
-        int sourceOrdinal,
-        int initialAttackTypeOrdinal
+        int warId,
+        boolean active
 ) {
 }

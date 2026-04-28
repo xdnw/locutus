@@ -148,6 +148,10 @@ public final class SimNation implements CombatantView {
         return storage.beigeTurns[nationIndex];
     }
 
+    public int vmTurns() {
+        return storage.vmTurns[nationIndex];
+    }
+
     @Deprecated
     public double warchest() {
         return resource(ResourceType.MONEY);

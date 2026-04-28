@@ -435,6 +435,9 @@ final class OpeningEvaluator {
             ViabilityProbeEvaluator viabilityProbeEvaluator,
             SpecialistProbeEvaluator specialistProbeEvaluator
     ) {
+        if (attacker.vmTurns() > 0 || defender.vmTurns() > 0 || defender.beigeTurns() > 0) {
+            return false;
+        }
         double minimumViabilityProbe = admissionPolicy.minimumViabilityProbe();
         viabilityProbeEvaluator.evaluate(attacker, defender, conventionalProbeResult);
         if (conventionalProbeResult.probe() >= minimumViabilityProbe) {

@@ -1,6 +1,7 @@
 package link.locutus.discord.util.battle;
 
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.sim.planners.DBNationSnapshot;
 
 public interface BlitzDraftNation {
     int nationId();
@@ -29,6 +30,20 @@ public interface BlitzDraftNation {
 
     static BlitzDraftNation of(DBNation nation) {
         return new DBNationBlitzDraftNation(nation);
+    }
+
+    static BlitzDraftNation of(DBNation nation, DBNationSnapshot snapshot) {
+        if (snapshot == null) {
+            return of(nation);
+        }
+        return new SnapshotBackedBlitzDraftNation(nation, snapshot, null);
+    }
+
+    static BlitzDraftNation of(DBNation nation, DBNationSnapshot snapshot, Boolean forceActive) {
+        if (snapshot == null) {
+            return of(nation);
+        }
+        return new SnapshotBackedBlitzDraftNation(nation, snapshot, forceActive);
     }
 
     final class DBNationBlitzDraftNation implements BlitzDraftNation {
@@ -96,6 +111,84 @@ public interface BlitzDraftNation {
         @Override
         public boolean beige() {
             return nation.isBeige();
+        }
+    }
+
+    final class SnapshotBackedBlitzDraftNation implements BlitzDraftNation {
+        private final DBNation nation;
+        private final DBNationSnapshot snapshot;
+        private final Boolean forceActive;
+
+        private SnapshotBackedBlitzDraftNation(DBNation nation, DBNationSnapshot snapshot, Boolean forceActive) {
+            this.nation = nation;
+            this.snapshot = snapshot;
+            this.forceActive = forceActive;
+        }
+
+        @Override
+        public int nationId() {
+            return snapshot.nationId();
+        }
+
+        @Override
+        public int allianceId() {
+            return snapshot.allianceId();
+        }
+
+        @Override
+        public String nationName() {
+            return nation.getNation();
+        }
+
+        @Override
+        public double score() {
+            return snapshot.score();
+        }
+
+        @Override
+        public int cities() {
+            return snapshot.cities();
+        }
+
+        @Override
+        public int tanks() {
+            return snapshot.unit(link.locutus.discord.apiv1.enums.MilitaryUnit.TANK);
+        }
+
+        @Override
+        public int aircraft() {
+            return snapshot.unit(link.locutus.discord.apiv1.enums.MilitaryUnit.AIRCRAFT);
+        }
+
+        @Override
+        public int defensiveWars() {
+            return snapshot.currentDefensiveWars();
+        }
+
+        @Override
+        public int vmTurns() {
+            return snapshot.vmTurns();
+        }
+
+        @Override
+        public int activeMinutes() {
+            if (Boolean.TRUE.equals(forceActive)) {
+                return 0;
+            }
+            if (Boolean.FALSE.equals(forceActive)) {
+                return Integer.MAX_VALUE;
+            }
+            return nation.active_m();
+        }
+
+        @Override
+        public boolean espionageAvailable() {
+            return nation.isEspionageAvailable();
+        }
+
+        @Override
+        public boolean beige() {
+            return snapshot.beigeTurns() > 0;
         }
     }
 }

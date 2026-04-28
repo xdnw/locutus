@@ -30,6 +30,7 @@ final class SimNationArrayStore {
     WarPolicy[] policies;
     int[] policyCooldownTurnsRemaining;
     int[] beigeTurns;
+    int[] vmTurns;
     int[] offSlotsUsed;
     int[] defSlotsUsed;
     int[] dayPhaseTurns;
@@ -58,6 +59,7 @@ final class SimNationArrayStore {
         policies = new WarPolicy[safeNationCapacity];
         policyCooldownTurnsRemaining = new int[safeNationCapacity];
         beigeTurns = new int[safeNationCapacity];
+        vmTurns = new int[safeNationCapacity];
         offSlotsUsed = new int[safeNationCapacity];
         defSlotsUsed = new int[safeNationCapacity];
         dayPhaseTurns = new int[safeNationCapacity];
@@ -105,6 +107,7 @@ final class SimNationArrayStore {
         policies[nationIndex] = init.policy();
         policyCooldownTurnsRemaining[nationIndex] = snapshot.policyCooldownTurnsRemaining();
         beigeTurns[nationIndex] = snapshot.beigeTurns();
+        vmTurns[nationIndex] = snapshot.vmTurns();
         offSlotsUsed[nationIndex] = snapshot.offSlotsUsed();
         defSlotsUsed[nationIndex] = snapshot.defSlotsUsed();
         dayPhaseTurns[nationIndex] = snapshot.dayPhaseTurn();
@@ -154,6 +157,7 @@ final class SimNationArrayStore {
         copy.policies = Arrays.copyOf(policies, size);
         copy.policyCooldownTurnsRemaining = Arrays.copyOf(policyCooldownTurnsRemaining, size);
         copy.beigeTurns = Arrays.copyOf(beigeTurns, size);
+        copy.vmTurns = Arrays.copyOf(vmTurns, size);
         copy.offSlotsUsed = Arrays.copyOf(offSlotsUsed, size);
         copy.defSlotsUsed = Arrays.copyOf(defSlotsUsed, size);
         copy.dayPhaseTurns = Arrays.copyOf(dayPhaseTurns, size);
@@ -187,6 +191,7 @@ final class SimNationArrayStore {
                 ),
                 policyCooldownTurnsRemaining[nationIndex],
                 beigeTurns[nationIndex],
+                vmTurns[nationIndex],
                 offSlotsUsed[nationIndex],
                 defSlotsUsed[nationIndex],
                 dayPhaseTurns[nationIndex],
@@ -264,6 +269,7 @@ final class SimNationArrayStore {
             policies = Arrays.copyOf(policies, nextCapacity);
             policyCooldownTurnsRemaining = Arrays.copyOf(policyCooldownTurnsRemaining, nextCapacity);
             beigeTurns = Arrays.copyOf(beigeTurns, nextCapacity);
+            vmTurns = Arrays.copyOf(vmTurns, nextCapacity);
             offSlotsUsed = Arrays.copyOf(offSlotsUsed, nextCapacity);
             defSlotsUsed = Arrays.copyOf(defSlotsUsed, nextCapacity);
             dayPhaseTurns = Arrays.copyOf(dayPhaseTurns, nextCapacity);
@@ -298,6 +304,7 @@ record SimNationSnapshot(
         NationInit init,
         int policyCooldownTurnsRemaining,
         int beigeTurns,
+    int vmTurns,
         int offSlotsUsed,
         int defSlotsUsed,
         int dayPhaseTurn,
@@ -320,6 +327,9 @@ record SimNationSnapshot(
         if (beigeTurns < 0) {
             throw new IllegalArgumentException("beigeTurns must be >= 0");
         }
+        if (vmTurns < 0) {
+            throw new IllegalArgumentException("vmTurns must be >= 0");
+        }
         if (offSlotsUsed < 0) {
             throw new IllegalArgumentException("offSlotsUsed must be >= 0");
         }
@@ -340,6 +350,7 @@ record SimNationSnapshot(
                 init,
                 0,
                 0,
+            0,
                 0,
                 0,
                 0,

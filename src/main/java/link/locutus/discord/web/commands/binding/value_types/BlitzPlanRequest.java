@@ -7,6 +7,7 @@ public record BlitzPlanRequest(
         BlitzPlannedWar[] plannedWars,
         int sideModeOrdinal,
         int rebuyModeOrdinal,
+        Integer objectiveOrdinal,
         int horizonTurns,
         boolean includeExistingWars,
         boolean assume5553Buildings,

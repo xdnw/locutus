@@ -2,17 +2,20 @@ package link.locutus.discord.web.commands.api;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord._main.ILoader;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.WarDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.handlers.ActiveWarHandler;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Isolated
 class StatEndpointsContractTest {
@@ -63,7 +67,12 @@ class StatEndpointsContractTest {
             addActiveWar(warDb, middle);
             addActiveWar(warDb, highest);
 
-            List<DBWar> wars = StatEndpoints.activeWarsInvolving(warDb, Set.of(sideNation, otherIncluded));
+            List<DBWar> wars = StatEndpoints.warsInvolving(warDb,
+                    Set.<NationOrAlliance>of(sideNation, otherIncluded),
+                    null, null,
+                    false,
+                    null, null,
+                    false, false);
 
             assertEquals(List.of(9001, 9002), wars.stream().map(DBWar::getWarId).toList());
         });
@@ -86,9 +95,95 @@ class StatEndpointsContractTest {
             addActiveWar(warDb, sameSide);
             addActiveWar(warDb, crossTwo);
 
-            List<DBWar> wars = StatEndpoints.activeWarsBetween(warDb, Set.of(sideA), Set.of(sideB, sideBTwo));
+            List<DBWar> wars = StatEndpoints.warsBetween(warDb,
+                    Set.<NationOrAlliance>of(sideA),
+                    Set.<NationOrAlliance>of(sideB, sideBTwo),
+                    null, null,
+                    false,
+                    null, null,
+                    false, false);
 
             assertEquals(List.of(9001, 9003), wars.stream().map(DBWar::getWarId).toList());
+        });
+    }
+
+    @Test
+    void warsInvolvingSupportsAllianceHistoryFiltersAndOffensiveDirection() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            long now = System.currentTimeMillis();
+            DBNation attacker = nation(101, "Attacker", 1);
+            DBNation defender = nation(202, "Defender", 2);
+            DBNation counter = nation(203, "Counter", 2);
+            seedNation(nationDb, attacker);
+            seedNation(nationDb, defender);
+            seedNation(nationDb, counter);
+
+            DBWar matching = war(9101, 101, 202, 1, 2, WarType.RAID, WarStatus.ATTACKER_VICTORY, now - TimeUnit.HOURS.toMillis(2));
+            DBWar defensive = war(9102, 202, 101, 2, 1, WarType.RAID, WarStatus.ATTACKER_VICTORY, now - TimeUnit.HOURS.toMillis(2));
+            DBWar wrongType = war(9103, 101, 203, 1, 2, WarType.ORD, WarStatus.ATTACKER_VICTORY, now - TimeUnit.HOURS.toMillis(2));
+            DBWar wrongStatus = war(9104, 101, 203, 1, 2, WarType.RAID, WarStatus.PEACE, now - TimeUnit.HOURS.toMillis(2));
+            DBWar outsideWindow = war(9105, 101, 203, 1, 2, WarType.RAID, WarStatus.ATTACKER_VICTORY, now - TimeUnit.DAYS.toMillis(4));
+            addWar(warDb, matching);
+            addWar(warDb, defensive);
+            addWar(warDb, wrongType);
+            addWar(warDb, wrongStatus);
+            addWar(warDb, outsideWindow);
+
+            List<DBWar> wars = StatEndpoints.warsInvolving(warDb,
+                    Set.<NationOrAlliance>of(DBAlliance.getOrCreate(1)),
+                    now - TimeUnit.DAYS.toMillis(1), now,
+                    true,
+                    Set.of(WarType.RAID), Set.of(WarStatus.ATTACKER_VICTORY),
+                    true, false);
+
+            assertEquals(List.of(9101), wars.stream().map(DBWar::getWarId).toList());
+        });
+    }
+
+    @Test
+    void warsBetweenSupportsAllianceDirectionFilters() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            DBNation sideA = nation(101, "Side A", 1);
+            DBNation sideATwo = nation(102, "Side A2", 1);
+            DBNation sideB = nation(201, "Side B", 2);
+            seedNation(nationDb, sideA);
+            seedNation(nationDb, sideATwo);
+            seedNation(nationDb, sideB);
+
+            DBWar sideAOffensive = activeWar(9201, 101, 201, 1, 2);
+            DBWar sideBOffensive = activeWar(9202, 201, 101, 2, 1);
+            DBWar sameSide = activeWar(9203, 101, 102, 1, 1);
+            addActiveWar(warDb, sideAOffensive);
+            addActiveWar(warDb, sideBOffensive);
+            addActiveWar(warDb, sameSide);
+
+            List<DBWar> wars = StatEndpoints.warsBetween(warDb,
+                    Set.<NationOrAlliance>of(DBAlliance.getOrCreate(1)),
+                    Set.<NationOrAlliance>of(DBAlliance.getOrCreate(2)),
+                    null, null,
+                    false,
+                    null, null,
+                    false, true);
+
+            assertEquals(List.of(9202), wars.stream().map(DBWar::getWarId).toList());
+        });
+    }
+
+    @Test
+    void warsRejectContradictoryDirectionFlags() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            DBNation sideNation = nation(101, "Side Nation");
+            seedNation(nationDb, sideNation);
+
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                    StatEndpoints.warsInvolving(warDb,
+                            Set.<NationOrAlliance>of(sideNation),
+                            null, null,
+                            false,
+                            null, null,
+                            true, true));
+
+            assertEquals("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`", error.getMessage());
         });
     }
 
@@ -136,10 +231,14 @@ class StatEndpointsContractTest {
     }
 
     private static DBNation nation(int id, String name) {
+        return nation(id, name, id / 100);
+    }
+
+    private static DBNation nation(int id, String name, int allianceId) {
         SimpleDBNation nation = new SimpleDBNation(new DBNationData());
         nation.setNation_id(id);
         nation.setNation(name);
-        nation.setAlliance_id(id / 100);
+        nation.setAlliance_id(allianceId);
         nation.setScore(1_000d);
         nation.setCities(10);
         nation.setSoldiers(1_000);
@@ -149,15 +248,19 @@ class StatEndpointsContractTest {
     }
 
     private static DBWar activeWar(int warId, int attackerId, int defenderId) {
+        return activeWar(warId, attackerId, defenderId, Math.max(1, attackerId / 100), Math.max(1, defenderId / 100));
+    }
+
+    private static DBWar activeWar(int warId, int attackerId, int defenderId, int attackerAllianceId, int defenderAllianceId) {
         return new DBWar(
                 warId,
                 attackerId,
                 defenderId,
-                Math.max(1, attackerId / 100),
-                Math.max(1, defenderId / 100),
+                attackerAllianceId,
+                defenderAllianceId,
                 false,
                 false,
-                link.locutus.discord.apiv1.enums.WarType.ORD,
+                WarType.ORD,
                 WarStatus.ACTIVE,
                 System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1),
                 10,
@@ -166,8 +269,32 @@ class StatEndpointsContractTest {
         );
     }
 
-    private static void addActiveWar(WarDB warDb, DBWar war) throws Exception {
+    private static DBWar war(int warId, int attackerId, int defenderId,
+                             int attackerAllianceId, int defenderAllianceId,
+                             WarType warType, WarStatus status, long date) {
+        return new DBWar(
+                warId,
+                attackerId,
+                defenderId,
+                attackerAllianceId,
+                defenderAllianceId,
+                false,
+                false,
+                warType,
+                status,
+                date,
+                10,
+                10,
+                0
+        );
+    }
+
+    private static void addWar(WarDB warDb, DBWar war) throws Exception {
         warDb.saveWars(List.of(war), true);
+    }
+
+    private static void addActiveWar(WarDB warDb, DBWar war) throws Exception {
+        addWar(warDb, war);
         Field activeWarsField = WarDB.class.getDeclaredField("activeWars");
         activeWarsField.setAccessible(true);
         ActiveWarHandler activeWars = (ActiveWarHandler) activeWarsField.get(warDb);

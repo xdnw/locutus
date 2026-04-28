@@ -26,6 +26,9 @@ public final class BlitzAssignment {
     /** Mean + percentile summary for the assignment score across sampled runs. */
     private final ScoreSummary objectiveSummary;
 
+    /** Pair-keyed first attack-type ordinal selected by the opening evaluator. */
+    private final Map<Long, Integer> initialAttackTypeOrdinalsByPair;
+
     public BlitzAssignment(Map<Integer, List<Integer>> assignment, List<PlannerDiagnostic> diagnostics, double objectiveScore) {
         this(assignment, diagnostics, objectiveScore, ScoreSummary.identical(objectiveScore));
     }
@@ -36,10 +39,21 @@ public final class BlitzAssignment {
             double objectiveScore,
             ScoreSummary objectiveSummary
     ) {
+        this(assignment, diagnostics, objectiveScore, objectiveSummary, Map.of());
+    }
+
+    public BlitzAssignment(
+            Map<Integer, List<Integer>> assignment,
+            List<PlannerDiagnostic> diagnostics,
+            double objectiveScore,
+            ScoreSummary objectiveSummary,
+            Map<Long, Integer> initialAttackTypeOrdinalsByPair
+    ) {
         this.assignment = Collections.unmodifiableMap(assignment);
         this.diagnostics = Collections.unmodifiableList(diagnostics);
         this.objectiveScore = objectiveScore;
         this.objectiveSummary = objectiveSummary == null ? ScoreSummary.identical(objectiveScore) : objectiveSummary;
+        this.initialAttackTypeOrdinalsByPair = Collections.unmodifiableMap(initialAttackTypeOrdinalsByPair == null ? Map.of() : initialAttackTypeOrdinalsByPair);
     }
 
     /** Returns the assignment map: {@code attackerId → list of defenderIds}. */
@@ -63,6 +77,14 @@ public final class BlitzAssignment {
     }
 
     /**
+     * Returns the opening attack-type ordinal selected for a planned pair, or {@code -1}
+     * when the pair was fixed/manual and no candidate-edge metadata was available.
+     */
+    public int initialAttackTypeOrdinal(int attackerId, int defenderId) {
+        return initialAttackTypeOrdinalsByPair.getOrDefault(pairKey(attackerId, defenderId), -1);
+    }
+
+    /**
      * Returns the list of defenders assigned to {@code attackerId}, or an empty list if unassigned.
      */
     public List<Integer> targetsFor(int attackerId) {
@@ -72,5 +94,9 @@ public final class BlitzAssignment {
     /** Total number of (attacker, defender) pairs in the assignment. */
     public int pairCount() {
         return assignment.values().stream().mapToInt(List::size).sum();
+    }
+
+    private static long pairKey(int attackerNationId, int defenderNationId) {
+        return ((long) attackerNationId << 32) | (defenderNationId & 0xFFFFFFFFL);
     }
 }

@@ -3,6 +3,7 @@ package link.locutus.discord.web.commands.api;
 import link.locutus.discord.Locutus;
 import link.locutus.discord._main.ILoader;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -18,10 +19,12 @@ import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.handlers.ActiveWarHandler;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet.ActiveOverride;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzWarningCode;
 import link.locutus.discord.web.commands.binding.value_types.BlitzDraftEdit;
 import link.locutus.discord.web.commands.binding.value_types.BlitzLegalEdge;
 import link.locutus.discord.web.commands.binding.value_types.BlitzNationRow;
+import link.locutus.discord.web.commands.binding.value_types.BlitzPairLockout;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlanRequest;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlanResponse;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlannedWar;
@@ -78,11 +81,11 @@ class SimEndpointsContractTest {
             assertThrows(IllegalArgumentException.class,
                     () -> SimEndpoints.previewBlitzPlan(warDb, request(), List.of(attacker), List.of()));
             assertThrows(IllegalArgumentException.class,
-                    () -> SimEndpoints.previewBlitzPlan(warDb, request(), List.of(attacker), List.of(attacker)));
-            assertThrows(IllegalArgumentException.class,
                     () -> SimEndpoints.previewBlitzPlan(warDb, request(99, BlitzRebuyMode.FULL_REBUYS.ordinal(), false, false), List.of(attacker), List.of(defender)));
             assertThrows(IllegalArgumentException.class,
                     () -> SimEndpoints.previewBlitzPlan(warDb, request(BlitzSideMode.ATTACKERS_ONLY.ordinal(), 99, false, false), List.of(attacker), List.of(defender)));
+                assertThrows(IllegalArgumentException.class,
+                    () -> SimEndpoints.previewBlitzPlan(warDb, requestWithObjective(999), List.of(attacker), List.of(defender)));
             assertThrows(IllegalArgumentException.class,
                     () -> SimEndpoints.previewBlitzPlan(warDb, requestWithHorizon(13), List.of(attacker), List.of(defender)));
             assertThrows(IllegalArgumentException.class,
@@ -93,13 +96,25 @@ class SimEndpointsContractTest {
     }
 
     @Test
+    void blitzPlanPreviewRejectsOverlappingResolvedPopulationsWithNamedError() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            DBNation attacker = nation(101, "Attacker", 1_000d);
+
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> SimEndpoints.previewBlitzPlan(warDb, request(), List.of(attacker), List.of(attacker)));
+
+            assertEquals("Nations cannot be on both blitz sides: Attacker (#101)", error.getMessage());
+        });
+    }
+
+    @Test
     void blitzPlanPreviewRejectsUnknownEditTargetsAndBadOrdinals() throws Exception {
         withFixture((nationDb, warDb) -> {
             DBNation attacker = nation(101, "Attacker", 1_000d);
             DBNation defender = nation(202, "Defender", 1_000d);
             BlitzDraftEdit unknownEdit = edit(303, null, null);
             BlitzDraftEdit badUnitArray = edit(101, new int[]{1, 2}, null);
-            BlitzDraftEdit badPolicy = new BlitzDraftEdit(101, null, 999, null, null, null, 0L, 0L, 0, 0, null);
+            BlitzDraftEdit badPolicy = new BlitzDraftEdit(101, null, 999, null, null, null, 0L, 0L, 0, 0, null, null, null);
             BlitzPlannedWar badWarType = new BlitzPlannedWar(101, 202, 999, true);
 
             assertThrows(IllegalArgumentException.class,
@@ -137,7 +152,9 @@ class SimEndpointsContractTest {
                     0L,
                     2,
                     0,
-                    4
+                        4,
+                        null,
+                        null
             );
 
             BlitzPlanResponse response = SimEndpoints.previewBlitzPlan(
@@ -161,7 +178,9 @@ class SimEndpointsContractTest {
             BlitzLegalEdge edge = edge(response, 101, 202);
             assertFalse(edge.legal());
             assertTrue(contains(edge.blockedReasonOrdinals(), BlitzWarningCode.UPDECLARE_TOO_STRONG.ordinal()));
-            assertTrue(containsWarning(response, BlitzWarningCode.UPDECLARE_TOO_STRONG));
+            // Per-edge blockers must NOT fan out into the global warnings list
+            // (regression guard for the 46k-warning explosion at 200x200).
+            assertFalse(containsWarning(response, BlitzWarningCode.UPDECLARE_TOO_STRONG));
         });
     }
 
@@ -198,8 +217,8 @@ class SimEndpointsContractTest {
             attacker.setCities(3);
             int[] buys = zeros();
             buys[MilitaryUnit.SOLDIER.ordinal()] = 2500;
-            BlitzDraftEdit edit = new BlitzDraftEdit(101, null, WarPolicy.PIRATE.ordinal(), 175_000,
-                    null, buys, 0L, 0L, 0, 0, 6);
+                BlitzDraftEdit edit = new BlitzDraftEdit(101, null, WarPolicy.PIRATE.ordinal(), 175_000,
+                    null, buys, 0L, 0L, 0, 0, 6, null, null);
 
             DBNationSnapshot snapshot = SimEndpoints.draftSnapshots(
                     List.of(attacker),
@@ -238,10 +257,131 @@ class SimEndpointsContractTest {
 
             assertEquals(1, response.existingWars().length);
             assertEquals(9001, response.existingWars()[0].warId());
+            assertTrue(containsPairLockout(response, 101, 202, 9001, true));
+            assertTrue(containsPairLockout(response, 202, 101, 9001, true));
             BlitzLegalEdge edge = edge(response, 101, 202);
             assertFalse(edge.legal());
             assertTrue(contains(edge.blockedReasonOrdinals(), BlitzWarningCode.ACTIVE_PAIR_CONFLICT.ordinal()));
             assertTrue(containsWarning(response, BlitzWarningCode.MANUAL_DECLARATION_REJECTED));
+        });
+    }
+
+    @Test
+    void blitzPlanPreviewExposesRecentSameOpponentLockoutsWhenExistingWarsAreHidden() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            int currentTurn = 100;
+            DBNation attacker = nation(101, "Attacker", 1_000d);
+            DBNation recentDefender = nation(202, "Recent Defender", 1_000d);
+            DBNation oldDefender = nation(303, "Old Defender", 1_000d);
+            DBWar recentWar = new DBWar(9002, 101, 202, 1, 2, false, false, WarType.ORD, WarStatus.PEACE,
+                    TimeUtil.getTimeFromTurn(currentTurn - 11), 10, 10, 0);
+            DBWar oldWar = new DBWar(9003, 101, 303, 1, 3, false, false, WarType.ORD, WarStatus.PEACE,
+                    TimeUtil.getTimeFromTurn(currentTurn - 12), 10, 10, 0);
+            warDb.saveWars(List.of(recentWar, oldWar), true);
+
+            BlitzPlanResponse response = SimEndpoints.previewBlitzPlan(
+                    warDb,
+                    requestAtTurn(currentTurn, false),
+                    List.of(attacker),
+                    List.of(recentDefender, oldDefender)
+            );
+
+            assertEquals(0, response.existingWars().length);
+            assertTrue(containsPairLockout(response, 101, 202, 9002, false));
+            assertTrue(containsPairLockout(response, 202, 101, 9002, false));
+            assertFalse(containsPairLockout(response, 101, 303, 9003, false));
+            assertFalse(edge(response, 101, 202).legal());
+            assertTrue(edge(response, 101, 303).legal());
+        });
+    }
+
+    @Test
+    void blitzPlanPreviewAndRunApplyForceActiveOverridesToLegalEdgesAndManualDeclarations() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            DBNation attacker = nation(101, "Attacker", 1_000d);
+            attacker.setCities(10);
+            attacker.setAircraft(500);
+            attacker.setLastActive(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
+            DBNation defender = nation(202, "Defender", 1_000d);
+            defender.setCities(10);
+            defender.setAircraft(200);
+            BlitzPlannedWar plannedWar = new BlitzPlannedWar(101, 202, WarType.ORD.ordinal(), true);
+
+            BlitzPlanResponse blocked = SimEndpoints.previewBlitzPlan(
+                    warDb,
+                    request(new BlitzDraftEdit[0], new BlitzPlannedWar[]{plannedWar}),
+                    List.of(attacker),
+                    List.of(defender)
+            );
+
+            BlitzLegalEdge blockedEdge = edge(blocked, 101, 202);
+            assertFalse(blockedEdge.legal());
+            assertTrue(contains(blockedEdge.blockedReasonOrdinals(), BlitzWarningCode.ATTACKER_INACTIVE.ordinal()));
+            assertTrue(containsWarning(blocked, BlitzWarningCode.MANUAL_DECLARATION_REJECTED));
+
+            BlitzDraftEdit forceActiveEdit = new BlitzDraftEdit(101, true, null, null, null, null, 0L, 0L, 0, 0, null, null, null);
+            BlitzPlanResponse cleared = SimEndpoints.previewBlitzPlan(
+                    warDb,
+                    request(new BlitzDraftEdit[]{forceActiveEdit}, new BlitzPlannedWar[]{plannedWar}),
+                    List.of(attacker),
+                    List.of(defender)
+            );
+
+            assertTrue(edge(cleared, 101, 202).legal());
+            assertFalse(containsWarning(cleared, BlitzWarningCode.MANUAL_DECLARATION_REJECTED));
+
+            BlitzPlanResponse runResponse = SimEndpoints.runBlitzPlan(
+                    warDb,
+                    requestRun(new BlitzDraftEdit[]{forceActiveEdit}, new BlitzPlannedWar[]{plannedWar}, false),
+                    List.of(attacker),
+                    List.of(defender)
+            );
+
+            assertEquals(1, runResponse.assignments().length);
+            assertEquals(101, runResponse.assignments()[0].declarerNationId());
+            assertEquals(202, runResponse.assignments()[0].targetNationId());
+        });
+    }
+
+    @Test
+    void blitzPlanPreviewAppliesVmAndBeigeClearsToRowsAndLegalEdges() throws Exception {
+        withFixture((nationDb, warDb) -> {
+            DBNation attacker = nation(101, "Attacker", 1_000d);
+            attacker.setLeaving_vm(link.locutus.discord.util.TimeUtil.getTurn() + 4);
+            DBNation defender = nation(202, "Defender", 1_000d);
+            defender.setColor(NationColor.BEIGE);
+            defender.setBeigeTimer(link.locutus.discord.util.TimeUtil.getTurn() + 3);
+
+            BlitzPlanResponse blocked = SimEndpoints.previewBlitzPlan(
+                warDb,
+                request(),
+                List.of(attacker),
+                List.of(defender)
+            );
+
+            BlitzLegalEdge blockedEdge = edge(blocked, 101, 202);
+            assertFalse(blockedEdge.legal());
+            assertTrue(contains(blockedEdge.blockedReasonOrdinals(), BlitzWarningCode.ATTACKER_VM.ordinal()));
+            assertTrue(contains(blockedEdge.blockedReasonOrdinals(), BlitzWarningCode.BEIGE_DEFENDER.ordinal()));
+            assertEquals(4, row(blocked, 101).vmTurns());
+            assertEquals(3, row(blocked, 202).beigeTurns());
+
+            BlitzDraftEdit clearAttackerVm = new BlitzDraftEdit(101, null, null, null,
+                null, null, 0L, 0L, 0, 0, null, null, true);
+            BlitzDraftEdit clearDefenderBeige = new BlitzDraftEdit(202, null, null, null,
+                null, null, 0L, 0L, 0, 0, null, true, null);
+
+            BlitzPlanResponse cleared = SimEndpoints.previewBlitzPlan(
+                warDb,
+                request(new BlitzDraftEdit[]{clearAttackerVm, clearDefenderBeige}, new BlitzPlannedWar[0]),
+                List.of(attacker),
+                List.of(defender)
+            );
+
+            BlitzLegalEdge clearedEdge = edge(cleared, 101, 202);
+            assertTrue(clearedEdge.legal());
+            assertEquals(0, row(cleared, 101).vmTurns());
+            assertEquals(0, row(cleared, 202).beigeTurns());
         });
     }
 
@@ -268,6 +408,7 @@ class SimEndpointsContractTest {
             assertEquals(202, response.assignments()[0].targetNationId());
             assertEquals(WarType.ORD.ordinal(), response.assignments()[0].warTypeOrdinal());
             assertEquals(BlitzAssignedWarSource.USER_PINNED.ordinal(), response.assignments()[0].sourceOrdinal());
+            assertTrue(response.assignments()[0].initialAttackTypeOrdinal() >= 0);
             assertNotNull(response.objective());
             assertEquals(1, response.objective().sampleCount());
             assertNotNull(response.diagnostics());
@@ -303,6 +444,7 @@ class SimEndpointsContractTest {
             assertEquals(1, response.assignments().length);
             assertEquals(101, response.assignments()[0].declarerNationId());
             assertEquals(202, response.assignments()[0].targetNationId());
+            assertTrue(response.assignments()[0].initialAttackTypeOrdinal() >= 0);
         });
     }
 
@@ -435,6 +577,7 @@ class SimEndpointsContractTest {
                 new BlitzPlannedWar[0],
                 BlitzSideMode.ATTACKERS_ONLY.ordinal(),
                 BlitzRebuyMode.FULL_REBUYS.ordinal(),
+                null,
                 6,
                 true,
                 assume5553Buildings,
@@ -448,29 +591,41 @@ class SimEndpointsContractTest {
 
     private static BlitzPlanRequest request(boolean runAssignment, boolean captureTrace) {
         return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
-                BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, false, true, 1L, 5,
+            BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), null, 6, false, true, 1L, 5,
                 new int[0], runAssignment, captureTrace);
     }
 
     private static BlitzPlanRequest request(int sideModeOrdinal, int rebuyModeOrdinal, boolean runAssignment, boolean captureTrace) {
         return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
-                sideModeOrdinal, rebuyModeOrdinal, 6, false, true, 1L, 5, new int[0], runAssignment, captureTrace);
+            sideModeOrdinal, rebuyModeOrdinal, null, 6, false, true, 1L, 5, new int[0], runAssignment, captureTrace);
     }
 
     private static BlitzPlanRequest requestWithHorizon(int horizonTurns) {
         return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
-                BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), horizonTurns, false, true, 1L, 5,
+            BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), null, horizonTurns, false, true, 1L, 5,
+                new int[0], false, false);
+    }
+
+    private static BlitzPlanRequest requestWithObjective(Integer objectiveOrdinal) {
+        return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
+            BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), objectiveOrdinal, 6, false, true, 1L, 5,
+                new int[0], false, false);
+    }
+
+    private static BlitzPlanRequest requestAtTurn(int currentTurn, boolean includeExistingWars) {
+        return new BlitzPlanRequest("*", "*", new BlitzDraftEdit[0], new BlitzPlannedWar[0],
+            BlitzSideMode.ATTACKERS_ONLY.ordinal(), BlitzRebuyMode.FULL_REBUYS.ordinal(), null, 6, includeExistingWars, true, 1L, currentTurn,
                 new int[0], false, false);
     }
 
     private static BlitzPlanRequest request(BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, BlitzSideMode.ATTACKERS_ONLY.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, new int[0], false, false);
+            BlitzRebuyMode.FULL_REBUYS.ordinal(), null, 6, true, true, 1L, 5, new int[0], false, false);
     }
 
     private static BlitzPlanRequest request(BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, BlitzSideMode sideMode) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, sideMode.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, true, true, 1L, 5, new int[0], false, false);
+            BlitzRebuyMode.FULL_REBUYS.ordinal(), null, 6, true, true, 1L, 5, new int[0], false, false);
     }
 
     private static BlitzPlanRequest requestRun(BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace) {
@@ -487,16 +642,16 @@ class SimEndpointsContractTest {
 
     private static BlitzPlanRequest requestRun(BlitzSideMode sideMode, BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace, boolean includeExistingWars) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, sideMode.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), 6, includeExistingWars, true, 1L, 5, new int[0], true, captureTrace);
+            BlitzRebuyMode.FULL_REBUYS.ordinal(), null, 6, includeExistingWars, true, 1L, 5, new int[0], true, captureTrace);
     }
 
     private static BlitzPlanRequest requestRunWithHorizon(BlitzSideMode sideMode, BlitzDraftEdit[] edits, BlitzPlannedWar[] plannedWars, boolean captureTrace, int horizonTurns) {
         return new BlitzPlanRequest("*", "*", edits, plannedWars, sideMode.ordinal(),
-                BlitzRebuyMode.FULL_REBUYS.ordinal(), horizonTurns, true, true, 1L, 5, new int[0], true, captureTrace);
+            BlitzRebuyMode.FULL_REBUYS.ordinal(), null, horizonTurns, true, true, 1L, 5, new int[0], true, captureTrace);
     }
 
     private static BlitzDraftEdit edit(int nationId, int[] units, int[] buys) {
-        return new BlitzDraftEdit(nationId, null, null, null, units, buys, 0L, 0L, 0, 0, null);
+        return new BlitzDraftEdit(nationId, null, null, null, units, buys, 0L, 0L, 0, 0, null, null, null);
     }
 
     private static int[] zeros() {
@@ -517,6 +672,7 @@ class SimEndpointsContractTest {
         nation.setMissiles(0);
         nation.setNukes(0);
         nation.setSpies(0, null);
+        nation.setColor(NationColor.GRAY);
         nation.setLastActive(System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1));
         nation.setDate(System.currentTimeMillis());
         return nation;
@@ -550,8 +706,20 @@ class SimEndpointsContractTest {
     }
 
     private static boolean containsWarning(BlitzPlanResponse response, BlitzWarningCode code) {
-        for (link.locutus.discord.util.battle.BlitzWarning warning : response.warnings()) {
+        for (link.locutus.discord.web.commands.binding.value_types.BlitzPlanWarning warning : response.warnings()) {
             if (warning.code() == code) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsPairLockout(BlitzPlanResponse response, int declarerNationId, int targetNationId, int warId, boolean active) {
+        for (BlitzPairLockout lockout : response.pairLockouts()) {
+            if (lockout.declarerNationId() == declarerNationId
+                    && lockout.targetNationId() == targetNationId
+                    && lockout.warId() == warId
+                    && lockout.active() == active) {
                 return true;
             }
         }

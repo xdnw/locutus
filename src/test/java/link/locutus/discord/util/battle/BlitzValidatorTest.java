@@ -48,6 +48,14 @@ class BlitzValidatorTest {
     }
 
     @Test
+    void attackerVmUsesSharedVmCode() {
+        BlitzWarning warning = BlitzValidator.validateAttacker(nation(3, "Vm", 100d, 5, 1_000, 100).withVmTurns(3)).get(0);
+
+        assertEquals(BlitzWarningCode.ATTACKER_VM, warning.code());
+        assertEquals("Attacker: `Vm` is in VM for 3 turns", warning.detail());
+    }
+
+    @Test
     void maxOffensivesWarningIsStructured() {
         BlitzWarning warning = BlitzValidator.maxOffensivesWarning(nation(7, "Busy", 100d, 5, 1_000, 100), 4);
 

@@ -31,11 +31,18 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Function;
 
 public class TsEndpointGenerator {
+    private static final List<String> DEFAULT_ENDPOINT_OUTPUT_DIRS = List.of(
+            "../lc_cmd_react/src/",
+            "../lc_stats_svelte/src/"
+    );
+    private static final String DEFAULT_COMMAND_OUTPUT_DIR = "../lc_cmd_react/src/";
+
     // .\gradlew.bat runMain -PmainClass="link.locutus.discord.web.jooby.adapter.TsEndpointGenerator"
     // ./gradlew -Pts generateTypeScript
     public static void main(String[] args) {
@@ -67,22 +74,21 @@ public class TsEndpointGenerator {
 
     public static void writeFiles(PageHandler handler, @Nullable CommandManager2 commandManager, File outputDir,
             boolean endpoints, boolean commands) throws IOException {
-        if (outputDir == null) {
-            outputDir = new File("../lc_cmd_react/src/");
-        }
+        writeFiles(handler, commandManager, outputDir, endpoints, commands, null);
+    }
+
+    static void writeFiles(PageHandler handler, @Nullable CommandManager2 commandManager, @Nullable File outputDir,
+            boolean endpoints, boolean commands, @Nullable File defaultBaseDir) throws IOException {
         CommandGroup api = (CommandGroup) handler.getCommands().get("api");
         if (endpoints){
-            File endpointFile = new File(outputDir, "lib/endpoints.ts");
-            File endpointParent = endpointFile.getParentFile();
-            if (endpointParent != null) {
-                endpointParent.mkdirs();
-            }
             String header = """
-                    import { ApiEndpoint, CommonEndpoint } from "./BulkQuery";
-                    import type * as ApiTypes from "@/lib/apitypes.d.ts";
+                    import { ApiEndpoint, type CommonEndpoint } from "./BulkQuery";
+                    import type * as ApiTypes from "./apitypes";
                     """;
-            String constants = generateEndpointConstants(api);
-            Files.write(endpointFile.toPath(), (header + constants).getBytes());
+            String endpointContents = header + generateEndpointConstants(api);
+            for (File endpointOutputDir : resolveEndpointOutputDirs(outputDir, defaultBaseDir)) {
+                writeOutput(endpointOutputDir, "lib/endpoints.ts", endpointContents);
+            }
         }
         {
             // generateTsPlaceholderBuilder (unused)
@@ -110,16 +116,45 @@ public class TsEndpointGenerator {
 
             String header = """
                     export const COMMANDS = """;
-            File output = new File(outputDir, "lib/commands.ts");
-            File outputParent = output.getParentFile();
-            if (outputParent != null) {
-                outputParent.mkdirs();
-            }
 
             String jsonStr = WebUtil.GSON.toJson(json);
             String suffix = ";"; // " as const;"
-            Files.write(output.toPath(), (header + jsonStr + suffix).getBytes());
+            writeOutput(resolveCommandOutputDir(outputDir, defaultBaseDir), "lib/commands.ts", header + jsonStr + suffix);
         }
+    }
+
+    static List<File> resolveEndpointOutputDirs(@Nullable File outputDir) {
+        return resolveEndpointOutputDirs(outputDir, null);
+    }
+
+    static List<File> resolveEndpointOutputDirs(@Nullable File outputDir, @Nullable File defaultBaseDir) {
+        if (outputDir != null) {
+            return List.of(outputDir);
+        }
+        return DEFAULT_ENDPOINT_OUTPUT_DIRS.stream()
+                .map(path -> defaultOutputDir(path, defaultBaseDir))
+                .toList();
+    }
+
+    static File resolveCommandOutputDir(@Nullable File outputDir) {
+        return resolveCommandOutputDir(outputDir, null);
+    }
+
+    static File resolveCommandOutputDir(@Nullable File outputDir, @Nullable File defaultBaseDir) {
+        return outputDir == null ? defaultOutputDir(DEFAULT_COMMAND_OUTPUT_DIR, defaultBaseDir) : outputDir;
+    }
+
+    private static void writeOutput(File outputDir, String relativePath, String contents) throws IOException {
+        File output = new File(outputDir, relativePath);
+        File outputParent = output.getParentFile();
+        if (outputParent != null) {
+            outputParent.mkdirs();
+        }
+        Files.writeString(output.toPath(), contents, StandardCharsets.UTF_8);
+    }
+
+    private static File defaultOutputDir(String relativePath, @Nullable File defaultBaseDir) {
+        return defaultBaseDir == null ? new File(relativePath) : new File(defaultBaseDir, relativePath);
     }
 
     private static String generateEndpointConstants(CommandGroup api) {

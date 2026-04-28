@@ -1,7 +1,6 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
 import link.locutus.discord.sim.planners.PlannerDiagnostic;
-import link.locutus.discord.util.battle.BlitzWarning;
 
 public record BlitzPlanResponse(
         int currentTurn,
@@ -9,12 +8,15 @@ public record BlitzPlanResponse(
         int[] attackerNationIds,
         int[] defenderNationIds,
         BlitzNationRow[] nations,
+        BlitzOutsiderNation[] outsiderNations,
         BlitzExistingWar[] existingWars,
+        BlitzPairLockout[] pairLockouts,
         BlitzLegalEdge[] legalEdges,
         BlitzAssignedWar[] assignments,
-        BlitzWarning[] warnings,
+        BlitzPlanWarning[] warnings,
         PlannerDiagnostic[] diagnostics,
         BlitzObjectiveSummary objective,
-        BlitzReplayTrace trace
+        BlitzReplayTrace trace,
+        BlitzMilitaryRules rules
 ) {
 }

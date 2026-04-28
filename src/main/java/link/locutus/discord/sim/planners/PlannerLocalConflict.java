@@ -12,7 +12,7 @@ import link.locutus.discord.sim.SimClock;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.TeamScoreObjective;
-import link.locutus.discord.sim.TeamScoreView;
+import link.locutus.discord.sim.TeamWarControlView;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.ControlFlagDelta;
@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-final class PlannerLocalConflict implements TeamScoreView {
+final class PlannerLocalConflict implements TeamWarControlView {
     private static final AttackType[] CONVENTIONAL_ATTACK_SEQUENCE = {
         AttackType.GROUND,
         AttackType.AIRSTRIKE_INFRA,
@@ -647,6 +647,32 @@ final class PlannerLocalConflict implements TeamScoreView {
         for (LocalNation nation : nationsById.values()) {
             consumer.accept(nation.nationId(), nation.teamId(), nation.score());
         }
+    }
+
+    @Override
+    public void forEachWarControl(WarControlConsumer consumer) {
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            consumer.accept(
+                    war.attacker.teamId(),
+                    war.defender.teamId(),
+                    controlOwnerTeamId(war, war.warBuffers.groundControlOwner[war.warIndex]),
+                    controlOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]),
+                    controlOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]),
+                    war.attackerResistanceValue(),
+                    war.defenderResistanceValue()
+            );
+        }
+    }
+
+    private static int controlOwnerTeamId(LocalWar war, int ownerCode) {
+        return switch (ownerCode) {
+            case LocalWarBuffers.OWNER_ATTACKER -> war.attacker.teamId();
+            case LocalWarBuffers.OWNER_DEFENDER -> war.defender.teamId();
+            default -> Integer.MIN_VALUE;
+        };
     }
 
     private void seedProjectedWars(Collection<PlannerProjectedWar> activeWars) {
@@ -1528,6 +1554,7 @@ final class PlannerLocalConflict implements TeamScoreView {
         private final double lootModifierValue;
         private int policyCooldownTurnsRemaining;
         private int beigeTurns;
+        private final int vmTurns;
         private int dayPhaseTurn;
         private double score;
 
@@ -1554,6 +1581,7 @@ final class PlannerLocalConflict implements TeamScoreView {
                 double lootModifierValue,
                 int policyCooldownTurnsRemaining,
                 int beigeTurns,
+                int vmTurns,
                 int dayPhaseTurn
         ) {
             this.nationId = nationId;
@@ -1578,6 +1606,7 @@ final class PlannerLocalConflict implements TeamScoreView {
             this.lootModifierValue = lootModifierValue;
             this.policyCooldownTurnsRemaining = policyCooldownTurnsRemaining;
             this.beigeTurns = beigeTurns;
+            this.vmTurns = vmTurns;
             this.dayPhaseTurn = dayPhaseTurn;
             recalculateScore();
         }
@@ -1611,6 +1640,7 @@ final class PlannerLocalConflict implements TeamScoreView {
                     snapshot.lootModifier(),
                     snapshot.policyCooldownTurnsRemaining(),
                     snapshot.beigeTurns(),
+                    snapshot.vmTurns(),
                     SimClock.dayPhaseForTurn(0, currentTurn, snapshot.resetHourUtc())
             );
         }
@@ -1790,6 +1820,7 @@ final class PlannerLocalConflict implements TeamScoreView {
                     .activeOpponentNationIds(opponents)
                     .policyCooldownTurnsRemaining(policyCooldownTurnsRemaining)
                     .beigeTurns(beigeTurns)
+                    .vmTurns(vmTurns)
                     .researchBits(researchBitsValue)
                     .projectBits(projectBitsValue)
                     .blitzkriegActive(blitzkriegActive)

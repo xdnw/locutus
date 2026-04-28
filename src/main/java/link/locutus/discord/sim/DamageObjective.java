@@ -27,15 +27,8 @@ public class DamageObjective implements TeamScoreObjective {
 
     @Override
     public double scoreTerminal(TeamScoreView view, int teamId) {
-        final double[] totals = new double[2];
-        view.forEachNation((nationId, nationTeamId, score) -> {
-            if (nationTeamId == teamId) {
-                totals[0] += score;
-            } else {
-                totals[1] += score;
-            }
-        });
-        return totals[0] - totals[1];
+        ScoreTotals totals = ScoreTotals.of(view, teamId);
+        return totals.ownScore() - totals.enemyScore();
     }
 
     @Override

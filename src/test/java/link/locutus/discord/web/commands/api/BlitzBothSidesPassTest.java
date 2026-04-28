@@ -2,6 +2,7 @@ package link.locutus.discord.web.commands.api;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord._main.ILoader;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.config.Settings;
@@ -51,7 +52,7 @@ class BlitzBothSidesPassTest {
             DBNation nationTwo = nation(202, "Nation Two");
 
             BlitzDraftEdit[] edits = {
-                    new BlitzDraftEdit(101, false, null, null, null, null, 0L, 0L, 0, 0, null)
+                    new BlitzDraftEdit(101, false, null, null, null, null, 0L, 0L, 0, 0, null, null, null)
             };
 
             BlitzPlanResponse response = SimEndpoints.runBlitzPlan(
@@ -111,6 +112,7 @@ class BlitzBothSidesPassTest {
                 new BlitzPlannedWar[0],
                 BlitzSideMode.BOTH.ordinal(),
                 BlitzRebuyMode.FULL_REBUYS.ordinal(),
+                null,
                 6,
                 true,
                 true,
@@ -145,6 +147,7 @@ class BlitzBothSidesPassTest {
         nation.setMissiles(0);
         nation.setNukes(0);
         nation.setSpies(0, null);
+        nation.setColor(NationColor.GRAY);
         nation.setLastActive(System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1));
         nation.setDate(System.currentTimeMillis());
         return nation;

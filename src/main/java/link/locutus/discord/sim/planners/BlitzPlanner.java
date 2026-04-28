@@ -168,7 +168,7 @@ public final class BlitzPlanner {
                 : tuning;
             return PlannerSimSupport.scoreAssignment(scoringTuning, overrides, objective, finalAssignment, attList, defList);
         });
-        return new BlitzAssignment(finalAssignment, diagnostics, objectiveSummary.mean(), objectiveSummary);
+        return new BlitzAssignment(finalAssignment, diagnostics, objectiveSummary.mean(), objectiveSummary, candidates.initialAttackTypeOrdinalsByPair());
     }
 
     // ============================================================
@@ -198,6 +198,7 @@ public final class BlitzPlanner {
 
         Map<Integer, List<Integer>> candidateDefendersByAttacker = new HashMap<>();
         Map<Long, Float> edgeScoresByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
+        Map<Long, Integer> initialAttackTypeOrdinalsByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
 
         for (int edge = 0; edge < edges.edgeCount(); edge++) {
             int attackerIndex = edges.attackerIndex(edge);
@@ -205,13 +206,16 @@ public final class BlitzPlanner {
             int attackerNationId = compiledScenario.attackerNationId(attackerIndex);
             int defenderNationId = compiledScenario.defenderNationId(defenderIndex);
 
+            long candidatePairKey = pairKey(attackerNationId, defenderNationId);
+
             candidateDefendersByAttacker
                 .computeIfAbsent(attackerNationId, ignored -> new ArrayList<>())
                 .add(defenderNationId);
-            edgeScoresByPair.put(pairKey(attackerNationId, defenderNationId), edges.scalarScore(edge));
+            edgeScoresByPair.put(candidatePairKey, edges.scalarScore(edge));
+            initialAttackTypeOrdinalsByPair.put(candidatePairKey, (int) edges.bestAttackTypeId(edge));
         }
 
-        return new GeneratedCandidates(edges, candidateDefendersByAttacker, edgeScoresByPair);
+        return new GeneratedCandidates(edges, candidateDefendersByAttacker, edgeScoresByPair, initialAttackTypeOrdinalsByPair);
     }
 
     // ============================================================
@@ -725,7 +729,8 @@ public final class BlitzPlanner {
     private record GeneratedCandidates(
         CandidateEdgeTable edgeTable,
         Map<Integer, List<Integer>> candidateDefendersByAttacker,
-        Map<Long, Float> edgeScoresByPair
+        Map<Long, Float> edgeScoresByPair,
+        Map<Long, Integer> initialAttackTypeOrdinalsByPair
     ) {
         boolean containsPair(int attackerNationId, int defenderNationId) {
             return edgeScoresByPair.containsKey(pairKey(attackerNationId, defenderNationId));

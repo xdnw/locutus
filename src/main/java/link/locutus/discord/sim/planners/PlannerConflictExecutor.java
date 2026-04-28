@@ -323,6 +323,9 @@ final class PlannerConflictExecutor {
             if (!effectiveScripts.declareWarScript()) {
                 return Double.NEGATIVE_INFINITY;
             }
+            if (isBlockedDeclareState(attacker, defender)) {
+                return Double.NEGATIVE_INFINITY;
+            }
             PlannerLocalConflict conflict = PlannerLocalConflict.create(
                 overrides,
                 List.of(attacker),
@@ -357,6 +360,9 @@ final class PlannerConflictExecutor {
                 : scripts;
         PlannerTransitionSemantics transitionSemantics = effectiveScripts.transitionSemantics();
         if (!effectiveScripts.declareWarScript()) {
+            return DeclaredWarEvaluation.scoreOnly(Double.NEGATIVE_INFINITY);
+        }
+        if (isBlockedDeclareState(attacker, defender)) {
             return DeclaredWarEvaluation.scoreOnly(Double.NEGATIVE_INFINITY);
         }
         PlannerLocalConflict conflict = PlannerLocalConflict.create(
@@ -485,6 +491,10 @@ final class PlannerConflictExecutor {
             }
         }
         return null;
+    }
+
+    private static boolean isBlockedDeclareState(DBNationSnapshot attacker, DBNationSnapshot defender) {
+        return attacker.vmTurns() > 0 || defender.vmTurns() > 0 || defender.beigeTurns() > 0;
     }
 
     private static double controlLeverage(PlannerProjectedWar war) {

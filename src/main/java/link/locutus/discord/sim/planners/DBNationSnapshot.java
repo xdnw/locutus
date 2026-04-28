@@ -61,6 +61,7 @@ public final class DBNationSnapshot {
     private final Set<Integer> activeOpponentNationIds;
     private final int policyCooldownTurnsRemaining;
     private final int beigeTurns;
+    private final int vmTurns;
     private final EnumMap<MilitaryUnit, Integer> unitBuysToday;
     private final EnumMap<MilitaryUnit, Integer> pendingBuysNextTurn;
     private final int researchBits;
@@ -93,6 +94,7 @@ public final class DBNationSnapshot {
         this.activeOpponentNationIds = Set.copyOf(b.activeOpponentNationIds);
         this.policyCooldownTurnsRemaining = b.policyCooldownTurnsRemaining;
         this.beigeTurns = b.beigeTurns;
+        this.vmTurns = b.vmTurns;
         this.unitBuysToday = new EnumMap<>(b.unitBuysToday);
         this.pendingBuysNextTurn = new EnumMap<>(b.pendingBuysNextTurn);
         this.researchBits = b.researchBits;
@@ -140,6 +142,7 @@ public final class DBNationSnapshot {
         b.currentDefensiveWars(nation.getDef());
         b.warPolicy(nation.getWarPolicy());
         b.beigeTurns(nation.getBeigeTurns());
+        b.vmTurns(Math.max(0, nation.getVm_turns()));
         long projectBits = nation.data()._projects();
         int researchBits = nation.data()._researchBits();
         boolean blitzkriegActive = nation.isBlitzkrieg();
@@ -246,6 +249,7 @@ public final class DBNationSnapshot {
     }
     public int policyCooldownTurnsRemaining() { return policyCooldownTurnsRemaining; }
     public int beigeTurns() { return beigeTurns; }
+    public int vmTurns() { return vmTurns; }
     public int unitsBoughtToday(MilitaryUnit unit) { return unitBuysToday.getOrDefault(unit, 0); }
     public int pendingBuysNextTurn(MilitaryUnit unit) { return pendingBuysNextTurn.getOrDefault(unit, 0); }
     public int dailyBuyCap(MilitaryUnit unit) {
@@ -336,6 +340,7 @@ public final class DBNationSnapshot {
                 .activeOpponentNationIds(activeOpponentNationIds)
                 .policyCooldownTurnsRemaining(policyCooldownTurnsRemaining)
                 .beigeTurns(beigeTurns)
+                .vmTurns(vmTurns)
                 .researchBits(researchBits)
                 .projectBits(projectBits)
                 .combatProfile(combatProfile());
@@ -379,6 +384,7 @@ public final class DBNationSnapshot {
         private final Set<Integer> activeOpponentNationIds = new LinkedHashSet<>();
         private int policyCooldownTurnsRemaining;
         private int beigeTurns;
+        private int vmTurns;
         private final EnumMap<MilitaryUnit, Integer> unitBuysToday = new EnumMap<>(MilitaryUnit.class);
         private final EnumMap<MilitaryUnit, Integer> pendingBuysNextTurn = new EnumMap<>(MilitaryUnit.class);
         private int researchBits;
@@ -433,6 +439,13 @@ public final class DBNationSnapshot {
                 throw new IllegalArgumentException("beigeTurns must be >= 0");
             }
             this.beigeTurns = turns;
+            return this;
+        }
+        public Builder vmTurns(int turns) {
+            if (turns < 0) {
+                throw new IllegalArgumentException("vmTurns must be >= 0");
+            }
+            this.vmTurns = turns;
             return this;
         }
         public Builder unitBoughtToday(MilitaryUnit unit, int amount) {

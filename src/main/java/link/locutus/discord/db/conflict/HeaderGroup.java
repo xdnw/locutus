@@ -233,6 +233,7 @@ public enum HeaderGroup {
             "metric_names",
             "metrics_turn",
             "metrics_day",
+            "metrics_event",
             "coalitions"
     )) {
         @Override
@@ -243,6 +244,7 @@ public enum HeaderGroup {
 
             List<Integer> metricsDay = new IntArrayList();
             List<Integer> metricsTurn = new IntArrayList();
+            List<Integer> metricsEvent = new IntArrayList();
 
             for (ConflictMetric metric : ConflictMetric.values) {
                 (metric.isDay() ? metricsDay : metricsTurn).add(metricNames.size());
@@ -257,14 +259,19 @@ public enum HeaderGroup {
 
             int columnMetricOffset = metricNames.size();
 
+            // Damage columns are per-day events, not carry-forward state. The
+            // frontend uses metrics_event to render frames as point-in-time
+            // values rather than sparse_patch_v3 deltas.
             for (ConflictColumn column : columns) {
-                // defender metric
-                metricsDay.add(metricNames.size());
+                int defMetricId = metricNames.size();
+                metricsDay.add(defMetricId);
+                metricsEvent.add(defMetricId);
                 String defPrefix = column.isCount() ? "def:" : "loss:";
                 metricNames.add(defPrefix + column.getName());
 
-                // attacker metric
-                metricsDay.add(metricNames.size());
+                int offMetricId = metricNames.size();
+                metricsDay.add(offMetricId);
+                metricsEvent.add(offMetricId);
                 String attPrefix = column.isCount() ? "off:" : "dealt:";
                 metricNames.add(attPrefix + column.getName());
             }
@@ -272,6 +279,7 @@ public enum HeaderGroup {
             graphData.put("metric_names", metricNames);
             graphData.put("metrics_turn", metricsTurn);
             graphData.put("metrics_day", metricsDay);
+            graphData.put("metrics_event", metricsEvent);
 
             // Build coalition graph maps
             CoalitionSide coalition1 = conflict.getSide1();

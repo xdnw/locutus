@@ -171,6 +171,44 @@ class BlitzPlannerTest {
     }
 
     @Test
+    void vmNationsAreExcludedFromPlannerAssignments() {
+        DBNationSnapshot vmAttacker = DBNationSnapshot.synthetic(1)
+                .teamId(ATTACKER_TEAM)
+                .allianceId(ATTACKER_TEAM)
+                .score(ATTACKER_SCORE)
+                .cities(10)
+                .nonInfraScoreBase(ATTACKER_SCORE)
+                .cityInfra(uniformInfra(10, 1000.0))
+                .maxOff(5)
+                .currentOffensiveWars(0)
+                .currentDefensiveWars(0)
+                .unit(MilitaryUnit.AIRCRAFT, 500)
+                .unit(MilitaryUnit.SOLDIER, 500)
+                .warPolicy(WarPolicy.ATTRITION)
+                .vmTurns(4)
+                .build();
+        DBNationSnapshot normalDefender = DBNationSnapshot.synthetic(101)
+                .teamId(9999)
+                .allianceId(9999)
+                .score(DEFENDER_SCORE)
+                .cities(10)
+                .nonInfraScoreBase(DEFENDER_SCORE)
+                .cityInfra(uniformInfra(10, 1000.0))
+                .maxOff(5)
+                .currentOffensiveWars(0)
+                .currentDefensiveWars(0)
+                .unit(MilitaryUnit.AIRCRAFT, 300)
+                .unit(MilitaryUnit.SOLDIER, 300)
+                .warPolicy(WarPolicy.ATTRITION)
+                .build();
+
+        BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
+
+        assertEquals(0, planner.assign(List.of(vmAttacker), List.of(normalDefender)).pairCount());
+        assertEquals(0, planner.assign(List.of(normalDefender), List.of(vmAttacker)).pairCount());
+    }
+
+    @Test
     void prunesZeroProbeEdgesDuringCandidateAdmission() {
         List<DBNationSnapshot> weakAttackers = buildNations(301, 3, ATTACKER_TEAM, ATTACKER_SCORE, 0, 0);
         List<DBNationSnapshot> sturdyDefenders = buildNations(401, 3, 9999, DEFENDER_SCORE, 300, 300);
@@ -179,6 +217,40 @@ class BlitzPlannerTest {
         BlitzAssignment result = planner.assign(weakAttackers, sturdyDefenders);
 
         assertEquals(0, result.pairCount(), "Kernel-EV probe should prune non-missile zero-strength edges");
+    }
+
+    @Test
+    void controlObjectiveKeepsStrongInRangeDefenderReachable() {
+    List<DBNationSnapshot> focusedAttackers = buildNations(501, 4, ATTACKER_TEAM, 1_200.0, 900, 4_000);
+    DBNationSnapshot strongestDefender = DBNationSnapshot.synthetic(701)
+        .teamId(9999)
+        .allianceId(9999)
+        .score(1_800.0)
+        .cities(12)
+        .nonInfraScoreBase(1_800.0)
+        .cityInfra(uniformInfra(12, 1_200.0))
+        .maxOff(5)
+        .currentOffensiveWars(0)
+        .currentDefensiveWars(0)
+        .unit(MilitaryUnit.AIRCRAFT, 1_100)
+        .unit(MilitaryUnit.SOLDIER, 5_000)
+        .warPolicy(WarPolicy.ATTRITION)
+        .build();
+    List<DBNationSnapshot> mixedDefenders = new ArrayList<>();
+    mixedDefenders.add(strongestDefender);
+    mixedDefenders.addAll(buildNations(702, 2, 9999, 1_000.0, 300, 300));
+
+    BlitzAssignment result = new BlitzPlanner(
+        SimTuning.defaults(),
+        TreatyProvider.NONE,
+        OverrideSet.EMPTY,
+        BlitzObjective.CONTROL.objective()
+    ).assign(focusedAttackers, mixedDefenders);
+
+    boolean assignedStrongestDefender = result.assignment().values().stream()
+        .flatMap(List::stream)
+        .anyMatch(defenderId -> defenderId == strongestDefender.nationId());
+    assertTrue(assignedStrongestDefender, "Control objective should keep the strongest in-range defender in the candidate outcome");
     }
 
     @Test

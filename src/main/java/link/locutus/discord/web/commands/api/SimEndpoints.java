@@ -12,8 +12,10 @@ import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.WarDB;
+import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.TeamScoreObjective;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.planners.OverrideSet.ActiveOverride;
 import link.locutus.discord.sim.planners.AdHocPlan;
@@ -41,10 +43,14 @@ import link.locutus.discord.web.commands.binding.value_types.BlitzAssignedWarSou
 import link.locutus.discord.web.commands.binding.value_types.BlitzDraftEdit;
 import link.locutus.discord.web.commands.binding.value_types.BlitzExistingWar;
 import link.locutus.discord.web.commands.binding.value_types.BlitzLegalEdge;
+import link.locutus.discord.web.commands.binding.value_types.BlitzMilitaryRules;
 import link.locutus.discord.web.commands.binding.value_types.BlitzNationRow;
 import link.locutus.discord.web.commands.binding.value_types.BlitzObjectiveSummary;
+import link.locutus.discord.web.commands.binding.value_types.BlitzOutsiderNation;
+import link.locutus.discord.web.commands.binding.value_types.BlitzPairLockout;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlanRequest;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlanResponse;
+import link.locutus.discord.web.commands.binding.value_types.BlitzPlanWarning;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlannedWar;
 import link.locutus.discord.web.commands.binding.value_types.BlitzRebuyMode;
 import link.locutus.discord.web.commands.binding.value_types.BlitzReplayConcludedWar;
@@ -108,7 +114,8 @@ public class SimEndpoints {
                 TreatyProvider.NONE,
                 activityProvider,
             OverrideSet.EMPTY,
-                tuningFor(stochastic, stochasticSamples, stochasticSeed)
+                tuningFor(stochastic, stochasticSamples, stochasticSeed),
+                BlitzObjective.defaultObjective().objective()
         );
     }
 
@@ -168,7 +175,8 @@ public class SimEndpoints {
                 runInput.treatyProvider(),
                 context.activityModel().snapshotProvider(),
                 context.overrides(),
-                SimTuning.defaults().withStochasticSeed(request.stochasticSeed())
+                SimTuning.defaults().withStochasticSeed(request.stochasticSeed()),
+                objectiveForRequest(request)
         );
         BlitzAssignedWar[] assignedWars = assignedWars(assignment, context.acceptedPlannedWars());
         BlitzObjectiveSummary objective = objectiveSummary(assignment.objectiveSummary());
@@ -195,6 +203,7 @@ public class SimEndpoints {
         }
         BlitzSideMode sideMode = enumAt(BlitzSideMode.values(), request.sideModeOrdinal(), "sideModeOrdinal");
         enumAt(BlitzRebuyMode.values(), request.rebuyModeOrdinal(), "rebuyModeOrdinal");
+        validateObjectiveOrdinal(request);
         if (attackers.isEmpty()) {
             throw new IllegalArgumentException("Please provide at least one attacker");
         }
@@ -207,7 +216,7 @@ public class SimEndpoints {
         Set<Integer> overlap = new LinkedHashSet<>(attackerById.keySet());
         overlap.retainAll(defenderById.keySet());
         if (!overlap.isEmpty()) {
-            throw new IllegalArgumentException("Nations cannot be on both blitz sides: " + overlap);
+            throw new IllegalArgumentException(overlapNationError(attackerById, defenderById, overlap));
         }
 
         Set<DBNation> allNations = new LinkedHashSet<>();
@@ -228,14 +237,15 @@ public class SimEndpoints {
         List<BlitzWarning> warnings = new ArrayList<>();
         List<BlitzLegalEdge> legalEdges = new ArrayList<>();
         Set<Integer> excludedWarIds = excludedWarIds(request);
-        Set<String> sameOpponentBlockedPairs = sameOpponentBlockedPairKeys(warDB, allNations, excludedWarIds);
-        buildLegalEdges(sideMode, attackers, defenders, sameOpponentBlockedPairs, request.includeExistingWars(), legalEdges, warnings);
+        int currentTurn = request.currentTurnOverride() == null ? currentWeekTurnUtc() : request.currentTurnOverride();
+        BlitzPairLockout[] pairLockouts = sameOpponentPairLockouts(warDB, allNations, excludedWarIds, currentTurn);
+        Set<String> sameOpponentBlockedPairs = sameOpponentBlockedPairKeys(pairLockouts);
+        buildLegalEdges(sideMode, attackers, defenders, snapshotsByNationId, editsByNationId, sameOpponentBlockedPairs, request.includeExistingWars(), legalEdges, warnings);
         List<BlitzPlannedWar> acceptedPlannedWars = validatePlannedWars(request, sideMode, attackerById, defenderById, legalEdges, warnings);
 
         BlitzExistingWar[] existingWars = request.includeExistingWars()
                 ? existingWars(warDB, allNations, excludedWarIds)
                 : new BlitzExistingWar[0];
-        int currentTurn = request.currentTurnOverride() == null ? currentWeekTurnUtc() : request.currentTurnOverride();
         CompositeBlitzActivityModel activityModel = CompositeBlitzActivityModel.build(
             allNations,
             warDB,
@@ -256,11 +266,31 @@ public class SimEndpoints {
                 overrides,
                 activityModel,
                 nationRows(allNations, editsByNationId, currentBuys, request.assume5553Buildings(), request.includeExistingWars(), activityModel),
+                outsiderNations(allNations, existingWars),
                 existingWars,
+                pairLockouts,
                 legalEdges.toArray(BlitzLegalEdge[]::new),
                 warnings.toArray(BlitzWarning[]::new),
                 acceptedPlannedWars
         );
+    }
+
+    private static String overlapNationError(
+            Map<Integer, DBNation> attackerById,
+            Map<Integer, DBNation> defenderById,
+            Set<Integer> overlap
+    ) {
+        List<String> labels = new ArrayList<>();
+        for (int nationId : overlap) {
+            DBNation nation = attackerById.get(nationId);
+            if (nation == null) {
+                nation = defenderById.get(nationId);
+            }
+            String nationName = nation == null ? null : nation.getNation();
+            nationName = nationName == null ? null : nationName.trim();
+            labels.add(nationName == null || nationName.isEmpty() ? "#" + nationId : nationName + " (#" + nationId + ")");
+        }
+        return "Nations cannot be on both blitz sides: " + String.join(", ", labels);
     }
 
     private static OverrideSet plannerOverrides(
@@ -296,13 +326,16 @@ public class SimEndpoints {
                 context.attackerNationIds(),
                 context.defenderNationIds(),
                 context.nations(),
+                context.outsiderNations(),
                 context.existingWars(),
+                context.pairLockouts(),
                 context.legalEdges(),
                 assignments,
-                context.warnings(),
+                webWarnings(context.warnings()),
                 diagnostics,
                 objective,
-                trace
+                trace,
+                BlitzMilitaryRules.instance()
         );
     }
 
@@ -319,8 +352,16 @@ public class SimEndpoints {
         return new BlitzReplayTrace(
                 replayFrame(trace.initialFrame()),
                 replayDeltas(trace.deltas()),
-                context.warnings()
+                webWarnings(context.warnings())
         );
+    }
+
+    private static BlitzPlanWarning[] webWarnings(BlitzWarning[] warnings) {
+        BlitzPlanWarning[] result = new BlitzPlanWarning[warnings.length];
+        for (int i = 0; i < warnings.length; i++) {
+            result[i] = new BlitzPlanWarning(warnings[i]);
+        }
+        return result;
     }
 
     private static BlitzReplayFrame replayFrame(link.locutus.discord.sim.planners.PlannerReplayTrace.Frame frame) {
@@ -456,6 +497,12 @@ public class SimEndpoints {
             }
             if (edit.avgInfraCents() != null) {
                 builder.cityInfra(expandAverageInfra(snapshot, edit.avgInfraCents() / 100d));
+            }
+            if (Boolean.TRUE.equals(edit.clearBeige())) {
+                builder.beigeTurns(0);
+            }
+            if (Boolean.TRUE.equals(edit.clearVacationMode())) {
+                builder.vmTurns(0);
             }
             snapshots.add(builder.build());
         }
@@ -632,6 +679,22 @@ public class SimEndpoints {
         return values[ordinal];
     }
 
+    private static TeamScoreObjective objectiveForRequest(BlitzPlanRequest request) {
+        validateObjectiveOrdinal(request);
+        Integer ordinal = request.objectiveOrdinal();
+        if (ordinal == null) {
+            return BlitzObjective.defaultObjective().objective();
+        }
+        return enumAt(BlitzObjective.values(), ordinal, "objectiveOrdinal").objective();
+    }
+
+    private static void validateObjectiveOrdinal(BlitzPlanRequest request) {
+        Integer ordinal = request.objectiveOrdinal();
+        if (ordinal != null) {
+            enumAt(BlitzObjective.values(), ordinal, "objectiveOrdinal");
+        }
+    }
+
     private static Map<Integer, DBNation> byNationId(Collection<DBNation> nations) {
         Map<Integer, DBNation> result = new LinkedHashMap<>();
         for (DBNation nation : nations) {
@@ -727,6 +790,8 @@ public class SimEndpoints {
         int activeOrdinal = edit == null || edit.forceActive() == null
                 ? ActiveOverride.AUTO.ordinal()
                 : (edit.forceActive() ? ActiveOverride.TRUE : ActiveOverride.FALSE).ordinal();
+        int beigeTurns = edit != null && Boolean.TRUE.equals(edit.clearBeige()) ? 0 : nation.getBeigeTurns();
+        int vmTurns = edit != null && Boolean.TRUE.equals(edit.clearVacationMode()) ? 0 : nation.getVm_turns();
         int resetHourUtc;
         boolean resetHourUtcFallback;
         if (edit != null && edit.resetHour() != null) {
@@ -748,18 +813,24 @@ public class SimEndpoints {
             projectBits = (projectBits | edit.projectBitsSet()) & ~edit.projectBitsClear();
             researchBits = (researchBits | edit.researchBitsSet()) & ~edit.researchBitsClear();
         }
+        String nationName = nation.getNation();
+        String allianceName = nation.getAllianceName();
         return new BlitzNationRow(
                 nation.getNation_id(),
+                nationName == null ? "" : nationName,
                 nation.getAlliance_id(),
+                allianceName == null ? "" : allianceName,
                 nation.getCities(),
                 unitCounts,
                 unitCaps,
                 unitsBoughtToday,
                 edit != null && edit.avgInfraCents() != null ? edit.avgInfraCents() : (int) Math.round(nation.getAvg_infra() * 100),
-                nation.getBeigeTurns(),
-                nation.getVm_turns(),
+                beigeTurns,
+                vmTurns,
                 nation.active_m(),
                 activityModel.activityBasisPoints(nation.getNation_id()),
+                clampBp(nation.login_daychange()),
+                clampBp(nation.avg_daily_login_week()),
                 includeExistingWars ? nation.getFreeOffensiveSlots() : nation.getMaxOff(),
                 includeExistingWars ? nation.getFreeDefensiveSlots() : WarSlotRules.defensiveSlotCap(),
                 nation.getMaxOff(),
@@ -768,7 +839,8 @@ public class SimEndpoints {
                 researchBits,
                 activeOrdinal,
                 resetHourUtc,
-                resetHourUtcFallback
+                resetHourUtcFallback,
+                nation.getColor() == null ? -1 : nation.getColor().ordinal()
         );
     }
 
@@ -784,33 +856,50 @@ public class SimEndpoints {
             BlitzSideMode sideMode,
             Collection<DBNation> attackers,
             Collection<DBNation> defenders,
+            Map<Integer, DBNationSnapshot> snapshotsByNationId,
+            Map<Integer, BlitzDraftEdit> editsByNationId,
             Set<String> activePairs,
             boolean includeExistingWars,
             List<BlitzLegalEdge> legalEdges,
             List<BlitzWarning> warnings
     ) {
         if (sideMode == BlitzSideMode.ATTACKERS_ONLY || sideMode == BlitzSideMode.BOTH) {
-            buildLegalEdgesOneWay(attackers, defenders, activePairs, includeExistingWars, legalEdges, warnings);
+            buildLegalEdgesOneWay(attackers, defenders, snapshotsByNationId, editsByNationId, activePairs, includeExistingWars, legalEdges, warnings);
         }
         if (sideMode == BlitzSideMode.DEFENDERS_ONLY || sideMode == BlitzSideMode.BOTH) {
-            buildLegalEdgesOneWay(defenders, attackers, activePairs, includeExistingWars, legalEdges, warnings);
+            buildLegalEdgesOneWay(defenders, attackers, snapshotsByNationId, editsByNationId, activePairs, includeExistingWars, legalEdges, warnings);
         }
     }
 
     private static void buildLegalEdgesOneWay(
             Collection<DBNation> declarers,
             Collection<DBNation> targets,
+            Map<Integer, DBNationSnapshot> snapshotsByNationId,
+            Map<Integer, BlitzDraftEdit> editsByNationId,
             Set<String> activePairs,
             boolean includeExistingWars,
             List<BlitzLegalEdge> legalEdges,
             List<BlitzWarning> warnings
     ) {
-        BlitzValidator.Rules rules = new BlitzValidator.Rules(0.75, PW.WAR_RANGE_MAX_MODIFIER, true, includeExistingWars, false);
+        BlitzValidator.Rules rules = new BlitzValidator.Rules(PW.WAR_RANGE_MIN_MODIFIER, PW.WAR_RANGE_MAX_MODIFIER, true, includeExistingWars, false);
         for (DBNation declarer : declarers) {
+            BlitzDraftEdit declarerEdit = editsByNationId.get(declarer.getNation_id());
+            BlitzDraftNation draftDeclarer = BlitzDraftNation.of(
+                    declarer,
+                    snapshotsByNationId.get(declarer.getNation_id()),
+                    declarerEdit == null ? null : declarerEdit.forceActive()
+            );
             for (DBNation target : targets) {
-                List<BlitzWarning> edgeWarnings = new ArrayList<>(BlitzValidator.validatePair(
-                        BlitzDraftNation.of(declarer),
-                        BlitzDraftNation.of(target),
+                BlitzDraftEdit targetEdit = editsByNationId.get(target.getNation_id());
+                BlitzDraftNation draftTarget = BlitzDraftNation.of(
+                        target,
+                        snapshotsByNationId.get(target.getNation_id()),
+                        targetEdit == null ? null : targetEdit.forceActive()
+                );
+                List<BlitzWarning> edgeWarnings = new ArrayList<>(draftStateWarnings(draftDeclarer, draftTarget));
+                edgeWarnings.addAll(BlitzValidator.validatePair(
+                        draftDeclarer,
+                        draftTarget,
                         rules
                 ));
                 if (activePairs.contains(pairKey(declarer.getNation_id(), target.getNation_id()))) {
@@ -822,7 +911,12 @@ public class SimEndpoints {
                             "Nation pair is already in an active war"
                     ));
                 }
-                warnings.addAll(edgeWarnings);
+                // Per-edge legality lives on BlitzLegalEdge.blockedReasonOrdinals;
+                // do NOT fan-out edge warnings into the global warnings list,
+                // because that produces O(N*M) entries for large populations
+                // even when the user did nothing wrong. Global warnings are
+                // reserved for user-supplied actions (rejected planned wars,
+                // planner diagnostics, fixed-edge violations).
                 legalEdges.add(new BlitzLegalEdge(
                         declarer.getNation_id(),
                         target.getNation_id(),
@@ -831,6 +925,13 @@ public class SimEndpoints {
                 ));
             }
         }
+    }
+
+    private static List<BlitzWarning> draftStateWarnings(BlitzDraftNation declarer, BlitzDraftNation target) {
+        List<BlitzWarning> result = new ArrayList<>(4);
+        result.addAll(BlitzValidator.validateAttacker(declarer));
+        result.addAll(BlitzValidator.validateDefender(target, ignored -> true));
+        return result;
     }
 
     private static List<BlitzPlannedWar> validatePlannedWars(
@@ -982,7 +1083,8 @@ public class SimEndpoints {
                     plannedWar.declarerNationId(),
                     plannedWar.targetNationId(),
                     plannedWar.warTypeOrdinal(),
-                    BlitzAssignedWarSource.USER_PINNED.ordinal()
+                    BlitzAssignedWarSource.USER_PINNED.ordinal(),
+                    assignment.initialAttackTypeOrdinal(plannedWar.declarerNationId(), plannedWar.targetNationId())
             ));
         }
         assignment.assignment().entrySet().stream()
@@ -994,7 +1096,8 @@ public class SimEndpoints {
                                 entry.getKey(),
                                 targetId,
                                 WarType.ORD.ordinal(),
-                                BlitzAssignedWarSource.PLANNER.ordinal()
+                                BlitzAssignedWarSource.PLANNER.ordinal(),
+                                assignment.initialAttackTypeOrdinal(entry.getKey(), targetId)
                         ))));
         return result.toArray(BlitzAssignedWar[]::new);
     }
@@ -1017,13 +1120,14 @@ public class SimEndpoints {
             TreatyProvider treatyProvider,
             SnapshotActivityProvider activityProvider,
             OverrideSet overrides,
-            SimTuning tuning
+            SimTuning tuning,
+            TeamScoreObjective objective
     ) {
         return new BlitzPlanner(
                 tuning,
                 treatyProvider,
             overrides,
-                new DamageObjective(),
+                objective,
                 activityProvider
         ).assign(declarers, targets, currentTurn, fixedEdges);
     }
@@ -1038,25 +1142,43 @@ public class SimEndpoints {
         return ids;
     }
 
-    private static Set<String> sameOpponentBlockedPairKeys(WarDB warDB, Collection<DBNation> nations, Set<Integer> excludedWarIds) {
+    private static Set<String> sameOpponentBlockedPairKeys(BlitzPairLockout[] pairLockouts) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (BlitzPairLockout lockout : pairLockouts) {
+            keys.add(pairKey(lockout.declarerNationId(), lockout.targetNationId()));
+        }
+        return keys;
+    }
+
+    private static BlitzPairLockout[] sameOpponentPairLockouts(WarDB warDB, Collection<DBNation> nations, Set<Integer> excludedWarIds, long currentTurn) {
         Set<Integer> nationIds = new LinkedHashSet<>(nationIds(nations).length);
         for (DBNation nation : nations) {
             nationIds.add(nation.getNation_id());
         }
-        long currentTurn = TimeUtil.getTurn();
-        long minBlockedStartTurn = currentTurn - 72;
+        long minBlockedStartTurn = currentTurn - WarSlotRules.sameOpponentLockoutTurns();
         Collection<DBWar> wars = warDB.getWarsForNationOrAlliance(nationIds::contains, null, war -> {
             if (excludedWarIds.contains(war.getWarId())) return false;
             if (war.isActive()) return true;
-            return TimeUtil.getTurn(war.getDate()) >= minBlockedStartTurn;
+            return TimeUtil.getTurn(war.getDate()) > minBlockedStartTurn;
         }).values();
 
-        Set<String> pairs = new LinkedHashSet<>();
-        for (DBWar war : wars) {
-            pairs.add(pairKey(war.getAttacker_id(), war.getDefender_id()));
-            pairs.add(pairKey(war.getDefender_id(), war.getAttacker_id()));
+        Map<String, BlitzPairLockout> lockoutsByKey = new LinkedHashMap<>();
+        wars.stream()
+                .sorted(Comparator.comparingInt(DBWar::getWarId))
+                .forEach(war -> {
+                    boolean active = war.isActive();
+                    putPairLockout(lockoutsByKey, new BlitzPairLockout(war.getAttacker_id(), war.getDefender_id(), war.getWarId(), active));
+                    putPairLockout(lockoutsByKey, new BlitzPairLockout(war.getDefender_id(), war.getAttacker_id(), war.getWarId(), active));
+                });
+        return lockoutsByKey.values().toArray(BlitzPairLockout[]::new);
+    }
+
+    private static void putPairLockout(Map<String, BlitzPairLockout> lockoutsByKey, BlitzPairLockout lockout) {
+        String key = pairKey(lockout.declarerNationId(), lockout.targetNationId());
+        BlitzPairLockout existing = lockoutsByKey.get(key);
+        if (existing == null || (!existing.active() && lockout.active())) {
+            lockoutsByKey.put(key, lockout);
         }
-        return pairs;
     }
 
     private static String pairKey(int attackerId, int defenderId) {
@@ -1077,6 +1199,42 @@ public class SimEndpoints {
                 .sorted(Comparator.comparingInt(DBWar::getWarId))
                 .map(SimEndpoints::existingWar)
                 .toArray(BlitzExistingWar[]::new);
+    }
+
+    private static int clampBp(double fraction) {
+        if (Double.isNaN(fraction)) return 0;
+        long bp = Math.round(fraction * 10000d);
+        if (bp < 0) return 0;
+        if (bp > 10000) return 10000;
+        return (int) bp;
+    }
+
+    private static BlitzOutsiderNation[] outsiderNations(Collection<DBNation> plannerNations, BlitzExistingWar[] existingWars) {
+        if (existingWars.length == 0) {
+            return new BlitzOutsiderNation[0];
+        }
+        Set<Integer> plannerIds = new LinkedHashSet<>();
+        for (DBNation nation : plannerNations) {
+            plannerIds.add(nation.getNation_id());
+        }
+        Set<Integer> outsiderIds = new LinkedHashSet<>();
+        for (BlitzExistingWar war : existingWars) {
+            if (!plannerIds.contains(war.attackerNationId())) outsiderIds.add(war.attackerNationId());
+            if (!plannerIds.contains(war.defenderNationId())) outsiderIds.add(war.defenderNationId());
+        }
+        if (outsiderIds.isEmpty()) {
+            return new BlitzOutsiderNation[0];
+        }
+        List<BlitzOutsiderNation> result = new ArrayList<>(outsiderIds.size());
+        for (Integer id : outsiderIds) {
+            DBNation nation = Locutus.imp().getNationDB().getNationById(id);
+            String nationName = nation == null || nation.getNation() == null ? "" : nation.getNation();
+            int allianceId = nation == null ? 0 : nation.getAlliance_id();
+            String allianceName = nation == null || nation.getAllianceName() == null ? "" : nation.getAllianceName();
+            result.add(new BlitzOutsiderNation(id, nationName, allianceId, allianceName));
+        }
+        result.sort(Comparator.comparingInt(BlitzOutsiderNation::nationId));
+        return result.toArray(new BlitzOutsiderNation[0]);
     }
 
     private static BlitzExistingWar existingWar(DBWar war) {
@@ -1206,7 +1364,9 @@ public class SimEndpoints {
             OverrideSet overrides,
             CompositeBlitzActivityModel activityModel,
             BlitzNationRow[] nations,
+            BlitzOutsiderNation[] outsiderNations,
             BlitzExistingWar[] existingWars,
+            BlitzPairLockout[] pairLockouts,
             BlitzLegalEdge[] legalEdges,
             BlitzWarning[] warnings,
             List<BlitzPlannedWar> acceptedPlannedWars

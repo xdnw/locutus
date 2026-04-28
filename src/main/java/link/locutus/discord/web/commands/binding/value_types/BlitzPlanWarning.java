@@ -1,17 +1,19 @@
-package link.locutus.discord.util.battle;
+package link.locutus.discord.web.commands.binding.value_types;
 
-public record BlitzWarning(
+import link.locutus.discord.util.battle.BlitzWarning;
+import link.locutus.discord.util.battle.BlitzWarningCode;
+
+public record BlitzPlanWarning(
         int codeOrdinal,
         int attackerNationId,
         int defenderNationId,
-        int warId,
-        String detail
+        int warId
 ) {
-    public BlitzWarning(BlitzWarningCode code, int attackerNationId, int defenderNationId, int warId, String detail) {
-        this(code.ordinal(), attackerNationId, defenderNationId, warId, detail);
+    public BlitzPlanWarning(BlitzWarning warning) {
+        this(warning.codeOrdinal(), warning.attackerNationId(), warning.defenderNationId(), warning.warId());
     }
 
-    public BlitzWarning {
+    public BlitzPlanWarning {
         codeAt(codeOrdinal);
     }
 

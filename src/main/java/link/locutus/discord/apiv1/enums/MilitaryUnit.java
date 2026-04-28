@@ -166,9 +166,25 @@ public enum MilitaryUnit {
         this.capacityAmount = capacity;
     }
 
+    public Research getCapacityResearch() {
+        return capacityResearch;
+    }
+
+    public int getCapacityAmount() {
+        return capacityAmount;
+    }
+
     public void setRebuyResearch(Research research, int amt) {
         this.rebuyResearch = research;
         this.rebuyAmount = amt;
+    }
+
+    public Research getRebuyResearch() {
+        return rebuyResearch;
+    }
+
+    public int getRebuyAmount() {
+        return rebuyAmount;
     }
 
     public void setCostResearch(Research research, double[] costReduction) {

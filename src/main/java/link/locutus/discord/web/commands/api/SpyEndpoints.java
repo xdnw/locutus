@@ -20,7 +20,6 @@ import java.util.Set;
 
 public class SpyEndpoints extends PageHelper {
     @Command(desc = "Compute the best spy ops for a target set", viewable = true)
-    @RolePermission(Roles.MEMBER)
     @ReturnType(value = WebSpyTargets.class, cache = CacheType.SessionStorage, duration = 30)
     public WebSpyTargets spyops(@Me @Default GuildDB db,
                                 @Me @Default DBNation me,

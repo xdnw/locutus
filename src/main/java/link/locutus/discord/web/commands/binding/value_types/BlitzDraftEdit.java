@@ -11,6 +11,8 @@ public record BlitzDraftEdit(
         long projectBitsClear,
         int researchBitsSet,
         int researchBitsClear,
-        Integer resetHour
+        Integer resetHour,
+        Boolean clearBeige,
+        Boolean clearVacationMode
 ) {
 }

@@ -13,7 +13,7 @@ import java.util.Set;
  * World-owned index for active war participation and same-opponent redeclare lockout state.
  */
 final class WarParticipationIndex {
-    static final int RECENT_OPPONENT_LOCKOUT_TURNS = 12;
+    static final int RECENT_OPPONENT_LOCKOUT_TURNS = WarSlotRules.sameOpponentLockoutTurns();
 
     private final Map<Integer, LinkedHashSet<Integer>> activeWarIdsByNation = new HashMap<>();
     private final Set<Long> activePairKeys = new HashSet<>();

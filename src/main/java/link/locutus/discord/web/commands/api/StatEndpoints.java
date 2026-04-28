@@ -1,6 +1,9 @@
 package link.locutus.discord.web.commands.api;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
@@ -8,8 +11,9 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderRegi
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.db.WarDB;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
@@ -18,11 +22,9 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.function.Predicate;
 
 public class StatEndpoints {
-    // EntityTable custom
-    // EntityGroup
-    // TODO validate permissions
     @Command(desc = "Render a custom WebTable using a placeholder type and specified columns", viewable = true)
     @ReturnType(WebTable.class)
     public <T> WebTable table(ValueStore store, PlaceholderRegistry registry, @Me @Default User user,
@@ -46,58 +48,257 @@ public class StatEndpoints {
         return renderTable(store, registry, typeCasted, selection, columns);
     }
 
-    @Command(desc = "Render active wars involving any selected nations as a WebTable", viewable = true)
+    @Command(desc = "Render wars involving any selected nations or alliances as a WebTable", viewable = true)
     @ReturnType(WebTable.class)
     public WebTable warsInvolving(ValueStore store, PlaceholderRegistry registry, WarDB warDB,
-                                  @Default("*") Set<DBNation> nations,
-                                  @TextArea List<String> columns) {
-        List<DBWar> wars = activeWarsInvolving(warDB, nations);
+                                  @AllowDeleted @Default("*") Set<NationOrAlliance> coalition1,
+                      @TextArea List<String> columns,
+                      @Default @Switch("start") @Timestamp Long startTime,
+                      @Default @Switch("end") @Timestamp Long endTime,
+                      @Switch("inactive") boolean includeInactiveWars,
+                      @Switch("wartype") Set<WarType> allowedWarTypes,
+                      @Switch("status") Set<WarStatus> allowedWarStatuses,
+                      @Switch("off") boolean onlyOffensiveWars,
+                      @Switch("def") boolean onlyDefensiveWars) {
+        List<DBWar> wars = warsInvolving(warDB, coalition1, startTime, endTime, includeInactiveWars,
+                allowedWarTypes, allowedWarStatuses, onlyOffensiveWars, onlyDefensiveWars);
         return renderTable(store, registry, DBWar.class, new LinkedHashSet<>(wars), columns);
     }
 
-    @Command(desc = "Render active wars between two selected nation populations as a WebTable", viewable = true)
+    @Command(desc = "Render wars between two selected nation or alliance coalitions as a WebTable", viewable = true)
     @ReturnType(WebTable.class)
     public WebTable warsBetween(ValueStore store, PlaceholderRegistry registry, WarDB warDB,
-                                @Default("*") Set<DBNation> sideA,
-                                @Default("*") Set<DBNation> sideB,
-                                @TextArea List<String> columns) {
-        List<DBWar> wars = activeWarsBetween(warDB, sideA, sideB);
+                                @AllowDeleted @Default("*") Set<NationOrAlliance> sideA,
+                                @AllowDeleted @Default("*") Set<NationOrAlliance> sideB,
+                    @TextArea List<String> columns,
+                    @Default @Switch("start") @Timestamp Long startTime,
+                    @Default @Switch("end") @Timestamp Long endTime,
+                    @Switch("inactive") boolean includeInactiveWars,
+                    @Switch("wartype") Set<WarType> allowedWarTypes,
+                    @Switch("status") Set<WarStatus> allowedWarStatuses,
+                    @Switch("off") boolean onlyOffensiveWars,
+                    @Switch("def") boolean onlyDefensiveWars) {
+        List<DBWar> wars = warsBetween(warDB, sideA, sideB, startTime, endTime, includeInactiveWars,
+                allowedWarTypes, allowedWarStatuses, onlyOffensiveWars, onlyDefensiveWars);
         return renderTable(store, registry, DBWar.class, new LinkedHashSet<>(wars), columns);
     }
 
-    static List<DBWar> activeWarsInvolving(WarDB warDB, Set<DBNation> nations) {
-        if (nations == null || nations.isEmpty()) {
-            throw new IllegalArgumentException("Please provide at least one nation");
+    static List<DBWar> warsInvolving(WarDB warDB, Set<NationOrAlliance> coalition1,
+                                     Long startTime, Long endTime,
+                                     boolean includeInactiveWars,
+                                     Set<WarType> allowedWarTypes,
+                                     Set<WarStatus> allowedWarStatuses,
+                                     boolean onlyOffensiveWars,
+                                     boolean onlyDefensiveWars) {
+        CoalitionParticipants primary = CoalitionParticipants.of(coalition1, "Please provide at least one nation or alliance");
+        WarTableFilters filters = new WarTableFilters(startTime, endTime, includeInactiveWars,
+                allowedWarTypes, allowedWarStatuses, onlyOffensiveWars, onlyDefensiveWars);
+        Predicate<DBWar> participantFilter;
+        if (filters.onlyOffensiveWars()) {
+            participantFilter = primary::matchesAttacker;
+        } else if (filters.onlyDefensiveWars()) {
+            participantFilter = primary::matchesDefender;
+        } else {
+            participantFilter = war -> primary.matchesAttacker(war) || primary.matchesDefender(war);
         }
-        Set<Integer> nationIds = nationIds(nations);
-        return warDB.getActiveWars(nationIds::contains, null).stream()
-                .sorted(Comparator.comparingInt(DBWar::getWarId))
-                .toList();
+        Collection<DBWar> sourceWars = filters.includeInactiveWars()
+                ? warDB.getWarsForNationOrAlliance(primary.nationIdsOrNull(), primary.allianceIdsOrNull())
+                : collectActiveWars(warDB, primary, filters.activeStatuses());
+        return filterAndSort(sourceWars, filters, participantFilter);
     }
 
-    static List<DBWar> activeWarsBetween(WarDB warDB, Set<DBNation> sideA, Set<DBNation> sideB) {
-        if (sideA == null || sideA.isEmpty()) {
-            throw new IllegalArgumentException("Please provide at least one sideA nation");
+    static List<DBWar> warsBetween(WarDB warDB, Set<NationOrAlliance> sideA, Set<NationOrAlliance> sideB,
+                                   Long startTime, Long endTime,
+                                   boolean includeInactiveWars,
+                                   Set<WarType> allowedWarTypes,
+                                   Set<WarStatus> allowedWarStatuses,
+                                   boolean onlyOffensiveWars,
+                                   boolean onlyDefensiveWars) {
+        CoalitionParticipants primary = CoalitionParticipants.of(sideA, "Please provide at least one sideA nation or alliance");
+        CoalitionParticipants secondary = CoalitionParticipants.of(sideB, "Please provide at least one sideB nation or alliance");
+        WarTableFilters filters = new WarTableFilters(startTime, endTime, includeInactiveWars,
+                allowedWarTypes, allowedWarStatuses, onlyOffensiveWars, onlyDefensiveWars);
+        Predicate<DBWar> participantFilter;
+        if (filters.onlyOffensiveWars()) {
+            participantFilter = war -> primary.matchesAttacker(war) && secondary.matchesDefender(war);
+        } else if (filters.onlyDefensiveWars()) {
+            participantFilter = war -> primary.matchesDefender(war) && secondary.matchesAttacker(war);
+        } else {
+            participantFilter = war ->
+                    (primary.matchesAttacker(war) && secondary.matchesDefender(war))
+                            || (primary.matchesDefender(war) && secondary.matchesAttacker(war));
         }
-        if (sideB == null || sideB.isEmpty()) {
-            throw new IllegalArgumentException("Please provide at least one sideB nation");
+        Collection<DBWar> sourceWars;
+        if (filters.includeInactiveWars()) {
+            sourceWars = warDB.getWars(
+                    primary.allianceIds(),
+                    primary.nationIds(),
+                    secondary.allianceIds(),
+                    secondary.nationIds(),
+                    filters.historyLookupStart(),
+                    filters.historyLookupEnd()
+            ).values();
+        } else {
+            CoalitionParticipants lookupSide = primary.lookupCost() <= secondary.lookupCost() ? primary : secondary;
+            sourceWars = collectActiveWars(warDB, lookupSide, filters.activeStatuses());
         }
-        Set<Integer> sideAIds = nationIds(sideA);
-        Set<Integer> sideBIds = nationIds(sideB);
-        return warDB.getActiveWars(nationId -> sideAIds.contains(nationId) || sideBIds.contains(nationId), war ->
-                        (sideAIds.contains(war.getAttacker_id()) && sideBIds.contains(war.getDefender_id()))
-                                || (sideBIds.contains(war.getAttacker_id()) && sideAIds.contains(war.getDefender_id())))
-                .stream()
-                .sorted(Comparator.comparingInt(DBWar::getWarId))
-                .toList();
+        return filterAndSort(sourceWars, filters, participantFilter);
     }
 
-    private static Set<Integer> nationIds(Set<DBNation> nations) {
-        Set<Integer> nationIds = new LinkedHashSet<>();
-        for (DBNation nation : nations) {
-            nationIds.add(nation.getNation_id());
+    private static Collection<DBWar> collectActiveWars(WarDB warDB, CoalitionParticipants coalition, WarStatus[] statuses) {
+        if (statuses.length == 0) {
+            return Collections.emptySet();
         }
-        return nationIds;
+        ObjectOpenHashSet<DBWar> result = new ObjectOpenHashSet<>();
+        for (int nationId : coalition.nationIds()) {
+            for (DBWar war : warDB.getActiveWars(nationId)) {
+                if (isAllowedStatus(war, statuses)) {
+                    result.add(war);
+                }
+            }
+        }
+        if (!coalition.allianceIds().isEmpty()) {
+            result.addAll(warDB.getActiveWars(coalition.allianceIds(), statuses));
+        }
+        return result;
+    }
+
+    private static boolean isAllowedStatus(DBWar war, WarStatus[] statuses) {
+        for (WarStatus status : statuses) {
+            if (war.getStatus() == status) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<DBWar> filterAndSort(Collection<DBWar> wars,
+                                             WarTableFilters filters,
+                                             Predicate<DBWar> participantFilter) {
+        List<DBWar> filtered = new ObjectArrayList<>(wars.size());
+        for (DBWar war : wars) {
+            if (filters.matches(war) && participantFilter.test(war)) {
+                filtered.add(war);
+            }
+        }
+        filtered.sort(Comparator.comparingInt(DBWar::getWarId));
+        return filtered;
+    }
+
+    private record CoalitionParticipants(IntOpenHashSet nationIds, IntOpenHashSet allianceIds) {
+        static CoalitionParticipants of(Set<NationOrAlliance> coalition, String emptyMessage) {
+            if (coalition == null || coalition.isEmpty()) {
+                throw new IllegalArgumentException(emptyMessage);
+            }
+            IntOpenHashSet nationIds = new IntOpenHashSet(coalition.size());
+            IntOpenHashSet allianceIds = new IntOpenHashSet(coalition.size());
+            for (NationOrAlliance participant : coalition) {
+                if (participant == null) {
+                    continue;
+                }
+                if (participant.isNation()) {
+                    nationIds.add(participant.getId());
+                } else if (participant.isAlliance()) {
+                    allianceIds.add(participant.getId());
+                } else {
+                    throw new IllegalArgumentException("Unsupported coalition entry: " + participant);
+                }
+            }
+            if (nationIds.isEmpty() && allianceIds.isEmpty()) {
+                throw new IllegalArgumentException(emptyMessage);
+            }
+            return new CoalitionParticipants(nationIds, allianceIds);
+        }
+
+        static CoalitionParticipants empty() {
+            return new CoalitionParticipants(new IntOpenHashSet(0), new IntOpenHashSet(0));
+        }
+
+        Set<Integer> nationIdsOrNull() {
+            return nationIds.isEmpty() ? null : nationIds;
+        }
+
+        Set<Integer> allianceIdsOrNull() {
+            return allianceIds.isEmpty() ? null : allianceIds;
+        }
+
+        int lookupCost() {
+            return nationIds.size() + allianceIds.size();
+        }
+
+        boolean matchesAttacker(DBWar war) {
+            return nationIds.contains(war.getAttacker_id()) || allianceIds.contains(war.getAttacker_aa());
+        }
+
+        boolean matchesDefender(DBWar war) {
+            return nationIds.contains(war.getDefender_id()) || allianceIds.contains(war.getDefender_aa());
+        }
+    }
+
+    private record WarTableFilters(Long startTime, Long endTime,
+                                   boolean includeInactiveWars,
+                                   Set<WarType> allowedWarTypes,
+                                   Set<WarStatus> allowedWarStatuses,
+                                   boolean onlyOffensiveWars,
+                                   boolean onlyDefensiveWars) {
+        private WarTableFilters {
+            if (onlyOffensiveWars && onlyDefensiveWars) {
+                throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
+            }
+            if (startTime != null && endTime != null && endTime < startTime) {
+                throw new IllegalArgumentException("endTime must be >= startTime");
+            }
+            if (allowedWarTypes != null) {
+                allowedWarTypes = allowedWarTypes.isEmpty() ? EnumSet.noneOf(WarType.class) : EnumSet.copyOf(allowedWarTypes);
+            }
+            if (allowedWarStatuses != null) {
+                allowedWarStatuses = allowedWarStatuses.isEmpty() ? EnumSet.noneOf(WarStatus.class) : EnumSet.copyOf(allowedWarStatuses);
+            }
+        }
+
+        long historyLookupStart() {
+            if (startTime == null || startTime <= 0L) {
+                return 0L;
+            }
+            return startTime - 1L;
+        }
+
+        long historyLookupEnd() {
+            if (endTime == null || endTime == Long.MAX_VALUE) {
+                return Long.MAX_VALUE;
+            }
+            return endTime + 1L;
+        }
+
+        WarStatus[] activeStatuses() {
+            if (includeInactiveWars) {
+                return new WarStatus[0];
+            }
+            EnumSet<WarStatus> statuses = EnumSet.of(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
+            if (allowedWarStatuses != null) {
+                statuses.retainAll(allowedWarStatuses);
+            }
+            return statuses.toArray(WarStatus[]::new);
+        }
+
+        boolean matches(DBWar war) {
+            if (startTime != null && war.getDate() < startTime) {
+                return false;
+            }
+            if (endTime != null && war.getDate() > endTime) {
+                return false;
+            }
+            if (!includeInactiveWars && !war.getStatus().isActive()) {
+                return false;
+            }
+            if (allowedWarTypes != null && !allowedWarTypes.contains(war.getWarType())) {
+                return false;
+            }
+            if (allowedWarStatuses != null && !allowedWarStatuses.contains(war.getStatus())) {
+                return false;
+            }
+            return true;
+        }
     }
 
     private static <T> WebTable renderTable(ValueStore store, PlaceholderRegistry registry, Class<T> type,

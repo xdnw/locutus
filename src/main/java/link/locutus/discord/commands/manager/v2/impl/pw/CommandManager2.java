@@ -67,10 +67,17 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.db.guild.GuildSettingSubgroup;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
+import link.locutus.discord.sim.BlitzObjective;
+import link.locutus.discord.sim.Turn1DeclarePolicy;
+import link.locutus.discord.sim.planners.PlannerDiagnostic;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.battle.BlitzWarningCode;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.BlitzAssignedWarSource;
+import link.locutus.discord.web.commands.binding.value_types.BlitzRebuyMode;
+import link.locutus.discord.web.commands.binding.value_types.BlitzSideMode;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Guild;
@@ -130,7 +137,12 @@ public class CommandManager2 {
             addParsers.accept(web.getPageHandler().getCommands());
         }
         { // Manually add parsers
-            List<Class<?>> manual = List.of(GuildSettingCategory.class, GuildSettingSubgroup.class, AlliancePermission.class, GrowthAsset.class, OnlineStatus.class);
+            List<Class<?>> manual = List.of(
+                    GuildSettingCategory.class,
+                    GuildSettingSubgroup.class,
+                    AlliancePermission.class,
+                    GrowthAsset.class,
+                    OnlineStatus.class);
             for (Class<?> t : manual) {
                 Parser<?> parser = store.get(Key.of(t));
                 if (parser != null) {
@@ -140,6 +152,8 @@ public class CommandManager2 {
                 }
             }
         }
+
+        addManualEnumOptions(optionsData);
 
         for (Parser<?> parser : parsers) {
             Key<?> key = parser.getKey();
@@ -211,6 +225,23 @@ public class CommandManager2 {
         result.put("keys", keysData);
         result.put("options", optionsData);
         return result;
+    }
+
+    static void addManualEnumOptions(Map<String, Object> optionsData) {
+        List<Class<? extends Enum<?>>> manualEnumOptions = List.of(
+                BlitzAssignedWarSource.class,
+                BlitzObjective.class,
+                BlitzRebuyMode.class,
+                BlitzSideMode.class,
+                Turn1DeclarePolicy.class,
+                BlitzWarningCode.class);
+        for (Class<? extends Enum<?>> enumClass : manualEnumOptions) {
+            WebOption option = WebOption.fromEnum(enumClass);
+            optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
+        }
+        optionsData.computeIfAbsent("PlannerDiagnosticCode", k -> WebOption.fromEnum(PlannerDiagnostic.Code.class).toJson());
+        optionsData.computeIfAbsent("PlannerDiagnosticSeverity", k -> WebOption.fromEnum(PlannerDiagnostic.Severity.class).toJson());
+        optionsData.computeIfAbsent("PlannerDiagnosticNationRole", k -> WebOption.fromEnum(PlannerDiagnostic.NationRole.class).toJson());
     }
 
     public CommandManager2() {

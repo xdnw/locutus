@@ -677,6 +677,9 @@ public final class SimWorld {
         if (attackerNationId == defenderNationId) {
             return false;
         }
+        if (attacker.vmTurns() > 0 || defender.vmTurns() > 0) {
+            return false;
+        }
         if (defender.beigeTurns() > 0) {
             return false;
         }

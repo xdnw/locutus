@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 public final class WarSlotRules {
     private static final int BASE_OFFENSIVE_SLOT_CAP = 5;
     private static final int DEFENSIVE_SLOT_CAP = 3;
+    private static final int SAME_OPPONENT_LOCKOUT_TURNS = 12;
 
     private WarSlotRules() {
     }
@@ -34,6 +35,10 @@ public final class WarSlotRules {
 
     public static int defensiveSlotCap() {
         return DEFENSIVE_SLOT_CAP;
+    }
+
+    public static int sameOpponentLockoutTurns() {
+        return SAME_OPPONENT_LOCKOUT_TURNS;
     }
 
     public static int freeDefensiveSlots(int defSlotsUsed) {
