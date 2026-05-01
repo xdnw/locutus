@@ -11,7 +11,6 @@ import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
-import link.locutus.discord.web.commands.binding.value_types.BlitzAssignedWar;
 import link.locutus.discord.web.commands.binding.value_types.BlitzDraftEdit;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlanRequest;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlanResponse;
@@ -34,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Isolated
 class BlitzBothSidesPassTest {
@@ -62,9 +62,10 @@ class BlitzBothSidesPassTest {
                     List.of(nationTwo)
             );
 
-            assertEquals(1, response.assignments().length);
-            assertEquals(202, response.assignments()[0].declarerNationId());
-            assertEquals(101, response.assignments()[0].targetNationId());
+            assertEquals(1, assignmentCount(response));
+            AssignmentView assignment = assignment(response, 0);
+            assertEquals(202, assignment.declarerNationId());
+            assertEquals(101, assignment.targetNationId());
         });
     }
 
@@ -80,7 +81,8 @@ class BlitzBothSidesPassTest {
             BlitzPlanResponse first = SimEndpoints.runBlitzPlan(warDb, request, List.of(nationOne), List.of(nationTwo));
             BlitzPlanResponse second = SimEndpoints.runBlitzPlan(warDb, request, List.of(nationOne), List.of(nationTwo));
 
-            assertArrayEquals(first.assignments(), second.assignments());
+            assertArrayEquals(first.assignmentPairs(), second.assignmentPairs());
+            assertArrayEquals(first.assignmentLanes(), second.assignmentLanes());
         });
     }
 
@@ -99,8 +101,8 @@ class BlitzBothSidesPassTest {
                     List.of(nationTwo)
             );
 
-            assertEquals(1, response.assignments().length);
-            assertFalse(containsAssignment(response.assignments(), 101, 202) && containsAssignment(response.assignments(), 202, 101));
+            assertEquals(1, assignmentCount(response));
+            assertFalse(containsAssignment(response, 101, 202) && containsAssignment(response, 202, 101));
         });
     }
 
@@ -113,6 +115,7 @@ class BlitzBothSidesPassTest {
                 BlitzSideMode.BOTH.ordinal(),
                 BlitzRebuyMode.FULL_REBUYS.ordinal(),
                 null,
+                null,
                 6,
                 true,
                 true,
@@ -124,13 +127,31 @@ class BlitzBothSidesPassTest {
         );
     }
 
-    private static boolean containsAssignment(BlitzAssignedWar[] assignments, int declarerNationId, int targetNationId) {
-        for (BlitzAssignedWar assignment : assignments) {
-            if (assignment.declarerNationId() == declarerNationId && assignment.targetNationId() == targetNationId) {
+    private static int assignmentCount(BlitzPlanResponse response) {
+        return response.assignmentPairs().length / 2;
+    }
+
+    private static boolean containsAssignment(BlitzPlanResponse response, int declarerNationId, int targetNationId) {
+        for (int offset = 0; offset + 1 < response.assignmentPairs().length; offset += 2) {
+            int declarerIndex = response.assignmentPairs()[offset];
+            int targetIndex = response.assignmentPairs()[offset + 1];
+            if (response.participantIds()[declarerIndex] == declarerNationId
+                    && response.participantIds()[targetIndex] == targetNationId) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static AssignmentView assignment(BlitzPlanResponse response, int assignmentIndex) {
+        int pairOffset = assignmentIndex * 2;
+        return new AssignmentView(
+                response.participantIds()[response.assignmentPairs()[pairOffset]],
+                response.participantIds()[response.assignmentPairs()[pairOffset + 1]]
+        );
+    }
+
+    private record AssignmentView(int declarerNationId, int targetNationId) {
     }
 
     private static DBNation nation(int id, String name) {

@@ -2,6 +2,8 @@ package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.SimWar;
+import link.locutus.discord.sim.SimUnits;
+import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.UnitEconomy;
 
@@ -10,12 +12,12 @@ final class OpeningMetricSummary {
     private OpeningMetricSummary() {
     }
 
-    static double immediateHarm(MutableAttackResult result) {
-        return expectedScoreLoss(result, false);
+    static double immediateHarm(MutableAttackResult result, int defenderResearchBits) {
+        return expectedUnitValueLoss(result, false, defenderResearchBits);
     }
 
-    static double selfExposure(MutableAttackResult result) {
-        return expectedScoreLoss(result, true);
+    static double selfExposure(MutableAttackResult result, int attackerResearchBits) {
+        return expectedUnitValueLoss(result, true, attackerResearchBits);
     }
 
     static double controlLeverage(boolean attackerHasGroundControl, boolean attackerHasAirControl, boolean attackerHasBlockade) {
@@ -45,8 +47,6 @@ final class OpeningMetricSummary {
             double currentAttackerNaval,
             double initialDefenderNaval,
             double currentDefenderNaval,
-            double initialDefenderInfra,
-            double currentDefenderInfra,
             int defenderResistance
     ) {
         double resistancePressure = clamp01(
@@ -70,10 +70,26 @@ final class OpeningMetricSummary {
                 initialDefenderNaval,
                 currentDefenderNaval
         );
-        double infraPressure = initialDefenderInfra > 0d
-                ? clamp01((initialDefenderInfra - Math.max(0d, currentDefenderInfra)) / initialDefenderInfra)
-                : 0d;
-        return resistancePressure + groundWindow + airWindow + navalWindow + infraPressure;
+        return resistancePressure + groundWindow + airWindow + navalWindow;
+    }
+
+    static double targetPressure(
+            double attackerGround,
+            double defenderGround,
+            double attackerAir,
+            double defenderAir,
+            double attackerNaval,
+            double defenderNaval
+    ) {
+        // Keeps control-family goals focused on high-threat reachable defenders without using
+        // nation score as expected value. Score remains a range mechanic outside this method.
+        double attackerMilitary = attackerGround + (3d * attackerAir) + (2d * attackerNaval);
+        double defenderMilitary = defenderGround + (3d * defenderAir) + (2d * defenderNaval);
+        double militaryPressure = boundedRatio(defenderMilitary, attackerMilitary, 2.5d);
+        double absoluteThreat = defenderMilitary > 0d
+            ? Math.min(2.5d, Math.log1p(defenderMilitary) / Math.log1p(250_000d))
+            : 0d;
+        return (8d * militaryPressure) + (4d * absoluteThreat);
     }
 
     static double groundStrength(double soldiers, double tanks, boolean underAir) {
@@ -85,17 +101,14 @@ final class OpeningMetricSummary {
         );
     }
 
-    private static double expectedScoreLoss(MutableAttackResult result, boolean attackerSide) {
-        double total = attackerSide ? 0d : result.infraDestroyed() * MilitaryUnit.INFRASTRUCTURE.getScore(1);
-        for (MilitaryUnit unit : MilitaryUnit.values) {
-            if (unit == MilitaryUnit.MONEY || unit == MilitaryUnit.INFRASTRUCTURE) {
-                continue;
-            }
+    private static double expectedUnitValueLoss(MutableAttackResult result, boolean attackerSide, int researchBits) {
+        double total = 0d;
+        for (MilitaryUnit unit : SimUnits.PURCHASABLE_UNITS) {
             double losses = attackerSide
                     ? result.attackerLossesEv()[unit.ordinal()]
                     : result.defenderLossesEv()[unit.ordinal()];
             if (losses > 0d) {
-                total += losses * unit.getScore(1);
+                total += StrategicAssetValue.unitValue(unit, losses, researchBits);
             }
         }
         return total;
@@ -117,6 +130,13 @@ final class OpeningMetricSummary {
             return 0d;
         }
         return clamp01((initial - Math.max(0d, current)) / initial);
+    }
+
+    private static double boundedRatio(double numerator, double denominator, double upperBound) {
+        if (!(numerator > 0d) || !(denominator > 0d)) {
+            return 0d;
+        }
+        return Math.max(0d, Math.min(upperBound, numerator / denominator));
     }
 
     private static int clampNonNegativeRound(double value) {

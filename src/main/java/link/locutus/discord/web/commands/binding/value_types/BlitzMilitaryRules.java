@@ -13,8 +13,8 @@ import link.locutus.discord.util.PW;
  *
  * <p>The frontend used to hand-maintain unit caps, daily-buy rules, MMR ordinal
  * layout, and project/research bit indices. Now those are read from this
- * record (shipped on every {@link BlitzPlanResponse}) so adding a project or
- * tweaking a research bonus only needs a backend change.
+ * record via the dedicated `blitzRules()` bootstrap endpoint so adding a
+ * project or tweaking a research bonus only needs a backend change.
  *
  * <p>All per-unit arrays are indexed by {@link MilitaryUnit#ordinal()}; entries
  * for non-MMR / non-buyable units are left at zero.

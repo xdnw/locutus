@@ -94,7 +94,6 @@ public interface ScenarioActionPolicy {
     record NationActionPolicy(
             boolean allowDeclares,
             boolean allowBuys,
-            boolean allowPeace,
             boolean allowMapReservations,
             EnumSet<AttackType> allowedAttackTypes
     ) {
@@ -108,14 +107,12 @@ public interface ScenarioActionPolicy {
                     true,
                     true,
                     true,
-                    true,
                     EnumSet.allOf(AttackType.class)
             );
         }
 
         public static NationActionPolicy noActions() {
             return new NationActionPolicy(
-                    false,
                     false,
                     false,
                     false,

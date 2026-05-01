@@ -29,6 +29,9 @@ public final class BlitzAssignment {
     /** Pair-keyed first attack-type ordinal selected by the opening evaluator. */
     private final Map<Long, Integer> initialAttackTypeOrdinalsByPair;
 
+    /** Pair-keyed war-type ordinal selected by the opening evaluator. */
+    private final Map<Long, Integer> initialWarTypeOrdinalsByPair;
+
     public BlitzAssignment(Map<Integer, List<Integer>> assignment, List<PlannerDiagnostic> diagnostics, double objectiveScore) {
         this(assignment, diagnostics, objectiveScore, ScoreSummary.identical(objectiveScore));
     }
@@ -49,10 +52,22 @@ public final class BlitzAssignment {
             ScoreSummary objectiveSummary,
             Map<Long, Integer> initialAttackTypeOrdinalsByPair
     ) {
+        this(assignment, diagnostics, objectiveScore, objectiveSummary, Map.of(), initialAttackTypeOrdinalsByPair);
+    }
+
+    public BlitzAssignment(
+            Map<Integer, List<Integer>> assignment,
+            List<PlannerDiagnostic> diagnostics,
+            double objectiveScore,
+            ScoreSummary objectiveSummary,
+            Map<Long, Integer> initialWarTypeOrdinalsByPair,
+            Map<Long, Integer> initialAttackTypeOrdinalsByPair
+    ) {
         this.assignment = Collections.unmodifiableMap(assignment);
         this.diagnostics = Collections.unmodifiableList(diagnostics);
         this.objectiveScore = objectiveScore;
         this.objectiveSummary = objectiveSummary == null ? ScoreSummary.identical(objectiveScore) : objectiveSummary;
+        this.initialWarTypeOrdinalsByPair = Collections.unmodifiableMap(initialWarTypeOrdinalsByPair == null ? Map.of() : initialWarTypeOrdinalsByPair);
         this.initialAttackTypeOrdinalsByPair = Collections.unmodifiableMap(initialAttackTypeOrdinalsByPair == null ? Map.of() : initialAttackTypeOrdinalsByPair);
     }
 
@@ -82,6 +97,18 @@ public final class BlitzAssignment {
      */
     public int initialAttackTypeOrdinal(int attackerId, int defenderId) {
         return initialAttackTypeOrdinalsByPair.getOrDefault(pairKey(attackerId, defenderId), -1);
+    }
+
+    /**
+     * Returns the war-type ordinal selected for a planned pair, defaulting to ordinary war when
+     * the pair was fixed/manual or lacks candidate-edge metadata.
+     */
+    public int initialWarTypeOrdinal(int attackerId, int defenderId) {
+        return initialWarTypeOrdinalsByPair.getOrDefault(pairKey(attackerId, defenderId), link.locutus.discord.apiv1.enums.WarType.ORD.ordinal());
+    }
+
+    public Map<Long, Integer> initialWarTypeOrdinalsByPair() {
+        return initialWarTypeOrdinalsByPair;
     }
 
     /**

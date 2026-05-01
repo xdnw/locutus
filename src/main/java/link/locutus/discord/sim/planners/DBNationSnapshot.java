@@ -48,6 +48,8 @@ public final class DBNationSnapshot {
     private final int cities;
     private final int currentOffensiveWars;
     private final int currentDefensiveWars;
+    private final int[] slotOnlyOffensiveWarReleaseTurns;
+    private final int[] slotOnlyDefensiveWarReleaseTurns;
     private final int maxOff;
     private final WarPolicy warPolicy;
     private final EnumMap<MilitaryUnit, Integer> units;
@@ -81,6 +83,8 @@ public final class DBNationSnapshot {
         this.cities = b.cities;
         this.currentOffensiveWars = b.currentOffensiveWars;
         this.currentDefensiveWars = b.currentDefensiveWars;
+        this.slotOnlyOffensiveWarReleaseTurns = b.slotOnlyOffensiveWarReleaseTurns.clone();
+        this.slotOnlyDefensiveWarReleaseTurns = b.slotOnlyDefensiveWarReleaseTurns.clone();
         this.maxOff = b.maxOff;
         this.warPolicy = Objects.requireNonNull(b.warPolicy, "warPolicy");
         this.units = new EnumMap<>(b.units);
@@ -105,6 +109,48 @@ public final class DBNationSnapshot {
         this.groundLooterModifier = b.groundLooterModifier;
         this.nonGroundLooterModifier = b.nonGroundLooterModifier;
         this.lootModifier = b.lootModifier;
+    }
+
+    private DBNationSnapshot(
+            DBNationSnapshot source,
+            double[] cityInfra,
+            int currentOffensiveWars,
+            int currentDefensiveWars,
+            Set<Integer> activeOpponentNationIds
+    ) {
+        this.nationId = source.nationId;
+        this.allianceId = source.allianceId;
+        this.teamId = source.teamId;
+        this.score = source.score;
+        this.cities = source.cities;
+        this.currentOffensiveWars = currentOffensiveWars;
+        this.currentDefensiveWars = currentDefensiveWars;
+        this.slotOnlyOffensiveWarReleaseTurns = source.slotOnlyOffensiveWarReleaseTurns.clone();
+        this.slotOnlyDefensiveWarReleaseTurns = source.slotOnlyDefensiveWarReleaseTurns.clone();
+        this.maxOff = source.maxOff;
+        this.warPolicy = source.warPolicy;
+        this.units = new EnumMap<>(source.units);
+        this.resources = source.resources.clone();
+        this.nonInfraScoreBase = source.nonInfraScoreBase;
+        this.cityInfra = cityInfra.clone();
+        this.citySpecialistProfiles = source.citySpecialistProfiles.clone();
+        this.totalInfra = totalInfra(this.cityInfra);
+        this.resetHourUtc = source.resetHourUtc;
+        this.resetHourUtcFallback = source.resetHourUtcFallback;
+        this.activeOpponentNationIds = Set.copyOf(activeOpponentNationIds);
+        this.policyCooldownTurnsRemaining = source.policyCooldownTurnsRemaining;
+        this.beigeTurns = source.beigeTurns;
+        this.vmTurns = source.vmTurns;
+        this.unitBuysToday = new EnumMap<>(source.unitBuysToday);
+        this.pendingBuysNextTurn = new EnumMap<>(source.pendingBuysNextTurn);
+        this.researchBits = source.researchBits;
+        this.projectBits = source.projectBits;
+        this.blitzkriegActive = source.blitzkriegActive;
+        this.infraAttackModifiers = source.infraAttackModifiers.clone();
+        this.infraDefendModifiers = source.infraDefendModifiers.clone();
+        this.groundLooterModifier = source.groundLooterModifier;
+        this.nonGroundLooterModifier = source.nonGroundLooterModifier;
+        this.lootModifier = source.lootModifier;
     }
 
     /** Snapshot from a live DBNation. Does not seed current-day unit buys unless explicitly requested in bulk. */
@@ -222,6 +268,8 @@ public final class DBNationSnapshot {
     public int cities() { return cities; }
     public int currentOffensiveWars() { return currentOffensiveWars; }
     public int currentDefensiveWars() { return currentDefensiveWars; }
+    public int[] slotOnlyOffensiveWarReleaseTurns() { return slotOnlyOffensiveWarReleaseTurns.clone(); }
+    public int[] slotOnlyDefensiveWarReleaseTurns() { return slotOnlyDefensiveWarReleaseTurns.clone(); }
     public int maxOff() { return maxOff; }
     public WarPolicy warPolicy() { return warPolicy; }
     public int unit(MilitaryUnit u) { return units.getOrDefault(u, 0); }
@@ -321,39 +369,56 @@ public final class DBNationSnapshot {
         );
     }
 
+    DBNationSnapshot withCityInfra(double[] cityInfra) {
+        return new DBNationSnapshot(this, cityInfra, currentOffensiveWars, currentDefensiveWars, activeOpponentNationIds);
+    }
+
+    DBNationSnapshot withWarState(
+            int currentOffensiveWars,
+            int currentDefensiveWars,
+            Set<Integer> activeOpponentNationIds
+    ) {
+        return new DBNationSnapshot(this, cityInfra, currentOffensiveWars, currentDefensiveWars, activeOpponentNationIds);
+    }
+
     public Builder toBuilder() {
-        Builder builder = new Builder(nationId)
-                .allianceId(allianceId)
-                .teamId(teamId)
-                .score(score)
-                .cities(cities)
-                .currentOffensiveWars(currentOffensiveWars)
-                .currentDefensiveWars(currentDefensiveWars)
-                .maxOff(maxOff)
-                .warPolicy(warPolicy)
-                .resources(resources)
-                .nonInfraScoreBase(nonInfraScoreBase)
-                .cityInfra(cityInfra)
-                .citySpecialistProfiles(citySpecialistProfiles)
-                .resetHourUtc(resetHourUtc)
-                .resetHourUtcFallback(resetHourUtcFallback)
-                .activeOpponentNationIds(activeOpponentNationIds)
-                .policyCooldownTurnsRemaining(policyCooldownTurnsRemaining)
-                .beigeTurns(beigeTurns)
-                .vmTurns(vmTurns)
-                .researchBits(researchBits)
-                .projectBits(projectBits)
-                .combatProfile(combatProfile());
-        for (Map.Entry<MilitaryUnit, Integer> entry : unitBuysToday.entrySet()) {
-            builder.unitBoughtToday(entry.getKey(), entry.getValue());
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.DBNATION_TO_BUILDER)) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.DBNATION_TO_BUILDER, "cities", cityInfra.length);
+            Builder builder = new Builder(nationId)
+                    .allianceId(allianceId)
+                    .teamId(teamId)
+                    .score(score)
+                    .cities(cities)
+                    .currentOffensiveWars(currentOffensiveWars)
+                    .currentDefensiveWars(currentDefensiveWars)
+                    .slotOnlyOffensiveWarReleaseTurns(slotOnlyOffensiveWarReleaseTurns)
+                    .slotOnlyDefensiveWarReleaseTurns(slotOnlyDefensiveWarReleaseTurns)
+                    .maxOff(maxOff)
+                    .warPolicy(warPolicy)
+                    .resources(resources)
+                    .nonInfraScoreBase(nonInfraScoreBase)
+                    .cityInfra(cityInfra)
+                    .citySpecialistProfiles(citySpecialistProfiles)
+                    .resetHourUtc(resetHourUtc)
+                    .resetHourUtcFallback(resetHourUtcFallback)
+                    .activeOpponentNationIds(activeOpponentNationIds)
+                    .policyCooldownTurnsRemaining(policyCooldownTurnsRemaining)
+                    .beigeTurns(beigeTurns)
+                    .vmTurns(vmTurns)
+                    .researchBits(researchBits)
+                    .projectBits(projectBits)
+                    .combatProfile(combatProfile());
+            for (Map.Entry<MilitaryUnit, Integer> entry : unitBuysToday.entrySet()) {
+                builder.unitBoughtToday(entry.getKey(), entry.getValue());
+            }
+            for (Map.Entry<MilitaryUnit, Integer> entry : units.entrySet()) {
+                builder.unit(entry.getKey(), entry.getValue());
+            }
+            for (Map.Entry<MilitaryUnit, Integer> entry : pendingBuysNextTurn.entrySet()) {
+                builder.pendingBuyNextTurn(entry.getKey(), entry.getValue());
+            }
+            return builder;
         }
-        for (Map.Entry<MilitaryUnit, Integer> entry : units.entrySet()) {
-            builder.unit(entry.getKey(), entry.getValue());
-        }
-        for (Map.Entry<MilitaryUnit, Integer> entry : pendingBuysNextTurn.entrySet()) {
-            builder.pendingBuyNextTurn(entry.getKey(), entry.getValue());
-        }
-        return builder;
     }
 
     private static double totalInfra(double[] cityInfra) {
@@ -372,6 +437,8 @@ public final class DBNationSnapshot {
         private int cities;
         private int currentOffensiveWars;
         private int currentDefensiveWars;
+        private int[] slotOnlyOffensiveWarReleaseTurns = new int[0];
+        private int[] slotOnlyDefensiveWarReleaseTurns = new int[0];
         private int maxOff = -1;
         private WarPolicy warPolicy = WarPolicy.ATTRITION;
         private final EnumMap<MilitaryUnit, Integer> units = new EnumMap<>(MilitaryUnit.class);
@@ -414,6 +481,14 @@ public final class DBNationSnapshot {
         public Builder cities(int v) { this.cities = v; return this; }
         public Builder currentOffensiveWars(int v) { this.currentOffensiveWars = v; return this; }
         public Builder currentDefensiveWars(int v) { this.currentDefensiveWars = v; return this; }
+        public Builder slotOnlyOffensiveWarReleaseTurns(int[] values) {
+            this.slotOnlyOffensiveWarReleaseTurns = values == null ? new int[0] : values.clone();
+            return this;
+        }
+        public Builder slotOnlyDefensiveWarReleaseTurns(int[] values) {
+            this.slotOnlyDefensiveWarReleaseTurns = values == null ? new int[0] : values.clone();
+            return this;
+        }
         public Builder maxOff(int v) { this.maxOff = v; return this; }
         public Builder warPolicy(WarPolicy v) { this.warPolicy = v; return this; }
         public Builder unit(MilitaryUnit u, int count) { units.put(u, count); return this; }

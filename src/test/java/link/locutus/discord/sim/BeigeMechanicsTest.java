@@ -4,9 +4,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.sim.actions.AcceptPeaceAction;
 import link.locutus.discord.sim.actions.BuyUnitsAction;
-import link.locutus.discord.sim.actions.OfferPeaceAction;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -98,14 +96,16 @@ class BeigeMechanicsTest {
         world.declareWar(200, 1, 2, WarType.ORD);
         assertEquals(1, world.activeWarsForNation(1).size());
 
-        world.apply(new OfferPeaceAction(200, 1));
-        world.apply(new AcceptPeaceAction(200, 2));
+        SimWar war = world.requireWar(200);
+        war.reduceResistance(2, 100);
+        world.stepTurnStart();
+        defender.clearBeigeTurns();
 
         assertTrue(world.activeWarsForNation(1).isEmpty());
         assertFalse(world.canDeclareWar(1, 2));
         assertTrue(world.canDeclareWar(1, 3));
 
-        for (int turn = 0; turn < WarParticipationIndex.RECENT_OPPONENT_LOCKOUT_TURNS - 1; turn++) {
+        for (int turn = 0; turn < WarParticipationIndex.RECENT_OPPONENT_LOCKOUT_TURNS - 2; turn++) {
             world.stepTurnStart();
         }
 

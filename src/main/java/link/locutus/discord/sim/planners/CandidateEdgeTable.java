@@ -2,8 +2,6 @@ package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 
-import java.util.Arrays;
-
 /**
  * Dense primitive-backed storage for scored (attacker, defender) candidate edges.
  *
@@ -36,13 +34,7 @@ final class CandidateEdgeTable {
     private static final int INITIAL_CAPACITY = 64;
 
     private int edgeCount;
-    private int[] attackerIndexes;
-    private int[] defenderIndexes;
-    private byte[] preferredWarTypeIds;
-    private byte[] bestAttackTypeIds;
-    private float[] scalarScores;
-    private float[] counterRisks;
-    private CandidateEdgeComponents retainedComponents;
+    private CandidateEdgeStorage edges;
 
     CandidateEdgeTable() {
         this(INITIAL_CAPACITY);
@@ -50,18 +42,12 @@ final class CandidateEdgeTable {
 
     CandidateEdgeTable(int initialCapacity) {
         int cap = Math.max(4, initialCapacity);
-        attackerIndexes = new int[cap];
-        defenderIndexes = new int[cap];
-        preferredWarTypeIds = new byte[cap];
-        bestAttackTypeIds = new byte[cap];
-        scalarScores = new float[cap];
-        counterRisks = new float[cap];
-        retainedComponents = new CandidateEdgeComponents(cap, CandidateEdgeComponentPolicy.none());
+        edges = new CandidateEdgeStorage(cap, CandidateEdgeComponentPolicy.none());
         edgeCount = 0;
     }
 
     void configureComponentRetention(CandidateEdgeComponentPolicy policy) {
-        retainedComponents = new CandidateEdgeComponents(attackerIndexes.length, policy);
+        edges.reconfigureComponentRetention(policy);
     }
 
     // ---- Mutation -----------------------------------------------------------
@@ -109,15 +95,22 @@ final class CandidateEdgeTable {
             float controlLeverage,
             float futureWarLeverage
     ) {
-        ensureCapacity(edgeCount + 1);
+        edges.ensureCapacity(edgeCount + 1);
         int i = edgeCount++;
-        attackerIndexes[i] = attackerIndex;
-        defenderIndexes[i] = defenderIndex;
-        preferredWarTypeIds[i] = preferredWarTypeId;
-        bestAttackTypeIds[i] = bestAttackTypeId;
-        scalarScores[i] = score;
-        counterRisks[i] = counterRisk;
-        retainedComponents.set(i, immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage);
+        edges.write(
+                i,
+                attackerIndex,
+                defenderIndex,
+                preferredWarTypeId,
+                bestAttackTypeId,
+                score,
+                counterRisk,
+                immediateHarm,
+                selfExposure,
+                resourceSwing,
+                controlLeverage,
+                futureWarLeverage
+        );
         return i;
     }
 
@@ -128,6 +121,19 @@ final class CandidateEdgeTable {
         edgeCount = 0;
     }
 
+    /**
+     * Returns a deep copy of {@code source} suitable for per-edge rescoring without aliasing the
+     * original storage. Callers who need to rebuild candidate edge scores from projected
+     * mid-horizon state can clone the seed table, then mutate scores on the clone via
+     * {@link #scaleScalarScore(int, float)}.
+     */
+    static CandidateEdgeTable copyOf(CandidateEdgeTable source) {
+        CandidateEdgeTable copy = new CandidateEdgeTable(Math.max(INITIAL_CAPACITY, source.edgeCount));
+        copy.edgeCount = source.edgeCount;
+        copy.edges = source.edges.deepCopy();
+        return copy;
+    }
+
     // ---- Accessors ----------------------------------------------------------
 
     int edgeCount() {
@@ -135,71 +141,84 @@ final class CandidateEdgeTable {
     }
 
     int attackerIndex(int edge) {
-        return attackerIndexes[edge];
+        return edges.attackerIndexAt(edge);
     }
 
     int defenderIndex(int edge) {
-        return defenderIndexes[edge];
+        return edges.defenderIndexAt(edge);
     }
 
     byte preferredWarTypeId(int edge) {
-        return preferredWarTypeIds[edge];
+        return edges.preferredWarTypeIdAt(edge);
     }
 
     byte bestAttackTypeId(int edge) {
-        return bestAttackTypeIds[edge];
+        return edges.bestAttackTypeIdAt(edge);
     }
 
     float scalarScore(int edge) {
-        return scalarScores[edge];
+        return edges.scoreAt(edge);
     }
 
     void scaleScalarScore(int edge, float factor) {
-        scalarScores[edge] *= factor;
+        edges.scaleScalarScore(edge, factor);
+    }
+
+    /**
+     * Multiplies the scalar score and every retained component value for an edge by {@code factor}.
+     *
+     * <p>This is the dense primitive equivalent of rebuilding a candidate edge from a projected
+     * mid-horizon {@link link.locutus.discord.sim.planners.LongHorizonForwardProjection.MidHorizonSnapshot}:
+     * an attacker whose projected combat strength and score have been ground down by counter wars
+     * has its outgoing edges' immediate harm, control leverage, future-war leverage, etc. all
+     * proportionally reduced, not just the scalar opening score.</p>
+     */
+    void rescaleEdgeFromProjectedState(int edge, float factor) {
+        edges.rescaleFromProjectedState(edge, factor);
     }
 
     float counterRisk(int edge) {
-        return counterRisks[edge];
+        return edges.counterRiskAt(edge);
     }
 
     boolean retainsImmediateHarm() {
-        return retainedComponents.retainsImmediateHarm();
+        return edges.retainsImmediateHarm();
     }
 
     boolean retainsSelfExposure() {
-        return retainedComponents.retainsSelfExposure();
+        return edges.retainsSelfExposure();
     }
 
     boolean retainsResourceSwing() {
-        return retainedComponents.retainsResourceSwing();
+        return edges.retainsResourceSwing();
     }
 
     boolean retainsControlLeverage() {
-        return retainedComponents.retainsControlLeverage();
+        return edges.retainsControlLeverage();
     }
 
     boolean retainsFutureWarLeverage() {
-        return retainedComponents.retainsFutureWarLeverage();
+        return edges.retainsFutureWarLeverage();
     }
 
     float immediateHarm(int edge) {
-        return retainedComponents.immediateHarm(edge);
+        return edges.immediateHarmAt(edge);
     }
 
     float selfExposure(int edge) {
-        return retainedComponents.selfExposure(edge);
+        return edges.selfExposureAt(edge);
     }
 
     float resourceSwing(int edge) {
-        return retainedComponents.resourceSwing(edge);
+        return edges.resourceSwingAt(edge);
     }
 
     float controlLeverage(int edge) {
-        return retainedComponents.controlLeverage(edge);
+        return edges.controlLeverageAt(edge);
     }
 
     float futureWarLeverage(int edge) {
-        return retainedComponents.futureWarLeverage(edge);
+        return edges.futureWarLeverageAt(edge);
     }
 
     /**
@@ -208,21 +227,7 @@ final class CandidateEdgeTable {
      * <p>eps1/eps2 are small enough that primary score dominates but ties are strictly ordered.
      */
     double edgeCost(int edge, double eps1, double eps2, int attackerStrengthRank) {
-        return -scalarScores[edge] + eps1 * counterRisks[edge] + eps2 * attackerStrengthRank;
-    }
-
-    // ---- Internal -----------------------------------------------------------
-
-    private void ensureCapacity(int needed) {
-        if (needed <= attackerIndexes.length) return;
-        int newCap = Math.max(needed, attackerIndexes.length * 2);
-        attackerIndexes = Arrays.copyOf(attackerIndexes, newCap);
-        defenderIndexes = Arrays.copyOf(defenderIndexes, newCap);
-        preferredWarTypeIds = Arrays.copyOf(preferredWarTypeIds, newCap);
-        bestAttackTypeIds = Arrays.copyOf(bestAttackTypeIds, newCap);
-        scalarScores = Arrays.copyOf(scalarScores, newCap);
-        counterRisks = Arrays.copyOf(counterRisks, newCap);
-        retainedComponents.ensureCapacity(newCap);
+        return -edges.scoreAt(edge) + eps1 * edges.counterRiskAt(edge) + eps2 * attackerStrengthRank;
     }
 
     @Override

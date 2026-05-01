@@ -53,13 +53,14 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker),
                 List.of(defender),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
 
         PlannerProjectionResult before = conflict.project();
         PlannerLocalConflict.Mark mark = conflict.mark();
 
-        conflict.applyAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
+        conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
         PlannerProjectionResult mutated = conflict.project();
         assertFalse(mutated.activeWars().isEmpty());
 
@@ -98,15 +99,83 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker),
                 List.of(defender),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
 
         PlannerLocalConflict.Mark mark = conflict.mark();
-        conflict.applyAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
+        conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
         conflict.apply(mark);
 
         PlannerProjectionResult committed = conflict.project();
         assertFalse(committed.activeWars().isEmpty());
+    }
+
+    @Test
+    void plannerAssignmentViewPreservesWarTypeDuringExactOpenings() {
+        DBNationSnapshot attacker = nation(207, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .unit(MilitaryUnit.SHIP, 6)
+                .build();
+        DBNationSnapshot defender = nation(208, 2)
+                .unit(MilitaryUnit.SOLDIER, 9_000)
+                .unit(MilitaryUnit.TANK, 300)
+                .unit(MilitaryUnit.AIRCRAFT, 600)
+                .unit(MilitaryUnit.SHIP, 4)
+                .build();
+
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker),
+                List.of(defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
+        );
+
+        PlannerConflictBundle.PlannerAssignmentView assignment = PlannerConflictBundle.PlannerAssignmentView.fromOrderedAssignment(
+                Map.of(attacker.nationId(), List.of(defender.nationId())),
+                List.of(attacker.nationId()),
+                Map.of(PlannerLocalConflict.pairKey(attacker.nationId(), defender.nationId()), WarType.ATT.ordinal())
+        );
+
+        conflict.evaluateAssignmentOpenings(assignment);
+
+                assertEquals(WarType.ATT, conflict.project().activeWars().get(0).warType());
+    }
+
+    @Test
+    void plannerLocalConflictExposesActiveWarStrategicMetrics() {
+        DBNationSnapshot attacker = nation(213, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .unit(MilitaryUnit.SHIP, 20)
+                .build();
+        DBNationSnapshot defender = nation(214, 2)
+                .score(1_500)
+                .nonInfraScoreBase(1_200)
+                .unit(MilitaryUnit.SOLDIER, 14_000)
+                .unit(MilitaryUnit.TANK, 800)
+                .unit(MilitaryUnit.AIRCRAFT, 1_100)
+                .unit(MilitaryUnit.SHIP, 30)
+                .build();
+
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker),
+                List.of(defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
+        );
+        conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
+
+        double attackerStrategicScore = conflict.activeWarStrategicScoreForTeam(attacker.teamId(), 1.0, 1.0);
+        double defenderStrategicScore = conflict.activeWarStrategicScoreForTeam(defender.teamId(), 1.0, 1.0);
+
+        assertTrue(attackerStrategicScore > 0.0);
+        assertEquals(-attackerStrategicScore, defenderStrategicScore, 1e-9);
     }
 
     @Test
@@ -128,7 +197,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker),
                 List.of(defender),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
 
         PlannerLocalConflict.Mark outer = conflict.mark();
@@ -287,12 +357,11 @@ class PlannerConflictExecutorTest {
                 false,
                 false,
                 false,
-                false,
                 PlannerExactValidatorScripts.AttackSequenceProfile.CONVENTIONAL,
                 0,
                 EnumSet.noneOf(AttackType.class)
         );
-        assertEquals(new PlannerTransitionSemantics(false, true, false), rebuildOnly.transitionSemantics());
+        assertEquals(new PlannerTransitionSemantics(false, true), rebuildOnly.transitionSemantics());
 
         PlannerLocalConflict rebuildConflict = PlannerLocalConflict.create(
                 OverrideSet.EMPTY,
@@ -322,12 +391,11 @@ class PlannerConflictExecutorTest {
                 false,
                 true,
                 false,
-                false,
                 PlannerExactValidatorScripts.AttackSequenceProfile.CONVENTIONAL,
                 0,
                 EnumSet.noneOf(AttackType.class)
         );
-        assertEquals(new PlannerTransitionSemantics(true, false, false), policyOnly.transitionSemantics());
+        assertEquals(new PlannerTransitionSemantics(true, false), policyOnly.transitionSemantics());
 
         PlannerLocalConflict policyConflict = PlannerLocalConflict.create(
                 OverrideSet.EMPTY,
@@ -367,7 +435,6 @@ class PlannerConflictExecutorTest {
                 false,
                 false,
                 true,
-                false,
                 false,
                 false,
                 false,
@@ -565,7 +632,8 @@ class PlannerConflictExecutorTest {
                         defenders,
                         attackerOne.teamId()
                 ),
-                1e-9
+                2e-2,
+                "Bundle-local exact delta should stay numerically aligned with the full rescore after global regime normalization"
         );
 
         PlannerAssignmentSession session = PlannerAssignmentSession.create(
@@ -605,7 +673,8 @@ class PlannerConflictExecutorTest {
                         defenders,
                         attackerOne.teamId()
                 ),
-                1e-9
+                2e-2,
+                "Shared-prefix exact delta should remain within the control-regime normalization tolerance of the full rescore"
         );
     }
 
@@ -644,6 +713,160 @@ class PlannerConflictExecutorTest {
 
         assertNotNull(carriedOverlay);
         assertEquals(firstOverlay, carriedOverlay);
+    }
+
+    @Test
+    void scoreAssignmentDeltaMatchesFullRescoreWhenLeadingEdgesAreShared() {
+        DBNationSnapshot attackerOne = nation(111, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_400)
+                .unit(MilitaryUnit.TANK, 520)
+                .unit(MilitaryUnit.AIRCRAFT, 930)
+                .build();
+        DBNationSnapshot attackerTwo = nation(112, 1)
+                .unit(MilitaryUnit.SOLDIER, 11_700)
+                .unit(MilitaryUnit.TANK, 470)
+                .unit(MilitaryUnit.AIRCRAFT, 910)
+                .build();
+        DBNationSnapshot defenderOne = nation(211, 2)
+                .unit(MilitaryUnit.SOLDIER, 9_300)
+                .unit(MilitaryUnit.TANK, 310)
+                .unit(MilitaryUnit.AIRCRAFT, 660)
+                .build();
+        DBNationSnapshot defenderTwo = nation(212, 2)
+                .unit(MilitaryUnit.SOLDIER, 8_900)
+                .unit(MilitaryUnit.TANK, 290)
+                .unit(MilitaryUnit.AIRCRAFT, 610)
+                .build();
+        DBNationSnapshot defenderThree = nation(213, 2)
+                .unit(MilitaryUnit.SOLDIER, 8_700)
+                .unit(MilitaryUnit.TANK, 270)
+                .unit(MilitaryUnit.AIRCRAFT, 590)
+                .build();
+
+        List<DBNationSnapshot> attackers = List.of(attackerOne, attackerTwo);
+        List<DBNationSnapshot> defenders = List.of(defenderOne, defenderTwo, defenderThree);
+
+        Map<Integer, List<Integer>> currentAssignment = Map.of(
+                attackerOne.nationId(), List.of(defenderOne.nationId()),
+                attackerTwo.nationId(), List.of(defenderTwo.nationId(), defenderThree.nationId())
+        );
+        Map<Integer, List<Integer>> candidateAssignment = Map.of(
+                attackerOne.nationId(), List.of(defenderOne.nationId()),
+                attackerTwo.nationId(), List.of(defenderThree.nationId(), defenderTwo.nationId())
+        );
+        PlannerAssignmentChange candidateChange = PlannerAssignmentChange.single(
+                attackerTwo.nationId(),
+                List.of(defenderThree.nationId(), defenderTwo.nationId())
+        );
+
+        double fullCurrentScore = PlannerConflictExecutor.scoreAssignment(
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                OverrideSet.EMPTY,
+                new DamageObjective(),
+                currentAssignment,
+                attackers,
+                defenders
+        );
+        double fullCandidateScore = PlannerConflictExecutor.scoreAssignment(
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                OverrideSet.EMPTY,
+                new DamageObjective(),
+                candidateAssignment,
+                attackers,
+                defenders
+        );
+
+        assertEquals(
+                fullCandidateScore - fullCurrentScore,
+                PlannerConflictExecutor.scoreAssignmentDelta(
+                        new SimTuning(ResolutionMode.MOST_LIKELY),
+                        OverrideSet.EMPTY,
+                        new DamageObjective(),
+                        currentAssignment,
+                        candidateChange,
+                        attackers,
+                        defenders,
+                        attackerOne.teamId()
+                ),
+                1e-2,
+                "Shared-prefix delta remains near-exact under the globally normalized control-regime scorer"
+        );
+    }
+
+    @Test
+    void sessionBundleExtractionReusesCachedReverseIndexAndRebuildsAfterSwap() {
+        DBNationSnapshot attackerOne = nation(301, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+        DBNationSnapshot attackerTwo = nation(302, 1)
+                .unit(MilitaryUnit.SOLDIER, 11_500)
+                .unit(MilitaryUnit.TANK, 460)
+                .unit(MilitaryUnit.AIRCRAFT, 860)
+                .build();
+        DBNationSnapshot defenderOne = nation(401, 2)
+                .unit(MilitaryUnit.SOLDIER, 8_600)
+                .unit(MilitaryUnit.TANK, 250)
+                .unit(MilitaryUnit.AIRCRAFT, 620)
+                .build();
+        DBNationSnapshot defenderTwo = nation(402, 2)
+                .unit(MilitaryUnit.SOLDIER, 8_900)
+                .unit(MilitaryUnit.TANK, 280)
+                .unit(MilitaryUnit.AIRCRAFT, 640)
+                .build();
+
+        List<DBNationSnapshot> attackers = List.of(attackerOne, attackerTwo);
+        List<DBNationSnapshot> defenders = List.of(defenderOne, defenderTwo);
+        Map<Integer, List<Integer>> initialAssignment = Map.of(
+                attackerOne.nationId(), List.of(defenderOne.nationId()),
+                attackerTwo.nationId(), List.of(defenderTwo.nationId())
+        );
+        PlannerAssignmentSession session = PlannerAssignmentSession.create(
+                initialAssignment,
+                attackers,
+                defenders,
+                Map.of(attackerOne.nationId(), 1, attackerTwo.nationId(), 1),
+                Map.of(defenderOne.nationId(), 1, defenderTwo.nationId(), 1)
+        );
+
+        PlannerAssignmentChange firstChange = PlannerAssignmentChange.single(
+                attackerOne.nationId(),
+                List.of(defenderTwo.nationId())
+        );
+        PlannerAssignmentChange secondChange = PlannerAssignmentChange.single(
+                attackerOne.nationId(),
+                List.of(defenderOne.nationId())
+        );
+
+        PlannerProfiler.Session profiler = new PlannerProfiler.Session();
+        PlannerConflictBundle swappedBundle = PlannerProfiler.withSession(profiler, () -> {
+            PlannerConflictBundle.extract(session, firstChange, attackers, defenders);
+            PlannerConflictBundle.extract(session, firstChange, attackers, defenders);
+
+            int attackerOneSlot = session.attackerSlot(attackerOne.nationId());
+            int attackerTwoSlot = session.attackerSlot(attackerTwo.nationId());
+            int defenderOneSlot = session.defenderSlot(defenderOne.nationId());
+            int defenderTwoSlot = session.defenderSlot(defenderTwo.nationId());
+            session.applySwap(attackerOneSlot, 0, defenderTwoSlot, attackerTwoSlot, 0, defenderOneSlot);
+
+            return PlannerConflictBundle.extract(session, secondChange, attackers, defenders);
+        });
+
+        PlannerProfiler.ScopeStats extractStats = profiler.snapshot().stats(PlannerProfiler.Scope.CONFLICT_BUNDLE_EXTRACT);
+        assertEquals(2L, extractStats.counters().get("sessionReverseIndexBuilds"));
+        assertEquals(1L, extractStats.counters().get("sessionReverseIndexReuses"));
+
+        PlannerConflictBundle mapBundle = PlannerConflictBundle.extract(
+                session.toAssignmentMap(),
+                secondChange,
+                attackers,
+                defenders
+        );
+        assertEquals(mapBundle.attackers(), swappedBundle.attackers());
+        assertEquals(mapBundle.defenders(), swappedBundle.defenders());
+        assertEquals(mapBundle.currentAssignment(), swappedBundle.currentAssignment());
+        assertEquals(mapBundle.candidateAssignment(), swappedBundle.candidateAssignment());
     }
 
     @Test
@@ -806,7 +1029,6 @@ class PlannerConflictExecutorTest {
         PlannerExactValidatorScripts groundOnlyScripts = new PlannerExactValidatorScripts(
                 true,
                 true,
-                false,
                 false,
                 false,
                 false,
@@ -1387,7 +1609,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker),
                 List.of(defender),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
         java.lang.reflect.Field nationsByIdField = PlannerLocalConflict.class.getDeclaredField("nationsById");
         nationsByIdField.setAccessible(true);
@@ -1426,12 +1649,12 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker),
                 List.of(defender),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
         PlannerExactValidatorScripts missileOnlyScripts = new PlannerExactValidatorScripts(
                 true,
                 true,
-                false,
                 false,
                 false,
                 false,
@@ -1487,7 +1710,9 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker, defender),
                 List.of(activeWar),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                0,
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
 
         Field warsByIdField = PlannerLocalConflict.class.getDeclaredField("warsById");
@@ -1536,7 +1761,6 @@ class PlannerConflictExecutorTest {
                 true,
                 false,
                 false,
-                false,
                 PlannerExactValidatorScripts.AttackSequenceProfile.CONVENTIONAL,
                 0,
                 EnumSet.of(AttackType.GROUND, AttackType.MISSILE)
@@ -1545,7 +1769,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker),
                 List.of(defender),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
         conventionalConflict.simulateDeclaredWar(
                 attacker.nationId(),
@@ -1559,15 +1784,15 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker),
                 List.of(defender),
-                new SimTuning(ResolutionMode.MOST_LIKELY)
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
         );
         specialistConflict.simulateDeclaredWar(
                 attacker.nationId(),
                 defender.nationId(),
                 WarType.ORD,
                 3,
-                conventionalScripts,
-                PlannerCoordinationPolicy.resetWindowSpecialistHold()
+                PlannerCoordinationPolicy.resetWindowSpecialistHold().applyTo(conventionalScripts)
         );
 
         DBNationSnapshot conventionalAttacker = conventionalConflict.project().snapshotsById().get(attacker.nationId());

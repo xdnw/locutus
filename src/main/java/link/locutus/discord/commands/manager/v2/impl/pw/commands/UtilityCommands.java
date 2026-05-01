@@ -32,6 +32,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.LiveAppCommandSurface;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -2320,7 +2321,7 @@ public class UtilityCommands {
                 DBNation nation = nationOrAA.asNation();
                 title = nation.getNation();
                 StringBuilder markdown = new StringBuilder(nation.toFullMarkdown());
-                IMessageBuilder msg = channel.create().embed(title, markdown.toString());
+                IMessageBuilder msg = channel.create().embed(new EmbedShrink().setTitle(title).description(IShrink.of(markdown.toString())));
 
                 // Run audit (if ia/econ, or self)
                 if ((myNation != null && myNation.getId() == nation.getId())
@@ -2388,14 +2389,14 @@ public class UtilityCommands {
                 }
                 DBAlliance alliance = nationOrAA.asAlliance();
                 title = alliance.getName();
-                StringBuilder markdown = new StringBuilder(alliance.toMarkdown() + "\n");
+                IShrink markdown = alliance.toShrinkMarkdown().append("\n");
                 if (guild != null && Roles.ADMIN.has(author, guild) && myNation != null
                         && myNation.getAlliance_id() == alliance.getId() && db.getAllianceIds().isEmpty()) {
-                    markdown.append("\nSet as this guild's alliance: "
-                            + CM.settings_default.registerAlliance.cmd.toSlashMention() + "\n");
+                    markdown = markdown.append("\nSet as this guild's alliance: ")
+                        .append(CM.settings_default.registerAlliance.cmd.toSlashMention()).append("\n");
                 }
 
-                IMessageBuilder msg = channel.create().embed(title, markdown.toString());
+                IMessageBuilder msg = channel.create().embed(new EmbedShrink().setTitle(title).description(markdown));
 
                 // Militarization graph
                 CM.alliance.stats.metricsByTurn militarization = CM.alliance.stats.metricsByTurn.cmd

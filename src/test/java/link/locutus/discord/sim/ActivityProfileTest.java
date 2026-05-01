@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests covering the M4 activity model:
  * - Wartime uplift is applied dynamically based on active war state (not baked in)
- * - Peace → war → peace transitions immediately flip uplift
+ * - War entry and terminal war conclusion immediately flip uplift
  * - MockActivityProvider cycles per-turn array correctly
  * - GlobalPriorActivityProvider returns the configured prior
  * - activityActThreshold is stored in SimTuning
@@ -90,9 +90,9 @@ class ActivityProfileTest {
         double wartimeActivity = world.effectiveActivityAt(n1);
         assertTrue(wartimeActivity > baseActivity, "Uplift applied in wartime");
 
-        // End war via peace offer + acceptance
-        world.apply(new link.locutus.discord.sim.actions.OfferPeaceAction(100, 1));
-        world.apply(new link.locutus.discord.sim.actions.AcceptPeaceAction(100, 2));
+        SimWar war = world.requireWar(100);
+        war.reduceResistance(2, 100);
+        world.stepTurnStart();
 
         double peacetimeActivity = world.effectiveActivityAt(n1);
         assertEquals(baseActivity, peacetimeActivity, 1e-9, "Uplift removed after war ends");

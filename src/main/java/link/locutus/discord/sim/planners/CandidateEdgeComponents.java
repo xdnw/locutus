@@ -90,6 +90,39 @@ final class CandidateEdgeComponents {
         }
     }
 
+    CandidateEdgeComponents deepCopy() {
+        CandidateEdgeComponents copy = new CandidateEdgeComponents(0, CandidateEdgeComponentPolicy.none());
+        copy.immediateHarms = immediateHarms == null ? null : Arrays.copyOf(immediateHarms, immediateHarms.length);
+        copy.selfExposures = selfExposures == null ? null : Arrays.copyOf(selfExposures, selfExposures.length);
+        copy.resourceSwings = resourceSwings == null ? null : Arrays.copyOf(resourceSwings, resourceSwings.length);
+        copy.controlLeverages = controlLeverages == null ? null : Arrays.copyOf(controlLeverages, controlLeverages.length);
+        copy.futureWarLeverages = futureWarLeverages == null ? null : Arrays.copyOf(futureWarLeverages, futureWarLeverages.length);
+        return copy;
+    }
+
+    /**
+     * Multiplies all retained component values for a single edge by {@code factor}. Used by the
+     * long-horizon optimizer to rebuild candidate edge components from a projected mid-horizon
+     * {@code ProjectionState} snapshot rather than only scaling the scalar score.
+     */
+    void scale(int index, float factor) {
+        if (immediateHarms != null) {
+            immediateHarms[index] *= factor;
+        }
+        if (selfExposures != null) {
+            selfExposures[index] *= factor;
+        }
+        if (resourceSwings != null) {
+            resourceSwings[index] *= factor;
+        }
+        if (controlLeverages != null) {
+            controlLeverages[index] *= factor;
+        }
+        if (futureWarLeverages != null) {
+            futureWarLeverages[index] *= factor;
+        }
+    }
+
     void swap(int lhs, int rhs) {
         if (immediateHarms != null) {
             float swap = immediateHarms[lhs];

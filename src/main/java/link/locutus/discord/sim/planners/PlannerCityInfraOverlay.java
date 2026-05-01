@@ -86,7 +86,7 @@ final class PlannerCityInfraOverlay {
             }
             cityInfra[cityIndex] = cityInfraValues[i];
         }
-        return baseSnapshot.toBuilder().cityInfra(cityInfra).build();
+        return baseSnapshot.withCityInfra(cityInfra);
     }
 
     PlannerCityInfraOverlay merge(PlannerCityInfraOverlay newer) {

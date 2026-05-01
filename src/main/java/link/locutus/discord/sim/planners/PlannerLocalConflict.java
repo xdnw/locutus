@@ -11,8 +11,12 @@ import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.SimClock;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
+import link.locutus.discord.sim.NationCapacityRules;
+import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.TeamScoreObjective;
 import link.locutus.discord.sim.TeamWarControlView;
+import link.locutus.discord.sim.Turn1DeclarePolicy;
+import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.ControlFlagDelta;
@@ -20,8 +24,11 @@ import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.RandomSource;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
+import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.combat.WarControlRules;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
+import link.locutus.discord.sim.planners.compile.CompiledScenario;
+import link.locutus.discord.util.PW;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -32,19 +39,32 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntPredicate;
 
 final class PlannerLocalConflict implements TeamWarControlView {
+    private static final MilitaryUnit[] PROJECTED_BUY_UNITS = {
+        MilitaryUnit.AIRCRAFT,
+        MilitaryUnit.TANK,
+        MilitaryUnit.SHIP,
+        MilitaryUnit.SOLDIER
+    };
     private static final AttackType[] CONVENTIONAL_ATTACK_SEQUENCE = {
+        AttackType.AIRSTRIKE_AIRCRAFT,
         AttackType.GROUND,
-        AttackType.AIRSTRIKE_INFRA,
-        AttackType.NAVAL
+        AttackType.AIRSTRIKE_TANK,
+        AttackType.AIRSTRIKE_SOLDIER,
+        AttackType.NAVAL,
+        AttackType.AIRSTRIKE_INFRA
     };
     private static final AttackType[] SPECIALIST_FIRST_ATTACK_SEQUENCE = {
         AttackType.NUKE,
         AttackType.MISSILE,
+        AttackType.AIRSTRIKE_AIRCRAFT,
         AttackType.GROUND,
-        AttackType.AIRSTRIKE_INFRA,
-        AttackType.NAVAL
+        AttackType.AIRSTRIKE_TANK,
+        AttackType.AIRSTRIKE_SOLDIER,
+        AttackType.NAVAL,
+        AttackType.AIRSTRIKE_INFRA
     };
 
     private final SimTuning tuning;
@@ -56,9 +76,14 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private final Map<Integer, LocalNation> nationsById;
     private final Map<Integer, LocalWar> warsById;
     private final Map<Long, LocalWar> warsByPair;
+    private final Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId;
+    private final Map<Integer, Double> externalStrategicValueByTeam;
     private final LocalNationBuffers nationBuffers;
     private final LocalWarBuffers warBuffers;
     private final Deque<Mark> markStack;
+    private PlannerReplayTurnMetrics replayTurnMetrics;
+    private int replayMetricSuppressionDepth;
+    private int projectionExportCount;
     private int currentTurn;
     private int nextWarId = 1_000_000;
 
@@ -71,6 +96,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private PlannerLocalConflict(
             SimTuning tuning,
             Map<Integer, LocalNation> nationsById,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
+            Map<Integer, Double> externalStrategicValueByTeam,
             LocalNationBuffers nationBuffers,
             int currentTurn,
             PlannerTransitionSemantics transitionSemantics,
@@ -83,6 +110,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.attackScratch = new AttackScratch();
         this.attackResult = new MutableAttackResult();
         this.nationsById = nationsById;
+        this.strategicRelevanceByNationId = strategicRelevanceByNationId;
+        this.externalStrategicValueByTeam = externalStrategicValueByTeam;
         this.nationBuffers = nationBuffers;
         this.warsById = new LinkedHashMap<>();
         this.warsByPair = new LinkedHashMap<>();
@@ -95,9 +124,17 @@ final class PlannerLocalConflict implements TeamWarControlView {
             OverrideSet overrides,
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
-            SimTuning tuning
+            SimTuning tuning,
+            PlannerTransitionSemantics transitionSemantics
     ) {
-        return create(overrides, attackers, defenders, tuning, PlannerTransitionSemantics.NONE);
+        return create(
+                overrides,
+                attackers,
+                defenders,
+                tuning,
+                transitionSemantics,
+                strategicRelevanceByNationId(attackers, defenders)
+        );
     }
 
     static PlannerLocalConflict create(
@@ -105,24 +142,39 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
             SimTuning tuning,
-            PlannerTransitionSemantics transitionSemantics
+            PlannerTransitionSemantics transitionSemantics,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId
     ) {
-        return createFromOrderedSnapshots(
+        return create(
                 overrides,
-                orderedUniqueNations(attackers, defenders),
-                List.of(),
-            0,
+                attackers,
+                defenders,
                 tuning,
-                transitionSemantics
+                transitionSemantics,
+                strategicRelevanceByNationId,
+                Map.of()
         );
     }
 
     static PlannerLocalConflict create(
             OverrideSet overrides,
-            Collection<DBNationSnapshot> nations,
-            SimTuning tuning
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            SimTuning tuning,
+            PlannerTransitionSemantics transitionSemantics,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
+            Map<Integer, Double> externalStrategicValueByTeam
     ) {
-        return create(overrides, nations, tuning, PlannerTransitionSemantics.NONE);
+        return createFromOrderedSnapshots(
+                overrides,
+                orderedUniqueNations(attackers, defenders),
+                List.of(),
+                0,
+                tuning,
+                transitionSemantics,
+                strategicRelevanceByNationId,
+                externalStrategicValueByTeam
+        );
     }
 
     static PlannerLocalConflict create(
@@ -135,19 +187,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 overrides,
                 orderedUniqueNations(nations, List.of()),
                 List.of(),
-            0,
+                0,
                 tuning,
-                transitionSemantics
+                transitionSemantics,
+                strategicRelevanceByNationId(nations),
+                Map.of()
         );
-    }
-
-    static PlannerLocalConflict createWithActiveWars(
-            OverrideSet overrides,
-            Collection<DBNationSnapshot> nations,
-            Collection<PlannerProjectedWar> activeWars,
-            SimTuning tuning
-    ) {
-        return createWithActiveWars(overrides, nations, activeWars, 0, tuning, PlannerTransitionSemantics.NONE);
     }
 
     static PlannerLocalConflict createWithActiveWars(
@@ -160,17 +205,16 @@ final class PlannerLocalConflict implements TeamWarControlView {
     ) {
         List<DBNationSnapshot> ordered = orderedUniqueNations(nations, List.of());
         List<DBNationSnapshot> baseSnapshots = stripProjectedWarOverlays(ordered, activeWars);
-        return createFromOrderedSnapshots(overrides, baseSnapshots, activeWars, currentTurn, tuning, transitionSemantics);
-    }
-
-    static PlannerLocalConflict createWithActiveWars(
-            OverrideSet overrides,
-            Collection<DBNationSnapshot> nations,
-            Collection<PlannerProjectedWar> activeWars,
-            SimTuning tuning,
-            PlannerTransitionSemantics transitionSemantics
-    ) {
-        return createWithActiveWars(overrides, nations, activeWars, 0, tuning, transitionSemantics);
+        return createFromOrderedSnapshots(
+                overrides,
+                baseSnapshots,
+                activeWars,
+                currentTurn,
+                tuning,
+                transitionSemantics,
+                strategicRelevanceByNationId(baseSnapshots),
+                Map.of()
+        );
     }
 
     private static List<DBNationSnapshot> stripProjectedWarOverlays(
@@ -206,11 +250,14 @@ final class PlannerLocalConflict implements TeamWarControlView {
             // Idempotent guard: if the overlay is already stripped, keep snapshot unchanged.
             return;
         }
-        DBNationSnapshot.Builder builder = snapshot.toBuilder()
-                .currentOffensiveWars(Math.max(0, snapshot.currentOffensiveWars() + (offensiveSide ? -1 : 0)))
-                .currentDefensiveWars(Math.max(0, snapshot.currentDefensiveWars() + (offensiveSide ? 0 : -1)))
-                .activeOpponentNationIds(activeOpponents);
-        snapshotsById.put(nationId, builder.build());
+        snapshotsById.put(
+            nationId,
+            snapshot.withWarState(
+                Math.max(0, snapshot.currentOffensiveWars() + (offensiveSide ? -1 : 0)),
+                Math.max(0, snapshot.currentDefensiveWars() + (offensiveSide ? 0 : -1)),
+                activeOpponents
+            )
+        );
     }
 
     private static PlannerLocalConflict createFromOrderedSnapshots(
@@ -219,15 +266,19 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Collection<PlannerProjectedWar> activeWars,
             int currentTurn,
             SimTuning tuning,
-            PlannerTransitionSemantics transitionSemantics
+            PlannerTransitionSemantics transitionSemantics,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
+            Map<Integer, Double> externalStrategicValueByTeam
     ) {
         PlannerTransitionSemantics effectiveTransitionSemantics = transitionSemantics == null
                 ? PlannerTransitionSemantics.NONE
                 : transitionSemantics;
-        LocalNationBuffers nationBuffers = LocalNationBuffers.fromSnapshots(orderedSnapshots, overrides);
+        OverrideSet effectiveOverrides = overrides == null ? OverrideSet.EMPTY : overrides;
+        List<DBNationSnapshot> effectiveSnapshots = applyOverridesToSnapshots(orderedSnapshots, effectiveOverrides);
+        LocalNationBuffers nationBuffers = LocalNationBuffers.fromSnapshots(effectiveSnapshots);
         Map<Integer, LocalNation> localNations = new LinkedHashMap<>();
-        for (int index = 0; index < orderedSnapshots.size(); index++) {
-            DBNationSnapshot snapshot = orderedSnapshots.get(index);
+        for (int index = 0; index < effectiveSnapshots.size(); index++) {
+            DBNationSnapshot snapshot = effectiveSnapshots.get(index);
             localNations.put(snapshot.nationId(), LocalNation.of(snapshot, nationBuffers, index, currentTurn));
         }
         RandomSource randomSource = tuning.stateResolutionMode() == ResolutionMode.STOCHASTIC
@@ -236,6 +287,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
         PlannerLocalConflict conflict = new PlannerLocalConflict(
                 tuning,
                 localNations,
+            strategicRelevanceByNationId == null ? Map.of() : Map.copyOf(strategicRelevanceByNationId),
+            externalStrategicValueByTeam == null ? Map.of() : Map.copyOf(externalStrategicValueByTeam),
             nationBuffers,
             currentTurn,
                 effectiveTransitionSemantics,
@@ -243,6 +296,17 @@ final class PlannerLocalConflict implements TeamWarControlView {
         );
         conflict.seedProjectedWars(activeWars);
         return conflict;
+    }
+
+    private static List<DBNationSnapshot> applyOverridesToSnapshots(
+            List<DBNationSnapshot> orderedSnapshots,
+            OverrideSet overrides
+    ) {
+        List<DBNationSnapshot> effectiveSnapshots = new ArrayList<>(orderedSnapshots.size());
+        for (DBNationSnapshot snapshot : orderedSnapshots) {
+            effectiveSnapshots.add(overrides.applyToSnapshot(snapshot));
+        }
+        return effectiveSnapshots;
     }
 
     private static ResolutionMode requireStateResolutionMode(SimTuning tuning) {
@@ -267,6 +331,57 @@ final class PlannerLocalConflict implements TeamWarControlView {
             byId.putIfAbsent(snapshot.nationId(), snapshot);
         }
         return new ArrayList<>(byId.values());
+    }
+
+    static Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId(
+            Collection<DBNationSnapshot> primary,
+            Collection<DBNationSnapshot> secondary
+    ) {
+        return strategicRelevanceByNationId(orderedUniqueNations(primary, secondary));
+    }
+
+    static Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId(
+            Collection<DBNationSnapshot> snapshots
+    ) {
+        if (snapshots.isEmpty()) {
+            return Map.of();
+        }
+        List<DBNationSnapshot> orderedSnapshots = List.copyOf(snapshots);
+        LinkedHashMap<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId = new LinkedHashMap<>(orderedSnapshots.size());
+        for (DBNationSnapshot snapshot : orderedSnapshots) {
+            List<DBNationSnapshot> opposingNations = new ArrayList<>(orderedSnapshots.size());
+            for (DBNationSnapshot other : orderedSnapshots) {
+                if (other.teamId() != snapshot.teamId()) {
+                    opposingNations.add(other);
+                }
+            }
+            relevanceByNationId.put(
+                    snapshot.nationId(),
+                    StrategicAssetValue.relevanceForWarRange(
+                            snapshot.cities(),
+                            snapshot.score(),
+                            snapshot.currentOffensiveWars() + snapshot.currentDefensiveWars() + snapshot.activeOpponentNationIds().size(),
+                            opposingNations.size(),
+                            index -> opposingNations.get(index).score()
+                    )
+            );
+        }
+        return Map.copyOf(relevanceByNationId);
+    }
+
+    static double strategicValue(
+            DBNationSnapshot snapshot,
+            StrategicAssetValue.StrategicRelevance relevance
+    ) {
+        return StrategicAssetValue.contextualMilitaryValue(
+                snapshot::unit,
+                snapshot::pendingBuysNextTurn,
+                snapshot::unitsBoughtToday,
+                snapshot::dailyBuyCap,
+                snapshot.researchBits(),
+                snapshot.hasActiveWars(),
+                relevance
+        ).totalValue();
     }
 
     Mark mark() {
@@ -370,28 +485,255 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     void applyReplayTurn(Map<Integer, List<Integer>> assignment, boolean initialTurn) {
+        applyReplayTurn(assignment, initialTurn, List.of(), List.of());
+    }
+
+    void beginReplayTurnMetrics(IntPredicate isAttackerNationId) {
+        replayTurnMetrics = new PlannerReplayTurnMetrics(isAttackerNationId);
+    }
+
+    PlannerReplayTurnMetrics drainReplayTurnMetrics() {
+        PlannerReplayTurnMetrics metrics = replayTurnMetrics;
+        replayTurnMetrics = null;
+        return metrics;
+    }
+
+    void applyReplayTurn(
+            Map<Integer, List<Integer>> assignment,
+            boolean initialTurn,
+            Collection<Integer> counterDeclarerNationIds,
+            Collection<Integer> counterTargetNationIds
+    ) {
+        applyReplayTurn(
+                assignment,
+                initialTurn,
+                counterDeclarerNationIds,
+                counterTargetNationIds,
+                null,
+                1
+        );
+    }
+
+    void applyReplayTurn(
+            Map<Integer, List<Integer>> assignment,
+            boolean initialTurn,
+            Collection<Integer> counterDeclarerNationIds,
+            Collection<Integer> counterTargetNationIds,
+            TeamScoreObjective counterObjective,
+            int remainingTurns
+    ) {
+        applyReplayTurn(
+                assignment,
+                Map.of(),
+                initialTurn,
+                counterDeclarerNationIds,
+                counterTargetNationIds,
+                counterObjective,
+                remainingTurns
+        );
+    }
+
+    void applyReplayTurn(
+            Map<Integer, List<Integer>> assignment,
+            Map<Long, Integer> warTypeOrdinalsByPair,
+            boolean initialTurn,
+            Collection<Integer> counterDeclarerNationIds,
+            Collection<Integer> counterTargetNationIds,
+            TeamScoreObjective counterObjective,
+            int remainingTurns
+    ) {
         if (assignment.isEmpty()) {
             advanceTurn();
+            simulateActiveWarOpenings();
+            applyAutonomousCounterDeclarations(counterDeclarerNationIds, counterTargetNationIds, initialTurn, counterObjective, remainingTurns);
+            applyReplayProjectedRebuys();
             return;
         }
         if (!initialTurn) {
             advanceTurn();
         }
+        declareMissingAssignedWars(assignment, warTypeOrdinalsByPair);
+        simulateActiveWarOpenings();
+        applyAutonomousCounterDeclarations(counterDeclarerNationIds, counterTargetNationIds, initialTurn, counterObjective, remainingTurns);
+        applyReplayProjectedRebuys();
+    }
+
+    private void applyReplayProjectedRebuys() {
+        ReplayProjectedRebuyApplier.apply(
+                transitionSemantics,
+                currentTurn,
+                nationsById.values(),
+                warsById.values()
+        );
+    }
+
+    private static final class ReplayProjectedRebuyApplier {
+        private ReplayProjectedRebuyApplier() {
+        }
+
+        private static void apply(
+                PlannerTransitionSemantics transitionSemantics,
+                int currentTurn,
+                Collection<LocalNation> nations,
+                Collection<LocalWar> wars
+        ) {
+            if (!PlannerTransitionSemantics.REPLAY.equals(transitionSemantics)) {
+                return;
+            }
+            for (LocalNation nation : nations) {
+                nation.queueProjectedDailyRebuys(hasActiveWars(nation, currentTurn, wars));
+            }
+        }
+
+        private static boolean hasActiveWars(LocalNation nation, int currentTurn, Collection<LocalWar> wars) {
+            if (nation.activeBaseCurrentOffensiveWars(currentTurn) > 0
+                    || nation.activeBaseCurrentDefensiveWars(currentTurn) > 0) {
+                return true;
+            }
+            for (LocalWar war : wars) {
+                if (!war.isActive()) {
+                    continue;
+                }
+                if (war.attacker.nationId == nation.nationId || war.defender.nationId == nation.nationId) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private static final class DeclaredWarScriptRunner {
+        private DeclaredWarScriptRunner() {
+        }
+
+        private static void simulate(
+                PlannerLocalConflict conflict,
+                int attackerNationId,
+                int defenderNationId,
+                WarType warType,
+                int horizonTurns,
+                PlannerExactValidatorScripts scripts,
+                TeamScoreObjective objective,
+                int attackerTeamId
+        ) {
+            PlannerExactValidatorScripts effectiveScripts = scripts == null
+                    ? PlannerExactValidatorScripts.DEFAULT
+                    : scripts;
+            if (!effectiveScripts.declareWarScript()) {
+                return;
+            }
+            LocalWar war = conflict.declareWar(attackerNationId, defenderNationId, warType);
+            int turns = Math.max(1, horizonTurns);
+            for (int turn = 0; turn < turns; turn++) {
+                if (turn > 0) {
+                    conflict.advanceTurn();
+                }
+                if (!war.isActive()) {
+                    return;
+                }
+                simulateOpeningSequence(conflict, war, effectiveScripts, objective, attackerTeamId, turns - turn);
+                if (!war.isActive()) {
+                    return;
+                }
+                simulateFollowUpSequence(conflict, war, effectiveScripts, objective, attackerTeamId, turns - turn);
+            }
+        }
+
+        private static void simulateOpeningSequence(
+                PlannerLocalConflict conflict,
+                LocalWar war,
+                PlannerExactValidatorScripts scripts,
+                TeamScoreObjective objective,
+                int attackerTeamId,
+                int turnsRemaining
+        ) {
+            if (!scripts.openerSequenceScript()) {
+                return;
+            }
+            if (objective == null) {
+                conflict.simulateOpeningAttacks(
+                        war,
+                        scripts.allowedAttackTypes(),
+                        scripts.attackSequenceProfile(),
+                        scripts.mapReserveScript() ? scripts.mapReserveFloor() : 0,
+                        turnsRemaining,
+                        scripts.idleWaitScript()
+                );
+                return;
+            }
+            conflict.simulateGreedyOpeningAttacks(
+                    war,
+                    scripts.allowedAttackTypes(),
+                    scripts.mapReserveScript() ? scripts.mapReserveFloor() : 0,
+                    objective,
+                    attackerTeamId
+            );
+        }
+
+        private static void simulateFollowUpSequence(
+                PlannerLocalConflict conflict,
+                LocalWar war,
+                PlannerExactValidatorScripts scripts,
+                TeamScoreObjective objective,
+                int attackerTeamId,
+                int turnsRemaining
+        ) {
+            if (!scripts.followUpAttackScript()) {
+                return;
+            }
+            if (objective == null) {
+                conflict.simulateFollowUpAttack(
+                        war,
+                        scripts.allowedAttackTypes(),
+                        scripts.attackSequenceProfile(),
+                        scripts.mapReserveScript() ? scripts.mapReserveFloor() : 0,
+                        turnsRemaining,
+                        scripts.idleWaitScript()
+                );
+                return;
+            }
+            conflict.simulateGreedyFollowUpAttack(
+                    war,
+                    scripts.allowedAttackTypes(),
+                    scripts.mapReserveScript() ? scripts.mapReserveFloor() : 0,
+                    objective,
+                    attackerTeamId
+            );
+        }
+    }
+
+    private void declareMissingAssignedWars(Map<Integer, List<Integer>> assignment) {
+        declareMissingAssignedWars(assignment, Map.of());
+    }
+
+    private void declareMissingAssignedWars(Map<Integer, List<Integer>> assignment, Map<Long, Integer> warTypeOrdinalsByPair) {
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             int attackerId = entry.getKey();
             for (int defenderId : entry.getValue()) {
-                LocalWar war = warsByPair.get(pairKey(attackerId, defenderId));
-                if (war == null) {
-                    war = declareWar(attackerId, defenderId);
-                }
-                if (war.isActive()) {
-                    simulateOpeningAttacks(war);
+                if (!warsByPair.containsKey(pairKey(attackerId, defenderId))) {
+                    declareWar(attackerId, defenderId, warTypeForPair(warTypeOrdinalsByPair, attackerId, defenderId));
                 }
             }
         }
     }
 
-    void applyAssignmentOpenings(Map<Integer, List<Integer>> assignment) {
+    private static WarType warTypeForPair(Map<Long, Integer> warTypeOrdinalsByPair, int attackerId, int defenderId) {
+        if (warTypeOrdinalsByPair == null || warTypeOrdinalsByPair.isEmpty()) {
+            return WarType.ORD;
+        }
+        Integer ordinal = warTypeOrdinalsByPair.get(pairKey(attackerId, defenderId));
+        return ordinal != null && ordinal >= 0 && ordinal < WarType.values.length ? WarType.values[ordinal] : WarType.ORD;
+    }
+
+    private void simulateActiveWarOpenings() {
+        for (LocalWar war : warsById.values()) {
+            if (war.isActive()) {
+                simulateOpeningAttacks(war);
+            }
+        }
+    }
+
+    void evaluateAssignmentOpenings(Map<Integer, List<Integer>> assignment) {
         if (assignment.isEmpty()) {
             return;
         }
@@ -406,7 +748,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         simulateDeclaredWarOpenings(assignment, declaredWars);
     }
 
-    void applyAssignmentOpenings(PlannerConflictBundle.PlannerAssignmentView assignment) {
+    void evaluateAssignmentOpenings(PlannerConflictBundle.PlannerAssignmentView assignment) {
         if (assignment.isEmpty()) {
             return;
         }
@@ -415,7 +757,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
         for (int attackerIndex = 0; attackerIndex < assignment.attackerCount(); attackerIndex++) {
             int attackerId = assignment.attackerIdAt(attackerIndex);
             for (int defenderIndex = 0; defenderIndex < assignment.defenderCountAt(attackerIndex); defenderIndex++) {
-                declaredWars[edgeIndex++] = declareWar(attackerId, assignment.defenderIdAt(attackerIndex, defenderIndex));
+                declaredWars[edgeIndex++] = declareWar(
+                        attackerId,
+                        assignment.defenderIdAt(attackerIndex, defenderIndex),
+                        WarType.values[assignment.warTypeOrdinalAt(attackerIndex, defenderIndex)]
+                );
             }
         }
         for (LocalWar war : declaredWars) {
@@ -425,10 +771,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    void simulateDeclaredWar(int attackerNationId, int defenderNationId, WarType warType, int horizonTurns) {
-        simulateDeclaredWar(attackerNationId, defenderNationId, warType, horizonTurns, PlannerExactValidatorScripts.DEFAULT);
-    }
-
     void simulateDeclaredWar(
             int attackerNationId,
             int defenderNationId,
@@ -436,55 +778,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
             int horizonTurns,
             PlannerExactValidatorScripts scripts
     ) {
-        simulateDeclaredWarInternal(
-                attackerNationId,
-                defenderNationId,
-                warType,
-                horizonTurns,
-                scripts,
-                null,
-                0
-        );
+        simulateDeclaredWar(attackerNationId, defenderNationId, warType, horizonTurns, scripts, null, 0);
     }
-
-            void simulateDeclaredWar(
-                int attackerNationId,
-                int defenderNationId,
-                WarType warType,
-                int horizonTurns,
-                PlannerCoordinationPolicy coordinationPolicy
-            ) {
-            PlannerCoordinationPolicy effectiveCoordination = coordinationPolicy == null
-                ? PlannerCoordinationPolicy.NONE
-                : coordinationPolicy;
-            simulateDeclaredWar(
-                attackerNationId,
-                defenderNationId,
-                warType,
-                horizonTurns,
-                effectiveCoordination.applyToDefaultScripts()
-            );
-            }
-
-            void simulateDeclaredWar(
-                int attackerNationId,
-                int defenderNationId,
-                WarType warType,
-                int horizonTurns,
-                PlannerExactValidatorScripts scripts,
-                PlannerCoordinationPolicy coordinationPolicy
-            ) {
-            PlannerCoordinationPolicy effectiveCoordination = coordinationPolicy == null
-                ? PlannerCoordinationPolicy.NONE
-                : coordinationPolicy;
-            simulateDeclaredWar(
-                attackerNationId,
-                defenderNationId,
-                warType,
-                horizonTurns,
-                effectiveCoordination.applyTo(scripts)
-            );
-            }
 
     void simulateDeclaredWar(
             int attackerNationId,
@@ -505,53 +800,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 attackerTeamId
         );
     }
-
-            void simulateDeclaredWar(
-                int attackerNationId,
-                int defenderNationId,
-                WarType warType,
-                int horizonTurns,
-                PlannerCoordinationPolicy coordinationPolicy,
-                TeamScoreObjective objective,
-                int attackerTeamId
-            ) {
-            PlannerCoordinationPolicy effectiveCoordination = coordinationPolicy == null
-                ? PlannerCoordinationPolicy.NONE
-                : coordinationPolicy;
-            simulateDeclaredWar(
-                attackerNationId,
-                defenderNationId,
-                warType,
-                horizonTurns,
-                effectiveCoordination.applyToDefaultScripts(),
-                objective,
-                attackerTeamId
-            );
-            }
-
-            void simulateDeclaredWar(
-                int attackerNationId,
-                int defenderNationId,
-                WarType warType,
-                int horizonTurns,
-                PlannerExactValidatorScripts scripts,
-                PlannerCoordinationPolicy coordinationPolicy,
-                TeamScoreObjective objective,
-                int attackerTeamId
-            ) {
-            PlannerCoordinationPolicy effectiveCoordination = coordinationPolicy == null
-                ? PlannerCoordinationPolicy.NONE
-                : coordinationPolicy;
-            simulateDeclaredWar(
-                attackerNationId,
-                defenderNationId,
-                warType,
-                horizonTurns,
-                effectiveCoordination.applyTo(scripts),
-                objective,
-                attackerTeamId
-            );
-            }
 
     private void simulateDeclaredWarInternal(
             int attackerNationId,
@@ -562,90 +810,68 @@ final class PlannerLocalConflict implements TeamWarControlView {
             TeamScoreObjective objective,
             int attackerTeamId
     ) {
-        PlannerExactValidatorScripts effectiveScripts = scripts == null
-                ? PlannerExactValidatorScripts.DEFAULT
-                : scripts;
-        if (!effectiveScripts.declareWarScript()) {
-            return;
-        }
-        LocalWar war = declareWar(attackerNationId, defenderNationId, warType);
-        int turns = Math.max(1, horizonTurns);
-        for (int turn = 0; turn < turns; turn++) {
-            if (turn > 0) {
-                advanceTurn();
-            }
-            if (!war.isActive()) {
-                return;
-            }
-            if (effectiveScripts.openerSequenceScript()) {
-                if (objective == null) {
-                    simulateOpeningAttacks(
-                            war,
-                            effectiveScripts.allowedAttackTypes(),
-                            effectiveScripts.attackSequenceProfile(),
-                            effectiveScripts.mapReserveScript() ? effectiveScripts.mapReserveFloor() : 0,
-                            turns - turn,
-                            effectiveScripts.idleWaitScript()
-                    );
-                } else {
-                    simulateGreedyOpeningAttacks(
-                            war,
-                            effectiveScripts.allowedAttackTypes(),
-                            effectiveScripts.mapReserveScript() ? effectiveScripts.mapReserveFloor() : 0,
-                            objective,
-                            attackerTeamId
-                    );
-                }
-            }
-            if (!war.isActive()) {
-                return;
-            }
-            if (effectiveScripts.followUpAttackScript()) {
-                if (objective == null) {
-                    simulateFollowUpAttack(
-                            war,
-                            effectiveScripts.allowedAttackTypes(),
-                            effectiveScripts.attackSequenceProfile(),
-                            effectiveScripts.mapReserveScript() ? effectiveScripts.mapReserveFloor() : 0,
-                            turns - turn,
-                            effectiveScripts.idleWaitScript()
-                    );
-                } else {
-                    simulateGreedyFollowUpAttack(
-                            war,
-                            effectiveScripts.allowedAttackTypes(),
-                            effectiveScripts.mapReserveScript() ? effectiveScripts.mapReserveFloor() : 0,
-                            objective,
-                            attackerTeamId
-                    );
-                }
-            }
-            if (effectiveScripts.peaceOfferScript()) {
-                attemptPeaceClose(war, effectiveScripts.mapReserveFloor());
-            }
-        }
+        DeclaredWarScriptRunner.simulate(
+                this,
+                attackerNationId,
+                defenderNationId,
+                warType,
+                horizonTurns,
+                scripts,
+                objective,
+                attackerTeamId
+        );
     }
 
     PlannerProjectionResult project() {
-        List<PlannerProjectedWar> activeWars = new ArrayList<>();
-        for (LocalWar war : warsById.values()) {
-            if (war.isActive()) {
-                activeWars.add(war.project(currentTurn));
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.PROJECTION_EXPORT)) {
+            projectionExportCount++;
+            List<PlannerProjectedWar> activeWars = new ArrayList<>();
+            for (LocalWar war : warsById.values()) {
+                if (war.isActive()) {
+                    activeWars.add(war.project(currentTurn));
+                }
             }
+            Map<Integer, DBNationSnapshot> projected = new LinkedHashMap<>(nationsById.size());
+            for (LocalNation nation : nationsById.values()) {
+                projected.put(nation.nationId(), nation.toSnapshot(activeWars, currentTurn));
+            }
+            Map<Integer, PlannerCityInfraOverlay> cityInfraOverlays =
+                    LocalNationBuffers.exportCityInfraOverlays(nationsById.values());
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.PROJECTION_EXPORT, "activeWars", activeWars.size());
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.PROJECTION_EXPORT, "projectedNations", projected.size());
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.PROJECTION_EXPORT, "cityInfraOverlays", cityInfraOverlays.size());
+            return new PlannerProjectionResult(projected, activeWars, cityInfraOverlays);
         }
-        Map<Integer, DBNationSnapshot> projected = new LinkedHashMap<>(nationsById.size());
-        for (LocalNation nation : nationsById.values()) {
-            projected.put(nation.nationId(), nation.toSnapshot(activeWars));
+    }
+
+    List<DBNationSnapshot> snapshotsFor(Collection<Integer> nationIds) {
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.CONFLICT_SNAPSHOTS_FOR)) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.CONFLICT_SNAPSHOTS_FOR, "requestedNationIds", nationIds.size());
+            Map<Integer, ActiveWarSnapshotOverlay> overlaysByNationId = activeWarOverlaysByNationId(nationIds);
+            List<DBNationSnapshot> snapshots = new ArrayList<>(nationIds.size());
+            for (Integer nationId : nationIds) {
+                LocalNation nation = nationsById.get(nationId);
+                if (nation == null) {
+                    continue;
+                }
+                snapshots.add(nation.toSnapshot(currentTurn, overlaysByNationId.get(nationId)));
+            }
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.CONFLICT_SNAPSHOTS_FOR, "returnedSnapshots", snapshots.size());
+            return snapshots;
         }
-        Map<Integer, PlannerCityInfraOverlay> cityInfraOverlays =
-                LocalNationBuffers.exportCityInfraOverlays(nationsById.values());
-        return new PlannerProjectionResult(projected, activeWars, cityInfraOverlays);
     }
 
     @Override
     public void forEachNation(NationScoreConsumer consumer) {
         for (LocalNation nation : nationsById.values()) {
             consumer.accept(nation.nationId(), nation.teamId(), nation.score());
+        }
+    }
+
+    @Override
+    public void forEachNationStrategicValue(NationValueConsumer consumer) {
+        for (LocalNation nation : nationsById.values()) {
+            consumer.accept(nation.nationId(), nation.teamId(), nation.strategicValue(strategicRelevance(nation)));
         }
     }
 
@@ -665,6 +891,149 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     war.defenderResistanceValue()
             );
         }
+    }
+
+    private StrategicAssetValue.StrategicRelevance strategicRelevance(LocalNation nation) {
+        StrategicAssetValue.StrategicRelevance preserved = strategicRelevanceByNationId.get(nation.nationId());
+        if (preserved != null) {
+            return preserved;
+        }
+        int opponentCount = 0;
+        List<LocalNation> opposingNations = new ArrayList<>(nationsById.size());
+        for (LocalNation other : nationsById.values()) {
+            if (other.teamId() == nation.teamId()) {
+                continue;
+            }
+            opponentCount++;
+            opposingNations.add(other);
+        }
+        return StrategicAssetValue.relevanceForWarRange(
+                nation.cities(),
+                nation.score(),
+                nation.baseCurrentOffensiveWars + nation.baseCurrentDefensiveWars + nation.baseActiveOpponentNationIds.size(),
+                opponentCount,
+                index -> opposingNations.get(index).score()
+        );
+    }
+
+    @Override
+    public void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            consumer.accept(
+                    war.attacker.teamId(),
+                    war.defender.teamId(),
+                    targetPressure(war),
+                    futureWarLeverage(war)
+            );
+        }
+    }
+
+    @Override
+    public double activeWarStrategicScoreForTeam(int teamId, double targetPressureWeight, double futureWarLeverageWeight) {
+        double score = 0d;
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            double value = (targetPressureWeight * targetPressure(war))
+                    + (futureWarLeverageWeight * futureWarLeverage(war));
+            if (war.attacker.teamId() == teamId) {
+                score += value;
+            } else if (war.defender.teamId() == teamId) {
+                score -= value;
+            }
+        }
+        return score;
+    }
+
+    @Override
+    public double controlRegimeScoreForTeam(int teamId) {
+        LinkedHashMap<Integer, Double> totalsByTeam = new LinkedHashMap<>(externalStrategicValueByTeam);
+        for (LocalNation nation : nationsById.values()) {
+            totalsByTeam.merge(
+                    nation.teamId(),
+                    nation.strategicValue(strategicRelevance(nation)),
+                    Double::sum
+            );
+        }
+
+        double ownValue = totalsByTeam.getOrDefault(teamId, 0d);
+        double enemyValue = 0d;
+        for (Map.Entry<Integer, Double> entry : totalsByTeam.entrySet()) {
+            if (entry.getKey() != teamId) {
+                enemyValue += entry.getValue();
+            }
+        }
+
+        double totalValue = Math.max(1.0d, ownValue + enemyValue);
+        double strategicValueEdge = (ownValue - enemyValue) / totalValue;
+        double score = 0d;
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            if (war.attacker.teamId() != teamId && war.defender.teamId() != teamId) {
+                continue;
+            }
+            int enemyTeamId = war.attacker.teamId() == teamId ? war.defender.teamId() : war.attacker.teamId();
+            int ownControls = 0;
+            int enemyControls = 0;
+            if (controlOwnerTeamId(war, war.warBuffers.groundControlOwner[war.warIndex]) == teamId) {
+                ownControls++;
+            } else if (controlOwnerTeamId(war, war.warBuffers.groundControlOwner[war.warIndex]) == enemyTeamId) {
+                enemyControls++;
+            }
+            if (controlOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]) == teamId) {
+                ownControls++;
+            } else if (controlOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]) == enemyTeamId) {
+                enemyControls++;
+            }
+            if (controlOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]) == teamId) {
+                ownControls++;
+            } else if (controlOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]) == enemyTeamId) {
+                enemyControls++;
+            }
+
+            int ownResistance = war.attacker.teamId() == teamId ? war.attackerResistanceValue() : war.defenderResistanceValue();
+            int enemyResistance = war.attacker.teamId() == teamId ? war.defenderResistanceValue() : war.attackerResistanceValue();
+            double controlBalance = ownControls - enemyControls;
+            double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
+            double warSignal = (2.5d * controlBalance)
+                    + (2.0d * resistanceBalance)
+                    + (4.0d * strategicValueEdge);
+            if (controlBalance < 0.0d && resistanceBalance < 0.0d) {
+                warSignal *= 1.15d;
+            }
+            score += Math.max(-18.0d, Math.min(18.0d, warSignal));
+        }
+        return score;
+    }
+
+    private static double targetPressure(LocalWar war) {
+        return war.attacker.targetPressureAgainst(war.defender);
+    }
+
+    private static double futureWarLeverage(LocalWar war) {
+        boolean attackerHasAirControl = war.warBuffers.airSuperiorityOwner[war.warIndex] == LocalWarBuffers.OWNER_ATTACKER;
+        boolean defenderHasAirControl = war.warBuffers.airSuperiorityOwner[war.warIndex] == LocalWarBuffers.OWNER_DEFENDER;
+        return OpeningMetricSummary.futureWarLeverage(
+                war.attacker.baselineGroundStrength(defenderHasAirControl),
+                war.attacker.currentGroundStrength(defenderHasAirControl),
+                war.defender.baselineGroundStrength(attackerHasAirControl),
+                war.defender.currentGroundStrength(attackerHasAirControl),
+                war.attacker.baselineAircraft,
+                war.attacker.getUnits(MilitaryUnit.AIRCRAFT),
+                war.defender.baselineAircraft,
+                war.defender.getUnits(MilitaryUnit.AIRCRAFT),
+                war.attacker.baselineShips,
+                war.attacker.getUnits(MilitaryUnit.SHIP),
+                war.defender.baselineShips,
+                war.defender.getUnits(MilitaryUnit.SHIP),
+                war.defenderResistanceValue()
+        );
     }
 
     private static int controlOwnerTeamId(LocalWar war, int ownerCode) {
@@ -714,6 +1083,188 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 }
             }
         }
+    }
+
+    private void applyAutonomousCounterDeclarations(
+            Collection<Integer> declarerNationIds,
+            Collection<Integer> targetNationIds,
+            boolean initialTurn,
+            TeamScoreObjective counterObjective,
+            int remainingTurns
+    ) {
+        if (declarerNationIds.isEmpty() || targetNationIds.isEmpty()) {
+            return;
+        }
+        Map<Integer, List<Integer>> counterAssignment = planAutonomousCounterAssignment(
+            declarerNationIds,
+            targetNationIds,
+            initialTurn,
+            counterObjective,
+            remainingTurns
+        );
+        for (Map.Entry<Integer, List<Integer>> entry : counterAssignment.entrySet()) {
+            int declarerId = entry.getKey();
+            for (int targetId : entry.getValue()) {
+                if (!canDeclareWar(requireNation(declarerId), requireNation(targetId))) {
+                    continue;
+                }
+                LocalWar war = declareWar(declarerId, targetId);
+                if (war.isActive()) {
+                    simulateOpeningAttacks(war);
+                }
+            }
+        }
+    }
+
+    private Map<Integer, List<Integer>> planAutonomousCounterAssignment(
+            Collection<Integer> declarerNationIds,
+            Collection<Integer> targetNationIds,
+            boolean initialTurn,
+            TeamScoreObjective counterObjective,
+            int remainingTurns
+    ) {
+        List<LocalNation> declarers = eligibleCounterDeclarers(declarerNationIds, initialTurn);
+        List<LocalNation> targets = eligibleCounterTargets(targetNationIds);
+        if (declarers.isEmpty() || targets.isEmpty()) {
+            return Map.of();
+        }
+
+        PlannerProjectionResult projection = project();
+        Map<Integer, DBNationSnapshot> snapshots = projection.snapshotsById();
+        List<DBNationSnapshot> declarerSnapshots = snapshotsFor(declarers, snapshots);
+        List<DBNationSnapshot> targetSnapshots = snapshotsFor(targets, snapshots);
+        return PlannerAutonomousCounterPlanner.plan(
+                declarerSnapshots,
+                targetSnapshots,
+                tuning,
+            counterObjective,
+            remainingTurns
+        );
+    }
+
+    private List<LocalNation> eligibleCounterDeclarers(Collection<Integer> declarerNationIds, boolean initialTurn) {
+        List<LocalNation> ordered = orderedCounterDeclarers(declarerNationIds);
+        ordered.removeIf(declarer -> initialCounterBlocked(declarer, initialTurn) || freeOffensiveSlots(declarer) <= 0);
+        return ordered;
+    }
+
+    private List<LocalNation> eligibleCounterTargets(Collection<Integer> targetNationIds) {
+        List<LocalNation> targets = new ArrayList<>(targetNationIds.size());
+        for (int targetNationId : targetNationIds) {
+            LocalNation target = nationsById.get(targetNationId);
+            if (target != null && freeDefensiveSlots(target) > 0) {
+                targets.add(target);
+            }
+        }
+        targets.sort((left, right) -> Integer.compare(left.nationId(), right.nationId()));
+        return targets;
+    }
+
+    private static List<DBNationSnapshot> snapshotsFor(List<LocalNation> nations, Map<Integer, DBNationSnapshot> snapshots) {
+        List<DBNationSnapshot> result = new ArrayList<>(nations.size());
+        for (LocalNation nation : nations) {
+            DBNationSnapshot snapshot = snapshots.get(nation.nationId());
+            if (snapshot != null) {
+                result.add(snapshot);
+            }
+        }
+        return result;
+    }
+
+    private List<LocalNation> orderedCounterDeclarers(Collection<Integer> declarerNationIds) {
+        List<LocalNation> ordered = new ArrayList<>(declarerNationIds.size());
+        for (int declarerNationId : declarerNationIds) {
+            LocalNation declarer = nationsById.get(declarerNationId);
+            if (declarer != null) {
+                ordered.add(declarer);
+            }
+        }
+        ordered.sort((left, right) -> {
+            int leftDefensive = left.activeBaseCurrentDefensiveWars(currentTurn) + activeDefensiveWarCount(left.nationId());
+            int rightDefensive = right.activeBaseCurrentDefensiveWars(currentTurn) + activeDefensiveWarCount(right.nationId());
+            if (leftDefensive != rightDefensive) {
+                return Integer.compare(leftDefensive, rightDefensive);
+            }
+            int leftOffensive = left.activeBaseCurrentOffensiveWars(currentTurn) + activeOffensiveWarCount(left.nationId());
+            int rightOffensive = right.activeBaseCurrentOffensiveWars(currentTurn) + activeOffensiveWarCount(right.nationId());
+            if (leftOffensive != rightOffensive) {
+                return Integer.compare(leftOffensive, rightOffensive);
+            }
+            return Integer.compare(left.nationId(), right.nationId());
+        });
+        return ordered;
+    }
+
+    private boolean initialCounterBlocked(LocalNation declarer, boolean initialTurn) {
+        if (!initialTurn || tuning.turn1DeclarePolicy() == Turn1DeclarePolicy.BOTH_FREE) {
+            return false;
+        }
+        return declarer.activeBaseCurrentDefensiveWars(currentTurn) + activeDefensiveWarCount(declarer.nationId()) > 0;
+    }
+
+    private boolean canDeclareWar(LocalNation declarer, LocalNation target) {
+        if (declarer.nationId() == target.nationId() || declarer.teamId() == target.teamId()) {
+            return false;
+        }
+        if (declarer.vmTurns > 0 || target.vmTurns > 0 || target.beigeTurns > 0) {
+            return false;
+        }
+        if (!isInWarRange(declarer, target)) {
+            return false;
+        }
+        if (freeOffensiveSlots(declarer) <= 0 || freeDefensiveSlots(target) <= 0) {
+            return false;
+        }
+        return !hasActivePairConflict(declarer.nationId(), target.nationId());
+    }
+
+    private boolean isInWarRange(LocalNation declarer, LocalNation target) {
+        double minScore = declarer.score() * PW.WAR_RANGE_MIN_MODIFIER;
+        double maxScore = declarer.score() * PW.WAR_RANGE_MAX_MODIFIER;
+        return target.score() >= minScore && target.score() <= maxScore;
+    }
+
+    private boolean hasActivePairConflict(int declarerNationId, int targetNationId) {
+        LocalNation declarer = nationsById.get(declarerNationId);
+        LocalNation target = nationsById.get(targetNationId);
+        if ((declarer != null && declarer.baseActiveOpponentNationIds.contains(targetNationId))
+                || (target != null && target.baseActiveOpponentNationIds.contains(declarerNationId))) {
+            return true;
+        }
+        LocalWar forward = warsByPair.get(pairKey(declarerNationId, targetNationId));
+        if (forward != null && forward.isActive()) {
+            return true;
+        }
+        LocalWar reverse = warsByPair.get(pairKey(targetNationId, declarerNationId));
+        return reverse != null && reverse.isActive();
+    }
+
+    private int freeOffensiveSlots(LocalNation nation) {
+        return Math.max(0, nation.maxOff - nation.activeBaseCurrentOffensiveWars(currentTurn) - activeOffensiveWarCount(nation.nationId()));
+    }
+
+    private int freeDefensiveSlots(LocalNation nation) {
+        return WarSlotRules.freeDefensiveSlots(nation.activeBaseCurrentDefensiveWars(currentTurn) + activeDefensiveWarCount(nation.nationId()));
+    }
+
+    private int activeOffensiveWarCount(int nationId) {
+        int count = 0;
+        for (LocalWar war : warsById.values()) {
+            if (war.isActive() && war.attackerNationId() == nationId) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int activeDefensiveWarCount(int nationId) {
+        int count = 0;
+        for (LocalWar war : warsById.values()) {
+            if (war.isActive() && war.defenderNationId() == nationId) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private LocalWar declareWar(int attackerNationId, int defenderNationId) {
@@ -934,6 +1485,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
             Mark mark = mark();
             try {
+                replayMetricSuppressionDepth++;
                 resolveAttack(war, type);
                 double score = objective.scoreTerminal(this, attackerTeamId);
                 if (bestAttackType == null
@@ -943,34 +1495,16 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     bestScore = score;
                 }
             } finally {
+                replayMetricSuppressionDepth--;
                 rollback(mark);
             }
         }
         return bestAttackType;
     }
 
-    private void attemptPeaceClose(LocalWar war, int mapReserveFloor) {
-        if (!war.isActive() || war.hasPendingPeaceOffer()) {
-            return;
-        }
-        int reserveFloor = Math.max(0, mapReserveFloor);
-        if (war.attackerMapsValue() > reserveFloor) {
-            return;
-        }
-        try {
-            war.offerPeace(LocalWar.Side.ATTACKER);
-            war.acceptPeace(LocalWar.Side.DEFENDER);
-        } catch (IllegalStateException ignored) {
-            // Scripts are best-effort; illegal peace transitions are ignored.
-        }
-    }
-
     private void resolveAttack(LocalWar war, AttackType attackType) {
         if (!war.attacker.canUseAttackType(attackType)) {
             return;
-        }
-        if (attackType != AttackType.FORTIFY && war.hasPendingPeaceOffer()) {
-            war.setStatus(WarStatus.ACTIVE);
         }
         if (resolutionMode == ResolutionMode.STOCHASTIC) {
             CombatKernel.resolveInto(
@@ -985,6 +1519,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         } else {
             CombatKernel.resolveInto(war, attackType, resolutionMode, attackScratch, attackResult);
         }
+        recordReplayAttack(war, attackType, attackResult);
 
         if (attackResult.mapCost() > 0) {
             war.setAttackerMaps(Math.max(0, war.attackerMapsValue() - attackResult.mapCost()));
@@ -1034,6 +1569,21 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 nation.removeUnits(unit, loss);
             }
         }
+    }
+
+    private void recordReplayAttack(LocalWar war, AttackType attackType, MutableAttackResult attackResult) {
+        if (replayTurnMetrics == null || replayMetricSuppressionDepth > 0) {
+            return;
+        }
+        replayTurnMetrics.record(
+                war.attacker.nationId(),
+                war.defender.nationId(),
+                attackType,
+            attackResult.success(),
+                attackResult.attackerLosses(),
+                attackResult.defenderLosses(),
+                attackResult.infraDestroyed()
+        );
     }
 
     private void resolveDefeatIfNeeded(LocalWar war) {
@@ -1119,11 +1669,30 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return currentTurn;
     }
 
-    Map<Long, PlannerReplayTrace.WarState> replayWarStatesByPair() {
-        Map<Long, PlannerReplayTrace.WarState> result = new LinkedHashMap<>(warsByPair.size());
+    int projectionExportCount() {
+        return projectionExportCount;
+    }
+
+    int[] replayNationIdsAscending() {
+        return nationsById.keySet().stream()
+                .mapToInt(Integer::intValue)
+                .sorted()
+                .toArray();
+    }
+
+    int replayNationAvgInfraCents(int nationId) {
+        return ReplayStateExtractor.avgInfraCents(requireNation(nationId));
+    }
+
+    void copyReplayNationUnitCounts(int nationId, int[] target) {
+        ReplayStateExtractor.copyUnitCounts(requireNation(nationId), target);
+    }
+
+    void forEachReplayWar(ReplayWarConsumer consumer) {
         for (Map.Entry<Long, LocalWar> entry : warsByPair.entrySet()) {
             LocalWar war = entry.getValue();
-            result.put(entry.getKey(), new PlannerReplayTrace.WarState(
+            consumer.accept(
+                    entry.getKey(),
                     war.attackerNationId(),
                     war.defenderNationId(),
                     war.warType().ordinal(),
@@ -1138,9 +1707,29 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     LocalWarBuffers.controlOwner(war.warBuffers.blockadeOwner[war.warIndex]).ordinal(),
                     war.warBuffers.attackerFortified(war.warIndex),
                     war.warBuffers.defenderFortified(war.warIndex)
-            ));
+            );
         }
-        return result;
+    }
+
+    @FunctionalInterface
+    interface ReplayWarConsumer {
+        void accept(
+                long pairKey,
+                int declarerNationId,
+                int targetNationId,
+                int warTypeOrdinal,
+                int startTurn,
+                int statusOrdinal,
+                int attackerMaps,
+                int defenderMaps,
+                int attackerResistance,
+                int defenderResistance,
+                int groundControlOwnerOrdinal,
+                int airSuperiorityOwnerOrdinal,
+                int blockadeOwnerOrdinal,
+                boolean attackerFortified,
+                boolean defenderFortified
+        );
     }
 
     static final class Mark {
@@ -1152,6 +1741,87 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         private ConflictSnapshot snapshot() {
             return snapshot;
+        }
+    }
+
+    private Map<Integer, ActiveWarSnapshotOverlay> activeWarOverlaysByNationId(Collection<Integer> nationIds) {
+        Map<Integer, MutableActiveWarSnapshotOverlay> mutable = new LinkedHashMap<>();
+        for (Integer nationId : nationIds) {
+            if (nationId != null && nationsById.containsKey(nationId)) {
+                mutable.put(nationId, new MutableActiveWarSnapshotOverlay());
+            }
+        }
+        if (mutable.isEmpty()) {
+            return Map.of();
+        }
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            MutableActiveWarSnapshotOverlay attackerOverlay = mutable.get(war.attackerNationId());
+            if (attackerOverlay != null) {
+                attackerOverlay.offensiveWars++;
+                attackerOverlay.opponentNationIds.add(war.defenderNationId());
+            }
+            MutableActiveWarSnapshotOverlay defenderOverlay = mutable.get(war.defenderNationId());
+            if (defenderOverlay != null) {
+                defenderOverlay.defensiveWars++;
+                defenderOverlay.opponentNationIds.add(war.attackerNationId());
+            }
+        }
+
+        Map<Integer, ActiveWarSnapshotOverlay> overlays = new LinkedHashMap<>(mutable.size());
+        for (Map.Entry<Integer, MutableActiveWarSnapshotOverlay> entry : mutable.entrySet()) {
+            MutableActiveWarSnapshotOverlay overlay = entry.getValue();
+            overlays.put(
+                    entry.getKey(),
+                    new ActiveWarSnapshotOverlay(
+                            overlay.offensiveWars,
+                            overlay.defensiveWars,
+                            Set.copyOf(overlay.opponentNationIds)
+                    )
+            );
+        }
+        return overlays;
+    }
+
+    private record ActiveWarSnapshotOverlay(
+            int offensiveWars,
+            int defensiveWars,
+            Set<Integer> opponentNationIds
+    ) {
+        private static final ActiveWarSnapshotOverlay EMPTY = new ActiveWarSnapshotOverlay(0, 0, Set.of());
+    }
+
+    private static final class MutableActiveWarSnapshotOverlay {
+        private int offensiveWars;
+        private int defensiveWars;
+        private final LinkedHashSet<Integer> opponentNationIds = new LinkedHashSet<>();
+    }
+
+    private static final class ReplayStateExtractor {
+        private ReplayStateExtractor() {
+        }
+
+        private static void copyUnitCounts(LocalNation nation, int[] target) {
+            int len = Math.min(target.length, MilitaryUnit.values.length);
+            for (int i = 0; i < len; i++) {
+                target[i] = nation.getUnits(MilitaryUnit.values[i]);
+            }
+        }
+
+        private static int avgInfraCents(LocalNation nation) {
+            int cityCount = nation.buffers.cityCount(nation.nationIndex);
+            if (cityCount <= 0) {
+                return 0;
+            }
+            int base = nation.buffers.cityInfraBaseOffset(nation.nationIndex);
+            double[] cityInfraFlat = nation.buffers.cityInfraFlat();
+            double totalInfra = 0d;
+            for (int cityIndex = 0; cityIndex < cityCount; cityIndex++) {
+                totalInfra += cityInfraFlat[base + cityIndex];
+            }
+            return (int) Math.round((totalInfra / cityCount) * 100d);
         }
     }
 
@@ -1264,7 +1934,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             this.touchedCityInfra = touchedCityInfra;
         }
 
-        static LocalNationBuffers fromSnapshots(List<DBNationSnapshot> snapshots, OverrideSet overrides) {
+        static LocalNationBuffers fromSnapshots(List<DBNationSnapshot> snapshots) {
             int nationCount = snapshots.size();
             int[] unitBaseOffsets = new int[nationCount];
             int[] resourceBaseOffsets = new int[nationCount];
@@ -1296,9 +1966,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 int unitBase = unitBaseOffsets[i];
                 for (MilitaryUnit unit : MilitaryUnit.values) {
                     int count = snapshot.unit(unit);
-                    if (SimUnits.isPurchasable(unit)) {
-                        count = overrides.overrideUnitCount(snapshot, unit);
-                    }
                     unitsFlat[unitBase + unit.ordinal()] = Math.max(0, count);
                     unitBuysTodayFlat[unitBase + unit.ordinal()] = Math.max(0, snapshot.unitsBoughtToday(unit));
                     pendingBuysFlat[unitBase + unit.ordinal()] = Math.max(0, snapshot.pendingBuysNextTurn(unit));
@@ -1329,19 +1996,23 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         static Map<Integer, PlannerCityInfraOverlay> exportCityInfraOverlays(Collection<LocalNation> nations) {
-            Map<Integer, PlannerCityInfraOverlay> overlays = new LinkedHashMap<>();
-            for (LocalNation nation : nations) {
-                PlannerCityInfraOverlay overlay = nation.buffers.touchedCityInfra.exportOverlay(
-                        nation.nationId,
-                        nation.buffers.cityInfraBaseOffsets[nation.nationIndex],
-                        nation.buffers.cityCounts[nation.nationIndex]
-                );
-                if (overlay == null || overlay.isEmpty()) {
-                    continue;
+            try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.CITY_INFRA_OVERLAY_EXPORT)) {
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.CITY_INFRA_OVERLAY_EXPORT, "nations", nations.size());
+                Map<Integer, PlannerCityInfraOverlay> overlays = new LinkedHashMap<>();
+                for (LocalNation nation : nations) {
+                    PlannerCityInfraOverlay overlay = nation.buffers.touchedCityInfra.exportOverlay(
+                            nation.nationId,
+                            nation.buffers.cityInfraBaseOffsets[nation.nationIndex],
+                            nation.buffers.cityCounts[nation.nationIndex]
+                    );
+                    if (overlay == null || overlay.isEmpty()) {
+                        continue;
+                    }
+                    overlays.put(nation.nationId, overlay);
                 }
-                overlays.put(nation.nationId, overlay);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.CITY_INFRA_OVERLAY_EXPORT, "overlays", overlays.size());
+                return overlays;
             }
-            return overlays;
         }
 
         LocalNationBufferSnapshot snapshot() {
@@ -1383,8 +2054,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return unitBuysTodayFlat[unitBaseOffsets[nationIndex] + unit.ordinal()];
         }
 
+        void setUnitsBoughtToday(int nationIndex, MilitaryUnit unit, int value) {
+            unitBuysTodayFlat[unitBaseOffsets[nationIndex] + unit.ordinal()] = Math.max(0, value);
+        }
+
         void setPendingBuys(int nationIndex, MilitaryUnit unit, int value) {
-            pendingBuysFlat[unitBaseOffsets[nationIndex] + unit.ordinal()] = value;
+            pendingBuysFlat[unitBaseOffsets[nationIndex] + unit.ordinal()] = Math.max(0, value);
         }
 
         void resetUnitBuysToday(int nationIndex) {
@@ -1401,6 +2076,16 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         double resource(int nationIndex, ResourceType type) {
             return resourcesFlat[resourceBaseOffsets[nationIndex] + type.ordinal()];
+        }
+
+        boolean hasKnownResourceBudget(int nationIndex) {
+            int base = resourceBaseOffsets[nationIndex];
+            for (int offset = 0; offset < RESOURCE_STRIDE; offset++) {
+                if (resourcesFlat[base + offset] > 0d) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         void addResource(int nationIndex, ResourceType type, double amount) {
@@ -1543,6 +2228,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final byte resetHourUtc;
         private final int baseCurrentOffensiveWars;
         private final int baseCurrentDefensiveWars;
+        private final int[] slotOnlyOffensiveWarReleaseTurns;
+        private final int[] slotOnlyDefensiveWarReleaseTurns;
         private final Set<Integer> baseActiveOpponentNationIds;
         private final int researchBitsValue;
         private final long projectBitsValue;
@@ -1552,6 +2239,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final double groundLooterModifier;
         private final double nonGroundLooterModifier;
         private final double lootModifierValue;
+        private final double[] costBuffer = new double[ResourceType.values.length];
+        private final double baselineScore;
+        private final int baselineSoldiers;
+        private final int baselineTanks;
+        private final int baselineAircraft;
+        private final int baselineShips;
+        private final double baselineTotalInfra;
         private int policyCooldownTurnsRemaining;
         private int beigeTurns;
         private final int vmTurns;
@@ -1570,6 +2264,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 byte resetHourUtc,
                 int baseCurrentOffensiveWars,
                 int baseCurrentDefensiveWars,
+                int[] slotOnlyOffensiveWarReleaseTurns,
+                int[] slotOnlyDefensiveWarReleaseTurns,
                 Set<Integer> baseActiveOpponentNationIds,
                 int researchBitsValue,
                 long projectBitsValue,
@@ -1579,6 +2275,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 double groundLooterModifier,
                 double nonGroundLooterModifier,
                 double lootModifierValue,
+                double initialScore,
                 int policyCooldownTurnsRemaining,
                 int beigeTurns,
                 int vmTurns,
@@ -1595,6 +2292,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
             this.resetHourUtc = resetHourUtc;
             this.baseCurrentOffensiveWars = baseCurrentOffensiveWars;
             this.baseCurrentDefensiveWars = baseCurrentDefensiveWars;
+            this.slotOnlyOffensiveWarReleaseTurns = slotOnlyOffensiveWarReleaseTurns.clone();
+            this.slotOnlyDefensiveWarReleaseTurns = slotOnlyDefensiveWarReleaseTurns.clone();
             this.baseActiveOpponentNationIds = Set.copyOf(baseActiveOpponentNationIds);
             this.researchBitsValue = researchBitsValue;
             this.projectBitsValue = projectBitsValue;
@@ -1608,7 +2307,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
             this.beigeTurns = beigeTurns;
             this.vmTurns = vmTurns;
             this.dayPhaseTurn = dayPhaseTurn;
-            recalculateScore();
+            this.score = initialScore;
+            this.baselineScore = initialScore;
+            this.baselineSoldiers = getUnits(MilitaryUnit.SOLDIER);
+            this.baselineTanks = getUnits(MilitaryUnit.TANK);
+            this.baselineAircraft = getUnits(MilitaryUnit.AIRCRAFT);
+            this.baselineShips = getUnits(MilitaryUnit.SHIP);
+            this.baselineTotalInfra = totalInfra();
         }
 
         static LocalNation of(
@@ -1629,6 +2334,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     snapshot.resetHourUtc(),
                     snapshot.currentOffensiveWars(),
                     snapshot.currentDefensiveWars(),
+                    snapshot.slotOnlyOffensiveWarReleaseTurns(),
+                    snapshot.slotOnlyDefensiveWarReleaseTurns(),
                     snapshot.activeOpponentNationIds(),
                     snapshot.researchBits(),
                     snapshot.projectBits(),
@@ -1638,6 +2345,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     snapshot.looterModifier(true),
                     snapshot.looterModifier(false),
                     snapshot.lootModifier(),
+                        snapshot.score(),
                     snapshot.policyCooldownTurnsRemaining(),
                     snapshot.beigeTurns(),
                     snapshot.vmTurns(),
@@ -1667,6 +2375,45 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         double score() {
             return score;
+        }
+
+        @Override
+        public int cities() {
+            return buffers.cityCount(nationIndex);
+        }
+
+        double targetPressureAgainst(LocalNation defender) {
+            return OpeningMetricSummary.targetPressure(
+                    baselineGroundStrength(false),
+                    defender.baselineGroundStrength(false),
+                    baselineAircraft,
+                    defender.baselineAircraft,
+                    baselineShips,
+                    defender.baselineShips
+            );
+        }
+
+        double baselineGroundStrength(boolean underAir) {
+            return OpeningMetricSummary.groundStrength(baselineSoldiers, baselineTanks, underAir);
+        }
+
+        double currentGroundStrength(boolean underAir) {
+            return OpeningMetricSummary.groundStrength(
+                    getUnits(MilitaryUnit.SOLDIER),
+                    getUnits(MilitaryUnit.TANK),
+                    underAir
+            );
+        }
+
+        double totalInfra() {
+            int cityCount = buffers.cityCount(nationIndex);
+            int cityBase = buffers.cityInfraBaseOffset(nationIndex);
+            double[] cityInfraFlat = buffers.cityInfraFlat();
+            double total = 0d;
+            for (int i = 0; i < cityCount; i++) {
+                total += cityInfraFlat[cityBase + i];
+            }
+            return total;
         }
 
         LocalNationScalarSnapshot scalarSnapshot() {
@@ -1699,6 +2446,89 @@ final class PlannerLocalConflict implements TeamWarControlView {
             if (materializePendingBuys) {
                 materializePendingBuys();
             }
+        }
+
+        void queueProjectedDailyRebuys(boolean hasActiveWars) {
+            boolean changed = false;
+            for (MilitaryUnit unit : PROJECTED_BUY_UNITS) {
+                int remainingDailyCap = dailyBuyCap(unit, hasActiveWars) - buffers.unitsBoughtToday(nationIndex, unit);
+                if (remainingDailyCap <= 0) {
+                    continue;
+                }
+                int remainingCapacity = remainingCapacity(unit);
+                if (remainingCapacity <= 0) {
+                    continue;
+                }
+                int requested = Math.min(remainingDailyCap, remainingCapacity);
+                int bought = affordableBuyAmount(unit, requested);
+                if (bought <= 0) {
+                    continue;
+                }
+                buffers.setPendingBuys(nationIndex, unit, buffers.pendingBuys(nationIndex, unit) + bought);
+                buffers.setUnitsBoughtToday(nationIndex, unit, buffers.unitsBoughtToday(nationIndex, unit) + bought);
+                changed = true;
+            }
+            if (changed) {
+                recalculateScore();
+            }
+        }
+
+        private int dailyBuyCap(MilitaryUnit unit, boolean hasActiveWars) {
+            return UnitEconomy.maxBuyPerDayFor(
+                    cities(),
+                    unit,
+                    this::hasProject,
+                    research -> research.getLevel(researchBitsValue),
+                    beigeTurns,
+                    hasActiveWars
+            );
+        }
+
+        private int remainingCapacity(MilitaryUnit unit) {
+            int current = getUnits(unit);
+            int pending = buffers.pendingBuys(nationIndex, unit);
+            int cap = NationCapacityRules.unitCap(
+                    -1,
+                    unit,
+                    buffers.citySpecialistProfilesFlat,
+                    buffers.cityInfraFlat,
+                    buffers.cityInfraBaseOffsets[nationIndex],
+                    buffers.cityCounts[nationIndex],
+                    this::hasProject,
+                    researchBitsValue
+            );
+            if (cap <= 0) {
+                return Integer.MAX_VALUE;
+            }
+            return Math.max(0, cap - current - pending);
+        }
+
+        private int affordableBuyAmount(MilitaryUnit unit, int requested) {
+            if (requested <= 0) {
+                return 0;
+            }
+            if (!buffers.hasKnownResourceBudget(nationIndex)) {
+                return requested;
+            }
+            int affordable = requested;
+            java.util.Arrays.fill(costBuffer, 0d);
+            unit.addCost(costBuffer, 1, researchBitsValue);
+            for (ResourceType resource : ResourceType.values) {
+                double unitCost = costBuffer[resource.ordinal()];
+                if (unitCost > 0d) {
+                    affordable = Math.min(affordable, (int) Math.floor(buffers.resource(nationIndex, resource) / unitCost));
+                }
+            }
+            if (affordable <= 0) {
+                return 0;
+            }
+            for (ResourceType resource : ResourceType.values) {
+                double totalCost = costBuffer[resource.ordinal()] * affordable;
+                if (totalCost > 0d) {
+                    buffers.subtractResource(nationIndex, resource, totalCost);
+                }
+            }
+            return affordable;
         }
 
         private void materializePendingBuys() {
@@ -1791,10 +2621,43 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return buffers.resource(nationIndex, type);
         }
 
-        DBNationSnapshot toSnapshot(List<PlannerProjectedWar> activeWars) {
-            int offensiveWars = baseCurrentOffensiveWars;
-            int defensiveWars = baseCurrentDefensiveWars;
-            Set<Integer> opponents = new java.util.LinkedHashSet<>(baseActiveOpponentNationIds);
+        double strategicValue(StrategicAssetValue.StrategicRelevance relevance) {
+            boolean engaged = baseCurrentOffensiveWars > 0
+                    || baseCurrentDefensiveWars > 0
+                    || !baseActiveOpponentNationIds.isEmpty();
+            return StrategicAssetValue.contextualMilitaryValue(
+                    this::getUnits,
+                    unit -> buffers.pendingBuys(nationIndex, unit),
+                    unit -> buffers.unitsBoughtToday(nationIndex, unit),
+                    unit -> dailyBuyCap(unit, engaged),
+                    researchBitsValue,
+                    engaged,
+                    relevance
+            ).totalValue();
+        }
+
+        int activeBaseCurrentOffensiveWars(int turn) {
+            return Math.max(0, baseCurrentOffensiveWars - expiredSlotOnlyWarCount(slotOnlyOffensiveWarReleaseTurns, turn));
+        }
+
+        int activeBaseCurrentDefensiveWars(int turn) {
+            return Math.max(0, baseCurrentDefensiveWars - expiredSlotOnlyWarCount(slotOnlyDefensiveWarReleaseTurns, turn));
+        }
+
+        private static int expiredSlotOnlyWarCount(int[] releaseTurns, int turn) {
+            int count = 0;
+            for (int releaseTurn : releaseTurns) {
+                if (releaseTurn <= turn) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        DBNationSnapshot toSnapshot(List<PlannerProjectedWar> activeWars, int currentTurn) {
+            int offensiveWars = 0;
+            int defensiveWars = 0;
+            LinkedHashSet<Integer> opponents = new LinkedHashSet<>();
             for (PlannerProjectedWar war : activeWars) {
                 if (war.attackerNationId() == nationId) {
                     offensiveWars++;
@@ -1804,41 +2667,55 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     opponents.add(war.attackerNationId());
                 }
             }
-            DBNationSnapshot.Builder builder = DBNationSnapshot.synthetic(nationId)
-                    .allianceId(allianceId)
-                    .teamId(teamId)
-                    .score(score)
-                    .cities(cities())
-                    .currentOffensiveWars(offensiveWars)
-                    .currentDefensiveWars(defensiveWars)
-                    .maxOff(maxOff)
-                    .warPolicy(warPolicy)
-                    .resources(buffers.copyResources(nationIndex))
-                    .nonInfraScoreBase(nonInfraScoreBase)
-                    .cityInfra(buffers.copyCityInfra(nationIndex))
-                    .resetHourUtc(resetHourUtc)
-                    .activeOpponentNationIds(opponents)
-                    .policyCooldownTurnsRemaining(policyCooldownTurnsRemaining)
-                    .beigeTurns(beigeTurns)
-                    .vmTurns(vmTurns)
-                    .researchBits(researchBitsValue)
-                    .projectBits(projectBitsValue)
-                    .blitzkriegActive(blitzkriegActive)
-                    .looterModifiers(groundLooterModifier, nonGroundLooterModifier)
-                    .lootModifier(lootModifierValue)
-                    .infraModifiers(infraAttackModifiers, infraDefendModifiers);
-            for (MilitaryUnit unit : MilitaryUnit.values) {
-                builder.unit(unit, getUnits(unit));
-                int boughtToday = buffers.unitsBoughtToday(nationIndex, unit);
-                if (boughtToday > 0) {
-                    builder.unitBoughtToday(unit, boughtToday);
+            return toSnapshot(currentTurn, new ActiveWarSnapshotOverlay(offensiveWars, defensiveWars, Set.copyOf(opponents)));
+        }
+
+        DBNationSnapshot toSnapshot(int currentTurn, ActiveWarSnapshotOverlay overlay) {
+            try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.LOCAL_NATION_TO_SNAPSHOT)) {
+                ActiveWarSnapshotOverlay effectiveOverlay = overlay == null ? ActiveWarSnapshotOverlay.EMPTY : overlay;
+                int offensiveWars = activeBaseCurrentOffensiveWars(currentTurn) + effectiveOverlay.offensiveWars();
+                int defensiveWars = activeBaseCurrentDefensiveWars(currentTurn) + effectiveOverlay.defensiveWars();
+                Set<Integer> opponents = new LinkedHashSet<>(baseActiveOpponentNationIds);
+                opponents.addAll(effectiveOverlay.opponentNationIds());
+                DBNationSnapshot.Builder builder = DBNationSnapshot.synthetic(nationId)
+                        .allianceId(allianceId)
+                        .teamId(teamId)
+                        .score(score)
+                        .cities(cities())
+                        .currentOffensiveWars(offensiveWars)
+                        .currentDefensiveWars(defensiveWars)
+                        .slotOnlyOffensiveWarReleaseTurns(slotOnlyOffensiveWarReleaseTurns)
+                        .slotOnlyDefensiveWarReleaseTurns(slotOnlyDefensiveWarReleaseTurns)
+                        .maxOff(maxOff)
+                        .warPolicy(warPolicy)
+                        .resources(buffers.copyResources(nationIndex))
+                        .nonInfraScoreBase(nonInfraScoreBase)
+                        .cityInfra(buffers.copyCityInfra(nationIndex))
+                        .resetHourUtc(resetHourUtc)
+                        .activeOpponentNationIds(opponents)
+                        .policyCooldownTurnsRemaining(policyCooldownTurnsRemaining)
+                        .beigeTurns(beigeTurns)
+                        .vmTurns(vmTurns)
+                        .researchBits(researchBitsValue)
+                        .projectBits(projectBitsValue)
+                        .blitzkriegActive(blitzkriegActive)
+                        .looterModifiers(groundLooterModifier, nonGroundLooterModifier)
+                        .lootModifier(lootModifierValue)
+                        .infraModifiers(infraAttackModifiers, infraDefendModifiers);
+                for (MilitaryUnit unit : MilitaryUnit.values) {
+                    builder.unit(unit, getUnits(unit));
+                    int boughtToday = buffers.unitsBoughtToday(nationIndex, unit);
+                    if (boughtToday > 0) {
+                        builder.unitBoughtToday(unit, boughtToday);
+                    }
+                    int pending = buffers.pendingBuys(nationIndex, unit);
+                    if (pending > 0) {
+                        builder.pendingBuyNextTurn(unit, pending);
+                    }
                 }
-                int pending = buffers.pendingBuys(nationIndex, unit);
-                if (pending > 0) {
-                    builder.pendingBuyNextTurn(unit, pending);
-                }
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LOCAL_NATION_TO_SNAPSHOT, "cities", cities());
+                return builder.build();
             }
-            return builder.build();
         }
 
         private void recalculateScore() {
@@ -2404,39 +3281,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         void clearAttackerFortified() {
             warBuffers.clearAttackerFortified(warIndex);
-        }
-
-        boolean hasPendingPeaceOffer() {
-            WarStatus status = warBuffers.status(warIndex);
-            return status == WarStatus.ATTACKER_OFFERED_PEACE || status == WarStatus.DEFENDER_OFFERED_PEACE;
-        }
-
-        void offerPeace(Side offeringSide) {
-            if (!isActive()) {
-                throw new IllegalStateException("Cannot offer peace on inactive war " + warId);
-            }
-            if (hasPendingPeaceOffer()) {
-                throw new IllegalStateException("Peace offer already pending for war " + warId);
-            }
-            warBuffers.setStatus(
-                    warIndex,
-                    offeringSide == Side.ATTACKER ? WarStatus.ATTACKER_OFFERED_PEACE : WarStatus.DEFENDER_OFFERED_PEACE
-            );
-        }
-
-        void acceptPeace(Side acceptingSide) {
-            if (!isActive()) {
-                throw new IllegalStateException("Cannot accept peace on inactive war " + warId);
-            }
-            WarStatus pending = warBuffers.status(warIndex);
-            if (pending != WarStatus.ATTACKER_OFFERED_PEACE && pending != WarStatus.DEFENDER_OFFERED_PEACE) {
-                throw new IllegalStateException("No peace offer to accept for war " + warId);
-            }
-            if ((pending == WarStatus.ATTACKER_OFFERED_PEACE && acceptingSide == Side.ATTACKER)
-                    || (pending == WarStatus.DEFENDER_OFFERED_PEACE && acceptingSide == Side.DEFENDER)) {
-                throw new IllegalStateException("Peace offer must be accepted by the opposite side for war " + warId);
-            }
-            setStatus(WarStatus.PEACE);
         }
 
         PlannerProjectedWar project(int currentTurn) {

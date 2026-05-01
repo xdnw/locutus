@@ -19,7 +19,6 @@ public record PlannerExactValidatorScripts(
         boolean rebuildScript,
         boolean idleWaitScript,
         boolean policyBuyScript,
-        boolean peaceOfferScript,
         boolean mapReserveScript,
         AttackSequenceProfile attackSequenceProfile,
         int mapReserveFloor,
@@ -36,7 +35,6 @@ public record PlannerExactValidatorScripts(
             true,
             true,
             true,
-            false,
             false,
             false,
             AttackSequenceProfile.CONVENTIONAL,
@@ -60,16 +58,15 @@ public record PlannerExactValidatorScripts(
         /**
          * Maps the exact-validator script profile onto local turn-advance semantics.
          *
-         * <p>Rebuild governs pending-buy materialization, policy-buy governs policy cooldown aging,
-         * and peace governs peace-offer expiry. Idle waiting still advances through the horizon loop,
+         * <p>Rebuild governs pending-buy materialization and policy-buy governs policy cooldown aging.
+         * Idle waiting still advances through the horizon loop,
          * but the flag now also controls whether non-greedy attack scripts may deliberately skip
          * current-turn attacks to preserve MAP for a later scripted sequence.</p>
          */
         PlannerTransitionSemantics transitionSemantics() {
                 return new PlannerTransitionSemantics(
                                 policyBuyScript,
-                                rebuildScript,
-                                peaceOfferScript
+                                rebuildScript
                 );
         }
 
@@ -90,7 +87,6 @@ public record PlannerExactValidatorScripts(
         boolean opener = allowDeclares && this.openerSequenceScript && !allowedAttacks.isEmpty();
         boolean followUp = opener && this.followUpAttackScript;
         boolean allowBuys = this.policyBuyScript && (attacker.allowBuys() || defender.allowBuys());
-        boolean allowPeace = this.peaceOfferScript && (attacker.allowPeace() || defender.allowPeace());
         boolean reserve = this.mapReserveScript && attacker.allowMapReservations();
         int reserveFloor = reserve ? this.mapReserveFloor : 0;
 
@@ -101,7 +97,6 @@ public record PlannerExactValidatorScripts(
                 this.rebuildScript,
                 this.idleWaitScript,
                 allowBuys,
-                allowPeace,
                 reserve,
                 this.attackSequenceProfile,
                 reserveFloor,

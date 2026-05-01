@@ -475,7 +475,6 @@ class AdHocTargetPlannerTest {
                 false,
                 true,
                 true,
-                true,
                 EnumSet.allOf(AttackType.class)
         );
 

@@ -4,13 +4,14 @@ package link.locutus.discord.sim;
  * Objective-facing summary of a bounded opening rollout.
  */
 public class OpeningMetricVector {
-    public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d);
+    public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d, 0d);
 
     private final double immediateHarm;
     private final double selfExposure;
     private final double resourceSwing;
     private final double controlLeverage;
     private final double futureWarLeverage;
+    private final double targetPressure;
 
     public OpeningMetricVector(
             double immediateHarm,
@@ -19,11 +20,23 @@ public class OpeningMetricVector {
             double controlLeverage,
             double futureWarLeverage
     ) {
+        this(immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage, 0d);
+    }
+
+    public OpeningMetricVector(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure
+    ) {
         this.immediateHarm = immediateHarm;
         this.selfExposure = selfExposure;
         this.resourceSwing = resourceSwing;
         this.controlLeverage = controlLeverage;
         this.futureWarLeverage = futureWarLeverage;
+        this.targetPressure = targetPressure;
     }
 
     public double immediateHarm() {
@@ -46,6 +59,10 @@ public class OpeningMetricVector {
         return futureWarLeverage;
     }
 
+    public double targetPressure() {
+        return targetPressure;
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) {
@@ -58,7 +75,8 @@ public class OpeningMetricVector {
                 && Double.compare(selfExposure(), that.selfExposure()) == 0
                 && Double.compare(resourceSwing(), that.resourceSwing()) == 0
                 && Double.compare(controlLeverage(), that.controlLeverage()) == 0
-                && Double.compare(futureWarLeverage(), that.futureWarLeverage()) == 0;
+                && Double.compare(futureWarLeverage(), that.futureWarLeverage()) == 0
+                && Double.compare(targetPressure(), that.targetPressure()) == 0;
     }
 
     @Override
@@ -68,6 +86,7 @@ public class OpeningMetricVector {
         result = 31 * result + Double.hashCode(resourceSwing());
         result = 31 * result + Double.hashCode(controlLeverage());
         result = 31 * result + Double.hashCode(futureWarLeverage());
+        result = 31 * result + Double.hashCode(targetPressure());
         return result;
     }
 
@@ -79,6 +98,7 @@ public class OpeningMetricVector {
                 + ", resourceSwing=" + resourceSwing()
                 + ", controlLeverage=" + controlLeverage()
                 + ", futureWarLeverage=" + futureWarLeverage()
+                + ", targetPressure=" + targetPressure()
                 + ']';
     }
 
@@ -95,6 +115,7 @@ public class OpeningMetricVector {
         private double resourceSwing;
         private double controlLeverage;
         private double futureWarLeverage;
+        private double targetPressure;
 
         public Mutable() {
             super(0d, 0d, 0d, 0d, 0d);
@@ -110,7 +131,8 @@ public class OpeningMetricVector {
                     source.selfExposure(),
                     source.resourceSwing(),
                     source.controlLeverage(),
-                    source.futureWarLeverage()
+                    source.futureWarLeverage(),
+                    source.targetPressure()
             );
         }
 
@@ -121,11 +143,23 @@ public class OpeningMetricVector {
                 double controlLeverage,
                 double futureWarLeverage
         ) {
+            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage, 0d);
+        }
+
+        public void set(
+                double immediateHarm,
+                double selfExposure,
+                double resourceSwing,
+                double controlLeverage,
+                double futureWarLeverage,
+                double targetPressure
+        ) {
             this.immediateHarm = immediateHarm;
             this.selfExposure = selfExposure;
             this.resourceSwing = resourceSwing;
             this.controlLeverage = controlLeverage;
             this.futureWarLeverage = futureWarLeverage;
+            this.targetPressure = targetPressure;
         }
 
         @Override
@@ -151,6 +185,11 @@ public class OpeningMetricVector {
         @Override
         public double futureWarLeverage() {
             return futureWarLeverage;
+        }
+
+        @Override
+        public double targetPressure() {
+            return targetPressure;
         }
     }
 }

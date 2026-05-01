@@ -2,6 +2,7 @@ package link.locutus.discord.sim;
 
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.planners.BlitzAssignment;
 import link.locutus.discord.sim.planners.BlitzFixedEdge;
 import link.locutus.discord.sim.planners.BlitzPlanner;
@@ -62,6 +63,21 @@ class BlitzPlannerFixedEdgeTest {
         assertTrue(assignment.targetsFor(defenderSide.nationId()).contains(attackerSide.nationId()));
         assertFalse(assignment.targetsFor(attackerSide.nationId()).contains(defenderSide.nationId()));
         assertEquals(1, assignment.pairCount());
+    }
+
+    @Test
+    void fixedEdgeWarTypeFeedsReturnedAssignmentMetadata() {
+        DBNationSnapshot attacker = nation(11, ATTACKER_TEAM, 2, 650, 800);
+        DBNationSnapshot defender = nation(111, DEFENDER_TEAM, 3, 240, 260);
+
+        BlitzAssignment assignment = new BlitzPlanner(SimTuning.defaults()).assign(
+                List.of(attacker),
+                List.of(defender),
+                0,
+                List.of(new BlitzFixedEdge(attacker.nationId(), defender.nationId(), WarType.ATT.ordinal()))
+        );
+
+        assertEquals(WarType.ATT.ordinal(), assignment.initialWarTypeOrdinal(attacker.nationId(), defender.nationId()));
     }
 
     private static DBNationSnapshot nation(int nationId, int allianceId, int maxOff, int aircraft, int soldiers) {

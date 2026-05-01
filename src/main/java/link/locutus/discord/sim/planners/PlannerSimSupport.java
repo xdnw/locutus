@@ -39,10 +39,30 @@ final class PlannerSimSupport {
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders
     ) {
+        return scoreAssignment(tuning, overrides, objective, assignment, attackers, defenders, Map.of());
+    }
+
+    static double scoreAssignment(
+            SimTuning tuning,
+            OverrideSet overrides,
+            TeamScoreObjective objective,
+            Map<Integer, List<Integer>> assignment,
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            Map<Long, Integer> warTypeOrdinalsByPair
+    ) {
         if (assignment.isEmpty()) {
             return 0.0;
         }
-        return PlannerConflictExecutor.scoreAssignment(tuning, overrides, objective, assignment, attackers, defenders);
+        return PlannerConflictExecutor.scoreAssignment(
+                tuning,
+                overrides,
+                objective,
+                assignment,
+                attackers,
+                defenders,
+                warTypeOrdinalsByPair
+        );
     }
 
     static Map<Integer, Float> compileActivityWeights(

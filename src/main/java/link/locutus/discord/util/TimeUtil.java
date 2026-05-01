@@ -12,6 +12,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class TimeUtil {
@@ -120,8 +122,22 @@ public class TimeUtil {
     }
 
     private static volatile long CURRENT_TURN = calcTurn();
-    private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService SCHEDULER = createScheduler();
     private static volatile boolean nearTurnChange = false;
+
+    private static ScheduledExecutorService createScheduler() {
+        ThreadFactory threadFactory = runnable -> {
+            Thread thread = Executors.defaultThreadFactory().newThread(runnable);
+            thread.setName("TimeUtil-Scheduler");
+            thread.setDaemon(true);
+            return thread;
+        };
+        ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(1, threadFactory);
+        scheduler.setRemoveOnCancelPolicy(true);
+        scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        scheduler.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+        return scheduler;
+    }
 
     static {
         // schedule precise turn updates

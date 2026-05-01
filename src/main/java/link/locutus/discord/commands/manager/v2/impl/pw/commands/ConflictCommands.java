@@ -1288,9 +1288,9 @@ public class ConflictCommands {
 
     @Command(desc = "Add a forum announcement to a conflict and push page metadata")
     public String addAnnouncement(ConflictManager manager, @Me DBNation me, @Me User user, @Me Guild guild,
-            @Me GuildDB db, Conflict conflict, String url, @Default String desc) throws SQLException, IOException {
+            @Me GuildDB db, Conflict conflict, @TextArea String urls, @Default String desc) throws SQLException, IOException {
         requireConflictWritePerm(conflict, me, user, guild, db);
-        String[] topicParts = parseForumTopicUrl(url);
+        String[] topicParts = parseForumTopicUrl(urls);
         int topicId = Integer.parseInt(topicParts[0]);
         String topicUrlStub = topicParts[1];
 

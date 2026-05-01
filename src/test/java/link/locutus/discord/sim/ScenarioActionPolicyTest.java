@@ -23,7 +23,6 @@ class ScenarioActionPolicyTest {
                 false,
                 true,
                 true,
-                true,
                 EnumSet.allOf(AttackType.class)
         );
         SimWorld world = new SimWorld(
@@ -44,7 +43,6 @@ class ScenarioActionPolicyTest {
     @Test
     void blocksAttackTypesOutsideAllowlist() {
         ScenarioActionPolicy.NationActionPolicy noGround = new ScenarioActionPolicy.NationActionPolicy(
-                true,
                 true,
                 true,
                 true,
@@ -72,7 +70,6 @@ class ScenarioActionPolicyTest {
                 false,
                 true,
                 true,
-                true,
                 EnumSet.allOf(AttackType.class)
         );
         SimWorld world = new SimWorld(
@@ -94,7 +91,6 @@ class ScenarioActionPolicyTest {
         void snapshotResolveMatchesPerTeamPolicy() {
                 ScenarioActionPolicy.NationActionPolicy denyDeclares = new ScenarioActionPolicy.NationActionPolicy(
                                 false,
-                                true,
                                 true,
                                 true,
                                 EnumSet.allOf(AttackType.class)
@@ -119,7 +115,6 @@ class ScenarioActionPolicyTest {
 
                 assertFalse(resolved.allowDeclares());
                 assertFalse(resolved.allowBuys());
-                assertFalse(resolved.allowPeace());
                 assertFalse(resolved.allowMapReservations());
                 assertTrue(resolved.allowedAttackTypes().isEmpty());
         }

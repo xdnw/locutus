@@ -68,6 +68,19 @@ public final class OverrideSet {
 
     // ---- Accessors -------------------------------------------------------
 
+    public boolean isEmpty() {
+        return activeOverride.isEmpty()
+                && policyOverride.isEmpty()
+                && forceFreeOffSlots.isEmpty()
+                && forceFreeDefSlots.isEmpty()
+                && citiesOverride.isEmpty()
+                && resourceOverride.isEmpty()
+                && nonInfraScoreBaseOverride.isEmpty()
+                && resetHourOverride.isEmpty()
+                && unitOverride.isEmpty()
+                && maxOffOverride.isEmpty();
+    }
+
     public ActiveOverride activeOverride(int nationId) {
         return activeOverride.getOrDefault(nationId, ActiveOverride.AUTO);
     }

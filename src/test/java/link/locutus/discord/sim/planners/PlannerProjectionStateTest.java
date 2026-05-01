@@ -1,8 +1,8 @@
 package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.SimTuning;
 import org.junit.jupiter.api.Test;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ScheduledPlannerStateTest {
+class PlannerProjectionStateTest {
     @Test
     void appliesUnitOverridesOnceAtSeedAndCarriesMutatedCountsForward() {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
@@ -68,7 +68,7 @@ class ScheduledPlannerStateTest {
                 ))
                 .build();
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(overrides, List.of(attacker, defenderOne, defenderTwo));
+        PlannerProjectionState state = PlannerProjectionState.seed(overrides, List.of(attacker, defenderOne, defenderTwo));
 
         DBNationSnapshot seededAttacker = state.snapshotsFor(List.of(attacker.nationId())).get(0);
         assertEquals(12_000, seededAttacker.unit(MilitaryUnit.SOLDIER));
@@ -112,7 +112,7 @@ class ScheduledPlannerStateTest {
                 .unit(MilitaryUnit.SHIP, 4)
                 .build();
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
+        PlannerProjectionState state = PlannerProjectionState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
         state = state.advance(SimTuning.defaults(), Map.of(attacker.nationId(), List.of(defender.nationId())), 1);
 
         PlannerProjectedWar firstBucketWar = onlyProjectedWar(state);
@@ -165,7 +165,7 @@ class ScheduledPlannerStateTest {
                 .unit(MilitaryUnit.SOLDIER, 1_000)
                 .build();
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
+        PlannerProjectionState state = PlannerProjectionState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
         state = state.advance(
                 SimTuning.defaults(),
                 Map.of(),
@@ -202,7 +202,7 @@ class ScheduledPlannerStateTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
+        PlannerProjectionState state = PlannerProjectionState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
         state = state.advance(
                 SimTuning.defaults(),
                 Map.of(),
@@ -240,7 +240,7 @@ class ScheduledPlannerStateTest {
                 .unit(MilitaryUnit.SOLDIER, 1_000)
                 .build();
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
+        PlannerProjectionState state = PlannerProjectionState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
         state = state.advance(
                 SimTuning.defaults(),
                 Map.of(),
@@ -287,7 +287,7 @@ class ScheduledPlannerStateTest {
                 .unit(MilitaryUnit.SOLDIER, 1_000)
                 .build();
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(
+        PlannerProjectionState state = PlannerProjectionState.seed(
                 OverrideSet.EMPTY,
                 List.of(attacker, defender),
                 List.of(),
@@ -305,7 +305,7 @@ class ScheduledPlannerStateTest {
     }
 
     @Test
-        void optionalPeaceOfferStatusCarriesWhenEnabled() {
+    void offeredPeaceStatusCarriesAsActiveImportedWar() {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(31)
                 .teamId(1)
                 .allianceId(10)
@@ -342,7 +342,7 @@ class ScheduledPlannerStateTest {
                 false
         );
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(
+        PlannerProjectionState state = PlannerProjectionState.seed(
                 OverrideSet.EMPTY,
                 List.of(attacker, defender),
                 List.of(activeWar)
@@ -365,7 +365,7 @@ class ScheduledPlannerStateTest {
         );
 
         PlannerProjectedWar carriedAgain = onlyProjectedWar(state);
-                assertEquals(WarStatus.ATTACKER_OFFERED_PEACE, carriedAgain.status());
+        assertEquals(WarStatus.ATTACKER_OFFERED_PEACE, carriedAgain.status());
     }
 
     @Test
@@ -397,7 +397,7 @@ class ScheduledPlannerStateTest {
                 .unit(MilitaryUnit.SHIP, 4)
                 .build();
 
-        ScheduledPlannerState state = ScheduledPlannerState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
+        PlannerProjectionState state = PlannerProjectionState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
 
         state = state.advance(
                 SimTuning.defaults(),
@@ -426,8 +426,8 @@ class ScheduledPlannerStateTest {
         assertArrayEquals(defenderAfterFirstBucket.cityInfra(), defenderAfterSecondBucket.cityInfra());
     }
 
-    private static PlannerProjectedWar onlyProjectedWar(ScheduledPlannerState state) {
-        assertEquals(1, state.activePlannedWars().size());
-        return state.activePlannedWars().values().iterator().next();
+    private static PlannerProjectedWar onlyProjectedWar(PlannerProjectionState state) {
+        assertEquals(1, state.activePlannedWarsByPair().size());
+        return state.activePlannedWarsByPair().values().iterator().next();
     }
 }

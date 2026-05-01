@@ -8,6 +8,7 @@ public record BlitzPlanRequest(
         int sideModeOrdinal,
         int rebuyModeOrdinal,
         Integer objectiveOrdinal,
+        Integer turn1DeclarePolicyOrdinal,
         int horizonTurns,
         boolean includeExistingWars,
         boolean assume5553Buildings,

@@ -120,10 +120,6 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
         return status;
     }
 
-    public boolean hasPendingPeaceOffer() {
-        return status == WarStatus.ATTACKER_OFFERED_PEACE || status == WarStatus.DEFENDER_OFFERED_PEACE;
-    }
-
     public boolean isActive() {
         return status.isActive();
     }
@@ -230,9 +226,6 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
             setFortified(actorSide, true);
             return;
         }
-        if (hasPendingPeaceOffer()) {
-            status = WarStatus.ACTIVE;
-        }
         setFortified(actorSide, false);
     }
 
@@ -260,31 +253,6 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
         }
         attackerMaps = Math.min(MAP_CAP, attackerMaps + 1);
         defenderMaps = Math.min(MAP_CAP, defenderMaps + 1);
-    }
-
-    public void offerPeace(int actorNationId) {
-        ensureActive();
-        SimSide actorSide = sideForNation(actorNationId);
-        if (hasPendingPeaceOffer()) {
-            throw new IllegalStateException("Peace offer already pending in war " + warId);
-        }
-        status = actorSide == SimSide.ATTACKER
-                ? WarStatus.ATTACKER_OFFERED_PEACE
-                : WarStatus.DEFENDER_OFFERED_PEACE;
-    }
-
-    public void acceptPeace(int actorNationId) {
-        ensureActive();
-        SimSide actorSide = sideForNation(actorNationId);
-        if (!hasPendingPeaceOffer()) {
-            throw new IllegalStateException("No peace offer to accept for war " + warId);
-        }
-        WarStatus pendingStatus = status;
-        if ((pendingStatus == WarStatus.ATTACKER_OFFERED_PEACE && actorSide == SimSide.ATTACKER)
-                || (pendingStatus == WarStatus.DEFENDER_OFFERED_PEACE && actorSide == SimSide.DEFENDER)) {
-            throw new IllegalStateException("Peace offer must be accepted by the opposite side in war " + warId);
-        }
-        status = WarStatus.PEACE;
     }
 
     void reduceResistance(int nationId, int amount) {

@@ -65,47 +65,48 @@ final class PlannerProjectionState {
             int horizonTurns,
             PlannerTransitionSemantics transitionSemantics
     ) {
-        PlannerTransitionSemantics effectiveTransitionSemantics = transitionSemantics == null
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.PROJECTION_ADVANCE)) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.PROJECTION_ADVANCE, "horizonTurns", horizonTurns);
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.PROJECTION_ADVANCE, "assignmentPairs", assignmentPairCount(assignment));
+            PlannerTransitionSemantics effectiveTransitionSemantics = transitionSemantics == null
                 ? PlannerTransitionSemantics.NONE
                 : transitionSemantics;
-        Map<Integer, DBNationSnapshot> effectiveSnapshotsById = effectiveSnapshotsById();
-        PlannerLocalConflict conflict = PlannerLocalConflict.createWithActiveWars(
+            Map<Integer, DBNationSnapshot> effectiveSnapshotsById = effectiveSnapshotsById();
+            PlannerLocalConflict conflict = PlannerLocalConflict.createWithActiveWars(
                 OverrideSet.EMPTY,
                 effectiveSnapshotsById.values(),
                 activePlannedWarsByPair.values(),
-            currentTurn,
+                currentTurn,
                 tuning,
                 effectiveTransitionSemantics
-        );
-        conflict.applyAssignmentHorizon(assignment, horizonTurns);
-        PlannerProjectionResult projection = conflict.project();
+            );
+            conflict.applyAssignmentHorizon(assignment, horizonTurns);
+            PlannerProjectionResult projection = conflict.project();
 
-        Map<Long, PlannerProjectedWar> nextActiveWars = new LinkedHashMap<>();
-        for (PlannerProjectedWar war : projection.activeWars()) {
+            Map<Long, PlannerProjectedWar> nextActiveWars = new LinkedHashMap<>();
+            for (PlannerProjectedWar war : projection.activeWars()) {
             nextActiveWars.put(war.pairKey(), war);
-        }
+            }
 
-        Map<Integer, DBNationSnapshot> nextBaseSnapshots = new LinkedHashMap<>(projection.snapshotsById().size());
-        for (Map.Entry<Integer, DBNationSnapshot> entry : projection.snapshotsById().entrySet()) {
+            Map<Integer, DBNationSnapshot> nextBaseSnapshots = new LinkedHashMap<>(projection.snapshotsById().size());
+            for (Map.Entry<Integer, DBNationSnapshot> entry : projection.snapshotsById().entrySet()) {
             int nationId = entry.getKey();
             DBNationSnapshot projectedSnapshot = entry.getValue();
             DBNationSnapshot priorBaseSnapshot = baseSnapshotsById.get(nationId);
             double[] baseCityInfra = priorBaseSnapshot != null
-                    ? priorBaseSnapshot.cityInfraRaw()
-                    : projectedSnapshot.cityInfraRaw();
-            nextBaseSnapshots.put(
-                    nationId,
-                    projectedSnapshot.toBuilder().cityInfra(baseCityInfra).build()
-            );
-        }
+                ? priorBaseSnapshot.cityInfraRaw()
+                : projectedSnapshot.cityInfraRaw();
+            nextBaseSnapshots.put(nationId, projectedSnapshot.withCityInfra(baseCityInfra));
+            }
 
-        Map<Integer, PlannerCityInfraOverlay> nextOverlays = mergeCityInfraOverlays(
+            Map<Integer, PlannerCityInfraOverlay> nextOverlays = mergeCityInfraOverlays(
                 cityInfraOverlaysByNation,
                 projection.cityInfraOverlaysByNation(),
                 nextBaseSnapshots
-        );
+            );
 
-        return new PlannerProjectionState(nextBaseSnapshots, nextActiveWars, nextOverlays, conflict.currentTurn());
+            return new PlannerProjectionState(nextBaseSnapshots, nextActiveWars, nextOverlays, conflict.currentTurn());
+        }
     }
 
     PlannerProjectionState advance(
@@ -125,14 +126,26 @@ final class PlannerProjectionState {
     }
 
     List<DBNationSnapshot> snapshotsFor(Collection<Integer> nationIds) {
-        List<DBNationSnapshot> snapshots = new ArrayList<>(nationIds.size());
-        for (Integer nationId : nationIds) {
-            DBNationSnapshot snapshot = baseSnapshotsById.get(nationId);
-            if (snapshot != null) {
-                snapshots.add(applyCityInfraOverlay(snapshot));
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.PROJECTION_STATE_SNAPSHOTS_FOR)) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.PROJECTION_STATE_SNAPSHOTS_FOR, "requestedNationIds", nationIds.size());
+            List<DBNationSnapshot> snapshots = new ArrayList<>(nationIds.size());
+            for (Integer nationId : nationIds) {
+                DBNationSnapshot snapshot = baseSnapshotsById.get(nationId);
+                if (snapshot != null) {
+                    snapshots.add(applyCityInfraOverlay(snapshot));
+                }
             }
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.PROJECTION_STATE_SNAPSHOTS_FOR, "returnedSnapshots", snapshots.size());
+            return snapshots;
         }
-        return snapshots;
+    }
+
+    private static int assignmentPairCount(Map<Integer, List<Integer>> assignment) {
+        int pairCount = 0;
+        for (List<Integer> defenders : assignment.values()) {
+            pairCount += defenders.size();
+        }
+        return pairCount;
     }
 
     Map<Long, PlannerProjectedWar> activePlannedWarsByPair() {

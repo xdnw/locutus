@@ -22,6 +22,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -574,31 +575,35 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public String toMarkdown() {
-        StringBuilder body = new StringBuilder();
+        return toShrinkMarkdown().get();
+    }
+
+    public IShrink toShrinkMarkdown() {
+        IShrink body = IShrink.of("");
         // `#id` | Alliance urlMakrup / acronym (linked)
-        body.append("`AA:").append(allianceId).append("` | ").append(getMarkdownUrl());
+        body = body.append("`AA:").append(Integer.toString(allianceId)).append("` | ").append(getMarkdownUrl());
         if (acronym != null && !acronym.isEmpty()) {
-            body.append(" / `").append(acronym).append("`");
+            body = body.append(" / `").append(acronym).append("`");
         }
-        body.append(" | `#").append(getRank()).append("`").append("\n");
+        body = body.append(" | `#").append(Integer.toString(getRank())).append("`\n");
 
         String prefix = "";
         if (discord_link != null && !discord_link.isEmpty()) {
-            body.append(MarkupUtil.markdownUrl("Discord", discord_link));
+            body = body.append(MarkupUtil.markdownUrl("Discord", discord_link));
             prefix = " | ";
         }
         if (wiki_link != null && !wiki_link.isEmpty()) {
-            body.append(prefix).append(MarkupUtil.markdownUrl("Wiki", wiki_link));
+            body = body.append(prefix).append(MarkupUtil.markdownUrl("Wiki", wiki_link));
             prefix = " | ";
         }
         if (forum_link != null && !forum_link.isEmpty()) {
-            body.append(prefix).append(MarkupUtil.markdownUrl("Forum", forum_link));
+            body = body.append(prefix).append(MarkupUtil.markdownUrl("Forum", forum_link));
             prefix = " | ";
         }
         {
             DBAlliance parent = getCachedParentOfThisOffshore();
             if (parent != null) {
-                body.append(prefix).append("Offshore of: " + parent.getMarkdownUrl());
+                body = body.append(prefix).append("Offshore of: ").append(parent.getMarkdownUrl());
                 prefix = " | ";
             } else {
                 for (DBAlliance other : Locutus.imp().getNationDB().getAlliances()) {
@@ -606,7 +611,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                         continue;
                     parent = other.getCachedParentOfThisOffshore();
                     if (parent != null && parent.getAlliance_id() == allianceId) {
-                        body.append(prefix).append(MarkupUtil.markdownUrl("Offshore for: ", other.getMarkdownUrl()));
+                        body = body.append(prefix).append(MarkupUtil.markdownUrl("Offshore for: ", other.getMarkdownUrl()));
                         prefix = " | ";
                         break;
                     }
@@ -615,9 +620,9 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         }
 
         if (!prefix.isEmpty()) {
-            body.append("\n");
+            body = body.append("\n");
         }
-        body.append("```\n");
+        body = body.append("```\n");
         // Number of members / applicants (active past day)
         Set<DBNation> nations = getNations();
         Set<DBNation> members = nations.stream()
@@ -629,31 +634,33 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         Set<DBNation> activeApplicants = applicants.stream().filter(n -> n.active_m() < 7200)
                 .collect(Collectors.toSet());
         // 5 members (3 active/2 taxable) | 2 applicants (1 active)
-        body.append(members.size()).append(" members (").append(activeMembers.size()).append(" active/")
-                .append(taxableMembers.size()).append(" taxable)");
+        body = body.append(Integer.toString(members.size())).append(" members (")
+            .append(Integer.toString(activeMembers.size())).append(" active/")
+            .append(Integer.toString(taxableMembers.size())).append(" taxable)");
         if (!applicants.isEmpty()) {
-            body.append(" | ").append(applicants.size()).append(" applicants (").append(activeApplicants.size())
-                    .append(" active)");
+            body = body.append(" | ").append(Integer.toString(applicants.size())).append(" applicants (")
+                .append(Integer.toString(activeApplicants.size())).append(" active)");
         }
-        body.append("\n");
+        body = body.append("\n");
         // Off, Def, Cities (total/average), Score, Color
         int off = nations.stream().mapToInt(DBNation::getOff).sum();
         int def = nations.stream().mapToInt(DBNation::getDef).sum();
         int cities = members.stream().mapToInt(DBNation::getCities).sum();
         double avgCities = cities / (double) members.size();
         double score = members.stream().mapToDouble(DBNation::getScore).sum();
-        body.append(off).append("\uD83D\uDDE1 | ")
-                .append(def).append("\uD83D\uDEE1 | ")
-                .append(cities).append("\uD83C\uDFD9").append(" (avg:").append(MathMan.format(avgCities)).append(") | ")
-                .append(MathMan.format(score)).append("ns | ")
-                .append(color).append("\n```\n");
+        body = body.append(Integer.toString(off)).append("\uD83D\uDDE1 | ")
+            .append(Integer.toString(def)).append("\uD83D\uDEE1 | ")
+            .append(Integer.toString(cities)).append("\uD83C\uDFD9 (avg:")
+            .append(MathMan.format(avgCities)).append(") | ")
+            .append(MathMan.format(score)).append("ns | ")
+            .append(color == null ? "null" : color.name()).append("\n```\n");
 
         // mmr
         double[] mmrBuild = this.getAverageMMR(false);
         double[] mmrUnit = this.getAverageMMRUnit();
         // Convert to e.g. MMR[Build]=1.5/2.5/1.1/3.0 | MMR[Unit]=1.5/2.5/1.1/3.0
         // append with each number on newline
-        body.append("\n**MMR[Build]**: `")
+        body = body.append("\n**MMR[Build]**: `")
                 .append(MathMan.format(mmrBuild[0])).append("/")
                 .append(MathMan.format(mmrBuild[1])).append("/")
                 .append(MathMan.format(mmrBuild[2])).append("/")
@@ -678,66 +685,86 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             }
         }
         if (!warsByAlliance.isEmpty()) {
-            List<Map.Entry<DBAlliance, Integer>> sorted = warsByAlliance.entrySet().stream()
+            List<Map.Entry<DBAlliance, Integer>> sortedWars = warsByAlliance.entrySet().stream()
                     .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                     .toList();
-            body.append("\n**Alliance Wars:**\n");
-            String cappedMsg = null;
-            if (sorted.size() > 20) {
-                cappedMsg = "- +" + (sorted.size() - 20) + " more";
-                sorted = sorted.stream().limit(20).collect(Collectors.toList());
-            }
-            for (Map.Entry<DBAlliance, Integer> entry : sorted) {
-                body.append("- ").append(PW.getMarkdownUrl(entry.getKey().getId(), true))
-                        .append(": ").append(entry.getValue()).append(" wars\n");
-            }
-            if (cappedMsg != null) {
-                body.append(cappedMsg).append("\n");
-            }
+            body = body.append(buildAllianceWarsShrink(sortedWars));
         }
         Map<Integer, Treaty> treaties = this.getTreaties();
         if (treaties.isEmpty()) {
-            body.append("`No treaties`\n");
+            body = body.append("`No treaties`\n");
         } else {
-            body.append("\n**Treaties:**\n");
-            String cappedMsg = null;
-            if (treaties.size() > 20) {
-                cappedMsg = "- +" + (treaties.size() - 20) + " more";
-                treaties = treaties.entrySet().stream().limit(20)
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            }
-            for (Treaty treaty : treaties.values()) {
-                int otherId = treaty.getToId() == allianceId ? treaty.getFromId() : treaty.getToId();
-                body.append("- ").append(treaty.getType())
-                        .append(": ").append(PW.getMarkdownUrl(otherId, true))
-                        .append(" (").append(treaty.getExpiresDiscordString())
-                        .append(")\n");
-            }
-            if (cappedMsg != null) {
-                body.append(cappedMsg).append("\n");
-            }
+            body = body.append(buildTreatiesShrink(treaties));
         }
         // Revenue
         Map<ResourceType, Double> revenue = getRevenue();
         if (revenue.isEmpty()) {
-            body.append("`No taxable revenue`\n");
+            body = body.append("`No taxable revenue`\n");
         } else {
-            body.append("\n**Taxable Nation Revenue:**");
-            body.append("`").append(ResourceType.toString(revenue)).append("`\n");
-            body.append("- worth: `$" + MathMan.format(ResourceType.convertedTotal(revenue)) + "`\n");
+            body = body.append(buildRevenueShrink(revenue));
         }
         // Last loot
         LootEntry lastLoot = this.getLoot();
         if (lastLoot == null) {
-            body.append("`No loot history`\n");
+            body = body.append("`No loot history`\n");
         } else {
-            body.append("\n**Last Resources:** (from ")
-                    .append(lootEntry.getType().name()).append(" ")
-                    .append(DiscordUtil.timestamp(lootEntry.getDate(), null)).append(")\n");
-            body.append("`").append(ResourceType.toString(lootEntry.getTotal_rss())).append("`\n");
-            body.append("- worth: `$").append(MathMan.format(lootEntry.convertedTotal())).append("`\n");
+            body = body.append(buildLootShrink(lastLoot));
+        }
+        return body;
+    }
+
+    private IShrink buildAllianceWarsShrink(List<Map.Entry<DBAlliance, Integer>> sortedWars) {
+        int totalWars = sortedWars.stream().mapToInt(Map.Entry::getValue).sum();
+        return IShrink.of(10, buildAllianceWarsSection(sortedWars, 5, totalWars), buildAllianceWarsSection(sortedWars, 20, totalWars));
+    }
+
+    private String buildAllianceWarsSection(List<Map.Entry<DBAlliance, Integer>> sortedWars, int limit, int totalWars) {
+        StringBuilder body = new StringBuilder("\n**Alliance Wars:** ")
+                .append(totalWars).append(" wars across ").append(sortedWars.size()).append(" alliances\n");
+        List<Map.Entry<DBAlliance, Integer>> limitedWars = sortedWars.stream().limit(limit).toList();
+        for (Map.Entry<DBAlliance, Integer> entry : limitedWars) {
+            body.append("- ").append(PW.getMarkdownUrl(entry.getKey().getId(), true))
+                    .append(": ").append(entry.getValue()).append(" wars\n");
+        }
+        if (sortedWars.size() > limit) {
+            body.append("- +").append(sortedWars.size() - limit).append(" more\n");
         }
         return body.toString();
+    }
+
+    private IShrink buildTreatiesShrink(Map<Integer, Treaty> treaties) {
+        List<Treaty> treatyList = new ArrayList<>(treaties.values());
+        return IShrink.of(10, buildTreatiesSection(treatyList, 5), buildTreatiesSection(treatyList, 20));
+    }
+
+    private String buildTreatiesSection(List<Treaty> treaties, int limit) {
+        StringBuilder body = new StringBuilder("\n**Treaties:** ").append(treaties.size()).append(" total\n");
+        List<Treaty> limitedTreaties = treaties.stream().limit(limit).toList();
+        for (Treaty treaty : limitedTreaties) {
+            int otherId = treaty.getToId() == allianceId ? treaty.getFromId() : treaty.getToId();
+            body.append("- ").append(treaty.getType())
+                    .append(": ").append(PW.getMarkdownUrl(otherId, true))
+                    .append(" (").append(treaty.getExpiresDiscordString())
+                    .append(")\n");
+        }
+        if (treaties.size() > limit) {
+            body.append("- +").append(treaties.size() - limit).append(" more\n");
+        }
+        return body.toString();
+    }
+
+    private IShrink buildRevenueShrink(Map<ResourceType, Double> revenue) {
+        double worth = ResourceType.convertedTotal(revenue);
+        String compact = "\n**Taxable Nation Revenue:** `$" + MathMan.format(worth) + "`\n";
+        String full = compact + "`" + ResourceType.toString(revenue) + "`\n";
+        return IShrink.of(8, compact, full);
+    }
+
+    private IShrink buildLootShrink(LootEntry loot) {
+        String compact = "\n**Last Resources:** `$" + MathMan.format(loot.convertedTotal()) + "` from "
+                + loot.getType().name() + " " + DiscordUtil.timestamp(loot.getDate(), null) + "\n";
+        String full = compact + "`" + ResourceType.toString(loot.getTotal_rss()) + "`\n";
+        return IShrink.of(8, compact, full);
     }
 
     @Command(desc = "Is allied with another alliance")

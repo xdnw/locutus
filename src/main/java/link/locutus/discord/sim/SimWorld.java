@@ -4,11 +4,9 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.sim.actions.AcceptPeaceAction;
 import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.actions.BuyUnitsAction;
 import link.locutus.discord.sim.actions.DeclareWarAction;
-import link.locutus.discord.sim.actions.OfferPeaceAction;
 import link.locutus.discord.sim.actions.ReleaseMapAction;
 import link.locutus.discord.sim.actions.ReserveMapAction;
 import link.locutus.discord.sim.actions.SetPolicyAction;
@@ -306,12 +304,6 @@ public final class SimWorld {
             }
             return;
         }
-        if (action instanceof OfferPeaceAction || action instanceof AcceptPeaceAction) {
-            if (!policy.allowPeace()) {
-                throw new IllegalStateException("Scenario policy blocks peace actions for nation " + actorNationId);
-            }
-            return;
-        }
         if (action instanceof ReserveMapAction || action instanceof ReleaseMapAction) {
             if (!policy.allowMapReservations()) {
                 throw new IllegalStateException("Scenario policy blocks map reservations for nation " + actorNationId);
@@ -331,12 +323,6 @@ public final class SimWorld {
         }
         if (action instanceof BuyUnitsAction buyUnitsAction) {
             return buyUnitsAction.nationId();
-        }
-        if (action instanceof OfferPeaceAction offerPeaceAction) {
-            return offerPeaceAction.actorNationId();
-        }
-        if (action instanceof AcceptPeaceAction acceptPeaceAction) {
-            return acceptPeaceAction.actorNationId();
         }
         if (action instanceof ReserveMapAction reserveMapAction) {
             return reserveMapAction.actorNationId();

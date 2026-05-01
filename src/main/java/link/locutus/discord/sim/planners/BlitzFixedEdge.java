@@ -5,6 +5,10 @@ package link.locutus.discord.sim.planners;
  */
 public record BlitzFixedEdge(
         int attackerNationId,
-        int defenderNationId
+                int defenderNationId,
+                int warTypeOrdinal
 ) {
+        public BlitzFixedEdge(int attackerNationId, int defenderNationId) {
+                this(attackerNationId, defenderNationId, link.locutus.discord.apiv1.enums.WarType.ORD.ordinal());
+        }
 }

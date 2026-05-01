@@ -23,7 +23,8 @@ import java.util.Objects;
  * <p>Algorithm (layered by cost):
  * <ol>
  *   <li><b>Candidate generation</b>: war-range filter + treaty filter + kernel-EV viability probe
- *       effort-tiering with top {@link SimTuning#candidatesPerAttacker()} retention per attacker.</li>
+ *       effort-tiering with top {@link SimTuning#candidatesPerAttacker()} retention per attacker,
+ *       plus a bounded defender-coverage rescue for viable edges pruned by attacker-only top-K.</li>
  *   <li><b>Initial assignment</b>: primitive-array min-cost assignment over dense candidate edges.
  *       Tie-breakers are baked into edge cost — no separate post-pass.</li>
  *   <li><b>Local search refinement</b> (optional, budget-capped): 2-opt, 1-opt add/drop/move
@@ -88,6 +89,46 @@ public final class BlitzPlanner {
             Collection<DBNationSnapshot> defenders,
             int currentTurn,
             Collection<BlitzFixedEdge> fixedEdges) {
+        return assign(attackers, defenders, currentTurn, fixedEdges, 1);
+    }
+
+    public BlitzAssignment assign(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            int currentTurn,
+            Collection<BlitzFixedEdge> fixedEdges,
+            int horizonTurns) {
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.BLITZ_ASSIGN)) {
+            AssignmentInputs inputs = normalizeAssignmentInputs(attackers, defenders, currentTurn, fixedEdges, horizonTurns);
+            PreparedAssignment prepared = prepareAssignment(inputs);
+            if (!prepared.hasCandidates()) {
+                return new BlitzAssignment(Map.of(), prepared.diagnostics(), 0.0);
+            }
+
+            PlannedAssignment planned = planPreparedAssignment(prepared);
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "assignmentPairs", assignmentPairCount(planned.assignment()));
+            Map<Long, Integer> assignmentWarTypeOrdinalsByPair = assignmentWarTypeOrdinals(
+                    prepared.candidates(),
+                    prepared.inputs().fixedEdges()
+            );
+            return new BlitzAssignment(
+                planned.assignment(),
+                prepared.diagnostics(),
+                planned.objectiveSummary().mean(),
+                planned.objectiveSummary(),
+                assignmentWarTypeOrdinalsByPair,
+                prepared.candidates().initialAttackTypeOrdinalsByPair()
+            );
+        }
+    }
+
+    private AssignmentInputs normalizeAssignmentInputs(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            int currentTurn,
+            Collection<BlitzFixedEdge> fixedEdges,
+            int horizonTurns
+    ) {
         Objects.requireNonNull(attackers, "attackers");
         Objects.requireNonNull(defenders, "defenders");
         Objects.requireNonNull(fixedEdges, "fixedEdges");
@@ -95,87 +136,192 @@ public final class BlitzPlanner {
         List<DBNationSnapshot> attList = List.copyOf(attackers);
         List<DBNationSnapshot> defList = List.copyOf(defenders);
         List<BlitzFixedEdge> fixedEdgeList = List.copyOf(fixedEdges);
+        int planningHorizonTurns = Math.max(1, horizonTurns);
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "attackers", attList.size());
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "defenders", defList.size());
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "fixedEdges", fixedEdgeList.size());
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "horizonTurns", planningHorizonTurns);
+        return new AssignmentInputs(attList, defList, fixedEdgeList, currentTurn, planningHorizonTurns);
+    }
 
+    private PreparedAssignment prepareAssignment(AssignmentInputs inputs) {
         Map<Integer, Float> activityWeights = PlannerSimSupport.compileActivityWeights(
             snapshotActivityProvider.withWartimeUplift(tuning.wartimeActivityUplift()),
-            currentTurn,
+            inputs.currentTurn(),
             overrides,
-            combinedSnapshots(attList, defList)
+            combinedSnapshots(inputs.attackers(), inputs.defenders())
         );
 
         CompiledScenario compiledScenario = SCENARIO_COMPILER.compile(
-            attList,
-            defList,
+            inputs.attackers(),
+            inputs.defenders(),
             overrides,
             treatyProvider,
             activityWeights
         );
 
-        // ---- Step 1: candidate generation ----------------------------------------
-        // Effective slot counts (after overrides applied)
         int[] attCaps = computeAttackerCaps(compiledScenario);
         int[] defCaps = computeDefenderCaps(compiledScenario);
-
-        // Attacker strength rank (0 = strongest) for tie-breaking in edge cost
         int[] attStrengthRank = computeStrengthRanks(compiledScenario);
-
-        GeneratedCandidates candidates = generateCandidates(compiledScenario, attCaps, defCaps);
+        int[] attackerNationIds = attackerNationIds(compiledScenario);
+        int[] defenderNationIds = defenderNationIds(compiledScenario);
+        BlitzGeneratedCandidates candidates = generateCandidates(compiledScenario, attCaps, defCaps);
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "candidateEdges", candidates.edgeTable().edgeCount());
 
         List<PlannerDiagnostic> diagnostics = new ArrayList<>();
-        collectDiagnostics(attList, defList, diagnostics);
+        collectDiagnostics(inputs.attackers(), inputs.defenders(), diagnostics);
 
-        if (candidates.edgeTable().edgeCount() == 0) {
-            return new BlitzAssignment(Map.of(), diagnostics, 0.0);
-        }
-
-        // ---- Step 2: initial assignment -------------------------------------------
-        Map<Integer, List<Integer>> assignment = PrimitiveAssignmentSolver.solveAssignment(
-            candidates.edgeTable(),
-            compiledScenario.attackerCount(),
-            compiledScenario.defenderCount(),
+        return new PreparedAssignment(
+            inputs,
+            compiledScenario,
             attCaps,
             defCaps,
             attStrengthRank,
-            attackerNationIds(compiledScenario),
-            defenderNationIds(compiledScenario),
-            fixedEdgeList
-        );
-
-        Map<Integer, Integer> attCapsByNationId = capsByNationId(compiledScenario, attCaps, true);
-        Map<Integer, Integer> defCapsByNationId = capsByNationId(compiledScenario, defCaps, false);
-        boolean excludeReciprocalPairs = hasOverlappingNationIds(attList, defList);
-
-        if (excludeReciprocalPairs) {
-            assignment = normalizeReciprocalPairs(assignment, candidates, fixedEdgeList);
-        }
-
-        // ---- Step 3: local search refinement (budget-capped) ----------------------
-        assignment = localSearch(
-            assignment,
+            attackerNationIds,
+            defenderNationIds,
+            capsByNationId(compiledScenario, attCaps, true),
+            capsByNationId(compiledScenario, defCaps, false),
+            activityWeights,
             candidates,
-            attCapsByNationId,
-            defCapsByNationId,
-            attList,
-            defList,
-            fixedEdgeList,
-            excludeReciprocalPairs
+            diagnostics,
+            hasOverlappingNationIds(inputs.attackers(), inputs.defenders()),
+            LongHorizonAssignmentOptimizer.shouldOptimize(inputs.planningHorizonTurns())
         );
-        Map<Integer, List<Integer>> finalAssignment = assignment;
+    }
 
-        ScoreSummary objectiveSummary = PlannerSimSupport.summarizeScores(tuning, sampleIndex -> {
+    private PlannedAssignment planPreparedAssignment(PreparedAssignment prepared) {
+        if (prepared.useLongHorizonOptimization()) {
+            return planLongHorizonAssignment(prepared);
+        }
+        Map<Integer, List<Integer>> assignment = PrimitiveAssignmentSolver.solveAssignment(
+            prepared.candidates().edgeTable(),
+            prepared.compiledScenario().attackerCount(),
+            prepared.compiledScenario().defenderCount(),
+            prepared.attCaps(),
+            prepared.defCaps(),
+            prepared.attStrengthRank(),
+            prepared.attackerNationIds(),
+            prepared.defenderNationIds(),
+            prepared.inputs().fixedEdges()
+        );
+        if (prepared.excludeReciprocalPairs()) {
+            assignment = normalizeReciprocalPairs(
+                assignment,
+                prepared.candidates(),
+                prepared.inputs().fixedEdges(),
+                prepared.attCapsByNationId(),
+                prepared.defCapsByNationId(),
+                prepared.activityWeightsByNationId(),
+                overrides
+            );
+        }
+        Map<Long, Integer> assignmentWarTypeOrdinalsByPair = assignmentWarTypeOrdinals(
+                prepared.candidates(),
+                prepared.inputs().fixedEdges()
+        );
+        assignment = BlitzAssignmentRefiner.refine(
+            tuning,
+            overrides,
+            objective,
+            assignment,
+            prepared.candidates(),
+            assignmentWarTypeOrdinalsByPair,
+            prepared.attCapsByNationId(),
+            prepared.defCapsByNationId(),
+            prepared.inputs().attackers(),
+            prepared.inputs().defenders(),
+            prepared.inputs().fixedEdges(),
+            prepared.excludeReciprocalPairs()
+        );
+        if (prepared.excludeReciprocalPairs()) {
+            assignment = normalizeReciprocalPairs(
+                assignment,
+                prepared.candidates(),
+                prepared.inputs().fixedEdges(),
+                prepared.attCapsByNationId(),
+                prepared.defCapsByNationId(),
+                prepared.activityWeightsByNationId(),
+                overrides
+            );
+        }
+        return new PlannedAssignment(
+                assignment,
+                summarizeExactAssignment(prepared, assignment, assignmentWarTypeOrdinalsByPair)
+        );
+    }
+
+    private PlannedAssignment planLongHorizonAssignment(PreparedAssignment prepared) {
+        LongHorizonAssignmentOptimizer.Result optimized = LongHorizonAssignmentOptimizer.solveDetailed(
+            prepared.candidates().edgeTable(),
+            prepared.compiledScenario(),
+            prepared.attCaps(),
+            prepared.defCaps(),
+            prepared.attStrengthRank(),
+            prepared.attackerNationIds(),
+            prepared.defenderNationIds(),
+            prepared.inputs().fixedEdges(),
+            prepared.inputs().planningHorizonTurns(),
+            new LongHorizonAssignmentOptimizer.ProjectionScoringContext(objective)
+        );
+        Map<Integer, List<Integer>> assignment = optimized.assignment();
+        boolean normalizedReciprocals = false;
+        if (prepared.excludeReciprocalPairs()) {
+            assignment = normalizeReciprocalPairs(
+                assignment,
+                prepared.candidates(),
+                prepared.inputs().fixedEdges(),
+                prepared.attCapsByNationId(),
+                prepared.defCapsByNationId(),
+                prepared.activityWeightsByNationId(),
+                overrides
+            );
+            normalizedReciprocals = true;
+        }
+        ScoreSummary objectiveSummary = !normalizedReciprocals
+                ? optimized.projectedObjectiveSummary()
+                : null;
+        if (objectiveSummary == null) {
+            objectiveSummary = LongHorizonAssignmentOptimizer.projectedObjectiveSummary(
+                prepared.candidates().edgeTable(),
+                prepared.compiledScenario(),
+                prepared.attCaps(),
+                prepared.defCaps(),
+                prepared.inputs().planningHorizonTurns(),
+                assignment,
+                objective,
+                prepared.attackerNationIds(),
+                prepared.defenderNationIds()
+            );
+        }
+        return new PlannedAssignment(assignment, objectiveSummary);
+    }
+
+    private ScoreSummary summarizeExactAssignment(
+            PreparedAssignment prepared,
+            Map<Integer, List<Integer>> assignment,
+            Map<Long, Integer> warTypeOrdinalsByPair
+    ) {
+        return PlannerSimSupport.summarizeScores(tuning, sampleIndex -> {
             SimTuning scoringTuning = tuning.stateResolutionMode() == link.locutus.discord.sim.combat.ResolutionMode.STOCHASTIC
                 ? PlannerSimSupport.sampleTuning(tuning, sampleIndex)
                 : tuning;
-            return PlannerSimSupport.scoreAssignment(scoringTuning, overrides, objective, finalAssignment, attList, defList);
+            return PlannerSimSupport.scoreAssignment(
+                scoringTuning,
+                overrides,
+                objective,
+                assignment,
+                prepared.inputs().attackers(),
+                prepared.inputs().defenders(),
+                warTypeOrdinalsByPair
+            );
         });
-        return new BlitzAssignment(finalAssignment, diagnostics, objectiveSummary.mean(), objectiveSummary, candidates.initialAttackTypeOrdinalsByPair());
     }
 
     // ============================================================
     // Candidate generation
     // ============================================================
 
-    private GeneratedCandidates generateCandidates(
+    private BlitzGeneratedCandidates generateCandidates(
             CompiledScenario compiledScenario,
             int[] attCaps,
             int[] defCaps) {
@@ -198,6 +344,7 @@ public final class BlitzPlanner {
 
         Map<Integer, List<Integer>> candidateDefendersByAttacker = new HashMap<>();
         Map<Long, Float> edgeScoresByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
+        Map<Long, Integer> initialWarTypeOrdinalsByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
         Map<Long, Integer> initialAttackTypeOrdinalsByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
 
         for (int edge = 0; edge < edges.edgeCount(); edge++) {
@@ -212,274 +359,31 @@ public final class BlitzPlanner {
                 .computeIfAbsent(attackerNationId, ignored -> new ArrayList<>())
                 .add(defenderNationId);
             edgeScoresByPair.put(candidatePairKey, edges.scalarScore(edge));
+            initialWarTypeOrdinalsByPair.put(candidatePairKey, validWarTypeOrdinal(edges.preferredWarTypeId(edge)));
             initialAttackTypeOrdinalsByPair.put(candidatePairKey, (int) edges.bestAttackTypeId(edge));
         }
 
-        return new GeneratedCandidates(edges, candidateDefendersByAttacker, edgeScoresByPair, initialAttackTypeOrdinalsByPair);
+        return new BlitzGeneratedCandidates(edges, candidateDefendersByAttacker, edgeScoresByPair, initialWarTypeOrdinalsByPair, initialAttackTypeOrdinalsByPair);
     }
 
-    // ============================================================
-    // Local search
-    // ============================================================
-
-    private Map<Integer, List<Integer>> localSearch(
-            Map<Integer, List<Integer>> assignment,
-            GeneratedCandidates candidates,
-            Map<Integer, Integer> attCaps,
-            Map<Integer, Integer> defCaps,
-            List<DBNationSnapshot> attList,
-            List<DBNationSnapshot> defList,
-            List<BlitzFixedEdge> fixedEdges,
-            boolean excludeReciprocalPairs) {
-
-        long budgetMs = tuning.localSearchBudgetMs();
-        int maxIter = tuning.localSearchMaxIterations();
-        if (budgetMs <= 0 || maxIter <= 0) return assignment;
-
-        long deadline = System.currentTimeMillis() + budgetMs;
-
-        PlannerAssignmentSession best = PlannerAssignmentSession.create(assignment, attList, defList, attCaps, defCaps, fixedEdges);
-        int[][] candidateDefenderSlotsByAttacker = candidateDefenderSlotsByAttacker(candidates, best);
-        int attackerTeamId = attList.isEmpty() ? 1 : attList.get(0).teamId();
-        RefinementAggregates aggregates = RefinementAggregates.fromAssignment(best);
-
-        int iter = 0;
-        while (iter < maxIter && System.currentTimeMillis() < deadline) {
-            iter++;
-
-            // Try 2-opt swaps
-            boolean improved = false;
-            outer:
-            for (int attackerOneSlot = 0; attackerOneSlot < best.attackerCount(); attackerOneSlot++) {
-                if (!best.hasAssignments(attackerOneSlot)) {
-                    continue;
-                }
-                for (int attackerTwoSlot = attackerOneSlot + 1; attackerTwoSlot < best.attackerCount(); attackerTwoSlot++) {
-                    if (!best.hasAssignments(attackerTwoSlot)) {
-                        continue;
-                    }
-
-                    for (int defenderOneIndex = 0; defenderOneIndex < best.assignedCount(attackerOneSlot); defenderOneIndex++) {
-                        if (best.isLocked(attackerOneSlot, defenderOneIndex)) {
-                            continue;
-                        }
-                        for (int defenderTwoIndex = 0; defenderTwoIndex < best.assignedCount(attackerTwoSlot); defenderTwoIndex++) {
-                            if (best.isLocked(attackerTwoSlot, defenderTwoIndex)) {
-                                continue;
-                            }
-                            int defenderOneSlot = best.defenderSlotAt(attackerOneSlot, defenderOneIndex);
-                            int defenderTwoSlot = best.defenderSlotAt(attackerTwoSlot, defenderTwoIndex);
-                            if (defenderOneSlot == defenderTwoSlot) continue;
-
-                            int attackerOneId = best.attackerNationIdAt(attackerOneSlot);
-                            int attackerTwoId = best.attackerNationIdAt(attackerTwoSlot);
-                            int defenderOneId = best.defenderNationIdAt(defenderOneSlot);
-                            int defenderTwoId = best.defenderNationIdAt(defenderTwoSlot);
-
-                            // Check if (a1->d2) and (a2->d1) are valid candidates
-                            boolean a1d2 = candidates.containsPair(attackerOneId, defenderTwoId);
-                            boolean a2d1 = candidates.containsPair(attackerTwoId, defenderOneId);
-                            if (!a1d2 || !a2d1) continue;
-                            if (excludeReciprocalPairs
-                                    && (wouldCreateReciprocalPair(best, attackerOneId, defenderTwoId, attackerTwoSlot, defenderTwoIndex)
-                                    || wouldCreateReciprocalPair(best, attackerTwoId, defenderOneId, attackerOneSlot, defenderOneIndex))) {
-                                continue;
-                            }
-                            if (best.containsDefenderSlotExcept(attackerOneSlot, defenderTwoSlot, defenderOneIndex)
-                                    || best.containsDefenderSlotExcept(attackerTwoSlot, defenderOneSlot, defenderTwoIndex)) {
-                                continue;
-                            }
-
-                            // Perform swap and score
-                            PlannerAssignmentChange candidate = best.swapChange(
-                                    attackerOneSlot,
-                                    defenderOneIndex,
-                                    defenderTwoSlot,
-                                    attackerTwoSlot,
-                                    defenderTwoIndex,
-                                    defenderOneSlot
-                            );
-                            double surrogateDelta = aggregates.swapDelta(
-                                    best,
-                                    attackerOneSlot,
-                                    defenderOneSlot,
-                                    defenderTwoSlot,
-                                    attackerTwoSlot,
-                                    defenderTwoSlot,
-                                    defenderOneSlot,
-                                    candidates
-                            );
-                            if (!aggregates.isPromising(surrogateDelta)) {
-                                continue;
-                            }
-                            double exactDelta = exactBundleDelta(best, candidate, attList, defList, attackerTeamId);
-                            if (exactDelta > 1e-9) {
-                                best.applySwap(
-                                        attackerOneSlot,
-                                        defenderOneIndex,
-                                        defenderTwoSlot,
-                                        attackerTwoSlot,
-                                        defenderTwoIndex,
-                                        defenderOneSlot
-                                );
-                                aggregates.applySwap();
-                                improved = true;
-                                break outer;
-                            }
-                        }
-                    }
-                    if (System.currentTimeMillis() > deadline) break outer;
-                }
-            }
-
-            // Try 1-opt move: retarget one attacker slot from defender A to defender B
-            if (!improved) {
-                outerMove:
-                for (int attackerSlot = 0; attackerSlot < best.attackerCount(); attackerSlot++) {
-                    if (!best.hasAssignments(attackerSlot)) {
-                        continue;
-                    }
-                    int[] candidateDefenderSlots = candidateDefenderSlotsByAttacker[attackerSlot];
-                    for (int assignedIndex = 0; assignedIndex < best.assignedCount(attackerSlot); assignedIndex++) {
-                        if (best.isLocked(attackerSlot, assignedIndex)) {
-                            continue;
-                        }
-                        int previousDefenderSlot = best.defenderSlotAt(attackerSlot, assignedIndex);
-                        for (int nextDefenderSlot : candidateDefenderSlots) {
-                            if (nextDefenderSlot == previousDefenderSlot) {
-                                continue;
-                            }
-                            if (best.containsDefenderSlotExcept(attackerSlot, nextDefenderSlot, assignedIndex)) {
-                                continue;
-                            }
-                            if (excludeReciprocalPairs && wouldCreateReciprocalPair(
-                                    best,
-                                    best.attackerNationIdAt(attackerSlot),
-                                    best.defenderNationIdAt(nextDefenderSlot),
-                                    -1,
-                                    -1)) {
-                                continue;
-                            }
-                            int nextUsed = best.defenderAssignedCount(nextDefenderSlot);
-                            int nextCap = best.defenderCap(nextDefenderSlot);
-                            if (nextUsed >= nextCap) {
-                                continue;
-                            }
-
-                            PlannerAssignmentChange candidate = best.moveChange(attackerSlot, assignedIndex, nextDefenderSlot);
-                            double surrogateDelta = aggregates.moveDelta(best, attackerSlot, previousDefenderSlot, nextDefenderSlot, candidates);
-                            if (!aggregates.isPromising(surrogateDelta)) {
-                                continue;
-                            }
-                            double exactDelta = exactBundleDelta(best, candidate, attList, defList, attackerTeamId);
-                            if (exactDelta > 1e-9) {
-                                best.applyMove(attackerSlot, assignedIndex, nextDefenderSlot);
-                                aggregates.applyMove(previousDefenderSlot, nextDefenderSlot);
-                                improved = true;
-                                break outerMove;
-                            }
-                        }
-                        if (System.currentTimeMillis() > deadline) {
-                            break outerMove;
-                        }
-                    }
-                }
-            }
-
-            // Try 1-opt add: assign an attacker with free capacity to a defender with free capacity
-            if (!improved) {
-                for (int attackerSlot = 0; attackerSlot < best.attackerCount(); attackerSlot++) {
-                    int cap = best.attackerCap(attackerSlot);
-                    int used = best.assignedCount(attackerSlot);
-                    if (used >= cap) continue;
-
-                    int[] candidateDefenderSlots = candidateDefenderSlotsByAttacker[attackerSlot];
-                    for (int defenderSlot : candidateDefenderSlots) {
-                        int dUsedCount = best.defenderAssignedCount(defenderSlot);
-                        int dCap = best.defenderCap(defenderSlot);
-                        if (dUsedCount >= dCap) continue;
-
-                        // Check not already assigned
-                        if (best.containsDefenderSlot(attackerSlot, defenderSlot)) continue;
-                        if (excludeReciprocalPairs && wouldCreateReciprocalPair(
-                                best,
-                                best.attackerNationIdAt(attackerSlot),
-                                best.defenderNationIdAt(defenderSlot),
-                                -1,
-                                -1)) {
-                            continue;
-                        }
-
-                        PlannerAssignmentChange candidate = best.addChange(attackerSlot, defenderSlot);
-                        double surrogateDelta = aggregates.addDelta(best, attackerSlot, defenderSlot, candidates);
-                        if (!aggregates.isPromising(surrogateDelta)) {
-                            continue;
-                        }
-                        double exactDelta = exactBundleDelta(best, candidate, attList, defList, attackerTeamId);
-                        if (exactDelta > 1e-9) {
-                            best.applyAdd(attackerSlot, defenderSlot);
-                            aggregates.applyAdd(attackerSlot, defenderSlot);
-                            improved = true;
-                            break;
-                        }
-                    }
-                    if (improved) break;
-                }
-            }
-
-            // Try 1-opt drop: release a marginal edge into slack.
-            if (!improved) {
-                outerDrop:
-                for (int attackerSlot = 0; attackerSlot < best.attackerCount(); attackerSlot++) {
-                    if (!best.hasAssignments(attackerSlot)) {
-                        continue;
-                    }
-                    for (int assignedIndex = 0; assignedIndex < best.assignedCount(attackerSlot); assignedIndex++) {
-                        if (best.isLocked(attackerSlot, assignedIndex)) {
-                            continue;
-                        }
-                        int removedDefenderSlot = best.defenderSlotAt(attackerSlot, assignedIndex);
-                        PlannerAssignmentChange candidate = best.dropChange(attackerSlot, assignedIndex);
-                        double surrogateDelta = aggregates.dropDelta(best, attackerSlot, removedDefenderSlot, candidates);
-                        if (!aggregates.isPromising(surrogateDelta)) {
-                            continue;
-                        }
-                        double exactDelta = exactBundleDelta(best, candidate, attList, defList, attackerTeamId);
-                        if (exactDelta > 1e-9) {
-                            best.applyDrop(attackerSlot, assignedIndex);
-                            aggregates.applyDrop(attackerSlot, removedDefenderSlot);
-                            improved = true;
-                            break outerDrop;
-                        }
-                        if (System.currentTimeMillis() > deadline) {
-                            break outerDrop;
-                        }
-                    }
-                }
-            }
-
-            if (!improved) break; // Hill-climb converged
-        }
-        return best.toAssignmentMap();
+    private static int validWarTypeOrdinal(byte warTypeOrdinal) {
+        return warTypeOrdinal >= 0 && warTypeOrdinal < link.locutus.discord.apiv1.enums.WarType.values.length
+                ? warTypeOrdinal
+                : link.locutus.discord.apiv1.enums.WarType.ORD.ordinal();
     }
 
-    private double exactBundleDelta(
-            PlannerAssignmentSession currentAssignment,
-            PlannerAssignmentChange candidateChange,
-            List<DBNationSnapshot> attackers,
-            List<DBNationSnapshot> defenders,
-            int attackerTeamId
+    private static Map<Long, Integer> assignmentWarTypeOrdinals(
+            BlitzGeneratedCandidates candidates,
+            List<BlitzFixedEdge> fixedEdges
     ) {
-        return PlannerConflictExecutor.scoreAssignmentDelta(
-            tuning,
-            overrides,
-            objective,
-            currentAssignment,
-            candidateChange,
-            attackers,
-            defenders,
-            attackerTeamId
-        );
+        if (fixedEdges.isEmpty()) {
+            return candidates.initialWarTypeOrdinalsByPair();
+        }
+        Map<Long, Integer> merged = new HashMap<>(candidates.initialWarTypeOrdinalsByPair());
+        for (BlitzFixedEdge fixedEdge : fixedEdges) {
+            merged.put(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()), fixedEdge.warTypeOrdinal());
+        }
+        return Map.copyOf(merged);
     }
 
     // ============================================================
@@ -590,8 +494,12 @@ public final class BlitzPlanner {
 
     private static Map<Integer, List<Integer>> normalizeReciprocalPairs(
             Map<Integer, List<Integer>> assignment,
-            GeneratedCandidates candidates,
-            List<BlitzFixedEdge> fixedEdges
+            BlitzGeneratedCandidates candidates,
+            List<BlitzFixedEdge> fixedEdges,
+            Map<Integer, Integer> attackerCapsByNationId,
+            Map<Integer, Integer> defenderCapsByNationId,
+                Map<Integer, Float> activityWeightsByNationId,
+                OverrideSet overrides
     ) {
         if (assignment.isEmpty()) {
             return assignment;
@@ -599,6 +507,8 @@ public final class BlitzPlanner {
         Map<Integer, List<Integer>> normalized = copyAssignment(assignment);
         java.util.Set<Long> fixedPairKeys = fixedPairKeys(fixedEdges);
         java.util.Set<Long> seenPairs = new java.util.HashSet<>();
+        Map<Integer, Integer> attackerAssignedCounts = attackerAssignedCounts(normalized);
+        Map<Integer, Integer> defenderAssignedCounts = defenderAssignedCounts(normalized);
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             int attackerNationId = entry.getKey();
             for (int defenderNationId : entry.getValue()) {
@@ -606,31 +516,147 @@ public final class BlitzPlanner {
                 if (!seenPairs.add(unorderedKey)) {
                     continue;
                 }
-                if (!containsAssignmentPair(normalized, defenderNationId, attackerNationId)) {
+                boolean forwardAssigned = containsAssignmentPair(normalized, attackerNationId, defenderNationId);
+                boolean reverseAssigned = containsAssignmentPair(normalized, defenderNationId, attackerNationId);
+                if (!forwardAssigned && !reverseAssigned) {
                     continue;
                 }
 
-                boolean keepForward = chooseReciprocalDirection(attackerNationId, defenderNationId, candidates, fixedPairKeys);
+                boolean keepForward = chooseReciprocalDirection(
+                    attackerNationId,
+                    defenderNationId,
+                    candidates,
+                    fixedPairKeys,
+                    activityWeightsByNationId,
+                    overrides
+                );
+                if (forwardAssigned && reverseAssigned) {
+                    if (keepForward) {
+                        removeAssignmentPair(normalized, defenderNationId, attackerNationId);
+                        decrementAssignmentCounts(attackerAssignedCounts, defenderNationId);
+                        decrementAssignmentCounts(defenderAssignedCounts, attackerNationId);
+                    } else {
+                        removeAssignmentPair(normalized, attackerNationId, defenderNationId);
+                        decrementAssignmentCounts(attackerAssignedCounts, attackerNationId);
+                        decrementAssignmentCounts(defenderAssignedCounts, defenderNationId);
+                    }
+                    continue;
+                }
+                if (keepForward == forwardAssigned) {
+                    continue;
+                }
                 if (keepForward) {
+                    if (!canFlipReciprocalDirection(
+                        attackerNationId,
+                        defenderNationId,
+                        attackerAssignedCounts,
+                        defenderAssignedCounts,
+                        attackerCapsByNationId,
+                        defenderCapsByNationId
+                    )) {
+                        continue;
+                    }
                     removeAssignmentPair(normalized, defenderNationId, attackerNationId);
+                    decrementAssignmentCounts(attackerAssignedCounts, defenderNationId);
+                    decrementAssignmentCounts(defenderAssignedCounts, attackerNationId);
+                    addAssignmentPair(normalized, attackerNationId, defenderNationId);
+                    incrementAssignmentCounts(attackerAssignedCounts, attackerNationId);
+                    incrementAssignmentCounts(defenderAssignedCounts, defenderNationId);
                 } else {
+                    if (!canFlipReciprocalDirection(
+                        defenderNationId,
+                        attackerNationId,
+                        attackerAssignedCounts,
+                        defenderAssignedCounts,
+                        attackerCapsByNationId,
+                        defenderCapsByNationId
+                    )) {
+                        continue;
+                    }
                     removeAssignmentPair(normalized, attackerNationId, defenderNationId);
+                    decrementAssignmentCounts(attackerAssignedCounts, attackerNationId);
+                    decrementAssignmentCounts(defenderAssignedCounts, defenderNationId);
+                    addAssignmentPair(normalized, defenderNationId, attackerNationId);
+                    incrementAssignmentCounts(attackerAssignedCounts, defenderNationId);
+                    incrementAssignmentCounts(defenderAssignedCounts, attackerNationId);
                 }
             }
         }
         return normalized;
     }
 
+    private static Map<Integer, Integer> attackerAssignedCounts(Map<Integer, List<Integer>> assignment) {
+        Map<Integer, Integer> counts = new HashMap<>(Math.max(16, assignment.size() * 2));
+        for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
+            counts.put(entry.getKey(), entry.getValue().size());
+        }
+        return counts;
+    }
+
+    private static Map<Integer, Integer> defenderAssignedCounts(Map<Integer, List<Integer>> assignment) {
+        Map<Integer, Integer> counts = new HashMap<>(Math.max(16, assignment.size() * 2));
+        for (List<Integer> defenders : assignment.values()) {
+            for (int defenderNationId : defenders) {
+                incrementAssignmentCounts(counts, defenderNationId);
+            }
+        }
+        return counts;
+    }
+
+    private static boolean canFlipReciprocalDirection(
+            int attackerNationId,
+            int defenderNationId,
+            Map<Integer, Integer> attackerAssignedCounts,
+            Map<Integer, Integer> defenderAssignedCounts,
+            Map<Integer, Integer> attackerCapsByNationId,
+            Map<Integer, Integer> defenderCapsByNationId
+    ) {
+        int attackerCount = attackerAssignedCounts.getOrDefault(attackerNationId, 0);
+        int defenderCount = defenderAssignedCounts.getOrDefault(defenderNationId, 0);
+        int attackerCap = attackerCapsByNationId.getOrDefault(attackerNationId, 0);
+        int defenderCap = defenderCapsByNationId.getOrDefault(defenderNationId, 0);
+        return attackerCount < attackerCap && defenderCount < defenderCap;
+    }
+
+    private static void addAssignmentPair(Map<Integer, List<Integer>> assignment, int attackerNationId, int defenderNationId) {
+        assignment.computeIfAbsent(attackerNationId, ignored -> new ArrayList<>()).add(defenderNationId);
+    }
+
+    private static void incrementAssignmentCounts(Map<Integer, Integer> counts, int nationId) {
+        counts.merge(nationId, 1, Integer::sum);
+    }
+
+    private static void decrementAssignmentCounts(Map<Integer, Integer> counts, int nationId) {
+        counts.compute(nationId, (ignored, current) -> {
+            if (current == null || current <= 1) {
+                return null;
+            }
+            return current - 1;
+        });
+    }
+
     private static boolean chooseReciprocalDirection(
             int attackerNationId,
             int defenderNationId,
-            GeneratedCandidates candidates,
-            java.util.Set<Long> fixedPairKeys
+            BlitzGeneratedCandidates candidates,
+            java.util.Set<Long> fixedPairKeys,
+            Map<Integer, Float> activityWeightsByNationId,
+            OverrideSet overrides
     ) {
         boolean forwardFixed = fixedPairKeys.contains(pairKey(attackerNationId, defenderNationId));
         boolean reverseFixed = fixedPairKeys.contains(pairKey(defenderNationId, attackerNationId));
         if (forwardFixed != reverseFixed) {
             return forwardFixed;
+        }
+        int forwardOverrideRank = activeOverrideRank(overrides.activeOverride(attackerNationId));
+        int reverseOverrideRank = activeOverrideRank(overrides.activeOverride(defenderNationId));
+        if (forwardOverrideRank != reverseOverrideRank) {
+            return forwardOverrideRank > reverseOverrideRank;
+        }
+        float forwardActivity = activityWeightsByNationId.getOrDefault(attackerNationId, 1.0f);
+        float reverseActivity = activityWeightsByNationId.getOrDefault(defenderNationId, 1.0f);
+        if (forwardActivity != reverseActivity) {
+            return forwardActivity > reverseActivity;
         }
         float forwardScore = candidates.edgeScore(attackerNationId, defenderNationId);
         float reverseScore = candidates.edgeScore(defenderNationId, attackerNationId);
@@ -638,6 +664,14 @@ public final class BlitzPlanner {
             return forwardScore > reverseScore;
         }
         return attackerNationId <= defenderNationId;
+    }
+
+    private static int activeOverrideRank(OverrideSet.ActiveOverride activeOverride) {
+        return switch (activeOverride) {
+            case FALSE -> 0;
+            case AUTO -> 1;
+            case TRUE -> 2;
+        };
     }
 
     private static Map<Integer, List<Integer>> copyAssignment(Map<Integer, List<Integer>> assignment) {
@@ -696,26 +730,12 @@ public final class BlitzPlanner {
         return ((long) attackerNationId << 32) | (defenderNationId & 0xFFFFFFFFL);
     }
 
-    private static int[][] candidateDefenderSlotsByAttacker(GeneratedCandidates candidates, PlannerAssignmentSession assignment) {
-        int[][] candidateDefenderSlots = new int[assignment.attackerCount()][];
-        for (int attackerSlot = 0; attackerSlot < assignment.attackerCount(); attackerSlot++) {
-            List<Integer> defenderIds = candidates.candidateDefendersByAttacker().getOrDefault(
-                    assignment.attackerNationIdAt(attackerSlot),
-                    List.of()
-            );
-            int[] defenderSlots = new int[defenderIds.size()];
-            int size = 0;
-            for (int defenderId : defenderIds) {
-                int defenderSlot = assignment.defenderSlot(defenderId);
-                if (defenderSlot >= 0) {
-                    defenderSlots[size++] = defenderSlot;
-                }
-            }
-            candidateDefenderSlots[attackerSlot] = size == defenderSlots.length
-                    ? defenderSlots
-                    : Arrays.copyOf(defenderSlots, size);
+    private static int assignmentPairCount(Map<Integer, List<Integer>> assignment) {
+        int pairCount = 0;
+        for (List<Integer> defenders : assignment.values()) {
+            pairCount += defenders.size();
         }
-        return candidateDefenderSlots;
+        return pairCount;
     }
 
     private void collectDiagnostics(
@@ -726,183 +746,39 @@ public final class BlitzPlanner {
         PlannerSimSupport.collectResetDiagnostics(attList, defList, diagnostics);
     }
 
-    private record GeneratedCandidates(
-        CandidateEdgeTable edgeTable,
-        Map<Integer, List<Integer>> candidateDefendersByAttacker,
-        Map<Long, Float> edgeScoresByPair,
-        Map<Long, Integer> initialAttackTypeOrdinalsByPair
+    private record AssignmentInputs(
+        List<DBNationSnapshot> attackers,
+        List<DBNationSnapshot> defenders,
+        List<BlitzFixedEdge> fixedEdges,
+        int currentTurn,
+        int planningHorizonTurns
     ) {
-        boolean containsPair(int attackerNationId, int defenderNationId) {
-            return edgeScoresByPair.containsKey(pairKey(attackerNationId, defenderNationId));
-        }
+    }
 
-        float edgeScore(int attackerNationId, int defenderNationId) {
-            return edgeScoresByPair.getOrDefault(pairKey(attackerNationId, defenderNationId), Float.NEGATIVE_INFINITY);
+    private record PreparedAssignment(
+        AssignmentInputs inputs,
+        CompiledScenario compiledScenario,
+        int[] attCaps,
+        int[] defCaps,
+        int[] attStrengthRank,
+        int[] attackerNationIds,
+        int[] defenderNationIds,
+        Map<Integer, Integer> attCapsByNationId,
+        Map<Integer, Integer> defCapsByNationId,
+        Map<Integer, Float> activityWeightsByNationId,
+        BlitzGeneratedCandidates candidates,
+        List<PlannerDiagnostic> diagnostics,
+        boolean excludeReciprocalPairs,
+        boolean useLongHorizonOptimization
+    ) {
+        boolean hasCandidates() {
+            return candidates.edgeTable().edgeCount() > 0;
         }
     }
 
-    private static final class RefinementAggregates {
-        private static final double DEFENDER_PRESSURE_WEIGHT = 0.06;
-        private static final double ATTACKER_COMMITMENT_WEIGHT = 0.04;
-        private static final double SURROGATE_EVAL_FLOOR = -0.05;
-
-        private final int[] attackerAssignedCount;
-        private final int[] defenderAssignedCount;
-        private final double[] attackerCommitmentLoad;
-        private final double[] defenderPressure;
-        private final int[] attackerCaps;
-        private final int[] defenderCaps;
-
-        private RefinementAggregates(
-            int[] attackerAssignedCount,
-            int[] defenderAssignedCount,
-            double[] attackerCommitmentLoad,
-            double[] defenderPressure,
-            int[] attackerCaps,
-            int[] defenderCaps
-        ) {
-            this.attackerAssignedCount = attackerAssignedCount;
-            this.defenderAssignedCount = defenderAssignedCount;
-            this.attackerCommitmentLoad = attackerCommitmentLoad;
-            this.defenderPressure = defenderPressure;
-            this.attackerCaps = attackerCaps;
-            this.defenderCaps = defenderCaps;
-        }
-
-        static RefinementAggregates fromAssignment(
-            PlannerAssignmentSession assignment
-        ) {
-            int[] attackerAssignedCount = new int[assignment.attackerCount()];
-            int[] defenderAssignedCount = new int[assignment.defenderCount()];
-            double[] attackerCommitmentLoad = new double[assignment.attackerCount()];
-            double[] defenderPressure = new double[assignment.defenderCount()];
-            int[] attackerCaps = new int[assignment.attackerCount()];
-            int[] defenderCaps = new int[assignment.defenderCount()];
-
-            for (int attackerSlot = 0; attackerSlot < assignment.attackerCount(); attackerSlot++) {
-                attackerAssignedCount[attackerSlot] = assignment.assignedCount(attackerSlot);
-                attackerCaps[attackerSlot] = Math.max(1, assignment.attackerCap(attackerSlot));
-                attackerCommitmentLoad[attackerSlot] = (double) attackerAssignedCount[attackerSlot] / attackerCaps[attackerSlot];
-            }
-            for (int defenderSlot = 0; defenderSlot < assignment.defenderCount(); defenderSlot++) {
-                defenderAssignedCount[defenderSlot] = assignment.defenderAssignedCount(defenderSlot);
-                defenderCaps[defenderSlot] = Math.max(1, assignment.defenderCap(defenderSlot));
-                defenderPressure[defenderSlot] = (double) defenderAssignedCount[defenderSlot] / defenderCaps[defenderSlot];
-            }
-
-            return new RefinementAggregates(
-                attackerAssignedCount,
-                defenderAssignedCount,
-                attackerCommitmentLoad,
-                defenderPressure,
-                attackerCaps,
-                defenderCaps
-            );
-        }
-
-        boolean isPromising(double surrogateDelta) {
-            return surrogateDelta > SURROGATE_EVAL_FLOOR;
-        }
-
-        double addDelta(PlannerAssignmentSession assignment, int attackerSlot, int defenderSlot, GeneratedCandidates candidates) {
-            float edgeScore = candidates.edgeScore(
-                    assignment.attackerNationIdAt(attackerSlot),
-                    assignment.defenderNationIdAt(defenderSlot)
-            );
-            if (!Float.isFinite(edgeScore)) {
-                return Double.NEGATIVE_INFINITY;
-            }
-            return edgeScore
-                + attackerPenaltyDelta(attackerSlot, +1)
-                + defenderPenaltyDelta(defenderSlot, +1);
-        }
-
-        double dropDelta(PlannerAssignmentSession assignment, int attackerSlot, int defenderSlot, GeneratedCandidates candidates) {
-            float edgeScore = candidates.edgeScore(
-                    assignment.attackerNationIdAt(attackerSlot),
-                    assignment.defenderNationIdAt(defenderSlot)
-            );
-            if (!Float.isFinite(edgeScore)) {
-                return Double.NEGATIVE_INFINITY;
-            }
-            return -edgeScore
-                + attackerPenaltyDelta(attackerSlot, -1)
-                + defenderPenaltyDelta(defenderSlot, -1);
-        }
-
-        double moveDelta(PlannerAssignmentSession assignment, int attackerSlot, int oldDefenderSlot, int newDefenderSlot, GeneratedCandidates candidates) {
-            int attackerNationId = assignment.attackerNationIdAt(attackerSlot);
-            float dropScore = candidates.edgeScore(attackerNationId, assignment.defenderNationIdAt(oldDefenderSlot));
-            float addScore = candidates.edgeScore(attackerNationId, assignment.defenderNationIdAt(newDefenderSlot));
-            if (!Float.isFinite(dropScore) || !Float.isFinite(addScore)) {
-                return Double.NEGATIVE_INFINITY;
-            }
-            return (addScore - dropScore)
-                + defenderPenaltyDelta(oldDefenderSlot, -1)
-                + defenderPenaltyDelta(newDefenderSlot, +1);
-        }
-
-        double swapDelta(
-            PlannerAssignmentSession assignment,
-            int attackerOneSlot,
-            int oldDefenderOneSlot,
-            int newDefenderOneSlot,
-            int attackerTwoSlot,
-            int oldDefenderTwoSlot,
-            int newDefenderTwoSlot,
-            GeneratedCandidates candidates
-        ) {
-            int attackerOneNationId = assignment.attackerNationIdAt(attackerOneSlot);
-            int attackerTwoNationId = assignment.attackerNationIdAt(attackerTwoSlot);
-            float oldOne = candidates.edgeScore(attackerOneNationId, assignment.defenderNationIdAt(oldDefenderOneSlot));
-            float oldTwo = candidates.edgeScore(attackerTwoNationId, assignment.defenderNationIdAt(oldDefenderTwoSlot));
-            float nextOne = candidates.edgeScore(attackerOneNationId, assignment.defenderNationIdAt(newDefenderOneSlot));
-            float nextTwo = candidates.edgeScore(attackerTwoNationId, assignment.defenderNationIdAt(newDefenderTwoSlot));
-            if (!Float.isFinite(oldOne) || !Float.isFinite(oldTwo) || !Float.isFinite(nextOne) || !Float.isFinite(nextTwo)) {
-                return Double.NEGATIVE_INFINITY;
-            }
-            return (nextOne + nextTwo) - (oldOne + oldTwo);
-        }
-
-        void applyAdd(int attackerSlot, int defenderSlot) {
-            applyAttacker(attackerSlot, +1);
-            applyDefender(defenderSlot, +1);
-        }
-
-        void applyDrop(int attackerSlot, int defenderSlot) {
-            applyAttacker(attackerSlot, -1);
-            applyDefender(defenderSlot, -1);
-        }
-
-        void applyMove(int oldDefenderSlot, int newDefenderSlot) {
-            applyDefender(oldDefenderSlot, -1);
-            applyDefender(newDefenderSlot, +1);
-        }
-
-        void applySwap() {
-            // Swap preserves attacker loads and defender counts when defenders differ.
-        }
-
-        private double attackerPenaltyDelta(int attackerSlot, int delta) {
-            double before = attackerCommitmentLoad[attackerSlot];
-            double after = (double) (attackerAssignedCount[attackerSlot] + delta) / attackerCaps[attackerSlot];
-            return -ATTACKER_COMMITMENT_WEIGHT * ((after * after) - (before * before));
-        }
-
-        private double defenderPenaltyDelta(int defenderSlot, int delta) {
-            double before = defenderPressure[defenderSlot];
-            double after = (double) (defenderAssignedCount[defenderSlot] + delta) / defenderCaps[defenderSlot];
-            return -DEFENDER_PRESSURE_WEIGHT * ((after * after) - (before * before));
-        }
-
-        private void applyAttacker(int attackerSlot, int delta) {
-            attackerAssignedCount[attackerSlot] += delta;
-            attackerCommitmentLoad[attackerSlot] = (double) attackerAssignedCount[attackerSlot] / attackerCaps[attackerSlot];
-        }
-
-        private void applyDefender(int defenderSlot, int delta) {
-            defenderAssignedCount[defenderSlot] += delta;
-            defenderPressure[defenderSlot] = (double) defenderAssignedCount[defenderSlot] / defenderCaps[defenderSlot];
-        }
+    private record PlannedAssignment(
+        Map<Integer, List<Integer>> assignment,
+        ScoreSummary objectiveSummary
+    ) {
     }
 }

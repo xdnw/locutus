@@ -71,7 +71,6 @@ public record PlannerCoordinationPolicy(
                 base.rebuildScript(),
                 idleWait,
                 base.policyBuyScript(),
-                base.peaceOfferScript(),
                 reserve,
                 attackSequenceProfile,
                 reserveFloor,

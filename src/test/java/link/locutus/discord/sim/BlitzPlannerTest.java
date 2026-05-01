@@ -115,6 +115,23 @@ class BlitzPlannerTest {
         assertEquals(r1.assignment(), r2.assignment(), "BlitzPlanner must be deterministic for same inputs");
     }
 
+    @Test
+    void assignOverloadsShareCanonicalPlannerPath() {
+        BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
+
+        BlitzAssignment baseline = planner.assign(attackers, defenders);
+        BlitzAssignment explicitTurn = planner.assign(attackers, defenders, 0);
+        BlitzAssignment explicitFixedEdges = planner.assign(attackers, defenders, 0, List.of());
+        BlitzAssignment explicitHorizon = planner.assign(attackers, defenders, 0, List.of(), 1);
+
+        assertEquals(baseline.assignment(), explicitTurn.assignment());
+        assertEquals(baseline.assignment(), explicitFixedEdges.assignment());
+        assertEquals(baseline.assignment(), explicitHorizon.assignment());
+        assertEquals(baseline.objectiveSummary(), explicitTurn.objectiveSummary());
+        assertEquals(baseline.objectiveSummary(), explicitFixedEdges.objectiveSummary());
+        assertEquals(baseline.objectiveSummary(), explicitHorizon.objectiveSummary());
+    }
+
         @Test
         void excludesReciprocalAssignmentsWhenAttackerAndDefenderPoolsOverlap() {
         DBNationSnapshot attackerSide = DBNationSnapshot.synthetic(1)
@@ -221,36 +238,73 @@ class BlitzPlannerTest {
 
     @Test
     void controlObjectiveKeepsStrongInRangeDefenderReachable() {
-    List<DBNationSnapshot> focusedAttackers = buildNations(501, 4, ATTACKER_TEAM, 1_200.0, 900, 4_000);
-    DBNationSnapshot strongestDefender = DBNationSnapshot.synthetic(701)
-        .teamId(9999)
-        .allianceId(9999)
-        .score(1_800.0)
-        .cities(12)
-        .nonInfraScoreBase(1_800.0)
-        .cityInfra(uniformInfra(12, 1_200.0))
-        .maxOff(5)
-        .currentOffensiveWars(0)
-        .currentDefensiveWars(0)
-        .unit(MilitaryUnit.AIRCRAFT, 1_100)
-        .unit(MilitaryUnit.SOLDIER, 5_000)
-        .warPolicy(WarPolicy.ATTRITION)
-        .build();
-    List<DBNationSnapshot> mixedDefenders = new ArrayList<>();
-    mixedDefenders.add(strongestDefender);
-    mixedDefenders.addAll(buildNations(702, 2, 9999, 1_000.0, 300, 300));
+        List<DBNationSnapshot> focusedAttackers = buildNations(501, 4, ATTACKER_TEAM, 1_200.0, 900, 4_000);
+        DBNationSnapshot strongestDefender = DBNationSnapshot.synthetic(701)
+                .teamId(9999)
+                .allianceId(9999)
+                .score(1_800.0)
+                .cities(12)
+                .nonInfraScoreBase(1_800.0)
+                .cityInfra(uniformInfra(12, 1_200.0))
+                .maxOff(5)
+                .currentOffensiveWars(0)
+                .currentDefensiveWars(0)
+                .unit(MilitaryUnit.AIRCRAFT, 1_100)
+                .unit(MilitaryUnit.SOLDIER, 5_000)
+                .warPolicy(WarPolicy.ATTRITION)
+                .build();
+        List<DBNationSnapshot> mixedDefenders = new ArrayList<>();
+        mixedDefenders.add(strongestDefender);
+        mixedDefenders.addAll(buildNations(702, 2, 9999, 1_000.0, 300, 300));
 
-    BlitzAssignment result = new BlitzPlanner(
-        SimTuning.defaults(),
-        TreatyProvider.NONE,
-        OverrideSet.EMPTY,
-        BlitzObjective.CONTROL.objective()
-    ).assign(focusedAttackers, mixedDefenders);
+        BlitzAssignment result = new BlitzPlanner(
+                SimTuning.defaults(),
+                TreatyProvider.NONE,
+                OverrideSet.EMPTY,
+                BlitzObjective.CONTROL.objective()
+        ).assign(focusedAttackers, mixedDefenders);
 
-    boolean assignedStrongestDefender = result.assignment().values().stream()
-        .flatMap(List::stream)
-        .anyMatch(defenderId -> defenderId == strongestDefender.nationId());
-    assertTrue(assignedStrongestDefender, "Control objective should keep the strongest in-range defender in the candidate outcome");
+        boolean assignedStrongestDefender = result.assignment().values().stream()
+                .flatMap(List::stream)
+                .anyMatch(defenderId -> defenderId == strongestDefender.nationId());
+        assertTrue(assignedStrongestDefender, "Control objective should keep the strongest in-range defender in the candidate outcome");
+    }
+
+    @Test
+    void controlObjectivePrioritizesReachableHighThreatDefendersOverEasyDownDeclares() {
+        List<DBNationSnapshot> focusedAttackers = buildNations(801, 2, ATTACKER_TEAM, 1_200.0, 950, 5_000);
+        DBNationSnapshot highThreatDefender = DBNationSnapshot.synthetic(901)
+                .teamId(9999)
+                .allianceId(9999)
+                .score(1_850.0)
+                .cities(12)
+                .nonInfraScoreBase(1_850.0)
+                .cityInfra(uniformInfra(12, 1_250.0))
+                .maxOff(5)
+                .currentOffensiveWars(0)
+                .currentDefensiveWars(0)
+                .unit(MilitaryUnit.AIRCRAFT, 1_000)
+                .unit(MilitaryUnit.SOLDIER, 6_000)
+                .unit(MilitaryUnit.TANK, 900)
+                .unit(MilitaryUnit.SHIP, 220)
+                .warPolicy(WarPolicy.ATTRITION)
+                .build();
+        List<DBNationSnapshot> easyDownDeclares = buildNations(902, 6, 9999, 900.0, 180, 800);
+        List<DBNationSnapshot> mixedDefenders = new ArrayList<>();
+        mixedDefenders.add(highThreatDefender);
+        mixedDefenders.addAll(easyDownDeclares);
+
+        BlitzAssignment result = new BlitzPlanner(
+                SimTuning.defaults(),
+                TreatyProvider.NONE,
+                OverrideSet.EMPTY,
+                BlitzObjective.CONTROL.objective()
+        ).assign(focusedAttackers, mixedDefenders);
+
+        boolean assignedHighThreatDefender = result.assignment().values().stream()
+                .flatMap(List::stream)
+                .anyMatch(defenderId -> defenderId == highThreatDefender.nationId());
+        assertTrue(assignedHighThreatDefender, "Control objective should not spend all slots on easy down-declares while a high-threat in-range defender is reachable");
     }
 
     @Test

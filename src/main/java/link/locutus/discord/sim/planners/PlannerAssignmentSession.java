@@ -23,6 +23,7 @@ final class PlannerAssignmentSession {
     private final boolean[] lockedAssignments;
     private final int[] defenderAssignedCount;
     private final PlannerAssignmentChange changeScratch;
+    private DefenderReverseIndex defenderReverseIndex;
 
     private PlannerAssignmentSession(
             int[] attackerNationIds,
@@ -213,6 +214,34 @@ final class PlannerAssignmentSession {
         return defenderAssignedCount[defenderSlot];
     }
 
+    DefenderReverseIndex defenderReverseIndex() {
+        if (defenderReverseIndex != null) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.CONFLICT_BUNDLE_EXTRACT, "sessionReverseIndexReuses", 1);
+            return defenderReverseIndex;
+        }
+
+        int defenderCount = defenderNationIds.length;
+        int[] defenderOffsets = new int[defenderCount + 1];
+        for (int defenderSlot = 0; defenderSlot < defenderCount; defenderSlot++) {
+            defenderOffsets[defenderSlot + 1] = defenderOffsets[defenderSlot] + defenderAssignedCount[defenderSlot];
+        }
+
+        int[] cursor = java.util.Arrays.copyOf(defenderOffsets, defenderCount);
+        int[] defenderToAttackerSlots = new int[defenderOffsets[defenderCount]];
+        for (int attackerSlot = 0; attackerSlot < attackerNationIds.length; attackerSlot++) {
+            int offset = attackerOffsets[attackerSlot];
+            int length = assignmentLengths[attackerSlot];
+            for (int defenderIndex = 0; defenderIndex < length; defenderIndex++) {
+                int defenderSlot = assignedDefenderSlots[offset + defenderIndex];
+                defenderToAttackerSlots[cursor[defenderSlot]++] = attackerSlot;
+            }
+        }
+
+        defenderReverseIndex = new DefenderReverseIndex(defenderOffsets, defenderToAttackerSlots);
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.CONFLICT_BUNDLE_EXTRACT, "sessionReverseIndexBuilds", 1);
+        return defenderReverseIndex;
+    }
+
     boolean containsDefenderSlot(int attackerSlot, int defenderSlot) {
         return containsDefenderSlotExcept(attackerSlot, defenderSlot, -1);
     }
@@ -277,6 +306,7 @@ final class PlannerAssignmentSession {
     ) {
         assignedDefenderSlots[attackerOffsets[attackerOneSlot] + attackerOneIndex] = newDefenderOneSlot;
         assignedDefenderSlots[attackerOffsets[attackerTwoSlot] + attackerTwoIndex] = newDefenderTwoSlot;
+        invalidateDefenderReverseIndex();
     }
 
     void applyMove(int attackerSlot, int assignedIndex, int newDefenderSlot) {
@@ -291,6 +321,7 @@ final class PlannerAssignmentSession {
         assignedDefenderSlots[position] = newDefenderSlot;
         defenderAssignedCount[previousDefenderSlot]--;
         defenderAssignedCount[newDefenderSlot]++;
+        invalidateDefenderReverseIndex();
     }
 
     void applyAdd(int attackerSlot, int defenderSlot) {
@@ -302,6 +333,7 @@ final class PlannerAssignmentSession {
         lockedAssignments[attackerOffsets[attackerSlot] + length] = false;
         assignmentLengths[attackerSlot] = length + 1;
         defenderAssignedCount[defenderSlot]++;
+        invalidateDefenderReverseIndex();
     }
 
     void applyDrop(int attackerSlot, int assignedIndex) {
@@ -318,6 +350,7 @@ final class PlannerAssignmentSession {
         lockedAssignments[offset + length - 1] = false;
         assignmentLengths[attackerSlot] = length - 1;
         defenderAssignedCount[removedDefenderSlot]--;
+        invalidateDefenderReverseIndex();
     }
 
     Map<Integer, List<Integer>> toAssignmentMap() {
@@ -392,5 +425,12 @@ final class PlannerAssignmentSession {
 
     private static long pairKey(int attackerNationId, int defenderNationId) {
         return ((long) attackerNationId << 32) | (defenderNationId & 0xFFFFFFFFL);
+    }
+
+    private void invalidateDefenderReverseIndex() {
+        defenderReverseIndex = null;
+    }
+
+    record DefenderReverseIndex(int[] defenderOffsets, int[] defenderToAttackerSlots) {
     }
 }

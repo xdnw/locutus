@@ -16,8 +16,13 @@ final class DamageDealtObjective implements TeamScoreObjective {
 
     @Override
     public double scoreTerminal(TeamScoreView view, int teamId) {
-        ScoreTotals totals = ScoreTotals.of(view, teamId);
-        return -totals.enemyScore();
+        StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
+        double score = -totals.enemyValue();
+        if (view instanceof TeamWarControlView controlView) {
+            score += controlView.activeWarStrategicScoreForTeam(teamId, 1.0d, 1.0d);
+            score += controlView.controlRegimeScoreForTeam(teamId);
+        }
+        return score;
     }
 
     @Override

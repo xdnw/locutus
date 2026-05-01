@@ -16,8 +16,14 @@ final class DamageAvoidanceObjective implements TeamScoreObjective {
 
     @Override
     public double scoreTerminal(TeamScoreView view, int teamId) {
-        ScoreTotals totals = ScoreTotals.of(view, teamId);
-        return totals.ownScore() - (0.35d * totals.enemyScore());
+        StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
+        double score = totals.ownValue() - (0.35d * totals.enemyValue());
+        if (view instanceof TeamWarControlView controlView) {
+            score += 0.35d * controlView.controlScoreForTeam(teamId);
+            score += controlView.activeWarStrategicScoreForTeam(teamId, 0.35d, 0.35d);
+            score += 0.35d * controlView.controlRegimeScoreForTeam(teamId);
+        }
+        return score;
     }
 
     @Override

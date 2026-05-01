@@ -3,6 +3,9 @@ package link.locutus.discord.sim;
 public interface TeamWarControlView extends TeamScoreView {
     void forEachWarControl(WarControlConsumer consumer);
 
+    default void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
+    }
+
     default double controlScoreForTeam(int teamId) {
         double[] score = new double[1];
         forEachWarControl((attackerTeamId, defenderTeamId, groundControlTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
@@ -15,6 +18,62 @@ public interface TeamWarControlView extends TeamScoreView {
             } else if (defenderTeamId == teamId) {
                 score[0] += Math.max(0, 100 - attackerResistance) * 0.05d;
             }
+        });
+        return score[0];
+    }
+
+    default double activeWarStrategicScoreForTeam(int teamId, double targetPressureWeight, double futureWarLeverageWeight) {
+        double[] score = new double[1];
+        forEachActiveWarMetric((attackerTeamId, defenderTeamId, targetPressure, futureWarLeverage) -> {
+            double value = (targetPressureWeight * targetPressure) + (futureWarLeverageWeight * futureWarLeverage);
+            if (attackerTeamId == teamId) {
+                score[0] += value;
+            } else if (defenderTeamId == teamId) {
+                score[0] -= value;
+            }
+        });
+        return score[0];
+    }
+
+    default double controlRegimeScoreForTeam(int teamId) {
+        StrategicValueTotals totals = StrategicValueTotals.of(this, teamId);
+        double totalValue = Math.max(1.0d, totals.ownValue() + totals.enemyValue());
+        double strategicValueEdge = (totals.ownValue() - totals.enemyValue()) / totalValue;
+        double[] score = new double[1];
+        forEachWarControl((attackerTeamId, defenderTeamId, groundControlTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
+            if (attackerTeamId != teamId && defenderTeamId != teamId) {
+                return;
+            }
+            int enemyTeamId = attackerTeamId == teamId ? defenderTeamId : attackerTeamId;
+            int ownControls = 0;
+            int enemyControls = 0;
+            if (groundControlTeamId == teamId) {
+                ownControls++;
+            } else if (groundControlTeamId == enemyTeamId) {
+                enemyControls++;
+            }
+            if (airSuperiorityTeamId == teamId) {
+                ownControls++;
+            } else if (airSuperiorityTeamId == enemyTeamId) {
+                enemyControls++;
+            }
+            if (blockadeTeamId == teamId) {
+                ownControls++;
+            } else if (blockadeTeamId == enemyTeamId) {
+                enemyControls++;
+            }
+
+            int ownResistance = attackerTeamId == teamId ? attackerResistance : defenderResistance;
+            int enemyResistance = attackerTeamId == teamId ? defenderResistance : attackerResistance;
+            double controlBalance = ownControls - enemyControls;
+            double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
+            double warSignal = (2.5d * controlBalance)
+                    + (2.0d * resistanceBalance)
+                    + (4.0d * strategicValueEdge);
+            if (controlBalance < 0.0d && resistanceBalance < 0.0d) {
+                warSignal *= 1.15d;
+            }
+            score[0] += Math.max(-18.0d, Math.min(18.0d, warSignal));
         });
         return score[0];
     }
@@ -39,6 +98,16 @@ public interface TeamWarControlView extends TeamScoreView {
                 int blockadeTeamId,
                 int attackerResistance,
                 int defenderResistance
+        );
+    }
+
+    @FunctionalInterface
+    interface ActiveWarMetricConsumer {
+        void accept(
+                int attackerTeamId,
+                int defenderTeamId,
+                double targetPressure,
+                double futureWarLeverage
         );
     }
 }

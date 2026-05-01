@@ -190,6 +190,23 @@ public record SimTuning(
         );
     }
 
+    public SimTuning withTurn1DeclarePolicy(Turn1DeclarePolicy policy) {
+        return new SimTuning(
+                intraTurnPasses,
+                policy,
+                wartimeActivityUplift,
+                activityActThreshold,
+                policyCooldownTurns,
+                localSearchBudgetMs,
+                localSearchMaxIterations,
+                candidatesPerAttacker,
+                beigeTurnsOnDefeat,
+                stateResolutionMode,
+                stochasticSeed,
+                stochasticSampleCount
+        );
+    }
+
     public SimTuning withStateResolutionMode(ResolutionMode resolutionMode) {
         return new SimTuning(
                 intraTurnPasses,

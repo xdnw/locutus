@@ -2,13 +2,12 @@ package link.locutus.discord.sim;
 import link.locutus.discord.sim.actions.SimAction;
 
 /**
- * Damage objective: maximize net damage dealt (in score-equivalent units).
+ * Damage objective: maximize net strategic asset damage dealt.
  *
- * Terminal score = Σ(own-team score remaining) − Σ(enemy-team score remaining)
+ * Terminal score = Σ(own-team strategic value remaining) − Σ(enemy-team strategic value remaining)
  *
- * This is a proxy: own score goes up when units/infra are preserved; enemy score goes down
- * when damage is dealt. Without stored baselines the absolute value is meaningless across
- * scenarios, but it orders assignments correctly within a single sim run.
+ * This deliberately does not use nation score, which is a war-range mechanic rather than an
+ * expected-value metric.
  *
  * Step-wise scoring is unsupported here (returns 0.0); use metrics-backed objectives once
  * SimMetrics is added in a later milestone.
@@ -27,8 +26,14 @@ public class DamageObjective implements TeamScoreObjective {
 
     @Override
     public double scoreTerminal(TeamScoreView view, int teamId) {
-        ScoreTotals totals = ScoreTotals.of(view, teamId);
-        return totals.ownScore() - totals.enemyScore();
+        StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
+        double score = totals.ownValue() - totals.enemyValue();
+        if (view instanceof TeamWarControlView controlView) {
+            score += controlView.controlScoreForTeam(teamId);
+            score += controlView.activeWarStrategicScoreForTeam(teamId, 1.0d, 1.0d);
+            score += controlView.controlRegimeScoreForTeam(teamId);
+        }
+        return score;
     }
 
     @Override
