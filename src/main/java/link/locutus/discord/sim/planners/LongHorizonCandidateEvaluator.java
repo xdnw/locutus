@@ -1,9 +1,9 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -144,7 +144,7 @@ final class LongHorizonCandidateEvaluator {
     }
 
     private static boolean canScoreProjection(CompiledScenario scenario) {
-        Set<Integer> attackerIds = new LinkedHashSet<>();
+        Set<Integer> attackerIds = new IntOpenHashSet(Math.max(16, scenario.attackerCount() * 2));
         for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
             attackerIds.add(scenario.attackerNationId(attackerIndex));
         }

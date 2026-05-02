@@ -1,5 +1,7 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.sim.SimUnits;
@@ -52,13 +54,13 @@ public final class OverrideSet {
     }
 
     private static Map<Integer, double[]> copyResourceMap(Map<Integer, double[]> src) {
-        var result = new java.util.LinkedHashMap<Integer, double[]>(src.size());
+        var result = new Int2ObjectLinkedOpenHashMap<double[]>(Math.max(16, src.size() * 2));
         src.forEach((k, v) -> result.put(k, v.clone()));
         return java.util.Collections.unmodifiableMap(result);
     }
 
     private static Map<Integer, Map<MilitaryUnit, Integer>> copyUnitMap(Map<Integer, Map<MilitaryUnit, Integer>> src) {
-        var result = new java.util.LinkedHashMap<Integer, Map<MilitaryUnit, Integer>>(src.size());
+        var result = new Int2ObjectLinkedOpenHashMap<Map<MilitaryUnit, Integer>>(Math.max(16, src.size() * 2));
         src.forEach((k, v) -> result.put(k, Map.copyOf(v)));
         return java.util.Collections.unmodifiableMap(result);
     }
@@ -214,16 +216,16 @@ public final class OverrideSet {
     public static Builder builder() { return new Builder(); }
 
     public static final class Builder {
-        private final Map<Integer, ActiveOverride> activeOverride = new java.util.LinkedHashMap<>();
-        private final Map<Integer, WarPolicy> policyOverride = new java.util.LinkedHashMap<>();
-        private final Map<Integer, Integer> forceFreeOffSlots = new java.util.LinkedHashMap<>();
-        private final Map<Integer, Integer> forceFreeDefSlots = new java.util.LinkedHashMap<>();
-        private final Map<Integer, Integer> citiesOverride = new java.util.LinkedHashMap<>();
-        private final Map<Integer, double[]> resourceOverride = new java.util.LinkedHashMap<>();
-        private final Map<Integer, Double> nonInfraScoreBaseOverride = new java.util.LinkedHashMap<>();
-        private final Map<Integer, Byte> resetHourOverride = new java.util.LinkedHashMap<>();
-        private final Map<Integer, Map<MilitaryUnit, Integer>> unitOverride = new java.util.LinkedHashMap<>();
-        private final Map<Integer, Integer> maxOffOverride = new java.util.LinkedHashMap<>();
+        private final Map<Integer, ActiveOverride> activeOverride = new Int2ObjectLinkedOpenHashMap<>();
+        private final Map<Integer, WarPolicy> policyOverride = new Int2ObjectLinkedOpenHashMap<>();
+        private final Map<Integer, Integer> forceFreeOffSlots = new Int2IntOpenHashMap();
+        private final Map<Integer, Integer> forceFreeDefSlots = new Int2IntOpenHashMap();
+        private final Map<Integer, Integer> citiesOverride = new Int2IntOpenHashMap();
+        private final Map<Integer, double[]> resourceOverride = new Int2ObjectLinkedOpenHashMap<>();
+        private final Map<Integer, Double> nonInfraScoreBaseOverride = new Int2ObjectLinkedOpenHashMap<>();
+        private final Map<Integer, Byte> resetHourOverride = new Int2ObjectLinkedOpenHashMap<>();
+        private final Map<Integer, Map<MilitaryUnit, Integer>> unitOverride = new Int2ObjectLinkedOpenHashMap<>();
+        private final Map<Integer, Integer> maxOffOverride = new Int2IntOpenHashMap();
 
         public Builder active(int nationId, ActiveOverride v) { activeOverride.put(nationId, v); return this; }
         public Builder policy(int nationId, WarPolicy v) { policyOverride.put(nationId, Objects.requireNonNull(v)); return this; }

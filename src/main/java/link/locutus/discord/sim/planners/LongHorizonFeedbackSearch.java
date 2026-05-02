@@ -6,7 +6,6 @@ import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 final class LongHorizonFeedbackSearch {
     static final int OVERCOUNTER_THRESHOLD = 2;
@@ -251,7 +250,7 @@ final class LongHorizonFeedbackSearch {
     }
 
     private static List<Integer> overCounteredAttackers(int[] realizedCounters, int[] attackerCounts, int[] fixedCounts) {
-        List<Integer> overCountered = new ArrayList<>();
+        List<Integer> overCountered = new IntArrayList();
         for (int attackerIndex = 0; attackerIndex < realizedCounters.length; attackerIndex++) {
             if (realizedCounters[attackerIndex] < OVERCOUNTER_THRESHOLD) {
                 continue;
