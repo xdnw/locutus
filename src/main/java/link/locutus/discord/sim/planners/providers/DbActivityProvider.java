@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners.providers;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.sim.ActivityProvider;
 import link.locutus.discord.sim.GlobalPriorActivityProvider;
@@ -131,7 +132,7 @@ public final class DbActivityProvider implements ActivityProvider {
             long lookbackTurns
     ) {
         var cache = Activity.createCache((int) lookbackTurns);
-        java.util.Map<Integer, Activity> result = new java.util.LinkedHashMap<>();
+        Map<Integer, Activity> result = new Int2ObjectLinkedOpenHashMap<>();
         for (link.locutus.discord.db.entities.DBNation nation : nations) {
             Activity a = cache.apply(nation);
             if (a != null) {

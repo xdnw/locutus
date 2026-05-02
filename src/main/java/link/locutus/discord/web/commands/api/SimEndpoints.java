@@ -1,8 +1,15 @@
 package link.locutus.discord.web.commands.api;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrays;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -66,11 +73,10 @@ import link.locutus.discord.util.battle.BlitzWarningCode;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -214,13 +220,13 @@ public class SimEndpoints {
 
         Map<Integer, DBNation> attackerById = byNationId(attackers);
         Map<Integer, DBNation> defenderById = byNationId(defenders);
-        Set<Integer> overlap = new LinkedHashSet<>(attackerById.keySet());
+        IntSet overlap = new IntOpenHashSet(attackerById.keySet());
         overlap.retainAll(defenderById.keySet());
         if (!overlap.isEmpty()) {
             throw new IllegalArgumentException(overlapNationError(attackerById, defenderById, overlap));
         }
 
-        Set<DBNation> allNations = new LinkedHashSet<>();
+        Set<DBNation> allNations = new java.util.LinkedHashSet<>();
         allNations.addAll(attackers);
         allNations.addAll(defenders);
         Map<Integer, BlitzDraftEdit> editsByNationId = editsByNationId(request, attackerById, defenderById);
@@ -235,9 +241,9 @@ public class SimEndpoints {
         List<DBNationSnapshot> attackerSnapshots = snapshotsFor(attackers, snapshotsByNationId);
         List<DBNationSnapshot> defenderSnapshots = snapshotsFor(defenders, snapshotsByNationId);
 
-        Set<Integer> excludedWarIds = excludedWarIds(request);
+        IntSet excludedWarIds = excludedWarIds(request);
         int currentTurn = request.currentTurnOverride() == null ? currentWeekTurnUtc() : request.currentTurnOverride();
-        Map<Integer, DBNation> plannerNationById = new LinkedHashMap<>(attackerById);
+        Map<Integer, DBNation> plannerNationById = new Int2ObjectOpenHashMap<>(attackerById);
         defenderById.forEach(plannerNationById::putIfAbsent);
         int[] plannerNationIds = nationIds(allNations);
         BlitzWarContext warContext = buildWarContext(
@@ -323,7 +329,7 @@ public class SimEndpoints {
     private static String overlapNationError(
             Map<Integer, DBNation> attackerById,
             Map<Integer, DBNation> defenderById,
-            Set<Integer> overlap
+                IntSet overlap
     ) {
         List<String> labels = new ArrayList<>();
         for (int nationId : overlap) {
@@ -497,11 +503,11 @@ public class SimEndpoints {
             Map<Integer, DBNation> defenderById,
             BlitzSideMode sideMode,
             int currentTurn,
-            Set<Integer> excludedWarIds,
+            IntSet excludedWarIds,
             boolean includeExistingWars,
             int[] plannerNationIds
     ) {
-        Set<Integer> plannerNationIdSet = new LinkedHashSet<>(plannerNationIds.length);
+        IntSet plannerNationIdSet = new IntOpenHashSet(Math.max(16, plannerNationIds.length * 2));
         for (int plannerNationId : plannerNationIds) {
             plannerNationIdSet.add(plannerNationId);
         }
@@ -519,7 +525,7 @@ public class SimEndpoints {
         Long2IntOpenHashMap pairLockoutByPair = new Long2IntOpenHashMap();
         pairLockoutByPair.defaultReturnValue(0);
         List<ActiveWarContext> activeWars = new ArrayList<>();
-        Set<Integer> outsiderIds = new LinkedHashSet<>();
+        IntSet outsiderIds = new IntOpenHashSet();
 
         wars.stream()
                 .sorted(Comparator.comparingInt(DBWar::getWarId))
@@ -555,7 +561,11 @@ public class SimEndpoints {
             participantIds.add(plannerNationId);
         }
         if (includeExistingWars && !outsiderIds.isEmpty()) {
-            outsiderIds.stream().sorted().forEach(participantIds::add);
+            int[] outsiderIdArray = outsiderIds.toIntArray();
+            Arrays.sort(outsiderIdArray);
+            for (int outsiderId : outsiderIdArray) {
+                participantIds.add(outsiderId);
+            }
         }
 
         Int2IntOpenHashMap participantIndexByNationId = new Int2IntOpenHashMap(Math.max(16, participantIds.size() * 2));
@@ -564,7 +574,7 @@ public class SimEndpoints {
             participantIndexByNationId.put(participantIds.getInt(index), index);
         }
 
-        Map<Integer, NationIdentity> identitiesByNationId = new LinkedHashMap<>();
+        Map<Integer, NationIdentity> identitiesByNationId = new Int2ObjectLinkedOpenHashMap<>();
         for (int index = 0; index < participantIds.size(); index++) {
             int nationId = participantIds.getInt(index);
             identitiesByNationId.put(nationId, nationIdentity(nationId, plannerNationById));
@@ -612,12 +622,19 @@ public class SimEndpoints {
             existingWarLanes.add(war.packedFlags());
         }
 
-        List<Long> pairKeys = new ArrayList<>(pairLockoutByPair.keySet());
-        pairKeys.sort(Comparator
-            .comparingInt((Long key) -> participantIndexByNationId.get(leftNationId(key)))
-            .thenComparingInt(key -> participantIndexByNationId.get(rightNationId(key))));
-        IntArrayList pairLockoutPairs = new IntArrayList(pairKeys.size() * 2);
-        IntArrayList pairLockoutLanes = new IntArrayList(pairKeys.size());
+        long[] pairKeys = pairLockoutByPair.keySet().toLongArray();
+        LongArrays.quickSort(pairKeys, (left, right) -> {
+            int leftDeclarer = participantIndexByNationId.get(leftNationId(left));
+            int rightDeclarer = participantIndexByNationId.get(leftNationId(right));
+            if (leftDeclarer != rightDeclarer) {
+                return Integer.compare(leftDeclarer, rightDeclarer);
+            }
+            int leftTarget = participantIndexByNationId.get(rightNationId(left));
+            int rightTarget = participantIndexByNationId.get(rightNationId(right));
+            return Integer.compare(leftTarget, rightTarget);
+        });
+        IntArrayList pairLockoutPairs = new IntArrayList(pairKeys.length * 2);
+        IntArrayList pairLockoutLanes = new IntArrayList(pairKeys.length);
         for (long pairKey : pairKeys) {
             int declarerIndex = participantIndexByNationId.get(leftNationId(pairKey));
             int targetIndex = participantIndexByNationId.get(rightNationId(pairKey));
@@ -780,7 +797,7 @@ public class SimEndpoints {
             List<BlitzWarning> warnings
     ) {
         List<BlitzPlannedWar> accepted = new ArrayList<>();
-        Set<Long> acceptedUnorderedPairs = sideMode == BlitzSideMode.BOTH ? new LinkedHashSet<>() : Set.of();
+        LongOpenHashSet acceptedUnorderedPairs = sideMode == BlitzSideMode.BOTH ? new LongOpenHashSet() : null;
         for (BlitzPlannedWar plannedWar : request.plannedWars()) {
             enumAt(WarType.values(), plannedWar.warTypeOrdinal(), "warTypeOrdinal");
             boolean forward = attackerById.containsKey(plannedWar.declarerNationId())
@@ -811,7 +828,7 @@ public class SimEndpoints {
                 warnings.add(manualDeclarationRejected(plannedWar.declarerNationId(), plannedWar.targetNationId(), failure));
                 continue;
             }
-            if (sideMode == BlitzSideMode.BOTH
+                if (sideMode == BlitzSideMode.BOTH
                     && !acceptedUnorderedPairs.add(unorderedPackedPairKey(plannedWar.declarerNationId(), plannedWar.targetNationId()))) {
                 warnings.add(manualDeclarationRejected(
                         plannedWar.declarerNationId(),
@@ -917,7 +934,7 @@ public class SimEndpoints {
     ) {
         IntArrayList pairs = new IntArrayList();
         IntArrayList lanes = new IntArrayList();
-        Set<Long> fixedPairs = new LinkedHashSet<>();
+        LongOpenHashSet fixedPairs = new LongOpenHashSet();
         for (BlitzPlannedWar plannedWar : acceptedPlannedWars) {
             long pairKey = packedPairKey(plannedWar.declarerNationId(), plannedWar.targetNationId());
             fixedPairs.add(pairKey);
@@ -1124,11 +1141,11 @@ public class SimEndpoints {
             return snapshots;
         }
 
-        Set<Integer> plannerIds = new LinkedHashSet<>();
+        IntSet plannerIds = new IntOpenHashSet();
         for (DBNation nation : plannerNations) {
             plannerIds.add(nation.getNation_id());
         }
-        Map<Integer, ExistingWarSlotContext> contextsByNationId = new LinkedHashMap<>();
+        Map<Integer, ExistingWarSlotContext> contextsByNationId = new Int2ObjectOpenHashMap<>();
         for (ActiveWarContext war : existingWars) {
             int releaseTurn = currentTurn + slotOnlyReleaseTurnsLeft(war);
             applyExistingWarSlotContext(contextsByNationId, plannerIds, war.attackerNationId(), war.defenderNationId(), true, releaseTurn);
@@ -1161,7 +1178,7 @@ public class SimEndpoints {
 
     private static void applyExistingWarSlotContext(
             Map<Integer, ExistingWarSlotContext> contextsByNationId,
-            Set<Integer> plannerIds,
+            IntSet plannerIds,
             int nationId,
             int opponentNationId,
             boolean offensiveSide,
@@ -1216,7 +1233,7 @@ public class SimEndpoints {
     private static final class ExistingWarSlotContext {
         private int offensiveWars;
         private int defensiveWars;
-        private final Set<Integer> activeOpponentNationIds = new LinkedHashSet<>();
+        private final IntSet activeOpponentNationIds = new IntOpenHashSet();
         private final List<Integer> slotOnlyOffensiveReleaseTurns = new ArrayList<>();
         private final List<Integer> slotOnlyDefensiveReleaseTurns = new ArrayList<>();
     }
@@ -1291,7 +1308,7 @@ public class SimEndpoints {
                 AdHocSimulationOptions.DEFAULT
         );
 
-        Map<Integer, DBNation> defenderById = new LinkedHashMap<>();
+        Map<Integer, DBNation> defenderById = new Int2ObjectOpenHashMap<>();
         for (DBNation defender : defenders) {
             defenderById.put(defender.getNation_id(), defender);
         }
@@ -1368,7 +1385,7 @@ public class SimEndpoints {
         if (defenders == null || defenders.isEmpty()) {
             throw new IllegalArgumentException("Please provide at least one defender");
         }
-        Map<Integer, DBNation> attackerById = new LinkedHashMap<>();
+        Map<Integer, DBNation> attackerById = new Int2ObjectOpenHashMap<>();
         for (DBNation attacker : attackers) {
             attackerById.put(attacker.getNation_id(), attacker);
         }
@@ -1427,7 +1444,7 @@ public class SimEndpoints {
     }
 
     private static Map<Integer, DBNation> byNationId(Collection<DBNation> nations) {
-        Map<Integer, DBNation> result = new LinkedHashMap<>();
+        Map<Integer, DBNation> result = new Int2ObjectOpenHashMap<>(Math.max(16, nations.size() * 2));
         for (DBNation nation : nations) {
             result.put(nation.getNation_id(), nation);
         }
@@ -1439,7 +1456,7 @@ public class SimEndpoints {
             Map<Integer, DBNation> attackerById,
             Map<Integer, DBNation> defenderById
     ) {
-        Map<Integer, BlitzDraftEdit> edits = new LinkedHashMap<>();
+        Map<Integer, BlitzDraftEdit> edits = new Int2ObjectOpenHashMap<>(Math.max(16, request.edits().length * 2));
         for (BlitzDraftEdit edit : request.edits()) {
             if (!attackerById.containsKey(edit.nationId()) && !defenderById.containsKey(edit.nationId())) {
                 throw new IllegalArgumentException("Edit references unknown nationId=" + edit.nationId());
@@ -1465,7 +1482,7 @@ public class SimEndpoints {
     }
 
     private static Map<Integer, Map<MilitaryUnit, Integer>> noRebuyUnitBuys(Collection<DBNation> nations, boolean assume5553Buildings) {
-        Map<Integer, Map<MilitaryUnit, Integer>> result = new LinkedHashMap<>();
+        Map<Integer, Map<MilitaryUnit, Integer>> result = new Int2ObjectOpenHashMap<>(Math.max(16, nations.size() * 2));
         for (DBNation nation : nations) {
             Map<MilitaryUnit, Integer> buys = new EnumMap<>(MilitaryUnit.class);
             for (MilitaryUnit unit : MilitaryUnit.values()) {
@@ -1493,7 +1510,7 @@ public class SimEndpoints {
 
 
     private static Map<Integer, DBNationSnapshot> snapshotsByNationId(Collection<DBNationSnapshot> snapshots) {
-        Map<Integer, DBNationSnapshot> result = new LinkedHashMap<>();
+        Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>(Math.max(16, snapshots.size() * 2));
         for (DBNationSnapshot snapshot : snapshots) {
             result.put(snapshot.nationId(), snapshot);
         }
@@ -1544,9 +1561,9 @@ public class SimEndpoints {
     }
 
     private static TreatyProvider oppositeSideTreaty(int[] attackerNationIds, int[] defenderNationIds, List<BlitzFixedEdge> fixedEdges) {
-        Set<Integer> attackerIds = intSet(attackerNationIds);
-        Set<Integer> defenderIds = intSet(defenderNationIds);
-        Set<Long> fixedPairs = new LinkedHashSet<>();
+        IntSet attackerIds = intSet(attackerNationIds);
+        IntSet defenderIds = intSet(defenderNationIds);
+        LongOpenHashSet fixedPairs = new LongOpenHashSet();
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
             fixedPairs.add(packedPairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()));
         }
@@ -1565,8 +1582,8 @@ public class SimEndpoints {
         };
     }
 
-    private static Set<Integer> intSet(int[] values) {
-        Set<Integer> result = new LinkedHashSet<>();
+    private static IntSet intSet(int[] values) {
+        IntSet result = new IntOpenHashSet(Math.max(16, values.length * 2));
         for (int value : values) {
             result.add(value);
         }
@@ -1604,8 +1621,8 @@ public class SimEndpoints {
         ).assign(declarers, targets, currentTurn, fixedEdges, horizonTurns);
     }
 
-    private static Set<Integer> excludedWarIds(BlitzPlanRequest request) {
-        Set<Integer> ids = new LinkedHashSet<>();
+    private static IntSet excludedWarIds(BlitzPlanRequest request) {
+        IntSet ids = new IntOpenHashSet(Math.max(16, request.excludedWarIds().length * 2));
         for (int warId : request.excludedWarIds()) {
             if (warId > 0) {
                 ids.add(warId);
@@ -1649,14 +1666,14 @@ public class SimEndpoints {
     }
 
     private static SnapshotActivityProvider activityProviderFor(Collection<DBNation> attackers, Collection<DBNation> defenders, int currentWeekTurn, long tieBreakSeed) {
-        Set<DBNation> allNations = new LinkedHashSet<>();
+        Set<DBNation> allNations = new java.util.LinkedHashSet<>();
         allNations.addAll(attackers);
         allNations.addAll(defenders);
         return activityProviderFor(allNations, currentWeekTurn, tieBreakSeed);
     }
 
     private static SnapshotActivityProvider activityProviderFor(DBNation attacker, Collection<DBNation> defenders, int currentWeekTurn, long tieBreakSeed) {
-        Set<DBNation> allNations = new LinkedHashSet<>();
+        Set<DBNation> allNations = new java.util.LinkedHashSet<>();
         allNations.add(attacker);
         allNations.addAll(defenders);
         return activityProviderFor(allNations, currentWeekTurn, tieBreakSeed);
@@ -1679,7 +1696,7 @@ public class SimEndpoints {
                     .toList();
         }
 
-        Map<Integer, List<AvailabilityWindow>> windowsByNationId = new LinkedHashMap<>();
+        Map<Integer, List<AvailabilityWindow>> windowsByNationId = new Int2ObjectOpenHashMap<>();
         String[] nationEntries = availability.split(";");
         for (String nationEntry : nationEntries) {
             if (nationEntry.isBlank()) {
@@ -1704,7 +1721,7 @@ public class SimEndpoints {
             }
         }
 
-        Set<Integer> remainingNationIds = new LinkedHashSet<>(attackerById.keySet());
+        IntSet remainingNationIds = new IntOpenHashSet(attackerById.keySet());
         remainingNationIds.removeAll(windowsByNationId.keySet());
         for (Integer nationId : remainingNationIds) {
             windowsByNationId.put(nationId, List.of(new AvailabilityWindow(0, bucketSizeTurns - 1)));

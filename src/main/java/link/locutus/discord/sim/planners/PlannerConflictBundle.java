@@ -1,11 +1,14 @@
 package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.ints.IntSets;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.util.ArrayDeque;
@@ -14,12 +17,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * Planner-local changed bundle extracted from a current assignment plus a small candidate delta.
@@ -36,12 +36,12 @@ record PlannerConflictBundle(
 ) {
     @FunctionalInterface
     private interface AssignmentIndexer {
-        void index(Map<Integer, Set<Integer>> attackerToDefenders, Map<Integer, Set<Integer>> defenderToAttackers);
+        void index(Int2ObjectMap<IntSet> attackerToDefenders, Int2ObjectMap<IntSet> defenderToAttackers);
     }
 
     @FunctionalInterface
     private interface AssignmentRestrictor {
-        Map<Integer, List<Integer>> restrict(Set<Integer> impactedNationIds);
+        Map<Integer, List<Integer>> restrict(IntSet impactedNationIds);
     }
 
     static final class PlannerAssignmentView {
@@ -210,7 +210,7 @@ record PlannerConflictBundle(
             if (isEmpty()) {
                 return Map.of();
             }
-            LinkedHashMap<Integer, List<Integer>> assignment = new LinkedHashMap<>(attackerIds.length);
+            Map<Integer, List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>(attackerIds.length);
             for (int attackerIndex = 0; attackerIndex < attackerIds.length; attackerIndex++) {
                 int defenderCount = defenderCounts[attackerIndex];
                 if (defenderCount == 0) {
@@ -445,10 +445,10 @@ record PlannerConflictBundle(
             Objects.requireNonNull(assignmentIndexer, "assignmentIndexer");
             Objects.requireNonNull(assignmentRestrictor, "assignmentRestrictor");
 
-            Map<Integer, DBNationSnapshot> attackerById = indexSnapshots(attackers);
-            Map<Integer, DBNationSnapshot> defenderById = indexSnapshots(defenders);
+            Int2ObjectMap<DBNationSnapshot> attackerById = indexSnapshots(attackers);
+            Int2ObjectMap<DBNationSnapshot> defenderById = indexSnapshots(defenders);
 
-            Set<Integer> impactedNationIds = extractImpactedNationIds(
+            IntSet impactedNationIds = extractImpactedNationIds(
                 candidateChange,
                 attackerById.keySet(),
                 defenderById.keySet(),
@@ -614,22 +614,23 @@ record PlannerConflictBundle(
         return queueTail;
     }
 
-    private static Map<Integer, DBNationSnapshot> indexSnapshots(Collection<DBNationSnapshot> snapshots) {
-        Map<Integer, DBNationSnapshot> indexed = new Int2ObjectLinkedOpenHashMap<>();
+    private static Int2ObjectMap<DBNationSnapshot> indexSnapshots(Collection<DBNationSnapshot> snapshots) {
+        Int2ObjectMap<DBNationSnapshot> indexed = new Int2ObjectLinkedOpenHashMap<>();
         for (DBNationSnapshot snapshot : snapshots) {
             indexed.put(snapshot.nationId(), snapshot);
         }
         return indexed;
     }
 
-    private static Set<Integer> extractImpactedNationIds(
+    private static IntSet extractImpactedNationIds(
             PlannerAssignmentChange candidateChange,
-            Set<Integer> attackerIds,
-            Set<Integer> defenderIds,
+            IntSet attackerIds,
+            IntSet defenderIds,
             AssignmentIndexer assignmentIndexer
     ) {
-        Map<Integer, Set<Integer>> attackerToDefenders = new Int2ObjectOpenHashMap<>();
-        Map<Integer, Set<Integer>> defenderToAttackers = new Int2ObjectOpenHashMap<>();
+        int expected = Math.max(16, candidateChange.size() * 2);
+        Int2ObjectMap<IntSet> attackerToDefenders = new Int2ObjectOpenHashMap<>(expected);
+        Int2ObjectMap<IntSet> defenderToAttackers = new Int2ObjectOpenHashMap<>(expected);
         assignmentIndexer.index(attackerToDefenders, defenderToAttackers);
         indexChange(candidateChange, attackerToDefenders, defenderToAttackers);
 
@@ -642,7 +643,7 @@ record PlannerConflictBundle(
         }
 
         if (seeds.isEmpty()) {
-            return Set.of();
+            return IntSets.EMPTY_SET;
         }
 
         IntOpenHashSet impacted = new IntOpenHashSet(seeds);
@@ -653,16 +654,22 @@ record PlannerConflictBundle(
         while (!queue.isEmpty()) {
             int nodeId = queue.dequeueInt();
             if (attackerIds.contains(nodeId)) {
-                for (Integer defenderId : attackerToDefenders.getOrDefault(nodeId, Set.of())) {
-                    if (impacted.add(defenderId)) {
-                        queue.enqueue(defenderId);
+                IntSet defenderIdsForAttacker = attackerToDefenders.get(nodeId);
+                if (defenderIdsForAttacker != null) {
+                    for (int defenderId : defenderIdsForAttacker) {
+                        if (impacted.add(defenderId)) {
+                            queue.enqueue(defenderId);
+                        }
                     }
                 }
             }
             if (defenderIds.contains(nodeId)) {
-                for (Integer attackerId : defenderToAttackers.getOrDefault(nodeId, Set.of())) {
-                    if (impacted.add(attackerId)) {
-                        queue.enqueue(attackerId);
+                IntSet attackersForDefender = defenderToAttackers.get(nodeId);
+                if (attackersForDefender != null) {
+                    for (int attackerId : attackersForDefender) {
+                        if (impacted.add(attackerId)) {
+                            queue.enqueue(attackerId);
+                        }
                     }
                 }
             }
@@ -672,8 +679,8 @@ record PlannerConflictBundle(
 
     private static void indexAssignment(
             Map<Integer, List<Integer>> assignment,
-            Map<Integer, Set<Integer>> attackerToDefenders,
-            Map<Integer, Set<Integer>> defenderToAttackers
+            Int2ObjectMap<IntSet> attackerToDefenders,
+            Int2ObjectMap<IntSet> defenderToAttackers
     ) {
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             Integer attackerId = entry.getKey();
@@ -681,7 +688,7 @@ record PlannerConflictBundle(
             if (attackerId == null || defenderIds == null || defenderIds.isEmpty()) {
                 continue;
             }
-            Set<Integer> defenders = attackerToDefenders.computeIfAbsent(attackerId, ignored -> new IntLinkedOpenHashSet());
+            IntSet defenders = attackerToDefenders.computeIfAbsent(attackerId, ignored -> new IntLinkedOpenHashSet());
             for (Integer defenderId : defenderIds) {
                 if (defenderId == null) {
                     continue;
@@ -694,15 +701,15 @@ record PlannerConflictBundle(
 
     private static void indexAssignment(
             PlannerAssignmentSession assignment,
-            Map<Integer, Set<Integer>> attackerToDefenders,
-            Map<Integer, Set<Integer>> defenderToAttackers
+            Int2ObjectMap<IntSet> attackerToDefenders,
+            Int2ObjectMap<IntSet> defenderToAttackers
     ) {
         for (int attackerSlot = 0; attackerSlot < assignment.attackerCount(); attackerSlot++) {
             if (!assignment.hasAssignments(attackerSlot)) {
                 continue;
             }
             int attackerId = assignment.attackerNationIdAt(attackerSlot);
-            Set<Integer> defenders = attackerToDefenders.computeIfAbsent(attackerId, ignored -> new IntLinkedOpenHashSet());
+            IntSet defenders = attackerToDefenders.computeIfAbsent(attackerId, ignored -> new IntLinkedOpenHashSet());
             for (int defenderIndex = 0; defenderIndex < assignment.assignedCount(attackerSlot); defenderIndex++) {
                 int defenderId = assignment.defenderNationIdAt(assignment.defenderSlotAt(attackerSlot, defenderIndex));
                 defenders.add(defenderId);
@@ -713,8 +720,8 @@ record PlannerConflictBundle(
 
     private static void indexChange(
             PlannerAssignmentChange candidateChange,
-            Map<Integer, Set<Integer>> attackerToDefenders,
-            Map<Integer, Set<Integer>> defenderToAttackers
+            Int2ObjectMap<IntSet> attackerToDefenders,
+            Int2ObjectMap<IntSet> defenderToAttackers
     ) {
         for (int i = 0; i < candidateChange.size(); i++) {
             Integer attackerId = candidateChange.attackerIdAt(i);
@@ -722,7 +729,7 @@ record PlannerConflictBundle(
             if (defenderCount == 0) {
                 continue;
             }
-            Set<Integer> defenders = attackerToDefenders.computeIfAbsent(attackerId, ignored -> new IntLinkedOpenHashSet());
+            IntSet defenders = attackerToDefenders.computeIfAbsent(attackerId, ignored -> new IntLinkedOpenHashSet());
             for (int defenderIndex = 0; defenderIndex < defenderCount; defenderIndex++) {
                 int defenderId = candidateChange.defenderIdAt(i, defenderIndex);
                 defenders.add(defenderId);
@@ -733,7 +740,7 @@ record PlannerConflictBundle(
 
     private static List<DBNationSnapshot> filterSnapshots(
             Collection<DBNationSnapshot> snapshots,
-            Set<Integer> impactedNationIds
+            IntSet impactedNationIds
     ) {
         List<DBNationSnapshot> filtered = new ObjectArrayList<>();
         for (DBNationSnapshot snapshot : snapshots) {
@@ -807,7 +814,7 @@ record PlannerConflictBundle(
 
     private static Map<Integer, List<Integer>> restrictAssignment(
             Map<Integer, List<Integer>> assignment,
-            Set<Integer> impactedNationIds
+            IntSet impactedNationIds
     ) {
         if (assignment.isEmpty()) {
             return Map.of();
@@ -840,7 +847,7 @@ record PlannerConflictBundle(
 
     private static Map<Integer, List<Integer>> restrictAssignment(
             PlannerAssignmentSession assignment,
-            Set<Integer> impactedNationIds
+            IntSet impactedNationIds
     ) {
         Map<Integer, List<Integer>> filtered = new Int2ObjectLinkedOpenHashMap<>();
         for (int attackerSlot = 0; attackerSlot < assignment.attackerCount(); attackerSlot++) {
@@ -925,7 +932,7 @@ record PlannerConflictBundle(
     private static Map<Integer, List<Integer>> applyChange(
             Map<Integer, List<Integer>> currentAssignment,
             PlannerAssignmentChange candidateChange,
-            Set<Integer> impactedNationIds
+            IntSet impactedNationIds
     ) {
         if (currentAssignment.isEmpty() && candidateChange.size() == 0) {
             return Map.of();
@@ -1065,13 +1072,13 @@ record PlannerConflictBundle(
     private static List<Integer> filterDefenders(
             PlannerAssignmentChange candidateChange,
             int changeIndex,
-            Set<Integer> impactedNationIds
+            IntSet impactedNationIds
     ) {
         int defenderCount = candidateChange.defenderCountAt(changeIndex);
         if (defenderCount == 0) {
             return List.of();
         }
-        LinkedHashSet<Integer> compacted = new LinkedHashSet<>();
+        IntLinkedOpenHashSet compacted = new IntLinkedOpenHashSet();
         for (int defenderIndex = 0; defenderIndex < defenderCount; defenderIndex++) {
             int defenderId = candidateChange.defenderIdAt(changeIndex, defenderIndex);
             if (impactedNationIds.contains(defenderId)) {

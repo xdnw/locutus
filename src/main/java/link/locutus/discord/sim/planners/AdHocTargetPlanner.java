@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.ScenarioActionPolicy;
@@ -11,7 +12,6 @@ import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -281,7 +281,7 @@ public final class AdHocTargetPlanner {
     }
 
     private static Map<Integer, DBNationSnapshot> snapshotById(DBNationSnapshot attacker, List<DBNationSnapshot> defenders) {
-        Map<Integer, DBNationSnapshot> byId = new LinkedHashMap<>(defenders.size() + 1);
+        Map<Integer, DBNationSnapshot> byId = new Int2ObjectLinkedOpenHashMap<>(defenders.size() + 1);
         byId.put(attacker.nationId(), attacker);
         for (DBNationSnapshot defender : defenders) {
             byId.put(defender.nationId(), defender);

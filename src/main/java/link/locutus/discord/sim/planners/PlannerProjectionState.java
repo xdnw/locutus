@@ -1,11 +1,12 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import link.locutus.discord.sim.SimTuning;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,9 +25,9 @@ final class PlannerProjectionState {
             Map<Integer, PlannerCityInfraOverlay> cityInfraOverlaysByNation,
             int currentTurn
     ) {
-        this.baseSnapshotsById = Collections.unmodifiableMap(new LinkedHashMap<>(baseSnapshotsById));
-        this.activePlannedWarsByPair = Collections.unmodifiableMap(new LinkedHashMap<>(activePlannedWarsByPair));
-        this.cityInfraOverlaysByNation = Collections.unmodifiableMap(new LinkedHashMap<>(cityInfraOverlaysByNation));
+        this.baseSnapshotsById = Collections.unmodifiableMap(new Int2ObjectLinkedOpenHashMap<>(baseSnapshotsById));
+        this.activePlannedWarsByPair = Collections.unmodifiableMap(new Long2ObjectLinkedOpenHashMap<>(activePlannedWarsByPair));
+        this.cityInfraOverlaysByNation = Collections.unmodifiableMap(new Int2ObjectLinkedOpenHashMap<>(cityInfraOverlaysByNation));
         this.currentTurn = currentTurn;
     }
 
@@ -48,11 +49,11 @@ final class PlannerProjectionState {
             Collection<PlannerProjectedWar> activeWars,
             int currentTurn
     ) {
-        Map<Integer, DBNationSnapshot> byId = new LinkedHashMap<>();
+        Map<Integer, DBNationSnapshot> byId = new Int2ObjectLinkedOpenHashMap<>();
         for (DBNationSnapshot snapshot : snapshots) {
             byId.put(snapshot.nationId(), overrides.applyToSnapshot(snapshot));
         }
-        Map<Long, PlannerProjectedWar> activeByPair = new LinkedHashMap<>();
+        Map<Long, PlannerProjectedWar> activeByPair = new Long2ObjectLinkedOpenHashMap<>();
         for (PlannerProjectedWar war : activeWars) {
             activeByPair.put(war.pairKey(), war);
         }
@@ -83,12 +84,12 @@ final class PlannerProjectionState {
             conflict.applyAssignmentHorizon(assignment, horizonTurns);
             PlannerProjectionResult projection = conflict.project();
 
-            Map<Long, PlannerProjectedWar> nextActiveWars = new LinkedHashMap<>();
+            Map<Long, PlannerProjectedWar> nextActiveWars = new Long2ObjectLinkedOpenHashMap<>();
             for (PlannerProjectedWar war : projection.activeWars()) {
             nextActiveWars.put(war.pairKey(), war);
             }
 
-            Map<Integer, DBNationSnapshot> nextBaseSnapshots = new LinkedHashMap<>(projection.snapshotsById().size());
+            Map<Integer, DBNationSnapshot> nextBaseSnapshots = new Int2ObjectLinkedOpenHashMap<>(projection.snapshotsById().size());
             for (Map.Entry<Integer, DBNationSnapshot> entry : projection.snapshotsById().entrySet()) {
             int nationId = entry.getKey();
             DBNationSnapshot projectedSnapshot = entry.getValue();
@@ -169,7 +170,7 @@ final class PlannerProjectionState {
     }
 
     private Map<Integer, DBNationSnapshot> effectiveSnapshotsById() {
-        Map<Integer, DBNationSnapshot> effective = new LinkedHashMap<>(baseSnapshotsById.size());
+        Map<Integer, DBNationSnapshot> effective = new Int2ObjectLinkedOpenHashMap<>(baseSnapshotsById.size());
         for (Map.Entry<Integer, DBNationSnapshot> entry : baseSnapshotsById.entrySet()) {
             effective.put(entry.getKey(), applyCityInfraOverlay(entry.getValue()));
         }
@@ -181,7 +182,7 @@ final class PlannerProjectionState {
             Map<Integer, PlannerCityInfraOverlay> incoming,
             Map<Integer, DBNationSnapshot> nextBaseSnapshots
     ) {
-        Map<Integer, PlannerCityInfraOverlay> compact = new LinkedHashMap<>();
+        Map<Integer, PlannerCityInfraOverlay> compact = new Int2ObjectLinkedOpenHashMap<>();
         for (Map.Entry<Integer, DBNationSnapshot> snapshotEntry : nextBaseSnapshots.entrySet()) {
             int nationId = snapshotEntry.getKey();
             PlannerCityInfraOverlay current = existing.get(nationId);

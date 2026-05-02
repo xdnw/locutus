@@ -39,8 +39,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -464,7 +462,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             advanceTurns(horizonTurns);
             return;
         }
-        Map<Long, LocalWar> declaredWars = new LinkedHashMap<>();
+        Map<Long, LocalWar> declaredWars = new Long2ObjectLinkedOpenHashMap<>();
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             int attackerId = entry.getKey();
             for (int defenderId : entry.getValue()) {
@@ -733,7 +731,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (assignment.isEmpty()) {
             return;
         }
-        Map<Long, LocalWar> declaredWars = new LinkedHashMap<>();
+        Map<Long, LocalWar> declaredWars = new Long2ObjectLinkedOpenHashMap<>();
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             int attackerId = entry.getKey();
             for (int defenderId : entry.getValue()) {
@@ -827,7 +825,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     activeWars.add(war.project(currentTurn));
                 }
             }
-            Map<Integer, DBNationSnapshot> projected = new LinkedHashMap<>(nationsById.size());
+            Map<Integer, DBNationSnapshot> projected = new Int2ObjectLinkedOpenHashMap<>(nationsById.size());
             for (LocalNation nation : nationsById.values()) {
                 projected.put(nation.nationId(), nation.toSnapshot(activeWars, currentTurn));
             }
@@ -2148,7 +2146,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         static Map<Integer, PlannerCityInfraOverlay> exportCityInfraOverlays(Collection<LocalNation> nations) {
             try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.CITY_INFRA_OVERLAY_EXPORT)) {
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.CITY_INFRA_OVERLAY_EXPORT, "nations", nations.size());
-                Map<Integer, PlannerCityInfraOverlay> overlays = new LinkedHashMap<>();
+                Map<Integer, PlannerCityInfraOverlay> overlays = new Int2ObjectLinkedOpenHashMap<>();
                 for (LocalNation nation : nations) {
                     PlannerCityInfraOverlay overlay = nation.buffers.touchedCityInfra.exportOverlay(
                             nation.nationId,

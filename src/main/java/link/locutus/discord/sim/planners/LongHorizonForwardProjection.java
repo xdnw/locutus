@@ -79,6 +79,15 @@ final class LongHorizonForwardProjection {
     private final int[] attackerCaps;
     private final AttackScratch projectionScratch;
     private final MutableAttackResult projectionResult;
+    private final boolean[] scratchActiveWarsByNation;
+    private final int[] scratchActiveOffWarsByNation;
+    private final int[] scratchActiveDefWarsByNation;
+    private final int[] scratchCounterOffSlots;
+    private final int[] scratchCounterDefSlots;
+    private final boolean[] scratchDeclaredPairs;
+    private final int[] scratchRedeclareAttSlots;
+    private final int[] scratchRedeclareDefSlots;
+    private final boolean[] scratchRedeclareEdgeUsed;
 
     private LongHorizonForwardProjection(
             CandidateEdgeTable edges,
@@ -110,6 +119,18 @@ final class LongHorizonForwardProjection {
         this.attackerCaps = attackerCaps;
         this.projectionScratch = new AttackScratch();
         this.projectionResult = new MutableAttackResult();
+        int nationCount = scenario.attackerCount() + scenario.defenderCount();
+        int attackerCountVal = scenario.attackerCount();
+        int defenderCountVal = scenario.defenderCount();
+        this.scratchActiveWarsByNation = new boolean[nationCount];
+        this.scratchActiveOffWarsByNation = new int[nationCount];
+        this.scratchActiveDefWarsByNation = new int[nationCount];
+        this.scratchCounterOffSlots = new int[defenderCountVal];
+        this.scratchCounterDefSlots = new int[attackerCountVal];
+        this.scratchDeclaredPairs = new boolean[Math.max(1, defenderCountVal) * Math.max(1, attackerCountVal)];
+        this.scratchRedeclareAttSlots = new int[attackerCountVal];
+        this.scratchRedeclareDefSlots = new int[defenderCountVal];
+        this.scratchRedeclareEdgeUsed = new boolean[Math.max(1, edges.edgeCount())];
     }
 
     static LongHorizonForwardProjection create(
@@ -304,9 +325,8 @@ final class LongHorizonForwardProjection {
         // values. This prevents projected new unit purchases from producing a baseline that is
         // strictly smaller than the mid-horizon snapshot for an undamaged attacker.
         state.materializePendingBuys();
-        boolean[] activeWarsByNation = new boolean[state.nationIds.length];
-        warState.fillActiveWarsByNation(activeWarsByNation);
-        state.applyDailyBuys(false, activeWarsByNation);
+        warState.fillActiveWarsByNation(scratchActiveWarsByNation);
+        state.applyDailyBuys(false, scratchActiveWarsByNation);
 
         int attackerCount = scenario.attackerCount();
         int defenderCount = scenario.defenderCount();
@@ -326,7 +346,7 @@ final class LongHorizonForwardProjection {
 
         // Now run the dense forward projection against the same state the baseline was measured
         // from. Skip the redundant initial materialize+applyDailyBuys since we already did them.
-        runProjectionTurns(state, warState, activeWarsByNation, attackerCounts, defenderCounts, counterIncidence, turns);
+        runProjectionTurns(state, warState, scratchActiveWarsByNation, attackerCounts, defenderCounts, counterIncidence, turns);
 
         double[] attackerStrengths = new double[attackerCount];
         double[] defenderStrengths = new double[defenderCount];
@@ -382,10 +402,9 @@ final class LongHorizonForwardProjection {
             int turnsToRun
     ) {
         state.materializePendingBuys();
-        boolean[] activeWarsByNation = new boolean[state.nationIds.length];
-        warState.fillActiveWarsByNation(activeWarsByNation);
-        state.applyDailyBuys(false, activeWarsByNation);
-        runProjectionTurns(state, warState, activeWarsByNation, attackerCounts, defenderCounts, counterIncidenceOut, turnsToRun);
+        warState.fillActiveWarsByNation(scratchActiveWarsByNation);
+        state.applyDailyBuys(false, scratchActiveWarsByNation);
+        runProjectionTurns(state, warState, scratchActiveWarsByNation, attackerCounts, defenderCounts, counterIncidenceOut, turnsToRun);
     }
 
     private void runProjectionTurns(
@@ -449,12 +468,13 @@ final class LongHorizonForwardProjection {
             int turn,
             int[] counterIncidenceOut
     ) {
-        int[] activeOffensiveWarsByNation = new int[state.nationIds.length];
-        int[] activeDefensiveWarsByNation = new int[state.nationIds.length];
-        warState.fillActiveWarCounts(activeOffensiveWarsByNation, activeDefensiveWarsByNation);
-        int[] remainingCounterOffensiveSlots = projectedCounterOffensiveSlots(state, activeOffensiveWarsByNation);
-        int[] remainingTargetDefensiveSlots = projectedCounterTargetDefensiveSlots(state, activeDefensiveWarsByNation, attackerCounts);
-        boolean[] declaredPairs = new boolean[Math.max(1, scenario.defenderCount() * Math.max(1, scenario.attackerCount()))];
+        warState.fillActiveWarCounts(scratchActiveOffWarsByNation, scratchActiveDefWarsByNation);
+        fillProjectedCounterOffensiveSlots(state, scratchActiveOffWarsByNation, scratchCounterOffSlots);
+        fillProjectedCounterTargetDefensiveSlots(state, scratchActiveDefWarsByNation, attackerCounts, scratchCounterDefSlots);
+        Arrays.fill(scratchDeclaredPairs, false);
+        int[] remainingCounterOffensiveSlots = scratchCounterOffSlots;
+        int[] remainingTargetDefensiveSlots = scratchCounterDefSlots;
+        boolean[] declaredPairs = scratchDeclaredPairs;
         while (true) {
             int bestDefenderIndex = -1;
             int bestAttackerIndex = -1;
@@ -527,6 +547,8 @@ final class LongHorizonForwardProjection {
         return (counterSimultaneous + redeclareSimultaneous) * slotReuseCycles;
     }
 
+
+
     private boolean shouldDeclareProjectedRedeclares(int turn) {
         if (horizonTurns <= PROJECTED_REDECLARE_START_TURN || turn < PROJECTED_REDECLARE_START_TURN) {
             return false;
@@ -541,11 +563,12 @@ final class LongHorizonForwardProjection {
     ) {
         int attackerCount = scenario.attackerCount();
         int defenderCount = scenario.defenderCount();
-        int[] activeOff = new int[state.nationIds.length];
-        int[] activeDef = new int[state.nationIds.length];
-        warState.fillActiveWarCounts(activeOff, activeDef);
+        warState.fillActiveWarCounts(scratchActiveOffWarsByNation, scratchActiveDefWarsByNation);
+        int[] activeOff = scratchActiveOffWarsByNation;
+        int[] activeDef = scratchActiveDefWarsByNation;
 
-        int[] remainingAttackerSlots = new int[attackerCount];
+        Arrays.fill(scratchRedeclareAttSlots, 0);
+        int[] remainingAttackerSlots = scratchRedeclareAttSlots;
         for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
             if (state.beigeTurns[attackerIndex] > 0 || state.combatStrength(attackerIndex) <= 0d) {
                 continue;
@@ -554,7 +577,8 @@ final class LongHorizonForwardProjection {
             remainingAttackerSlots[attackerIndex] = Math.max(0,
                     Math.min(attackerCaps[attackerIndex], rawFreeOff) - activeOff[attackerIndex]);
         }
-        int[] remainingDefenderSlots = new int[defenderCount];
+        Arrays.fill(scratchRedeclareDefSlots, 0);
+        int[] remainingDefenderSlots = scratchRedeclareDefSlots;
         for (int defenderIndex = 0; defenderIndex < defenderCount; defenderIndex++) {
             int defenderNationIndex = state.attackerCount + defenderIndex;
             if (state.beigeTurns[defenderNationIndex] > 0 || state.combatStrength(defenderNationIndex) <= 0d) {
@@ -568,7 +592,8 @@ final class LongHorizonForwardProjection {
         }
 
         int edgeCount = edges.edgeCount();
-        boolean[] edgeUsed = new boolean[edgeCount];
+        Arrays.fill(scratchRedeclareEdgeUsed, false);
+        boolean[] edgeUsed = scratchRedeclareEdgeUsed;
         while (true) {
             int bestEdge = -1;
             double bestScore = PROJECTED_REDECLARE_MIN_SCORE;
@@ -649,29 +674,27 @@ final class LongHorizonForwardProjection {
         return Math.max(0d, baseEdgeScore) * activity * Math.min(2.0d, strengthRatio) * slotPressure;
     }
 
-    private int[] projectedCounterOffensiveSlots(ProjectionState state, int[] activeOffensiveWarsByNation) {
-        int[] slots = new int[scenario.defenderCount()];
-        for (int defenderIndex = 0; defenderIndex < slots.length; defenderIndex++) {
+    private void fillProjectedCounterOffensiveSlots(ProjectionState state, int[] activeOffensiveWarsByNation, int[] slots) {
+        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
             int nationIndex = state.attackerCount + defenderIndex;
             if (state.beigeTurns[nationIndex] > 0 || state.combatStrength(nationIndex) <= 0d) {
+                slots[defenderIndex] = 0;
                 continue;
             }
             slots[defenderIndex] = Math.max(0,
                     scenario.defender(defenderIndex).rawFreeOff() - activeOffensiveWarsByNation[nationIndex]);
         }
-        return slots;
     }
 
-    private int[] projectedCounterTargetDefensiveSlots(ProjectionState state, int[] activeDefensiveWarsByNation, int[] attackerCounts) {
-        int[] slots = new int[scenario.attackerCount()];
-        for (int attackerIndex = 0; attackerIndex < slots.length; attackerIndex++) {
+    private void fillProjectedCounterTargetDefensiveSlots(ProjectionState state, int[] activeDefensiveWarsByNation, int[] attackerCounts, int[] slots) {
+        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
             if (attackerCounts[attackerIndex] <= 0 || state.beigeTurns[attackerIndex] > 0 || state.combatStrength(attackerIndex) <= 0d) {
+                slots[attackerIndex] = 0;
                 continue;
             }
             slots[attackerIndex] = Math.max(0,
                     scenario.attacker(attackerIndex).rawFreeDef() - activeDefensiveWarsByNation[attackerIndex]);
         }
-        return slots;
     }
 
     private double projectedCounterScore(
@@ -2029,6 +2052,8 @@ final class LongHorizonForwardProjection {
                     edgeCount
             );
         }
+
+
 
         int addWar(int attackerIndex, int defenderIndex, int turn) {
             return addWar(attackerIndex, defenderIndex, turn, WarType.ORD);

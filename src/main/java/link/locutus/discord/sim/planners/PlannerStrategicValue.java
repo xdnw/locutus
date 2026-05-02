@@ -1,10 +1,10 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import link.locutus.discord.sim.StrategicAssetValue;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,8 +29,8 @@ final class PlannerStrategicValue {
             return Map.of();
         }
         List<DBNationSnapshot> orderedSnapshots = List.copyOf(snapshots);
-        LinkedHashMap<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId =
-                new LinkedHashMap<>(orderedSnapshots.size());
+        Map<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId =
+                new Int2ObjectLinkedOpenHashMap<>(orderedSnapshots.size());
         for (DBNationSnapshot snapshot : orderedSnapshots) {
             List<DBNationSnapshot> opposingNations = new ArrayList<>(orderedSnapshots.size());
             for (DBNationSnapshot other : orderedSnapshots) {
@@ -121,7 +121,7 @@ final class PlannerStrategicValue {
             Collection<DBNationSnapshot> primary,
             Collection<DBNationSnapshot> secondary
     ) {
-        LinkedHashMap<Integer, DBNationSnapshot> byId = new LinkedHashMap<>();
+        Map<Integer, DBNationSnapshot> byId = new Int2ObjectLinkedOpenHashMap<>();
         if (primary != null) {
             for (DBNationSnapshot snapshot : primary) {
                 byId.put(snapshot.nationId(), snapshot);
