@@ -31,6 +31,7 @@ import java.util.Map;
 public final class StrategicLaneComparisonHarness {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final int DEFAULT_HORIZON_TURNS = 72;
+    private static final int DEFAULT_POPULATION = 0;
 
     private StrategicLaneComparisonHarness() {
     }
@@ -38,9 +39,10 @@ public final class StrategicLaneComparisonHarness {
     public static void main(String[] args) {
         int horizonTurns = optionInt(args, "horizon", DEFAULT_HORIZON_TURNS);
         int repetitions = Math.max(1, optionInt(args, "repetitions", 1));
-        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerRebuyPreserved,defenderRebuyPreserved,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,activeWars,attackerControlFlags,defenderControlFlags,attackerWinningWars,defenderWinningWars,concludedWars,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs");
+        int requestedPopulation = optionInt(args, "population", DEFAULT_POPULATION);
+        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerRebuyPreserved,defenderRebuyPreserved,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,activeWars,attackerControlFlags,defenderControlFlags,attackerWinningWars,defenderWinningWars,concludedWars,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs");
         for (ScenarioFamily family : ScenarioFamily.values()) {
-            Fixture fixture = family.fixture();
+            Fixture fixture = family.fixture(requestedPopulation);
             for (Lane lane : Lane.values()) {
                 for (BlitzObjective objective : lane.objectives()) {
                     Scorecard best = null;
@@ -58,7 +60,7 @@ public final class StrategicLaneComparisonHarness {
                     double bestMs = best.elapsedNanos() / 1_000_000.0d;
                     double avgMs = (totalNanos / (double) repetitions) / 1_000_000.0d;
                     String row = String.format(Locale.ROOT,
-                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%d,%.6f,%.3f,%.3f,%.3f,%s,%s,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%d,%.3f,%.3f",
+                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%s,%d,%.6f,%.3f,%.3f,%.3f,%s,%s,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%d,%.3f,%.3f",
                             family.cliName,
                             lane.cliName,
                             objective.name(),
@@ -69,6 +71,7 @@ public final class StrategicLaneComparisonHarness {
                             best.assignmentCount(),
                             best.idleViableAttackers(),
                             best.strongDefenderCoveragePct(),
+                            best.defenderCoverageByTier(),
                             best.maxWarsPerAttacker(),
                             best.avgAssignedCounterRisk(),
                             best.terminalObjective(),
@@ -138,28 +141,69 @@ public final class StrategicLaneComparisonHarness {
         }
     }
 
-    private enum ScenarioFamily {
-        PARITY("parity"),
-        ATTACKER_FAVORED("attackerFavored"),
-        DEFENDER_FAVORED("defenderFavored"),
-        UNMILITARIZED_VS_FULL("unmilitarizedVsFull"),
-        MIXED_STRONG_DEFENDERS("mixedStrongDefenders"),
-        LOW_VALUE_SWARM("lowValueSwarm");
+    private enum TierSegment {
+        LOW("low"),
+        MID("mid"),
+        HIGH("high");
 
-        private final String cliName;
+        private final String label;
 
-        ScenarioFamily(String cliName) {
-            this.cliName = cliName;
+        TierSegment(String label) {
+            this.label = label;
         }
 
-        Fixture fixture() {
+        static TierSegment fromCities(int cities) {
+            if (cities >= 28) {
+                return HIGH;
+            }
+            if (cities >= 20) {
+                return MID;
+            }
+            return LOW;
+        }
+    }
+
+    private enum ScenarioFamily {
+        PARITY("parity", 8),
+        ATTACKER_FAVORED("attackerFavored", 8),
+        DEFENDER_FAVORED("defenderFavored", 8),
+        UNMILITARIZED_VS_FULL("unmilitarizedVsFull", 6),
+        MIXED_STRONG_DEFENDERS("mixedStrongDefenders", 10),
+        LOW_VALUE_SWARM("lowValueSwarm", 12),
+        SEVERE_ATTACKER_ADVANTAGE("severeAttackerAdvantage", 8),
+        SEVERE_DEFENDER_ADVANTAGE("severeDefenderAdvantage", 8),
+        EXHAUSTED_VS_FULL_REBUY("exhaustedVsFullRebuy", 8),
+        RESET_TIMING("resetTiming", 8),
+        ACTIVE_WAR_SLOT_PRESSURE("activeWarSlotPressure", 8),
+        SLOT_SATURATED_FRONT("slotSaturatedFront", 8),
+        PARTIAL_RANGE_CONTROL("partialRangeControl", 10),
+        UNWINNABLE_CONVENTIONAL("unwinnableConventional", 8);
+
+        private final String cliName;
+        private final int tinyPopulation;
+
+        ScenarioFamily(String cliName, int tinyPopulation) {
+            this.cliName = cliName;
+            this.tinyPopulation = tinyPopulation;
+        }
+
+        Fixture fixture(int requestedPopulation) {
+            int population = requestedPopulation > 0 ? requestedPopulation : tinyPopulation;
             return switch (this) {
-                case PARITY -> Fixture.create(cliName, 8, this::parityAttacker, this::parityDefender);
-                case ATTACKER_FAVORED -> Fixture.create(cliName, 8, this::favoredAttacker, this::weakDefender);
-                case DEFENDER_FAVORED -> Fixture.create(cliName, 8, this::weakAttacker, this::favoredDefender);
-                case UNMILITARIZED_VS_FULL -> Fixture.create(cliName, 6, this::unmilitarizedAttacker, this::favoredDefender);
-                case MIXED_STRONG_DEFENDERS -> Fixture.create(cliName, 10, this::parityAttacker, this::mixedDefender);
-                case LOW_VALUE_SWARM -> Fixture.create(cliName, 12, this::favoredAttacker, this::lowValueDefender);
+                case PARITY -> Fixture.create(cliName, population, this::parityAttacker, this::parityDefender);
+                case ATTACKER_FAVORED -> Fixture.create(cliName, population, this::favoredAttacker, this::weakDefender);
+                case DEFENDER_FAVORED -> Fixture.create(cliName, population, this::weakAttacker, this::favoredDefender);
+                case UNMILITARIZED_VS_FULL -> Fixture.create(cliName, population, this::unmilitarizedAttacker, this::favoredDefender);
+                case MIXED_STRONG_DEFENDERS -> Fixture.create(cliName, population, this::parityAttacker, this::mixedDefender);
+                case LOW_VALUE_SWARM -> Fixture.create(cliName, population, this::favoredAttacker, this::lowValueDefender);
+                case SEVERE_ATTACKER_ADVANTAGE -> Fixture.create(cliName, population, this::severeAttacker, this::weakDefender);
+                case SEVERE_DEFENDER_ADVANTAGE -> Fixture.create(cliName, population, this::weakAttacker, this::severeDefender);
+                case EXHAUSTED_VS_FULL_REBUY -> Fixture.create(cliName, population, this::exhaustedRebuyAttacker, this::fullRebuyDefender);
+                case RESET_TIMING -> Fixture.create(cliName, population, this::imminentResetAttacker, this::delayedResetDefender);
+                case ACTIVE_WAR_SLOT_PRESSURE -> Fixture.create(cliName, population, this::activeWarPressedAttacker, this::activeWarPressedDefender);
+                case SLOT_SATURATED_FRONT -> Fixture.create(cliName, population, this::slotSaturatedAttacker, this::slotSaturatedDefender);
+                case PARTIAL_RANGE_CONTROL -> Fixture.create(cliName, population, this::partialRangeAttacker, this::partialRangeDefender);
+                case UNWINNABLE_CONVENTIONAL -> Fixture.create(cliName, population, this::unwinnableConventionalAttacker, this::severeDefender);
             };
         }
 
@@ -201,6 +245,100 @@ public final class StrategicLaneComparisonHarness {
             double multiplier = index < 4 ? 1.1d : 0.20d;
             int cities = index < 4 ? 20 + index % 3 : 12 + index % 2;
             return nation(20_000 + index, 2, index, cities, multiplier, 1);
+        }
+
+        private DBNationSnapshot severeAttacker(int index) {
+            return nation(10_000 + index, 1, index, 28 + index % 6, 2.15d, 3);
+        }
+
+        private DBNationSnapshot severeDefender(int index) {
+            return nation(20_000 + index, 2, index, 31 + index % 7, 2.25d, 1);
+        }
+
+        private DBNationSnapshot exhaustedRebuyAttacker(int index) {
+            DBNationSnapshot.Builder builder = nation(10_000 + index, 1, index, 22 + index % 4, 0.95d, 3)
+                    .toBuilder();
+            exhaustDailyBuys(builder);
+            return builder.build();
+        }
+
+        private DBNationSnapshot fullRebuyDefender(int index) {
+            return nation(20_000 + index, 2, index, 22 + index % 4, 0.95d, 1);
+        }
+
+        private DBNationSnapshot imminentResetAttacker(int index) {
+            DBNationSnapshot.Builder builder = nation(10_000 + index, 1, index, 21 + index % 4, 0.75d, 3)
+                    .toBuilder()
+                    .resetHourUtc((byte) 0);
+            builder.pendingBuyNextTurn(MilitaryUnit.SOLDIER, 35_000)
+                    .pendingBuyNextTurn(MilitaryUnit.TANK, 2_500)
+                    .pendingBuyNextTurn(MilitaryUnit.AIRCRAFT, 180)
+                    .pendingBuyNextTurn(MilitaryUnit.SHIP, 28);
+            return builder.build();
+        }
+
+        private DBNationSnapshot delayedResetDefender(int index) {
+            DBNationSnapshot.Builder builder = nation(20_000 + index, 2, index, 21 + index % 4, 1.20d, 1)
+                    .toBuilder()
+                    .resetHourUtc((byte) 23);
+            exhaustDailyBuys(builder);
+            return builder.build();
+        }
+
+        private DBNationSnapshot activeWarPressedAttacker(int index) {
+            DBNationSnapshot.Builder builder = nation(10_000 + index, 1, index, 23 + index % 4, 1.05d, 3)
+                    .toBuilder()
+                    .currentOffensiveWars(index % 3)
+                    .currentDefensiveWars(index % 2);
+            builder.activeOpponentNationId(30_000 + index);
+            if ((index & 1) == 0) {
+                builder.activeOpponentNationId(31_000 + index);
+            }
+            return builder.build();
+        }
+
+        private DBNationSnapshot activeWarPressedDefender(int index) {
+            DBNationSnapshot.Builder builder = nation(20_000 + index, 2, index, 23 + index % 4, 1.05d, 1)
+                    .toBuilder()
+                    .currentDefensiveWars(index % 3);
+            builder.activeOpponentNationId(40_000 + index);
+            return builder.build();
+        }
+
+        private DBNationSnapshot slotSaturatedAttacker(int index) {
+            return nation(10_000 + index, 1, index, 24 + index % 4, 1.25d, index % 4 == 0 ? 1 : 3)
+                    .toBuilder()
+                    .currentOffensiveWars(index % 4 == 0 ? 2 : 0)
+                    .build();
+        }
+
+        private DBNationSnapshot slotSaturatedDefender(int index) {
+            int defensiveWars = index < 3 ? 2 : 0;
+            return nation(20_000 + index, 2, index, index < 3 ? 29 + index : 16 + index % 3, index < 3 ? 1.85d : 0.45d, 1)
+                    .toBuilder()
+                    .currentDefensiveWars(defensiveWars)
+                    .build();
+        }
+
+        private DBNationSnapshot partialRangeAttacker(int index) {
+            int cities = index < 4 ? 31 + index : 16 + index % 4;
+            double multiplier = index < 4 ? 1.45d : 0.85d;
+            return nation(10_000 + index, 1, index, cities, multiplier, 3);
+        }
+
+        private DBNationSnapshot partialRangeDefender(int index) {
+            int cities = index < 4 ? 34 + index : 13 + index % 4;
+            double multiplier = index < 4 ? 1.50d : 0.70d;
+            return nation(20_000 + index, 2, index, cities, multiplier, 1);
+        }
+
+        private DBNationSnapshot unwinnableConventionalAttacker(int index) {
+            DBNationSnapshot.Builder builder = nation(10_000 + index, 1, index, 18 + index % 3, 0.20d, 3)
+                    .toBuilder()
+                    .unit(MilitaryUnit.MISSILE, 4)
+                    .unit(MilitaryUnit.NUKE, 2);
+            exhaustDailyBuys(builder);
+            return builder.build();
         }
     }
 
@@ -402,6 +540,7 @@ public final class StrategicLaneComparisonHarness {
                     assignmentCount,
                     idleViableAttackers,
                     strongDefenderCoveragePct(defenderCounts),
+                    defenderCoverageByTier(defenderCounts),
                     maxWarsPerAttacker,
                     avgAssignedCounterRisk(edges, assignment),
                     terminalObjective,
@@ -471,6 +610,31 @@ public final class StrategicLaneComparisonHarness {
             return 100.0d * covered / strongCount;
         }
 
+        private String defenderCoverageByTier(int[] defenderCounts) {
+            int[] totals = new int[TierSegment.values().length];
+            int[] covered = new int[TierSegment.values().length];
+            for (int defenderIndex = 0; defenderIndex < defenders.size(); defenderIndex++) {
+                int tierIndex = TierSegment.fromCities(defenders.get(defenderIndex).cities()).ordinal();
+                totals[tierIndex]++;
+                if (defenderCounts[defenderIndex] > 0) {
+                    covered[tierIndex]++;
+                }
+            }
+            StringBuilder builder = new StringBuilder();
+            for (TierSegment tier : TierSegment.values()) {
+                if (builder.length() > 0) {
+                    builder.append(';');
+                }
+                int tierIndex = tier.ordinal();
+                builder.append(tier.label)
+                        .append(':')
+                        .append(covered[tierIndex])
+                        .append('/')
+                        .append(totals[tierIndex]);
+            }
+            return builder.toString();
+        }
+
         private double avgAssignedCounterRisk(CandidateEdgeTable edges, Map<Integer, List<Integer>> assignment) {
             int assignedEdges = 0;
             double risk = 0d;
@@ -502,6 +666,7 @@ public final class StrategicLaneComparisonHarness {
             int assignmentCount,
             int idleViableAttackers,
             double strongDefenderCoveragePct,
+            String defenderCoverageByTier,
             int maxWarsPerAttacker,
             double avgAssignedCounterRisk,
             double terminalObjective,
@@ -532,6 +697,7 @@ public final class StrategicLaneComparisonHarness {
                     assignmentCount,
                     idleViableAttackers,
                     strongDefenderCoveragePct,
+                    defenderCoverageByTier,
                     maxWarsPerAttacker,
                     avgAssignedCounterRisk,
                     terminalObjective,
@@ -582,6 +748,13 @@ public final class StrategicLaneComparisonHarness {
             builder.append(values[index].name()).append(':').append(counts[index]);
         }
         return builder.length() == 0 ? "none" : builder.toString();
+    }
+
+    private static void exhaustDailyBuys(DBNationSnapshot.Builder builder) {
+        builder.unitBoughtToday(MilitaryUnit.SOLDIER, 250_000)
+                .unitBoughtToday(MilitaryUnit.TANK, 25_000)
+                .unitBoughtToday(MilitaryUnit.AIRCRAFT, 2_000)
+                .unitBoughtToday(MilitaryUnit.SHIP, 400);
     }
 
     private static DBNationSnapshot nation(
