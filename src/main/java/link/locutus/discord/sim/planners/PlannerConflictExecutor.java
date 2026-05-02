@@ -605,7 +605,12 @@ final class PlannerConflictExecutor {
                 snapshot::unitsBoughtToday,
                 snapshot::dailyBuyCap,
                 snapshot.researchBits(),
-                snapshot.hasActiveWars(),
+                StrategicAssetValue.ActiveWarContext.fromSlots(
+                        snapshot.currentOffensiveWars(),
+                        snapshot.maxOff(),
+                        snapshot.currentDefensiveWars(),
+                        snapshot.activeOpponentNationIds().size()
+                ),
                 relevance
         ).totalValue();
     }

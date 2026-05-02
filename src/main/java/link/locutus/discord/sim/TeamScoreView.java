@@ -57,7 +57,12 @@ public interface TeamScoreView {
                                     nation::unitsBoughtToday,
                                     nation::dailyBuyCap,
                                     nation.researchBits(),
-                                    nation.offSlotsUsed() > 0 || nation.defSlotsUsed() > 0,
+                                    StrategicAssetValue.ActiveWarContext.fromSlots(
+                                            nation.offSlotsUsed(),
+                                            nation.maxOffSlots(),
+                                            nation.defSlotsUsed(),
+                                            nation.offSlotsUsed() + nation.defSlotsUsed()
+                                    ),
                                     relevance
                             ).totalValue()
                     );

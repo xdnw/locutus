@@ -14,6 +14,7 @@ public final class StrategicAssetValue {
     static final double ACTIVE_WAR_LEVERAGE_WEIGHT = 0.12d;
     static final double CITY_TIER_RELEVANCE_WEIGHT = 0.16d;
     static final double RANGE_COVERAGE_RELEVANCE_WEIGHT = 0.30d;
+    static final int DEFAULT_STARTING_MAPS = 12;
     private static final UnitReader ZERO_READER = unit -> 0;
 
     private StrategicAssetValue() {
@@ -70,6 +71,26 @@ public final class StrategicAssetValue {
             boolean hasActiveWars,
             StrategicRelevance relevance
     ) {
+        return contextualMilitaryValue(
+                units,
+                pendingBuys,
+                unitsBoughtToday,
+                dailyBuyCaps,
+                researchBits,
+                ActiveWarContext.basic(hasActiveWars),
+                relevance
+        );
+    }
+
+    public static NationValueBreakdown contextualMilitaryValue(
+            UnitReader units,
+            UnitReader pendingBuys,
+            UnitReader unitsBoughtToday,
+            UnitReader dailyBuyCaps,
+            int researchBits,
+            ActiveWarContext activeWarContext,
+            StrategicRelevance relevance
+    ) {
         double replacementValue = 0d;
         double contextualMilitaryValue = 0d;
         double recoveryValue = 0d;
@@ -91,7 +112,7 @@ public final class StrategicAssetValue {
         }
         contextualMilitaryValue += replacementValue * contextualRelevanceAdjustment(relevance);
         double subtotal = replacementValue + contextualMilitaryValue + recoveryValue;
-        double warOutcomeLeverage = hasActiveWars ? subtotal * ACTIVE_WAR_LEVERAGE_WEIGHT : 0d;
+        double warOutcomeLeverage = subtotal * activeWarLeverageWeight(activeWarContext);
         return new NationValueBreakdown(replacementValue, contextualMilitaryValue, recoveryValue, warOutcomeLeverage);
     }
 
@@ -105,16 +126,16 @@ public final class StrategicAssetValue {
         return contextualMilitaryValue(units, ZERO_READER, unitsBoughtToday, dailyBuyCaps, researchBits, hasActiveWars);
     }
 
-        public static NationValueBreakdown contextualMilitaryValue(
+    public static NationValueBreakdown contextualMilitaryValue(
             UnitReader units,
             UnitReader unitsBoughtToday,
             UnitReader dailyBuyCaps,
             int researchBits,
             boolean hasActiveWars,
             StrategicRelevance relevance
-        ) {
+    ) {
         return contextualMilitaryValue(units, ZERO_READER, unitsBoughtToday, dailyBuyCaps, researchBits, hasActiveWars, relevance);
-        }
+    }
 
     public static double contextualLossValue(
             UnitReader currentUnits,
@@ -144,6 +165,26 @@ public final class StrategicAssetValue {
             boolean hasActiveWars,
             StrategicRelevance relevance
     ) {
+        return contextualLossValue(
+                currentUnits,
+                losses,
+                unitsBoughtToday,
+                dailyBuyCaps,
+                researchBits,
+                ActiveWarContext.basic(hasActiveWars),
+                relevance
+        );
+    }
+
+    public static double contextualLossValue(
+            UnitReader currentUnits,
+            UnitReader losses,
+            UnitReader unitsBoughtToday,
+            UnitReader dailyBuyCaps,
+            int researchBits,
+            ActiveWarContext activeWarContext,
+            StrategicRelevance relevance
+    ) {
         double replacementValue = 0d;
         double contextualMilitaryValue = 0d;
         for (MilitaryUnit unit : SimUnits.PURCHASABLE_UNITS) {
@@ -162,7 +203,7 @@ public final class StrategicAssetValue {
         }
         contextualMilitaryValue += replacementValue * contextualRelevanceAdjustment(relevance);
         double subtotal = replacementValue + contextualMilitaryValue;
-        return subtotal + (hasActiveWars ? subtotal * ACTIVE_WAR_LEVERAGE_WEIGHT : 0d);
+        return subtotal + (subtotal * activeWarLeverageWeight(activeWarContext));
     }
 
     public static double resourceValue(double[] resources) {
@@ -187,7 +228,13 @@ public final class StrategicAssetValue {
                 nation::unitsBoughtToday,
                 nation::dailyBuyCap,
                 nation.researchBits(),
-                nation.offSlotsUsed() > 0 || nation.defSlotsUsed() > 0
+                ActiveWarContext.fromSlots(
+                        nation.offSlotsUsed(),
+                        nation.maxOffSlots(),
+                        nation.defSlotsUsed(),
+                        nation.offSlotsUsed() + nation.defSlotsUsed()
+                ),
+                StrategicRelevance.DEFAULT
         ).totalValue();
     }
 
@@ -272,8 +319,43 @@ public final class StrategicAssetValue {
         return Math.max(-0.28d, Math.min(0.28d, cityPremium + rangePremium));
     }
 
+    private static double activeWarLeverageWeight(ActiveWarContext context) {
+        if (context == null || !context.hasActiveWars()) {
+            return 0d;
+        }
+        if (!context.outcomeRelevant()) {
+            return ACTIVE_WAR_LEVERAGE_WEIGHT * 0.20d;
+        }
+        double statePosition = (0.35d * context.controlPosition())
+                + (0.25d * context.mapPosition())
+                + (0.40d * context.resistancePosition());
+        double tenability;
+        if (statePosition <= -0.75d) {
+            tenability = 0.25d;
+        } else if (statePosition <= -0.35d) {
+            tenability = 0.55d;
+        } else {
+            tenability = 1.0d + (0.30d * Math.max(0d, statePosition));
+        }
+        double slotPressureMultiplier = 0.85d + (0.30d * context.slotPressure());
+        double opponentMultiplier = Math.min(1.35d, 0.85d + (0.15d * context.activeOpponents()));
+        return ACTIVE_WAR_LEVERAGE_WEIGHT * slotPressureMultiplier * opponentMultiplier * tenability;
+    }
+
+    private static double normalizedDifference(double own, double enemy, double floor) {
+        double denominator = Math.max(floor, Math.max(Math.abs(own), Math.abs(enemy)));
+        if (!(denominator > 0d)) {
+            return 0d;
+        }
+        return clampSigned((own - enemy) / denominator);
+    }
+
     private static double clamp(double value) {
         return Math.max(0d, Math.min(1d, value));
+    }
+
+    private static double clampSigned(double value) {
+        return Math.max(-1d, Math.min(1d, value));
     }
 
     public record NationValueBreakdown(
@@ -300,6 +382,92 @@ public final class StrategicAssetValue {
             reachableOpponents = Math.max(0, reachableOpponents);
             totalOpponents = Math.max(reachableOpponents, totalOpponents);
             activeOpponents = Math.max(0, activeOpponents);
+        }
+    }
+
+    public record ActiveWarContext(
+            int activeOpponents,
+            double slotPressure,
+            double mapPosition,
+            double resistancePosition,
+            double controlPosition,
+            boolean outcomeRelevant
+    ) {
+        public static final ActiveWarContext NONE = new ActiveWarContext(0, 0d, 0d, 0d, 0d, false);
+
+        public ActiveWarContext {
+            activeOpponents = Math.max(0, activeOpponents);
+            slotPressure = Math.max(0d, Math.min(1.5d, slotPressure));
+            mapPosition = clampSigned(mapPosition);
+            resistancePosition = clampSigned(resistancePosition);
+            controlPosition = clampSigned(controlPosition);
+        }
+
+        public static ActiveWarContext basic(boolean hasActiveWars) {
+            return hasActiveWars ? new ActiveWarContext(1, 1d, 0d, 0d, 0d, true) : NONE;
+        }
+
+        public static ActiveWarContext fromSlots(
+                int currentOffensiveWars,
+                int maxOffensiveWars,
+                int currentDefensiveWars,
+                int activeOpponents
+        ) {
+            int normalizedOffensiveWars = Math.max(0, currentOffensiveWars);
+            int normalizedDefensiveWars = Math.max(0, currentDefensiveWars);
+            int normalizedActiveOpponents = Math.max(
+                    activeOpponents,
+                    normalizedOffensiveWars + normalizedDefensiveWars
+            );
+            if (normalizedActiveOpponents <= 0) {
+                return NONE;
+            }
+            double offensivePressure = maxOffensiveWars > 0
+                    ? normalizedOffensiveWars / (double) maxOffensiveWars
+                    : normalizedOffensiveWars > 0 ? 1d : 0d;
+            double defensivePressure = normalizedDefensiveWars / (double) WarSlotRules.defensiveSlotCap();
+            return new ActiveWarContext(
+                    normalizedActiveOpponents,
+                    Math.max(offensivePressure, defensivePressure),
+                    0d,
+                    0d,
+                    0d,
+                    true
+            );
+        }
+
+        public static ActiveWarContext fromRelativeWarState(
+                int activeOpponents,
+                double slotPressure,
+                int ownMaps,
+                int enemyMaps,
+                int ownResistance,
+                int enemyResistance,
+                int ownControls,
+                int enemyControls
+        ) {
+            int normalizedOwnResistance = Math.max(0, ownResistance);
+            int normalizedEnemyResistance = Math.max(0, enemyResistance);
+            int normalizedOwnControls = Math.max(0, ownControls);
+            int normalizedEnemyControls = Math.max(0, enemyControls);
+            boolean outcomeRelevant = normalizedOwnResistance > 0
+                    && normalizedEnemyResistance > 0
+                    && (Math.max(0, ownMaps) > 0
+                    || Math.max(0, enemyMaps) > 0
+                    || normalizedOwnControls > 0
+                    || normalizedEnemyControls < 3);
+            return new ActiveWarContext(
+                    activeOpponents,
+                    slotPressure,
+                    normalizedDifference(Math.max(0, ownMaps), Math.max(0, enemyMaps), DEFAULT_STARTING_MAPS),
+                    normalizedDifference(normalizedOwnResistance, normalizedEnemyResistance, 100d),
+                    normalizedDifference(normalizedOwnControls, normalizedEnemyControls, 3d),
+                    outcomeRelevant
+            );
+        }
+
+        public boolean hasActiveWars() {
+            return activeOpponents > 0;
         }
     }
 

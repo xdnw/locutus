@@ -379,7 +379,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 snapshot::unitsBoughtToday,
                 snapshot::dailyBuyCap,
                 snapshot.researchBits(),
-                snapshot.hasActiveWars(),
+                StrategicAssetValue.ActiveWarContext.fromSlots(
+                        snapshot.currentOffensiveWars(),
+                        snapshot.maxOff(),
+                        snapshot.currentDefensiveWars(),
+                        snapshot.activeOpponentNationIds().size()
+                ),
                 relevance
         ).totalValue();
     }
@@ -871,7 +876,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
     @Override
     public void forEachNationStrategicValue(NationValueConsumer consumer) {
         for (LocalNation nation : nationsById.values()) {
-            consumer.accept(nation.nationId(), nation.teamId(), nation.strategicValue(strategicRelevance(nation)));
+            consumer.accept(
+                    nation.nationId(),
+                    nation.teamId(),
+                    nation.strategicValue(strategicRelevance(nation), activeWarContext(nation))
+            );
         }
     }
 
@@ -916,6 +925,90 @@ final class PlannerLocalConflict implements TeamWarControlView {
         );
     }
 
+    private StrategicAssetValue.ActiveWarContext activeWarContext(LocalNation nation) {
+        int activeWarCount = 0;
+        int activeOffensiveWars = 0;
+        int activeDefensiveWars = 0;
+        int ownMaps = 0;
+        int enemyMaps = 0;
+        int ownResistance = 0;
+        int enemyResistance = 0;
+        int ownControls = 0;
+        int enemyControls = 0;
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            boolean attacker = war.attackerNationId() == nation.nationId();
+            boolean defender = war.defenderNationId() == nation.nationId();
+            if (!attacker && !defender) {
+                continue;
+            }
+            activeWarCount++;
+            if (attacker) {
+                activeOffensiveWars++;
+                ownMaps += war.attackerMapsValue();
+                enemyMaps += war.defenderMapsValue();
+                ownResistance += war.attackerResistanceValue();
+                enemyResistance += war.defenderResistanceValue();
+            } else {
+                activeDefensiveWars++;
+                ownMaps += war.defenderMapsValue();
+                enemyMaps += war.attackerMapsValue();
+                ownResistance += war.defenderResistanceValue();
+                enemyResistance += war.attackerResistanceValue();
+            }
+            int ownOwnerCode = attacker ? LocalWarBuffers.OWNER_ATTACKER : LocalWarBuffers.OWNER_DEFENDER;
+            int enemyOwnerCode = attacker ? LocalWarBuffers.OWNER_DEFENDER : LocalWarBuffers.OWNER_ATTACKER;
+            int groundOwner = war.warBuffers.groundControlOwner[war.warIndex];
+            int airOwner = war.warBuffers.airSuperiorityOwner[war.warIndex];
+            int blockadeOwner = war.warBuffers.blockadeOwner[war.warIndex];
+            ownControls += controlCount(ownOwnerCode, groundOwner, airOwner, blockadeOwner);
+            enemyControls += controlCount(enemyOwnerCode, groundOwner, airOwner, blockadeOwner);
+        }
+
+        int offensiveWars = Math.max(activeOffensiveWars, nation.baseCurrentOffensiveWars);
+        int defensiveWars = Math.max(activeDefensiveWars, nation.baseCurrentDefensiveWars);
+        int activeOpponents = Math.max(
+                activeWarCount,
+                Math.max(nation.baseActiveOpponentNationIds.size(), offensiveWars + defensiveWars)
+        );
+        if (activeWarCount == 0) {
+            return StrategicAssetValue.ActiveWarContext.fromSlots(
+                    offensiveWars,
+                    nation.maxOff,
+                    defensiveWars,
+                    activeOpponents
+            );
+        }
+        double offensivePressure = nation.maxOff > 0 ? offensiveWars / (double) nation.maxOff : offensiveWars > 0 ? 1d : 0d;
+        double defensivePressure = defensiveWars / (double) WarSlotRules.defensiveSlotCap();
+        return StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                activeOpponents,
+                Math.max(offensivePressure, defensivePressure),
+                ownMaps,
+                enemyMaps,
+                ownResistance,
+                enemyResistance,
+                ownControls,
+                enemyControls
+        );
+    }
+
+    private static int controlCount(int ownerCode, int groundOwner, int airOwner, int blockadeOwner) {
+        int count = 0;
+        if (groundOwner == ownerCode) {
+            count++;
+        }
+        if (airOwner == ownerCode) {
+            count++;
+        }
+        if (blockadeOwner == ownerCode) {
+            count++;
+        }
+        return count;
+    }
+
     @Override
     public void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
         for (LocalWar war : warsById.values()) {
@@ -955,7 +1048,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         for (LocalNation nation : nationsById.values()) {
             totalsByTeam.merge(
                     nation.teamId(),
-                    nation.strategicValue(strategicRelevance(nation)),
+                    nation.strategicValue(strategicRelevance(nation), activeWarContext(nation)),
                     Double::sum
             );
         }
@@ -2621,8 +2714,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return buffers.resource(nationIndex, type);
         }
 
-        double strategicValue(StrategicAssetValue.StrategicRelevance relevance) {
-            boolean engaged = baseCurrentOffensiveWars > 0
+        double strategicValue(
+                StrategicAssetValue.StrategicRelevance relevance,
+                StrategicAssetValue.ActiveWarContext activeWarContext
+        ) {
+            boolean engaged = (activeWarContext != null && activeWarContext.hasActiveWars())
+                    || baseCurrentOffensiveWars > 0
                     || baseCurrentDefensiveWars > 0
                     || !baseActiveOpponentNationIds.isEmpty();
             return StrategicAssetValue.contextualMilitaryValue(
@@ -2631,7 +2728,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     unit -> buffers.unitsBoughtToday(nationIndex, unit),
                     unit -> dailyBuyCap(unit, engaged),
                     researchBitsValue,
-                    engaged,
+                    activeWarContext,
                     relevance
             ).totalValue();
         }

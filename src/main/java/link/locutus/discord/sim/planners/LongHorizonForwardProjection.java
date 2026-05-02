@@ -240,8 +240,8 @@ final class LongHorizonForwardProjection {
 
         double[] attackerScores = state.attackerScores();
         double[] defenderScores = state.defenderScores();
-        double[] attackerValues = state.attackerStrategicValues();
-        double[] defenderValues = state.defenderStrategicValues();
+        double[] attackerValues = state.attackerStrategicValues(warState);
+        double[] defenderValues = state.defenderStrategicValues(warState);
         return new ProjectionView(
                 attackerScores,
                 defenderScores,
@@ -1045,7 +1045,7 @@ final class LongHorizonForwardProjection {
                 snapshot::unitsBoughtToday,
                 snapshot::dailyBuyCap,
                 snapshot.researchBits(),
-                snapshot.hasActiveWars(),
+                activeWarContext(snapshot),
                 relevance
         ).totalValue();
     }
@@ -1063,9 +1063,18 @@ final class LongHorizonForwardProjection {
                 snapshot::unitsBoughtToday,
                 snapshot::dailyBuyCap,
                 snapshot.researchBits(),
-                snapshot.hasActiveWars(),
+                activeWarContext(snapshot),
                 relevance
         ).totalValue();
+    }
+
+    private static StrategicAssetValue.ActiveWarContext activeWarContext(DBNationSnapshot snapshot) {
+        return StrategicAssetValue.ActiveWarContext.fromSlots(
+                snapshot.currentOffensiveWars(),
+                snapshot.maxOff(),
+                snapshot.currentDefensiveWars(),
+                snapshot.activeOpponentNationIds().size()
+        );
     }
 
     private static double combatStrength(DBNationSnapshot snapshot) {
@@ -1552,14 +1561,20 @@ final class LongHorizonForwardProjection {
         }
 
         double strategicValue(int nationIndex) {
+            return strategicValue(nationIndex, null);
+        }
+
+        double strategicValue(int nationIndex, DenseWarState warState) {
             StrategicAssetValue.StrategicRelevance relevance = strategicRelevance(nationIndex);
+            StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(nationIndex, warState);
+            boolean hasActiveWars = baseHasActiveWars[nationIndex] || activeWarContext.hasActiveWars();
             return StrategicAssetValue.contextualMilitaryValue(
                     unit -> unitsFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
                     unit -> pendingBuysFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
                     unit -> unitsBoughtTodayFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
-                    unit -> dailyBuyCap(nationIndex, unit, baseHasActiveWars[nationIndex]),
+                    unit -> dailyBuyCap(nationIndex, unit, hasActiveWars),
                     researchBits[nationIndex],
-                    baseHasActiveWars[nationIndex],
+                    activeWarContext,
                     relevance
             ).totalValue();
         }
@@ -1602,18 +1617,99 @@ final class LongHorizonForwardProjection {
             );
         }
 
-        double[] attackerStrategicValues() {
+        private StrategicAssetValue.ActiveWarContext activeWarContext(int nationIndex, DenseWarState warState) {
+            if (warState == null) {
+                return StrategicAssetValue.ActiveWarContext.basic(baseHasActiveWars[nationIndex]);
+            }
+            int activeOpponents = 0;
+            int offensiveWars = 0;
+            int defensiveWars = 0;
+            int ownMaps = 0;
+            int enemyMaps = 0;
+            int ownResistance = 0;
+            int enemyResistance = 0;
+            int ownControls = 0;
+            int enemyControls = 0;
+            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
+                if (!warState.active[warIndex]) {
+                    continue;
+                }
+                boolean attacker = warState.attackerNationIndex[warIndex] == nationIndex;
+                boolean defender = warState.defenderNationIndex[warIndex] == nationIndex;
+                if (!attacker && !defender) {
+                    continue;
+                }
+                activeOpponents++;
+                if (attacker) {
+                    offensiveWars++;
+                    ownMaps += warState.attackerMaps[warIndex];
+                    enemyMaps += warState.defenderMaps[warIndex];
+                    ownResistance += warState.attackerResistance[warIndex];
+                    enemyResistance += warState.defenderResistance[warIndex];
+                } else {
+                    defensiveWars++;
+                    ownMaps += warState.defenderMaps[warIndex];
+                    enemyMaps += warState.attackerMaps[warIndex];
+                    ownResistance += warState.defenderResistance[warIndex];
+                    enemyResistance += warState.attackerResistance[warIndex];
+                }
+                int ownOwnerCode = attacker ? DenseWarState.OWNER_ATTACKER : DenseWarState.OWNER_DEFENDER;
+                int enemyOwnerCode = attacker ? DenseWarState.OWNER_DEFENDER : DenseWarState.OWNER_ATTACKER;
+                ownControls += denseControlCount(
+                        ownOwnerCode,
+                        warState.groundControlOwner[warIndex],
+                        warState.airSuperiorityOwner[warIndex],
+                        warState.blockadeOwner[warIndex]
+                );
+                enemyControls += denseControlCount(
+                        enemyOwnerCode,
+                        warState.groundControlOwner[warIndex],
+                        warState.airSuperiorityOwner[warIndex],
+                        warState.blockadeOwner[warIndex]
+                );
+            }
+            if (activeOpponents == 0) {
+                return StrategicAssetValue.ActiveWarContext.basic(baseHasActiveWars[nationIndex]);
+            }
+            double slotPressure = Math.max(offensiveWars / 3.0d, defensiveWars / 3.0d);
+            return StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                    activeOpponents,
+                    slotPressure,
+                    ownMaps,
+                    enemyMaps,
+                    ownResistance,
+                    enemyResistance,
+                    ownControls,
+                    enemyControls
+            );
+        }
+
+        private static int denseControlCount(int ownerCode, int groundOwner, int airOwner, int blockadeOwner) {
+            int count = 0;
+            if (groundOwner == ownerCode) {
+                count++;
+            }
+            if (airOwner == ownerCode) {
+                count++;
+            }
+            if (blockadeOwner == ownerCode) {
+                count++;
+            }
+            return count;
+        }
+
+        double[] attackerStrategicValues(DenseWarState warState) {
             double[] values = new double[attackerCount];
             for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
-                values[attackerIndex] = strategicValue(attackerIndex);
+                values[attackerIndex] = strategicValue(attackerIndex, warState);
             }
             return values;
         }
 
-        double[] defenderStrategicValues() {
+        double[] defenderStrategicValues(DenseWarState warState) {
             double[] values = new double[defenderCount];
             for (int defenderIndex = 0; defenderIndex < defenderCount; defenderIndex++) {
-                values[defenderIndex] = strategicValue(attackerCount + defenderIndex);
+                values[defenderIndex] = strategicValue(attackerCount + defenderIndex, warState);
             }
             return values;
         }

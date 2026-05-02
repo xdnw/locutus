@@ -98,6 +98,74 @@ class StrategicAssetValueTest {
     }
 
     @Test
+    void currentWarStateModulatesOutcomeLeverage() {
+        StrategicAssetValue.NationValueBreakdown winningControl = StrategicAssetValue.contextualMilitaryValue(
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                0,
+                StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                        1,
+                        1.0d,
+                        12,
+                        3,
+                        82,
+                        38,
+                        2,
+                        0
+                ),
+                StrategicAssetValue.StrategicRelevance.DEFAULT
+        );
+        StrategicAssetValue.NationValueBreakdown lostControl = StrategicAssetValue.contextualMilitaryValue(
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                0,
+                StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                        1,
+                        1.0d,
+                        0,
+                        12,
+                        20,
+                        82,
+                        0,
+                        3
+                ),
+                StrategicAssetValue.StrategicRelevance.DEFAULT
+        );
+
+        assertTrue(winningControl.warOutcomeLeverage() > lostControl.warOutcomeLeverage(),
+                "MAP, resistance, and control state should suppress leverage for wars that are no longer tenable");
+    }
+
+    @Test
+    void slotPressureRaisesActiveWarLeverage() {
+        StrategicAssetValue.NationValueBreakdown oneOpenWar = StrategicAssetValue.contextualMilitaryValue(
+                unit -> unit == MilitaryUnit.SHIP ? 20 : 0,
+                unit -> 0,
+                unit -> unit == MilitaryUnit.SHIP ? 0 : 0,
+                unit -> unit == MilitaryUnit.SHIP ? 5 : 0,
+                0,
+                StrategicAssetValue.ActiveWarContext.fromSlots(1, 3, 0, 1),
+                StrategicAssetValue.StrategicRelevance.DEFAULT
+        );
+        StrategicAssetValue.NationValueBreakdown saturatedWars = StrategicAssetValue.contextualMilitaryValue(
+                unit -> unit == MilitaryUnit.SHIP ? 20 : 0,
+                unit -> 0,
+                unit -> unit == MilitaryUnit.SHIP ? 0 : 0,
+                unit -> unit == MilitaryUnit.SHIP ? 5 : 0,
+                0,
+                StrategicAssetValue.ActiveWarContext.fromSlots(3, 3, 3, 6),
+                StrategicAssetValue.StrategicRelevance.DEFAULT
+        );
+
+        assertTrue(saturatedWars.warOutcomeLeverage() > oneOpenWar.warOutcomeLeverage(),
+                "Units committed into saturated active-war slots should carry more war-outcome leverage than the same units in a low-pressure war state");
+    }
+
+    @Test
     void recoverableLossesArePricedBelowExhaustedLosses() {
         double recoverableLossValue = StrategicAssetValue.contextualLossValue(
                 unit -> unit == MilitaryUnit.SOLDIER ? 100_000 : 0,
