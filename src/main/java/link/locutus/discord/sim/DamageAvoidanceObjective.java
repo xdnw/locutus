@@ -3,19 +3,19 @@ package link.locutus.discord.sim;
 import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that favors low-exposure declares while still requiring useful damage. */
-final class DamageAvoidanceObjective implements TeamScoreObjective {
+final class DamageAvoidanceObjective implements StrategicObjective {
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
         return new CandidateEdgeComponentPolicy(true, true, false, false, false);
     }
 
     @Override
-    public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
         return (0.35d * metrics.immediateHarm()) - metrics.selfExposure();
     }
 
     @Override
-    public double scoreTerminal(TeamScoreView view, int teamId) {
+    public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = totals.ownValue() - (0.35d * totals.enemyValue());
         if (view instanceof TeamWarControlView controlView) {

@@ -66,7 +66,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
     }
 
     double projectedObjectiveScore(
-            link.locutus.discord.sim.TeamScoreObjective objective,
+            link.locutus.discord.sim.StrategicObjective objective,
             int teamId,
             boolean[] edgeAssigned,
             int[] attackerCounts,
@@ -76,7 +76,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
     }
 
     LongHorizonForwardProjection.ProjectedEvaluation projectedEvaluation(
-            link.locutus.discord.sim.TeamScoreObjective objective,
+            link.locutus.discord.sim.StrategicObjective objective,
             int teamId,
             boolean[] edgeAssigned,
             int[] attackerCounts,

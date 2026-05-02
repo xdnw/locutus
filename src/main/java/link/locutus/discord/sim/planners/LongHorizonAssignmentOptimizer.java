@@ -1,6 +1,6 @@
 package link.locutus.discord.sim.planners;
 
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.ArrayList;
@@ -246,7 +246,7 @@ final class LongHorizonAssignmentOptimizer {
                     2
                 ), terminalProjection);
                 }
-                ScoreSummary projectedObjectiveSummary = evaluator.objectiveSummary(
+                ObjectiveValueSummary projectedObjectiveSummary = evaluator.objectiveSummary(
                     best,
                     terminalProjection
                 );
@@ -331,19 +331,19 @@ final class LongHorizonAssignmentOptimizer {
         return new Candidate(result.assignment(), result.edgeAssigned(), result.attackerCounts(), result.defenderCounts(), projectionScore);
     }
 
-    static ScoreSummary projectedObjectiveSummary(
+    static ObjectiveValueSummary projectedObjectiveSummary(
             CandidateEdgeTable baseEdges,
             CompiledScenario scenario,
             int[] attackerCaps,
             int[] defenderCaps,
             int horizonTurns,
             Map<Integer, List<Integer>> assignment,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int[] attackerNationIds,
             int[] defenderNationIds
     ) {
         if (assignment.isEmpty()) {
-            return ScoreSummary.identical(0d);
+            return ObjectiveValueSummary.identical(0d);
         }
         LongHorizonControlProjection projection = LongHorizonControlProjection.create(
                 baseEdges,
@@ -361,7 +361,7 @@ final class LongHorizonAssignmentOptimizer {
                 defenderNationIds
         );
         int attackerTeamId = scenario.attackerCount() == 0 ? 1 : scenario.attacker(0).teamId();
-        return ScoreSummary.identical(projection.projectedObjectiveScore(
+        return ObjectiveValueSummary.identical(projection.projectedObjectiveScore(
                 objective,
                 attackerTeamId,
                 denseAssignment.edgeAssigned(),
@@ -436,13 +436,13 @@ final class LongHorizonAssignmentOptimizer {
     }
 
         record ProjectionScoringContext(
-            TeamScoreObjective objective
+            StrategicObjective objective
     ) {
     }
 
     record Result(
             Map<Integer, List<Integer>> assignment,
-            ScoreSummary projectedObjectiveSummary
+            ObjectiveValueSummary projectedObjectiveSummary
     ) {
     }
 

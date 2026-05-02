@@ -3,7 +3,7 @@ package link.locutus.discord.sim;
 import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that blends damage, exposure, control, resources, and follow-up leverage. */
-final class BalancedBlitzObjective implements TeamScoreObjective {
+final class BalancedBlitzObjective implements StrategicObjective {
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
         return new CandidateEdgeComponentPolicy(true, true, true, true, true);
@@ -15,7 +15,7 @@ final class BalancedBlitzObjective implements TeamScoreObjective {
     }
 
     @Override
-    public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
         return metrics.immediateHarm()
                 - (0.75d * metrics.selfExposure())
                 + (1.50d * metrics.controlLeverage())
@@ -25,7 +25,7 @@ final class BalancedBlitzObjective implements TeamScoreObjective {
     }
 
     @Override
-    public double scoreTerminal(TeamScoreView view, int teamId) {
+    public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = totals.ownValue() - totals.enemyValue();
         if (view instanceof TeamWarControlView controlView) {

@@ -18,7 +18,7 @@ import link.locutus.discord.db.WarDB;
 import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.Turn1DeclarePolicy;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.planners.OverrideSet.ActiveOverride;
@@ -37,7 +37,7 @@ import link.locutus.discord.sim.planners.SnapshotActivityProvider;
 import link.locutus.discord.sim.planners.ScheduledTargetPlan;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.planners.ScheduledTargetPlanner;
-import link.locutus.discord.sim.planners.ScoreSummary;
+import link.locutus.discord.sim.planners.ObjectiveValueSummary;
 import link.locutus.discord.sim.planners.PlannerReplayProjector;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import link.locutus.discord.sim.planners.providers.CompositeBlitzActivityModel;
@@ -1333,7 +1333,7 @@ public class SimEndpoints {
                     recommendation.objectiveScore(),
                     recommendation.counterRisk(),
                     lootEstimate,
-                    recommendation.scoreSummary()
+                    recommendation.objectiveSummary()
             ));
         }
         return new WebSimAdHocPlan(
@@ -1389,7 +1389,7 @@ public class SimEndpoints {
         return values[ordinal];
     }
 
-    private static TeamScoreObjective objectiveForRequest(BlitzPlanRequest request) {
+    private static StrategicObjective objectiveForRequest(BlitzPlanRequest request) {
         validateObjectiveOrdinal(request);
         Integer ordinal = request.objectiveOrdinal();
         if (ordinal == null) {
@@ -1573,7 +1573,7 @@ public class SimEndpoints {
         return result;
     }
 
-    private static BlitzObjectiveSummary objectiveSummary(ScoreSummary summary) {
+    private static BlitzObjectiveSummary objectiveSummary(ObjectiveValueSummary summary) {
         return new BlitzObjectiveSummary(
                 summary.mean(),
                 summary.p10(),
@@ -1592,7 +1592,7 @@ public class SimEndpoints {
             SnapshotActivityProvider activityProvider,
             OverrideSet overrides,
             SimTuning tuning,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int horizonTurns
     ) {
         return new BlitzPlanner(

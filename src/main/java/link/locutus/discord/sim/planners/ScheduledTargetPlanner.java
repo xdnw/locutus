@@ -2,7 +2,7 @@ package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,12 +26,12 @@ public final class ScheduledTargetPlanner {
     private final SimTuning tuning;
     private final TreatyProvider treatyProvider;
     private final OverrideSet overrides;
-    private final TeamScoreObjective objective;
+    private final StrategicObjective objective;
     private final SnapshotActivityProvider snapshotActivityProvider;
     private final PlannerTransitionSemantics transitionSemantics;
     private final CarryStateMode carryStateMode;
 
-    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective) {
+    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective) {
         this(
                 tuning,
                 treatyProvider,
@@ -43,7 +43,7 @@ public final class ScheduledTargetPlanner {
         );
     }
 
-    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective, SnapshotActivityProvider activityProvider) {
+    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective, SnapshotActivityProvider activityProvider) {
         this(
                 tuning,
                 treatyProvider,
@@ -59,7 +59,7 @@ public final class ScheduledTargetPlanner {
             SimTuning tuning,
             TreatyProvider treatyProvider,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             SnapshotActivityProvider activityProvider,
             PlannerTransitionSemantics transitionSemantics
     ) {
@@ -70,7 +70,7 @@ public final class ScheduledTargetPlanner {
             SimTuning tuning,
             TreatyProvider treatyProvider,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             SnapshotActivityProvider activityProvider,
             PlannerTransitionSemantics transitionSemantics,
             CarryStateMode carryStateMode

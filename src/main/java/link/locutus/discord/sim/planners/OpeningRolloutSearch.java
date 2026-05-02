@@ -3,7 +3,7 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.OpeningMetricVector;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.MutableAttackResult;
@@ -29,7 +29,7 @@ final class OpeningRolloutSearch {
     void evaluate(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int actionBudget,
             float viabilityProbe,
             OpeningEvaluator.EdgeEvaluation out
@@ -48,7 +48,7 @@ final class OpeningRolloutSearch {
             DBNationSnapshot defender,
             OpeningEvaluator.OpeningBaseline baseline,
             WarType warType,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int actionBudget,
             OpeningEvaluator.EdgeEvaluation out
     ) {
@@ -115,7 +115,7 @@ final class OpeningRolloutSearch {
     }
 
     private float scoreObjective(
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             OpeningMetricVector metrics
     ) {

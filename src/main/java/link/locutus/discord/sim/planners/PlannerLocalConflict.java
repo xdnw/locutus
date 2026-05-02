@@ -13,7 +13,7 @@ import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.NationCapacityRules;
 import link.locutus.discord.sim.StrategicAssetValue;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.TeamWarControlView;
 import link.locutus.discord.sim.Turn1DeclarePolicy;
 import link.locutus.discord.sim.WarSlotRules;
@@ -510,7 +510,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             boolean initialTurn,
             Collection<Integer> counterDeclarerNationIds,
             Collection<Integer> counterTargetNationIds,
-            TeamScoreObjective counterObjective,
+            StrategicObjective counterObjective,
             int remainingTurns
     ) {
         applyReplayTurn(
@@ -530,7 +530,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             boolean initialTurn,
             Collection<Integer> counterDeclarerNationIds,
             Collection<Integer> counterTargetNationIds,
-            TeamScoreObjective counterObjective,
+            StrategicObjective counterObjective,
             int remainingTurns
     ) {
         if (assignment.isEmpty()) {
@@ -604,7 +604,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 WarType warType,
                 int horizonTurns,
                 PlannerExactValidatorScripts scripts,
-                TeamScoreObjective objective,
+                StrategicObjective objective,
                 int attackerTeamId
         ) {
             PlannerExactValidatorScripts effectiveScripts = scripts == null
@@ -634,7 +634,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 PlannerLocalConflict conflict,
                 LocalWar war,
                 PlannerExactValidatorScripts scripts,
-                TeamScoreObjective objective,
+                StrategicObjective objective,
                 int attackerTeamId,
                 int turnsRemaining
         ) {
@@ -665,7 +665,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 PlannerLocalConflict conflict,
                 LocalWar war,
                 PlannerExactValidatorScripts scripts,
-                TeamScoreObjective objective,
+                StrategicObjective objective,
                 int attackerTeamId,
                 int turnsRemaining
         ) {
@@ -778,7 +778,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             WarType warType,
             int horizonTurns,
             PlannerExactValidatorScripts scripts,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId
     ) {
         simulateDeclaredWarInternal(
@@ -798,7 +798,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             WarType warType,
             int horizonTurns,
             PlannerExactValidatorScripts scripts,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId
     ) {
         DeclaredWarScriptRunner.simulate(
@@ -1232,7 +1232,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Collection<Integer> declarerNationIds,
             Collection<Integer> targetNationIds,
             boolean initialTurn,
-            TeamScoreObjective counterObjective,
+            StrategicObjective counterObjective,
             int remainingTurns
     ) {
         if (declarerNationIds.isEmpty() || targetNationIds.isEmpty()) {
@@ -1263,7 +1263,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Collection<Integer> declarerNationIds,
             Collection<Integer> targetNationIds,
             boolean initialTurn,
-            TeamScoreObjective counterObjective,
+            StrategicObjective counterObjective,
             int remainingTurns
     ) {
         List<LocalNation> declarers = eligibleCounterDeclarers(declarerNationIds, initialTurn);
@@ -1486,7 +1486,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             LocalWar war,
             Set<AttackType> allowedAttackTypes,
             int mapReserveFloor,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId
     ) {
         if (!war.isActive()) {
@@ -1591,7 +1591,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             LocalWar war,
             Set<AttackType> allowedAttackTypes,
             int mapReserveFloor,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId
     ) {
         if (!war.isActive()) {
@@ -1610,7 +1610,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             LocalWar war,
             Set<AttackType> allowedAttackTypes,
             int mapsAvailable,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId
     ) {
         AttackType bestAttackType = null;

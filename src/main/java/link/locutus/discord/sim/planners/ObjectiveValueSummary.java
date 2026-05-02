@@ -4,24 +4,24 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public record ScoreSummary(
+public record ObjectiveValueSummary(
         double mean,
         double p10,
         double p50,
         double p90,
         int sampleCount
 ) {
-    public ScoreSummary {
+    public ObjectiveValueSummary {
         if (sampleCount <= 0) {
             throw new IllegalArgumentException("sampleCount must be > 0");
         }
     }
 
-    public static ScoreSummary identical(double value) {
-        return new ScoreSummary(value, value, value, value, 1);
+    public static ObjectiveValueSummary identical(double value) {
+        return new ObjectiveValueSummary(value, value, value, value, 1);
     }
 
-    public static ScoreSummary fromSamples(List<Double> samples) {
+    public static ObjectiveValueSummary fromSamples(List<Double> samples) {
         if (samples == null || samples.isEmpty()) {
             throw new IllegalArgumentException("samples must not be empty");
         }
@@ -31,7 +31,7 @@ public record ScoreSummary(
         for (double sample : sorted) {
             sum += sample;
         }
-        return new ScoreSummary(
+        return new ObjectiveValueSummary(
                 sum / sorted.size(),
                 percentile(sorted, 0.10),
                 percentile(sorted, 0.50),

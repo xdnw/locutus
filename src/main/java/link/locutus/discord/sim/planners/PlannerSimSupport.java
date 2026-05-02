@@ -1,7 +1,7 @@
 package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,15 +16,15 @@ final class PlannerSimSupport {
     private PlannerSimSupport() {
     }
 
-    static ScoreSummary summarizeScores(SimTuning tuning, IntToDoubleFunction scorer) {
+    static ObjectiveValueSummary summarizeObjectiveValues(SimTuning tuning, IntToDoubleFunction scorer) {
         if (tuning.stateResolutionMode() != link.locutus.discord.sim.combat.ResolutionMode.STOCHASTIC) {
-            return ScoreSummary.identical(scorer.applyAsDouble(0));
+            return ObjectiveValueSummary.identical(scorer.applyAsDouble(0));
         }
         List<Double> samples = new ArrayList<>(tuning.stochasticSampleCount());
         for (int sampleIndex = 0; sampleIndex < tuning.stochasticSampleCount(); sampleIndex++) {
             samples.add(scorer.applyAsDouble(sampleIndex));
         }
-        return ScoreSummary.fromSamples(samples);
+        return ObjectiveValueSummary.fromSamples(samples);
     }
 
     static SimTuning sampleTuning(SimTuning tuning, int sampleIndex) {
@@ -34,7 +34,7 @@ final class PlannerSimSupport {
     static double scoreAssignment(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> assignment,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders
@@ -45,7 +45,7 @@ final class PlannerSimSupport {
     static double scoreAssignment(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> assignment,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,

@@ -8,7 +8,7 @@ import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimWar;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.ControlFlagDelta;
@@ -134,7 +134,7 @@ final class OpeningEvaluator {
     static EvaluatedEdge evaluateOpening(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             CandidateEdgeComponentPolicy componentPolicy
     ) {
         OpeningRolloutSearch evaluator = new OpeningRolloutSearch(DEFAULT_ACTION_BUDGET);
@@ -158,7 +158,7 @@ final class OpeningEvaluator {
     static EvaluatedEdge evaluateOpening(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             CandidateEdgeComponentPolicy componentPolicy,
             int actionBudget
     ) {
@@ -227,13 +227,13 @@ final class OpeningEvaluator {
     }
 
     static final class CandidateOpeningEvaluator {
-        private final TeamScoreObjective objective;
+        private final StrategicObjective objective;
         private final CandidateEdgeComponentPolicy componentPolicy;
         private final OpeningCandidateAdmission candidateAdmission;
         private final OpeningRolloutSearch rolloutEdgeEvaluator;
         private final EdgeEvaluation edgeEvaluation = new EdgeEvaluation();
 
-        CandidateOpeningEvaluator(TeamScoreObjective objective, int actionBudget) {
+        CandidateOpeningEvaluator(StrategicObjective objective, int actionBudget) {
             this.objective = Objects.requireNonNull(objective, "objective");
             this.componentPolicy = resolveComponentPolicy(objective);
             this.candidateAdmission = new OpeningCandidateAdmission(resolveAdmissionPolicy(objective));
@@ -270,7 +270,7 @@ final class OpeningEvaluator {
             CompiledScenario scenario,
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int[] attackerCaps,
             int[] defenderCaps,
             CandidateEdgeTable out
@@ -329,7 +329,7 @@ final class OpeningEvaluator {
 
     private static final class DefenderAdmissionCollector implements IntConsumer {
         private final CompiledScenario scenario;
-        private final TeamScoreObjective objective;
+        private final StrategicObjective objective;
         private final CandidateEdgeComponentPolicy componentPolicy;
         private final CandidateEdgeAdmissionPolicy admissionPolicy;
         private final int[] defenderCaps;
@@ -346,7 +346,7 @@ final class OpeningEvaluator {
 
         private DefenderAdmissionCollector(
                 CompiledScenario scenario,
-                TeamScoreObjective objective,
+                StrategicObjective objective,
                 CandidateEdgeAdmissionPolicy admissionPolicy,
                 CandidateEdgeComponentPolicy componentPolicy,
                 int[] defenderCaps,
@@ -501,14 +501,14 @@ final class OpeningEvaluator {
         return true;
     }
 
-    private static CandidateEdgeAdmissionPolicy resolveAdmissionPolicy(TeamScoreObjective objective) {
+    private static CandidateEdgeAdmissionPolicy resolveAdmissionPolicy(StrategicObjective objective) {
         CandidateEdgeAdmissionPolicy candidateAdmissionPolicy = objective.candidateEdgeAdmissionPolicy();
         return candidateAdmissionPolicy == null
                 ? CandidateEdgeAdmissionPolicy.defaultPolicy()
                 : candidateAdmissionPolicy;
     }
 
-    private static CandidateEdgeComponentPolicy resolveComponentPolicy(TeamScoreObjective objective) {
+    private static CandidateEdgeComponentPolicy resolveComponentPolicy(StrategicObjective objective) {
         CandidateEdgeComponentPolicy candidateComponentPolicy = objective.candidateEdgeComponentPolicy();
         return candidateComponentPolicy == null
                 ? CandidateEdgeComponentPolicy.none()
@@ -518,7 +518,7 @@ final class OpeningEvaluator {
     private static EvaluatedEdge evaluateAdmittedOpening(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             CandidateEdgeComponentPolicy componentPolicy,
             OpeningRolloutSearch rolloutEdgeEvaluator,
             EdgeEvaluation edgeEvaluation,

@@ -6,7 +6,8 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicAssetValue;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicEvaluationComponents;
+import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -86,7 +87,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignment(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> assignment,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders
@@ -97,7 +98,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignment(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> assignment,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
@@ -127,7 +128,7 @@ final class PlannerConflictExecutor {
 
     static double scoreAssignment(
             PlannerLocalConflict conflict,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             PlannerConflictBundle.PlannerAssignmentView assignment
     ) {
@@ -150,7 +151,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -173,7 +174,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -213,7 +214,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             PlannerAssignmentSession currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -236,7 +237,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             PlannerAssignmentSession currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -276,7 +277,7 @@ final class PlannerConflictExecutor {
     private static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             PlannerConflictBundle bundle,
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
@@ -331,7 +332,7 @@ final class PlannerConflictExecutor {
 
     private static double scoreAssignmentFromCurrentState(
             PlannerLocalConflict conflict,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             PlannerConflictBundle.PlannerAssignmentView suffixAssignment
     ) {
@@ -556,7 +557,7 @@ final class PlannerConflictExecutor {
     static double evaluateDeclaredWar(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns
@@ -575,7 +576,7 @@ final class PlannerConflictExecutor {
     static double evaluateDeclaredWar(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns,
@@ -599,7 +600,7 @@ final class PlannerConflictExecutor {
     private static double evaluateDeclaredWarInternal(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns,
@@ -634,7 +635,7 @@ final class PlannerConflictExecutor {
     static DeclaredWarEvaluation evaluateDeclaredWarDetailed(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns,
@@ -847,7 +848,7 @@ final class PlannerConflictExecutor {
             double resourceSwing,
             double controlLeverage,
             double futureWarLeverage
-    ) {
+    ) implements StrategicEvaluationComponents {
         static DeclaredWarEvaluation scoreOnly(double objectiveScore) {
             return new DeclaredWarEvaluation(objectiveScore, 0.0, 0.0, 0.0, 0.0, 0.0);
         }

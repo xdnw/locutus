@@ -496,7 +496,7 @@ class PlannerReplayProjectorTest {
             Map<Long, Integer> warTypeOrdinalsByPair,
             List<DBNationSnapshot> counterDeclarers,
             List<DBNationSnapshot> counterTargets,
-            link.locutus.discord.sim.TeamScoreObjective counterObjective,
+            link.locutus.discord.sim.StrategicObjective counterObjective,
             SimTuning tuning,
             int horizonTurns
     ) {

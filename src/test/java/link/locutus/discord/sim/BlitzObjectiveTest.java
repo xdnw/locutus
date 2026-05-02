@@ -156,7 +156,7 @@ class BlitzObjectiveTest {
 
     @Test
     void terminalObjectivesUseStrategicValueNotNationScore() {
-        TeamScoreView view = new TeamScoreView() {
+        StrategicValueView view = new StrategicValueView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
                 consumer.accept(101, 1, 50_000.0);

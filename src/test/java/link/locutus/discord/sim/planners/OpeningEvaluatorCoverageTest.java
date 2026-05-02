@@ -6,11 +6,11 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
-import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimWorld;
-import link.locutus.discord.sim.TeamScoreObjective;
-import link.locutus.discord.sim.TeamScoreView;
+import link.locutus.discord.sim.StrategicEvaluationComponents;
+import link.locutus.discord.sim.StrategicObjective;
+import link.locutus.discord.sim.StrategicValueView;
 import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
@@ -28,10 +28,10 @@ class OpeningEvaluatorCoverageTest {
     private static final int ATTACKER_TEAM = 1000;
     private static final int DEFENDER_TEAM = 9999;
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
-    private static final TeamScoreObjective PRESSURE_ONLY_OBJECTIVE = new PressureOnlyObjective();
+    private static final StrategicObjective PRESSURE_ONLY_OBJECTIVE = new PressureOnlyObjective();
     private static final CandidateEdgeComponentPolicy SPARSE_COMPONENT_POLICY =
             new CandidateEdgeComponentPolicy(true, false, false, true, false);
-    private static final TeamScoreObjective SPARSE_COMPONENT_OBJECTIVE =
+    private static final StrategicObjective SPARSE_COMPONENT_OBJECTIVE =
             new SparseComponentObjective(SPARSE_COMPONENT_POLICY);
 
     @Test
@@ -337,14 +337,14 @@ class OpeningEvaluatorCoverageTest {
         return result;
     }
 
-    private static final class PressureOnlyObjective implements TeamScoreObjective {
+    private static final class PressureOnlyObjective implements StrategicObjective {
         @Override
-        public double scoreTerminal(TeamScoreView view, int teamId) {
+        public double scoreTerminal(StrategicValueView view, int teamId) {
             return 0.0;
         }
 
         @Override
-        public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
             return metrics.targetPressure() + (0.0001d * metrics.immediateHarm());
         }
 
@@ -359,7 +359,7 @@ class OpeningEvaluatorCoverageTest {
         }
     }
 
-    private static final class SparseComponentObjective implements TeamScoreObjective {
+    private static final class SparseComponentObjective implements StrategicObjective {
         private final CandidateEdgeComponentPolicy componentPolicy;
 
         private SparseComponentObjective(CandidateEdgeComponentPolicy componentPolicy) {
@@ -367,12 +367,12 @@ class OpeningEvaluatorCoverageTest {
         }
 
         @Override
-        public double scoreTerminal(TeamScoreView view, int teamId) {
+        public double scoreTerminal(StrategicValueView view, int teamId) {
             return 0.0;
         }
 
         @Override
-        public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
             return metrics.immediateHarm()
                     + (2.0d * metrics.controlLeverage())
                     + (0.01d * metrics.futureWarLeverage())

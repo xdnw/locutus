@@ -8,7 +8,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicAssetValue;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.TeamWarControlView;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.combat.AttackScratch;
@@ -183,7 +183,7 @@ final class LongHorizonForwardProjection {
     }
 
     double projectedObjectiveScore(
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int teamId,
             boolean[] edgeAssigned,
             int[] attackerCounts,
@@ -197,7 +197,7 @@ final class LongHorizonForwardProjection {
     }
 
     ProjectedEvaluation projectedEvaluation(
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int teamId,
             boolean[] edgeAssigned,
             int[] attackerCounts,

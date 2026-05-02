@@ -1,6 +1,6 @@
 package link.locutus.discord.sim;
 
-public interface TeamWarControlView extends TeamScoreView {
+public interface TeamWarControlView extends StrategicValueView {
     void forEachWarControl(WarControlConsumer consumer);
 
     default void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {

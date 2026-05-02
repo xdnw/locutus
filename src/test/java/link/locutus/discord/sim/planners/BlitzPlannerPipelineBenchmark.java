@@ -586,7 +586,7 @@ public final class BlitzPlannerPipelineBenchmark {
                     horizonTurns,
                     projectionScoring ? new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new DamageObjective()) : null
             );
-            ScoreSummary summary = result.projectedObjectiveSummary() != null
+            ObjectiveValueSummary summary = result.projectedObjectiveSummary() != null
                     ? result.projectedObjectiveSummary()
                     : LongHorizonAssignmentOptimizer.projectedObjectiveSummary(
                             longHorizonEdges,

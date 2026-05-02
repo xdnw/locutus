@@ -3,7 +3,7 @@ package link.locutus.discord.sim;
 /**
  * Objective-facing summary of a bounded opening rollout.
  */
-public class OpeningMetricVector {
+public class OpeningMetricVector implements StrategicEvaluationComponents {
     public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d, 0d);
 
     private final double immediateHarm;

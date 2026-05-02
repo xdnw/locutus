@@ -3,7 +3,7 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
@@ -14,7 +14,7 @@ import java.util.Map;
 
 final class PlannerAutonomousCounterPlanner {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
-    private static final TeamScoreObjective DEFAULT_OBJECTIVE = new DamageObjective();
+    private static final StrategicObjective DEFAULT_OBJECTIVE = new DamageObjective();
 
     private PlannerAutonomousCounterPlanner() {
     }
@@ -23,7 +23,7 @@ final class PlannerAutonomousCounterPlanner {
             List<DBNationSnapshot> declarerSnapshots,
             List<DBNationSnapshot> targetSnapshots,
             SimTuning tuning,
-            TeamScoreObjective counterObjective,
+            StrategicObjective counterObjective,
             int remainingTurns
     ) {
         if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {

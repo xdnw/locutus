@@ -70,18 +70,18 @@ final class LongHorizonCandidateEvaluator {
                 - realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
     }
 
-    ScoreSummary objectiveSummary(
+    ObjectiveValueSummary objectiveSummary(
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonControlProjection projection
     ) {
         if (candidate.assignment().isEmpty()) {
-            return ScoreSummary.identical(0d);
+            return ObjectiveValueSummary.identical(0d);
         }
         if (projectionScoringContext == null || !canScoreProjection) {
             return null;
         }
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
-        return ScoreSummary.identical(evaluation.objectiveScore());
+        return ObjectiveValueSummary.identical(evaluation.objectiveScore());
     }
 
     int[] realizedCounters(

@@ -5,7 +5,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace;
 
 import java.util.ArrayList;
@@ -96,7 +96,7 @@ public final class PlannerReplayProjector {
         Map<Integer, List<Integer>> assignment,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int currentTurn,
         int horizonTurns
     ) {
@@ -128,7 +128,7 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int currentTurn,
         int horizonTurns
     ) {
@@ -160,13 +160,13 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int[] participantIds,
         int[] existingWarPairs,
         int currentTurn,
         int horizonTurns
     ) {
-    TeamScoreObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
+    StrategicObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
     PlannerLocalConflict conflict = PlannerLocalConflict.createWithActiveWars(
         overrides,
         nations,
@@ -195,7 +195,7 @@ public final class PlannerReplayProjector {
         Map<Integer, List<Integer>> assignment,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int horizonTurns
     ) {
     return capture(
@@ -219,7 +219,7 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int horizonTurns
     ) {
     return capture(
@@ -245,11 +245,11 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int horizonTurns
     ) {
     try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.REPLAY_CAPTURE)) {
-        TeamScoreObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
+        StrategicObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
         int turns = Math.max(1, horizonTurns);
         int startTurn = conflict.currentTurn();
         IntPredicate isAttackerNationId = attackerNationIdLookup(attackerNationIds);

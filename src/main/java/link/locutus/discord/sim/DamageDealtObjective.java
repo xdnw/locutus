@@ -3,19 +3,19 @@ package link.locutus.discord.sim;
 import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that maximizes damage dealt while ignoring own losses. */
-final class DamageDealtObjective implements TeamScoreObjective {
+final class DamageDealtObjective implements StrategicObjective {
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
         return new CandidateEdgeComponentPolicy(true, false, false, false, false);
     }
 
     @Override
-    public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
         return metrics.immediateHarm();
     }
 
     @Override
-    public double scoreTerminal(TeamScoreView view, int teamId) {
+    public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = -totals.enemyValue();
         if (view instanceof TeamWarControlView controlView) {

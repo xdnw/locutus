@@ -3,12 +3,12 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.SimWorld;
-import link.locutus.discord.sim.TeamScoreObjective;
-import link.locutus.discord.sim.TeamScoreView;
+import link.locutus.discord.sim.StrategicEvaluationComponents;
+import link.locutus.discord.sim.StrategicObjective;
+import link.locutus.discord.sim.StrategicValueView;
 import link.locutus.discord.sim.TeamWarControlView;
 import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
@@ -910,7 +910,7 @@ class LongHorizonAssignmentOptimizerTest {
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
             CandidateEdgeTable edges,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int horizonTurns
     ) {
         CompiledScenario scenario = compile(attackers, defenders);
@@ -997,9 +997,9 @@ class LongHorizonAssignmentOptimizerTest {
                 return edges;
         }
 
-        private static final class WarCountAvoidanceObjective implements TeamScoreObjective {
+        private static final class WarCountAvoidanceObjective implements StrategicObjective {
                 @Override
-                public double scoreTerminal(TeamScoreView view, int teamId) {
+                public double scoreTerminal(StrategicValueView view, int teamId) {
                         if (!(view instanceof TeamWarControlView controlView)) {
                                 return 0d;
                         }
@@ -1013,7 +1013,7 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
                         return 0d;
                 }
 
@@ -1023,9 +1023,9 @@ class LongHorizonAssignmentOptimizerTest {
                 }
         }
 
-        private static final class TeamDifferenceObjective implements TeamScoreObjective {
+        private static final class TeamDifferenceObjective implements StrategicObjective {
                 @Override
-                public double scoreTerminal(TeamScoreView view, int teamId) {
+                public double scoreTerminal(StrategicValueView view, int teamId) {
                         double[] totals = new double[2];
                         view.forEachNation((nationId, nationTeamId, score) -> {
                                 if (nationTeamId == teamId) {
@@ -1038,7 +1038,7 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
                         return 0d;
                 }
 
@@ -1048,9 +1048,9 @@ class LongHorizonAssignmentOptimizerTest {
                 }
         }
 
-        private static final class ActiveWarStateObjective implements TeamScoreObjective {
+        private static final class ActiveWarStateObjective implements StrategicObjective {
                 @Override
-                public double scoreTerminal(TeamScoreView view, int teamId) {
+                public double scoreTerminal(StrategicValueView view, int teamId) {
                         if (!(view instanceof TeamWarControlView controlView)) {
                                 return 0d;
                         }
@@ -1067,7 +1067,7 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
                         return 0d;
                 }
 
@@ -1077,9 +1077,9 @@ class LongHorizonAssignmentOptimizerTest {
                 }
         }
 
-        private static final class CounterAdjustedForwardWarObjective implements TeamScoreObjective {
+        private static final class CounterAdjustedForwardWarObjective implements StrategicObjective {
                 @Override
-                public double scoreTerminal(TeamScoreView view, int teamId) {
+                public double scoreTerminal(StrategicValueView view, int teamId) {
                         if (!(view instanceof TeamWarControlView controlView)) {
                                 return 0d;
                         }
@@ -1095,7 +1095,7 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
                         return 0d;
                 }
 
@@ -1105,9 +1105,9 @@ class LongHorizonAssignmentOptimizerTest {
                 }
         }
 
-        private static final class ReverseCounterWarCountObjective implements TeamScoreObjective {
+        private static final class ReverseCounterWarCountObjective implements StrategicObjective {
                 @Override
-                public double scoreTerminal(TeamScoreView view, int teamId) {
+                public double scoreTerminal(StrategicValueView view, int teamId) {
                         if (!(view instanceof TeamWarControlView controlView)) {
                                 return 0d;
                         }
@@ -1121,7 +1121,7 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
                         return 0d;
                 }
 

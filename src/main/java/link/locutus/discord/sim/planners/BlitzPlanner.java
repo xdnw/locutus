@@ -3,7 +3,7 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
@@ -40,14 +40,14 @@ public final class BlitzPlanner {
     private final SimTuning tuning;
     private final TreatyProvider treatyProvider;
     private final OverrideSet overrides;
-    private final TeamScoreObjective objective;
+    private final StrategicObjective objective;
     private final SnapshotActivityProvider snapshotActivityProvider;
 
-    public BlitzPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective) {
+    public BlitzPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective) {
         this(tuning, treatyProvider, overrides, objective, SnapshotActivityProvider.BASELINE);
     }
 
-    public BlitzPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective, SnapshotActivityProvider activityProvider) {
+    public BlitzPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective, SnapshotActivityProvider activityProvider) {
         this.tuning = Objects.requireNonNull(tuning, "tuning");
         this.treatyProvider = Objects.requireNonNull(treatyProvider, "treatyProvider");
         this.overrides = Objects.requireNonNull(overrides, "overrides");
@@ -277,7 +277,7 @@ public final class BlitzPlanner {
             );
             normalizedReciprocals = true;
         }
-        ScoreSummary objectiveSummary = !normalizedReciprocals
+        ObjectiveValueSummary objectiveSummary = !normalizedReciprocals
                 ? optimized.projectedObjectiveSummary()
                 : null;
         if (objectiveSummary == null) {
@@ -296,12 +296,12 @@ public final class BlitzPlanner {
         return new PlannedAssignment(assignment, objectiveSummary);
     }
 
-    private ScoreSummary summarizeExactAssignment(
+    private ObjectiveValueSummary summarizeExactAssignment(
             PreparedAssignment prepared,
             Map<Integer, List<Integer>> assignment,
             Map<Long, Integer> warTypeOrdinalsByPair
     ) {
-        return PlannerSimSupport.summarizeScores(tuning, sampleIndex -> {
+        return PlannerSimSupport.summarizeObjectiveValues(tuning, sampleIndex -> {
             SimTuning scoringTuning = tuning.stateResolutionMode() == link.locutus.discord.sim.combat.ResolutionMode.STOCHASTIC
                 ? PlannerSimSupport.sampleTuning(tuning, sampleIndex)
                 : tuning;
@@ -778,7 +778,7 @@ public final class BlitzPlanner {
 
     private record PlannedAssignment(
         Map<Integer, List<Integer>> assignment,
-        ScoreSummary objectiveSummary
+        ObjectiveValueSummary objectiveSummary
     ) {
     }
 }
