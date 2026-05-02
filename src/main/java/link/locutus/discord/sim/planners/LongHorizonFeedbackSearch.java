@@ -101,6 +101,7 @@ final class LongHorizonFeedbackSearch {
         LongHorizonAssignmentOptimizer.Candidate best = seed;
         LongHorizonAssignmentOptimizer.Candidate currentSeed = seed;
         int[] currentRealized = seedRealizedCounters.clone();
+        double bestObjective = evaluator.score(best, seedProjection);
         int variantsRemaining = MAX_FEEDBACK_VARIANTS;
         for (int iteration = 0; iteration < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0; iteration++) {
             List<Integer> overCountered = overCounteredAttackers(
@@ -171,12 +172,10 @@ final class LongHorizonFeedbackSearch {
                     iterationCandidate,
                     seedProjection
             );
-            boolean improvement = iterationObjective > evaluator.score(
-                    best,
-                    seedProjection
-            ) + LongHorizonAssignmentOptimizer.EPSILON;
+            boolean improvement = iterationObjective > bestObjective + LongHorizonAssignmentOptimizer.EPSILON;
             if (improvement) {
                 best = iterationCandidate;
+                bestObjective = iterationObjective;
             }
             if (!realizedChanged(currentRealized, nextRealized) && !improvement) {
                 break;

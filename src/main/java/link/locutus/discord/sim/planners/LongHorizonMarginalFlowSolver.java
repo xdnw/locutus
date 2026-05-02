@@ -3,10 +3,10 @@ package link.locutus.discord.sim.planners;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +47,8 @@ final class LongHorizonMarginalFlowSolver {
         Map<Integer, List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
         Int2IntOpenHashMap attackerSlotByNationId = slotByNationId(attackerNationIds);
         Int2IntOpenHashMap defenderSlotByNationId = slotByNationId(defenderNationIds);
-        Long2IntOpenHashMap edgeIndexByPair = edgeIndexByPair(edges, attackerNationIds, defenderNationIds);
+        long[] edgePairKeys = edgePairKeys(edges, attackerNationIds, defenderNationIds);
+        Long2IntOpenHashMap edgeIndexByPair = edgeIndexByPair(edgePairKeys);
         LongOpenHashSet fixedPairKeys = new LongOpenHashSet(Math.max(16, fixedEdges.size() * 2));
 
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
@@ -85,7 +86,7 @@ final class LongHorizonMarginalFlowSolver {
         int edgeOutStart = edgeInStart + edges.edgeCount();
         int sink = edgeOutStart + edges.edgeCount();
         int vertexCount = sink + 1;
-        int edgePairCapacity = expandedEdgePairCapacity(edges, residualAttackerCaps, residualDefenderCaps, fixedPairKeys, attackerNationIds, defenderNationIds);
+        int edgePairCapacity = expandedEdgePairCapacity(edges, residualAttackerCaps, residualDefenderCaps, fixedPairKeys, edgePairKeys);
         int[] to = new int[edgePairCapacity * 2 + 4];
         int[] capacity = new int[to.length];
         double[] cost = new double[to.length];
@@ -119,7 +120,7 @@ final class LongHorizonMarginalFlowSolver {
             if (residualAttackerCaps[attackerIndex] <= 0 || residualDefenderCaps[defenderIndex] <= 0) {
                 continue;
             }
-            if (fixedPairKeys.contains(pairKey(attackerNationIds[attackerIndex], defenderNationIds[defenderIndex]))) {
+            if (fixedPairKeys.contains(edgePairKeys[edgeIndex])) {
                 continue;
             }
             int rank = attackerStrengthRanks != null && attackerIndex < attackerStrengthRanks.length
@@ -171,16 +172,16 @@ final class LongHorizonMarginalFlowSolver {
         double[] distance = new double[vertexCount];
         int[] previousEdge = new int[vertexCount];
         boolean[] inQueue = new boolean[vertexCount];
-        ArrayDeque<Integer> queue = new ArrayDeque<>(vertexCount);
+        IntArrayFIFOQueue queue = new IntArrayFIFOQueue(vertexCount);
         while (true) {
             Arrays.fill(distance, Double.POSITIVE_INFINITY);
             Arrays.fill(previousEdge, -1);
             distance[source] = 0d;
             queue.clear();
-            queue.add(source);
+            queue.enqueue(source);
             inQueue[source] = true;
             while (!queue.isEmpty()) {
-                int current = queue.poll();
+                int current = queue.dequeueInt();
                 inQueue[current] = false;
                 for (int edge = head[current]; edge != -1; edge = next[edge]) {
                     if (capacity[edge] <= 0) {
@@ -192,7 +193,7 @@ final class LongHorizonMarginalFlowSolver {
                         distance[nextVertex] = nextDistance;
                         previousEdge[nextVertex] = edge;
                         if (!inQueue[nextVertex]) {
-                            queue.add(nextVertex);
+                            queue.enqueue(nextVertex);
                             inQueue[nextVertex] = true;
                         }
                     }
@@ -216,8 +217,7 @@ final class LongHorizonMarginalFlowSolver {
             int[] residualAttackerCaps,
             int[] residualDefenderCaps,
             LongOpenHashSet fixedPairKeys,
-            int[] attackerNationIds,
-            int[] defenderNationIds
+            long[] edgePairKeys
     ) {
         int edgePairs = 0;
         for (int cap : residualAttackerCaps) {
@@ -232,7 +232,7 @@ final class LongHorizonMarginalFlowSolver {
             if (residualAttackerCaps[attackerIndex] <= 0 || residualDefenderCaps[defenderIndex] <= 0) {
                 continue;
             }
-            if (fixedPairKeys.contains(pairKey(attackerNationIds[attackerIndex], defenderNationIds[defenderIndex]))) {
+            if (fixedPairKeys.contains(edgePairKeys[edgeIndex])) {
                 continue;
             }
             edgePairs += 1 + residualAttackerCaps[attackerIndex] + residualDefenderCaps[defenderIndex];
@@ -257,13 +257,24 @@ final class LongHorizonMarginalFlowSolver {
         return slots;
     }
 
-    private static Long2IntOpenHashMap edgeIndexByPair(CandidateEdgeTable edges, int[] attackerNationIds, int[] defenderNationIds) {
-        Long2IntOpenHashMap indexes = new Long2IntOpenHashMap(Math.max(16, edges.edgeCount() * 2));
+    private static Long2IntOpenHashMap edgeIndexByPair(long[] edgePairKeys) {
+        Long2IntOpenHashMap indexes = new Long2IntOpenHashMap(Math.max(16, edgePairKeys.length * 2));
         indexes.defaultReturnValue(-1);
-        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
-            indexes.put(pairKey(attackerNationIds[edges.attackerIndex(edgeIndex)], defenderNationIds[edges.defenderIndex(edgeIndex)]), edgeIndex);
+        for (int edgeIndex = 0; edgeIndex < edgePairKeys.length; edgeIndex++) {
+            indexes.put(edgePairKeys[edgeIndex], edgeIndex);
         }
         return indexes;
+    }
+
+    private static long[] edgePairKeys(CandidateEdgeTable edges, int[] attackerNationIds, int[] defenderNationIds) {
+        long[] keys = new long[edges.edgeCount()];
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            keys[edgeIndex] = pairKey(
+                    attackerNationIds[edges.attackerIndex(edgeIndex)],
+                    defenderNationIds[edges.defenderIndex(edgeIndex)]
+            );
+        }
+        return keys;
     }
 
     private static long pairKey(int attackerNationId, int defenderNationId) {
