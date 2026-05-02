@@ -245,8 +245,32 @@ final class PlannerConflictExecutor {
             int attackerTeamId,
             Map<Long, Integer> warTypeOrdinalsByPair
     ) {
-        Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId =
-                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
+        return scoreAssignmentDelta(
+                tuning,
+                overrides,
+                objective,
+                currentAssignment,
+                candidateChange,
+                attackers,
+                defenders,
+                attackerTeamId,
+                warTypeOrdinalsByPair,
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders)
+        );
+    }
+
+    static double scoreAssignmentDelta(
+            SimTuning tuning,
+            OverrideSet overrides,
+            StrategicObjective objective,
+            PlannerAssignmentSession currentAssignment,
+            PlannerAssignmentChange candidateChange,
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            int attackerTeamId,
+            Map<Long, Integer> warTypeOrdinalsByPair,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId
+    ) {
         PlannerConflictBundle bundle = PlannerConflictBundle.extract(
                 currentAssignment,
                 candidateChange,
