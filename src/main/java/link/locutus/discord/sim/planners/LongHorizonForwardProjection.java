@@ -77,6 +77,8 @@ final class LongHorizonForwardProjection {
     private final double[] attackerCounterPressures;
     private final double[] attackerCounterPenaltyScales;
     private final int[] attackerCaps;
+    private final AttackScratch projectionScratch;
+    private final MutableAttackResult projectionResult;
 
     private LongHorizonForwardProjection(
             CandidateEdgeTable edges,
@@ -106,6 +108,8 @@ final class LongHorizonForwardProjection {
         this.attackerCounterPressures = attackerCounterPressures;
         this.attackerCounterPenaltyScales = attackerCounterPenaltyScales;
         this.attackerCaps = attackerCaps;
+        this.projectionScratch = new AttackScratch();
+        this.projectionResult = new MutableAttackResult();
     }
 
     static LongHorizonForwardProjection create(
@@ -394,8 +398,6 @@ final class LongHorizonForwardProjection {
             int turnsToRun
     ) {
         DenseWarContext context = new DenseWarContext(state, warState);
-        AttackScratch scratch = new AttackScratch();
-        MutableAttackResult result = new MutableAttackResult();
         int bound = Math.max(0, Math.min(horizonTurns, turnsToRun));
         for (int turn = 0; turn < bound; turn++) {
             if (turn > 0) {
@@ -414,7 +416,7 @@ final class LongHorizonForwardProjection {
                     continue;
                 }
                 context.setWarIndex(warIndex);
-                simulateAdaptiveAttacks(state, warState, context, scratch, result);
+                simulateAdaptiveAttacks(state, warState, context, projectionScratch, projectionResult);
             }
         }
     }

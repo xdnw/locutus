@@ -57,8 +57,7 @@ public record BlitzMilitaryRules(
         int[] researchScoreByOrdinal,
         int projectScore,
         double[] unitScoreByOrdinal,
-        boolean[] unitScoreCappedAt50ByOrdinal,
-        int[] unitBaseMonetaryValueCentsByOrdinal
+        boolean[] unitScoreCappedAt50ByOrdinal
 ) {
 
     private static final BlitzMilitaryRules INSTANCE = build();
@@ -141,11 +140,6 @@ public record BlitzMilitaryRules(
         }
         double[] unitScoreByOrdinal = new double[unitCount];
         boolean[] unitScoreCappedAt50ByOrdinal = new boolean[unitCount];
-        int[] unitBaseMonetaryValueCentsByOrdinal = new int[unitCount];
-        for (MilitaryUnit unit : units) {
-            long cents = Math.round(Math.max(0d, unit.getBaseMonetaryValue(1)) * 100d);
-            unitBaseMonetaryValueCentsByOrdinal[unit.ordinal()] = (int) Math.min((long) Integer.MAX_VALUE, cents);
-        }
         // Score-counted units (mirrors PW.scoreBreakdown). INFRASTRUCTURE is
         // intentionally excluded here because its contribution is added via
         // the separate infra/40 term, not via the unit loop.
@@ -201,8 +195,7 @@ public record BlitzMilitaryRules(
                 researchScoreByOrdinal,
                 Projects.getScore(),
                 unitScoreByOrdinal,
-                unitScoreCappedAt50ByOrdinal,
-                unitBaseMonetaryValueCentsByOrdinal
+                unitScoreCappedAt50ByOrdinal
         );
     }
 }

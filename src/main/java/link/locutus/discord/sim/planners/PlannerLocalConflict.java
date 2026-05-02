@@ -1724,7 +1724,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 attackType,
             attackResult.success(),
                 attackResult.attackerLosses(),
+                war.attacker.researchBits(),
                 attackResult.defenderLosses(),
+                war.defender.researchBits(),
                 attackResult.infraDestroyed()
         );
     }

@@ -24,7 +24,7 @@ public final class PlannerReplayProjector {
     static final int NATION_MASK_UNIT_COUNTS = 0x2;
     static final int WAR_MASK_COMBAT_STATE = 0x1;
     static final int WAR_MASK_FLAGS = 0x2;
-    static final int TURN_META_BLOCK_SIZE = 12;
+    static final int TURN_META_BLOCK_SIZE = 13;
 
     private PlannerReplayProjector() {
     }
@@ -273,6 +273,7 @@ public final class PlannerReplayProjector {
         IntArrayBuilder summaryAttackOutcomeCounts = new IntArrayBuilder();
         IntArrayBuilder summaryUnitLossCounts = new IntArrayBuilder();
         IntArrayBuilder summaryInfraLossCents = new IntArrayBuilder();
+        IntArrayBuilder summaryStrategicUnitLossCents = new IntArrayBuilder();
 
         PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "horizonTurns", turns);
         PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "nationBaseline", nationTracker.nationCount());
@@ -291,6 +292,7 @@ public final class PlannerReplayProjector {
         turnMetaLanes.add(summaryAttackOutcomeCounts.size());
         turnMetaLanes.add(summaryUnitLossCounts.size());
         turnMetaLanes.add(summaryInfraLossCents.size());
+        turnMetaLanes.add(summaryStrategicUnitLossCents.size());
 
         conflict.beginReplayTurnMetrics(isAttackerNationId);
         conflict.applyReplayTurn(
@@ -325,6 +327,7 @@ public final class PlannerReplayProjector {
         summaryAttackOutcomeCounts.addAll(metrics.summaryAttackOutcomeCounts());
         summaryUnitLossCounts.addAll(metrics.summaryUnitLossCounts());
         summaryInfraLossCents.addAll(metrics.summaryInfraLossCents());
+        summaryStrategicUnitLossCents.addAll(metrics.summaryStrategicUnitLossCents());
         }
 
         return new BlitzReplayTrace(
@@ -343,7 +346,8 @@ public final class PlannerReplayProjector {
             summaryWarTypeCounts.toArray(),
             summaryAttackOutcomeCounts.toArray(),
             summaryUnitLossCounts.toArray(),
-            summaryInfraLossCents.toArray()
+            summaryInfraLossCents.toArray(),
+            summaryStrategicUnitLossCents.toArray()
         );
     }
     }

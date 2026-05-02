@@ -829,12 +829,12 @@ class SimEndpointsContractTest {
     }
 
     private static int traceTurnCount(BlitzReplayTrace trace) {
-        return trace.turnMetaLanes().length / 12;
+        return trace.turnMetaLanes().length / 13;
     }
 
     private static TurnSlice traceTurn(BlitzReplayTrace trace, int turnIndex) {
-        int metaOffset = turnIndex * 12;
-        int nextMetaOffset = metaOffset + 12;
+        int metaOffset = turnIndex * 13;
+        int nextMetaOffset = metaOffset + 13;
         int changedNationEntryStart = trace.turnMetaLanes()[metaOffset];
         int changedNationLaneStart = trace.turnMetaLanes()[metaOffset + 1];
         int changedWarEntryStart = trace.turnMetaLanes()[metaOffset + 2];
@@ -847,6 +847,7 @@ class SimEndpointsContractTest {
         int summaryAttackOutcomeLaneStart = trace.turnMetaLanes()[metaOffset + 9];
         int summaryUnitLossLaneStart = trace.turnMetaLanes()[metaOffset + 10];
         int summaryInfraLossLaneStart = trace.turnMetaLanes()[metaOffset + 11];
+        int summaryStrategicUnitLossLaneStart = trace.turnMetaLanes()[metaOffset + 12];
         int changedNationEntryEnd = turnIndex + 1 < traceTurnCount(trace) ? trace.turnMetaLanes()[nextMetaOffset] : trace.changedNationIndexes().length;
         int changedNationLaneEnd = turnIndex + 1 < traceTurnCount(trace) ? trace.turnMetaLanes()[nextMetaOffset + 1] : trace.changedNationLanes().length;
         int changedWarEntryEnd = turnIndex + 1 < traceTurnCount(trace) ? trace.turnMetaLanes()[nextMetaOffset + 2] : trace.changedWarIndexes().length;
@@ -859,6 +860,7 @@ class SimEndpointsContractTest {
         int summaryAttackOutcomeLaneEnd = turnIndex + 1 < traceTurnCount(trace) ? trace.turnMetaLanes()[nextMetaOffset + 9] : trace.summaryAttackOutcomeCounts().length;
         int summaryUnitLossLaneEnd = turnIndex + 1 < traceTurnCount(trace) ? trace.turnMetaLanes()[nextMetaOffset + 10] : trace.summaryUnitLossCounts().length;
         int summaryInfraLossLaneEnd = turnIndex + 1 < traceTurnCount(trace) ? trace.turnMetaLanes()[nextMetaOffset + 11] : trace.summaryInfraLossCents().length;
+        int summaryStrategicUnitLossLaneEnd = turnIndex + 1 < traceTurnCount(trace) ? trace.turnMetaLanes()[nextMetaOffset + 12] : trace.summaryStrategicUnitLossCents().length;
         return new TurnSlice(
                 java.util.Arrays.copyOfRange(trace.changedNationIndexes(), changedNationEntryStart, changedNationEntryEnd),
                 java.util.Arrays.copyOfRange(trace.changedNationMasks(), changedNationEntryStart, changedNationEntryEnd),
@@ -873,7 +875,8 @@ class SimEndpointsContractTest {
                 java.util.Arrays.copyOfRange(trace.summaryWarTypeCounts(), summaryWarTypeLaneStart, summaryWarTypeLaneEnd),
                 java.util.Arrays.copyOfRange(trace.summaryAttackOutcomeCounts(), summaryAttackOutcomeLaneStart, summaryAttackOutcomeLaneEnd),
                 java.util.Arrays.copyOfRange(trace.summaryUnitLossCounts(), summaryUnitLossLaneStart, summaryUnitLossLaneEnd),
-                java.util.Arrays.copyOfRange(trace.summaryInfraLossCents(), summaryInfraLossLaneStart, summaryInfraLossLaneEnd)
+                java.util.Arrays.copyOfRange(trace.summaryInfraLossCents(), summaryInfraLossLaneStart, summaryInfraLossLaneEnd),
+                java.util.Arrays.copyOfRange(trace.summaryStrategicUnitLossCents(), summaryStrategicUnitLossLaneStart, summaryStrategicUnitLossLaneEnd)
         );
     }
 
@@ -926,7 +929,8 @@ class SimEndpointsContractTest {
             int[] summaryWarTypeCounts,
             int[] summaryAttackOutcomeCounts,
             int[] summaryUnitLossCounts,
-                int[] summaryInfraLossCents
+            int[] summaryInfraLossCents,
+            int[] summaryStrategicUnitLossCents
     ) {
     }
 
