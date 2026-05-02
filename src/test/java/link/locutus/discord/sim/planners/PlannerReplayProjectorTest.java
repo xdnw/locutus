@@ -487,6 +487,10 @@ class PlannerReplayProjectorTest {
         assertEquals(2 * WarType.values.length, turn.summaryWarTypeCounts().length);
         assertEquals(2 * AttackType.values().length * SuccessType.values.length, turn.summaryAttackOutcomeCounts().length);
         assertTrue(sum(turn.summaryAttackOutcomeCounts()) > 0 || sum(turn.summaryUnitLossCounts()) > 0);
+        assertEquals(2, turn.summaryStrategicUnitLossCents().length);
+        if (sum(turn.summaryUnitLossCounts()) > 0) {
+            assertTrue(sum(turn.summaryStrategicUnitLossCents()) > 0);
+        }
     }
 
     private static BlitzReplayTrace capture(
@@ -681,6 +685,7 @@ class PlannerReplayProjectorTest {
         int summaryAttackOutcomeLaneStart = trace.turnMetaLanes()[metaOffset + 9];
         int summaryUnitLossLaneStart = trace.turnMetaLanes()[metaOffset + 10];
         int summaryInfraLossLaneStart = trace.turnMetaLanes()[metaOffset + 11];
+        int summaryStrategicUnitLossLaneStart = trace.turnMetaLanes()[metaOffset + 12];
 
         int changedNationEntryEnd = turnIndex + 1 < turnCount(trace)
                 ? trace.turnMetaLanes()[nextMetaOffset]
@@ -718,6 +723,9 @@ class PlannerReplayProjectorTest {
         int summaryInfraLossLaneEnd = turnIndex + 1 < turnCount(trace)
                 ? trace.turnMetaLanes()[nextMetaOffset + 11]
                 : trace.summaryInfraLossCents().length;
+        int summaryStrategicUnitLossLaneEnd = turnIndex + 1 < turnCount(trace)
+                ? trace.turnMetaLanes()[nextMetaOffset + 12]
+                : trace.summaryStrategicUnitLossCents().length;
 
         return new TurnSlice(
                 trace.startTurn() + turnIndex + 1,
@@ -734,7 +742,8 @@ class PlannerReplayProjectorTest {
                 java.util.Arrays.copyOfRange(trace.summaryWarTypeCounts(), summaryWarTypeLaneStart, summaryWarTypeLaneEnd),
                 java.util.Arrays.copyOfRange(trace.summaryAttackOutcomeCounts(), summaryAttackOutcomeLaneStart, summaryAttackOutcomeLaneEnd),
                 java.util.Arrays.copyOfRange(trace.summaryUnitLossCounts(), summaryUnitLossLaneStart, summaryUnitLossLaneEnd),
-                java.util.Arrays.copyOfRange(trace.summaryInfraLossCents(), summaryInfraLossLaneStart, summaryInfraLossLaneEnd)
+                java.util.Arrays.copyOfRange(trace.summaryInfraLossCents(), summaryInfraLossLaneStart, summaryInfraLossLaneEnd),
+                java.util.Arrays.copyOfRange(trace.summaryStrategicUnitLossCents(), summaryStrategicUnitLossLaneStart, summaryStrategicUnitLossLaneEnd)
         );
     }
 
@@ -761,7 +770,8 @@ class PlannerReplayProjectorTest {
             int[] summaryWarTypeCounts,
             int[] summaryAttackOutcomeCounts,
             int[] summaryUnitLossCounts,
-            int[] summaryInfraLossCents
+            int[] summaryInfraLossCents,
+            int[] summaryStrategicUnitLossCents
     ) {
     }
 

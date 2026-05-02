@@ -31,11 +31,10 @@ final class OpeningRolloutSearch {
             DBNationSnapshot defender,
             StrategicObjective objective,
             int actionBudget,
-            float viabilityProbe,
             OpeningEvaluator.EdgeEvaluation out
     ) {
         out.clear();
-        OpeningEvaluator.OpeningBaseline baseline = OpeningEvaluator.OpeningBaseline.from(attacker, defender, viabilityProbe);
+        OpeningEvaluator.OpeningBaseline baseline = OpeningEvaluator.OpeningBaseline.from(attacker, defender);
         int effectiveActionBudget = Math.max(1, Math.min(maxActionBudget, actionBudget));
 
         for (WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {

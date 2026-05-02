@@ -115,7 +115,10 @@ final class PlannerReplayTurnMetrics {
             MilitaryUnit unit = SimUnits.PURCHASABLE_UNITS[unitIndex];
             int ordinal = unit.ordinal();
             if (ordinal < source.length) {
-                summaryUnitLossCounts[sideOffset + unitIndex] += Math.max(0, source[ordinal]);
+                int loss = Math.max(0, source[ordinal]);
+                if (loss > 0) {
+                    summaryUnitLossCounts[sideOffset + unitIndex] += loss;
+                }
             }
         }
         touched = true;

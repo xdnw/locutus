@@ -83,7 +83,7 @@ final class OpeningEvaluator {
             double defenderNaval,
             double targetPressure
     ) {
-        static OpeningBaseline from(DBNationSnapshot attacker, DBNationSnapshot defender, float viabilityProbe) {
+        static OpeningBaseline from(DBNationSnapshot attacker, DBNationSnapshot defender) {
             double attackerGround = OpeningMetricSummary.groundStrength(
                     attacker.unit(MilitaryUnit.SOLDIER),
                     attacker.unit(MilitaryUnit.TANK),
@@ -105,28 +105,14 @@ final class OpeningEvaluator {
                     defenderAir,
                     attackerNaval,
                     defenderNaval,
-                        viabilityScaledTargetPressure(
-                            OpeningMetricSummary.targetPressure(
-                                attackerGround,
-                                defenderGround,
-                                attackerAir,
-                                defenderAir,
-                                attackerNaval,
-                                defenderNaval
-                            ),
-                            viabilityProbe
-                        )
+                    OpeningMetricSummary.defenderControlPressure(
+                            defenderGround,
+                            defenderAir,
+                            defenderNaval
+                    )
             );
         }
     }
-
-                private static double viabilityScaledTargetPressure(double baseTargetPressure, float viabilityProbe) {
-                if (!(baseTargetPressure > 0d)) {
-                    return 0d;
-                }
-                double clampedProbe = Math.max(0d, Math.min(1d, viabilityProbe));
-                return baseTargetPressure * clampedProbe;
-                }
 
     private OpeningEvaluator() {
     }
@@ -150,8 +136,7 @@ final class OpeningEvaluator {
             componentPolicy,
             evaluator,
             evaluation,
-            actionBudgetForProbe(candidateAdmission.probe(), evaluator.maxActionBudget()),
-            candidateAdmission.probe()
+            actionBudgetForProbe(candidateAdmission.probe(), evaluator.maxActionBudget())
         );
     }
 
@@ -171,8 +156,7 @@ final class OpeningEvaluator {
             componentPolicy,
             evaluator,
             evaluation,
-            evaluator.maxActionBudget(),
-            1.0f
+            evaluator.maxActionBudget()
         );
     }
 
@@ -251,8 +235,7 @@ final class OpeningEvaluator {
                     componentPolicy,
                     rolloutEdgeEvaluator,
                     edgeEvaluation,
-                    actionBudgetForProbe(candidateAdmission.probe(), rolloutEdgeEvaluator.maxActionBudget()),
-                    candidateAdmission.probe()
+                    actionBudgetForProbe(candidateAdmission.probe(), rolloutEdgeEvaluator.maxActionBudget())
             );
         }
     }
@@ -401,7 +384,6 @@ final class OpeningEvaluator {
                     defender,
                     objective,
                     actionBudgetForProbe(probe, rolloutEdgeEvaluator.maxActionBudget()),
-                    probe,
                     edgeEvaluation
             );
             OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
@@ -522,10 +504,9 @@ final class OpeningEvaluator {
             CandidateEdgeComponentPolicy componentPolicy,
             OpeningRolloutSearch rolloutEdgeEvaluator,
             EdgeEvaluation edgeEvaluation,
-            int actionBudget,
-            float viabilityProbe
+            int actionBudget
     ) {
-        rolloutEdgeEvaluator.evaluate(attacker, defender, objective, actionBudget, viabilityProbe, edgeEvaluation);
+        rolloutEdgeEvaluator.evaluate(attacker, defender, objective, actionBudget, edgeEvaluation);
         OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
         return toEvaluatedEdge(edgeEvaluation);
     }

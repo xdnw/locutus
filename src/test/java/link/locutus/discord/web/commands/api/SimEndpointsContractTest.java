@@ -926,7 +926,7 @@ class SimEndpointsContractTest {
             int[] summaryWarTypeCounts,
             int[] summaryAttackOutcomeCounts,
             int[] summaryUnitLossCounts,
-            int[] summaryInfraLossCents
+                int[] summaryInfraLossCents
     ) {
     }
 
