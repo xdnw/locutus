@@ -132,7 +132,7 @@ final class LongHorizonFeedbackSearch {
             }
             variantsRemaining--;
 
-            LongHorizonControlProjection iterationProjection = LongHorizonControlProjection.create(
+            LongHorizonControlProjection iterationProjection = LongHorizonControlProjection.createScorerOnly(
                     currentEdges,
                     scenario,
                     adjustedCaps,

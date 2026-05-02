@@ -53,7 +53,8 @@ final class LongHorizonAssignmentScoringModel {
             boolean[] edgeAssigned,
             int[] attackerCounts,
             int[] defenderCounts,
-            LongHorizonForwardProjection forwardProjection
+            LongHorizonCounterOpportunityModel counterOpportunityModel,
+            int[] attackerCaps
     ) {
         double score = 0d;
         for (int edgeIndex = 0; edgeIndex < baseScores.length; edgeIndex++) {
@@ -63,7 +64,7 @@ final class LongHorizonAssignmentScoringModel {
         }
         score += pressureCompletionScore(defenderCounts);
         score += commitmentCompletionScore(attackerCounts);
-        score += forwardProjection.counterOpportunityScore(attackerCounts);
+        score += counterOpportunityModel.counterOpportunityScore(attackerCounts, attackerCaps);
         return score;
     }
 

@@ -306,7 +306,7 @@ final class LongHorizonAssignmentOptimizer {
             List<BlitzFixedEdge> fixedEdges,
             int horizonTurns
     ) {
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
                 baseEdges,
                 scenario,
                 attackerCaps,

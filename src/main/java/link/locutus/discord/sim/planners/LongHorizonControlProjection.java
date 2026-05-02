@@ -14,14 +14,20 @@ import link.locutus.discord.sim.planners.compile.CompiledScenario;
  */
 final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
     private final LongHorizonAssignmentScoringModel assignmentScoringModel;
+    private final LongHorizonCounterOpportunityModel counterOpportunityModel;
     private final LongHorizonForwardProjection forwardProjection;
+    private final int[] attackerCaps;
 
     private LongHorizonControlProjection(
             LongHorizonAssignmentScoringModel assignmentScoringModel,
-            LongHorizonForwardProjection forwardProjection
+            LongHorizonCounterOpportunityModel counterOpportunityModel,
+            LongHorizonForwardProjection forwardProjection,
+            int[] attackerCaps
     ) {
         this.assignmentScoringModel = assignmentScoringModel;
+        this.counterOpportunityModel = counterOpportunityModel;
         this.forwardProjection = forwardProjection;
+        this.attackerCaps = java.util.Arrays.copyOf(attackerCaps, attackerCaps.length);
     }
 
     static LongHorizonControlProjection create(
@@ -32,9 +38,28 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int horizonTurns,
             double horizonFactor
     ) {
+        LongHorizonForwardProjection forwardProjection = LongHorizonForwardProjection.create(edges, scenario, attackerCaps, horizonTurns, horizonFactor);
         return new LongHorizonControlProjection(
                 LongHorizonAssignmentScoringModel.create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor),
-                LongHorizonForwardProjection.create(edges, scenario, attackerCaps, horizonTurns, horizonFactor)
+                forwardProjection.counterOpportunityModel(),
+                forwardProjection,
+                attackerCaps
+        );
+    }
+
+    static LongHorizonControlProjection createScorerOnly(
+            CandidateEdgeTable edges,
+            CompiledScenario scenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int horizonTurns,
+            double horizonFactor
+    ) {
+        return new LongHorizonControlProjection(
+                LongHorizonAssignmentScoringModel.create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor),
+                LongHorizonForwardProjection.counterOpportunityModel(scenario, horizonTurns, horizonFactor),
+                null,
+                attackerCaps
         );
     }
 
@@ -47,7 +72,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int[] attackerCounts,
             int[] defenderCounts
     ) {
-        return assignmentScoringModel.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts, forwardProjection);
+        return assignmentScoringModel.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts, counterOpportunityModel, attackerCaps);
     }
 
     @Override
@@ -62,7 +87,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
 
     @Override
     public double attackerCounterOpportunityMarginalScore(int attackerIndex, int assignedBefore) {
-        return forwardProjection.attackerCounterOpportunityMarginalScore(attackerIndex, assignedBefore);
+        return counterOpportunityModel.attackerCounterOpportunityMarginalScore(attackerIndex, assignedBefore, attackerCaps);
     }
 
     double projectedObjectiveScore(
@@ -72,6 +97,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int[] attackerCounts,
             int[] defenderCounts
     ) {
+        requireForwardProjection();
         return forwardProjection.projectedObjectiveScore(objective, teamId, edgeAssigned, attackerCounts, defenderCounts);
     }
 
@@ -82,10 +108,12 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int[] attackerCounts,
             int[] defenderCounts
     ) {
+        requireForwardProjection();
         return forwardProjection.projectedEvaluation(objective, teamId, edgeAssigned, attackerCounts, defenderCounts);
     }
 
     int[] realizedCounterIncidence(boolean[] edgeAssigned, int[] attackerCounts, int[] defenderCounts) {
+        requireForwardProjection();
         return forwardProjection.realizedCounterIncidence(edgeAssigned, attackerCounts, defenderCounts);
     }
 
@@ -94,6 +122,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int[] attackerCounts,
             int[] defenderCounts
     ) {
+        requireForwardProjection();
         return forwardProjection.snapshotMidHorizonState(
                 edgeAssigned,
                 attackerCounts,
@@ -105,5 +134,11 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
     @Override
     public double defenderPressureMarginalScore(int defenderIndex, int assignedBefore) {
         return assignmentScoringModel.defenderPressureMarginalScore(defenderIndex, assignedBefore);
+    }
+
+    private void requireForwardProjection() {
+        if (forwardProjection == null) {
+            throw new IllegalStateException("Terminal projection is unavailable on scorer-only long-horizon projection");
+        }
     }
 }
