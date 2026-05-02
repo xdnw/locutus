@@ -20,9 +20,15 @@ final class DamageDealtObjective implements StrategicObjective {
         double score = -totals.enemyValue();
         if (view instanceof TeamWarControlView controlView) {
             score += controlView.activeWarStrategicScoreForTeam(teamId, 1.0d, 1.0d);
+            score += controlView.activeWarSlotDenialScoreForTeam(teamId);
             score += controlView.controlRegimeScoreForTeam(teamId);
         }
         return score;
+    }
+
+    @Override
+    public boolean usesWarSlotDenial() {
+        return true;
     }
 
     @Override

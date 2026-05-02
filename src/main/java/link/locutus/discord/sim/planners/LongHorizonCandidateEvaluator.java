@@ -65,9 +65,8 @@ final class LongHorizonCandidateEvaluator {
             return candidate.projectionScore();
         }
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
-        return candidate.projectionScore()
-                + evaluation.objectiveScore()
-                - realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
+        double realizedCounterPenalty = realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
+        return candidate.projectionScore() + evaluation.objectiveScore() - realizedCounterPenalty;
     }
 
     ObjectiveValueSummary objectiveSummary(

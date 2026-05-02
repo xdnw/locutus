@@ -6,6 +6,9 @@ public interface TeamWarControlView extends StrategicValueView {
     default void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
     }
 
+    default void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
+    }
+
     default double controlScoreForTeam(int teamId) {
         double[] score = new double[1];
         forEachWarControl((attackerTeamId, defenderTeamId, groundControlTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
@@ -30,6 +33,18 @@ public interface TeamWarControlView extends StrategicValueView {
                 score[0] += value;
             } else if (defenderTeamId == teamId) {
                 score[0] -= value;
+            }
+        });
+        return score[0];
+    }
+
+    default double activeWarSlotDenialScoreForTeam(int teamId) {
+        double[] score = new double[1];
+        forEachActiveWarSlotMetric((attackerTeamId, defenderTeamId, attackerOffensiveSlotCost, defenderDefensiveSlotDenial) -> {
+            if (attackerTeamId == teamId) {
+                score[0] += defenderDefensiveSlotDenial - attackerOffensiveSlotCost;
+            } else if (defenderTeamId == teamId) {
+                score[0] += attackerOffensiveSlotCost - defenderDefensiveSlotDenial;
             }
         });
         return score[0];
@@ -106,6 +121,16 @@ public interface TeamWarControlView extends StrategicValueView {
                 int defenderTeamId,
                 double targetPressure,
                 double futureWarLeverage
+        );
+    }
+
+    @FunctionalInterface
+    interface ActiveWarSlotMetricConsumer {
+        void accept(
+                int attackerTeamId,
+                int defenderTeamId,
+                double attackerOffensiveSlotCost,
+                double defenderDefensiveSlotDenial
         );
     }
 }

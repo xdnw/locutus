@@ -21,9 +21,15 @@ final class DamageAvoidanceObjective implements StrategicObjective {
         if (view instanceof TeamWarControlView controlView) {
             score += 0.35d * controlView.controlScoreForTeam(teamId);
             score += controlView.activeWarStrategicScoreForTeam(teamId, 0.35d, 0.35d);
+            score += 0.35d * controlView.activeWarSlotDenialScoreForTeam(teamId);
             score += 0.35d * controlView.controlRegimeScoreForTeam(teamId);
         }
         return score;
+    }
+
+    @Override
+    public boolean usesWarSlotDenial() {
+        return true;
     }
 
     @Override

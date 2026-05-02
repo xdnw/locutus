@@ -25,6 +25,10 @@ public interface StrategicObjective extends Objective {
         return CandidateEdgeAdmissionPolicy.defaultPolicy();
     }
 
+    default boolean usesWarSlotDenial() {
+        return false;
+    }
+
     @Override
     default double scoreTerminal(SimWorld world, int teamId) {
         return scoreTerminal(StrategicValueView.of(world), teamId);

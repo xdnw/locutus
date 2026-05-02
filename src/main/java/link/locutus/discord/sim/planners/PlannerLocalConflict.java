@@ -1047,6 +1047,33 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     @Override
+    public void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            double attackerSlotPressure = offensiveSlotPressure(war.attacker);
+            double defenderSlotPressure = defensiveSlotPressure(war.defender);
+            consumer.accept(
+                    war.attacker.teamId(),
+                    war.defender.teamId(),
+                    StrategicAssetValue.offensiveWarSlotOpportunityCost(
+                            war.attacker.strategicValue(strategicRelevance(war.attacker), activeWarContext(war.attacker)),
+                            war.defender.targetPressureAgainst(war.attacker),
+                            attackerSlotPressure,
+                            activeOpponentCount(war.attacker)
+                    ),
+                    StrategicAssetValue.defensiveWarSlotDenialValue(
+                            war.defender.strategicValue(strategicRelevance(war.defender), activeWarContext(war.defender)),
+                            targetPressure(war),
+                            defenderSlotPressure,
+                            activeOpponentCount(war.defender)
+                    )
+            );
+        }
+    }
+
+    @Override
     public double activeWarStrategicScoreForTeam(int teamId, double targetPressureWeight, double futureWarLeverageWeight) {
         double score = 0d;
         for (LocalWar war : warsById.values()) {
@@ -1062,6 +1089,24 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
         }
         return score;
+    }
+
+    private double offensiveSlotPressure(LocalNation nation) {
+        int maxOffensiveSlots = Math.max(1, nation.maxOff);
+        return (nation.activeBaseCurrentOffensiveWars(currentTurn) + activeOffensiveWarCount(nation.nationId()))
+                / (double) maxOffensiveSlots;
+    }
+
+    private double defensiveSlotPressure(LocalNation nation) {
+        return (nation.activeBaseCurrentDefensiveWars(currentTurn) + activeDefensiveWarCount(nation.nationId()))
+                / (double) WarSlotRules.defensiveSlotCap();
+    }
+
+    private int activeOpponentCount(LocalNation nation) {
+        return Math.max(
+                activeWarsForNation(nation.nationId()).size(),
+                nation.baseActiveOpponentNationIds.size()
+        );
     }
 
     @Override

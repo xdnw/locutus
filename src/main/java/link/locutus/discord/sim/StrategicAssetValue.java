@@ -15,6 +15,8 @@ public final class StrategicAssetValue {
     static final double CITY_TIER_RELEVANCE_WEIGHT = 0.16d;
     static final double RANGE_COVERAGE_RELEVANCE_WEIGHT = 0.30d;
     static final double INFRASTRUCTURE_STRATEGIC_WEIGHT = 0.015d;
+    static final double DEFENSIVE_SLOT_DENIAL_VALUE_WEIGHT = 0.25d;
+    static final double OFFENSIVE_SLOT_OPPORTUNITY_COST_WEIGHT = 0.04d;
     static final int DEFAULT_STARTING_MAPS = 12;
     private static final UnitReader ZERO_READER = unit -> 0;
 
@@ -302,6 +304,38 @@ public final class StrategicAssetValue {
         return 1d;
     }
 
+    public static double defensiveWarSlotDenialValue(
+            double strategicValue,
+            double targetPressure,
+            double defensiveSlotPressure,
+            int activeOpponents
+    ) {
+        return warSlotValue(
+                strategicValue,
+                targetPressure,
+                defensiveSlotPressure,
+                activeOpponents,
+                DEFENSIVE_SLOT_DENIAL_VALUE_WEIGHT,
+                48d
+        );
+    }
+
+    public static double offensiveWarSlotOpportunityCost(
+            double strategicValue,
+            double targetPressure,
+            double offensiveSlotPressure,
+            int activeOpponents
+    ) {
+        return warSlotValue(
+                strategicValue,
+                targetPressure,
+                offensiveSlotPressure,
+                activeOpponents,
+                OFFENSIVE_SLOT_OPPORTUNITY_COST_WEIGHT,
+                14d
+        );
+    }
+
     public static double controlRegimeScore(
             int ownResistance,
             int enemyResistance,
@@ -514,6 +548,29 @@ public final class StrategicAssetValue {
             return 0.70d + (0.30d * ((statePosition + 0.35d) / 0.45d));
         }
         return 1.0d + (0.20d * Math.min(1d, statePosition));
+    }
+
+    private static double warSlotValue(
+            double strategicValue,
+            double targetPressure,
+            double slotPressure,
+            int activeOpponents,
+            double valueWeight,
+            double pressureWeight
+    ) {
+        double boundedStrategicValue = Double.isFinite(strategicValue) ? Math.max(0d, strategicValue) : 0d;
+        double boundedTargetPressure = Double.isFinite(targetPressure) ? Math.max(0d, targetPressure) : 0d;
+        double boundedSlotPressure = Double.isFinite(slotPressure) ? Math.max(0d, Math.min(1.5d, slotPressure)) : 0d;
+        if (!(boundedStrategicValue > 0d) && !(boundedTargetPressure > 0d)) {
+            return 0d;
+        }
+        if (!(boundedSlotPressure > 0d)) {
+            return 0d;
+        }
+        double base = (boundedStrategicValue * valueWeight) + (boundedTargetPressure * pressureWeight);
+        double slotMultiplier = 0.50d + (0.50d * Math.min(1d, boundedSlotPressure));
+        double activeOpponentMultiplier = Math.min(1.35d, 0.85d + (0.10d * Math.max(0, activeOpponents)));
+        return base * slotMultiplier * activeOpponentMultiplier;
     }
 
     private static double infrastructureRelevanceMultiplier(StrategicRelevance relevance) {

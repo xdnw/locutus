@@ -10,6 +10,7 @@ import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.TeamWarControlView;
+import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.ControlFlagDelta;
@@ -2472,6 +2473,39 @@ final class LongHorizonForwardProjection {
             }
         }
 
+        @Override
+        public void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
+            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
+                if (!warState.active[warIndex]) {
+                    continue;
+                }
+                int attackerNationIndex = warState.attackerNationIndex[warIndex];
+                int defenderNationIndex = warState.defenderNationIndex[warIndex];
+                double attackerSlotPressure = offensiveSlotPressure(attackerNationIndex);
+                double defenderSlotPressure = defensiveSlotPressure(defenderNationIndex);
+                int attackerOpponents = activeOpponentCount(attackerNationIndex);
+                int defenderOpponents = activeOpponentCount(defenderNationIndex);
+                double attackerPressure = state.targetPressure(defenderNationIndex, attackerNationIndex);
+                double defenderPressure = state.targetPressure(attackerNationIndex, defenderNationIndex);
+                consumer.accept(
+                        stateTeamId(attackerNationIndex),
+                        stateTeamId(defenderNationIndex),
+                        StrategicAssetValue.offensiveWarSlotOpportunityCost(
+                                state.strategicValue(attackerNationIndex, warState),
+                                attackerPressure,
+                                attackerSlotPressure,
+                                attackerOpponents
+                        ),
+                        StrategicAssetValue.defensiveWarSlotDenialValue(
+                                state.strategicValue(defenderNationIndex, warState),
+                                defenderPressure,
+                                defenderSlotPressure,
+                                defenderOpponents
+                        )
+                );
+            }
+        }
+
         private boolean warMetricPresent(int warIndex) {
             return warState.active[warIndex]
                     || warState.seededCurrentWar[warIndex]
@@ -2490,6 +2524,68 @@ final class LongHorizonForwardProjection {
             return nationIndex < scenario.attackerCount()
                     ? scenario.attacker(nationIndex).teamId()
                     : scenario.defender(nationIndex - scenario.attackerCount()).teamId();
+        }
+
+        private double offensiveSlotPressure(int nationIndex) {
+            DBNationSnapshot snapshot = snapshot(nationIndex);
+            int maxOffensiveSlots = Math.max(1, snapshot.maxOff());
+            return effectiveOffensiveWars(nationIndex, snapshot.currentOffensiveWars()) / (double) maxOffensiveSlots;
+        }
+
+        private double defensiveSlotPressure(int nationIndex) {
+            DBNationSnapshot snapshot = snapshot(nationIndex);
+            return effectiveDefensiveWars(nationIndex, snapshot.currentDefensiveWars()) / (double) WarSlotRules.defensiveSlotCap();
+        }
+
+        private int activeOpponentCount(int nationIndex) {
+            int count = 0;
+            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
+                if (!warState.active[warIndex]) {
+                    continue;
+                }
+                if (warState.attackerNationIndex[warIndex] == nationIndex || warState.defenderNationIndex[warIndex] == nationIndex) {
+                    count++;
+                }
+            }
+            return Math.max(count, snapshot(nationIndex).activeOpponentNationIds().size());
+        }
+
+        private int effectiveOffensiveWars(int nationIndex, int baselineOffensiveWars) {
+            int seeded = 0;
+            int projected = 0;
+            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
+                if (!warState.active[warIndex] || warState.attackerNationIndex[warIndex] != nationIndex) {
+                    continue;
+                }
+                if (warState.seededCurrentWar[warIndex]) {
+                    seeded++;
+                } else {
+                    projected++;
+                }
+            }
+            return Math.max(Math.max(0, baselineOffensiveWars), seeded) + projected;
+        }
+
+        private int effectiveDefensiveWars(int nationIndex, int baselineDefensiveWars) {
+            int seeded = 0;
+            int projected = 0;
+            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
+                if (!warState.active[warIndex] || warState.defenderNationIndex[warIndex] != nationIndex) {
+                    continue;
+                }
+                if (warState.seededCurrentWar[warIndex]) {
+                    seeded++;
+                } else {
+                    projected++;
+                }
+            }
+            return Math.max(Math.max(0, baselineDefensiveWars), seeded) + projected;
+        }
+
+        private DBNationSnapshot snapshot(int nationIndex) {
+            return nationIndex < scenario.attackerCount()
+                    ? scenario.attacker(nationIndex)
+                    : scenario.defender(nationIndex - scenario.attackerCount());
         }
 
         int horizonTurns() {

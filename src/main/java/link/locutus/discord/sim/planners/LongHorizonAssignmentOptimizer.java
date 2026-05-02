@@ -115,6 +115,8 @@ final class LongHorizonAssignmentOptimizer {
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "attackers", attackerCount);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "defenders", defenderCount);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "horizonTurns", horizonTurns);
+                boolean includeSlotDenialScoring = projectionScoringContext != null
+                        && projectionScoringContext.objective().usesWarSlotDenial();
 
                 boolean[] initialEdgeAssigned = new boolean[edgeCount];
                 int[] initialAttackerCounts = new int[attackerCount];
@@ -139,6 +141,18 @@ final class LongHorizonAssignmentOptimizer {
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "assignmentPairs", assignmentPairCount(initialAssignment));
                 return new Result(initialAssignment, null);
                 }
+                if (includeSlotDenialScoring && !initialAssignment.isEmpty()) {
+                    DenseAssignment denseInitial = denseAssignment(
+                            baseEdges,
+                            scenario,
+                            initialAssignment,
+                            attackerNationIds,
+                            defenderNationIds
+                    );
+                    System.arraycopy(denseInitial.edgeAssigned(), 0, initialEdgeAssigned, 0, initialEdgeAssigned.length);
+                    System.arraycopy(denseInitial.attackerCounts(), 0, initialAttackerCounts, 0, initialAttackerCounts.length);
+                    System.arraycopy(denseInitial.defenderCounts(), 0, initialDefenderCounts, 0, initialDefenderCounts.length);
+                }
 
                 LongHorizonControlProjection terminalProjection = LongHorizonControlProjection.create(
                     baseEdges,
@@ -146,7 +160,8 @@ final class LongHorizonAssignmentOptimizer {
                     attackerCaps,
                     defenderCaps,
                     horizonTurns,
-                    horizonFactor(horizonTurns)
+                    horizonFactor(horizonTurns),
+                    includeSlotDenialScoring
                 );
                 double initialScore = terminalProjection.assignmentScoreDense(
                     initialEdgeAssigned,
@@ -240,6 +255,7 @@ final class LongHorizonAssignmentOptimizer {
                         defenderNationIds,
                         fixedEdges,
                         horizonTurns,
+                        includeSlotDenialScoring,
                         1
                     ), terminalProjection);
                     best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
@@ -252,6 +268,7 @@ final class LongHorizonAssignmentOptimizer {
                         defenderNationIds,
                         fixedEdges,
                         horizonTurns,
+                        includeSlotDenialScoring,
                         2
                     ), terminalProjection);
                 } else if (evaluator.canScoreObjectiveProjection()) {
@@ -266,6 +283,7 @@ final class LongHorizonAssignmentOptimizer {
                             defenderNationIds,
                             fixedEdges,
                             horizonTurns,
+                            includeSlotDenialScoring,
                             marginalCandidate,
                             terminalProjection,
                             evaluator
@@ -296,6 +314,7 @@ final class LongHorizonAssignmentOptimizer {
                     int[] defenderNationIds,
                     List<BlitzFixedEdge> fixedEdges,
                     int horizonTurns,
+                    boolean includeSlotDenialScoring,
                     Candidate marginalCandidate,
                     LongHorizonControlProjection terminalProjection,
                     LongHorizonCandidateEvaluator projectedEvaluator
@@ -328,6 +347,7 @@ final class LongHorizonAssignmentOptimizer {
                         defenderNationIds,
                         fixedEdges,
                         horizonTurns,
+                        includeSlotDenialScoring,
                         1
                 ));
                 candidates.add(solveWithAttackerCapLimit(
@@ -340,6 +360,7 @@ final class LongHorizonAssignmentOptimizer {
                         defenderNationIds,
                         fixedEdges,
                         horizonTurns,
+                        includeSlotDenialScoring,
                         2
                 ));
                 candidates.removeIf(candidate -> candidate == null || candidate == marginalCandidate);
@@ -380,6 +401,7 @@ final class LongHorizonAssignmentOptimizer {
             int[] defenderNationIds,
             List<BlitzFixedEdge> fixedEdges,
             int horizonTurns,
+            boolean includeSlotDenialScoring,
             int attackerCapLimit
     ) {
         int[] limitedCaps = new int[attackerCaps.length];
@@ -395,7 +417,8 @@ final class LongHorizonAssignmentOptimizer {
                 attackerNationIds,
                 defenderNationIds,
                 fixedEdges,
-                horizonTurns
+                horizonTurns,
+                includeSlotDenialScoring
         );
     }
 
@@ -410,13 +433,40 @@ final class LongHorizonAssignmentOptimizer {
             List<BlitzFixedEdge> fixedEdges,
             int horizonTurns
     ) {
+        return solveWithAttackerCaps(
+                baseEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges,
+                horizonTurns,
+                false
+        );
+    }
+
+    static Candidate solveWithAttackerCaps(
+            CandidateEdgeTable baseEdges,
+            CompiledScenario scenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int[] attackerStrengthRanks,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            List<BlitzFixedEdge> fixedEdges,
+            int horizonTurns,
+            boolean includeSlotDenialScoring
+    ) {
         LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
                 baseEdges,
                 scenario,
                 attackerCaps,
                 defenderCaps,
                 horizonTurns,
-                horizonFactor(horizonTurns)
+                horizonFactor(horizonTurns),
+                includeSlotDenialScoring
         );
         LongHorizonMarginalFlowSolver.Result result = LongHorizonMarginalFlowSolver.solve(
                 baseEdges,

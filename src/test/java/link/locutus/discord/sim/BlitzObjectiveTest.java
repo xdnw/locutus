@@ -99,6 +99,38 @@ class BlitzObjectiveTest {
     }
 
     @Test
+    void terminalScoringPricesExplicitWarSlotDenial() {
+        TeamWarControlView view = new TeamWarControlView() {
+            @Override
+            public void forEachNation(NationScoreConsumer consumer) {
+                consumer.accept(101, 1, 1_000.0);
+                consumer.accept(202, 2, 1_000.0);
+            }
+
+            @Override
+            public void forEachNationStrategicValue(NationValueConsumer consumer) {
+                consumer.accept(101, 1, 100.0);
+                consumer.accept(202, 2, 100.0);
+            }
+
+            @Override
+            public void forEachWarControl(WarControlConsumer consumer) {
+            }
+
+            @Override
+            public void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
+                consumer.accept(1, 2, 40.0, 150.0);
+            }
+        };
+
+        assertEquals(110.0, view.activeWarSlotDenialScoreForTeam(1), 1e-9);
+        assertEquals(-110.0, view.activeWarSlotDenialScoreForTeam(2), 1e-9);
+        assertEquals(110.0, BlitzObjective.NET_DAMAGE.objective().scoreTerminal(view, 1), 1e-9);
+        assertEquals(-110.0, BlitzObjective.NET_DAMAGE.objective().scoreTerminal(view, 2), 1e-9);
+        assertEquals(165.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 1), 1e-9);
+    }
+
+    @Test
     void controlRegimeScoreRewardsTenableWarsAndPenalizesLostControlStates() {
         TeamWarControlView favorable = new TeamWarControlView() {
             @Override

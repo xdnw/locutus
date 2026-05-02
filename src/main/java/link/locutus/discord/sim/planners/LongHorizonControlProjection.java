@@ -38,9 +38,21 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int horizonTurns,
             double horizonFactor
     ) {
+        return create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor, false);
+    }
+
+    static LongHorizonControlProjection create(
+            CandidateEdgeTable edges,
+            CompiledScenario scenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int horizonTurns,
+            double horizonFactor,
+            boolean includeSlotDenial
+    ) {
         LongHorizonForwardProjection forwardProjection = LongHorizonForwardProjection.create(edges, scenario, attackerCaps, horizonTurns, horizonFactor);
         return new LongHorizonControlProjection(
-                LongHorizonAssignmentScoringModel.create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor),
+                LongHorizonAssignmentScoringModel.create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor, includeSlotDenial),
                 forwardProjection.counterOpportunityModel(),
                 forwardProjection,
                 attackerCaps
@@ -55,8 +67,20 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int horizonTurns,
             double horizonFactor
     ) {
+        return createScorerOnly(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor, false);
+    }
+
+    static LongHorizonControlProjection createScorerOnly(
+            CandidateEdgeTable edges,
+            CompiledScenario scenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int horizonTurns,
+            double horizonFactor,
+            boolean includeSlotDenial
+    ) {
         return new LongHorizonControlProjection(
-                LongHorizonAssignmentScoringModel.create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor),
+                LongHorizonAssignmentScoringModel.create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor, includeSlotDenial),
                 LongHorizonForwardProjection.counterOpportunityModel(scenario, horizonTurns, horizonFactor),
                 null,
                 attackerCaps

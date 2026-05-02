@@ -30,9 +30,15 @@ final class ControlObjective implements StrategicObjective {
         if (view instanceof TeamWarControlView controlView) {
             score += controlView.controlScoreForTeam(teamId);
             score += controlView.activeWarStrategicScoreForTeam(teamId, 4.0d, 3.0d);
+            score += 1.5d * controlView.activeWarSlotDenialScoreForTeam(teamId);
             score += 1.5d * controlView.controlRegimeScoreForTeam(teamId);
         }
         return score;
+    }
+
+    @Override
+    public boolean usesWarSlotDenial() {
+        return true;
     }
 
     @Override

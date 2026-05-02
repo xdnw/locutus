@@ -31,9 +31,15 @@ public class DamageObjective implements StrategicObjective {
         if (view instanceof TeamWarControlView controlView) {
             score += controlView.controlScoreForTeam(teamId);
             score += controlView.activeWarStrategicScoreForTeam(teamId, 1.0d, 1.0d);
+            score += controlView.activeWarSlotDenialScoreForTeam(teamId);
             score += controlView.controlRegimeScoreForTeam(teamId);
         }
         return score;
+    }
+
+    @Override
+    public boolean usesWarSlotDenial() {
+        return true;
     }
 
     @Override
