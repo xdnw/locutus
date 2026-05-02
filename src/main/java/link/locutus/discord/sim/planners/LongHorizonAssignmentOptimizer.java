@@ -4,12 +4,9 @@ import link.locutus.discord.sim.TeamScoreObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Budgeted primitive marginal-flow owner for blitz horizons where first-turn exact local search is
@@ -31,8 +28,6 @@ import java.util.Set;
 final class LongHorizonAssignmentOptimizer {
     private static final int SHORT_HORIZON_LIMIT_TURNS = 12;
     private static final int MAX_HORIZON_TURNS = 720;
-    static final int FEEDBACK_OVERCOUNTER_THRESHOLD = 2;
-    private static final double REALIZED_COUNTER_OBJECTIVE_PENALTY = 75d;
     static final double PRESSURE_SCORE_WEIGHT = 0.24d;
     static final double EPSILON = 1e-9;
 
@@ -183,16 +178,13 @@ final class LongHorizonAssignmentOptimizer {
                     marginalResult.defenderCounts(),
                     marginalScore
                 );
-                EvaluationCache evaluationCache = new EvaluationCache();
-                best = betterCandidate(best, marginalCandidate, terminalProjection, scenario, projectionScoringContext, evaluationCache);
+                LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(scenario, projectionScoringContext);
+                best = evaluator.betterCandidate(best, marginalCandidate, terminalProjection);
 
-                if (projectionScoringContext != null && canScoreProjection(scenario)) {
-                int[] realizedCounters = realizedCountersFor(
+                if (evaluator.canScoreObjectiveProjection()) {
+                int[] realizedCounters = evaluator.realizedCounters(
                     marginalCandidate,
-                    terminalProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    terminalProjection
                 );
                 for (Candidate reliefCandidate : LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
                     baseEdges,
@@ -208,16 +200,13 @@ final class LongHorizonAssignmentOptimizer {
                     terminalProjection,
                     realizedCounters
                 )) {
-                    best = betterCandidate(best, reliefCandidate, terminalProjection, scenario, projectionScoringContext, evaluationCache);
+                    best = evaluator.betterCandidate(best, reliefCandidate, terminalProjection);
                 }
-                int[] feedbackCounters = realizedCountersFor(
+                int[] feedbackCounters = evaluator.realizedCounters(
                     best,
-                    terminalProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    terminalProjection
                 );
-                best = betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
+                best = evaluator.betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
                     baseEdges,
                     scenario,
                     attackerCaps,
@@ -230,10 +219,9 @@ final class LongHorizonAssignmentOptimizer {
                     best,
                     feedbackCounters,
                     terminalProjection,
-                    projectionScoringContext,
-                    evaluationCache
-                ), terminalProjection, scenario, projectionScoringContext, evaluationCache);
-                best = betterCandidate(best, solveWithAttackerCapLimit(
+                    evaluator
+                ), terminalProjection);
+                best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
                     baseEdges,
                     scenario,
                     attackerCaps,
@@ -244,8 +232,8 @@ final class LongHorizonAssignmentOptimizer {
                     fixedEdges,
                     horizonTurns,
                     1
-                ), terminalProjection, scenario, projectionScoringContext, evaluationCache);
-                best = betterCandidate(best, solveWithAttackerCapLimit(
+                ), terminalProjection);
+                best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
                     baseEdges,
                     scenario,
                     attackerCaps,
@@ -256,14 +244,11 @@ final class LongHorizonAssignmentOptimizer {
                     fixedEdges,
                     horizonTurns,
                     2
-                ), terminalProjection, scenario, projectionScoringContext, evaluationCache);
+                ), terminalProjection);
                 }
-                ScoreSummary projectedObjectiveSummary = cachedObjectiveSummary(
+                ScoreSummary projectedObjectiveSummary = evaluator.objectiveSummary(
                     best,
-                    terminalProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    terminalProjection
                 );
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "assignmentPairs", assignmentPairCount(best.assignment()));
                 return new Result(cloneAssignment(best.assignment()), projectedObjectiveSummary);
@@ -344,131 +329,6 @@ final class LongHorizonAssignmentOptimizer {
                 result.defenderCounts()
         );
         return new Candidate(result.assignment(), result.edgeAssigned(), result.attackerCounts(), result.defenderCounts(), projectionScore);
-    }
-
-    private static Candidate betterCandidate(
-            Candidate current,
-            Candidate candidate,
-            LongHorizonControlProjection projection,
-            CompiledScenario scenario,
-            ProjectionScoringContext projectionScoringContext,
-            EvaluationCache evaluationCache
-    ) {
-        if (candidate == null) {
-            return current;
-        }
-        double currentScore = scoreCandidate(current, projection, scenario, projectionScoringContext, evaluationCache);
-        double candidateScore = scoreCandidate(candidate, projection, scenario, projectionScoringContext, evaluationCache);
-        return candidateScore > currentScore + EPSILON ? candidate : current;
-    }
-
-    static double scoreCandidate(
-            Candidate candidate,
-            LongHorizonControlProjection projection,
-            CompiledScenario scenario,
-            ProjectionScoringContext projectionScoringContext,
-            EvaluationCache evaluationCache
-    ) {
-        if (projectionScoringContext == null || !canScoreProjection(scenario)) {
-            return candidate.projectionScore();
-        }
-        int attackerTeamId = scenario.attackerCount() == 0 ? 1 : scenario.attacker(0).teamId();
-        LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(
-                candidate,
-                projection,
-                projectionScoringContext,
-                attackerTeamId,
-                evaluationCache
-        );
-        return candidate.projectionScore()
-            + evaluation.objectiveScore()
-            - realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
-    }
-
-    private static ScoreSummary cachedObjectiveSummary(
-            Candidate candidate,
-            LongHorizonControlProjection projection,
-            CompiledScenario scenario,
-            ProjectionScoringContext projectionScoringContext,
-            EvaluationCache evaluationCache
-    ) {
-        if (candidate.assignment().isEmpty()) {
-            return ScoreSummary.identical(0d);
-        }
-        if (projectionScoringContext == null || !canScoreProjection(scenario)) {
-            return null;
-        }
-        int attackerTeamId = scenario.attackerCount() == 0 ? 1 : scenario.attacker(0).teamId();
-        LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(
-                candidate,
-                projection,
-                projectionScoringContext,
-                attackerTeamId,
-                evaluationCache
-        );
-        return ScoreSummary.identical(evaluation.objectiveScore());
-    }
-
-    private static LongHorizonForwardProjection.ProjectedEvaluation evaluationFor(
-            Candidate candidate,
-            LongHorizonControlProjection projection,
-            ProjectionScoringContext projectionScoringContext,
-            int attackerTeamId,
-            EvaluationCache evaluationCache
-    ) {
-        LongHorizonForwardProjection.ProjectedEvaluation cached = evaluationCache.projectedEvaluations.get(candidate);
-        if (cached != null) {
-            return cached;
-        }
-        LongHorizonForwardProjection.ProjectedEvaluation evaluation = projection.projectedEvaluation(
-                projectionScoringContext.objective(),
-                attackerTeamId,
-                candidate.edgeAssigned(),
-                candidate.attackerCounts(),
-                candidate.defenderCounts()
-        );
-        evaluationCache.projectedEvaluations.put(candidate, evaluation);
-        evaluationCache.realizedCounters.put(candidate, evaluation.realizedCounterIncidence());
-        return evaluation;
-    }
-
-    static int[] realizedCountersFor(
-            Candidate candidate,
-            LongHorizonControlProjection projection,
-            CompiledScenario scenario,
-            ProjectionScoringContext projectionScoringContext,
-            EvaluationCache evaluationCache
-    ) {
-        int[] cached = evaluationCache.realizedCounters.get(candidate);
-        if (cached != null) {
-            return cached;
-        }
-        if (projectionScoringContext != null && canScoreProjection(scenario)) {
-            int attackerTeamId = scenario.attackerCount() == 0 ? 1 : scenario.attacker(0).teamId();
-            return evaluationFor(candidate, projection, projectionScoringContext, attackerTeamId, evaluationCache)
-                    .realizedCounterIncidence();
-        }
-        int[] realizedCounters = projection.realizedCounterIncidence(
-                candidate.edgeAssigned(),
-                candidate.attackerCounts(),
-                candidate.defenderCounts()
-        );
-        evaluationCache.realizedCounters.put(candidate, realizedCounters);
-        return realizedCounters;
-    }
-
-    private static double realizedCounterObjectivePenalty(Candidate candidate, int[] realizedCounters) {
-        double penalty = 0d;
-        for (int attackerIndex = 0; attackerIndex < realizedCounters.length; attackerIndex++) {
-            if (candidate.attackerCounts()[attackerIndex] <= 0) {
-                continue;
-            }
-            int overCounter = realizedCounters[attackerIndex] - FEEDBACK_OVERCOUNTER_THRESHOLD + 1;
-            if (overCounter > 0) {
-                penalty += overCounter * REALIZED_COUNTER_OBJECTIVE_PENALTY;
-            }
-        }
-        return penalty;
     }
 
     static ScoreSummary projectedObjectiveSummary(
@@ -556,19 +416,6 @@ final class LongHorizonAssignmentOptimizer {
         return new DenseAssignment(edgeAssigned, attackerCounts, defenderCounts);
     }
 
-    private static boolean canScoreProjection(CompiledScenario scenario) {
-        Set<Integer> attackerIds = new LinkedHashSet<>();
-        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            attackerIds.add(scenario.attackerNationId(attackerIndex));
-        }
-        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
-            if (attackerIds.contains(scenario.defenderNationId(defenderIndex))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     private static long pairKey(int attackerNationId, int defenderNationId) {
         return ((long) attackerNationId << 32) ^ (defenderNationId & 0xffffffffL);
     }
@@ -615,9 +462,4 @@ final class LongHorizonAssignmentOptimizer {
     ) {
     }
 
-    static final class EvaluationCache {
-        private final IdentityHashMap<Candidate, LongHorizonForwardProjection.ProjectedEvaluation> projectedEvaluations =
-                new IdentityHashMap<>();
-        private final IdentityHashMap<Candidate, int[]> realizedCounters = new IdentityHashMap<>();
-    }
 }

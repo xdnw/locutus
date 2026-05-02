@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 
 final class LongHorizonFeedbackSearch {
+    static final int OVERCOUNTER_THRESHOLD = 2;
+
     private static final int MAX_SELECTIVE_RELIEF_VARIANTS = 6;
     private static final int MAX_FEEDBACK_VARIANTS = 4;
     private static final int MAX_FIXED_POINT_ITERATIONS = 4;
@@ -88,8 +90,7 @@ final class LongHorizonFeedbackSearch {
             LongHorizonAssignmentOptimizer.Candidate seed,
             int[] seedRealizedCounters,
             LongHorizonControlProjection seedProjection,
-            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext,
-            LongHorizonAssignmentOptimizer.EvaluationCache evaluationCache
+            LongHorizonCandidateEvaluator evaluator
     ) {
         if (seedRealizedCounters == null || seedRealizedCounters.length == 0) {
             return seed;
@@ -162,26 +163,17 @@ final class LongHorizonFeedbackSearch {
                     iterationResult.defenderCounts(),
                     iterationScore
             );
-            double iterationObjective = LongHorizonAssignmentOptimizer.scoreCandidate(
+            double iterationObjective = evaluator.score(
                     iterationCandidate,
-                    seedProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    seedProjection
             );
-            int[] nextRealized = LongHorizonAssignmentOptimizer.realizedCountersFor(
+            int[] nextRealized = evaluator.realizedCounters(
                     iterationCandidate,
-                    seedProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    seedProjection
             );
-            boolean improvement = iterationObjective > LongHorizonAssignmentOptimizer.scoreCandidate(
+            boolean improvement = iterationObjective > evaluator.score(
                     best,
-                    seedProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    seedProjection
             ) + LongHorizonAssignmentOptimizer.EPSILON;
             if (improvement) {
                 best = iterationCandidate;
@@ -259,7 +251,7 @@ final class LongHorizonFeedbackSearch {
     private static List<Integer> overCounteredAttackers(int[] realizedCounters, int[] attackerCounts, int[] fixedCounts) {
         List<Integer> overCountered = new ArrayList<>();
         for (int attackerIndex = 0; attackerIndex < realizedCounters.length; attackerIndex++) {
-            if (realizedCounters[attackerIndex] < LongHorizonAssignmentOptimizer.FEEDBACK_OVERCOUNTER_THRESHOLD) {
+            if (realizedCounters[attackerIndex] < OVERCOUNTER_THRESHOLD) {
                 continue;
             }
             int currentCount = attackerCounts[attackerIndex];

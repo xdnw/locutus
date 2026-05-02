@@ -1040,63 +1040,24 @@ final class LongHorizonForwardProjection {
     }
 
     private static double strategicAssetValue(DBNationSnapshot snapshot, CompiledScenario scenario, boolean attackerSide) {
-        StrategicAssetValue.StrategicRelevance relevance = attackerSide
-                ? StrategicAssetValue.relevanceForWarRange(
-                        snapshot.cities(),
-                        snapshot.score(),
-                        snapshot.activeOpponentNationIds().size(),
-                        scenario.defenderCount(),
-                        index -> scenario.defender(index).score()
-                )
-                : StrategicAssetValue.relevanceForWarRange(
-                        snapshot.cities(),
-                        snapshot.score(),
-                        snapshot.activeOpponentNationIds().size(),
-                        scenario.attackerCount(),
-                        index -> scenario.attacker(index).score()
-                );
-        StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(snapshot);
-        return StrategicAssetValue.contextualMilitaryValue(
-                snapshot::unit,
-                snapshot::pendingBuysNextTurn,
-                snapshot::unitsBoughtToday,
-                snapshot::dailyBuyCap,
-                snapshot.researchBits(),
-                activeWarContext,
-                relevance
-        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
+        return PlannerStrategicValue.strategicValue(snapshot, opposingSnapshots(scenario, attackerSide));
     }
 
     private static double strategicAssetValue(DBNationSnapshot snapshot) {
-        StrategicAssetValue.StrategicRelevance relevance = new StrategicAssetValue.StrategicRelevance(
-                snapshot.cities(),
-                0,
-                0,
-                snapshot.activeOpponentNationIds().size()
-        );
-        StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(snapshot);
-        return StrategicAssetValue.contextualMilitaryValue(
-                snapshot::unit,
-                snapshot::pendingBuysNextTurn,
-                snapshot::unitsBoughtToday,
-                snapshot::dailyBuyCap,
-                snapshot.researchBits(),
-                activeWarContext,
-                relevance
-        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
+        return PlannerStrategicValue.localStrategicValue(snapshot);
     }
 
     private static double marginalActionSpaceValue(DBNationSnapshot snapshot) {
-        return strategicAssetValue(snapshot) * StrategicAssetValue.marginalActionSpaceMultiplier(activeWarContext(snapshot));
+        return PlannerStrategicValue.marginalActionSpaceValue(snapshot);
     }
 
-    private static StrategicAssetValue.ActiveWarContext activeWarContext(DBNationSnapshot snapshot) {
-        return StrategicAssetValue.ActiveWarContext.fromSlots(
-                snapshot.currentOffensiveWars(),
-                snapshot.maxOff(),
-                snapshot.currentDefensiveWars(),
-                snapshot.activeOpponentNationIds().size()
-        );
+    private static java.util.List<DBNationSnapshot> opposingSnapshots(CompiledScenario scenario, boolean attackerSide) {
+        int count = attackerSide ? scenario.defenderCount() : scenario.attackerCount();
+        java.util.ArrayList<DBNationSnapshot> snapshots = new java.util.ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            snapshots.add(attackerSide ? scenario.defender(index) : scenario.attacker(index));
+        }
+        return snapshots;
     }
 
     private static double combatStrength(DBNationSnapshot snapshot) {

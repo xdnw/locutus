@@ -147,7 +147,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 defenders,
                 tuning,
                 transitionSemantics,
-                strategicRelevanceByNationId(attackers, defenders)
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders)
         );
     }
 
@@ -228,7 +228,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 0,
                 tuning,
                 transitionSemantics,
-                strategicRelevanceByNationId(nations),
+                PlannerStrategicValue.relevanceByNationId(nations),
                 Map.of(),
                 List.of()
         );
@@ -251,7 +251,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 currentTurn,
                 tuning,
                 transitionSemantics,
-                strategicRelevanceByNationId(baseSnapshots),
+                PlannerStrategicValue.relevanceByNationId(baseSnapshots),
                 Map.of(),
                 List.of()
         );
@@ -373,63 +373,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
             byId.putIfAbsent(snapshot.nationId(), snapshot);
         }
         return new ArrayList<>(byId.values());
-    }
-
-    static Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId(
-            Collection<DBNationSnapshot> primary,
-            Collection<DBNationSnapshot> secondary
-    ) {
-        return strategicRelevanceByNationId(orderedUniqueNations(primary, secondary));
-    }
-
-    static Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId(
-            Collection<DBNationSnapshot> snapshots
-    ) {
-        if (snapshots.isEmpty()) {
-            return Map.of();
-        }
-        List<DBNationSnapshot> orderedSnapshots = List.copyOf(snapshots);
-        LinkedHashMap<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId = new LinkedHashMap<>(orderedSnapshots.size());
-        for (DBNationSnapshot snapshot : orderedSnapshots) {
-            List<DBNationSnapshot> opposingNations = new ArrayList<>(orderedSnapshots.size());
-            for (DBNationSnapshot other : orderedSnapshots) {
-                if (other.teamId() != snapshot.teamId()) {
-                    opposingNations.add(other);
-                }
-            }
-            relevanceByNationId.put(
-                    snapshot.nationId(),
-                    StrategicAssetValue.relevanceForWarRange(
-                            snapshot.cities(),
-                            snapshot.score(),
-                            snapshot.currentOffensiveWars() + snapshot.currentDefensiveWars() + snapshot.activeOpponentNationIds().size(),
-                            opposingNations.size(),
-                            index -> opposingNations.get(index).score()
-                    )
-            );
-        }
-        return Map.copyOf(relevanceByNationId);
-    }
-
-    static double strategicValue(
-            DBNationSnapshot snapshot,
-            StrategicAssetValue.StrategicRelevance relevance
-    ) {
-        StrategicAssetValue.ActiveWarContext activeWarContext = StrategicAssetValue.ActiveWarContext.fromSlots(
-                snapshot.currentOffensiveWars(),
-                snapshot.maxOff(),
-                snapshot.currentDefensiveWars(),
-                snapshot.activeOpponentNationIds().size()
-        );
-        return StrategicAssetValue.contextualMilitaryValue(
-                snapshot::unit,
-                snapshot::pendingBuysNextTurn,
-                snapshot::unitsBoughtToday,
-                snapshot::dailyBuyCap,
-                snapshot.researchBits(),
-                activeWarContext,
-                relevance
-        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
     }
 
     Mark mark() {

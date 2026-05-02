@@ -107,7 +107,7 @@ final class PlannerConflictExecutor {
             return 0.0;
         }
         Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId =
-                PlannerLocalConflict.strategicRelevanceByNationId(attackers, defenders);
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
         PlannerLocalConflict conflict = PlannerLocalConflict.create(
                 overrides,
                 attackers,
@@ -182,7 +182,7 @@ final class PlannerConflictExecutor {
             Map<Long, Integer> warTypeOrdinalsByPair
     ) {
         Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId =
-                PlannerLocalConflict.strategicRelevanceByNationId(attackers, defenders);
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
         PlannerConflictBundle bundle = PlannerConflictBundle.extract(
                 currentAssignment,
                 candidateChange,
@@ -245,7 +245,7 @@ final class PlannerConflictExecutor {
             Map<Long, Integer> warTypeOrdinalsByPair
     ) {
         Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId =
-                PlannerLocalConflict.strategicRelevanceByNationId(attackers, defenders);
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
         PlannerConflictBundle bundle = PlannerConflictBundle.extract(
                 currentAssignment,
                 candidateChange,
@@ -542,7 +542,7 @@ final class PlannerConflictExecutor {
         }
         totals.merge(
                 snapshot.teamId(),
-                PlannerLocalConflict.strategicValue(
+                PlannerStrategicValue.strategicValue(
                         snapshot,
                         strategicRelevanceByNationId.getOrDefault(
                                 snapshot.nationId(),
@@ -728,31 +728,6 @@ final class PlannerConflictExecutor {
         return attacker.vmTurns() > 0 || defender.vmTurns() > 0 || defender.beigeTurns() > 0;
     }
 
-    private static double strategicAssetValue(DBNationSnapshot snapshot, DBNationSnapshot opponent) {
-        StrategicAssetValue.StrategicRelevance relevance = StrategicAssetValue.relevanceForWarRange(
-                snapshot.cities(),
-                snapshot.score(),
-                snapshot.activeOpponentNationIds().size(),
-                opponent == null ? 0 : 1,
-                index -> opponent == null ? 0d : opponent.score()
-        );
-        StrategicAssetValue.ActiveWarContext activeWarContext = StrategicAssetValue.ActiveWarContext.fromSlots(
-                snapshot.currentOffensiveWars(),
-                snapshot.maxOff(),
-                snapshot.currentDefensiveWars(),
-                snapshot.activeOpponentNationIds().size()
-        );
-        return StrategicAssetValue.contextualMilitaryValue(
-                snapshot::unit,
-                snapshot::pendingBuysNextTurn,
-                snapshot::unitsBoughtToday,
-                snapshot::dailyBuyCap,
-                snapshot.researchBits(),
-                activeWarContext,
-                relevance
-        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
-    }
-
     private static double marginalStrategicDamage(
             DBNationSnapshot before,
             DBNationSnapshot after,
@@ -760,23 +735,15 @@ final class PlannerConflictExecutor {
             PlannerProjectedWar projectedWar,
             boolean subjectIsWarAttacker
     ) {
-        double damage = strategicAssetValue(before, opponent) - strategicAssetValue(after, opponent);
+        double damage = PlannerStrategicValue.strategicValue(before, opponent)
+                - PlannerStrategicValue.strategicValue(after, opponent);
         if (!(damage > 0d)) {
             return 0d;
         }
         StrategicAssetValue.ActiveWarContext context = projectedWar == null
-                ? activeWarContext(after)
+                ? PlannerStrategicValue.activeWarContext(after)
                 : activeWarContext(projectedWar, subjectIsWarAttacker);
         return damage * StrategicAssetValue.marginalActionSpaceMultiplier(context);
-    }
-
-    private static StrategicAssetValue.ActiveWarContext activeWarContext(DBNationSnapshot snapshot) {
-        return StrategicAssetValue.ActiveWarContext.fromSlots(
-                snapshot.currentOffensiveWars(),
-                snapshot.maxOff(),
-                snapshot.currentDefensiveWars(),
-                snapshot.activeOpponentNationIds().size()
-        );
     }
 
     private static StrategicAssetValue.ActiveWarContext activeWarContext(
