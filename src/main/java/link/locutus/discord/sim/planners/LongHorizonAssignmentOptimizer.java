@@ -31,6 +31,9 @@ import java.util.Map;
 final class LongHorizonAssignmentOptimizer {
     private static final int SHORT_HORIZON_LIMIT_TURNS = 12;
     private static final int MAX_HORIZON_TURNS = 720;
+    private static final int FULL_PROJECTED_PORTFOLIO_EDGE_LIMIT = 1_500;
+    private static final int FULL_PROJECTED_PORTFOLIO_PAIR_LIMIT = 150;
+    private static final int LARGE_PROJECTED_PORTFOLIO_AUDIT_LIMIT = 1;
     static final double PRESSURE_SCORE_WEIGHT = 0.24d;
     static final double EPSILON = 1e-9;
 
@@ -184,70 +187,89 @@ final class LongHorizonAssignmentOptimizer {
                 LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(scenario, projectionScoringContext);
                 best = evaluator.betterCandidate(best, marginalCandidate, terminalProjection);
 
-                if (evaluator.canScoreObjectiveProjection()) {
-                int[] realizedCounters = evaluator.realizedCounters(
-                    marginalCandidate,
-                    terminalProjection
-                );
-                for (Candidate reliefCandidate : LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
-                    baseEdges,
-                    scenario,
-                    attackerCaps,
-                    defenderCaps,
-                    attackerStrengthRanks,
-                    attackerNationIds,
-                    defenderNationIds,
-                    fixedEdges,
-                    horizonTurns,
-                    marginalCandidate,
-                    terminalProjection,
-                    realizedCounters
-                )) {
-                    best = evaluator.betterCandidate(best, reliefCandidate, terminalProjection);
-                }
-                int[] feedbackCounters = evaluator.realizedCounters(
-                    best,
-                    terminalProjection
-                );
-                best = evaluator.betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
-                    baseEdges,
-                    scenario,
-                    attackerCaps,
-                    defenderCaps,
-                    attackerStrengthRanks,
-                    attackerNationIds,
-                    defenderNationIds,
-                    fixedEdges,
-                    horizonTurns,
-                    best,
-                    feedbackCounters,
-                    terminalProjection,
-                    evaluator
-                ), terminalProjection);
-                best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
-                    baseEdges,
-                    scenario,
-                    attackerCaps,
-                    defenderCaps,
-                    attackerStrengthRanks,
-                    attackerNationIds,
-                    defenderNationIds,
-                    fixedEdges,
-                    horizonTurns,
-                    1
-                ), terminalProjection);
-                best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
-                    baseEdges,
-                    scenario,
-                    attackerCaps,
-                    defenderCaps,
-                    attackerStrengthRanks,
-                    attackerNationIds,
-                    defenderNationIds,
-                    fixedEdges,
-                    horizonTurns,
-                    2
-                ), terminalProjection);
+                int marginalPairCount = assignmentPairCount(marginalCandidate.assignment());
+                boolean runFullProjectedPortfolio = evaluator.canScoreObjectiveProjection()
+                        && shouldRunFullProjectedPortfolio(edgeCount, marginalPairCount);
+                if (runFullProjectedPortfolio) {
+                    int[] realizedCounters = evaluator.realizedCounters(
+                        marginalCandidate,
+                        terminalProjection
+                    );
+                    for (Candidate reliefCandidate : LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        horizonTurns,
+                        marginalCandidate,
+                        terminalProjection,
+                        realizedCounters
+                    )) {
+                        best = evaluator.betterCandidate(best, reliefCandidate, terminalProjection);
+                    }
+                    int[] feedbackCounters = evaluator.realizedCounters(
+                        best,
+                        terminalProjection
+                    );
+                    best = evaluator.betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        horizonTurns,
+                        best,
+                        feedbackCounters,
+                        terminalProjection,
+                        evaluator
+                    ), terminalProjection);
+                    best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        horizonTurns,
+                        1
+                    ), terminalProjection);
+                    best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        horizonTurns,
+                        2
+                    ), terminalProjection);
+                } else if (evaluator.canScoreObjectiveProjection()) {
+                    best = evaluateBoundedProjectedPortfolio(
+                            best,
+                            baseEdges,
+                            scenario,
+                            attackerCaps,
+                            defenderCaps,
+                            attackerStrengthRanks,
+                            attackerNationIds,
+                            defenderNationIds,
+                            fixedEdges,
+                            horizonTurns,
+                            marginalCandidate,
+                            terminalProjection,
+                            evaluator
+                    );
                 }
                 ObjectiveValueSummary projectedObjectiveSummary = evaluator.objectiveSummary(
                     best,
@@ -257,6 +279,88 @@ final class LongHorizonAssignmentOptimizer {
                 return new Result(cloneAssignment(best.assignment()), projectedObjectiveSummary);
             }
     }
+
+            private static boolean shouldRunFullProjectedPortfolio(int edgeCount, int assignmentPairs) {
+                return edgeCount <= FULL_PROJECTED_PORTFOLIO_EDGE_LIMIT
+                        && assignmentPairs <= FULL_PROJECTED_PORTFOLIO_PAIR_LIMIT;
+            }
+
+            private static Candidate evaluateBoundedProjectedPortfolio(
+                    Candidate currentBest,
+                    CandidateEdgeTable baseEdges,
+                    CompiledScenario scenario,
+                    int[] attackerCaps,
+                    int[] defenderCaps,
+                    int[] attackerStrengthRanks,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    List<BlitzFixedEdge> fixedEdges,
+                    int horizonTurns,
+                    Candidate marginalCandidate,
+                    LongHorizonControlProjection terminalProjection,
+                    LongHorizonCandidateEvaluator projectedEvaluator
+            ) {
+                LongHorizonCandidateEvaluator cheapEvaluator = LongHorizonCandidateEvaluator.create(scenario, null);
+                int[] realizedCounters = projectedEvaluator.realizedCounters(marginalCandidate, terminalProjection);
+                List<Candidate> candidates = new ArrayList<>();
+                candidates.addAll(LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        horizonTurns,
+                        marginalCandidate,
+                        terminalProjection,
+                        realizedCounters
+                ));
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "fixedPointFeedbackDeferred", 1);
+                candidates.add(solveWithAttackerCapLimit(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        horizonTurns,
+                        1
+                ));
+                candidates.add(solveWithAttackerCapLimit(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        horizonTurns,
+                        2
+                ));
+                candidates.removeIf(candidate -> candidate == null || candidate == marginalCandidate);
+                candidates.sort((left, right) -> Double.compare(
+                        cheapEvaluator.score(right, terminalProjection),
+                        cheapEvaluator.score(left, terminalProjection)
+                ));
+                int audited = 0;
+                Candidate best = currentBest;
+                for (Candidate candidate : candidates) {
+                    if (audited >= LARGE_PROJECTED_PORTFOLIO_AUDIT_LIMIT) {
+                        break;
+                    }
+                    best = projectedEvaluator.betterCandidate(best, candidate, terminalProjection);
+                    audited++;
+                }
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedPortfolio", 1);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCandidates", candidates.size());
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedAudits", audited);
+                return best;
+            }
 
             private static int assignmentPairCount(Map<Integer, List<Integer>> assignment) {
             int pairCount = 0;
