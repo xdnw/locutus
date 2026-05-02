@@ -1039,15 +1039,16 @@ final class LongHorizonForwardProjection {
                         scenario.attackerCount(),
                         index -> scenario.attacker(index).score()
                 );
+        StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(snapshot);
         return StrategicAssetValue.contextualMilitaryValue(
                 snapshot::unit,
                 snapshot::pendingBuysNextTurn,
                 snapshot::unitsBoughtToday,
                 snapshot::dailyBuyCap,
                 snapshot.researchBits(),
-                activeWarContext(snapshot),
+                activeWarContext,
                 relevance
-        ).totalValue();
+        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
     }
 
     private static double strategicAssetValue(DBNationSnapshot snapshot) {
@@ -1057,15 +1058,16 @@ final class LongHorizonForwardProjection {
                 0,
                 snapshot.activeOpponentNationIds().size()
         );
+        StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(snapshot);
         return StrategicAssetValue.contextualMilitaryValue(
                 snapshot::unit,
                 snapshot::pendingBuysNextTurn,
                 snapshot::unitsBoughtToday,
                 snapshot::dailyBuyCap,
                 snapshot.researchBits(),
-                activeWarContext(snapshot),
+                activeWarContext,
                 relevance
-        ).totalValue();
+        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
     }
 
     private static StrategicAssetValue.ActiveWarContext activeWarContext(DBNationSnapshot snapshot) {
@@ -1568,7 +1570,7 @@ final class LongHorizonForwardProjection {
             StrategicAssetValue.StrategicRelevance relevance = strategicRelevance(nationIndex);
             StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(nationIndex, warState);
             boolean hasActiveWars = baseHasActiveWars[nationIndex] || activeWarContext.hasActiveWars();
-            return StrategicAssetValue.contextualMilitaryValue(
+            double militaryValue = StrategicAssetValue.contextualMilitaryValue(
                     unit -> unitsFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
                     unit -> pendingBuysFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
                     unit -> unitsBoughtTodayFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
@@ -1577,6 +1579,13 @@ final class LongHorizonForwardProjection {
                     activeWarContext,
                     relevance
             ).totalValue();
+            double infraValue = StrategicAssetValue.infrastructureValue(
+                    cityIndex -> cityInfraFlat[cityInfraBaseOffsets[nationIndex] + cityIndex],
+                    cityCounts[nationIndex],
+                    activeWarContext,
+                    relevance
+            );
+            return militaryValue + infraValue;
         }
 
         double unitValue(int nationIndex) {

@@ -166,6 +166,51 @@ class StrategicAssetValueTest {
     }
 
     @Test
+    void infrastructureValueDependsOnTenableWarState() {
+        double[] cityInfra = {2_500d, 2_500d, 2_500d};
+        StrategicAssetValue.StrategicRelevance relevance = new StrategicAssetValue.StrategicRelevance(18, 3, 4, 1);
+
+        double favorable = StrategicAssetValue.infrastructureValue(
+                cityInfra,
+                StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                        1,
+                        1.0d,
+                        12,
+                        3,
+                        86,
+                        42,
+                        2,
+                        0
+                ),
+                relevance
+        );
+        double noActiveWar = StrategicAssetValue.infrastructureValue(
+                cityInfra,
+                StrategicAssetValue.ActiveWarContext.NONE,
+                relevance
+        );
+        double lostControl = StrategicAssetValue.infrastructureValue(
+                cityInfra,
+                StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                        1,
+                        1.0d,
+                        0,
+                        12,
+                        18,
+                        86,
+                        0,
+                        3
+                ),
+                relevance
+        );
+
+        assertTrue(favorable > noActiveWar,
+                "Infra should be worth more when current control and resistance make preservation strategically tenable");
+        assertTrue(noActiveWar > lostControl,
+                "Lost-control states should suppress delayed infra preservation instead of pricing it as flat replacement value");
+    }
+
+    @Test
     void recoverableLossesArePricedBelowExhaustedLosses() {
         double recoverableLossValue = StrategicAssetValue.contextualLossValue(
                 unit -> unit == MilitaryUnit.SOLDIER ? 100_000 : 0,

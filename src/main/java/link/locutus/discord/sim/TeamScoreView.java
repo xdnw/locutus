@@ -48,24 +48,27 @@ public interface TeamScoreView {
                             opponentScores.length,
                             index -> opponentScores[index]
                     );
-                    consumer.accept(
-                            nation.nationId(),
-                            nation.teamId(),
-                            StrategicAssetValue.contextualMilitaryValue(
-                                    nation::units,
-                                    nation::pendingBuys,
-                                    nation::unitsBoughtToday,
-                                    nation::dailyBuyCap,
-                                    nation.researchBits(),
-                                    StrategicAssetValue.ActiveWarContext.fromSlots(
-                                            nation.offSlotsUsed(),
-                                            nation.maxOffSlots(),
-                                            nation.defSlotsUsed(),
-                                            nation.offSlotsUsed() + nation.defSlotsUsed()
-                                    ),
-                                    relevance
-                            ).totalValue()
+                    StrategicAssetValue.ActiveWarContext activeWarContext = StrategicAssetValue.ActiveWarContext.fromSlots(
+                            nation.offSlotsUsed(),
+                            nation.maxOffSlots(),
+                            nation.defSlotsUsed(),
+                            nation.offSlotsUsed() + nation.defSlotsUsed()
                     );
+                    double militaryValue = StrategicAssetValue.contextualMilitaryValue(
+                            nation::units,
+                            nation::pendingBuys,
+                            nation::unitsBoughtToday,
+                            nation::dailyBuyCap,
+                            nation.researchBits(),
+                            activeWarContext,
+                            relevance
+                    ).totalValue();
+                    double infraValue = StrategicAssetValue.infrastructureValue(
+                            nation.cityInfra(),
+                            activeWarContext,
+                            relevance
+                    );
+                    consumer.accept(nation.nationId(), nation.teamId(), militaryValue + infraValue);
                 }
             }
 

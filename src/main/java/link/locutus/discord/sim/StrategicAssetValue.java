@@ -14,6 +14,7 @@ public final class StrategicAssetValue {
     static final double ACTIVE_WAR_LEVERAGE_WEIGHT = 0.12d;
     static final double CITY_TIER_RELEVANCE_WEIGHT = 0.16d;
     static final double RANGE_COVERAGE_RELEVANCE_WEIGHT = 0.30d;
+    static final double INFRASTRUCTURE_STRATEGIC_WEIGHT = 0.015d;
     static final int DEFAULT_STARTING_MAPS = 12;
     private static final UnitReader ZERO_READER = unit -> 0;
 
@@ -221,21 +222,60 @@ public final class StrategicAssetValue {
         return value / CONVERTED_VALUE_SCALE;
     }
 
+    public static double infrastructureValue(
+            double[] cityInfra,
+            ActiveWarContext activeWarContext,
+            StrategicRelevance relevance
+    ) {
+        if (cityInfra == null || cityInfra.length == 0) {
+            return 0d;
+        }
+        return infrastructureValue(index -> cityInfra[index], cityInfra.length, activeWarContext, relevance);
+    }
+
+    public static double infrastructureValue(
+            CityInfraReader cityInfra,
+            int cityCount,
+            ActiveWarContext activeWarContext,
+            StrategicRelevance relevance
+    ) {
+        if (cityInfra == null || cityCount <= 0) {
+            return 0d;
+        }
+        double replacementValue = 0d;
+        for (int cityIndex = 0; cityIndex < cityCount; cityIndex++) {
+            double infra = cityInfra.infra(cityIndex);
+            if (Double.isFinite(infra) && infra > 0d) {
+                replacementValue += PW.City.Infra.calculateInfra(0d, infra);
+            }
+        }
+        if (!(replacementValue > 0d)) {
+            return 0d;
+        }
+        return replacementValue
+                / CONVERTED_VALUE_SCALE
+                * INFRASTRUCTURE_STRATEGIC_WEIGHT
+                * infrastructureStateMultiplier(activeWarContext)
+                * infrastructureRelevanceMultiplier(relevance);
+    }
+
     public static double nationValue(SimNation nation) {
+        StrategicRelevance relevance = StrategicRelevance.DEFAULT;
+        ActiveWarContext activeWarContext = ActiveWarContext.fromSlots(
+                nation.offSlotsUsed(),
+                nation.maxOffSlots(),
+                nation.defSlotsUsed(),
+                nation.offSlotsUsed() + nation.defSlotsUsed()
+        );
         return contextualMilitaryValue(
                 nation::units,
                 nation::pendingBuys,
                 nation::unitsBoughtToday,
                 nation::dailyBuyCap,
                 nation.researchBits(),
-                ActiveWarContext.fromSlots(
-                        nation.offSlotsUsed(),
-                        nation.maxOffSlots(),
-                        nation.defSlotsUsed(),
-                        nation.offSlotsUsed() + nation.defSlotsUsed()
-                ),
-                StrategicRelevance.DEFAULT
-        ).totalValue();
+                activeWarContext,
+                relevance
+        ).totalValue() + infrastructureValue(nation.cityInfra(), activeWarContext, relevance);
     }
 
     public static StrategicRelevance relevanceForWarRange(
@@ -340,6 +380,33 @@ public final class StrategicAssetValue {
         double slotPressureMultiplier = 0.85d + (0.30d * context.slotPressure());
         double opponentMultiplier = Math.min(1.35d, 0.85d + (0.15d * context.activeOpponents()));
         return ACTIVE_WAR_LEVERAGE_WEIGHT * slotPressureMultiplier * opponentMultiplier * tenability;
+    }
+
+    private static double infrastructureStateMultiplier(ActiveWarContext context) {
+        if (context == null || !context.hasActiveWars()) {
+            return 0.16d;
+        }
+        if (!context.outcomeRelevant()) {
+            return 0.03d;
+        }
+        double statePosition = (0.45d * context.controlPosition())
+                + (0.35d * context.resistancePosition())
+                + (0.20d * context.mapPosition());
+        if (statePosition <= -0.65d) {
+            return 0.04d;
+        }
+        if (statePosition <= -0.25d) {
+            return 0.08d;
+        }
+        if (statePosition < 0.20d) {
+            return 0.16d + (0.20d * ((statePosition + 0.25d) / 0.45d));
+        }
+        return 0.36d + (0.24d * Math.min(1d, statePosition));
+    }
+
+    private static double infrastructureRelevanceMultiplier(StrategicRelevance relevance) {
+        double adjustment = contextualRelevanceAdjustment(relevance);
+        return Math.max(0.45d, Math.min(1.25d, 1d + adjustment));
     }
 
     private static double normalizedDifference(double own, double enemy, double floor) {
@@ -474,5 +541,10 @@ public final class StrategicAssetValue {
     @FunctionalInterface
     public interface UnitReader {
         int units(MilitaryUnit unit);
+    }
+
+    @FunctionalInterface
+    public interface CityInfraReader {
+        double infra(int cityIndex);
     }
 }

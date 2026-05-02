@@ -78,6 +78,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private final Map<Long, LocalWar> warsByPair;
     private final Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId;
     private final Map<Integer, Double> externalStrategicValueByTeam;
+    private final List<ExternalWarControl> externalWarControls;
     private final LocalNationBuffers nationBuffers;
     private final LocalWarBuffers warBuffers;
     private final Deque<Mark> markStack;
@@ -98,6 +99,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Map<Integer, LocalNation> nationsById,
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
             Map<Integer, Double> externalStrategicValueByTeam,
+            List<ExternalWarControl> externalWarControls,
             LocalNationBuffers nationBuffers,
             int currentTurn,
             PlannerTransitionSemantics transitionSemantics,
@@ -112,12 +114,24 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.nationsById = nationsById;
         this.strategicRelevanceByNationId = strategicRelevanceByNationId;
         this.externalStrategicValueByTeam = externalStrategicValueByTeam;
+        this.externalWarControls = externalWarControls;
         this.nationBuffers = nationBuffers;
         this.warsById = new LinkedHashMap<>();
         this.warsByPair = new LinkedHashMap<>();
         this.warBuffers = new LocalWarBuffers();
         this.markStack = new ArrayDeque<>();
         this.currentTurn = currentTurn;
+    }
+
+    record ExternalWarControl(
+            int attackerTeamId,
+            int defenderTeamId,
+            int groundControlTeamId,
+            int airSuperiorityTeamId,
+            int blockadeTeamId,
+            int attackerResistance,
+            int defenderResistance
+    ) {
     }
 
     static PlannerLocalConflict create(
@@ -152,7 +166,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 tuning,
                 transitionSemantics,
                 strategicRelevanceByNationId,
-                Map.of()
+                Map.of(),
+                List.of()
         );
     }
 
@@ -165,6 +180,28 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
             Map<Integer, Double> externalStrategicValueByTeam
     ) {
+        return create(
+                overrides,
+                attackers,
+                defenders,
+                tuning,
+                transitionSemantics,
+                strategicRelevanceByNationId,
+                externalStrategicValueByTeam,
+                List.of()
+        );
+    }
+
+    static PlannerLocalConflict create(
+            OverrideSet overrides,
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            SimTuning tuning,
+            PlannerTransitionSemantics transitionSemantics,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
+            Map<Integer, Double> externalStrategicValueByTeam,
+            List<ExternalWarControl> externalWarControls
+    ) {
         return createFromOrderedSnapshots(
                 overrides,
                 orderedUniqueNations(attackers, defenders),
@@ -173,7 +210,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 tuning,
                 transitionSemantics,
                 strategicRelevanceByNationId,
-                externalStrategicValueByTeam
+                externalStrategicValueByTeam,
+                externalWarControls
         );
     }
 
@@ -191,7 +229,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 tuning,
                 transitionSemantics,
                 strategicRelevanceByNationId(nations),
-                Map.of()
+                Map.of(),
+                List.of()
         );
     }
 
@@ -213,7 +252,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 tuning,
                 transitionSemantics,
                 strategicRelevanceByNationId(baseSnapshots),
-                Map.of()
+                Map.of(),
+                List.of()
         );
     }
 
@@ -268,7 +308,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
             SimTuning tuning,
             PlannerTransitionSemantics transitionSemantics,
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
-            Map<Integer, Double> externalStrategicValueByTeam
+            Map<Integer, Double> externalStrategicValueByTeam,
+            List<ExternalWarControl> externalWarControls
     ) {
         PlannerTransitionSemantics effectiveTransitionSemantics = transitionSemantics == null
                 ? PlannerTransitionSemantics.NONE
@@ -289,6 +330,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 localNations,
             strategicRelevanceByNationId == null ? Map.of() : Map.copyOf(strategicRelevanceByNationId),
             externalStrategicValueByTeam == null ? Map.of() : Map.copyOf(externalStrategicValueByTeam),
+            externalWarControls == null ? List.of() : List.copyOf(externalWarControls),
             nationBuffers,
             currentTurn,
                 effectiveTransitionSemantics,
@@ -373,20 +415,21 @@ final class PlannerLocalConflict implements TeamWarControlView {
             DBNationSnapshot snapshot,
             StrategicAssetValue.StrategicRelevance relevance
     ) {
+        StrategicAssetValue.ActiveWarContext activeWarContext = StrategicAssetValue.ActiveWarContext.fromSlots(
+                snapshot.currentOffensiveWars(),
+                snapshot.maxOff(),
+                snapshot.currentDefensiveWars(),
+                snapshot.activeOpponentNationIds().size()
+        );
         return StrategicAssetValue.contextualMilitaryValue(
                 snapshot::unit,
                 snapshot::pendingBuysNextTurn,
                 snapshot::unitsBoughtToday,
                 snapshot::dailyBuyCap,
                 snapshot.researchBits(),
-                StrategicAssetValue.ActiveWarContext.fromSlots(
-                        snapshot.currentOffensiveWars(),
-                        snapshot.maxOff(),
-                        snapshot.currentDefensiveWars(),
-                        snapshot.activeOpponentNationIds().size()
-                ),
+                activeWarContext,
                 relevance
-        ).totalValue();
+        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
     }
 
     Mark mark() {
@@ -900,6 +943,39 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     war.defenderResistanceValue()
             );
         }
+        for (ExternalWarControl war : externalWarControls) {
+            consumer.accept(
+                    war.attackerTeamId(),
+                    war.defenderTeamId(),
+                    war.groundControlTeamId(),
+                    war.airSuperiorityTeamId(),
+                    war.blockadeTeamId(),
+                    war.attackerResistance(),
+                    war.defenderResistance()
+            );
+        }
+    }
+
+    List<ExternalWarControl> externalWarControlsSnapshot() {
+        if (warsById.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<ExternalWarControl> controls = new ArrayList<>();
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            controls.add(new ExternalWarControl(
+                    war.attacker.teamId(),
+                    war.defender.teamId(),
+                    controlOwnerTeamId(war, war.warBuffers.groundControlOwner[war.warIndex]),
+                    controlOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]),
+                    controlOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]),
+                    war.attackerResistanceValue(),
+                    war.defenderResistanceValue()
+            ));
+        }
+        return controls.isEmpty() ? List.of() : List.copyOf(controls);
     }
 
     private StrategicAssetValue.StrategicRelevance strategicRelevance(LocalNation nation) {
@@ -1092,6 +1168,41 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
             int ownResistance = war.attacker.teamId() == teamId ? war.attackerResistanceValue() : war.defenderResistanceValue();
             int enemyResistance = war.attacker.teamId() == teamId ? war.defenderResistanceValue() : war.attackerResistanceValue();
+            double controlBalance = ownControls - enemyControls;
+            double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
+            double warSignal = (2.5d * controlBalance)
+                    + (2.0d * resistanceBalance)
+                    + (4.0d * strategicValueEdge);
+            if (controlBalance < 0.0d && resistanceBalance < 0.0d) {
+                warSignal *= 1.15d;
+            }
+            score += Math.max(-18.0d, Math.min(18.0d, warSignal));
+        }
+        for (ExternalWarControl war : externalWarControls) {
+            if (war.attackerTeamId() != teamId && war.defenderTeamId() != teamId) {
+                continue;
+            }
+            int enemyTeamId = war.attackerTeamId() == teamId ? war.defenderTeamId() : war.attackerTeamId();
+            int ownControls = 0;
+            int enemyControls = 0;
+            if (war.groundControlTeamId() == teamId) {
+                ownControls++;
+            } else if (war.groundControlTeamId() == enemyTeamId) {
+                enemyControls++;
+            }
+            if (war.airSuperiorityTeamId() == teamId) {
+                ownControls++;
+            } else if (war.airSuperiorityTeamId() == enemyTeamId) {
+                enemyControls++;
+            }
+            if (war.blockadeTeamId() == teamId) {
+                ownControls++;
+            } else if (war.blockadeTeamId() == enemyTeamId) {
+                enemyControls++;
+            }
+
+            int ownResistance = war.attackerTeamId() == teamId ? war.attackerResistance() : war.defenderResistance();
+            int enemyResistance = war.attackerTeamId() == teamId ? war.defenderResistance() : war.attackerResistance();
             double controlBalance = ownControls - enemyControls;
             double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
             double warSignal = (2.5d * controlBalance)
@@ -2730,7 +2841,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     researchBitsValue,
                     activeWarContext,
                     relevance
-            ).totalValue();
+            ).totalValue() + StrategicAssetValue.infrastructureValue(
+                    cityIndex -> buffers.cityInfraFlat()[buffers.cityInfraBaseOffset(nationIndex) + cityIndex],
+                    cities(),
+                    activeWarContext,
+                    relevance
+            );
         }
 
         int activeBaseCurrentOffensiveWars(int turn) {
