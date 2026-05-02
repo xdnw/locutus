@@ -282,6 +282,69 @@ class StrategicAssetValueTest {
     }
 
     @Test
+    void controlRegimeSuppressesTinySwingsWhenDurableControlIsUnattainable() {
+        double lostBaseline = StrategicAssetValue.controlRegimeScore(
+                18,
+                86,
+                0,
+                3,
+                0d
+        );
+        double lostTinySwing = StrategicAssetValue.controlRegimeScore(
+                18,
+                86,
+                1,
+                2,
+                0d
+        );
+        double tenableBaseline = StrategicAssetValue.controlRegimeScore(
+                65,
+                55,
+                0,
+                0,
+                0d
+        );
+        double tenableControlGain = StrategicAssetValue.controlRegimeScore(
+                65,
+                55,
+                1,
+                0,
+                0d
+        );
+
+        double lostSwingValue = lostTinySwing - lostBaseline;
+        double tenableSwingValue = tenableControlGain - tenableBaseline;
+
+        assertTrue(lostSwingValue < 1.0d,
+                "A tiny control fluctuation in a decisive lost-control state should not look like durable control progress");
+        assertTrue(tenableSwingValue > lostSwingValue * 4.0d,
+                "When resistance state is tenable again, the same control gain should regain strategic value");
+    }
+
+    @Test
+    void controlRegimeDoesNotLetStrategicEdgeOverrideLostControlState() {
+        double lostWithStrongStrategicEdge = StrategicAssetValue.controlRegimeScore(
+                18,
+                86,
+                1,
+                2,
+                1d
+        );
+        double tenableWithStrongStrategicEdge = StrategicAssetValue.controlRegimeScore(
+                70,
+                55,
+                1,
+                0,
+                1d
+        );
+
+        assertTrue(lostWithStrongStrategicEdge < 0d,
+                "A large strategic-value edge should not by itself make a tactically lost active war look controlled");
+        assertTrue(tenableWithStrongStrategicEdge > 0d,
+                "Strategic edge should still matter once the active war state is tactically tenable");
+    }
+
+    @Test
     void frontlineLossesArePricedAboveFringeLosses() {
         StrategicAssetValue.StrategicRelevance frontline = StrategicAssetValue.relevanceForWarRange(
                 26,

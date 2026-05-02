@@ -1168,15 +1168,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
             int ownResistance = war.attacker.teamId() == teamId ? war.attackerResistanceValue() : war.defenderResistanceValue();
             int enemyResistance = war.attacker.teamId() == teamId ? war.defenderResistanceValue() : war.attackerResistanceValue();
-            double controlBalance = ownControls - enemyControls;
-            double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
-            double warSignal = (2.5d * controlBalance)
-                    + (2.0d * resistanceBalance)
-                    + (4.0d * strategicValueEdge);
-            if (controlBalance < 0.0d && resistanceBalance < 0.0d) {
-                warSignal *= 1.15d;
-            }
-            score += Math.max(-18.0d, Math.min(18.0d, warSignal));
+            score += StrategicAssetValue.controlRegimeScore(
+                    ownResistance,
+                    enemyResistance,
+                    ownControls,
+                    enemyControls,
+                    strategicValueEdge
+            );
         }
         for (ExternalWarControl war : externalWarControls) {
             if (war.attackerTeamId() != teamId && war.defenderTeamId() != teamId) {
@@ -1203,15 +1201,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
             int ownResistance = war.attackerTeamId() == teamId ? war.attackerResistance() : war.defenderResistance();
             int enemyResistance = war.attackerTeamId() == teamId ? war.defenderResistance() : war.attackerResistance();
-            double controlBalance = ownControls - enemyControls;
-            double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
-            double warSignal = (2.5d * controlBalance)
-                    + (2.0d * resistanceBalance)
-                    + (4.0d * strategicValueEdge);
-            if (controlBalance < 0.0d && resistanceBalance < 0.0d) {
-                warSignal *= 1.15d;
-            }
-            score += Math.max(-18.0d, Math.min(18.0d, warSignal));
+            score += StrategicAssetValue.controlRegimeScore(
+                    ownResistance,
+                    enemyResistance,
+                    ownControls,
+                    enemyControls,
+                    strategicValueEdge
+            );
         }
         return score;
     }

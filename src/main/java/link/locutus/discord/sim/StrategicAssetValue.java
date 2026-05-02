@@ -302,6 +302,53 @@ public final class StrategicAssetValue {
         return 1d;
     }
 
+    public static double controlRegimeScore(
+            int ownResistance,
+            int enemyResistance,
+            int ownControls,
+            int enemyControls,
+            double strategicValueEdge
+    ) {
+        return controlRegimeScore(
+                DEFAULT_STARTING_MAPS,
+                DEFAULT_STARTING_MAPS,
+                ownResistance,
+                enemyResistance,
+                ownControls,
+                enemyControls,
+                strategicValueEdge
+        );
+    }
+
+    public static double controlRegimeScore(
+            int ownMaps,
+            int enemyMaps,
+            int ownResistance,
+            int enemyResistance,
+            int ownControls,
+            int enemyControls,
+            double strategicValueEdge
+    ) {
+        ActiveWarContext context = ActiveWarContext.fromRelativeWarState(
+                1,
+                1d,
+                ownMaps,
+                enemyMaps,
+                ownResistance,
+                enemyResistance,
+                ownControls,
+                enemyControls
+        );
+        double controlBalance = Math.max(0, ownControls) - Math.max(0, enemyControls);
+        double resistanceBalance = (Math.max(0, ownResistance) - Math.max(0, enemyResistance)) / 40.0d;
+        double tenability = durableControlMultiplier(context);
+        double edgeMultiplier = 0.35d + (0.65d * tenability);
+        double warSignal = (2.5d * controlBalance * tenability)
+                + (2.0d * resistanceBalance)
+                + (4.0d * clampSigned(strategicValueEdge) * edgeMultiplier);
+        return Math.max(-18.0d, Math.min(18.0d, warSignal));
+    }
+
     public static double nationValue(SimNation nation) {
         StrategicRelevance relevance = StrategicRelevance.DEFAULT;
         ActiveWarContext activeWarContext = ActiveWarContext.fromSlots(
@@ -445,6 +492,28 @@ public final class StrategicAssetValue {
             return 0.16d + (0.20d * ((statePosition + 0.25d) / 0.45d));
         }
         return 0.36d + (0.24d * Math.min(1d, statePosition));
+    }
+
+    private static double durableControlMultiplier(ActiveWarContext context) {
+        if (context == null || !context.hasActiveWars()) {
+            return 0.70d;
+        }
+        if (!context.outcomeRelevant()) {
+            return 0.20d;
+        }
+        double statePosition = (0.45d * context.controlPosition())
+                + (0.35d * context.resistancePosition())
+                + (0.20d * context.mapPosition());
+        if (statePosition <= -0.65d) {
+            return 0.20d;
+        }
+        if (statePosition <= -0.35d) {
+            return 0.45d;
+        }
+        if (statePosition < 0.10d) {
+            return 0.70d + (0.30d * ((statePosition + 0.35d) / 0.45d));
+        }
+        return 1.0d + (0.20d * Math.min(1d, statePosition));
     }
 
     private static double infrastructureRelevanceMultiplier(StrategicRelevance relevance) {

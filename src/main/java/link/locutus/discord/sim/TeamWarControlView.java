@@ -65,15 +65,13 @@ public interface TeamWarControlView extends TeamScoreView {
 
             int ownResistance = attackerTeamId == teamId ? attackerResistance : defenderResistance;
             int enemyResistance = attackerTeamId == teamId ? defenderResistance : attackerResistance;
-            double controlBalance = ownControls - enemyControls;
-            double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
-            double warSignal = (2.5d * controlBalance)
-                    + (2.0d * resistanceBalance)
-                    + (4.0d * strategicValueEdge);
-            if (controlBalance < 0.0d && resistanceBalance < 0.0d) {
-                warSignal *= 1.15d;
-            }
-            score[0] += Math.max(-18.0d, Math.min(18.0d, warSignal));
+            score[0] += StrategicAssetValue.controlRegimeScore(
+                    ownResistance,
+                    enemyResistance,
+                    ownControls,
+                    enemyControls,
+                    strategicValueEdge
+            );
         });
         return score[0];
     }
