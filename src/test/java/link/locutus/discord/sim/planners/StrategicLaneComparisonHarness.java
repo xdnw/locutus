@@ -40,7 +40,7 @@ public final class StrategicLaneComparisonHarness {
         int horizonTurns = optionInt(args, "horizon", DEFAULT_HORIZON_TURNS);
         int repetitions = Math.max(1, optionInt(args, "repetitions", 1));
         int requestedPopulation = optionInt(args, "population", DEFAULT_POPULATION);
-        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerRebuyPreserved,defenderRebuyPreserved,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,activeWars,attackerControlFlags,defenderControlFlags,attackerWinningWars,defenderWinningWars,concludedWars,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs");
+        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerControlFlags,defenderControlFlags,attackerWinningWars,defenderWinningWars,concludedWars,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs");
         for (ScenarioFamily family : ScenarioFamily.values()) {
             Fixture fixture = family.fixture(requestedPopulation);
             for (Lane lane : Lane.values()) {
@@ -60,7 +60,7 @@ public final class StrategicLaneComparisonHarness {
                     double bestMs = best.elapsedNanos() / 1_000_000.0d;
                     double avgMs = (totalNanos / (double) repetitions) / 1_000_000.0d;
                     String row = String.format(Locale.ROOT,
-                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%s,%d,%.6f,%.3f,%.3f,%.3f,%s,%s,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%d,%.3f,%.3f",
+                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%s,%d,%.6f,%.3f,%.3f,%.3f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%.3f,%.3f",
                             family.cliName,
                             lane.cliName,
                             objective.name(),
@@ -81,16 +81,21 @@ public final class StrategicLaneComparisonHarness {
                             best.defenderUnitLosses(),
                             best.attackerRebuyPreserved(),
                             best.defenderRebuyPreserved(),
+                            best.attackerRebuyDestroyed(),
+                            best.defenderRebuyDestroyed(),
                             best.attackerInfraDestroyed(),
                             best.defenderInfraDestroyed(),
                             best.attackerWiped(),
                             best.defenderWiped(),
+                            best.attackerWipeRisk(),
+                            best.defenderWipeRisk(),
                             best.activeWars(),
                             best.attackerControlFlags(),
                             best.defenderControlFlags(),
                             best.attackerWinningWars(),
                             best.defenderWinningWars(),
                             best.concludedWars(),
+                            best.concludedWarsByDefenderTier(),
                             best.assignedWarTypes(),
                             best.assignedAttackTypes(),
                             best.payloadBytes(),
@@ -550,16 +555,21 @@ public final class StrategicLaneComparisonHarness {
                     unitLossSummary(diagnostics.defenderUnitLosses()),
                     diagnostics.attackerRebuyPreservedValue(),
                     diagnostics.defenderRebuyPreservedValue(),
+                    diagnostics.attackerRebuyDestroyedValue(),
+                    diagnostics.defenderRebuyDestroyedValue(),
                     diagnostics.attackerInfraDestroyed(),
                     diagnostics.defenderInfraDestroyed(),
                     diagnostics.attackerWiped(),
                     diagnostics.defenderWiped(),
+                    diagnostics.attackerWipeRisk(),
+                    diagnostics.defenderWipeRisk(),
                     diagnostics.activeWars(),
                     diagnostics.attackerControlFlags(),
                     diagnostics.defenderControlFlags(),
                     diagnostics.attackerWinningWars(),
                     diagnostics.defenderWinningWars(),
                     diagnostics.concludedWars(),
+                    tierCountSummary(diagnostics.concludedWarsByDefenderTier()),
                     enumCountSummary(WarType.values, warTypeCounts),
                     enumCountSummary(AttackType.values, attackTypeCounts),
                     payloadBytes(assignment),
@@ -676,16 +686,21 @@ public final class StrategicLaneComparisonHarness {
             String defenderUnitLosses,
             double attackerRebuyPreserved,
             double defenderRebuyPreserved,
+            double attackerRebuyDestroyed,
+            double defenderRebuyDestroyed,
             double attackerInfraDestroyed,
             double defenderInfraDestroyed,
             int attackerWiped,
             int defenderWiped,
+            int attackerWipeRisk,
+            int defenderWipeRisk,
             int activeWars,
             int attackerControlFlags,
             int defenderControlFlags,
             int attackerWinningWars,
             int defenderWinningWars,
             int concludedWars,
+            String concludedWarsByDefenderTier,
             String assignedWarTypes,
             String assignedAttackTypes,
             int payloadBytes,
@@ -707,16 +722,21 @@ public final class StrategicLaneComparisonHarness {
                     defenderUnitLosses,
                     attackerRebuyPreserved,
                     defenderRebuyPreserved,
+                    attackerRebuyDestroyed,
+                    defenderRebuyDestroyed,
                     attackerInfraDestroyed,
                     defenderInfraDestroyed,
                     attackerWiped,
                     defenderWiped,
+                    attackerWipeRisk,
+                    defenderWipeRisk,
                     activeWars,
                     attackerControlFlags,
                     defenderControlFlags,
                     attackerWinningWars,
                     defenderWinningWars,
                     concludedWars,
+                    concludedWarsByDefenderTier,
                     assignedWarTypes,
                     assignedAttackTypes,
                     payloadBytes,
@@ -748,6 +768,19 @@ public final class StrategicLaneComparisonHarness {
             builder.append(values[index].name()).append(':').append(counts[index]);
         }
         return builder.length() == 0 ? "none" : builder.toString();
+    }
+
+    private static String tierCountSummary(int[] counts) {
+        StringBuilder builder = new StringBuilder();
+        for (TierSegment tier : TierSegment.values()) {
+            if (builder.length() > 0) {
+                builder.append(';');
+            }
+            int tierIndex = tier.ordinal();
+            int count = tierIndex < counts.length ? counts[tierIndex] : 0;
+            builder.append(tier.label).append(':').append(count);
+        }
+        return builder.toString();
     }
 
     private static void exhaustDailyBuys(DBNationSnapshot.Builder builder) {

@@ -41,6 +41,7 @@ final class LongHorizonForwardProjection {
     private static final double PROJECTED_COUNTER_MIN_SCORE = 8d;
     private static final int PROJECTED_REDECLARE_START_TURN = WAR_EXPIRATION_TURN;
     private static final double PROJECTED_REDECLARE_MIN_SCORE = 8d;
+    private static final double WIPE_RISK_COMBAT_STRENGTH_RATIO = 0.25d;
     private static final int DAY_TURNS = 12;
     private static final MilitaryUnit[] PROJECTED_BUY_UNITS = {
         MilitaryUnit.AIRCRAFT,
@@ -2406,14 +2407,20 @@ final class LongHorizonForwardProjection {
             double defenderRebuyPreserved = 0d;
             int attackerWiped = 0;
             int defenderWiped = 0;
+            int attackerWipeRisk = 0;
+            int defenderWipeRisk = 0;
 
             for (int attackerIndex = 0; attackerIndex < state.attackerCount; attackerIndex++) {
                 attackerStrategicValue += state.strategicValue(attackerIndex, warState);
                 attackerInfraDestroyed += Math.max(0d, state.baselineInfra[attackerIndex] - state.totalInfra(attackerIndex));
                 addUnitLosses(attackerUnitLosses, attackerIndex);
                 attackerRebuyPreserved += state.rebuyPreservedValue(attackerIndex, warState);
-                if (state.combatStrength(attackerIndex) <= 0d && state.baselineCombatStrength(attackerIndex) > 0d) {
+                double baselineStrength = state.baselineCombatStrength(attackerIndex);
+                double terminalStrength = state.combatStrength(attackerIndex);
+                if (terminalStrength <= 0d && baselineStrength > 0d) {
                     attackerWiped++;
+                } else if (isWipeRisk(baselineStrength, terminalStrength)) {
+                    attackerWipeRisk++;
                 }
             }
             for (int defenderIndex = 0; defenderIndex < state.defenderCount; defenderIndex++) {
@@ -2422,8 +2429,12 @@ final class LongHorizonForwardProjection {
                 defenderInfraDestroyed += Math.max(0d, state.baselineInfra[nationIndex] - state.totalInfra(nationIndex));
                 addUnitLosses(defenderUnitLosses, nationIndex);
                 defenderRebuyPreserved += state.rebuyPreservedValue(nationIndex, warState);
-                if (state.combatStrength(nationIndex) <= 0d && state.baselineCombatStrength(nationIndex) > 0d) {
+                double baselineStrength = state.baselineCombatStrength(nationIndex);
+                double terminalStrength = state.combatStrength(nationIndex);
+                if (terminalStrength <= 0d && baselineStrength > 0d) {
                     defenderWiped++;
+                } else if (isWipeRisk(baselineStrength, terminalStrength)) {
+                    defenderWipeRisk++;
                 }
             }
 
@@ -2433,6 +2444,7 @@ final class LongHorizonForwardProjection {
             int attackerWinningWars = 0;
             int defenderWinningWars = 0;
             int concludedWars = 0;
+            int[] concludedWarsByDefenderTier = new int[TierSegment.values().length];
             for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
                 if (warState.active[warIndex]) {
                     activeWars++;
@@ -2458,9 +2470,20 @@ final class LongHorizonForwardProjection {
                     }
                 } else if (warMetricPresent(warIndex)) {
                     concludedWars++;
+                    int defenderNationIndex = warState.defenderNationIndex[warIndex];
+                    if (defenderNationIndex >= state.attackerCount) {
+                        int defenderIndex = defenderNationIndex - state.attackerCount;
+                        concludedWarsByDefenderTier[TierSegment.fromCities(scenario.defender(defenderIndex).cities()).ordinal()]++;
+                    }
                 }
             }
 
+            double attackerRebuyDestroyed = projectedRebuyDestroyedValue(0, state.attackerCount, true);
+            double defenderRebuyDestroyed = projectedRebuyDestroyedValue(
+                    state.attackerCount,
+                    state.attackerCount + state.defenderCount,
+                    false
+            );
             return new ProjectionDiagnostics(
                     attackerStrategicValue,
                     defenderStrategicValue,
@@ -2468,17 +2491,51 @@ final class LongHorizonForwardProjection {
                     defenderUnitLosses,
                     attackerRebuyPreserved,
                     defenderRebuyPreserved,
+                    attackerRebuyDestroyed,
+                    defenderRebuyDestroyed,
                     attackerInfraDestroyed,
                     defenderInfraDestroyed,
                     attackerWiped,
                     defenderWiped,
+                    attackerWipeRisk,
+                    defenderWipeRisk,
                     activeWars,
                     attackerControlFlags,
                     defenderControlFlags,
                     attackerWinningWars,
                     defenderWinningWars,
-                    concludedWars
+                    concludedWars,
+                    concludedWarsByDefenderTier
             );
+        }
+
+        private boolean isWipeRisk(double baselineStrength, double terminalStrength) {
+            return baselineStrength > 0d
+                    && terminalStrength > 0d
+                    && terminalStrength <= baselineStrength * WIPE_RISK_COMBAT_STRENGTH_RATIO;
+        }
+
+        private double projectedRebuyDestroyedValue(int startNationIndex, int endNationIndex, boolean attackerSide) {
+            double lossRecoveryValue = 0d;
+            for (int nationIndex = startNationIndex; nationIndex < endNationIndex; nationIndex++) {
+                int unitBase = state.unitBaseOffsets[nationIndex];
+                for (MilitaryUnit unit : SimUnits.PURCHASABLE_UNITS) {
+                    int losses = state.cumulativeUnitLossesFlat[unitBase + unit.ordinal()];
+                    if (losses > 0) {
+                        lossRecoveryValue += StrategicAssetValue.projectedRecoveryValue(
+                                unit,
+                                losses,
+                                state.researchBits[nationIndex]
+                        );
+                    }
+                }
+            }
+            double[] values = attackerSide ? attackerProjectedBuyScore : defenderProjectedBuyScore;
+            double projectedCapacityValue = 0d;
+            for (double value : values) {
+                projectedCapacityValue += value;
+            }
+            return Math.min(lossRecoveryValue, projectedCapacityValue);
         }
 
         private void addUnitLosses(int[] out, int nationIndex) {
@@ -2564,16 +2621,37 @@ final class LongHorizonForwardProjection {
             int[] defenderUnitLosses,
             double attackerRebuyPreservedValue,
             double defenderRebuyPreservedValue,
+            double attackerRebuyDestroyedValue,
+            double defenderRebuyDestroyedValue,
             double attackerInfraDestroyed,
             double defenderInfraDestroyed,
             int attackerWiped,
             int defenderWiped,
+            int attackerWipeRisk,
+            int defenderWipeRisk,
             int activeWars,
             int attackerControlFlags,
             int defenderControlFlags,
             int attackerWinningWars,
             int defenderWinningWars,
-            int concludedWars
+            int concludedWars,
+            int[] concludedWarsByDefenderTier
     ) {
+    }
+
+    private enum TierSegment {
+        LOW,
+        MID,
+        HIGH;
+
+        static TierSegment fromCities(int cities) {
+            if (cities >= 28) {
+                return HIGH;
+            }
+            if (cities >= 20) {
+                return MID;
+            }
+            return LOW;
+        }
     }
 }
