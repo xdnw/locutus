@@ -112,13 +112,17 @@ final class LongHorizonCandidateEvaluator {
         if (cached != null) {
             return cached;
         }
-        LongHorizonForwardProjection.ProjectedEvaluation evaluation = projection.projectedEvaluation(
-                projectionScoringContext.objective(),
-                attackerTeamId,
-                candidate.edgeAssigned(),
-                candidate.attackerCounts(),
-                candidate.defenderCounts()
-        );
+        LongHorizonForwardProjection.ProjectedEvaluation evaluation;
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)) {
+            evaluation = projection.projectedEvaluation(
+                    projectionScoringContext.objective(),
+                    attackerTeamId,
+                    candidate.edgeAssigned(),
+                    candidate.attackerCounts(),
+                    candidate.defenderCounts()
+            );
+        }
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "projectedEvaluations", 1);
         projectedEvaluations.put(candidate, evaluation);
         realizedCounters.put(candidate, evaluation.realizedCounterIncidence());
         return evaluation;

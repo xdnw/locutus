@@ -258,6 +258,125 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
+    void outmatchedAttackerGetsEdgeUnderControlObjectiveDueToPositiveBaseline() {
+        // Outmatched attacker: ~15% of normal military — probe < 0.15 against the strong defender.
+        DBNationSnapshot outmatchedAttacker = buildNation(51, ATTACKER_TEAM, 820.0, 18,
+                37_500, 3_000, 240, 37);
+        // Strong defender with 1.55× military and thus non-trivial targetPressure.
+        DBNationSnapshot strongDefender = buildNation(151, DEFENDER_TEAM, 1_990.0, 25,
+                387_500, 31_000, 2_480, 387);
+
+        // Verify the pair is below the primary admission threshold.
+        OpeningEvaluator.ProbeResult probeResult = new OpeningEvaluator.ProbeResult();
+        OpeningEvaluator.viabilityProbe(outmatchedAttacker, strongDefender, probeResult);
+        assertTrue(
+                probeResult.probe() < CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
+                "Test setup must produce an outmatched pair below the primary admission threshold"
+        );
+
+        // NET_DAMAGE baseline is 0 (no harm − no exposure) → no edge for an outmatched attacker.
+        OpeningEvaluator.EvaluatedEdge netDamageEdge = OpeningEvaluator.evaluateOpening(
+                outmatchedAttacker,
+                strongDefender,
+                BlitzObjective.NET_DAMAGE.objective(),
+                CandidateEdgeComponentPolicy.none()
+        );
+        assertFalse(
+                Float.isFinite(netDamageEdge.score()),
+                "NET_DAMAGE baseline is 0 for outmatched attacker — no edge expected"
+        );
+
+        // CONTROL baseline is 4.0 * targetPressure > 0 → edge should be produced via rollout
+        // even though no single attack improves the score above that baseline.
+        OpeningEvaluator.EvaluatedEdge controlEdge = OpeningEvaluator.evaluateOpening(
+                outmatchedAttacker,
+                strongDefender,
+                BlitzObjective.CONTROL.objective(),
+                CandidateEdgeComponentPolicy.none()
+        );
+        assertTrue(
+                Float.isFinite(controlEdge.score()) && controlEdge.score() > 0f,
+                "CONTROL baseline is 4.0*targetPressure > 0 — outmatched attacker should receive an edge"
+        );
+
+        // MINIMUM_DAMAGE_RECEIVED baseline is 0.35*harm − exposure = 0 → no edge.
+        OpeningEvaluator.EvaluatedEdge avoidanceEdge = OpeningEvaluator.evaluateOpening(
+                outmatchedAttacker,
+                strongDefender,
+                BlitzObjective.MINIMUM_DAMAGE_RECEIVED.objective(),
+                CandidateEdgeComponentPolicy.none()
+        );
+        assertFalse(
+                Float.isFinite(avoidanceEdge.score()),
+                "MINIMUM_DAMAGE_RECEIVED baseline is 0 — outmatched attacker should get no edge"
+        );
+    }
+
+    @Test
+    void controlRolloutFallbackEdgeScoreIsBelowParityAttackersFullRolloutScore() {
+        // Outmatched attacker: probe < 0.15, gets edge only via positive-baseline fallback.
+        DBNationSnapshot outmatchedAttacker = buildNation(52, ATTACKER_TEAM, 820.0, 18,
+                37_500, 3_000, 240, 37);
+        // Parity attacker: probe >= 0.15, gets full improving rollout under CONTROL.
+        DBNationSnapshot parityAttacker = buildNation(53, ATTACKER_TEAM, 1_970.0, 25,
+                387_500, 31_000, 2_480, 387);
+        // Shared strong defender.
+        DBNationSnapshot strongDefender = buildNation(152, DEFENDER_TEAM, 1_990.0, 25,
+                387_500, 31_000, 2_480, 387);
+
+        OpeningEvaluator.ProbeResult outmatchedProbe = new OpeningEvaluator.ProbeResult();
+        OpeningEvaluator.ProbeResult parityProbe = new OpeningEvaluator.ProbeResult();
+        OpeningEvaluator.viabilityProbe(outmatchedAttacker, strongDefender, outmatchedProbe);
+        OpeningEvaluator.viabilityProbe(parityAttacker, strongDefender, parityProbe);
+        assertTrue(
+                outmatchedProbe.probe() < CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
+                "Test setup must produce outmatched probe below the primary admission threshold"
+        );
+        assertTrue(
+                parityProbe.probe() >= CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
+                "Test setup must produce parity probe at or above the primary admission threshold"
+        );
+
+        CompiledScenario scenario = SCENARIO_COMPILER.compile(
+                List.of(outmatchedAttacker, parityAttacker),
+                List.of(strongDefender),
+                OverrideSet.EMPTY,
+                TreatyProvider.NONE,
+                Map.of()
+        );
+        CandidateEdgeTable out = new CandidateEdgeTable();
+        OpeningEvaluator.evaluate(
+                scenario,
+                tuningWithCandidatesPerAttacker(3),
+                OverrideSet.EMPTY,
+                BlitzObjective.CONTROL.objective(),
+                new int[]{1, 1},
+                new int[]{1},
+                out
+        );
+
+        float fallbackScore = Float.NaN;
+        float primaryScore = Float.NaN;
+        for (int edge = 0; edge < out.edgeCount(); edge++) {
+            int attackerNationId = scenario.attackerNationId(out.attackerIndex(edge));
+            if (attackerNationId == outmatchedAttacker.nationId()) {
+                fallbackScore = out.scalarScore(edge);
+            } else if (attackerNationId == parityAttacker.nationId()) {
+                primaryScore = out.scalarScore(edge);
+            }
+        }
+
+        assertTrue(Float.isFinite(fallbackScore),
+                "Outmatched attacker should receive a positive-baseline CONTROL edge");
+        assertTrue(Float.isFinite(primaryScore),
+                "Parity attacker should receive a full-rollout CONTROL edge");
+        assertTrue(
+                fallbackScore < primaryScore,
+                "Positive-baseline fallback score should be below the full-rollout primary score"
+        );
+    }
+
+    @Test
     void openingRolloutDoesNotPreferInfraWhenUnitDamageIsAvailable() {
         DBNationSnapshot attacker = buildNation(41, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220)
             .toBuilder()

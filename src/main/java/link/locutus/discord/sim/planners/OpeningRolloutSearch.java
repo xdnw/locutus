@@ -95,22 +95,36 @@ final class OpeningRolloutSearch {
             }
         }
 
-        if (firstAttackTypeId < 0 || !Float.isFinite(currentScore)) {
+        // Emit if the score is positive and beats whatever the best war type found so far.
+        // Primary admitted candidates may still have no improving attack over the declaration
+        // baseline; those keep a legal first attack while the cheap low-probe fallback lives in
+        // OpeningEvaluator, outside the full rollout path.
+        if (!Float.isFinite(currentScore) || currentScore <= 0f || currentScore <= out.score()) {
             return;
         }
-
-        if (currentScore > out.score()) {
-            out.set(
-                    currentScore,
-                    (byte) warType.ordinal(),
-                    firstAttackTypeId,
-                    (float) currentMetrics.immediateHarm(),
-                    (float) currentMetrics.selfExposure(),
-                    (float) currentMetrics.resourceSwing(),
-                    (float) currentMetrics.controlLeverage(),
-                    (float) currentMetrics.futureWarLeverage()
-            );
+        if (firstAttackTypeId < 0) {
+            // Zero-action baseline is positive but no improving attack was found.
+            // Find the first legal attack to recommend as the opening move.
+            for (AttackType type : OpeningEvaluator.OPENING_ATTACK_TYPES) {
+                if (OpeningEvaluator.isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
+                    firstAttackTypeId = (byte) type.ordinal();
+                    break;
+                }
+            }
+            if (firstAttackTypeId < 0) {
+                return; // no legal attacks at all — cannot declare
+            }
         }
+        out.set(
+                currentScore,
+                (byte) warType.ordinal(),
+                firstAttackTypeId,
+                (float) currentMetrics.immediateHarm(),
+                (float) currentMetrics.selfExposure(),
+                (float) currentMetrics.resourceSwing(),
+                (float) currentMetrics.controlLeverage(),
+                (float) currentMetrics.futureWarLeverage()
+        );
     }
 
     private float scoreObjective(

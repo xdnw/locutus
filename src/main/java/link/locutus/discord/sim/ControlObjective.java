@@ -11,7 +11,7 @@ final class ControlObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
-        return CandidateEdgeAdmissionPolicy.lowProbeSpecialists();
+        return CandidateEdgeAdmissionPolicy.positiveOpeningBaseline();
     }
 
     @Override

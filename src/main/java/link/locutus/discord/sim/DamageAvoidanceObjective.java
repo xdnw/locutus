@@ -30,4 +30,5 @@ final class DamageAvoidanceObjective implements StrategicObjective {
     public double scoreAction(SimWorld world, SimAction action, int teamId) {
         return 0.0;
     }
+
 }

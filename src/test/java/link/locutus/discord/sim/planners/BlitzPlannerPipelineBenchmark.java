@@ -9,8 +9,9 @@ import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.sim.DamageObjective;
+import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import link.locutus.discord.web.WebUtil;
@@ -47,7 +48,7 @@ public final class BlitzPlannerPipelineBenchmark {
     public static void main(String[] args) {
         BenchmarkConfig config = BenchmarkConfig.parse(args);
 
-        System.out.println("slice,population,horizon,bucketSize,repetitions,bestMs,avgMs,pairs,score,replayJsonBytes,replayGzipBytes,allocatedBytes,heapDeltaBytes,fixture,attackerCount,defenderCount");
+        System.out.println("slice,population,horizon,bucketSize,repetitions,bestMs,avgMs,pairs,score,replayJsonBytes,replayGzipBytes,allocatedBytes,heapDeltaBytes,fixture,objective,attackerCount,defenderCount");
         if (config.profile()) {
             System.out.println("stage,slice,population,horizon,bucketSize,fixture,attackerCount,defenderCount,scope,calls,totalMs,maxMs,counters");
         }
@@ -67,7 +68,7 @@ public final class BlitzPlannerPipelineBenchmark {
                     double bestMs = best.elapsedNanos() / 1_000_000.0d;
                     double avgMs = (totalNanos / (double) config.repetitions()) / 1_000_000.0d;
                     System.out.printf(Locale.ROOT,
-                            "%s,%d,%d,%d,%d,%.3f,%.3f,%d,%.3f,%d,%d,%d,%d,%s,%d,%d%n",
+                            "%s,%d,%d,%d,%d,%.3f,%.3f,%d,%.3f,%d,%d,%d,%d,%s,%s,%d,%d%n",
                             slice.cliName,
                             population,
                             horizon,
@@ -82,6 +83,7 @@ public final class BlitzPlannerPipelineBenchmark {
                             best.allocatedBytes(),
                             best.heapDeltaBytes(),
                             fixture.label(),
+                            config.objectiveName(),
                             fixture.attackerCount(),
                             fixture.defenderCount());
                     if (config.profile() && best.profileSnapshot() != null) {
@@ -101,7 +103,7 @@ public final class BlitzPlannerPipelineBenchmark {
             if (population > config.maxPopulation()) {
                 continue;
             }
-            fixtures.add(Fixture.createSynthetic(population, config.localSearchBudgetMs(), config.localSearchMaxIterations()));
+            fixtures.add(Fixture.createSynthetic(population, config.localSearchBudgetMs(), config.localSearchMaxIterations(), config.objective()));
         }
         return fixtures;
     }
@@ -188,6 +190,27 @@ public final class BlitzPlannerPipelineBenchmark {
         return defaultValue;
     }
 
+    private static BlitzObjective parseObjective(String configured) {
+        if (configured == null || configured.isBlank()) {
+            return BlitzObjective.defaultObjective();
+        }
+        String normalized = configured.trim();
+        if (normalized.chars().allMatch(Character::isDigit)) {
+            int ordinal = Integer.parseInt(normalized);
+            BlitzObjective[] values = BlitzObjective.values();
+            if (ordinal < 0 || ordinal >= values.length) {
+                throw new IllegalArgumentException("Unknown objective ordinal: " + configured);
+            }
+            return values[ordinal];
+        }
+        for (BlitzObjective objective : BlitzObjective.values()) {
+            if (objective.name().equalsIgnoreCase(normalized)) {
+                return objective;
+            }
+        }
+        throw new IllegalArgumentException("Unknown objective: " + configured);
+    }
+
     private enum Slice {
         BLITZ("blitz"),
         REPLAY("replay"),
@@ -223,6 +246,7 @@ public final class BlitzPlannerPipelineBenchmark {
         private final int localSearchMaxIterations;
         private final int[] horizons;
         private final List<Slice> slices;
+        private final BlitzObjective objective;
         private final String attackerAlliances;
         private final String defenderAlliances;
         private final boolean clearVm;
@@ -238,6 +262,7 @@ public final class BlitzPlannerPipelineBenchmark {
                 int localSearchMaxIterations,
                 int[] horizons,
                 List<Slice> slices,
+                BlitzObjective objective,
                 String attackerAlliances,
                 String defenderAlliances,
                 boolean clearVm,
@@ -252,6 +277,7 @@ public final class BlitzPlannerPipelineBenchmark {
             this.localSearchMaxIterations = localSearchMaxIterations;
             this.horizons = horizons;
             this.slices = slices;
+            this.objective = objective;
             this.attackerAlliances = attackerAlliances;
             this.defenderAlliances = defenderAlliances;
             this.clearVm = clearVm;
@@ -275,6 +301,7 @@ public final class BlitzPlannerPipelineBenchmark {
                     Math.max(1, optionInt(args, "localSearchMaxIterations", Integer.getInteger("blitzPipelineBenchmark.localSearchMaxIterations", SimTuning.DEFAULT_LOCAL_SEARCH_MAX_ITERATIONS))),
                     BlitzPlannerPipelineBenchmark.horizons(args),
                     BlitzPlannerPipelineBenchmark.slices(args, hasLiveAllianceFixture),
+                    parseObjective(option(args, "objective", System.getProperty("blitzPipelineBenchmark.objective"))),
                     attackerAlliances,
                     defenderAlliances,
                     optionBoolean(args, "clearVm", Boolean.parseBoolean(System.getProperty("blitzPipelineBenchmark.clearVm", "false"))),
@@ -318,6 +345,14 @@ public final class BlitzPlannerPipelineBenchmark {
             return slices;
         }
 
+        StrategicObjective objective() {
+            return objective.objective();
+        }
+
+        String objectiveName() {
+            return objective.name();
+        }
+
         List<String> sliceCliNames() {
             return slices.stream().map(slice -> slice.cliName).toList();
         }
@@ -346,6 +381,7 @@ public final class BlitzPlannerPipelineBenchmark {
     private record Fixture(
             String label,
             SimTuning tuning,
+            StrategicObjective objective,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
             CompiledScenario scenario,
@@ -356,14 +392,14 @@ public final class BlitzPlannerPipelineBenchmark {
             int[] attackerNationIds,
             int[] defenderNationIds
     ) {
-        static Fixture createSynthetic(int population, long localSearchBudgetMs, int localSearchMaxIterations) {
+        static Fixture createSynthetic(int population, long localSearchBudgetMs, int localSearchMaxIterations, StrategicObjective objective) {
             List<DBNationSnapshot> attackers = new ArrayList<>(population);
             List<DBNationSnapshot> defenders = new ArrayList<>(population);
             for (int index = 0; index < population; index++) {
                 attackers.add(nation(1_000 + index, 1, index, 3));
                 defenders.add(nation(200_000 + index, 2, population - index, 1));
             }
-            return create("synthetic", attackers, defenders, denseEdges(population), localSearchBudgetMs, localSearchMaxIterations);
+            return create("synthetic", attackers, defenders, denseEdges(population), localSearchBudgetMs, localSearchMaxIterations, objective);
         }
 
         static Fixture createLive(BenchmarkConfig config) {
@@ -395,14 +431,15 @@ public final class BlitzPlannerPipelineBenchmark {
             if (defenders.isEmpty()) {
                 throw new IllegalArgumentException("defenderAlliances resolved to zero nations");
             }
-            CandidateEdgeTable openingEdges = openingEdges(attackers, defenders, config.localSearchBudgetMs(), config.localSearchMaxIterations());
+            CandidateEdgeTable openingEdges = openingEdges(attackers, defenders, config.localSearchBudgetMs(), config.localSearchMaxIterations(), config.objective());
             return create(
                     liveLabel(attackerTokens, defenderTokens),
                     attackers,
                     defenders,
                     openingEdges,
                     config.localSearchBudgetMs(),
-                    config.localSearchMaxIterations()
+                    config.localSearchMaxIterations(),
+                    config.objective()
             );
         }
 
@@ -412,7 +449,8 @@ public final class BlitzPlannerPipelineBenchmark {
                 List<DBNationSnapshot> defenders,
                 CandidateEdgeTable longHorizonEdges,
                 long localSearchBudgetMs,
-                int localSearchMaxIterations
+                int localSearchMaxIterations,
+                StrategicObjective objective
         ) {
             SimTuning tuning = new SimTuning(
                     SimTuning.DEFAULT_INTRA_TURN_PASSES,
@@ -452,6 +490,7 @@ public final class BlitzPlannerPipelineBenchmark {
             return new Fixture(
                     label,
                     tuning,
+                    objective,
                     List.copyOf(sortedSnapshots(attackers)),
                     List.copyOf(sortedSnapshots(defenders)),
                     scenario,
@@ -512,13 +551,13 @@ public final class BlitzPlannerPipelineBenchmark {
         }
 
         private Outcome runBlitz(int horizonTurns) {
-            BlitzPlanner planner = new BlitzPlanner(tuning, TreatyProvider.NONE, OverrideSet.EMPTY, new DamageObjective());
+            BlitzPlanner planner = new BlitzPlanner(tuning, TreatyProvider.NONE, OverrideSet.EMPTY, objective);
             BlitzAssignment assignment = planner.assign(attackers, defenders, 0, List.of(), horizonTurns);
             return new Outcome(pairCount(assignment.assignment()), assignment.objectiveScore(), -1L, -1L);
         }
 
         private Outcome runReplay(int horizonTurns) {
-            BlitzPlanner planner = new BlitzPlanner(tuning, TreatyProvider.NONE, OverrideSet.EMPTY, new DamageObjective());
+            BlitzPlanner planner = new BlitzPlanner(tuning, TreatyProvider.NONE, OverrideSet.EMPTY, objective);
             BlitzAssignment assignment = planner.assign(attackers, defenders, 0, List.of(), horizonTurns);
             BlitzReplayTrace trace = PlannerReplayProjector.capture(
                     tuning,
@@ -543,7 +582,7 @@ public final class BlitzPlannerPipelineBenchmark {
                 tuning,
                 TreatyProvider.NONE,
                 OverrideSet.EMPTY,
-                new DamageObjective(),
+                objective,
                 SnapshotActivityProvider.BASELINE,
                 PlannerTransitionSemantics.NONE,
                 carryStateMode
@@ -565,7 +604,7 @@ public final class BlitzPlannerPipelineBenchmark {
                     scenario,
                     tuning,
                     OverrideSet.EMPTY,
-                    new DamageObjective(),
+                    objective,
                     Arrays.copyOf(attackerCaps, attackerCaps.length),
                     Arrays.copyOf(defenderCaps, defenderCaps.length),
                     edges
@@ -584,7 +623,7 @@ public final class BlitzPlannerPipelineBenchmark {
                     defenderNationIds,
                     List.of(),
                     horizonTurns,
-                    projectionScoring ? new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new DamageObjective()) : null
+                    projectionScoring ? new LongHorizonAssignmentOptimizer.ProjectionScoringContext(objective) : null
             );
             ObjectiveValueSummary summary = result.projectedObjectiveSummary() != null
                     ? result.projectedObjectiveSummary()
@@ -595,7 +634,7 @@ public final class BlitzPlannerPipelineBenchmark {
                             defenderCaps,
                             horizonTurns,
                             result.assignment(),
-                            new DamageObjective(),
+                            objective,
                             attackerNationIds,
                             defenderNationIds
                     );
@@ -638,7 +677,7 @@ public final class BlitzPlannerPipelineBenchmark {
                     double delta = PlannerConflictExecutor.scoreAssignmentDelta(
                         tuning,
                         OverrideSet.EMPTY,
-                        new DamageObjective(),
+                        objective,
                         session,
                         change,
                         attackers,
@@ -680,7 +719,8 @@ public final class BlitzPlannerPipelineBenchmark {
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
             long localSearchBudgetMs,
-            int localSearchMaxIterations
+            int localSearchMaxIterations,
+            StrategicObjective objective
         ) {
         SimTuning tuning = new SimTuning(
             SimTuning.DEFAULT_INTRA_TURN_PASSES,
@@ -716,7 +756,7 @@ public final class BlitzPlannerPipelineBenchmark {
             scenario,
             tuning,
             OverrideSet.EMPTY,
-            new DamageObjective(),
+            objective,
             Arrays.copyOf(attackerCaps, attackerCaps.length),
             Arrays.copyOf(defenderCaps, defenderCaps.length),
             edges

@@ -27,6 +27,10 @@ final class OpeningCandidateAdmission {
         );
     }
 
+    boolean admitPositiveOpeningBaseline() {
+        return admissionPolicy.admitPositiveOpeningBaseline();
+    }
+
     float probe() {
         return probeResult.probe();
     }
