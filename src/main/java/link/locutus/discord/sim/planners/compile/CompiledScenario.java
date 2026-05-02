@@ -19,6 +19,7 @@ import java.util.function.IntConsumer;
 public final class CompiledScenario {
     private final List<DBNationSnapshot> attackers;
     private final List<DBNationSnapshot> defenders;
+    private final List<CompiledActiveWar> activeWars;
     private final int[] attackerNationIds;
     private final int[] defenderNationIds;
     private final double[] attackerScores;
@@ -53,6 +54,7 @@ public final class CompiledScenario {
     CompiledScenario(
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
+            List<CompiledActiveWar> activeWars,
             int[] attackerNationIds,
             int[] defenderNationIds,
             double[] attackerScores,
@@ -86,6 +88,7 @@ public final class CompiledScenario {
     ) {
         this.attackers = attackers;
         this.defenders = defenders;
+        this.activeWars = activeWars;
         this.attackerNationIds = attackerNationIds;
         this.defenderNationIds = defenderNationIds;
         this.attackerScores = attackerScores;
@@ -132,6 +135,10 @@ public final class CompiledScenario {
 
     public DBNationSnapshot defender(int defenderIndex) {
         return defenders.get(defenderIndex);
+    }
+
+    public List<CompiledActiveWar> activeWars() {
+        return activeWars;
     }
 
     public int attackerNationId(int attackerIndex) {

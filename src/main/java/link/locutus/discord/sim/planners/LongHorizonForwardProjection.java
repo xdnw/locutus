@@ -19,6 +19,7 @@ import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.combat.WarControlRules;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
+import link.locutus.discord.sim.planners.compile.CompiledActiveWar;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.util.PW;
 
@@ -408,9 +409,10 @@ final class LongHorizonForwardProjection {
     private DenseWarState resetWarState(boolean[] edgeAssigned, int[] attackerCounts) {
         int counterCapacity = projectedExtraDeclareCapacity(attackerCounts);
         if (warState == null) {
-            warState = DenseWarState.create(edges, projectionState, edges.edgeCount() + Math.max(counterCapacity, maxProjectedExtraDeclareCapacity()));
+            warState = DenseWarState.create(edges, projectionState,
+                    edges.edgeCount() + scenario.activeWars().size() + Math.max(counterCapacity, maxProjectedExtraDeclareCapacity()));
         }
-        warState.reset(edges, edgeAssigned, projectionState, counterCapacity);
+        warState.reset(edges, edgeAssigned, projectionState, counterCapacity, scenario.activeWars());
         return warState;
     }
 
@@ -926,6 +928,7 @@ final class LongHorizonForwardProjection {
         warState.deactivateWar(edgeIndex);
         int winnerIndex = defenderLost ? warState.attackerNationIndex[edgeIndex] : warState.defenderNationIndex[edgeIndex];
         int loserIndex = defenderLost ? warState.defenderNationIndex[edgeIndex] : warState.attackerNationIndex[edgeIndex];
+        warState.outcomeOwner[edgeIndex] = defenderLost ? DenseWarState.OWNER_ATTACKER : DenseWarState.OWNER_DEFENDER;
         boolean winnerIsOriginalAttacker = defenderLost;
         double infraPercent = WarOutcomeMath.victoryInfraPercent(
                 state.infraAttackModifier(winnerIndex, AttackType.VICTORY),
@@ -1306,6 +1309,15 @@ final class LongHorizonForwardProjection {
                 }
             }
             return false;
+        }
+
+        int nationIndexById(int nationId) {
+            for (int nationIndex = 0; nationIndex < nationIds.length; nationIndex++) {
+                if (nationIds[nationIndex] == nationId) {
+                    return nationIndex;
+                }
+            }
+            return -1;
         }
 
         private void captureInitialMutableState() {
@@ -1945,6 +1957,9 @@ final class LongHorizonForwardProjection {
         private int[] groundControlOwner;
         private int[] airSuperiorityOwner;
         private int[] blockadeOwner;
+        private boolean[] seededCurrentWar;
+        private int[] initialOutcomeOwner;
+        private int[] outcomeOwner;
         private final boolean[] activePairs;
         private final int nationCount;
         private int warCount;
@@ -1962,6 +1977,9 @@ final class LongHorizonForwardProjection {
                 int[] groundControlOwner,
                 int[] airSuperiorityOwner,
                 int[] blockadeOwner,
+                boolean[] seededCurrentWar,
+                int[] initialOutcomeOwner,
+                int[] outcomeOwner,
                 boolean[] activePairs,
                 int nationCount,
                 int warCount
@@ -1978,6 +1996,9 @@ final class LongHorizonForwardProjection {
             this.groundControlOwner = groundControlOwner;
             this.airSuperiorityOwner = airSuperiorityOwner;
             this.blockadeOwner = blockadeOwner;
+            this.seededCurrentWar = seededCurrentWar;
+            this.initialOutcomeOwner = initialOutcomeOwner;
+            this.outcomeOwner = outcomeOwner;
             this.activePairs = activePairs;
             this.nationCount = nationCount;
             this.warCount = warCount;
@@ -1997,6 +2018,9 @@ final class LongHorizonForwardProjection {
             int[] groundControlOwner = new int[capacity];
             int[] airSuperiorityOwner = new int[capacity];
             int[] blockadeOwner = new int[capacity];
+            boolean[] seededCurrentWar = new boolean[capacity];
+            int[] initialOutcomeOwner = new int[capacity];
+            int[] outcomeOwner = new int[capacity];
             int nationCount = state.nationIds.length;
             boolean[] activePairs = new boolean[nationCount * nationCount];
             return new DenseWarState(
@@ -2012,6 +2036,9 @@ final class LongHorizonForwardProjection {
                     groundControlOwner,
                     airSuperiorityOwner,
                     blockadeOwner,
+                    seededCurrentWar,
+                    initialOutcomeOwner,
+                    outcomeOwner,
                     activePairs,
                     nationCount,
                     0
@@ -2020,13 +2047,19 @@ final class LongHorizonForwardProjection {
 
         static DenseWarState from(CandidateEdgeTable edges, boolean[] edgeAssigned, ProjectionState state, int counterCapacity) {
             DenseWarState warState = create(edges, state, edges.edgeCount() + Math.max(0, counterCapacity));
-            warState.reset(edges, edgeAssigned, state, counterCapacity);
+            warState.reset(edges, edgeAssigned, state, counterCapacity, java.util.List.of());
             return warState;
         }
 
-        void reset(CandidateEdgeTable edges, boolean[] edgeAssigned, ProjectionState state, int counterCapacity) {
+        void reset(
+                CandidateEdgeTable edges,
+                boolean[] edgeAssigned,
+                ProjectionState state,
+                int counterCapacity,
+                java.util.List<CompiledActiveWar> activeWarSeeds
+        ) {
             int edgeCount = edges.edgeCount();
-            ensureCapacity(edgeCount + Math.max(0, counterCapacity));
+            ensureCapacity(edgeCount + activeWarSeeds.size() + Math.max(0, counterCapacity));
             Arrays.fill(activePairs, false);
             for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
                 attackerNationIndex[edgeIndex] = edges.attackerIndex(edgeIndex);
@@ -2043,8 +2076,14 @@ final class LongHorizonForwardProjection {
                 groundControlOwner[edgeIndex] = OWNER_NONE;
                 airSuperiorityOwner[edgeIndex] = OWNER_NONE;
                 blockadeOwner[edgeIndex] = OWNER_NONE;
+                seededCurrentWar[edgeIndex] = false;
+                initialOutcomeOwner[edgeIndex] = OWNER_NONE;
+                outcomeOwner[edgeIndex] = OWNER_NONE;
             }
             warCount = edgeCount;
+            for (CompiledActiveWar seed : activeWarSeeds) {
+                addWarSeed(state, seed);
+            }
         }
 
 
@@ -2069,7 +2108,64 @@ final class LongHorizonForwardProjection {
             groundControlOwner[index] = OWNER_NONE;
             airSuperiorityOwner[index] = OWNER_NONE;
             blockadeOwner[index] = OWNER_NONE;
+            seededCurrentWar[index] = false;
+            initialOutcomeOwner[index] = OWNER_NONE;
+            outcomeOwner[index] = OWNER_NONE;
             return index;
+        }
+
+        private int addWarSeed(ProjectionState state, CompiledActiveWar seed) {
+            int attackerIndex = state.nationIndexById(seed.attackerNationId());
+            int defenderIndex = state.nationIndexById(seed.defenderNationId());
+            if (attackerIndex < 0 || defenderIndex < 0) {
+                return -1;
+            }
+            if (activePairs[pairIndex(attackerIndex, defenderIndex, nationCount)]) {
+                return -1;
+            }
+            int warIndex = addWar(attackerIndex, defenderIndex, seed.startTurn(), seed.warType());
+            attackerMaps[warIndex] = seed.attackerMaps();
+            defenderMaps[warIndex] = seed.defenderMaps();
+            attackerResistance[warIndex] = seed.attackerResistance();
+            defenderResistance[warIndex] = seed.defenderResistance();
+            groundControlOwner[warIndex] = ownerCode(seed.groundControlOwner());
+            airSuperiorityOwner[warIndex] = ownerCode(seed.airSuperiorityOwner());
+            blockadeOwner[warIndex] = ownerCode(seed.blockadeOwner());
+            seededCurrentWar[warIndex] = true;
+            initialOutcomeOwner[warIndex] = winningOwner(warIndex);
+            outcomeOwner[warIndex] = OWNER_NONE;
+            return warIndex;
+        }
+
+        private int winningOwner(int warIndex) {
+            int attackerControls = ProjectionState.denseControlCount(
+                    OWNER_ATTACKER,
+                    groundControlOwner[warIndex],
+                    airSuperiorityOwner[warIndex],
+                    blockadeOwner[warIndex]
+            );
+            int defenderControls = ProjectionState.denseControlCount(
+                    OWNER_DEFENDER,
+                    groundControlOwner[warIndex],
+                    airSuperiorityOwner[warIndex],
+                    blockadeOwner[warIndex]
+            );
+            int attackerEdge = attackerResistance[warIndex] - defenderResistance[warIndex];
+            if (attackerEdge > 0 || (attackerEdge == 0 && attackerControls > defenderControls)) {
+                return OWNER_ATTACKER;
+            }
+            if (attackerEdge < 0 || defenderControls > attackerControls) {
+                return OWNER_DEFENDER;
+            }
+            return OWNER_NONE;
+        }
+
+        private static int ownerCode(CompiledActiveWar.ControlOwner owner) {
+            return switch (owner) {
+                case ATTACKER -> OWNER_ATTACKER;
+                case DEFENDER -> OWNER_DEFENDER;
+                default -> OWNER_NONE;
+            };
         }
 
         void deactivateWar(int warIndex) {
@@ -2097,6 +2193,9 @@ final class LongHorizonForwardProjection {
             groundControlOwner = Arrays.copyOf(groundControlOwner, nextCapacity);
             airSuperiorityOwner = Arrays.copyOf(airSuperiorityOwner, nextCapacity);
             blockadeOwner = Arrays.copyOf(blockadeOwner, nextCapacity);
+            seededCurrentWar = Arrays.copyOf(seededCurrentWar, nextCapacity);
+            initialOutcomeOwner = Arrays.copyOf(initialOutcomeOwner, nextCapacity);
+            outcomeOwner = Arrays.copyOf(outcomeOwner, nextCapacity);
         }
 
         void fillActiveWarsByNation(boolean[] activeWarsByNation) {
@@ -2375,6 +2474,7 @@ final class LongHorizonForwardProjection {
 
         private boolean warMetricPresent(int warIndex) {
             return warState.active[warIndex]
+                    || warState.seededCurrentWar[warIndex]
                     || (warIndex < edges.edgeCount() && edgeAssigned[warIndex]);
         }
 
@@ -2444,6 +2544,7 @@ final class LongHorizonForwardProjection {
             int attackerWinningWars = 0;
             int defenderWinningWars = 0;
             int concludedWars = 0;
+            int currentWarOutcomeFlips = 0;
             int[] concludedWarsByDefenderTier = new int[TierSegment.values().length];
             for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
                 if (warState.active[warIndex]) {
@@ -2468,8 +2569,21 @@ final class LongHorizonForwardProjection {
                     } else if (attackerEdge < 0 || defenderControls > attackerControls) {
                         defenderWinningWars++;
                     }
+                    int terminalOwner = warState.winningOwner(warIndex);
+                    if (warState.seededCurrentWar[warIndex]
+                            && warState.initialOutcomeOwner[warIndex] != DenseWarState.OWNER_NONE
+                            && terminalOwner != DenseWarState.OWNER_NONE
+                            && terminalOwner != warState.initialOutcomeOwner[warIndex]) {
+                        currentWarOutcomeFlips++;
+                    }
                 } else if (warMetricPresent(warIndex)) {
                     concludedWars++;
+                    if (warState.seededCurrentWar[warIndex]
+                            && warState.initialOutcomeOwner[warIndex] != DenseWarState.OWNER_NONE
+                            && warState.outcomeOwner[warIndex] != DenseWarState.OWNER_NONE
+                            && warState.outcomeOwner[warIndex] != warState.initialOutcomeOwner[warIndex]) {
+                        currentWarOutcomeFlips++;
+                    }
                     int defenderNationIndex = warState.defenderNationIndex[warIndex];
                     if (defenderNationIndex >= state.attackerCount) {
                         int defenderIndex = defenderNationIndex - state.attackerCount;
@@ -2504,6 +2618,7 @@ final class LongHorizonForwardProjection {
                     defenderControlFlags,
                     attackerWinningWars,
                     defenderWinningWars,
+                    currentWarOutcomeFlips,
                     concludedWars,
                     concludedWarsByDefenderTier
             );
@@ -2634,6 +2749,7 @@ final class LongHorizonForwardProjection {
             int defenderControlFlags,
             int attackerWinningWars,
             int defenderWinningWars,
+            int currentWarOutcomeFlips,
             int concludedWars,
             int[] concludedWarsByDefenderTier
     ) {

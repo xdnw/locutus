@@ -2,6 +2,7 @@ package link.locutus.discord.sim.planners.compile;
 
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.TreatyProvider;
@@ -62,6 +63,40 @@ class CompiledScenarioTest {
         assertTrue(scenario.hasActivePairConflict(0, 0));
         assertTrue(scenario.isTreated(0, 1));
         assertFalse(scenario.isTreated(0, 0));
+        assertEquals(List.of(0), toList(scenario.relevantDefenderIndexes(0)));
+    }
+
+    @Test
+    void activeWarSeedsCreatePairConflictsAndRelevantDefenders() {
+        DBNationSnapshot attacker = nation(1, 1_000.0).build();
+        DBNationSnapshot defender = nation(101, 1_000.0).build();
+        CompiledActiveWar activeWar = new CompiledActiveWar(
+                attacker.nationId(),
+                defender.nationId(),
+                WarType.ORD,
+                12,
+                8,
+                7,
+                62,
+                57,
+                CompiledActiveWar.ControlOwner.ATTACKER,
+                CompiledActiveWar.ControlOwner.NONE,
+                CompiledActiveWar.ControlOwner.DEFENDER,
+                false,
+                false
+        );
+
+        CompiledScenario scenario = compiler.compile(
+                List.of(attacker),
+                List.of(defender),
+                OverrideSet.EMPTY,
+                TreatyProvider.NONE,
+                activityWeights(attacker, defender),
+                List.of(activeWar)
+        );
+
+        assertEquals(List.of(activeWar), scenario.activeWars());
+        assertTrue(scenario.hasActivePairConflict(0, 0));
         assertEquals(List.of(0), toList(scenario.relevantDefenderIndexes(0)));
     }
 

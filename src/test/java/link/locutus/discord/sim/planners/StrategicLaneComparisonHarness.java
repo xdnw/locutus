@@ -8,6 +8,7 @@ import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.StrategicObjective;
+import link.locutus.discord.sim.planners.compile.CompiledActiveWar;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
@@ -40,7 +41,7 @@ public final class StrategicLaneComparisonHarness {
         int horizonTurns = optionInt(args, "horizon", DEFAULT_HORIZON_TURNS);
         int repetitions = Math.max(1, optionInt(args, "repetitions", 1));
         int requestedPopulation = optionInt(args, "population", DEFAULT_POPULATION);
-        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerControlFlags,defenderControlFlags,attackerWinningWars,defenderWinningWars,concludedWars,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs");
+        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerControlFlags,defenderControlFlags,attackerWinningWars,defenderWinningWars,currentWarOutcomeFlips,concludedWars,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs");
         for (ScenarioFamily family : ScenarioFamily.values()) {
             Fixture fixture = family.fixture(requestedPopulation);
             for (Lane lane : Lane.values()) {
@@ -60,7 +61,7 @@ public final class StrategicLaneComparisonHarness {
                     double bestMs = best.elapsedNanos() / 1_000_000.0d;
                     double avgMs = (totalNanos / (double) repetitions) / 1_000_000.0d;
                     String row = String.format(Locale.ROOT,
-                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%s,%d,%.6f,%.3f,%.3f,%.3f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%.3f,%.3f",
+                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%s,%d,%.6f,%.3f,%.3f,%.3f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%.3f,%.3f",
                             family.cliName,
                             lane.cliName,
                             objective.name(),
@@ -94,6 +95,7 @@ public final class StrategicLaneComparisonHarness {
                             best.defenderControlFlags(),
                             best.attackerWinningWars(),
                             best.defenderWinningWars(),
+                            best.currentWarOutcomeFlips(),
                             best.concludedWars(),
                             best.concludedWarsByDefenderTier(),
                             best.assignedWarTypes(),
@@ -180,6 +182,8 @@ public final class StrategicLaneComparisonHarness {
         EXHAUSTED_VS_FULL_REBUY("exhaustedVsFullRebuy", 8),
         RESET_TIMING("resetTiming", 8),
         ACTIVE_WAR_SLOT_PRESSURE("activeWarSlotPressure", 8),
+        ACTIVE_WAR_BARELY_WINNING("activeWarBarelyWinning", 8),
+        ACTIVE_WAR_DECISIVE("activeWarDecisive", 8),
         SLOT_SATURATED_FRONT("slotSaturatedFront", 8),
         PARTIAL_RANGE_CONTROL("partialRangeControl", 10),
         UNWINNABLE_CONVENTIONAL("unwinnableConventional", 8);
@@ -206,6 +210,10 @@ public final class StrategicLaneComparisonHarness {
                 case EXHAUSTED_VS_FULL_REBUY -> Fixture.create(cliName, population, this::exhaustedRebuyAttacker, this::fullRebuyDefender);
                 case RESET_TIMING -> Fixture.create(cliName, population, this::imminentResetAttacker, this::delayedResetDefender);
                 case ACTIVE_WAR_SLOT_PRESSURE -> Fixture.create(cliName, population, this::activeWarPressedAttacker, this::activeWarPressedDefender);
+                case ACTIVE_WAR_BARELY_WINNING -> Fixture.createSeededActiveWars(cliName, population,
+                        this::barelyWinningActiveWarAttacker, this::barelyWinningActiveWarDefender, false);
+                case ACTIVE_WAR_DECISIVE -> Fixture.createSeededActiveWars(cliName, population,
+                        this::decisiveActiveWarAttacker, this::decisiveActiveWarDefender, true);
                 case SLOT_SATURATED_FRONT -> Fixture.create(cliName, population, this::slotSaturatedAttacker, this::slotSaturatedDefender);
                 case PARTIAL_RANGE_CONTROL -> Fixture.create(cliName, population, this::partialRangeAttacker, this::partialRangeDefender);
                 case UNWINNABLE_CONVENTIONAL -> Fixture.create(cliName, population, this::unwinnableConventionalAttacker, this::severeDefender);
@@ -310,6 +318,37 @@ public final class StrategicLaneComparisonHarness {
             return builder.build();
         }
 
+        private DBNationSnapshot barelyWinningActiveWarAttacker(int index) {
+            double multiplier = (index & 1) == 0 ? 0.78d : 1.28d;
+            return activeWarParticipant(nation(10_000 + index, 1, index, 22 + index % 4, multiplier, 3), 20_000 + index, true);
+        }
+
+        private DBNationSnapshot barelyWinningActiveWarDefender(int index) {
+            double multiplier = (index & 1) == 0 ? 1.28d : 0.78d;
+            return activeWarParticipant(nation(20_000 + index, 2, index, 22 + index % 4, multiplier, 1), 10_000 + index, false);
+        }
+
+        private DBNationSnapshot decisiveActiveWarAttacker(int index) {
+            double multiplier = (index & 1) == 0 ? 1.45d : 0.65d;
+            return activeWarParticipant(nation(10_000 + index, 1, index, 23 + index % 4, multiplier, 3), 20_000 + index, true);
+        }
+
+        private DBNationSnapshot decisiveActiveWarDefender(int index) {
+            double multiplier = (index & 1) == 0 ? 0.70d : 1.55d;
+            return activeWarParticipant(nation(20_000 + index, 2, index, 23 + index % 4, multiplier, 1), 10_000 + index, false);
+        }
+
+        private static DBNationSnapshot activeWarParticipant(DBNationSnapshot source, int opponentNationId, boolean offensive) {
+            DBNationSnapshot.Builder builder = source.toBuilder()
+                    .activeOpponentNationId(opponentNationId);
+            if (offensive) {
+                builder.currentOffensiveWars(1);
+            } else {
+                builder.currentDefensiveWars(1);
+            }
+            return builder.build();
+        }
+
         private DBNationSnapshot slotSaturatedAttacker(int index) {
             return nation(10_000 + index, 1, index, 24 + index % 4, 1.25d, index % 4 == 0 ? 1 : 3)
                     .toBuilder()
@@ -363,6 +402,57 @@ public final class StrategicLaneComparisonHarness {
             int[] defenderNationIds
     ) {
         static Fixture create(String label, int population, NationFactory attackerFactory, NationFactory defenderFactory) {
+            return create(label, population, attackerFactory, defenderFactory, List.of());
+        }
+
+        static Fixture createSeededActiveWars(
+                String label,
+                int population,
+                NationFactory attackerFactory,
+                NationFactory defenderFactory,
+                boolean decisive
+        ) {
+            List<CompiledActiveWar> activeWars = new ArrayList<>(population);
+            for (int index = 0; index < population; index++) {
+                boolean attackerInitiallyWinning = (index & 1) == 0;
+                int attackerResistance = decisive
+                        ? (attackerInitiallyWinning ? 92 : 34)
+                        : (attackerInitiallyWinning ? 61 : 56);
+                int defenderResistance = decisive
+                        ? (attackerInitiallyWinning ? 31 : 94)
+                        : (attackerInitiallyWinning ? 55 : 62);
+                CompiledActiveWar.ControlOwner favoredOwner = attackerInitiallyWinning
+                        ? CompiledActiveWar.ControlOwner.ATTACKER
+                        : CompiledActiveWar.ControlOwner.DEFENDER;
+                CompiledActiveWar.ControlOwner otherOwner = attackerInitiallyWinning
+                        ? CompiledActiveWar.ControlOwner.DEFENDER
+                        : CompiledActiveWar.ControlOwner.ATTACKER;
+                activeWars.add(new CompiledActiveWar(
+                        10_000 + index,
+                        20_000 + index,
+                        WarType.ORD,
+                        decisive ? 8 : 18,
+                        decisive ? (attackerInitiallyWinning ? 11 : 4) : 8,
+                        decisive ? (attackerInitiallyWinning ? 3 : 11) : 8,
+                        attackerResistance,
+                        defenderResistance,
+                        favoredOwner,
+                        decisive ? favoredOwner : CompiledActiveWar.ControlOwner.NONE,
+                        decisive ? favoredOwner : otherOwner,
+                        false,
+                        false
+                ));
+            }
+            return create(label, population, attackerFactory, defenderFactory, activeWars);
+        }
+
+        private static Fixture create(
+                String label,
+                int population,
+                NationFactory attackerFactory,
+                NationFactory defenderFactory,
+                List<CompiledActiveWar> activeWars
+        ) {
             List<DBNationSnapshot> attackers = new ArrayList<>(population);
             List<DBNationSnapshot> defenders = new ArrayList<>(population);
             for (int index = 0; index < population; index++) {
@@ -374,7 +464,8 @@ public final class StrategicLaneComparisonHarness {
                     defenders,
                     OverrideSet.EMPTY,
                     TreatyProvider.NONE,
-                    Map.of()
+                    Map.of(),
+                    activeWars
             );
             int[] attackerCaps = new int[attackers.size()];
             int[] defenderCaps = new int[defenders.size()];
@@ -568,6 +659,7 @@ public final class StrategicLaneComparisonHarness {
                     diagnostics.defenderControlFlags(),
                     diagnostics.attackerWinningWars(),
                     diagnostics.defenderWinningWars(),
+                    diagnostics.currentWarOutcomeFlips(),
                     diagnostics.concludedWars(),
                     tierCountSummary(diagnostics.concludedWarsByDefenderTier()),
                     enumCountSummary(WarType.values, warTypeCounts),
@@ -699,6 +791,7 @@ public final class StrategicLaneComparisonHarness {
             int defenderControlFlags,
             int attackerWinningWars,
             int defenderWinningWars,
+            int currentWarOutcomeFlips,
             int concludedWars,
             String concludedWarsByDefenderTier,
             String assignedWarTypes,
@@ -735,6 +828,7 @@ public final class StrategicLaneComparisonHarness {
                     defenderControlFlags,
                     attackerWinningWars,
                     defenderWinningWars,
+                    currentWarOutcomeFlips,
                     concludedWars,
                     concludedWarsByDefenderTier,
                     assignedWarTypes,
