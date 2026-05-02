@@ -1,10 +1,13 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -380,9 +383,12 @@ final class LongHorizonAssignmentOptimizer {
         boolean[] edgeAssigned = new boolean[baseEdges.edgeCount()];
         int[] attackerCounts = new int[scenario.attackerCount()];
         int[] defenderCounts = new int[scenario.defenderCount()];
-        Map<Integer, Integer> attackerIndexByNationId = new LinkedHashMap<>(Math.max(16, attackerNationIds.length * 2));
-        Map<Integer, Integer> defenderIndexByNationId = new LinkedHashMap<>(Math.max(16, defenderNationIds.length * 2));
-        Map<Long, Integer> edgeIndexByPair = new LinkedHashMap<>(Math.max(16, baseEdges.edgeCount() * 2));
+        Int2IntOpenHashMap attackerIndexByNationId = new Int2IntOpenHashMap(Math.max(16, attackerNationIds.length * 2));
+        Int2IntOpenHashMap defenderIndexByNationId = new Int2IntOpenHashMap(Math.max(16, defenderNationIds.length * 2));
+        Long2IntOpenHashMap edgeIndexByPair = new Long2IntOpenHashMap(Math.max(16, baseEdges.edgeCount() * 2));
+        attackerIndexByNationId.defaultReturnValue(-1);
+        defenderIndexByNationId.defaultReturnValue(-1);
+        edgeIndexByPair.defaultReturnValue(-1);
         for (int attackerIndex = 0; attackerIndex < attackerNationIds.length; attackerIndex++) {
             attackerIndexByNationId.put(attackerNationIds[attackerIndex], attackerIndex);
         }
@@ -396,19 +402,19 @@ final class LongHorizonAssignmentOptimizer {
             ), edgeIndex);
         }
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
-            Integer attackerIndex = attackerIndexByNationId.get(entry.getKey());
-            if (attackerIndex == null) {
+            int attackerIndex = attackerIndexByNationId.get(entry.getKey());
+            if (attackerIndex < 0) {
                 continue;
             }
             for (int defenderNationId : entry.getValue()) {
-                Integer defenderIndex = defenderIndexByNationId.get(defenderNationId);
-                if (defenderIndex == null) {
+                int defenderIndex = defenderIndexByNationId.get(defenderNationId);
+                if (defenderIndex < 0) {
                     continue;
                 }
                 attackerCounts[attackerIndex]++;
                 defenderCounts[defenderIndex]++;
-                Integer edgeIndex = edgeIndexByPair.get(pairKey(entry.getKey(), defenderNationId));
-                if (edgeIndex != null) {
+                int edgeIndex = edgeIndexByPair.get(pairKey(entry.getKey(), defenderNationId));
+                if (edgeIndex >= 0) {
                     edgeAssigned[edgeIndex] = true;
                 }
             }
@@ -421,9 +427,9 @@ final class LongHorizonAssignmentOptimizer {
     }
 
     private static Map<Integer, List<Integer>> cloneAssignment(Map<Integer, List<Integer>> assignment) {
-        Map<Integer, List<Integer>> clone = new LinkedHashMap<>(Math.max(16, assignment.size() * 2));
+        Map<Integer, List<Integer>> clone = new Int2ObjectLinkedOpenHashMap<>(Math.max(16, assignment.size() * 2));
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
-            clone.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+            clone.put(entry.getKey(), new IntArrayList(entry.getValue()));
         }
         return clone;
     }

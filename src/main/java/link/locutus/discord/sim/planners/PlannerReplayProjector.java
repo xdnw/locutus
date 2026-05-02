@@ -1,6 +1,9 @@
 package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.DamageObjective;
@@ -12,8 +15,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -353,7 +354,7 @@ public final class PlannerReplayProjector {
     }
 
     private static IntPredicate attackerNationIdLookup(int[] attackerNationIds) {
-        Set<Integer> ids = new HashSet<>(Math.max(16, attackerNationIds.length * 2));
+        IntOpenHashSet ids = new IntOpenHashSet(Math.max(16, attackerNationIds.length * 2));
         for (int attackerNationId : attackerNationIds) {
             ids.add(attackerNationId);
         }
@@ -497,8 +498,8 @@ public final class PlannerReplayProjector {
                 int[] participantIds,
                 int[] existingWarPairs
         ) {
-            Map<Long, WarSnapshot> previousWarsByPair = new HashMap<>();
-            Map<Long, Integer> activeWarIndexByPair = new HashMap<>();
+            Map<Long, WarSnapshot> previousWarsByPair = new Long2ObjectOpenHashMap<>();
+            Map<Long, Integer> activeWarIndexByPair = new Long2IntOpenHashMap();
             Int2IntOpenHashMap participantIndexByNationId = new Int2IntOpenHashMap(Math.max(16, participantIds.length * 2));
             participantIndexByNationId.defaultReturnValue(-1);
             for (int index = 0; index < participantIds.length; index++) {

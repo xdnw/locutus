@@ -1,5 +1,12 @@
 package link.locutus.discord.sim;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.ints.IntSets;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -24,10 +31,7 @@ import link.locutus.discord.sim.actions.SimActionPhase;
 import link.locutus.discord.sim.actions.WaitAction;
 import link.locutus.discord.util.PW;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,11 +49,11 @@ public final class SimWorld {
     private final SimClock clock;
     private final RandomSource randomSource;
     private SimNationArrayStore nationStore = SimNationArrayStore.empty();
-    private final Map<Integer, SimNation> nationsById = new LinkedHashMap<>();
-    private final Map<Integer, SimWar> warsById = new LinkedHashMap<>();
+    private final Int2ObjectLinkedOpenHashMap<SimNation> nationsById = new Int2ObjectLinkedOpenHashMap<>();
+    private final Int2ObjectLinkedOpenHashMap<SimWar> warsById = new Int2ObjectLinkedOpenHashMap<>();
     private WarParticipationIndex warParticipationIndex = new WarParticipationIndex();
     private DeclareRangeIndex declareRangeIndex = new DeclareRangeIndex();
-    private final Map<Integer, Integer> actionIndexByNationThisTurn = new HashMap<>();
+    private final Int2IntOpenHashMap actionIndexByNationThisTurn = new Int2IntOpenHashMap();
     private final AttackScratch attackScratch = new AttackScratch();
     private final MutableAttackResult attackResult = new MutableAttackResult();
     private final LiveAttackContext liveAttackContext = new LiveAttackContext();
@@ -245,7 +249,7 @@ public final class SimWorld {
         if (warIds.isEmpty()) {
             return List.of();
         }
-        ArrayList<SimWar> activeWars = new ArrayList<>(warIds.size());
+        ObjectArrayList<SimWar> activeWars = new ObjectArrayList<>(warIds.size());
         for (int warId : warIds) {
             SimWar war = warsById.get(warId);
             if (war != null && war.isActive()) {
@@ -486,7 +490,7 @@ public final class SimWorld {
     }
 
     public void stepTurn(List<? extends SimAction> firstPassActions, List<? extends SimAction> secondPassActions) {
-        ArrayList<List<? extends SimAction>> passes = new ArrayList<>(2);
+        ObjectArrayList<List<? extends SimAction>> passes = new ObjectArrayList<>(2);
         if (firstPassActions != null && !firstPassActions.isEmpty()) {
             passes.add(firstPassActions);
         }
@@ -530,7 +534,7 @@ public final class SimWorld {
         if (actionPasses == null || actionPasses.isEmpty()) {
             return Collections.emptyList();
         }
-        ArrayList<List<? extends SimAction>> normalized = new ArrayList<>(actionPasses.size());
+        ObjectArrayList<List<? extends SimAction>> normalized = new ObjectArrayList<>(actionPasses.size());
         for (List<? extends SimAction> pass : actionPasses) {
             if (pass == null || pass.isEmpty()) {
                 continue;
@@ -541,7 +545,7 @@ public final class SimWorld {
     }
 
     private void applyActorPassDeterministic(Map<Integer, ? extends Actor> actors, Objective objective) {
-        List<SimAction> passActions = new ArrayList<>();
+        ObjectArrayList<SimAction> passActions = new ObjectArrayList<>();
         for (SimNation nation : nationsById.values()) {
             Actor actor = actors.get(nation.nationId());
             if (actor == null || !shouldAct(nation)) {
@@ -557,7 +561,7 @@ public final class SimWorld {
     }
 
     private void applyActorPassStochastic(Map<Integer, ? extends Actor> actors, Objective objective) {
-        Map<Integer, List<SimAction>> pendingByNation = new HashMap<>();
+        Int2ObjectOpenHashMap<List<SimAction>> pendingByNation = new Int2ObjectOpenHashMap<>();
         for (SimActionPhase phase : SimActionPhase.values()) {
             for (SimNation nation : nationsById.values()) {
                 Actor actor = actors.get(nation.nationId());
@@ -598,14 +602,15 @@ public final class SimWorld {
     }
 
     private Set<Integer> neighborNationsInRange(int nationId) {
-        java.util.LinkedHashSet<Integer> neighbors = new java.util.LinkedHashSet<>();
+        IntLinkedOpenHashSet neighbors = new IntLinkedOpenHashSet();
         SimNation nation = requireNation(nationId);
         for (int candidateNationId : declareRangeIndex.nationIdsInWarRange(nation.score(), nationId)) {
             if (canDeclareWar(nationId, candidateNationId)) {
                 neighbors.add(candidateNationId);
             }
         }
-        return Collections.unmodifiableSet(neighbors);
+        IntSet unmodifiableNeighbors = IntSets.unmodifiable(neighbors);
+        return unmodifiableNeighbors;
     }
 
     private boolean shouldAct(SimNation nation) {
@@ -803,9 +808,9 @@ public final class SimWorld {
 
     private void applyPassPhaseOrdered(List<? extends SimAction> passActions) {
         List<? extends SimAction> safeActions = passActions == null ? Collections.emptyList() : passActions;
-        List<SimAction> preActions = new ArrayList<>();
-        List<SimAction> declareActions = new ArrayList<>();
-        List<SimAction> attackActions = new ArrayList<>();
+        ObjectArrayList<SimAction> preActions = new ObjectArrayList<>();
+        ObjectArrayList<SimAction> declareActions = new ObjectArrayList<>();
+        ObjectArrayList<SimAction> attackActions = new ObjectArrayList<>();
 
         for (SimAction action : safeActions) {
             if (action == null) {
@@ -959,7 +964,8 @@ public final class SimWorld {
     }
 
     private long attackStreamKey(int actorNationId) {
-        int actionIndex = actionIndexByNationThisTurn.merge(actorNationId, 1, Integer::sum) - 1;
+        int actionIndex = actionIndexByNationThisTurn.get(actorNationId);
+        actionIndexByNationThisTurn.put(actorNationId, actionIndex + 1);
         // 16 bits for turn (bits 48-63), 32 bits for nation ID (bits 16-47), 16 bits for action index (bits 0-15).
         // Nation IDs in P&W can exceed 65535, so the previous 16-bit packing would alias IDs like 1 and 65537.
         long turnBits  = ((long) currentTurn()   & 0xFFFFL)       << 48;

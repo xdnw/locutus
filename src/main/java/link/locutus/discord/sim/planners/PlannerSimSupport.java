@@ -1,11 +1,11 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntToDoubleFunction;
@@ -71,7 +71,7 @@ final class PlannerSimSupport {
             OverrideSet overrides,
             Collection<DBNationSnapshot> snapshots
     ) {
-        Map<Integer, Float> activityWeights = new LinkedHashMap<>();
+        Map<Integer, Float> activityWeights = new Int2FloatOpenHashMap(Math.max(16, snapshots.size() * 2));
         for (DBNationSnapshot snapshot : snapshots) {
             float weight = switch (overrides.activeOverride(snapshot.nationId())) {
                 case TRUE -> 1.0f;

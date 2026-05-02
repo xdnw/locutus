@@ -1,23 +1,25 @@
 package link.locutus.discord.sim;
 
+import it.unimi.dsi.fastutil.doubles.Double2ObjectMap;
+import it.unimi.dsi.fastutil.doubles.Double2ObjectRBTreeMap;
+import it.unimi.dsi.fastutil.doubles.Double2ObjectSortedMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntLists;
 import link.locutus.discord.util.PW;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
 
 /**
  * World-owned score index for war-range candidate lookup.
  */
 final class DeclareRangeIndex {
-    private final NavigableMap<Double, LinkedHashSet<Integer>> nationIdsByScore = new TreeMap<>();
-    private final Map<Integer, Double> scoreByNationId = new HashMap<>();
-    private final Map<Integer, Integer> insertionOrderByNationId = new HashMap<>();
+    private final Double2ObjectRBTreeMap<IntLinkedOpenHashSet> nationIdsByScore = new Double2ObjectRBTreeMap<>();
+    private final Int2DoubleOpenHashMap scoreByNationId = new Int2DoubleOpenHashMap();
+    private final Int2IntOpenHashMap insertionOrderByNationId = new Int2IntOpenHashMap();
     private int nextInsertionOrder;
 
     void onNationAdded(int nationId, double score) {
@@ -26,28 +28,28 @@ final class DeclareRangeIndex {
         }
         scoreByNationId.put(nationId, score);
         insertionOrderByNationId.put(nationId, nextInsertionOrder++);
-        nationIdsByScore.computeIfAbsent(score, ignored -> new LinkedHashSet<>()).add(nationId);
+        nationIdsByScore.computeIfAbsent(score, ignored -> new IntLinkedOpenHashSet()).add(nationId);
     }
 
     void onNationScoreChanged(int nationId, double previousScore, double currentScore) {
-        Double indexedScore = scoreByNationId.get(nationId);
-        if (indexedScore == null) {
+        if (!scoreByNationId.containsKey(nationId)) {
             throw new IllegalArgumentException("Nation not indexed: " + nationId);
         }
+        double indexedScore = scoreByNationId.get(nationId);
         if (Double.compare(indexedScore, previousScore) != 0) {
             previousScore = indexedScore;
         }
         if (Double.compare(previousScore, currentScore) == 0) {
             return;
         }
-        LinkedHashSet<Integer> previousBucket = nationIdsByScore.get(previousScore);
+        IntLinkedOpenHashSet previousBucket = nationIdsByScore.get(previousScore);
         if (previousBucket != null) {
             previousBucket.remove(nationId);
             if (previousBucket.isEmpty()) {
                 nationIdsByScore.remove(previousScore);
             }
         }
-        nationIdsByScore.computeIfAbsent(currentScore, ignored -> new LinkedHashSet<>()).add(nationId);
+        nationIdsByScore.computeIfAbsent(currentScore, ignored -> new IntLinkedOpenHashSet()).add(nationId);
         scoreByNationId.put(nationId, currentScore);
     }
 
@@ -57,26 +59,27 @@ final class DeclareRangeIndex {
         if (Double.compare(min, max) > 0) {
             return List.of();
         }
-        NavigableMap<Double, LinkedHashSet<Integer>> candidatesByScore = nationIdsByScore.subMap(min, true, max, true);
+        Double2ObjectSortedMap<IntLinkedOpenHashSet> candidatesByScore = nationIdsByScore.subMap(min, Math.nextUp(max));
         if (candidatesByScore.isEmpty()) {
             return List.of();
         }
-        ArrayList<Integer> candidateNationIds = new ArrayList<>();
-        for (LinkedHashSet<Integer> idsAtScore : candidatesByScore.values()) {
+        IntArrayList candidateNationIds = new IntArrayList();
+        for (IntLinkedOpenHashSet idsAtScore : candidatesByScore.values()) {
             for (int nationId : idsAtScore) {
                 if (nationId != excludeNationId) {
                     candidateNationIds.add(nationId);
                 }
             }
         }
-        candidateNationIds.sort(Comparator.comparingInt(insertionOrderByNationId::get));
-        return List.copyOf(candidateNationIds);
+        candidateNationIds.sort((left, right) -> Integer.compare(insertionOrderByNationId.get(left), insertionOrderByNationId.get(right)));
+        IntList orderedNationIds = candidateNationIds;
+        return IntLists.unmodifiable(orderedNationIds);
     }
 
     DeclareRangeIndex deepCopy() {
         DeclareRangeIndex copy = new DeclareRangeIndex();
-        for (Map.Entry<Double, LinkedHashSet<Integer>> entry : nationIdsByScore.entrySet()) {
-            copy.nationIdsByScore.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
+        for (Double2ObjectMap.Entry<IntLinkedOpenHashSet> entry : nationIdsByScore.double2ObjectEntrySet()) {
+            copy.nationIdsByScore.put(entry.getDoubleKey(), new IntLinkedOpenHashSet(entry.getValue()));
         }
         copy.scoreByNationId.putAll(scoreByNationId);
         copy.insertionOrderByNationId.putAll(insertionOrderByNationId);

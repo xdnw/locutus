@@ -1,5 +1,15 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntMaps;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.SimTuning;
@@ -7,12 +17,9 @@ import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -168,7 +175,7 @@ public final class BlitzPlanner {
         BlitzGeneratedCandidates candidates = generateCandidates(compiledScenario, attCaps, defCaps);
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "candidateEdges", candidates.edgeTable().edgeCount());
 
-        List<PlannerDiagnostic> diagnostics = new ArrayList<>();
+        List<PlannerDiagnostic> diagnostics = new ObjectArrayList<>();
         collectDiagnostics(inputs.attackers(), inputs.defenders(), diagnostics);
 
         return new PreparedAssignment(
@@ -342,10 +349,10 @@ public final class BlitzPlanner {
             edges.scaleScalarScore(edge, attackerActivityWeight);
         }
 
-        Map<Integer, List<Integer>> candidateDefendersByAttacker = new HashMap<>();
-        Map<Long, Float> edgeScoresByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
-        Map<Long, Integer> initialWarTypeOrdinalsByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
-        Map<Long, Integer> initialAttackTypeOrdinalsByPair = new HashMap<>(Math.max(16, edges.edgeCount() * 2));
+        Map<Integer, List<Integer>> candidateDefendersByAttacker = new Int2ObjectOpenHashMap<>();
+        Map<Long, Float> edgeScoresByPair = new Long2FloatOpenHashMap(Math.max(16, edges.edgeCount() * 2));
+        Map<Long, Integer> initialWarTypeOrdinalsByPair = new Long2IntOpenHashMap(Math.max(16, edges.edgeCount() * 2));
+        Map<Long, Integer> initialAttackTypeOrdinalsByPair = new Long2IntOpenHashMap(Math.max(16, edges.edgeCount() * 2));
 
         for (int edge = 0; edge < edges.edgeCount(); edge++) {
             int attackerIndex = edges.attackerIndex(edge);
@@ -356,7 +363,7 @@ public final class BlitzPlanner {
             long candidatePairKey = pairKey(attackerNationId, defenderNationId);
 
             candidateDefendersByAttacker
-                .computeIfAbsent(attackerNationId, ignored -> new ArrayList<>())
+                .computeIfAbsent(attackerNationId, ignored -> new IntArrayList())
                 .add(defenderNationId);
             edgeScoresByPair.put(candidatePairKey, edges.scalarScore(edge));
             initialWarTypeOrdinalsByPair.put(candidatePairKey, validWarTypeOrdinal(edges.preferredWarTypeId(edge)));
@@ -379,11 +386,11 @@ public final class BlitzPlanner {
         if (fixedEdges.isEmpty()) {
             return candidates.initialWarTypeOrdinalsByPair();
         }
-        Map<Long, Integer> merged = new HashMap<>(candidates.initialWarTypeOrdinalsByPair());
+        Long2IntOpenHashMap merged = new Long2IntOpenHashMap(candidates.initialWarTypeOrdinalsByPair());
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
             merged.put(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()), fixedEdge.warTypeOrdinal());
         }
-        return Map.copyOf(merged);
+        return Long2IntMaps.unmodifiable(merged);
     }
 
     // ============================================================
@@ -413,7 +420,7 @@ public final class BlitzPlanner {
      * Strength is approximated by a weighted unit score (air × 3 + ground × 1 + naval × 2).
      */
     private int[] computeStrengthRanks(CompiledScenario compiledScenario) {
-        List<Integer> attackerIndexes = new ArrayList<>(compiledScenario.attackerCount());
+        IntArrayList attackerIndexes = new IntArrayList(compiledScenario.attackerCount());
         for (int attackerIndex = 0; attackerIndex < compiledScenario.attackerCount(); attackerIndex++) {
             attackerIndexes.add(attackerIndex);
         }
@@ -458,7 +465,7 @@ public final class BlitzPlanner {
     }
 
     private static Map<Integer, Integer> capsByNationId(CompiledScenario compiledScenario, int[] capsByIndex, boolean attacker) {
-        Map<Integer, Integer> caps = new HashMap<>(capsByIndex.length);
+        Map<Integer, Integer> caps = new Int2IntOpenHashMap(capsByIndex.length);
         for (int index = 0; index < capsByIndex.length; index++) {
             if (capsByIndex[index] <= 0) {
                 continue;
@@ -470,7 +477,7 @@ public final class BlitzPlanner {
     }
 
     private static List<DBNationSnapshot> combinedSnapshots(List<DBNationSnapshot> attackers, List<DBNationSnapshot> defenders) {
-        List<DBNationSnapshot> combined = new ArrayList<>(attackers.size() + defenders.size());
+        List<DBNationSnapshot> combined = new ObjectArrayList<>(attackers.size() + defenders.size());
         combined.addAll(attackers);
         combined.addAll(defenders);
         return combined;
@@ -480,12 +487,12 @@ public final class BlitzPlanner {
         if (attackers.isEmpty() || defenders.isEmpty()) {
             return false;
         }
-        Map<Integer, Boolean> attackerNationIds = new HashMap<>(Math.max(16, attackers.size() * 2));
+        IntOpenHashSet attackerNationIds = new IntOpenHashSet(Math.max(16, attackers.size() * 2));
         for (DBNationSnapshot attacker : attackers) {
-            attackerNationIds.put(attacker.nationId(), Boolean.TRUE);
+            attackerNationIds.add(attacker.nationId());
         }
         for (DBNationSnapshot defender : defenders) {
-            if (attackerNationIds.containsKey(defender.nationId())) {
+            if (attackerNationIds.contains(defender.nationId())) {
                 return true;
             }
         }
@@ -505,10 +512,10 @@ public final class BlitzPlanner {
             return assignment;
         }
         Map<Integer, List<Integer>> normalized = copyAssignment(assignment);
-        java.util.Set<Long> fixedPairKeys = fixedPairKeys(fixedEdges);
-        java.util.Set<Long> seenPairs = new java.util.HashSet<>();
-        Map<Integer, Integer> attackerAssignedCounts = attackerAssignedCounts(normalized);
-        Map<Integer, Integer> defenderAssignedCounts = defenderAssignedCounts(normalized);
+        LongOpenHashSet fixedPairKeys = fixedPairKeys(fixedEdges);
+        LongOpenHashSet seenPairs = new LongOpenHashSet();
+        Int2IntOpenHashMap attackerAssignedCounts = attackerAssignedCounts(normalized);
+        Int2IntOpenHashMap defenderAssignedCounts = defenderAssignedCounts(normalized);
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             int attackerNationId = entry.getKey();
             for (int defenderNationId : entry.getValue()) {
@@ -585,16 +592,17 @@ public final class BlitzPlanner {
         return normalized;
     }
 
-    private static Map<Integer, Integer> attackerAssignedCounts(Map<Integer, List<Integer>> assignment) {
-        Map<Integer, Integer> counts = new HashMap<>(Math.max(16, assignment.size() * 2));
+    private static Int2IntOpenHashMap attackerAssignedCounts(Map<Integer, List<Integer>> assignment) {
+        Int2IntOpenHashMap counts = new Int2IntOpenHashMap(Math.max(16, assignment.size() * 2));
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
-            counts.put(entry.getKey(), entry.getValue().size());
+            int attackerNationId = entry.getKey();
+            counts.put(attackerNationId, entry.getValue().size());
         }
         return counts;
     }
 
-    private static Map<Integer, Integer> defenderAssignedCounts(Map<Integer, List<Integer>> assignment) {
-        Map<Integer, Integer> counts = new HashMap<>(Math.max(16, assignment.size() * 2));
+    private static Int2IntOpenHashMap defenderAssignedCounts(Map<Integer, List<Integer>> assignment) {
+        Int2IntOpenHashMap counts = new Int2IntOpenHashMap(Math.max(16, assignment.size() * 2));
         for (List<Integer> defenders : assignment.values()) {
             for (int defenderNationId : defenders) {
                 incrementAssignmentCounts(counts, defenderNationId);
@@ -606,8 +614,8 @@ public final class BlitzPlanner {
     private static boolean canFlipReciprocalDirection(
             int attackerNationId,
             int defenderNationId,
-            Map<Integer, Integer> attackerAssignedCounts,
-            Map<Integer, Integer> defenderAssignedCounts,
+            Int2IntOpenHashMap attackerAssignedCounts,
+            Int2IntOpenHashMap defenderAssignedCounts,
             Map<Integer, Integer> attackerCapsByNationId,
             Map<Integer, Integer> defenderCapsByNationId
     ) {
@@ -619,27 +627,27 @@ public final class BlitzPlanner {
     }
 
     private static void addAssignmentPair(Map<Integer, List<Integer>> assignment, int attackerNationId, int defenderNationId) {
-        assignment.computeIfAbsent(attackerNationId, ignored -> new ArrayList<>()).add(defenderNationId);
+        assignment.computeIfAbsent(attackerNationId, ignored -> new IntArrayList()).add(defenderNationId);
     }
 
-    private static void incrementAssignmentCounts(Map<Integer, Integer> counts, int nationId) {
-        counts.merge(nationId, 1, Integer::sum);
+    private static void incrementAssignmentCounts(Int2IntOpenHashMap counts, int nationId) {
+        counts.put(nationId, counts.get(nationId) + 1);
     }
 
-    private static void decrementAssignmentCounts(Map<Integer, Integer> counts, int nationId) {
-        counts.compute(nationId, (ignored, current) -> {
-            if (current == null || current <= 1) {
-                return null;
-            }
-            return current - 1;
-        });
+    private static void decrementAssignmentCounts(Int2IntOpenHashMap counts, int nationId) {
+        int current = counts.get(nationId);
+        if (current <= 1) {
+            counts.remove(nationId);
+            return;
+        }
+        counts.put(nationId, current - 1);
     }
 
     private static boolean chooseReciprocalDirection(
             int attackerNationId,
             int defenderNationId,
             BlitzGeneratedCandidates candidates,
-            java.util.Set<Long> fixedPairKeys,
+            LongOpenHashSet fixedPairKeys,
             Map<Integer, Float> activityWeightsByNationId,
             OverrideSet overrides
     ) {
@@ -675,9 +683,9 @@ public final class BlitzPlanner {
     }
 
     private static Map<Integer, List<Integer>> copyAssignment(Map<Integer, List<Integer>> assignment) {
-        Map<Integer, List<Integer>> copy = new LinkedHashMap<>(assignment.size());
+        Map<Integer, List<Integer>> copy = new Int2ObjectLinkedOpenHashMap<>(assignment.size());
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
-            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+            copy.put(entry.getKey(), new IntArrayList(entry.getValue()));
         }
         return copy;
     }
@@ -714,8 +722,8 @@ public final class BlitzPlanner {
         return assignment.containsDefenderSlotExcept(reverseAttackerSlot, reverseDefenderSlot, excludedIndex);
     }
 
-    private static java.util.Set<Long> fixedPairKeys(List<BlitzFixedEdge> fixedEdges) {
-        java.util.Set<Long> keys = new java.util.HashSet<>(Math.max(16, fixedEdges.size() * 2));
+    private static LongOpenHashSet fixedPairKeys(List<BlitzFixedEdge> fixedEdges) {
+        LongOpenHashSet keys = new LongOpenHashSet(Math.max(16, fixedEdges.size() * 2));
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
             keys.add(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()));
         }

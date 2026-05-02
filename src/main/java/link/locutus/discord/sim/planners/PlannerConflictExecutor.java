@@ -1,5 +1,9 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -9,8 +13,6 @@ import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -395,7 +397,7 @@ final class PlannerConflictExecutor {
         if (assignment.isEmpty()) {
             return Map.of();
         }
-        LinkedHashMap<Integer, List<Integer>> ordered = new LinkedHashMap<>(assignment.size());
+        Map<Integer, List<Integer>> ordered = new Int2ObjectLinkedOpenHashMap<>(assignment.size());
         for (DBNationSnapshot attacker : attackers) {
             List<Integer> defenderIds = assignment.get(attacker.nationId());
             if (defenderIds != null && !defenderIds.isEmpty()) {
@@ -424,14 +426,14 @@ final class PlannerConflictExecutor {
         if ((attackers == null || attackers.isEmpty()) && (defenders == null || defenders.isEmpty())) {
             return ExternalStrategicContext.empty();
         }
-        Map<Integer, DBNationSnapshot> localById = new LinkedHashMap<>();
+        Map<Integer, DBNationSnapshot> localById = new Int2ObjectLinkedOpenHashMap<>();
         for (DBNationSnapshot snapshot : bundle.attackers()) {
             localById.put(snapshot.nationId(), snapshot);
         }
         for (DBNationSnapshot snapshot : bundle.defenders()) {
             localById.put(snapshot.nationId(), snapshot);
         }
-        Set<Integer> countedNationIds = new LinkedHashSet<>(localById.keySet());
+        Set<Integer> countedNationIds = new IntLinkedOpenHashSet(localById.keySet());
         List<DBNationSnapshot> externalAttackers = externalSnapshots(attackers, countedNationIds);
         List<DBNationSnapshot> externalDefenders = externalSnapshots(defenders, countedNationIds);
         Map<Integer, List<Integer>> externalAssignment = externalAssignment(
@@ -450,7 +452,7 @@ final class PlannerConflictExecutor {
                     warTypeOrdinalsByPair
             );
         }
-        LinkedHashMap<Integer, Double> totals = new LinkedHashMap<>();
+        Map<Integer, Double> totals = new Int2DoubleLinkedOpenHashMap();
         for (DBNationSnapshot snapshot : attackers) {
             accumulateExternalStrategicValue(countedNationIds, totals, snapshot, strategicRelevanceByNationId);
         }
@@ -486,15 +488,15 @@ final class PlannerConflictExecutor {
                 || externalDefenders.isEmpty()) {
             return Map.of();
         }
-        Set<Integer> externalAttackerIds = new LinkedHashSet<>();
+        Set<Integer> externalAttackerIds = new IntLinkedOpenHashSet();
         for (DBNationSnapshot attacker : externalAttackers) {
             externalAttackerIds.add(attacker.nationId());
         }
-        Set<Integer> externalDefenderIds = new LinkedHashSet<>();
+        Set<Integer> externalDefenderIds = new IntLinkedOpenHashSet();
         for (DBNationSnapshot defender : externalDefenders) {
             externalDefenderIds.add(defender.nationId());
         }
-        LinkedHashMap<Integer, List<Integer>> filtered = new LinkedHashMap<>();
+        Map<Integer, List<Integer>> filtered = new Int2ObjectLinkedOpenHashMap<>();
         for (Map.Entry<Integer, List<Integer>> entry : currentAssignment.entrySet()) {
             Integer attackerId = entry.getKey();
             if (attackerId == null || !externalAttackerIds.contains(attackerId)) {
@@ -504,7 +506,7 @@ final class PlannerConflictExecutor {
             if (defenderIds == null || defenderIds.isEmpty()) {
                 continue;
             }
-            java.util.ArrayList<Integer> keptDefenders = new java.util.ArrayList<>(defenderIds.size());
+            IntArrayList keptDefenders = new IntArrayList(defenderIds.size());
             for (Integer defenderId : defenderIds) {
                 if (defenderId != null && externalDefenderIds.contains(defenderId)) {
                     keptDefenders.add(defenderId);
@@ -537,7 +539,7 @@ final class PlannerConflictExecutor {
         conflict.evaluateAssignmentOpenings(
                 orderedAssignmentView(externalAssignment, externalAttackers, warTypeOrdinalsByPair)
         );
-        LinkedHashMap<Integer, Double> totals = new LinkedHashMap<>();
+        Map<Integer, Double> totals = new Int2DoubleLinkedOpenHashMap();
         conflict.forEachNationStrategicValue((nationId, teamId, value) ->
                 totals.merge(teamId, value, Double::sum)
         );

@@ -1,5 +1,10 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -116,8 +121,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.externalStrategicValueByTeam = externalStrategicValueByTeam;
         this.externalWarControls = externalWarControls;
         this.nationBuffers = nationBuffers;
-        this.warsById = new LinkedHashMap<>();
-        this.warsByPair = new LinkedHashMap<>();
+        this.warsById = new Int2ObjectLinkedOpenHashMap<>();
+        this.warsByPair = new Long2ObjectLinkedOpenHashMap<>();
         this.warBuffers = new LocalWarBuffers();
         this.markStack = new ArrayDeque<>();
         this.currentTurn = currentTurn;
@@ -264,7 +269,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (activeWars.isEmpty()) {
             return snapshots;
         }
-        Map<Integer, DBNationSnapshot> byId = new LinkedHashMap<>(snapshots.size());
+        Map<Integer, DBNationSnapshot> byId = new Int2ObjectLinkedOpenHashMap<>(snapshots.size());
         for (DBNationSnapshot snapshot : snapshots) {
             byId.put(snapshot.nationId(), snapshot);
         }
@@ -285,7 +290,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (snapshot == null) {
             return;
         }
-        LinkedHashSet<Integer> activeOpponents = new LinkedHashSet<>(snapshot.activeOpponentNationIds());
+        IntLinkedOpenHashSet activeOpponents = new IntLinkedOpenHashSet(snapshot.activeOpponentNationIds());
         if (!activeOpponents.remove(opponentId)) {
             // Idempotent guard: if the overlay is already stripped, keep snapshot unchanged.
             return;
@@ -317,7 +322,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         OverrideSet effectiveOverrides = overrides == null ? OverrideSet.EMPTY : overrides;
         List<DBNationSnapshot> effectiveSnapshots = applyOverridesToSnapshots(orderedSnapshots, effectiveOverrides);
         LocalNationBuffers nationBuffers = LocalNationBuffers.fromSnapshots(effectiveSnapshots);
-        Map<Integer, LocalNation> localNations = new LinkedHashMap<>();
+        Map<Integer, LocalNation> localNations = new Int2ObjectLinkedOpenHashMap<>();
         for (int index = 0; index < effectiveSnapshots.size(); index++) {
             DBNationSnapshot snapshot = effectiveSnapshots.get(index);
             localNations.put(snapshot.nationId(), LocalNation.of(snapshot, nationBuffers, index, currentTurn));
@@ -365,7 +370,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Collection<DBNationSnapshot> primary,
             Collection<DBNationSnapshot> secondary
     ) {
-        LinkedHashMap<Integer, DBNationSnapshot> byId = new LinkedHashMap<>();
+        Map<Integer, DBNationSnapshot> byId = new Int2ObjectLinkedOpenHashMap<>();
         for (DBNationSnapshot snapshot : primary) {
             byId.put(snapshot.nationId(), snapshot);
         }
@@ -406,7 +411,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private ConflictSnapshot captureSnapshot() {
-        Map<Integer, LocalNationScalarSnapshot> nationScalars = new LinkedHashMap<>(nationsById.size());
+        Map<Integer, LocalNationScalarSnapshot> nationScalars = new Int2ObjectLinkedOpenHashMap<>(nationsById.size());
         for (LocalNation nation : nationsById.values()) {
             nationScalars.put(nation.nationId(), nation.scalarSnapshot());
         }
@@ -1063,7 +1068,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
     @Override
     public double controlRegimeScoreForTeam(int teamId) {
-        LinkedHashMap<Integer, Double> totalsByTeam = new LinkedHashMap<>(externalStrategicValueByTeam);
+        Map<Integer, Double> totalsByTeam = new Int2DoubleLinkedOpenHashMap(externalStrategicValueByTeam);
         for (LocalNation nation : nationsById.values()) {
             totalsByTeam.merge(
                     nation.teamId(),
@@ -1890,7 +1895,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private Map<Integer, ActiveWarSnapshotOverlay> activeWarOverlaysByNationId(Collection<Integer> nationIds) {
-        Map<Integer, MutableActiveWarSnapshotOverlay> mutable = new LinkedHashMap<>();
+        Map<Integer, MutableActiveWarSnapshotOverlay> mutable = new Int2ObjectOpenHashMap<>();
         for (Integer nationId : nationIds) {
             if (nationId != null && nationsById.containsKey(nationId)) {
                 mutable.put(nationId, new MutableActiveWarSnapshotOverlay());
@@ -1915,7 +1920,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
         }
 
-        Map<Integer, ActiveWarSnapshotOverlay> overlays = new LinkedHashMap<>(mutable.size());
+        Map<Integer, ActiveWarSnapshotOverlay> overlays = new Int2ObjectLinkedOpenHashMap<>(mutable.size());
         for (Map.Entry<Integer, MutableActiveWarSnapshotOverlay> entry : mutable.entrySet()) {
             MutableActiveWarSnapshotOverlay overlay = entry.getValue();
             overlays.put(
@@ -1941,7 +1946,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private static final class MutableActiveWarSnapshotOverlay {
         private int offensiveWars;
         private int defensiveWars;
-        private final LinkedHashSet<Integer> opponentNationIds = new LinkedHashSet<>();
+        private final IntLinkedOpenHashSet opponentNationIds = new IntLinkedOpenHashSet();
     }
 
     private static final class ReplayStateExtractor {
@@ -2811,7 +2816,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         DBNationSnapshot toSnapshot(List<PlannerProjectedWar> activeWars, int currentTurn) {
             int offensiveWars = 0;
             int defensiveWars = 0;
-            LinkedHashSet<Integer> opponents = new LinkedHashSet<>();
+            IntLinkedOpenHashSet opponents = new IntLinkedOpenHashSet();
             for (PlannerProjectedWar war : activeWars) {
                 if (war.attackerNationId() == nationId) {
                     offensiveWars++;
@@ -2829,7 +2834,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 ActiveWarSnapshotOverlay effectiveOverlay = overlay == null ? ActiveWarSnapshotOverlay.EMPTY : overlay;
                 int offensiveWars = activeBaseCurrentOffensiveWars(currentTurn) + effectiveOverlay.offensiveWars();
                 int defensiveWars = activeBaseCurrentDefensiveWars(currentTurn) + effectiveOverlay.defensiveWars();
-                Set<Integer> opponents = new LinkedHashSet<>(baseActiveOpponentNationIds);
+                Set<Integer> opponents = new IntLinkedOpenHashSet(baseActiveOpponentNationIds);
                 opponents.addAll(effectiveOverlay.opponentNationIds());
                 DBNationSnapshot.Builder builder = DBNationSnapshot.synthetic(nationId)
                         .allianceId(allianceId)
