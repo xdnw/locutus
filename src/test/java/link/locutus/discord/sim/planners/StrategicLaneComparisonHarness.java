@@ -1,9 +1,12 @@
 package link.locutus.discord.sim.planners;
 
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
@@ -35,7 +38,7 @@ public final class StrategicLaneComparisonHarness {
     public static void main(String[] args) {
         int horizonTurns = optionInt(args, "horizon", DEFAULT_HORIZON_TURNS);
         int repetitions = Math.max(1, optionInt(args, "repetitions", 1));
-        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,bestMs,avgMs");
+        System.out.println("family,lane,objective,horizon,attackers,defenders,edges,assignments,idleViableAttackers,strongDefenderCoveragePct,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerRebuyPreserved,defenderRebuyPreserved,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,activeWars,attackerControlFlags,defenderControlFlags,attackerWinningWars,defenderWinningWars,concludedWars,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs");
         for (ScenarioFamily family : ScenarioFamily.values()) {
             Fixture fixture = family.fixture();
             for (Lane lane : Lane.values()) {
@@ -54,8 +57,8 @@ public final class StrategicLaneComparisonHarness {
                     }
                     double bestMs = best.elapsedNanos() / 1_000_000.0d;
                     double avgMs = (totalNanos / (double) repetitions) / 1_000_000.0d;
-                    System.out.printf(Locale.ROOT,
-                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%d,%.6f,%.3f,%.3f,%.3f%n",
+                    String row = String.format(Locale.ROOT,
+                            "%s,%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%d,%.6f,%.3f,%.3f,%.3f,%s,%s,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%d,%.3f,%.3f",
                             family.cliName,
                             lane.cliName,
                             objective.name(),
@@ -69,8 +72,28 @@ public final class StrategicLaneComparisonHarness {
                             best.maxWarsPerAttacker(),
                             best.avgAssignedCounterRisk(),
                             best.terminalObjective(),
+                            best.attackerTerminalValue(),
+                            best.defenderTerminalValue(),
+                            best.attackerUnitLosses(),
+                            best.defenderUnitLosses(),
+                            best.attackerRebuyPreserved(),
+                            best.defenderRebuyPreserved(),
+                            best.attackerInfraDestroyed(),
+                            best.defenderInfraDestroyed(),
+                            best.attackerWiped(),
+                            best.defenderWiped(),
+                            best.activeWars(),
+                            best.attackerControlFlags(),
+                            best.defenderControlFlags(),
+                            best.attackerWinningWars(),
+                            best.defenderWinningWars(),
+                            best.concludedWars(),
+                            best.assignedWarTypes(),
+                            best.assignedAttackTypes(),
+                            best.payloadBytes(),
                             bestMs,
                             avgMs);
+                    System.out.println(row);
                 }
             }
         }
@@ -291,7 +314,7 @@ public final class StrategicLaneComparisonHarness {
                             attackerNationIds,
                             defenderNationIds
                     );
-            return scorecard(edges, result.assignment(), summary.mean());
+            return scorecard(edges, result.assignment(), summary.mean(), horizonTurns);
         }
 
         private CandidateEdgeTable openingEdges(StrategicObjective objective) {
@@ -322,9 +345,17 @@ public final class StrategicLaneComparisonHarness {
             );
         }
 
-        private Scorecard scorecard(CandidateEdgeTable edges, Map<Integer, List<Integer>> assignment, double terminalObjective) {
+        private Scorecard scorecard(
+                CandidateEdgeTable edges,
+                Map<Integer, List<Integer>> assignment,
+                double terminalObjective,
+                int horizonTurns
+        ) {
             int[] attackerCounts = new int[scenario.attackerCount()];
             int[] defenderCounts = new int[scenario.defenderCount()];
+            boolean[] edgeAssigned = new boolean[edges.edgeCount()];
+            int[] warTypeCounts = new int[WarType.values.length];
+            int[] attackTypeCounts = new int[AttackType.values.length];
             int assignmentCount = 0;
             for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
                 int attackerIndex = indexOf(attackerNationIds, entry.getKey());
@@ -339,6 +370,18 @@ public final class StrategicLaneComparisonHarness {
                     attackerCounts[attackerIndex]++;
                     defenderCounts[defenderIndex]++;
                     assignmentCount++;
+                    int edgeIndex = edgeIndex(edges, attackerIndex, defenderIndex);
+                    if (edgeIndex >= 0) {
+                        edgeAssigned[edgeIndex] = true;
+                        int warTypeId = edges.preferredWarTypeId(edgeIndex);
+                        if (warTypeId >= 0 && warTypeId < warTypeCounts.length) {
+                            warTypeCounts[warTypeId]++;
+                        }
+                        int attackTypeId = edges.bestAttackTypeId(edgeIndex);
+                        if (attackTypeId >= 0 && attackTypeId < attackTypeCounts.length) {
+                            attackTypeCounts[attackTypeId]++;
+                        }
+                    }
                 }
             }
             int idleViableAttackers = idleViableAttackers(edges, attackerCounts);
@@ -346,6 +389,14 @@ public final class StrategicLaneComparisonHarness {
             for (int count : attackerCounts) {
                 maxWarsPerAttacker = Math.max(maxWarsPerAttacker, count);
             }
+            LongHorizonForwardProjection.ProjectionDiagnostics diagnostics = LongHorizonControlProjection.create(
+                    edges,
+                    scenario,
+                    attackerCaps,
+                    defenderCaps,
+                    horizonTurns,
+                    LongHorizonAssignmentOptimizer.horizonFactor(horizonTurns)
+            ).projectionDiagnostics(edgeAssigned, attackerCounts, defenderCounts);
             return new Scorecard(
                     edges.edgeCount(),
                     assignmentCount,
@@ -354,8 +405,37 @@ public final class StrategicLaneComparisonHarness {
                     maxWarsPerAttacker,
                     avgAssignedCounterRisk(edges, assignment),
                     terminalObjective,
+                    diagnostics.attackerStrategicValue(),
+                    diagnostics.defenderStrategicValue(),
+                    unitLossSummary(diagnostics.attackerUnitLosses()),
+                    unitLossSummary(diagnostics.defenderUnitLosses()),
+                    diagnostics.attackerRebuyPreservedValue(),
+                    diagnostics.defenderRebuyPreservedValue(),
+                    diagnostics.attackerInfraDestroyed(),
+                    diagnostics.defenderInfraDestroyed(),
+                    diagnostics.attackerWiped(),
+                    diagnostics.defenderWiped(),
+                    diagnostics.activeWars(),
+                    diagnostics.attackerControlFlags(),
+                    diagnostics.defenderControlFlags(),
+                    diagnostics.attackerWinningWars(),
+                    diagnostics.defenderWinningWars(),
+                    diagnostics.concludedWars(),
+                    enumCountSummary(WarType.values, warTypeCounts),
+                    enumCountSummary(AttackType.values, attackTypeCounts),
+                    payloadBytes(assignment),
                     0L
             );
+        }
+
+        private int edgeIndex(CandidateEdgeTable edges, int attackerIndex, int defenderIndex) {
+            for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+                if (edges.attackerIndex(edgeIndex) == attackerIndex
+                        && edges.defenderIndex(edgeIndex) == defenderIndex) {
+                    return edgeIndex;
+                }
+            }
+            return -1;
         }
 
         private int idleViableAttackers(CandidateEdgeTable edges, int[] attackerCounts) {
@@ -404,6 +484,17 @@ public final class StrategicLaneComparisonHarness {
             }
             return assignedEdges == 0 ? 0d : risk / assignedEdges;
         }
+
+        private int payloadBytes(Map<Integer, List<Integer>> assignment) {
+            int bytes = 2;
+            for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
+                bytes += Integer.toString(entry.getKey()).length() + 3;
+                for (int defenderId : entry.getValue()) {
+                    bytes += Integer.toString(defenderId).length() + 1;
+                }
+            }
+            return bytes;
+        }
     }
 
     private record Scorecard(
@@ -414,6 +505,25 @@ public final class StrategicLaneComparisonHarness {
             int maxWarsPerAttacker,
             double avgAssignedCounterRisk,
             double terminalObjective,
+            double attackerTerminalValue,
+            double defenderTerminalValue,
+            String attackerUnitLosses,
+            String defenderUnitLosses,
+            double attackerRebuyPreserved,
+            double defenderRebuyPreserved,
+            double attackerInfraDestroyed,
+            double defenderInfraDestroyed,
+            int attackerWiped,
+            int defenderWiped,
+            int activeWars,
+            int attackerControlFlags,
+            int defenderControlFlags,
+            int attackerWinningWars,
+            int defenderWinningWars,
+            int concludedWars,
+            String assignedWarTypes,
+            String assignedAttackTypes,
+            int payloadBytes,
             long elapsedNanos
     ) {
         Scorecard withElapsedNanos(long newElapsedNanos) {
@@ -425,9 +535,53 @@ public final class StrategicLaneComparisonHarness {
                     maxWarsPerAttacker,
                     avgAssignedCounterRisk,
                     terminalObjective,
+                    attackerTerminalValue,
+                    defenderTerminalValue,
+                    attackerUnitLosses,
+                    defenderUnitLosses,
+                    attackerRebuyPreserved,
+                    defenderRebuyPreserved,
+                    attackerInfraDestroyed,
+                    defenderInfraDestroyed,
+                    attackerWiped,
+                    defenderWiped,
+                    activeWars,
+                    attackerControlFlags,
+                    defenderControlFlags,
+                    attackerWinningWars,
+                    defenderWinningWars,
+                    concludedWars,
+                    assignedWarTypes,
+                    assignedAttackTypes,
+                    payloadBytes,
                     newElapsedNanos
             );
         }
+    }
+
+    private static String unitLossSummary(int[] losses) {
+        StringBuilder builder = new StringBuilder();
+        for (int unitIndex = 0; unitIndex < SimUnits.PURCHASABLE_UNITS.length; unitIndex++) {
+            if (unitIndex > 0) {
+                builder.append(';');
+            }
+            builder.append(SimUnits.PURCHASABLE_UNITS[unitIndex].name()).append(':').append(losses[unitIndex]);
+        }
+        return builder.toString();
+    }
+
+    private static <E extends Enum<E>> String enumCountSummary(E[] values, int[] counts) {
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < values.length; index++) {
+            if (counts[index] <= 0) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(';');
+            }
+            builder.append(values[index].name()).append(':').append(counts[index]);
+        }
+        return builder.length() == 0 ? "none" : builder.toString();
     }
 
     private static DBNationSnapshot nation(

@@ -112,6 +112,15 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
         return forwardProjection.projectedEvaluation(objective, teamId, edgeAssigned, attackerCounts, defenderCounts);
     }
 
+    LongHorizonForwardProjection.ProjectionDiagnostics projectionDiagnostics(
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts
+    ) {
+        requireForwardProjection();
+        return forwardProjection.projectionDiagnostics(edgeAssigned, attackerCounts, defenderCounts);
+    }
+
     int[] realizedCounterIncidence(boolean[] edgeAssigned, int[] attackerCounts, int[] defenderCounts) {
         requireForwardProjection();
         return forwardProjection.realizedCounterIncidence(edgeAssigned, attackerCounts, defenderCounts);
