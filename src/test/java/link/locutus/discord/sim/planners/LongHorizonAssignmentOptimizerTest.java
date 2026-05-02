@@ -3,6 +3,7 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.SimWorld;
@@ -15,6 +16,7 @@ import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -273,7 +275,7 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
-        void counterfactualScoringDoesNotCollapseRawPressureCandidate() {
+    void counterfactualScoringDoesNotCollapseRawPressureCandidate() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900).toBuilder().maxOff(3).build(),
                 nation(2, 1, 880)
@@ -324,6 +326,70 @@ class LongHorizonAssignmentOptimizerTest {
         assertEquals(3, totalPairs(projectionOnly));
         assertEquals(totalPairs(projectionOnly), totalPairs(counterfactual),
                 "Projected-objective portfolio scoring composes with raw pressure and must not collapse useful openings for a war-count-only objective");
+    }
+
+    @Test
+    void projectedObjectiveKeepsPositiveSlotPressurePortfolio() {
+        List<DBNationSnapshot> attackers = new ArrayList<>();
+        List<DBNationSnapshot> defenders = new ArrayList<>();
+        for (int index = 0; index < 8; index++) {
+            DBNationSnapshot.Builder attacker = strategicNation(10_000 + index, 1, index, 23 + index % 4, 1.05d, 3)
+                    .toBuilder()
+                    .currentOffensiveWars(index % 3)
+                    .currentDefensiveWars(index % 2)
+                    .activeOpponentNationId(30_000 + index);
+            if ((index & 1) == 0) {
+                attacker.activeOpponentNationId(31_000 + index);
+            }
+            attackers.add(attacker.build());
+
+            defenders.add(strategicNation(20_000 + index, 2, index, 23 + index % 4, 1.05d, 1)
+                    .toBuilder()
+                    .currentDefensiveWars(index % 3)
+                    .activeOpponentNationId(40_000 + index)
+                    .build());
+        }
+        CompiledScenario scenario = compile(attackers, defenders);
+        int[] attackerCaps = new int[attackers.size()];
+        int[] defenderCaps = new int[defenders.size()];
+        int[] attackerStrengthRanks = new int[attackers.size()];
+        int[] attackerNationIds = new int[attackers.size()];
+        int[] defenderNationIds = new int[defenders.size()];
+        for (int index = 0; index < attackers.size(); index++) {
+            attackerCaps[index] = OverrideSet.EMPTY.effectiveFreeOff(attackers.get(index));
+            attackerStrengthRanks[index] = index;
+            attackerNationIds[index] = scenario.attackerNationId(index);
+            defenderCaps[index] = OverrideSet.EMPTY.effectiveFreeDef(defenders.get(index));
+            defenderNationIds[index] = scenario.defenderNationId(index);
+        }
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        OpeningEvaluator.evaluate(
+                scenario,
+                SimTuning.defaults(),
+                OverrideSet.EMPTY,
+                BlitzObjective.NET_DAMAGE.objective(),
+                attackerCaps.clone(),
+                defenderCaps.clone(),
+                edges
+        );
+
+        LongHorizonAssignmentOptimizer.Result result = LongHorizonAssignmentOptimizer.solveDetailed(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                72,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(BlitzObjective.NET_DAMAGE.objective())
+        );
+
+        assertTrue(totalPairs(result.assignment()) > 0,
+                "Projected-objective comparison must not let scorer-only pressure erase a terminal-positive slot-denial portfolio");
+        assertTrue(result.projectedObjectiveSummary().mean() > 0d,
+                "The selected slot-pressure portfolio should still be positive under dense terminal NET_DAMAGE");
     }
 
     @Test
@@ -1183,6 +1249,40 @@ class LongHorizonAssignmentOptimizerTest {
                 .unit(MilitaryUnit.AIRCRAFT, aircraft)
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
+    }
+
+    private static DBNationSnapshot strategicNation(
+            int nationId,
+            int teamId,
+            int offset,
+            int cities,
+            double militaryMultiplier,
+            int freeOffSlots
+    ) {
+        return DBNationSnapshot.synthetic(nationId)
+                .teamId(teamId)
+                .allianceId(teamId)
+                .score(900.0d + cities * 45.0d + offset)
+                .cities(cities)
+                .nonInfraScoreBase(400.0d + cities * 35.0d)
+                .cityInfra(uniformInfra(cities, 1_800.0d + (offset % 4) * 150.0d))
+                .maxOff(freeOffSlots)
+                .unit(MilitaryUnit.SOLDIER, scaled(250_000 + offset * 2_000, militaryMultiplier))
+                .unit(MilitaryUnit.TANK, scaled(20_000 + offset * 150, militaryMultiplier))
+                .unit(MilitaryUnit.AIRCRAFT, scaled(1_600 + offset * 20, militaryMultiplier))
+                .unit(MilitaryUnit.SHIP, scaled(250 + offset * 4, militaryMultiplier))
+                .resource(ResourceType.MONEY, 100_000_000d)
+                .resource(ResourceType.FOOD, 10_000_000d)
+                .resource(ResourceType.GASOLINE, 2_000_000d)
+                .resource(ResourceType.MUNITIONS, 2_000_000d)
+                .resource(ResourceType.STEEL, 2_000_000d)
+                .resource(ResourceType.ALUMINUM, 2_000_000d)
+                .warPolicy(WarPolicy.ATTRITION)
+                .build();
+    }
+
+    private static int scaled(int value, double multiplier) {
+        return Math.max(0, (int) Math.round(value * multiplier));
     }
 
     private static DBNationSnapshot exhaustedCurrentBuys(DBNationSnapshot snapshot) {

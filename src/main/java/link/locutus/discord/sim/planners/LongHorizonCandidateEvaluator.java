@@ -48,9 +48,26 @@ final class LongHorizonCandidateEvaluator {
         if (candidate == null) {
             return current;
         }
-        double currentScore = score(current, projection);
-        double candidateScore = score(candidate, projection);
-        return candidateScore > currentScore + LongHorizonAssignmentOptimizer.EPSILON ? candidate : current;
+        if (projectionScoringContext == null || !canScoreProjection) {
+            return candidate.projectionScore() > current.projectionScore() + LongHorizonAssignmentOptimizer.EPSILON
+                    ? candidate
+                    : current;
+        }
+        if (!usesPrimaryTerminalComparison()) {
+            double currentScore = score(current, projection);
+            double candidateScore = score(candidate, projection);
+            return candidateScore > currentScore + LongHorizonAssignmentOptimizer.EPSILON ? candidate : current;
+        }
+        double currentObjective = objectiveComparisonScore(current, projection);
+        double candidateObjective = objectiveComparisonScore(candidate, projection);
+        if (candidateObjective > currentObjective + LongHorizonAssignmentOptimizer.EPSILON) {
+            return candidate;
+        }
+        if (Math.abs(candidateObjective - currentObjective) <= LongHorizonAssignmentOptimizer.EPSILON
+                && candidate.projectionScore() > current.projectionScore() + LongHorizonAssignmentOptimizer.EPSILON) {
+            return candidate;
+        }
+        return current;
     }
 
     boolean canScoreObjectiveProjection() {
@@ -64,9 +81,28 @@ final class LongHorizonCandidateEvaluator {
         if (projectionScoringContext == null || !canScoreProjection) {
             return candidate.projectionScore();
         }
+        if (!usesPrimaryTerminalComparison()) {
+            LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
+            double realizedCounterPenalty = realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
+            return candidate.projectionScore() + evaluation.objectiveScore() - realizedCounterPenalty;
+        }
+        return objectiveComparisonScore(candidate, projection);
+    }
+
+    private boolean usesPrimaryTerminalComparison() {
+        return projectionScoringContext.objective().usesWarSlotDenial();
+    }
+
+    private double objectiveComparisonScore(
+            LongHorizonAssignmentOptimizer.Candidate candidate,
+            LongHorizonControlProjection projection
+    ) {
+        if (candidate.assignment().isEmpty()) {
+            return 0d;
+        }
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
         double realizedCounterPenalty = realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
-        return candidate.projectionScore() + evaluation.objectiveScore() - realizedCounterPenalty;
+        return evaluation.objectiveScore() - realizedCounterPenalty;
     }
 
     ObjectiveValueSummary objectiveSummary(
