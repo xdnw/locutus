@@ -207,6 +207,27 @@ public final class StrategicAssetValue {
         return subtotal + (subtotal * activeWarLeverageWeight(activeWarContext));
     }
 
+    public static double marginalLossValue(
+            UnitReader currentUnits,
+            UnitReader losses,
+            UnitReader unitsBoughtToday,
+            UnitReader dailyBuyCaps,
+            int researchBits,
+            ActiveWarContext activeWarContext,
+            StrategicRelevance relevance
+    ) {
+        double lossValue = contextualLossValue(
+                currentUnits,
+                losses,
+                unitsBoughtToday,
+                dailyBuyCaps,
+                researchBits,
+                activeWarContext,
+                relevance
+        );
+        return lossValue * marginalActionSpaceMultiplier(activeWarContext);
+    }
+
     public static double resourceValue(double[] resources) {
         return resources == null ? 0d : ResourceType.convertedTotal(resources) / CONVERTED_VALUE_SCALE;
     }
@@ -257,6 +278,28 @@ public final class StrategicAssetValue {
                 * INFRASTRUCTURE_STRATEGIC_WEIGHT
                 * infrastructureStateMultiplier(activeWarContext)
                 * infrastructureRelevanceMultiplier(relevance);
+    }
+
+    public static double marginalActionSpaceMultiplier(ActiveWarContext context) {
+        if (context == null || !context.hasActiveWars()) {
+            return 1d;
+        }
+        if (!context.outcomeRelevant()) {
+            return 0.35d;
+        }
+        double statePosition = (0.40d * context.controlPosition())
+                + (0.35d * context.resistancePosition())
+                + (0.25d * context.mapPosition());
+        if (statePosition <= -0.75d) {
+            return 0.45d;
+        }
+        if (statePosition <= -0.35d) {
+            return 0.65d;
+        }
+        if (statePosition < 0.10d) {
+            return 0.85d + (0.15d * ((statePosition + 0.35d) / 0.45d));
+        }
+        return 1d;
     }
 
     public static double nationValue(SimNation nation) {

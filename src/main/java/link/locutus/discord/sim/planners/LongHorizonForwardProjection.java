@@ -474,7 +474,14 @@ final class LongHorizonForwardProjection {
                     if (warState.hasActivePair(counterNationIndex, targetNationIndex)) {
                         continue;
                     }
-                    double score = projectedCounterScore(state, counterNationIndex, targetNationIndex, defenderIndex, remainingTargetDefensiveSlots[attackerIndex]);
+                    double score = projectedCounterScore(
+                            state,
+                            warState,
+                            counterNationIndex,
+                            targetNationIndex,
+                            defenderIndex,
+                            remainingTargetDefensiveSlots[attackerIndex]
+                    );
                     if (score > bestScore) {
                         bestScore = score;
                         bestDefenderIndex = defenderIndex;
@@ -667,6 +674,7 @@ final class LongHorizonForwardProjection {
 
     private double projectedCounterScore(
             ProjectionState state,
+            DenseWarState warState,
             int counterNationIndex,
             int targetNationIndex,
             int defenderIndex,
@@ -685,7 +693,7 @@ final class LongHorizonForwardProjection {
         }
         double activity = Math.max(0d, Math.min(1d, scenario.defenderActivityWeight(defenderIndex)));
         double strengthRatio = counterStrength / Math.max(1d, targetStrength);
-        double targetValue = Math.max(50d, state.strategicValue(targetNationIndex) * 0.10d);
+        double targetValue = Math.max(50d, state.marginalActionSpaceValue(targetNationIndex, warState) * 0.10d);
         return activity * targetValue * Math.min(2.0d, strengthRatio) / Math.max(1, targetFreeDefensiveSlots);
     }
 
@@ -773,8 +781,16 @@ final class LongHorizonForwardProjection {
     ) {
         int attackerNationIndex = warState.attackerNationIndex[context.warIndex()];
         int defenderNationIndex = warState.defenderNationIndex[context.warIndex()];
-        double defenderUnitDamage = state.unitLossValue(defenderNationIndex, result.defenderLosses());
-        double attackerUnitDamage = state.unitLossValue(attackerNationIndex, result.attackerLosses());
+        double defenderUnitDamage = state.unitLossValue(
+                defenderNationIndex,
+                result.defenderLosses(),
+                state.activeWarContext(defenderNationIndex, warState)
+        );
+        double attackerUnitDamage = state.unitLossValue(
+                attackerNationIndex,
+                result.attackerLosses(),
+                state.activeWarContext(attackerNationIndex, warState)
+        );
         double controlScore = 0d;
         ControlFlagDelta controlDelta = result.controlDelta();
         controlScore += Math.max(0, controlDelta.groundControl()) * 18d;
@@ -975,7 +991,7 @@ final class LongHorizonForwardProjection {
     ) {
         double targetDefSlots = Math.max(1, WarSlotRules.freeDefensiveSlots(target.currentDefensiveWars()));
         double strengthRatio = counterStrength / Math.max(1d, targetStrength);
-        double scoreValue = Math.max(50d, strategicAssetValue(target) * 0.10d);
+        double scoreValue = Math.max(50d, marginalActionSpaceValue(target) * 0.10d);
         double activity = Math.max(0d, Math.min(1d, activityWeight));
         return activity * scoreValue * Math.min(2.0d, strengthRatio) / targetDefSlots;
     }
@@ -1068,6 +1084,10 @@ final class LongHorizonForwardProjection {
                 activeWarContext,
                 relevance
         ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
+    }
+
+    private static double marginalActionSpaceValue(DBNationSnapshot snapshot) {
+        return strategicAssetValue(snapshot) * StrategicAssetValue.marginalActionSpaceMultiplier(activeWarContext(snapshot));
     }
 
     private static StrategicAssetValue.ActiveWarContext activeWarContext(DBNationSnapshot snapshot) {
@@ -1599,17 +1619,26 @@ final class LongHorizonForwardProjection {
             return value;
         }
 
-        double unitLossValue(int nationIndex, int[] losses) {
+        double unitLossValue(
+                int nationIndex,
+                int[] losses,
+                StrategicAssetValue.ActiveWarContext activeWarContext
+        ) {
             StrategicAssetValue.StrategicRelevance relevance = strategicRelevance(nationIndex);
-            return StrategicAssetValue.contextualLossValue(
+            return StrategicAssetValue.marginalLossValue(
                     unit -> unitsFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
                     unit -> losses[unit.ordinal()],
                     unit -> unitsBoughtTodayFlat[unitBaseOffsets[nationIndex] + unit.ordinal()],
-                    unit -> dailyBuyCap(nationIndex, unit, baseHasActiveWars[nationIndex]),
+                    unit -> dailyBuyCap(nationIndex, unit, activeWarContext != null && activeWarContext.hasActiveWars()),
                     researchBits[nationIndex],
-                    baseHasActiveWars[nationIndex],
+                    activeWarContext,
                     relevance
             );
+        }
+
+        double marginalActionSpaceValue(int nationIndex, DenseWarState warState) {
+            return strategicValue(nationIndex, warState)
+                    * StrategicAssetValue.marginalActionSpaceMultiplier(activeWarContext(nationIndex, warState));
         }
 
         private StrategicAssetValue.StrategicRelevance strategicRelevance(int nationIndex) {

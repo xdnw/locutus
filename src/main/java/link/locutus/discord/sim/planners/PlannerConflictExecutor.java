@@ -686,10 +686,10 @@ final class PlannerConflictExecutor {
         PlannerProjectedWar projectedWar = projectedWar(projection.activeWars(), attacker.nationId(), defender.nationId());
 
         double immediateHarm = policy.retainImmediateHarm()
-                ? strategicAssetValue(defender, attacker) - strategicAssetValue(projectedDefender, projectedAttacker)
+                ? marginalStrategicDamage(defender, projectedDefender, attacker, projectedWar, false)
                 : 0.0;
         double selfExposure = policy.retainSelfExposure()
-            ? strategicAssetValue(attacker, defender) - strategicAssetValue(projectedAttacker, projectedDefender)
+            ? marginalStrategicDamage(attacker, projectedAttacker, defender, projectedWar, true)
                 : 0.0;
         double resourceSwing = policy.retainResourceSwing()
                 ? projectedAttacker.resource(ResourceType.MONEY) - attacker.resource(ResourceType.MONEY)
@@ -751,6 +751,70 @@ final class PlannerConflictExecutor {
                 activeWarContext,
                 relevance
         ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
+    }
+
+    private static double marginalStrategicDamage(
+            DBNationSnapshot before,
+            DBNationSnapshot after,
+            DBNationSnapshot opponent,
+            PlannerProjectedWar projectedWar,
+            boolean subjectIsWarAttacker
+    ) {
+        double damage = strategicAssetValue(before, opponent) - strategicAssetValue(after, opponent);
+        if (!(damage > 0d)) {
+            return 0d;
+        }
+        StrategicAssetValue.ActiveWarContext context = projectedWar == null
+                ? activeWarContext(after)
+                : activeWarContext(projectedWar, subjectIsWarAttacker);
+        return damage * StrategicAssetValue.marginalActionSpaceMultiplier(context);
+    }
+
+    private static StrategicAssetValue.ActiveWarContext activeWarContext(DBNationSnapshot snapshot) {
+        return StrategicAssetValue.ActiveWarContext.fromSlots(
+                snapshot.currentOffensiveWars(),
+                snapshot.maxOff(),
+                snapshot.currentDefensiveWars(),
+                snapshot.activeOpponentNationIds().size()
+        );
+    }
+
+    private static StrategicAssetValue.ActiveWarContext activeWarContext(
+            PlannerProjectedWar war,
+            boolean subjectIsWarAttacker
+    ) {
+        PlannerLocalConflict.ControlOwner ownOwner = subjectIsWarAttacker
+                ? PlannerLocalConflict.ControlOwner.ATTACKER
+                : PlannerLocalConflict.ControlOwner.DEFENDER;
+        PlannerLocalConflict.ControlOwner enemyOwner = subjectIsWarAttacker
+                ? PlannerLocalConflict.ControlOwner.DEFENDER
+                : PlannerLocalConflict.ControlOwner.ATTACKER;
+        int ownControls = projectedControlCount(war, ownOwner);
+        int enemyControls = projectedControlCount(war, enemyOwner);
+        return StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                1,
+                1.0d,
+                subjectIsWarAttacker ? war.attackerMaps() : war.defenderMaps(),
+                subjectIsWarAttacker ? war.defenderMaps() : war.attackerMaps(),
+                subjectIsWarAttacker ? war.attackerResistance() : war.defenderResistance(),
+                subjectIsWarAttacker ? war.defenderResistance() : war.attackerResistance(),
+                ownControls,
+                enemyControls
+        );
+    }
+
+    private static int projectedControlCount(PlannerProjectedWar war, PlannerLocalConflict.ControlOwner owner) {
+        int count = 0;
+        if (war.groundControlOwner() == owner) {
+            count++;
+        }
+        if (war.airSuperiorityOwner() == owner) {
+            count++;
+        }
+        if (war.blockadeOwner() == owner) {
+            count++;
+        }
+        return count;
     }
 
     private static double controlLeverage(PlannerProjectedWar war) {

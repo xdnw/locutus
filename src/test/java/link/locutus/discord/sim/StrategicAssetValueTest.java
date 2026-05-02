@@ -234,6 +234,54 @@ class StrategicAssetValueTest {
     }
 
     @Test
+    void marginalLossValueDiminishesWhenFutureActionSpaceIsLost() {
+        StrategicAssetValue.ActiveWarContext tenable = StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                1,
+                1.0d,
+                12,
+                3,
+                86,
+                42,
+                2,
+                0
+        );
+        StrategicAssetValue.ActiveWarContext lost = StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                1,
+                1.0d,
+                0,
+                12,
+                18,
+                86,
+                0,
+                3
+        );
+
+        double tenableLoss = StrategicAssetValue.marginalLossValue(
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 100 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                0,
+                tenable,
+                StrategicAssetValue.StrategicRelevance.DEFAULT
+        );
+        double lostLoss = StrategicAssetValue.marginalLossValue(
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 100 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                unit -> unit == MilitaryUnit.AIRCRAFT ? 500 : 0,
+                0,
+                lost,
+                StrategicAssetValue.StrategicRelevance.DEFAULT
+        );
+
+        assertTrue(tenableLoss > lostLoss,
+                "The same casualties should carry less marginal strategic value once they no longer change future action space");
+        assertTrue(lostLoss > 0d,
+                "Diminishing returns should retain an economic damage floor instead of zeroing casualties");
+    }
+
+    @Test
     void frontlineLossesArePricedAboveFringeLosses() {
         StrategicAssetValue.StrategicRelevance frontline = StrategicAssetValue.relevanceForWarRange(
                 26,
