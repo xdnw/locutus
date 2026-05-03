@@ -730,11 +730,11 @@ public class WarDB extends DBMainV2 {
     public WarDB load() {
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
-            System.out.println("Importing legacy attacks...");
-            if (!importLegacyAttacks("database/war_legacy.db", false, true)) {
-                // reserializeAttacks5();
-            }
-            System.out.println("Done importing legacy attacks");
+//            System.out.println("Importing legacy attacks...");
+//            if (!importLegacyAttacks("database/war_legacy.db", false, true)) {
+//                // reserializeAttacks5();
+//            }
+//            System.out.println("Done importing legacy attacks");
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
 
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
