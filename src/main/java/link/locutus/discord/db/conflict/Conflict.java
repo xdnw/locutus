@@ -438,7 +438,16 @@ public class Conflict {
                     latest.put(id, new NationSlice(nation));
                 }
             }
+            // For an ended conflict whose dump lastDay falls before the end,
+            // cap the synthetic "latest" key at the conflict's end day so the
+            // day-tier graph loop below cannot emit a graphDataByDay entry
+            // past the conflict end (which would push the published per-
+            // coalition day range out to the current day).
             long nextDay = TimeUtil.getDayFromTurn(TimeUtil.getTurn() + 11);
+            if (turnEnd != Long.MAX_VALUE) {
+                long endDayCap = TimeUtil.getDayFromTurn(turnEnd + 11);
+                if (nextDay > endDayCap) nextDay = endDayCap;
+            }
             nationsByDay.put(nextDay, latest);
         } else {
             latest = nationsByDay.get(lastDay);
