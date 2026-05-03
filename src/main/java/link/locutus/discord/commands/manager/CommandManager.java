@@ -740,7 +740,7 @@ public class CommandManager {
 //        this.register(new NAPViolations());
 //        this.register(new NAPDown()); // Outdated
         this.register(new CounterStats());
-        this.register(new FindSpyOp());
+//        this.register(new FindSpyOp());
         this.register(new FindOffshore());
         this.register(new Disperse(bankWith));
         this.register(new ChannelCount());
