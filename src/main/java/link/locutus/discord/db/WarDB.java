@@ -15,7 +15,6 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -90,7 +89,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -119,6 +117,10 @@ public class WarDB extends DBMainV2 {
     private final Int2ObjectOpenHashMap<Object> warsByNationId = new Int2ObjectOpenHashMap<>();
     private final Object warsByNationLock = new Object();
     private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
+
+    private static final int LEGACY_FIX_ATTACK_ID_1 = 24412523;
+    private static final int LEGACY_FIX_ATTACK_ID_2 = 24413762;
+    private static final int LEGACY_FIX_ATTACK_ID_3 = 24412909;
 
     private Supplier<ConflictManager> conflictManagerSupplier;
 
@@ -487,68 +489,6 @@ public class WarDB extends DBMainV2 {
         return attacks;
     }
 
-    public void testAttackSerializingTime() throws IOException {
-        Map<AttackType, Integer> countByType = new EnumMap<>(AttackType.class);
-        int num_attacks = 0;
-        int numErrors = 0;
-
-        AttackCursorFactory cursorManager = new AttackCursorFactory(this);
-
-        FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
-        long totalBytes = 0;
-
-        int max_attacks = 12695101;
-        int skipped = 0;
-        int notSkipped = 0;
-
-        long start = System.currentTimeMillis();
-        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2` ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
-            stmt.setFetchSize(2 << 16);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    num_attacks++;
-                    DBAttack legacy = createAttack(rs);
-                    AbstractCursor cursor = cursorManager.load(legacy, true);
-                    DBWar war = getWar(legacy.getWar_id());
-
-                    if ((num_attacks) % 100000 == 0) {
-                        // and print %
-                        Logg.text("Loaded " + num_attacks + " attacks | " + skipped + " skipped | " + MathMan.format((num_attacks) / (double) max_attacks * 100) + "%");
-                    }
-                    // serialize
-                    byte[] bytes = cursorManager.toBytes(cursor);
-                    // add byte length to count
-                    countByType.compute(legacy.getAttack_type(), (k, v) -> v == null ? bytes.length : v + bytes.length);
-                    totalBytes += bytes.length;
-                    if (bytes.length < 4) {
-                        throw new RuntimeException("bytes.length < 4 " + bytes.length + " | " + legacy.getAttack_type());
-                    }
-//                    // write
-//                    baos.write(bytes);
-//
-//                    // deserialize
-                    if (war == null) {
-                        skipped++;
-                        continue;
-                    }
-                    AbstractCursor cursor2 = cursorManager.load(war, bytes, true);
-                    notSkipped++;
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        long diff = System.currentTimeMillis() - start;
-        // print time, num and skipped
-        Logg.text("Took " + diff + "ms to load " + num_attacks + " attacks (" + skipped + " skipped). Total bytes: " + totalBytes);
-        // print total by type
-        for (Map.Entry<AttackType, Integer> entry : countByType.entrySet()) {
-            Logg.text(entry.getKey() + ": " + entry.getValue());
-        }
-
-    }
-
     private void validateAttack(DBWar war, DBAttack legacy, AbstractCursor cursor) {
         // remove this later
         if (legacy.getLootPercent() > 1) {
@@ -732,64 +672,6 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public boolean importLegacyAttacks() {
-        try {
-            // if attacks2 does not exist, return
-            if (!tableExists("attacks2")) {
-                return false;
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
-        // load attacks
-        // convert to attack cursor
-        AttackCursorFactory cursorManager = new AttackCursorFactory(this);
-        List<AbstractCursor> attacks = new ArrayList<>();
-        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2` ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
-            stmt.setFetchSize(2 << 16);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBAttack legacy = createAttack(rs);
-                    AbstractCursor cursor = cursorManager.load(legacy, true);
-                    attacks.add(cursor);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        String query = "INSERT OR IGNORE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)";
-        executeBatch(attacks, query, new ThrowingBiConsumer<AbstractCursor, PreparedStatement>() {
-            @Override
-            public void acceptThrows(AbstractCursor attack, PreparedStatement stmt) throws SQLException {
-                stmt.setInt(1, attack.getWar_attack_id());
-                stmt.setInt(2, attack.getWar_id());
-                stmt.setInt(3, attack.getAttacker_id());
-                stmt.setInt(4, attack.getDefender_id());
-                stmt.setLong(5, attack.getDate());
-                byte[] data = cursorManager.toBytes(attack);
-                stmt.setBytes(6, data);
-            }
-        });
-
-        // if table sizes match, drop attacks2
-        int countRows = 0;
-        try (PreparedStatement stmt = getConnection().prepareStatement("SELECT COUNT(*) FROM `attacks3`")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    countRows = rs.getInt(1);
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        if (countRows >= attacks.size() && countRows > 0) {
-            executeStmt("DROP TABLE `attacks2`");
-        }
-        return true;
-    }
-
     private void setWar(DBWar war) {
         synchronized (warsByAllianceId) {
             if (war.getAttacker_aa() != 0)
@@ -848,9 +730,11 @@ public class WarDB extends DBMainV2 {
     public WarDB load() {
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
-            if (!importLegacyAttacks()) {
-                reserializeAttacks5();
+            System.out.println("Importing legacy attacks...");
+            if (!importLegacyAttacks("database/war_legacy.db", false, true)) {
+                // reserializeAttacks5();
             }
+            System.out.println("Done importing legacy attacks");
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
 
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
@@ -1419,6 +1303,187 @@ public class WarDB extends DBMainV2 {
         return getWarsForNationOrAlliance(null, null, filter);
     }
 
+    public boolean importLegacyAttacks(String dbFilePath, boolean dropAttacks2, boolean overwriteExisting) {
+        final boolean useExternalDb = dbFilePath != null && !dbFilePath.isBlank();
+        final int batchLimit = 2 << 16;
+
+        Connection sourceConnection;
+        boolean closeSourceConnection = false;
+        try {
+            if (useExternalDb) {
+                File extFile = new File(dbFilePath);
+                if (!extFile.exists()) {
+                    throw new IllegalArgumentException("File does not exist: " + dbFilePath);
+                }
+                Database sourceDb = Database.connect(extFile);
+                sourceConnection = sourceDb.getConnection();
+                closeSourceConnection = true;
+                if (!overwriteExisting && !tableExists(sourceConnection, "attacks2")) {
+                    return false;
+                }
+            } else {
+                sourceConnection = getConnection();
+                if (!overwriteExisting && !tableExists("attacks2")) {
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        AttackCursorFactory cursorManager = new AttackCursorFactory(this);
+        String insertSql = overwriteExisting
+                ? "INSERT OR REPLACE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)"
+                : "INSERT OR IGNORE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)";
+
+        Connection targetConnection = getConnection();
+        boolean originalAutoCommit = true;
+        int imported = 0;
+        int fixed = 0;
+        try {
+            originalAutoCommit = targetConnection.getAutoCommit();
+            targetConnection.setAutoCommit(false);
+
+            try (PreparedStatement sourceStmt = sourceConnection.prepareStatement("select * FROM `attacks2` ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                 PreparedStatement insertStmt = targetConnection.prepareStatement(insertSql)) {
+                sourceStmt.setFetchSize(batchLimit);
+                try (ResultSet rs = sourceStmt.executeQuery()) {
+                    int batched = 0;
+                    while (rs.next()) {
+                        DBAttack legacy = createAttack(rs);
+                        AbstractCursor cursor = cursorManager.load(this, legacy, true);
+                        if (applyLegacyAttackFix(cursor.getWar_attack_id(), cursor)) {
+                            fixed++;
+                        }
+
+                        insertStmt.setInt(1, cursor.getWar_attack_id());
+                        insertStmt.setInt(2, cursor.getWar_id());
+                        insertStmt.setInt(3, cursor.getAttacker_id());
+                        insertStmt.setInt(4, cursor.getDefender_id());
+                        insertStmt.setLong(5, cursor.getDate());
+                        insertStmt.setBytes(6, cursorManager.toBytes(cursor));
+                        insertStmt.addBatch();
+
+                        batched++;
+                        imported++;
+                        if (batched >= batchLimit) {
+                            insertStmt.executeBatch();
+                            targetConnection.commit();
+                            batched = 0;
+                        }
+                    }
+
+                    if (batched > 0) {
+                        insertStmt.executeBatch();
+                        targetConnection.commit();
+                    }
+                }
+            }
+
+            if (dropAttacks2) {
+                try (Statement stmt = sourceConnection.createStatement()) {
+                    stmt.execute("DROP TABLE `attacks2`");
+                }
+            }
+        } catch (SQLException e) {
+            try {
+                targetConnection.rollback();
+            } catch (SQLException ignore) {
+            }
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                targetConnection.setAutoCommit(originalAutoCommit);
+            } catch (SQLException ignore) {
+            }
+            if (closeSourceConnection) {
+                try {
+                    sourceConnection.close();
+                } catch (SQLException ignore) {
+                }
+            }
+        }
+
+        if (fixed > 0) {
+            Logg.text("Applied " + fixed + " inline legacy attack fixes during import");
+        }
+        if (imported > 0) {
+            Logg.text("Imported " + imported + " legacy attacks from attacks2");
+        }
+        return true;
+    }
+
+    private boolean tableExists(Connection conn, String tableName) throws SQLException {
+        try (ResultSet tables = conn.getMetaData().getTables(null, null, tableName, null)) {
+            while (tables.next()) {
+                String existing = tables.getString("TABLE_NAME");
+                if (existing != null && existing.equalsIgnoreCase(tableName)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private boolean shouldApplyLegacyAttackFix(int attackId) {
+        return switch (attackId) {
+            case LEGACY_FIX_ATTACK_ID_1, LEGACY_FIX_ATTACK_ID_2, LEGACY_FIX_ATTACK_ID_3 -> true;
+            default -> false;
+        };
+    }
+
+    private boolean applyLegacyAttackFix(int attackId, AbstractCursor attack) {
+        switch (attackId) {
+            case LEGACY_FIX_ATTACK_ID_1:
+                return setLoot(attack, new double[]{
+                        14_778_120_852.20,
+                        11_159_408.43,
+                        110_354.05,
+                        122_216.34,
+                        191_876.88,
+                        124_750.57,
+                        143_982.64,
+                        117_833.70,
+                        172_996.36,
+                        221_376.84,
+                        231_940.75,
+                        359_765.25
+                });
+            case LEGACY_FIX_ATTACK_ID_2:
+                return setLoot(attack, new double[]{
+                        738_906_042.61,
+                        557_970.42,
+                        5_517.70,
+                        6_110.82,
+                        9_593.84,
+                        6_237.53,
+                        7_199.13,
+                        5_891.69,
+                        8_649.82,
+                        11_068.84,
+                        11_597.04,
+                        17_988.26
+                });
+            case LEGACY_FIX_ATTACK_ID_3:
+                return setLoot(attack, new double[]{
+                        701_960_740.48,
+                        530_071.90,
+                        5_241.82,
+                        5_805.28,
+                        9_114.15,
+                        5_925.65,
+                        6_839.18,
+                        5_597.10,
+                        8_217.33,
+                        10_515.40,
+                        11_017.19,
+                        17_088.85
+                });
+            default:
+                return false;
+        }
+    }
+
     public void loadNukeDates() {
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(12);
 
@@ -1428,7 +1493,7 @@ public class WarDB extends DBMainV2 {
                 attackIds.add(attack.getWar_attack_id());
             }
         });
-        if (attackIds.isEmpty()) return;//no nule data?s
+        if (attackIds.isEmpty()) return;//no nuke data?
 
         for (int i = 0; i < attackIds.size(); i += 500) {
             List<Integer> subList = attackIds.subList(i, Math.min(i + 500, attackIds.size()));
@@ -2121,9 +2186,10 @@ public class WarDB extends DBMainV2 {
         ObjectOpenHashSet<DBWar> activeWarsById = activeWars.getActiveWarsById();
 
         // Find deleted wars
+        DBWar.DBWarKey warKey = new DBWar.DBWarKey(0);
         for (int id = minId; id <= maxId; id++) {
             if (fetchedWarIds.contains(id)) continue;
-            DBWar war = activeWarsById.get(new DBWar.DBWarKey(id));
+            DBWar war = activeWarsById.get(warKey.set(id));
             if (war == null) continue;
 
             DBWar newWar = new DBWar(war);
@@ -2676,8 +2742,9 @@ public class WarDB extends DBMainV2 {
     public Set<DBWar> getWarsById(Set<Integer> warIds) {
         Set<DBWar> result = new ObjectOpenHashSet<>();
         synchronized (warsById) {
+            DBWar.DBWarKey warKey = new DBWar.DBWarKey(0);
             for (Integer id : warIds) {
-                DBWar war = warsById.get(new DBWar.DBWarKey(id));
+                DBWar war = warsById.get(warKey.set(id));
                 if (war != null) result.add(war);
             }
         }
@@ -2976,7 +3043,7 @@ public class WarDB extends DBMainV2 {
                     } else {
                         attacksv2 = Locutus.imp().getPnwApiV2().getWarAttacksByMinWarAttackId(maxId).getWarAttacksContainers();
                     }
-                    newAttacks = attacksv2.stream().map(DBAttack::new).map(f -> factory.load(f, true)).collect(Collectors.toList());
+                    newAttacks = attacksv2.stream().map(DBAttack::new).map(f -> factory.load(this, f, true)).collect(Collectors.toList());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -3118,7 +3185,7 @@ public class WarDB extends DBMainV2 {
         } else {
             whereClause = "";
         }
-        String query = "SELECT war_id, data FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
+        String query = "SELECT war_id, data FROM `attacks3` " + whereClause + " ORDER BY `id` ASC"; // id
 
         IntArrayList warIds = new IntArrayList();
         List<byte[]> attacks = new ObjectArrayList<>();
@@ -3126,10 +3193,21 @@ public class WarDB extends DBMainV2 {
 
         try (PreparedStatement stmt = prepareQuery(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
+                DBWar.DBWarKey warKey = new DBWar.DBWarKey(0);
                 while (rs.next()) {
+                    // int attackId = rs.getInt(1);
                     int warId = rs.getInt(1);
-                    if (!warsById.contains(new DBWar.DBWarKey(warId))) continue;
+                    if (!warsById.contains(warKey.set(warId))) continue;
                     byte[] bytes = rs.getBytes(2);
+                    // if (shouldApplyLegacyAttackFix(attackId)) {
+                    //     DBWar war = getWar(warId);
+                    //     if (war != null) {
+                    //         AbstractCursor cursor = attackCursorFactory.load(war, bytes, true);
+                    //         if (fixAttacks && applyLegacyAttackFix(attackId, cursor)) {
+                    //             bytes = attackCursorFactory.toBytes(cursor);
+                    //         }
+                    //     }
+                    // }
                     warIds.add(warId);
                     attacks.add(bytes);
                     numAttacksByWarId.addTo(warId, 1);
@@ -3146,92 +3224,14 @@ public class WarDB extends DBMainV2 {
             attacksByWarId2.computeIfAbsent(warId, f -> new ObjectArrayList<>(size)).add(data);
         }
         Logg.text("Loaded " + attacks.size() + " attacks " + attacksByWarId2.containsKey(2114621));
-        // fixAttacks();
     }
 
-    private void fixAttack(int attackId, Consumer<AbstractCursor> onEach) {
-        Set<AbstractCursor> attacks = getAttacksById(Set.of(attackId));
-        if (attacks.isEmpty()) {
-            System.out.println("Attack " + attackId + " not found for fixing");
-            return;
-        }
-        AbstractCursor attack = attacks.iterator().next();
-        onEach.accept(attack);
-        saveAttacksDb(List.of(AttackEntry.of(attack, attackCursorFactory)));
-        System.out.println("Fixed attack " + attackId);
-        // push to in memory as well
-        synchronized (attacksByWarId2) {
-            List<byte[]> attackData = attacksByWarId2.get(attack.getWar_id());
-            if (attackData != null) {
-                for (int i = 0; i < attackData.size(); i++) {
-                    byte[] data = attackData.get(i);
-                    int id = attackCursorFactory.getId(data);
-                    if (id == attackId) {
-                        attackData.set(i, attackCursorFactory.toBytes(attack));
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    private void fixAttacks() {
-        fixAttack(24412523, f -> {
-            double[] addLoot = ResourceType.getBuffer();
-            addLoot[ResourceType.MONEY.ordinal()] = 14_778_120_852.20;
-            addLoot[ResourceType.FOOD.ordinal()] = 11_159_408.43;
-            addLoot[ResourceType.COAL.ordinal()] = 110_354.05;
-            addLoot[ResourceType.OIL.ordinal()] = 122_216.34;
-            addLoot[ResourceType.URANIUM.ordinal()] = 191_876.88;
-            addLoot[ResourceType.LEAD.ordinal()] = 124_750.57;
-            addLoot[ResourceType.IRON.ordinal()] = 143_982.64;
-            addLoot[ResourceType.BAUXITE.ordinal()] = 117_833.70;
-            addLoot[ResourceType.GASOLINE.ordinal()] = 172_996.36;
-            addLoot[ResourceType.MUNITIONS.ordinal()] = 221_376.84;
-            addLoot[ResourceType.STEEL.ordinal()] = 231_940.75;
-            addLoot[ResourceType.ALUMINUM.ordinal()] = 359_765.25;
-            setLoot(f, addLoot);
-        });
-        fixAttack(24413762, f -> {
-            double[] addLoot = ResourceType.getBuffer();
-            addLoot[ResourceType.MONEY.ordinal()] = 738_906_042.61;
-            addLoot[ResourceType.FOOD.ordinal()] = 557_970.42;
-            addLoot[ResourceType.COAL.ordinal()] = 5_517.70;
-            addLoot[ResourceType.OIL.ordinal()] = 6_110.82;
-            addLoot[ResourceType.URANIUM.ordinal()] = 9_593.84;
-            addLoot[ResourceType.LEAD.ordinal()] = 6_237.53;
-            addLoot[ResourceType.IRON.ordinal()] = 7_199.13;
-            addLoot[ResourceType.BAUXITE.ordinal()] = 5_891.69;
-            addLoot[ResourceType.GASOLINE.ordinal()] = 8_649.82;
-            addLoot[ResourceType.MUNITIONS.ordinal()] = 11_068.84;
-            addLoot[ResourceType.STEEL.ordinal()] = 11_597.04;
-            addLoot[ResourceType.ALUMINUM.ordinal()] = 17_988.26;
-            setLoot(f, addLoot);
-        });
-        fixAttack(24412909, f -> {
-            double[] addLoot = ResourceType.getBuffer();
-            addLoot[ResourceType.MONEY.ordinal()] = 701_960_740.48;
-            addLoot[ResourceType.FOOD.ordinal()] = 530_071.90;
-            addLoot[ResourceType.COAL.ordinal()] = 5_241.82;
-            addLoot[ResourceType.OIL.ordinal()] = 5_805.28;
-            addLoot[ResourceType.URANIUM.ordinal()] = 9_114.15;
-            addLoot[ResourceType.LEAD.ordinal()] = 5_925.65;
-            addLoot[ResourceType.IRON.ordinal()] = 6_839.18;
-            addLoot[ResourceType.BAUXITE.ordinal()] = 5_597.10;
-            addLoot[ResourceType.GASOLINE.ordinal()] = 8_217.33;
-            addLoot[ResourceType.MUNITIONS.ordinal()] = 10_515.40;
-            addLoot[ResourceType.STEEL.ordinal()] = 11_017.19;
-            addLoot[ResourceType.ALUMINUM.ordinal()] = 17_088.85;
-            setLoot(f, addLoot);
-        });
-    }
-
-    private void setLoot(AbstractCursor attack, double[] loot) {
+    private boolean setLoot(AbstractCursor attack, double[] loot) {
         if (attack instanceof ALootCursor aLoot && aLoot.looted != null) {
             aLoot.looted = loot;
-            System.out.println("Added loot to A_LOOT attack " + attack.getWar_attack_id() + ": " + ResourceType.toString(loot));
+            return true;
         } else {
-            System.out.println("Unable to add loot to attack " + attack.getWar_attack_id() + " - " + attack.getClass().getSimpleName() + ": " + ResourceType.toString(loot));
+            return false;
         }
     }
 

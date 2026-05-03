@@ -296,9 +296,10 @@ public class ActiveWarHandler {
         synchronized (blockadeLock) {
             defenderToBlockader.clear();
             blockaderToDefender.clear();
+            DBWar.DBWarKey warKey = new DBWar.DBWarKey(0);
             builder.iterateAttacks((war, attack) -> {
                 if (attack.getAttack_type() != AttackType.NAVAL) return;
-                boolean isWarActive = activeWars2.contains(new DBWar.DBWarKey(attack.getWar_id()));
+                boolean isWarActive = activeWars2.contains(warKey.set(attack.getWar_id()));
 
                 if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
                     if (isWarActive) {

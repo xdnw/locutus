@@ -161,7 +161,7 @@ public class AttackCursorFactory {
         }
     }
 
-    public AbstractCursor load(DBAttack legacy, boolean create) {
+    public AbstractCursor load(WarDB db, DBAttack legacy, boolean create) {
         AttackType type = legacy.getAttack_type();
         AbstractCursor cursor = create ? create(type) : getCursor(type);
         if (cursor == null) {
@@ -175,7 +175,7 @@ public class AttackCursorFactory {
         }
         // date -> war date if negative
         if (legacy.getDate() < 0) {
-            DBWar war = legacy.getWar();
+            DBWar war = db.getWar(legacy.getWar_id());
             if (war != null) {
                 legacy.setDate(war.getDate());
             } else {

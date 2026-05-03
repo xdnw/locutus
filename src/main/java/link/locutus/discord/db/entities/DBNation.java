@@ -5966,6 +5966,7 @@ public abstract class DBNation implements NationOrAlliance {
                 return wars;
             }
             Set<DBWar>[] finalCopy = new Set[1];
+            DBWar.DBWarKey warKey = new DBWar.DBWarKey(0);
             Locutus.imp().getWarDb().iterateAttackList(wars, f -> f == AttackType.VICTORY || f == AttackType.PEACE,
                     f -> {
                         if (f.getDate() <= end) {
@@ -5974,7 +5975,7 @@ public abstract class DBNation implements NationOrAlliance {
                                 value = new ObjectOpenHashSet<>(wars);
                                 finalCopy[0] = value;
                             }
-                            value.remove(new DBWar.DBWarKey(f.getWar_id()));
+                            value.remove(warKey.set(f.getWar_id()));
                         }
                         return false;
                     }, (war, attacks) -> {
