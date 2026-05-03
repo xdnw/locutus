@@ -1,15 +1,18 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicAssetValue;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicEvaluationComponents;
+import link.locutus.discord.sim.StrategicObjective;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +89,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignment(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> assignment,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders
@@ -97,7 +100,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignment(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> assignment,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
@@ -107,7 +110,7 @@ final class PlannerConflictExecutor {
             return 0.0;
         }
         Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId =
-                PlannerLocalConflict.strategicRelevanceByNationId(attackers, defenders);
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
         PlannerLocalConflict conflict = PlannerLocalConflict.create(
                 overrides,
                 attackers,
@@ -127,7 +130,7 @@ final class PlannerConflictExecutor {
 
     static double scoreAssignment(
             PlannerLocalConflict conflict,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             PlannerConflictBundle.PlannerAssignmentView assignment
     ) {
@@ -150,7 +153,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -173,7 +176,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -182,7 +185,7 @@ final class PlannerConflictExecutor {
             Map<Long, Integer> warTypeOrdinalsByPair
     ) {
         Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId =
-                PlannerLocalConflict.strategicRelevanceByNationId(attackers, defenders);
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
         PlannerConflictBundle bundle = PlannerConflictBundle.extract(
                 currentAssignment,
                 candidateChange,
@@ -197,14 +200,23 @@ final class PlannerConflictExecutor {
                 attackerTeamId,
                 bundle,
                 strategicRelevanceByNationId,
-                externalStrategicValueByTeam(attackers, defenders, bundle, strategicRelevanceByNationId)
+                externalStrategicValueByTeam(
+                        tuning,
+                        overrides,
+                        currentAssignment,
+                        attackers,
+                        defenders,
+                        bundle,
+                        strategicRelevanceByNationId,
+                        warTypeOrdinalsByPair
+                )
         );
     }
 
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             PlannerAssignmentSession currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -227,7 +239,7 @@ final class PlannerConflictExecutor {
     static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             PlannerAssignmentSession currentAssignment,
             PlannerAssignmentChange candidateChange,
             Collection<DBNationSnapshot> attackers,
@@ -235,8 +247,32 @@ final class PlannerConflictExecutor {
             int attackerTeamId,
             Map<Long, Integer> warTypeOrdinalsByPair
     ) {
-        Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId =
-                PlannerLocalConflict.strategicRelevanceByNationId(attackers, defenders);
+        return scoreAssignmentDelta(
+                tuning,
+                overrides,
+                objective,
+                currentAssignment,
+                candidateChange,
+                attackers,
+                defenders,
+                attackerTeamId,
+                warTypeOrdinalsByPair,
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders)
+        );
+    }
+
+    static double scoreAssignmentDelta(
+            SimTuning tuning,
+            OverrideSet overrides,
+            StrategicObjective objective,
+            PlannerAssignmentSession currentAssignment,
+            PlannerAssignmentChange candidateChange,
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            int attackerTeamId,
+            Map<Long, Integer> warTypeOrdinalsByPair,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId
+    ) {
         PlannerConflictBundle bundle = PlannerConflictBundle.extract(
                 currentAssignment,
                 candidateChange,
@@ -251,18 +287,27 @@ final class PlannerConflictExecutor {
                 attackerTeamId,
                 bundle,
                 strategicRelevanceByNationId,
-                externalStrategicValueByTeam(attackers, defenders, bundle, strategicRelevanceByNationId)
+                externalStrategicValueByTeam(
+                        tuning,
+                        overrides,
+                        currentAssignment.toAssignmentMap(),
+                        attackers,
+                        defenders,
+                        bundle,
+                        strategicRelevanceByNationId,
+                        warTypeOrdinalsByPair
+                )
         );
     }
 
     private static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             PlannerConflictBundle bundle,
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
-            Map<Integer, Double> externalStrategicValueByTeam
+            ExternalStrategicContext externalStrategicContext
     ) {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.EXACT_ASSIGNMENT_DELTA)) {
             if (bundle.isEmpty()) {
@@ -278,7 +323,8 @@ final class PlannerConflictExecutor {
                     tuning,
                     PlannerTransitionSemantics.NONE,
                     strategicRelevanceByNationId,
-                        externalStrategicValueByTeam
+                    externalStrategicContext.valueByTeam(),
+                    externalStrategicContext.warControls()
             );
             PlannerConflictBundle.PlannerAssignmentView currentAssignment = bundle.currentAssignment();
             PlannerConflictBundle.PlannerAssignmentView candidateAssignment = bundle.candidateAssignment();
@@ -312,7 +358,7 @@ final class PlannerConflictExecutor {
 
     private static double scoreAssignmentFromCurrentState(
             PlannerLocalConflict conflict,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             PlannerConflictBundle.PlannerAssignmentView suffixAssignment
     ) {
@@ -351,7 +397,7 @@ final class PlannerConflictExecutor {
         if (assignment.isEmpty()) {
             return Map.of();
         }
-        LinkedHashMap<Integer, List<Integer>> ordered = new LinkedHashMap<>(assignment.size());
+        Map<Integer, List<Integer>> ordered = new Int2ObjectLinkedOpenHashMap<>(assignment.size());
         for (DBNationSnapshot attacker : attackers) {
             List<Integer> defenderIds = assignment.get(attacker.nationId());
             if (defenderIds != null && !defenderIds.isEmpty()) {
@@ -367,31 +413,149 @@ final class PlannerConflictExecutor {
         return ordered.isEmpty() ? Map.of() : ordered;
     }
 
-    private static Map<Integer, Double> externalStrategicValueByTeam(
+    private static ExternalStrategicContext externalStrategicValueByTeam(
+            SimTuning tuning,
+            OverrideSet overrides,
+            Map<Integer, List<Integer>> currentAssignment,
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
             PlannerConflictBundle bundle,
-            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
+            Map<Long, Integer> warTypeOrdinalsByPair
     ) {
         if ((attackers == null || attackers.isEmpty()) && (defenders == null || defenders.isEmpty())) {
-            return Map.of();
+            return ExternalStrategicContext.empty();
         }
-        Map<Integer, DBNationSnapshot> localById = new LinkedHashMap<>();
+        Map<Integer, DBNationSnapshot> localById = new Int2ObjectLinkedOpenHashMap<>();
         for (DBNationSnapshot snapshot : bundle.attackers()) {
             localById.put(snapshot.nationId(), snapshot);
         }
         for (DBNationSnapshot snapshot : bundle.defenders()) {
             localById.put(snapshot.nationId(), snapshot);
         }
-        Set<Integer> countedNationIds = new LinkedHashSet<>(localById.keySet());
-        LinkedHashMap<Integer, Double> totals = new LinkedHashMap<>();
+        Set<Integer> countedNationIds = new IntLinkedOpenHashSet(localById.keySet());
+        List<DBNationSnapshot> externalAttackers = externalSnapshots(attackers, countedNationIds);
+        List<DBNationSnapshot> externalDefenders = externalSnapshots(defenders, countedNationIds);
+        Map<Integer, List<Integer>> externalAssignment = externalAssignment(
+                currentAssignment,
+                externalAttackers,
+                externalDefenders
+        );
+        if (!externalAssignment.isEmpty()) {
+            return projectedExternalStrategicValueByTeam(
+                    tuning,
+                    overrides,
+                    externalAssignment,
+                    externalAttackers,
+                    externalDefenders,
+                    strategicRelevanceByNationId,
+                    warTypeOrdinalsByPair
+            );
+        }
+        Map<Integer, Double> totals = new Int2DoubleLinkedOpenHashMap();
         for (DBNationSnapshot snapshot : attackers) {
             accumulateExternalStrategicValue(countedNationIds, totals, snapshot, strategicRelevanceByNationId);
         }
         for (DBNationSnapshot snapshot : defenders) {
             accumulateExternalStrategicValue(countedNationIds, totals, snapshot, strategicRelevanceByNationId);
         }
-        return Map.copyOf(totals);
+        return new ExternalStrategicContext(Map.copyOf(totals), List.of());
+    }
+
+    private static List<DBNationSnapshot> externalSnapshots(
+            Collection<DBNationSnapshot> snapshots,
+            Set<Integer> localNationIds
+    ) {
+        if (snapshots == null || snapshots.isEmpty()) {
+            return List.of();
+        }
+        java.util.ArrayList<DBNationSnapshot> external = new java.util.ArrayList<>(snapshots.size());
+        for (DBNationSnapshot snapshot : snapshots) {
+            if (snapshot != null && !localNationIds.contains(snapshot.nationId())) {
+                external.add(snapshot);
+            }
+        }
+        return List.copyOf(external);
+    }
+
+    private static Map<Integer, List<Integer>> externalAssignment(
+            Map<Integer, List<Integer>> currentAssignment,
+            List<DBNationSnapshot> externalAttackers,
+            List<DBNationSnapshot> externalDefenders
+    ) {
+        if (currentAssignment == null || currentAssignment.isEmpty()
+                || externalAttackers.isEmpty()
+                || externalDefenders.isEmpty()) {
+            return Map.of();
+        }
+        Set<Integer> externalAttackerIds = new IntLinkedOpenHashSet();
+        for (DBNationSnapshot attacker : externalAttackers) {
+            externalAttackerIds.add(attacker.nationId());
+        }
+        Set<Integer> externalDefenderIds = new IntLinkedOpenHashSet();
+        for (DBNationSnapshot defender : externalDefenders) {
+            externalDefenderIds.add(defender.nationId());
+        }
+        Map<Integer, List<Integer>> filtered = new Int2ObjectLinkedOpenHashMap<>();
+        for (Map.Entry<Integer, List<Integer>> entry : currentAssignment.entrySet()) {
+            Integer attackerId = entry.getKey();
+            if (attackerId == null || !externalAttackerIds.contains(attackerId)) {
+                continue;
+            }
+            List<Integer> defenderIds = entry.getValue();
+            if (defenderIds == null || defenderIds.isEmpty()) {
+                continue;
+            }
+            IntArrayList keptDefenders = new IntArrayList(defenderIds.size());
+            for (Integer defenderId : defenderIds) {
+                if (defenderId != null && externalDefenderIds.contains(defenderId)) {
+                    keptDefenders.add(defenderId);
+                }
+            }
+            if (!keptDefenders.isEmpty()) {
+                filtered.put(attackerId, List.copyOf(keptDefenders));
+            }
+        }
+        return filtered.isEmpty() ? Map.of() : Map.copyOf(filtered);
+    }
+
+    private static ExternalStrategicContext projectedExternalStrategicValueByTeam(
+            SimTuning tuning,
+            OverrideSet overrides,
+            Map<Integer, List<Integer>> externalAssignment,
+            List<DBNationSnapshot> externalAttackers,
+            List<DBNationSnapshot> externalDefenders,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
+            Map<Long, Integer> warTypeOrdinalsByPair
+    ) {
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                overrides,
+                externalAttackers,
+                externalDefenders,
+                tuning,
+                PlannerTransitionSemantics.NONE,
+                strategicRelevanceByNationId
+        );
+        conflict.evaluateAssignmentOpenings(
+                orderedAssignmentView(externalAssignment, externalAttackers, warTypeOrdinalsByPair)
+        );
+        Map<Integer, Double> totals = new Int2DoubleLinkedOpenHashMap();
+        conflict.forEachNationStrategicValue((nationId, teamId, value) ->
+                totals.merge(teamId, value, Double::sum)
+        );
+        return new ExternalStrategicContext(
+                totals.isEmpty() ? Map.of() : Map.copyOf(totals),
+                conflict.externalWarControlsSnapshot()
+        );
+    }
+
+    private record ExternalStrategicContext(
+            Map<Integer, Double> valueByTeam,
+            List<PlannerLocalConflict.ExternalWarControl> warControls
+    ) {
+        static ExternalStrategicContext empty() {
+            return new ExternalStrategicContext(Map.of(), List.of());
+        }
     }
 
     private static void accumulateExternalStrategicValue(
@@ -405,7 +569,7 @@ final class PlannerConflictExecutor {
         }
         totals.merge(
                 snapshot.teamId(),
-                PlannerLocalConflict.strategicValue(
+                PlannerStrategicValue.strategicValue(
                         snapshot,
                         strategicRelevanceByNationId.getOrDefault(
                                 snapshot.nationId(),
@@ -419,7 +583,7 @@ final class PlannerConflictExecutor {
     static double evaluateDeclaredWar(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns
@@ -438,7 +602,7 @@ final class PlannerConflictExecutor {
     static double evaluateDeclaredWar(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns,
@@ -462,7 +626,7 @@ final class PlannerConflictExecutor {
     private static double evaluateDeclaredWarInternal(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns,
@@ -497,7 +661,7 @@ final class PlannerConflictExecutor {
     static DeclaredWarEvaluation evaluateDeclaredWarDetailed(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             int horizonTurns,
@@ -549,10 +713,10 @@ final class PlannerConflictExecutor {
         PlannerProjectedWar projectedWar = projectedWar(projection.activeWars(), attacker.nationId(), defender.nationId());
 
         double immediateHarm = policy.retainImmediateHarm()
-                ? strategicAssetValue(defender, attacker) - strategicAssetValue(projectedDefender, projectedAttacker)
+                ? marginalStrategicDamage(defender, projectedDefender, attacker, projectedWar, false)
                 : 0.0;
         double selfExposure = policy.retainSelfExposure()
-            ? strategicAssetValue(attacker, defender) - strategicAssetValue(projectedAttacker, projectedDefender)
+            ? marginalStrategicDamage(attacker, projectedAttacker, defender, projectedWar, true)
                 : 0.0;
         double resourceSwing = policy.retainResourceSwing()
                 ? projectedAttacker.resource(ResourceType.MONEY) - attacker.resource(ResourceType.MONEY)
@@ -591,23 +755,60 @@ final class PlannerConflictExecutor {
         return attacker.vmTurns() > 0 || defender.vmTurns() > 0 || defender.beigeTurns() > 0;
     }
 
-    private static double strategicAssetValue(DBNationSnapshot snapshot, DBNationSnapshot opponent) {
-        StrategicAssetValue.StrategicRelevance relevance = StrategicAssetValue.relevanceForWarRange(
-                snapshot.cities(),
-                snapshot.score(),
-                snapshot.activeOpponentNationIds().size(),
-                opponent == null ? 0 : 1,
-                index -> opponent == null ? 0d : opponent.score()
+    private static double marginalStrategicDamage(
+            DBNationSnapshot before,
+            DBNationSnapshot after,
+            DBNationSnapshot opponent,
+            PlannerProjectedWar projectedWar,
+            boolean subjectIsWarAttacker
+    ) {
+        double damage = PlannerStrategicValue.strategicValue(before, opponent)
+                - PlannerStrategicValue.strategicValue(after, opponent);
+        if (!(damage > 0d)) {
+            return 0d;
+        }
+        StrategicAssetValue.ActiveWarContext context = projectedWar == null
+                ? PlannerStrategicValue.activeWarContext(after)
+                : activeWarContext(projectedWar, subjectIsWarAttacker);
+        return damage * StrategicAssetValue.marginalActionSpaceMultiplier(context);
+    }
+
+    private static StrategicAssetValue.ActiveWarContext activeWarContext(
+            PlannerProjectedWar war,
+            boolean subjectIsWarAttacker
+    ) {
+        PlannerLocalConflict.ControlOwner ownOwner = subjectIsWarAttacker
+                ? PlannerLocalConflict.ControlOwner.ATTACKER
+                : PlannerLocalConflict.ControlOwner.DEFENDER;
+        PlannerLocalConflict.ControlOwner enemyOwner = subjectIsWarAttacker
+                ? PlannerLocalConflict.ControlOwner.DEFENDER
+                : PlannerLocalConflict.ControlOwner.ATTACKER;
+        int ownControls = projectedControlCount(war, ownOwner);
+        int enemyControls = projectedControlCount(war, enemyOwner);
+        return StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                1,
+                1.0d,
+                subjectIsWarAttacker ? war.attackerMaps() : war.defenderMaps(),
+                subjectIsWarAttacker ? war.defenderMaps() : war.attackerMaps(),
+                subjectIsWarAttacker ? war.attackerResistance() : war.defenderResistance(),
+                subjectIsWarAttacker ? war.defenderResistance() : war.attackerResistance(),
+                ownControls,
+                enemyControls
         );
-        return StrategicAssetValue.contextualMilitaryValue(
-                snapshot::unit,
-                snapshot::pendingBuysNextTurn,
-                snapshot::unitsBoughtToday,
-                snapshot::dailyBuyCap,
-                snapshot.researchBits(),
-                snapshot.hasActiveWars(),
-                relevance
-        ).totalValue();
+    }
+
+    private static int projectedControlCount(PlannerProjectedWar war, PlannerLocalConflict.ControlOwner owner) {
+        int count = 0;
+        if (war.groundControlOwner() == owner) {
+            count++;
+        }
+        if (war.airSuperiorityOwner() == owner) {
+            count++;
+        }
+        if (war.blockadeOwner() == owner) {
+            count++;
+        }
+        return count;
     }
 
     private static double controlLeverage(PlannerProjectedWar war) {
@@ -673,7 +874,7 @@ final class PlannerConflictExecutor {
             double resourceSwing,
             double controlLeverage,
             double futureWarLeverage
-    ) {
+    ) implements StrategicEvaluationComponents {
         static DeclaredWarEvaluation scoreOnly(double objectiveScore) {
             return new DeclaredWarEvaluation(objectiveScore, 0.0, 0.0, 0.0, 0.0, 0.0);
         }

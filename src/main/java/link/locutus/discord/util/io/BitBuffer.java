@@ -235,4 +235,7 @@ public class BitBuffer {
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
+    public int getOffset() {
+        return offset;
+    }
 }

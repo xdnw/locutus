@@ -1,14 +1,14 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,12 +26,12 @@ public final class ScheduledTargetPlanner {
     private final SimTuning tuning;
     private final TreatyProvider treatyProvider;
     private final OverrideSet overrides;
-    private final TeamScoreObjective objective;
+    private final StrategicObjective objective;
     private final SnapshotActivityProvider snapshotActivityProvider;
     private final PlannerTransitionSemantics transitionSemantics;
     private final CarryStateMode carryStateMode;
 
-    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective) {
+    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective) {
         this(
                 tuning,
                 treatyProvider,
@@ -43,7 +43,7 @@ public final class ScheduledTargetPlanner {
         );
     }
 
-    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective, SnapshotActivityProvider activityProvider) {
+    public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective, SnapshotActivityProvider activityProvider) {
         this(
                 tuning,
                 treatyProvider,
@@ -59,7 +59,7 @@ public final class ScheduledTargetPlanner {
             SimTuning tuning,
             TreatyProvider treatyProvider,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             SnapshotActivityProvider activityProvider,
             PlannerTransitionSemantics transitionSemantics
     ) {
@@ -70,7 +70,7 @@ public final class ScheduledTargetPlanner {
             SimTuning tuning,
             TreatyProvider treatyProvider,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             SnapshotActivityProvider activityProvider,
             PlannerTransitionSemantics transitionSemantics,
             CarryStateMode carryStateMode
@@ -117,7 +117,7 @@ public final class ScheduledTargetPlanner {
                 return new ScheduledTargetPlan(bucketSizeTurns, List.of(), List.of(), diagnostics);
             }
 
-            Map<Integer, DBNationSnapshot> seedById = new LinkedHashMap<>();
+            Map<Integer, DBNationSnapshot> seedById = new Int2ObjectLinkedOpenHashMap<>();
             List<DBNationSnapshot> attackerSeeds = new ArrayList<>(attackerList.size());
             for (ScheduledAttacker attacker : attackerList) {
                 attackerSeeds.add(attacker.attacker());
@@ -158,7 +158,7 @@ public final class ScheduledTargetPlanner {
 
             for (int bucketStart = minTurn; bucketStart < maxTurnExclusive; bucketStart += bucketSizeTurns) {
                 int bucketEndExclusive = Math.min(maxTurnExclusive, bucketStart + bucketSizeTurns);
-                Set<Integer> availableIds = new LinkedHashSet<>();
+                Set<Integer> availableIds = new IntLinkedOpenHashSet();
                 for (ScheduledAttacker attacker : attackerList) {
                     if (attacker.isAvailable(bucketStart, bucketEndExclusive)) {
                         availableIds.add(attacker.attacker().nationId());

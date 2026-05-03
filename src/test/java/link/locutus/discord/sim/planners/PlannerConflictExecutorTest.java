@@ -12,6 +12,7 @@ import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
@@ -1845,7 +1846,7 @@ class PlannerConflictExecutorTest {
                 }
 
                 @Override
-                public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
                         return metrics.immediateHarm()
                                 - metrics.selfExposure()
                                 + (4d * metrics.controlLeverage())

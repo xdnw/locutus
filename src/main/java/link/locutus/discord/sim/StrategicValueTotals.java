@@ -1,7 +1,7 @@
 package link.locutus.discord.sim;
 
 record StrategicValueTotals(double ownValue, double enemyValue) {
-    static StrategicValueTotals of(TeamScoreView view, int teamId) {
+    static StrategicValueTotals of(StrategicValueView view, int teamId) {
         double[] totals = new double[2];
         view.forEachNationStrategicValue((nationId, nationTeamId, value) -> {
             if (nationTeamId == teamId) {

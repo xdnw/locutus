@@ -12,7 +12,7 @@ import link.locutus.discord.sim.actions.SimAction;
  * Step-wise scoring is unsupported here (returns 0.0); use metrics-backed objectives once
  * SimMetrics is added in a later milestone.
  */
-public class DamageObjective implements TeamScoreObjective {
+public class DamageObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
@@ -20,20 +20,26 @@ public class DamageObjective implements TeamScoreObjective {
     }
 
     @Override
-    public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
         return metrics.immediateHarm() - metrics.selfExposure();
     }
 
     @Override
-    public double scoreTerminal(TeamScoreView view, int teamId) {
+    public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = totals.ownValue() - totals.enemyValue();
         if (view instanceof TeamWarControlView controlView) {
             score += controlView.controlScoreForTeam(teamId);
             score += controlView.activeWarStrategicScoreForTeam(teamId, 1.0d, 1.0d);
+            score += controlView.activeWarSlotDenialScoreForTeam(teamId);
             score += controlView.controlRegimeScoreForTeam(teamId);
         }
         return score;
+    }
+
+    @Override
+    public boolean usesWarSlotDenial() {
+        return true;
     }
 
     @Override

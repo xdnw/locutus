@@ -7,13 +7,13 @@ public enum BlitzObjective {
     CONTROL(new ControlObjective()),
     BALANCED(new BalancedBlitzObjective());
 
-    private final TeamScoreObjective objective;
+    private final StrategicObjective objective;
 
-    BlitzObjective(TeamScoreObjective objective) {
+    BlitzObjective(StrategicObjective objective) {
         this.objective = objective;
     }
 
-    public TeamScoreObjective objective() {
+    public StrategicObjective objective() {
         return objective;
     }
 

@@ -1,7 +1,8 @@
 package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicAssetValue;
+import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.Arrays;
 import java.util.List;
@@ -14,7 +15,7 @@ final class BlitzAssignmentRefiner {
     static Map<Integer, List<Integer>> refine(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             Map<Integer, List<Integer>> assignment,
             BlitzGeneratedCandidates candidates,
             Map<Long, Integer> warTypeOrdinalsByPair,
@@ -43,6 +44,8 @@ final class BlitzAssignmentRefiner {
         int[][] candidateDefenderSlotsByAttacker = candidateDefenderSlotsByAttacker(candidates, best);
         int attackerTeamId = attackers.isEmpty() ? 1 : attackers.get(0).teamId();
         RefinementAggregates aggregates = RefinementAggregates.fromAssignment(best);
+        Map<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId =
+                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
 
         int iteration = 0;
         while (iteration < maxIterations && System.currentTimeMillis() < deadline) {
@@ -122,7 +125,8 @@ final class BlitzAssignmentRefiner {
                                 attackers,
                                 defenders,
                                 attackerTeamId,
-                                warTypeOrdinalsByPair
+                                warTypeOrdinalsByPair,
+                                relevanceByNationId
                             );
                             if (exactDelta > 1e-9) {
                                 best.applySwap(
@@ -190,7 +194,8 @@ final class BlitzAssignmentRefiner {
                                 attackers,
                                 defenders,
                                 attackerTeamId,
-                                warTypeOrdinalsByPair
+                                warTypeOrdinalsByPair,
+                                relevanceByNationId
                             );
                             if (exactDelta > 1e-9) {
                                 best.applyMove(attackerSlot, assignedIndex, nextDefenderSlot);
@@ -243,7 +248,8 @@ final class BlitzAssignmentRefiner {
                             attackers,
                             defenders,
                             attackerTeamId,
-                            warTypeOrdinalsByPair
+                            warTypeOrdinalsByPair,
+                            relevanceByNationId
                         );
                         if (exactDelta > 1e-9) {
                             best.applyAdd(attackerSlot, defenderSlot);
@@ -283,7 +289,8 @@ final class BlitzAssignmentRefiner {
                             attackers,
                             defenders,
                             attackerTeamId,
-                            warTypeOrdinalsByPair
+                            warTypeOrdinalsByPair,
+                            relevanceByNationId
                         );
                         if (exactDelta > 1e-9) {
                             best.applyDrop(attackerSlot, assignedIndex);
@@ -308,13 +315,14 @@ final class BlitzAssignmentRefiner {
     private static double exactBundleDelta(
             SimTuning tuning,
             OverrideSet overrides,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             PlannerAssignmentSession currentAssignment,
             PlannerAssignmentChange candidateChange,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
             int attackerTeamId,
-            Map<Long, Integer> warTypeOrdinalsByPair
+            Map<Long, Integer> warTypeOrdinalsByPair,
+            Map<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId
     ) {
         return PlannerConflictExecutor.scoreAssignmentDelta(
             tuning,
@@ -325,7 +333,8 @@ final class BlitzAssignmentRefiner {
             attackers,
             defenders,
             attackerTeamId,
-            warTypeOrdinalsByPair
+            warTypeOrdinalsByPair,
+            relevanceByNationId
         );
     }
 

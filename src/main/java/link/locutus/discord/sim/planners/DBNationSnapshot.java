@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -17,7 +18,6 @@ import link.locutus.discord.sim.input.NationInit;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -448,7 +448,7 @@ public final class DBNationSnapshot {
         private SpecialistCityProfile[] citySpecialistProfiles = new SpecialistCityProfile[0];
         private byte resetHourUtc;
         private boolean resetHourUtcFallback;
-        private final Set<Integer> activeOpponentNationIds = new LinkedHashSet<>();
+        private final Set<Integer> activeOpponentNationIds = new IntOpenHashSet();
         private int policyCooldownTurnsRemaining;
         private int beigeTurns;
         private int vmTurns;

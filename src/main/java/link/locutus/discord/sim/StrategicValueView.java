@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Minimal score and value surface for planner-local evaluation.
+ * Minimal strategic value surface for planner-local evaluation.
  *
  * <p>Game score remains available for mechanics that need it, but objective terminal value is
  * supplied separately so score does not become a proxy for expected value.</p>
  */
-public interface TeamScoreView {
+public interface StrategicValueView {
     void forEachNation(NationScoreConsumer consumer);
 
     void forEachNationStrategicValue(NationValueConsumer consumer);
@@ -24,8 +24,8 @@ public interface TeamScoreView {
         void accept(int nationId, int teamId, double value);
     }
 
-    static TeamScoreView of(SimWorld world) {
-        return new TeamScoreView() {
+    static StrategicValueView of(SimWorld world) {
+        return new StrategicValueView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
                 for (SimNation nation : world.nations()) {
@@ -48,19 +48,27 @@ public interface TeamScoreView {
                             opponentScores.length,
                             index -> opponentScores[index]
                     );
-                    consumer.accept(
-                            nation.nationId(),
-                            nation.teamId(),
-                            StrategicAssetValue.contextualMilitaryValue(
-                                    nation::units,
-                                    nation::pendingBuys,
-                                    nation::unitsBoughtToday,
-                                    nation::dailyBuyCap,
-                                    nation.researchBits(),
-                                    nation.offSlotsUsed() > 0 || nation.defSlotsUsed() > 0,
-                                    relevance
-                            ).totalValue()
+                    StrategicAssetValue.ActiveWarContext activeWarContext = StrategicAssetValue.ActiveWarContext.fromSlots(
+                            nation.offSlotsUsed(),
+                            nation.maxOffSlots(),
+                            nation.defSlotsUsed(),
+                            nation.offSlotsUsed() + nation.defSlotsUsed()
                     );
+                    double militaryValue = StrategicAssetValue.contextualMilitaryValue(
+                            nation::units,
+                            nation::pendingBuys,
+                            nation::unitsBoughtToday,
+                            nation::dailyBuyCap,
+                            nation.researchBits(),
+                            activeWarContext,
+                            relevance
+                    ).totalValue();
+                    double infraValue = StrategicAssetValue.infrastructureValue(
+                            nation.cityInfra(),
+                            activeWarContext,
+                            relevance
+                    );
+                    consumer.accept(nation.nationId(), nation.teamId(), militaryValue + infraValue);
                 }
             }
 

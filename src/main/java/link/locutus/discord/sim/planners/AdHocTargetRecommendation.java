@@ -6,7 +6,7 @@ public record AdHocTargetRecommendation(
         double objectiveScore,
         double counterRisk,
         int horizonTurns,
-        ScoreSummary scoreSummary
+        ObjectiveValueSummary objectiveSummary
 ) {
     public AdHocTargetRecommendation(
             int attackerId,
@@ -15,6 +15,6 @@ public record AdHocTargetRecommendation(
             double counterRisk,
             int horizonTurns
     ) {
-        this(attackerId, defenderId, objectiveScore, counterRisk, horizonTurns, ScoreSummary.identical(objectiveScore));
+        this(attackerId, defenderId, objectiveScore, counterRisk, horizonTurns, ObjectiveValueSummary.identical(objectiveScore));
     }
 }

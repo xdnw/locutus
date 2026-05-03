@@ -1,9 +1,12 @@
 package link.locutus.discord.sim;
 
-public interface TeamWarControlView extends TeamScoreView {
+public interface TeamWarControlView extends StrategicValueView {
     void forEachWarControl(WarControlConsumer consumer);
 
     default void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
+    }
+
+    default void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
     }
 
     default double controlScoreForTeam(int teamId) {
@@ -30,6 +33,18 @@ public interface TeamWarControlView extends TeamScoreView {
                 score[0] += value;
             } else if (defenderTeamId == teamId) {
                 score[0] -= value;
+            }
+        });
+        return score[0];
+    }
+
+    default double activeWarSlotDenialScoreForTeam(int teamId) {
+        double[] score = new double[1];
+        forEachActiveWarSlotMetric((attackerTeamId, defenderTeamId, attackerOffensiveSlotCost, defenderDefensiveSlotDenial) -> {
+            if (attackerTeamId == teamId) {
+                score[0] += defenderDefensiveSlotDenial - attackerOffensiveSlotCost;
+            } else if (defenderTeamId == teamId) {
+                score[0] += attackerOffensiveSlotCost - defenderDefensiveSlotDenial;
             }
         });
         return score[0];
@@ -65,15 +80,13 @@ public interface TeamWarControlView extends TeamScoreView {
 
             int ownResistance = attackerTeamId == teamId ? attackerResistance : defenderResistance;
             int enemyResistance = attackerTeamId == teamId ? defenderResistance : attackerResistance;
-            double controlBalance = ownControls - enemyControls;
-            double resistanceBalance = (ownResistance - enemyResistance) / 40.0d;
-            double warSignal = (2.5d * controlBalance)
-                    + (2.0d * resistanceBalance)
-                    + (4.0d * strategicValueEdge);
-            if (controlBalance < 0.0d && resistanceBalance < 0.0d) {
-                warSignal *= 1.15d;
-            }
-            score[0] += Math.max(-18.0d, Math.min(18.0d, warSignal));
+            score[0] += StrategicAssetValue.controlRegimeScore(
+                    ownResistance,
+                    enemyResistance,
+                    ownControls,
+                    enemyControls,
+                    strategicValueEdge
+            );
         });
         return score[0];
     }
@@ -108,6 +121,16 @@ public interface TeamWarControlView extends TeamScoreView {
                 int defenderTeamId,
                 double targetPressure,
                 double futureWarLeverage
+        );
+    }
+
+    @FunctionalInterface
+    interface ActiveWarSlotMetricConsumer {
+        void accept(
+                int attackerTeamId,
+                int defenderTeamId,
+                double attackerOffensiveSlotCost,
+                double defenderDefensiveSlotDenial
         );
     }
 }

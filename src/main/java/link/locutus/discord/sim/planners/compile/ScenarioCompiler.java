@@ -24,8 +24,20 @@ public final class ScenarioCompiler {
             TreatyProvider treatyProvider,
             Map<Integer, Float> activityWeightsByNationId
     ) {
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of());
+    }
+
+    public CompiledScenario compile(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            OverrideSet overrides,
+            TreatyProvider treatyProvider,
+            Map<Integer, Float> activityWeightsByNationId,
+            Collection<CompiledActiveWar> activeWars
+    ) {
         List<DBNationSnapshot> attackerList = List.copyOf(attackers);
         List<DBNationSnapshot> defenderList = List.copyOf(defenders);
+        List<CompiledActiveWar> activeWarList = List.copyOf(activeWars == null ? List.of() : activeWars);
 
         int[] attackerNationIds = new int[attackerList.size()];
         int[] defenderNationIds = new int[defenderList.size()];
@@ -86,14 +98,21 @@ public final class ScenarioCompiler {
                 attackerList,
                 defenderList,
                 attackerIndexByNationId,
-                defenderIndexByNationId
+                defenderIndexByNationId,
+                activeWarList
             );
             CompiledAllianceGroups defenderAllianceGroups = compileDefenderAllianceGroups(defenderList);
-        int[][] relevantDefenderIndexesByAttacker = compileRelevantDefenderIndexes(attackerList, defenderIndexByNationId);
+        int[][] relevantDefenderIndexesByAttacker = compileRelevantDefenderIndexes(
+                attackerList,
+                defenderIndexByNationId,
+                attackerIndexByNationId,
+                activeWarList
+        );
 
         return new CompiledScenario(
                 attackerList,
                 defenderList,
+                activeWarList,
                 attackerNationIds,
                 defenderNationIds,
                 attackerScores,
@@ -229,7 +248,8 @@ public final class ScenarioCompiler {
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
             Int2IntOpenHashMap attackerIndexByNationId,
-            Int2IntOpenHashMap defenderIndexByNationId
+            Int2IntOpenHashMap defenderIndexByNationId,
+            List<CompiledActiveWar> activeWars
     ) {
         int wordsPerAttacker = (defenders.size() + Long.SIZE - 1) >>> 6;
         long[][] conflicts = new long[attackers.size()][wordsPerAttacker];
@@ -249,6 +269,18 @@ public final class ScenarioCompiler {
                 if (attackerIndex >= 0) {
                     setConflict(conflicts[attackerIndex], defenderIndex);
                 }
+            }
+        }
+        for (CompiledActiveWar war : activeWars) {
+            int attackerIndex = attackerIndexByNationId.get(war.attackerNationId());
+            int defenderIndex = defenderIndexByNationId.get(war.defenderNationId());
+            if (attackerIndex >= 0 && defenderIndex >= 0) {
+                setConflict(conflicts[attackerIndex], defenderIndex);
+            }
+            attackerIndex = attackerIndexByNationId.get(war.defenderNationId());
+            defenderIndex = defenderIndexByNationId.get(war.attackerNationId());
+            if (attackerIndex >= 0 && defenderIndex >= 0) {
+                setConflict(conflicts[attackerIndex], defenderIndex);
             }
         }
         return conflicts;
@@ -352,27 +384,51 @@ public final class ScenarioCompiler {
 
     private static int[][] compileRelevantDefenderIndexes(
             List<DBNationSnapshot> attackers,
-            Int2IntOpenHashMap defenderIndexByNationId
+            Int2IntOpenHashMap defenderIndexByNationId,
+            Int2IntOpenHashMap attackerIndexByNationId,
+            List<CompiledActiveWar> activeWars
     ) {
-        int[][] relevant = new int[attackers.size()][];
+        IntArrayList[] relevantLists = new IntArrayList[attackers.size()];
         for (int attackerIndex = 0; attackerIndex < attackers.size(); attackerIndex++) {
-            int[] indexes = new int[attackers.get(attackerIndex).activeOpponentNationIds().size()];
-            int count = 0;
+            IntArrayList indexes = new IntArrayList(attackers.get(attackerIndex).activeOpponentNationIds().size());
             for (int opponentNationId : attackers.get(attackerIndex).activeOpponentNationIds()) {
                 int defenderIndex = defenderIndexByNationId.get(opponentNationId);
-                if (defenderIndex >= 0) {
-                    indexes[count++] = defenderIndex;
+                if (defenderIndex >= 0 && !indexes.contains(defenderIndex)) {
+                    indexes.add(defenderIndex);
                 }
             }
-            if (count == indexes.length) {
-                relevant[attackerIndex] = indexes;
-            } else {
-                int[] trimmed = new int[count];
-                System.arraycopy(indexes, 0, trimmed, 0, count);
-                relevant[attackerIndex] = trimmed;
-            }
+            relevantLists[attackerIndex] = indexes;
+        }
+        for (CompiledActiveWar war : activeWars) {
+            addRelevantWarEndpoint(relevantLists, attackerIndexByNationId, defenderIndexByNationId,
+                    war.attackerNationId(), war.defenderNationId());
+            addRelevantWarEndpoint(relevantLists, attackerIndexByNationId, defenderIndexByNationId,
+                    war.defenderNationId(), war.attackerNationId());
+        }
+        int[][] relevant = new int[attackers.size()][];
+        for (int attackerIndex = 0; attackerIndex < attackers.size(); attackerIndex++) {
+            IntArrayList indexes = relevantLists[attackerIndex];
+            indexes.sort(null);
+            relevant[attackerIndex] = indexes.toIntArray();
         }
         return relevant;
+    }
+
+    private static void addRelevantWarEndpoint(
+            IntArrayList[] relevantLists,
+            Int2IntOpenHashMap attackerIndexByNationId,
+            Int2IntOpenHashMap defenderIndexByNationId,
+            int attackerNationId,
+            int defenderNationId
+    ) {
+        int attackerIndex = attackerIndexByNationId.get(attackerNationId);
+        int defenderIndex = defenderIndexByNationId.get(defenderNationId);
+        if (attackerIndex >= 0 && defenderIndex >= 0) {
+            IntArrayList indexes = relevantLists[attackerIndex];
+            if (!indexes.contains(defenderIndex)) {
+                indexes.add(defenderIndex);
+            }
+        }
     }
 
     private static final class CompiledAllianceGroups {

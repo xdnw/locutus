@@ -20,7 +20,6 @@ import link.locutus.discord.util.TimeUtil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -96,7 +95,7 @@ public final class CompositeBlitzActivityModel {
         }
 
         NationDB nationDb = Locutus.imp().getNationDB();
-        Set<Integer> nationIds = new LinkedHashSet<>(nations.size());
+        Set<Integer> nationIds = new IntOpenHashSet(Math.max(16, nations.size() * 2));
         Int2IntOpenHashMap allianceByNationId = new Int2IntOpenHashMap(nations.size());
         allianceByNationId.defaultReturnValue(0);
         for (DBNation nation : nations) {
@@ -213,7 +212,7 @@ public final class CompositeBlitzActivityModel {
         }
 
         if (attacks != null && !attacks.isEmpty()) {
-            Map<Integer, DBWar> warsById = new java.util.HashMap<>(Math.max(16, wars.size() * 2));
+            Int2ObjectOpenHashMap<DBWar> warsById = new Int2ObjectOpenHashMap<>(Math.max(16, wars.size() * 2));
             for (DBWar war : wars) {
                 warsById.put(war.warId, war);
             }

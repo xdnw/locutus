@@ -3,7 +3,7 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.OpeningMetricVector;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.MutableAttackResult;
@@ -29,13 +29,12 @@ final class OpeningRolloutSearch {
     void evaluate(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int actionBudget,
-            float viabilityProbe,
             OpeningEvaluator.EdgeEvaluation out
     ) {
         out.clear();
-        OpeningEvaluator.OpeningBaseline baseline = OpeningEvaluator.OpeningBaseline.from(attacker, defender, viabilityProbe);
+        OpeningEvaluator.OpeningBaseline baseline = OpeningEvaluator.OpeningBaseline.from(attacker, defender);
         int effectiveActionBudget = Math.max(1, Math.min(maxActionBudget, actionBudget));
 
         for (WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
@@ -48,7 +47,7 @@ final class OpeningRolloutSearch {
             DBNationSnapshot defender,
             OpeningEvaluator.OpeningBaseline baseline,
             WarType warType,
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int actionBudget,
             OpeningEvaluator.EdgeEvaluation out
     ) {
@@ -96,26 +95,40 @@ final class OpeningRolloutSearch {
             }
         }
 
-        if (firstAttackTypeId < 0 || !Float.isFinite(currentScore)) {
+        // Emit if the score is positive and beats whatever the best war type found so far.
+        // Primary admitted candidates may still have no improving attack over the declaration
+        // baseline; those keep a legal first attack while the cheap low-probe fallback lives in
+        // OpeningEvaluator, outside the full rollout path.
+        if (!Float.isFinite(currentScore) || currentScore <= 0f || currentScore <= out.score()) {
             return;
         }
-
-        if (currentScore > out.score()) {
-            out.set(
-                    currentScore,
-                    (byte) warType.ordinal(),
-                    firstAttackTypeId,
-                    (float) currentMetrics.immediateHarm(),
-                    (float) currentMetrics.selfExposure(),
-                    (float) currentMetrics.resourceSwing(),
-                    (float) currentMetrics.controlLeverage(),
-                    (float) currentMetrics.futureWarLeverage()
-            );
+        if (firstAttackTypeId < 0) {
+            // Zero-action baseline is positive but no improving attack was found.
+            // Find the first legal attack to recommend as the opening move.
+            for (AttackType type : OpeningEvaluator.OPENING_ATTACK_TYPES) {
+                if (OpeningEvaluator.isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
+                    firstAttackTypeId = (byte) type.ordinal();
+                    break;
+                }
+            }
+            if (firstAttackTypeId < 0) {
+                return; // no legal attacks at all — cannot declare
+            }
         }
+        out.set(
+                currentScore,
+                (byte) warType.ordinal(),
+                firstAttackTypeId,
+                (float) currentMetrics.immediateHarm(),
+                (float) currentMetrics.selfExposure(),
+                (float) currentMetrics.resourceSwing(),
+                (float) currentMetrics.controlLeverage(),
+                (float) currentMetrics.futureWarLeverage()
+        );
     }
 
     private float scoreObjective(
-            TeamScoreObjective objective,
+            StrategicObjective objective,
             int attackerTeamId,
             OpeningMetricVector metrics
     ) {

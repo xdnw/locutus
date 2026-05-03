@@ -1,17 +1,17 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.ScenarioActionPolicy;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -25,14 +25,14 @@ public final class AdHocTargetPlanner {
     private final SimTuning tuning;
     private final TreatyProvider treatyProvider;
     private final OverrideSet overrides;
-    private final TeamScoreObjective objective;
+    private final StrategicObjective objective;
     private final SnapshotActivityProvider snapshotActivityProvider;
 
-    public AdHocTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective) {
+    public AdHocTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective) {
         this(tuning, treatyProvider, overrides, objective, SnapshotActivityProvider.BASELINE);
     }
 
-    public AdHocTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, TeamScoreObjective objective, SnapshotActivityProvider activityProvider) {
+    public AdHocTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective, SnapshotActivityProvider activityProvider) {
         this.tuning = Objects.requireNonNull(tuning, "tuning");
         this.treatyProvider = Objects.requireNonNull(treatyProvider, "treatyProvider");
         this.overrides = Objects.requireNonNull(overrides, "overrides");
@@ -127,8 +127,8 @@ public final class AdHocTargetPlanner {
                 continue;
             }
             double weightedScore = evaluatedEdge.score() * attackerActivityWeight;
-            ScoreSummary scoreSummary = ScoreSummary.identical(weightedScore);
-            double score = scoreSummary.mean();
+            ObjectiveValueSummary objectiveSummary = ObjectiveValueSummary.identical(weightedScore);
+            double score = objectiveSummary.mean();
             if (!Double.isFinite(score)) {
                 continue;
             }
@@ -138,7 +138,7 @@ public final class AdHocTargetPlanner {
                     score,
                     compiledScenario.estimateAllianceCounterRisk(attackerIndex, defenderIndex),
                     horizonTurns,
-                    scoreSummary
+                    objectiveSummary
             ));
         }
 
@@ -207,7 +207,7 @@ public final class AdHocTargetPlanner {
                 attackerPolicy,
                 defenderPolicy
             );
-            ScoreSummary previewSummary = PlannerSimSupport.summarizeScores(tuning, sampleIndex -> {
+            ObjectiveValueSummary previewSummary = PlannerSimSupport.summarizeObjectiveValues(tuning, sampleIndex -> {
                 SimTuning scoringTuning = tuning.stateResolutionMode() == ResolutionMode.STOCHASTIC
                         ? PlannerSimSupport.sampleTuning(tuning, sampleIndex)
                         : tuning;
@@ -281,7 +281,7 @@ public final class AdHocTargetPlanner {
     }
 
     private static Map<Integer, DBNationSnapshot> snapshotById(DBNationSnapshot attacker, List<DBNationSnapshot> defenders) {
-        Map<Integer, DBNationSnapshot> byId = new LinkedHashMap<>(defenders.size() + 1);
+        Map<Integer, DBNationSnapshot> byId = new Int2ObjectLinkedOpenHashMap<>(defenders.size() + 1);
         byId.put(attacker.nationId(), attacker);
         for (DBNationSnapshot defender : defenders) {
             byId.put(defender.nationId(), defender);

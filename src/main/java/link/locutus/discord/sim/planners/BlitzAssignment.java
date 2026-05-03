@@ -24,7 +24,7 @@ public final class BlitzAssignment {
     private final double objectiveScore;
 
     /** Mean + percentile summary for the assignment score across sampled runs. */
-    private final ScoreSummary objectiveSummary;
+    private final ObjectiveValueSummary objectiveSummary;
 
     /** Pair-keyed first attack-type ordinal selected by the opening evaluator. */
     private final Map<Long, Integer> initialAttackTypeOrdinalsByPair;
@@ -33,14 +33,14 @@ public final class BlitzAssignment {
     private final Map<Long, Integer> initialWarTypeOrdinalsByPair;
 
     public BlitzAssignment(Map<Integer, List<Integer>> assignment, List<PlannerDiagnostic> diagnostics, double objectiveScore) {
-        this(assignment, diagnostics, objectiveScore, ScoreSummary.identical(objectiveScore));
+        this(assignment, diagnostics, objectiveScore, ObjectiveValueSummary.identical(objectiveScore));
     }
 
     public BlitzAssignment(
             Map<Integer, List<Integer>> assignment,
             List<PlannerDiagnostic> diagnostics,
             double objectiveScore,
-            ScoreSummary objectiveSummary
+            ObjectiveValueSummary objectiveSummary
     ) {
         this(assignment, diagnostics, objectiveScore, objectiveSummary, Map.of());
     }
@@ -49,7 +49,7 @@ public final class BlitzAssignment {
             Map<Integer, List<Integer>> assignment,
             List<PlannerDiagnostic> diagnostics,
             double objectiveScore,
-            ScoreSummary objectiveSummary,
+            ObjectiveValueSummary objectiveSummary,
             Map<Long, Integer> initialAttackTypeOrdinalsByPair
     ) {
         this(assignment, diagnostics, objectiveScore, objectiveSummary, Map.of(), initialAttackTypeOrdinalsByPair);
@@ -59,14 +59,14 @@ public final class BlitzAssignment {
             Map<Integer, List<Integer>> assignment,
             List<PlannerDiagnostic> diagnostics,
             double objectiveScore,
-            ScoreSummary objectiveSummary,
+            ObjectiveValueSummary objectiveSummary,
             Map<Long, Integer> initialWarTypeOrdinalsByPair,
             Map<Long, Integer> initialAttackTypeOrdinalsByPair
     ) {
         this.assignment = Collections.unmodifiableMap(assignment);
         this.diagnostics = Collections.unmodifiableList(diagnostics);
         this.objectiveScore = objectiveScore;
-        this.objectiveSummary = objectiveSummary == null ? ScoreSummary.identical(objectiveScore) : objectiveSummary;
+        this.objectiveSummary = objectiveSummary == null ? ObjectiveValueSummary.identical(objectiveScore) : objectiveSummary;
         this.initialWarTypeOrdinalsByPair = Collections.unmodifiableMap(initialWarTypeOrdinalsByPair == null ? Map.of() : initialWarTypeOrdinalsByPair);
         this.initialAttackTypeOrdinalsByPair = Collections.unmodifiableMap(initialAttackTypeOrdinalsByPair == null ? Map.of() : initialAttackTypeOrdinalsByPair);
     }
@@ -87,7 +87,7 @@ public final class BlitzAssignment {
     }
 
     /** Summary bands for the assignment score across sampled runs. */
-    public ScoreSummary objectiveSummary() {
+    public ObjectiveValueSummary objectiveSummary() {
         return objectiveSummary;
     }
 

@@ -1,7 +1,8 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,7 +57,7 @@ public record ScheduledTimingComparison(
             return List.of();
         }
 
-        Map<Integer, List<ScheduledBucketAssignment>> bucketsByAttacker = new LinkedHashMap<>();
+        Map<Integer, List<ScheduledBucketAssignment>> bucketsByAttacker = new Int2ObjectLinkedOpenHashMap<>();
         for (ScheduledBucketAssignment bucket : buckets) {
             for (int attackerId : bucket.eligibleAttackerIds()) {
                 bucketsByAttacker.computeIfAbsent(attackerId, ignored -> new ArrayList<>()).add(bucket);

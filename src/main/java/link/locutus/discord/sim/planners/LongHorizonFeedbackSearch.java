@@ -1,13 +1,15 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 final class LongHorizonFeedbackSearch {
+    static final int OVERCOUNTER_THRESHOLD = 2;
+
     private static final int MAX_SELECTIVE_RELIEF_VARIANTS = 6;
     private static final int MAX_FEEDBACK_VARIANTS = 4;
     private static final int MAX_FIXED_POINT_ITERATIONS = 4;
@@ -88,8 +90,7 @@ final class LongHorizonFeedbackSearch {
             LongHorizonAssignmentOptimizer.Candidate seed,
             int[] seedRealizedCounters,
             LongHorizonControlProjection seedProjection,
-            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext,
-            LongHorizonAssignmentOptimizer.EvaluationCache evaluationCache
+            LongHorizonCandidateEvaluator evaluator
     ) {
         if (seedRealizedCounters == null || seedRealizedCounters.length == 0) {
             return seed;
@@ -100,6 +101,7 @@ final class LongHorizonFeedbackSearch {
         LongHorizonAssignmentOptimizer.Candidate best = seed;
         LongHorizonAssignmentOptimizer.Candidate currentSeed = seed;
         int[] currentRealized = seedRealizedCounters.clone();
+        double bestObjective = evaluator.score(best, seedProjection);
         int variantsRemaining = MAX_FEEDBACK_VARIANTS;
         for (int iteration = 0; iteration < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0; iteration++) {
             List<Integer> overCountered = overCounteredAttackers(
@@ -130,7 +132,7 @@ final class LongHorizonFeedbackSearch {
             }
             variantsRemaining--;
 
-            LongHorizonControlProjection iterationProjection = LongHorizonControlProjection.create(
+            LongHorizonControlProjection iterationProjection = LongHorizonControlProjection.createScorerOnly(
                     currentEdges,
                     scenario,
                     adjustedCaps,
@@ -162,29 +164,18 @@ final class LongHorizonFeedbackSearch {
                     iterationResult.defenderCounts(),
                     iterationScore
             );
-            double iterationObjective = LongHorizonAssignmentOptimizer.scoreCandidate(
+            double iterationObjective = evaluator.score(
                     iterationCandidate,
-                    seedProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    seedProjection
             );
-            int[] nextRealized = LongHorizonAssignmentOptimizer.realizedCountersFor(
+            int[] nextRealized = evaluator.realizedCounters(
                     iterationCandidate,
-                    seedProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
+                    seedProjection
             );
-            boolean improvement = iterationObjective > LongHorizonAssignmentOptimizer.scoreCandidate(
-                    best,
-                    seedProjection,
-                    scenario,
-                    projectionScoringContext,
-                    evaluationCache
-            ) + LongHorizonAssignmentOptimizer.EPSILON;
+            boolean improvement = iterationObjective > bestObjective + LongHorizonAssignmentOptimizer.EPSILON;
             if (improvement) {
                 best = iterationCandidate;
+                bestObjective = iterationObjective;
             }
             if (!realizedChanged(currentRealized, nextRealized) && !improvement) {
                 break;
@@ -200,13 +191,14 @@ final class LongHorizonFeedbackSearch {
         if (fixedEdges.isEmpty()) {
             return counts;
         }
-        Map<Integer, Integer> attackerIndexByNationId = new LinkedHashMap<>(Math.max(16, attackerNationIds.length * 2));
+        Int2IntOpenHashMap attackerIndexByNationId = new Int2IntOpenHashMap(Math.max(16, attackerNationIds.length * 2));
+        attackerIndexByNationId.defaultReturnValue(-1);
         for (int attackerIndex = 0; attackerIndex < attackerNationIds.length; attackerIndex++) {
             attackerIndexByNationId.put(attackerNationIds[attackerIndex], attackerIndex);
         }
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
-            Integer attackerIndex = attackerIndexByNationId.get(fixedEdge.attackerNationId());
-            if (attackerIndex != null) {
+            int attackerIndex = attackerIndexByNationId.get(fixedEdge.attackerNationId());
+            if (attackerIndex >= 0) {
                 counts[attackerIndex]++;
             }
         }
@@ -219,7 +211,7 @@ final class LongHorizonFeedbackSearch {
             LongHorizonControlProjection terminalProjection,
             int[] realizedCounters
     ) {
-        List<Integer> order = new ArrayList<>();
+        List<Integer> order = new IntArrayList();
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
             if (attackerCounts[attackerIndex] <= Math.max(1, fixedCounts[attackerIndex])) {
                 continue;
@@ -257,9 +249,9 @@ final class LongHorizonFeedbackSearch {
     }
 
     private static List<Integer> overCounteredAttackers(int[] realizedCounters, int[] attackerCounts, int[] fixedCounts) {
-        List<Integer> overCountered = new ArrayList<>();
+        List<Integer> overCountered = new IntArrayList();
         for (int attackerIndex = 0; attackerIndex < realizedCounters.length; attackerIndex++) {
-            if (realizedCounters[attackerIndex] < LongHorizonAssignmentOptimizer.FEEDBACK_OVERCOUNTER_THRESHOLD) {
+            if (realizedCounters[attackerIndex] < OVERCOUNTER_THRESHOLD) {
                 continue;
             }
             int currentCount = attackerCounts[attackerIndex];

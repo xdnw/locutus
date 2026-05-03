@@ -1,20 +1,20 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 final class PlannerAutonomousCounterPlanner {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
-    private static final TeamScoreObjective DEFAULT_OBJECTIVE = new DamageObjective();
+    private static final StrategicObjective DEFAULT_OBJECTIVE = new DamageObjective();
 
     private PlannerAutonomousCounterPlanner() {
     }
@@ -23,7 +23,7 @@ final class PlannerAutonomousCounterPlanner {
             List<DBNationSnapshot> declarerSnapshots,
             List<DBNationSnapshot> targetSnapshots,
             SimTuning tuning,
-            TeamScoreObjective counterObjective,
+            StrategicObjective counterObjective,
             int remainingTurns
     ) {
         if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
@@ -66,7 +66,8 @@ final class PlannerAutonomousCounterPlanner {
     }
 
     private static TreatyProvider sameTeamTreaty(List<DBNationSnapshot> declarers, List<DBNationSnapshot> targets) {
-        Map<Integer, Integer> teamByNationId = new LinkedHashMap<>(Math.max(16, (declarers.size() + targets.size()) * 2));
+        Int2IntOpenHashMap teamByNationId = new Int2IntOpenHashMap(Math.max(16, (declarers.size() + targets.size()) * 2));
+        teamByNationId.defaultReturnValue(Integer.MIN_VALUE);
         for (DBNationSnapshot declarer : declarers) {
             teamByNationId.put(declarer.nationId(), declarer.teamId());
         }
@@ -74,9 +75,9 @@ final class PlannerAutonomousCounterPlanner {
             teamByNationId.put(target.nationId(), target.teamId());
         }
         return (declarerId, targetId) -> {
-            Integer declarerTeam = teamByNationId.get(declarerId);
-            Integer targetTeam = teamByNationId.get(targetId);
-            return declarerTeam != null && declarerTeam.equals(targetTeam);
+            int declarerTeam = teamByNationId.get(declarerId);
+            int targetTeam = teamByNationId.get(targetId);
+            return declarerTeam != Integer.MIN_VALUE && declarerTeam == targetTeam;
         };
     }
 

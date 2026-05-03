@@ -155,7 +155,7 @@ public class DBWar {
     }
 
     public static final class DBWarKey {
-        public final int id;
+        private int id;
         public DBWarKey(int id) {
             this.id = id;
         }
@@ -168,6 +168,11 @@ public class DBWar {
         @Override
         public int hashCode() {
             return id;
+        }
+
+        public DBWarKey set(int id) {
+            this.id = id;
+            return this;
         }
     }
 

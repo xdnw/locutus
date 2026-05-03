@@ -1,19 +1,20 @@
 package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.TeamScoreObjective;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,7 +25,7 @@ public final class PlannerReplayProjector {
     static final int NATION_MASK_UNIT_COUNTS = 0x2;
     static final int WAR_MASK_COMBAT_STATE = 0x1;
     static final int WAR_MASK_FLAGS = 0x2;
-    static final int TURN_META_BLOCK_SIZE = 12;
+    static final int TURN_META_BLOCK_SIZE = 13;
 
     private PlannerReplayProjector() {
     }
@@ -96,7 +97,7 @@ public final class PlannerReplayProjector {
         Map<Integer, List<Integer>> assignment,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int currentTurn,
         int horizonTurns
     ) {
@@ -128,7 +129,7 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int currentTurn,
         int horizonTurns
     ) {
@@ -160,13 +161,13 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int[] participantIds,
         int[] existingWarPairs,
         int currentTurn,
         int horizonTurns
     ) {
-    TeamScoreObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
+    StrategicObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
     PlannerLocalConflict conflict = PlannerLocalConflict.createWithActiveWars(
         overrides,
         nations,
@@ -195,7 +196,7 @@ public final class PlannerReplayProjector {
         Map<Integer, List<Integer>> assignment,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int horizonTurns
     ) {
     return capture(
@@ -219,7 +220,7 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int horizonTurns
     ) {
     return capture(
@@ -245,11 +246,11 @@ public final class PlannerReplayProjector {
         Map<Long, Integer> warTypeOrdinalsByPair,
         Collection<DBNationSnapshot> counterDeclarers,
         Collection<DBNationSnapshot> counterTargets,
-        TeamScoreObjective counterObjective,
+        StrategicObjective counterObjective,
         int horizonTurns
     ) {
     try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.REPLAY_CAPTURE)) {
-        TeamScoreObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
+        StrategicObjective effectiveCounterObjective = counterObjective == null ? new DamageObjective() : counterObjective;
         int turns = Math.max(1, horizonTurns);
         int startTurn = conflict.currentTurn();
         IntPredicate isAttackerNationId = attackerNationIdLookup(attackerNationIds);
@@ -273,6 +274,7 @@ public final class PlannerReplayProjector {
         IntArrayBuilder summaryAttackOutcomeCounts = new IntArrayBuilder();
         IntArrayBuilder summaryUnitLossCounts = new IntArrayBuilder();
         IntArrayBuilder summaryInfraLossCents = new IntArrayBuilder();
+        IntArrayBuilder summaryStrategicUnitLossCents = new IntArrayBuilder();
 
         PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "horizonTurns", turns);
         PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "nationBaseline", nationTracker.nationCount());
@@ -291,6 +293,7 @@ public final class PlannerReplayProjector {
         turnMetaLanes.add(summaryAttackOutcomeCounts.size());
         turnMetaLanes.add(summaryUnitLossCounts.size());
         turnMetaLanes.add(summaryInfraLossCents.size());
+        turnMetaLanes.add(summaryStrategicUnitLossCents.size());
 
         conflict.beginReplayTurnMetrics(isAttackerNationId);
         conflict.applyReplayTurn(
@@ -325,6 +328,7 @@ public final class PlannerReplayProjector {
         summaryAttackOutcomeCounts.addAll(metrics.summaryAttackOutcomeCounts());
         summaryUnitLossCounts.addAll(metrics.summaryUnitLossCounts());
         summaryInfraLossCents.addAll(metrics.summaryInfraLossCents());
+        summaryStrategicUnitLossCents.addAll(metrics.summaryStrategicUnitLossCents());
         }
 
         return new BlitzReplayTrace(
@@ -343,13 +347,14 @@ public final class PlannerReplayProjector {
             summaryWarTypeCounts.toArray(),
             summaryAttackOutcomeCounts.toArray(),
             summaryUnitLossCounts.toArray(),
-            summaryInfraLossCents.toArray()
+            summaryInfraLossCents.toArray(),
+            summaryStrategicUnitLossCents.toArray()
         );
     }
     }
 
     private static IntPredicate attackerNationIdLookup(int[] attackerNationIds) {
-        Set<Integer> ids = new HashSet<>(Math.max(16, attackerNationIds.length * 2));
+        IntOpenHashSet ids = new IntOpenHashSet(Math.max(16, attackerNationIds.length * 2));
         for (int attackerNationId : attackerNationIds) {
             ids.add(attackerNationId);
         }
@@ -493,8 +498,8 @@ public final class PlannerReplayProjector {
                 int[] participantIds,
                 int[] existingWarPairs
         ) {
-            Map<Long, WarSnapshot> previousWarsByPair = new HashMap<>();
-            Map<Long, Integer> activeWarIndexByPair = new HashMap<>();
+            Map<Long, WarSnapshot> previousWarsByPair = new Long2ObjectOpenHashMap<>();
+            Map<Long, Integer> activeWarIndexByPair = new Long2IntOpenHashMap();
             Int2IntOpenHashMap participantIndexByNationId = new Int2IntOpenHashMap(Math.max(16, participantIds.length * 2));
             participantIndexByNationId.defaultReturnValue(-1);
             for (int index = 0; index < participantIds.length; index++) {

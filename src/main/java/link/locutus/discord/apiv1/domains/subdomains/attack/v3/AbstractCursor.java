@@ -133,53 +133,6 @@ public abstract class AbstractCursor implements IAttack {
         return war_cached;
     }
 
-//    public Map<ResourceType, Double> getLosses2(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-//        double[] buffer = ResourceType.getBuffer();
-//        addLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings);
-//        return PW.resourcesToMap(buffer);
-//    }
-
-//    @Override
-//    public double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings, Function<Research, Integer> research) {
-//        if (units) {
-//            getUnitLossCost(buffer, attacker, research);
-//        }
-//        if (includeLoot) {
-//            double[] loot = getLoot();
-//            if (loot != null) {
-//                if (attacker) {
-//                    ResourceType.subtract(buffer, loot);
-//                } else {
-//                    ResourceType.add(buffer, loot);
-//                }
-//            }
-//            else if (getMoney_looted() != 0) {
-//                buffer[ResourceType.MONEY.ordinal()] += attacker ? -getMoney_looted() : getMoney_looted();
-//            }
-//        }
-//        if (!attacker) {
-//            if (infra && getInfra_destroyed_value() != 0) {
-//                buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
-//            }
-//        }
-//
-//        if (consumption) {
-//            double mun = attacker ? getAtt_mun_used() : getDef_mun_used();
-//            double gas = attacker ? getAtt_gas_used() : getDef_gas_used();
-//            if (mun > 0) {
-//                buffer[ResourceType.MUNITIONS.ordinal()] += mun;
-//            }
-//            if (gas > 0) {
-//                buffer[ResourceType.GASOLINE.ordinal()] += gas;
-//            }
-//        }
-//
-//        if (includeBuildings && !attacker) {
-//            buffer = getBuildingCost(buffer);
-//        }
-//        return buffer;
-//    }
-
     public abstract Map<Building, Integer> getBuildingsDestroyed();
 
     public abstract Set<Integer> getCityIdsDamaged();

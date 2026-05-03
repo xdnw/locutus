@@ -1,15 +1,15 @@
 package link.locutus.discord.sim;
 
 /**
- * Objective specialization that can score a planner-local team score surface.
+ * Objective specialization that can score planner-local strategic value surfaces.
  */
-public interface TeamScoreObjective extends Objective {
-    double scoreTerminal(TeamScoreView view, int teamId);
+public interface StrategicObjective extends Objective {
+    double scoreTerminal(StrategicValueView view, int teamId);
 
     /**
      * Scores a bounded opening rollout directly from its retained planner metrics.
      */
-    double scoreOpening(OpeningMetricVector metrics, int teamId);
+    double scoreOpening(StrategicEvaluationComponents metrics, int teamId);
 
     default CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
         return CandidateEdgeComponentPolicy.none();
@@ -25,8 +25,12 @@ public interface TeamScoreObjective extends Objective {
         return CandidateEdgeAdmissionPolicy.defaultPolicy();
     }
 
+    default boolean usesWarSlotDenial() {
+        return false;
+    }
+
     @Override
     default double scoreTerminal(SimWorld world, int teamId) {
-        return scoreTerminal(TeamScoreView.of(world), teamId);
+        return scoreTerminal(StrategicValueView.of(world), teamId);
     }
 }

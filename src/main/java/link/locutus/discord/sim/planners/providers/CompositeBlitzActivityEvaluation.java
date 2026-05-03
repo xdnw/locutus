@@ -1,5 +1,7 @@
 package link.locutus.discord.sim.planners.providers;
 
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -9,7 +11,6 @@ import link.locutus.discord.util.TimeUtil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,8 +69,8 @@ public record CompositeBlitzActivityEvaluation(List<NationRow> rows) {
                 options
         );
 
-        Map<Integer, DBWar> warsById = new LinkedHashMap<>();
-        Map<Integer, OutcomeAccumulator> accumulators = new LinkedHashMap<>();
+        Int2ObjectOpenHashMap<DBWar> warsById = new Int2ObjectOpenHashMap<>(Math.max(16, wars.size() * 2));
+        Int2ObjectOpenHashMap<OutcomeAccumulator> accumulators = new Int2ObjectOpenHashMap<>(Math.max(16, nationIds.size() * 2));
         for (DBWar war : wars) {
             warsById.put(war.warId, war);
             if (nationIds.contains(war.getAttacker_id())) {
@@ -77,7 +78,8 @@ public record CompositeBlitzActivityEvaluation(List<NationRow> rows) {
             }
         }
 
-        Map<Integer, Long> earliestActionTurnByWarId = new LinkedHashMap<>();
+        Int2LongOpenHashMap earliestActionTurnByWarId = new Int2LongOpenHashMap(Math.max(16, wars.size() * 2));
+        earliestActionTurnByWarId.defaultReturnValue(Long.MIN_VALUE);
         if (attacks != null) {
             for (AbstractCursor attack : attacks) {
                 if (!isObservedFirstAction(attack)) {
@@ -87,7 +89,12 @@ public record CompositeBlitzActivityEvaluation(List<NationRow> rows) {
                 if (war == null || !nationIds.contains(war.getAttacker_id()) || attack.getAttacker_id() != war.getAttacker_id()) {
                     continue;
                 }
-                earliestActionTurnByWarId.merge(attack.getWar_id(), TimeUtil.getTurn(attack.getDate()), Math::min);
+                int warId = attack.getWar_id();
+                long attackTurn = TimeUtil.getTurn(attack.getDate());
+                long current = earliestActionTurnByWarId.get(warId);
+                if (current == Long.MIN_VALUE || attackTurn < current) {
+                    earliestActionTurnByWarId.put(warId, attackTurn);
+                }
             }
         }
 
@@ -98,8 +105,8 @@ public record CompositeBlitzActivityEvaluation(List<NationRow> rows) {
                 if (war.getAttacker_id() != nationId) {
                     continue;
                 }
-                Long firstActionTurn = earliestActionTurnByWarId.get(war.warId);
-                if (firstActionTurn == null) {
+                long firstActionTurn = earliestActionTurnByWarId.get(war.warId);
+                if (firstActionTurn == Long.MIN_VALUE) {
                     continue;
                 }
                 accumulator.warsWithObservedFirstAction++;

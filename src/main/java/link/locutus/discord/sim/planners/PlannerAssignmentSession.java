@@ -1,9 +1,11 @@
 package link.locutus.discord.sim.planners;
 
-import java.util.ArrayList;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,8 +17,8 @@ final class PlannerAssignmentSession {
     private final int[] defenderNationIds;
     private final int[] attackerCaps;
     private final int[] defenderCaps;
-    private final Map<Integer, Integer> attackerSlotByNationId;
-    private final Map<Integer, Integer> defenderSlotByNationId;
+    private final Int2IntOpenHashMap attackerSlotByNationId;
+    private final Int2IntOpenHashMap defenderSlotByNationId;
     private final int[] attackerOffsets;
     private final int[] assignmentLengths;
     private final int[] assignedDefenderSlots;
@@ -30,8 +32,8 @@ final class PlannerAssignmentSession {
             int[] defenderNationIds,
             int[] attackerCaps,
             int[] defenderCaps,
-            Map<Integer, Integer> attackerSlotByNationId,
-            Map<Integer, Integer> defenderSlotByNationId,
+            Int2IntOpenHashMap attackerSlotByNationId,
+            Int2IntOpenHashMap defenderSlotByNationId,
             int[] attackerOffsets,
             int[] assignmentLengths,
             int[] assignedDefenderSlots,
@@ -78,8 +80,10 @@ final class PlannerAssignmentSession {
         int[] defenderNationIds = new int[defenderCount];
         int[] attackerCaps = new int[attackerCount];
         int[] defenderCaps = new int[defenderCount];
-        Map<Integer, Integer> attackerSlotByNationId = new HashMap<>(Math.max(16, attackerCount * 2));
-        Map<Integer, Integer> defenderSlotByNationId = new HashMap<>(Math.max(16, defenderCount * 2));
+        Int2IntOpenHashMap attackerSlotByNationId = new Int2IntOpenHashMap(Math.max(16, attackerCount * 2));
+        Int2IntOpenHashMap defenderSlotByNationId = new Int2IntOpenHashMap(Math.max(16, defenderCount * 2));
+        attackerSlotByNationId.defaultReturnValue(-1);
+        defenderSlotByNationId.defaultReturnValue(-1);
 
         int totalCapacity = 0;
         int maxAttackerCapacity = 0;
@@ -111,7 +115,7 @@ final class PlannerAssignmentSession {
         int[] assignedDefenderSlots = new int[totalCapacity];
         boolean[] lockedAssignments = new boolean[totalCapacity];
         int[] defenderAssignedCount = new int[defenderCount];
-        Map<Long, Integer> remainingLockedEdges = lockedEdgeCounts(lockedEdges);
+        Long2IntOpenHashMap remainingLockedEdges = lockedEdgeCounts(lockedEdges);
 
         for (int attackerSlot = 0; attackerSlot < attackerCount; attackerSlot++) {
             List<Integer> defenderIds = assignment.get(attackerNationIds[attackerSlot]);
@@ -121,13 +125,13 @@ final class PlannerAssignmentSession {
             int offset = attackerOffsets[attackerSlot];
             int length = 0;
             for (int defenderId : defenderIds) {
-                Integer defenderSlot = defenderSlotByNationId.get(defenderId);
-                if (defenderSlot == null) {
+                int defenderSlot = defenderSlotByNationId.get(defenderId);
+                if (defenderSlot < 0) {
                     continue;
                 }
                 assignedDefenderSlots[offset + length] = defenderSlot;
                 long pairKey = pairKey(attackerNationIds[attackerSlot], defenderId);
-                int lockedCount = remainingLockedEdges.getOrDefault(pairKey, 0);
+                int lockedCount = remainingLockedEdges.get(pairKey);
                 if (lockedCount > 0) {
                     lockedAssignments[offset + length] = true;
                     if (lockedCount == 1) {
@@ -357,7 +361,7 @@ final class PlannerAssignmentSession {
         if (attackerNationIds.length == 0) {
             return Map.of();
         }
-        LinkedHashMap<Integer, List<Integer>> assignment = new LinkedHashMap<>();
+        Int2ObjectLinkedOpenHashMap<List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
         for (int attackerSlot = 0; attackerSlot < attackerNationIds.length; attackerSlot++) {
             if (assignmentLengths[attackerSlot] == 0) {
                 continue;
@@ -371,7 +375,7 @@ final class PlannerAssignmentSession {
     }
 
     private List<Integer> defenderIdsForAttackerSlot(int attackerSlot) {
-        ArrayList<Integer> defenderIds = new ArrayList<>(assignmentLengths[attackerSlot]);
+        IntArrayList defenderIds = new IntArrayList(assignmentLengths[attackerSlot]);
         appendDefenderIds(attackerSlot, defenderIds);
         return List.copyOf(defenderIds);
     }
@@ -414,11 +418,11 @@ final class PlannerAssignmentSession {
         }
     }
 
-    private static Map<Long, Integer> lockedEdgeCounts(List<BlitzFixedEdge> lockedEdges) {
-        Map<Long, Integer> counts = new HashMap<>(Math.max(16, lockedEdges.size() * 2));
+    private static Long2IntOpenHashMap lockedEdgeCounts(List<BlitzFixedEdge> lockedEdges) {
+        Long2IntOpenHashMap counts = new Long2IntOpenHashMap(Math.max(16, lockedEdges.size() * 2));
         for (BlitzFixedEdge lockedEdge : lockedEdges) {
             long key = pairKey(lockedEdge.attackerNationId(), lockedEdge.defenderNationId());
-            counts.put(key, counts.getOrDefault(key, 0) + 1);
+            counts.put(key, counts.get(key) + 1);
         }
         return counts;
     }

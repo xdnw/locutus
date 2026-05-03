@@ -81,15 +81,23 @@ final class OpeningMetricSummary {
             double attackerNaval,
             double defenderNaval
     ) {
-        // Keeps control-family goals focused on high-threat reachable defenders without using
-        // nation score as expected value. Score remains a range mechanic outside this method.
-        double attackerMilitary = attackerGround + (3d * attackerAir) + (2d * attackerNaval);
+        return defenderControlPressure(defenderGround, defenderAir, defenderNaval);
+    }
+
+    static double defenderControlPressure(
+            double defenderGround,
+            double defenderAir,
+            double defenderNaval
+    ) {
+        // Prices the defender's contribution to enemy control without consulting attacker odds
+        // or nation score. Stronger defenders are worth pressuring more regardless of which
+        // attacker is asking.
         double defenderMilitary = defenderGround + (3d * defenderAir) + (2d * defenderNaval);
-        double militaryPressure = boundedRatio(defenderMilitary, attackerMilitary, 2.5d);
-        double absoluteThreat = defenderMilitary > 0d
-            ? Math.min(2.5d, Math.log1p(defenderMilitary) / Math.log1p(250_000d))
-            : 0d;
-        return (8d * militaryPressure) + (4d * absoluteThreat);
+        if (!(defenderMilitary > 0d)) {
+            return 0d;
+        }
+        double absoluteThreat = Math.min(2.5d, Math.log1p(defenderMilitary) / Math.log1p(250_000d));
+        return 12d * absoluteThreat;
     }
 
     static double groundStrength(double soldiers, double tanks, boolean underAir) {
@@ -130,13 +138,6 @@ final class OpeningMetricSummary {
             return 0d;
         }
         return clamp01((initial - Math.max(0d, current)) / initial);
-    }
-
-    private static double boundedRatio(double numerator, double denominator, double upperBound) {
-        if (!(numerator > 0d) || !(denominator > 0d)) {
-            return 0d;
-        }
-        return Math.max(0d, Math.min(upperBound, numerator / denominator));
     }
 
     private static int clampNonNegativeRound(double value) {

@@ -1,8 +1,12 @@
 /**
- * Strategy primitives and rule-based actor implementations.
+ * Experimental strategy primitives and rule-based actor implementations.
  * 
- * This package contains composable decision-making components that drive nation behavior
- * during simulation:
+ * <p>This package is an isolated research surface for tactical concept inventory. It is not a
+ * planner evaluation authority, and planner assignment/search code must not copy its score-era
+ * attack valuation directly.</p>
+ *
+ * <p>The package contains composable decision-making components that drive scripted nation
+ * behavior during simulation:
  * 
  * - {@link link.locutus.discord.sim.strategy.StrategyPrimitive}: base contract for tactical concepts
  * - {@link link.locutus.discord.sim.strategy.RuleBasedActor}: menu-based actor that combines primitives
@@ -13,8 +17,8 @@
  *   {@code BalancedCasualtyRotation}, {@code WeakSubsetFocus},
  *   {@code HighScoreEarlyStrike}
  * 
- * Primitives are stateless, deterministic, and evaluated independently each turn.
- * They are composable: a nation's mix can change across turns based on game state.
+ * <p>Primitives are stateless, deterministic, and evaluated independently each turn.
+ * They are composable: a nation's mix can change across turns based on game state.</p>
  * 
  * Dependencies: inbound from {@code sim/} layer only.
  */

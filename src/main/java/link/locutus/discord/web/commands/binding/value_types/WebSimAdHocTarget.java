@@ -1,13 +1,13 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
-import link.locutus.discord.sim.planners.ScoreSummary;
+import link.locutus.discord.sim.planners.ObjectiveValueSummary;
 
 public record WebSimAdHocTarget(
         WebTarget target,
         double simScore,
         double counterRisk,
         double lootEstimate,
-        ScoreSummary scoreSummary
+        ObjectiveValueSummary scoreSummary
 ) {
     public WebSimAdHocTarget(
             WebTarget target,
@@ -15,6 +15,6 @@ public record WebSimAdHocTarget(
             double counterRisk,
             double lootEstimate
     ) {
-        this(target, simScore, counterRisk, lootEstimate, ScoreSummary.identical(simScore));
+        this(target, simScore, counterRisk, lootEstimate, ObjectiveValueSummary.identical(simScore));
     }
 }

@@ -1,9 +1,12 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -116,16 +119,16 @@ final class PrimitiveAssignmentSolver {
 
             int[] residualSupply = Arrays.copyOf(supply, supply.length);
             int[] residualCapacity = Arrays.copyOf(capacity, capacity.length);
-            Map<Integer, Integer> attackerSlotByNationId = slotByNationId(attackerNationIds);
-            Map<Integer, Integer> defenderSlotByNationId = slotByNationId(defenderNationIds);
-            Map<Integer, List<Integer>> fixedAssignment = new LinkedHashMap<>();
+            Int2IntOpenHashMap attackerSlotByNationId = slotByNationId(attackerNationIds);
+            Int2IntOpenHashMap defenderSlotByNationId = slotByNationId(defenderNationIds);
+            Map<Integer, List<Integer>> fixedAssignment = new Int2ObjectLinkedOpenHashMap<>();
             for (BlitzFixedEdge fixedEdge : fixedEdges) {
-                Integer attackerSlot = attackerSlotByNationId.get(fixedEdge.attackerNationId());
-                Integer defenderSlot = defenderSlotByNationId.get(fixedEdge.defenderNationId());
-                if (attackerSlot == null || defenderSlot == null) {
+                int attackerSlot = attackerSlotByNationId.get(fixedEdge.attackerNationId());
+                int defenderSlot = defenderSlotByNationId.get(fixedEdge.defenderNationId());
+                if (attackerSlot < 0 || defenderSlot < 0) {
                     continue;
                 }
-                fixedAssignment.computeIfAbsent(fixedEdge.attackerNationId(), unused -> new ArrayList<>())
+                fixedAssignment.computeIfAbsent(fixedEdge.attackerNationId(), unused -> new IntArrayList())
                         .add(fixedEdge.defenderNationId());
                 residualSupply[attackerSlot] = Math.max(0, residualSupply[attackerSlot] - 1);
                 residualCapacity[defenderSlot] = Math.max(0, residualCapacity[defenderSlot] - 1);
@@ -154,9 +157,9 @@ final class PrimitiveAssignmentSolver {
             } else if (residualAssignment.isEmpty()) {
                 result = fixedAssignment;
             } else {
-                Map<Integer, List<Integer>> merged = new LinkedHashMap<>(fixedAssignment);
+                Map<Integer, List<Integer>> merged = new Int2ObjectLinkedOpenHashMap<>(fixedAssignment);
                 for (Map.Entry<Integer, List<Integer>> entry : residualAssignment.entrySet()) {
-                    merged.computeIfAbsent(entry.getKey(), unused -> new ArrayList<>()).addAll(entry.getValue());
+                    merged.computeIfAbsent(entry.getKey(), unused -> new IntArrayList()).addAll(entry.getValue());
                 }
                 result = merged;
             }
@@ -183,7 +186,7 @@ final class PrimitiveAssignmentSolver {
             int[] attStrengthRank,
             int[] attackerNationIds,
             int[] defenderNationIds,
-            java.util.Set<Long> excludedPairKeys,
+            LongOpenHashSet excludedPairKeys,
             boolean[] edgeAssignedOut,
             int[] attackerAssignedCountsOut,
             int[] defenderAssignedCountsOut
@@ -294,7 +297,7 @@ final class PrimitiveAssignmentSolver {
         }
 
         // ---- Extract assignment from consumed forward edges ----------------
-        Map<Integer, List<Integer>> assignment = new LinkedHashMap<>();
+        Map<Integer, List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
         for (int e = 0; e < edges.edgeCount(); e++) {
             int fwdSlot = candidateFwdSlot[e];
             if (fwdSlot < 0) continue;
@@ -304,7 +307,7 @@ final class PrimitiveAssignmentSolver {
                 int di = edges.defenderIndex(e);
                 int attNationId = attackerNationIds[ai];
                 int defNationId = defenderNationIds[di];
-                assignment.computeIfAbsent(attNationId, k -> new ArrayList<>()).add(defNationId);
+                assignment.computeIfAbsent(attNationId, k -> new IntArrayList()).add(defNationId);
                 if (edgeAssignedOut != null) edgeAssignedOut[e] = true;
                 if (attackerAssignedCountsOut != null) attackerAssignedCountsOut[ai]++;
                 if (defenderAssignedCountsOut != null) defenderAssignedCountsOut[di]++;
@@ -313,16 +316,17 @@ final class PrimitiveAssignmentSolver {
         return assignment;
     }
 
-    private static Map<Integer, Integer> slotByNationId(int[] nationIds) {
-        Map<Integer, Integer> slots = new LinkedHashMap<>(Math.max(16, nationIds.length * 2));
+    private static Int2IntOpenHashMap slotByNationId(int[] nationIds) {
+        Int2IntOpenHashMap slots = new Int2IntOpenHashMap(Math.max(16, nationIds.length * 2));
+        slots.defaultReturnValue(-1);
         for (int index = 0; index < nationIds.length; index++) {
             slots.put(nationIds[index], index);
         }
         return slots;
     }
 
-    private static java.util.Set<Long> fixedPairKeys(List<BlitzFixedEdge> fixedEdges) {
-        java.util.Set<Long> keys = new java.util.HashSet<>(Math.max(16, fixedEdges.size() * 2));
+    private static LongOpenHashSet fixedPairKeys(List<BlitzFixedEdge> fixedEdges) {
+        LongOpenHashSet keys = new LongOpenHashSet(Math.max(16, fixedEdges.size() * 2));
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
             keys.add(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()));
         }

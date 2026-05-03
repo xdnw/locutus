@@ -33,13 +33,13 @@ class AdHocTargetPlannerTest {
         private final Set<Integer> terminalDefenderIds = new LinkedHashSet<>();
 
         @Override
-        public double scoreOpening(OpeningMetricVector metrics, int teamId) {
+        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
             openingCalls.incrementAndGet();
             return super.scoreOpening(metrics, teamId);
         }
 
         @Override
-        public double scoreTerminal(TeamScoreView view, int teamId) {
+        public double scoreTerminal(StrategicValueView view, int teamId) {
             terminalCalls.incrementAndGet();
             view.forEachNation((nationId, nationTeamId, score) -> {
                 if (nationTeamId != teamId) {
@@ -173,7 +173,7 @@ class AdHocTargetPlannerTest {
                 .rankTargets(attacker, List.of(defender), 3, 1);
 
         assertEquals(1, plan.recommendations().size());
-        var summary = plan.recommendations().get(0).scoreSummary();
+        var summary = plan.recommendations().get(0).objectiveSummary();
         assertEquals(1, summary.sampleCount());
         assertEquals(summary.mean(), summary.p10());
         assertEquals(summary.mean(), summary.p50());
@@ -286,7 +286,7 @@ class AdHocTargetPlannerTest {
 
         assertEquals(1, plan.recommendations().size());
         assertTrue(plan.metadata().runtimePreviewApplied());
-        var summary = plan.recommendations().get(0).scoreSummary();
+        var summary = plan.recommendations().get(0).objectiveSummary();
         assertEquals(4, summary.sampleCount());
         assertTrue(summary.p10() <= summary.p50());
         assertTrue(summary.p50() <= summary.p90());

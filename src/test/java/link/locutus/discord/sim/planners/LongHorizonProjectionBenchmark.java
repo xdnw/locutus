@@ -179,7 +179,7 @@ public final class LongHorizonProjectionBenchmark {
                             null
                     );
             Map<Integer, List<Integer>> assignment = assignmentResult.assignment();
-            ScoreSummary summary = assignmentResult.projectedObjectiveSummary() != null
+            ObjectiveValueSummary summary = assignmentResult.projectedObjectiveSummary() != null
                     ? assignmentResult.projectedObjectiveSummary()
                     : LongHorizonAssignmentOptimizer.projectedObjectiveSummary(
                             edges,

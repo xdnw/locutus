@@ -6,14 +6,23 @@ package link.locutus.discord.sim;
  * <p>The policy lives in the sim layer so objectives can relax pruning for specialist
  * strategies without embedding that rule in planner code.</p>
  */
-public record CandidateEdgeAdmissionPolicy(double minimumViabilityProbe, boolean allowLegalSpecialistFallback) {
+public record CandidateEdgeAdmissionPolicy(
+        double minimumViabilityProbe,
+        boolean allowLegalSpecialistFallback,
+        boolean admitPositiveOpeningBaseline
+) {
 
     public static final double DEFAULT_MINIMUM_VIABILITY_PROBE = 0.15d;
-    public static final CandidateEdgeAdmissionPolicy DEFAULT = new CandidateEdgeAdmissionPolicy(DEFAULT_MINIMUM_VIABILITY_PROBE, false);
-    public static final CandidateEdgeAdmissionPolicy LOW_PROBE_SPECIALISTS = new CandidateEdgeAdmissionPolicy(DEFAULT_MINIMUM_VIABILITY_PROBE, true);
+    public static final CandidateEdgeAdmissionPolicy DEFAULT = new CandidateEdgeAdmissionPolicy(DEFAULT_MINIMUM_VIABILITY_PROBE, false, false);
+    public static final CandidateEdgeAdmissionPolicy LOW_PROBE_SPECIALISTS = new CandidateEdgeAdmissionPolicy(DEFAULT_MINIMUM_VIABILITY_PROBE, true, false);
+    public static final CandidateEdgeAdmissionPolicy POSITIVE_OPENING_BASELINE = new CandidateEdgeAdmissionPolicy(DEFAULT_MINIMUM_VIABILITY_PROBE, false, true);
 
     public CandidateEdgeAdmissionPolicy(double minimumViabilityProbe) {
-        this(minimumViabilityProbe, false);
+        this(minimumViabilityProbe, false, false);
+    }
+
+    public CandidateEdgeAdmissionPolicy(double minimumViabilityProbe, boolean allowLegalSpecialistFallback) {
+        this(minimumViabilityProbe, allowLegalSpecialistFallback, false);
     }
 
     public static CandidateEdgeAdmissionPolicy defaultPolicy() {
@@ -22,6 +31,10 @@ public record CandidateEdgeAdmissionPolicy(double minimumViabilityProbe, boolean
 
     public static CandidateEdgeAdmissionPolicy lowProbeSpecialists() {
         return LOW_PROBE_SPECIALISTS;
+    }
+
+    public static CandidateEdgeAdmissionPolicy positiveOpeningBaseline() {
+        return POSITIVE_OPENING_BASELINE;
     }
 
     public CandidateEdgeAdmissionPolicy {

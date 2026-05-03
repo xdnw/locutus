@@ -16,6 +16,7 @@ public record BlitzReplayTrace(
 	int[] summaryWarTypeCounts,
 	int[] summaryAttackOutcomeCounts,
 	int[] summaryUnitLossCounts,
-	int[] summaryInfraLossCents
+	int[] summaryInfraLossCents,
+	int[] summaryStrategicUnitLossCents
 ) {
 }

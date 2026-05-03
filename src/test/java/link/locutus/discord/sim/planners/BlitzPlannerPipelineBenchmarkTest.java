@@ -42,4 +42,17 @@ class BlitzPlannerPipelineBenchmarkTest {
         assertEquals("replay", config.sliceCliNames().get(0));
         assertEquals("blitz", config.sliceCliNames().get(1));
     }
+
+    @Test
+    void objectiveCanBeSelectedByNameOrOrdinal() {
+        BlitzPlannerPipelineBenchmark.BenchmarkConfig named = BlitzPlannerPipelineBenchmark.BenchmarkConfig.parse(
+                new String[]{"--objective=CONTROL"}
+        );
+        BlitzPlannerPipelineBenchmark.BenchmarkConfig ordinal = BlitzPlannerPipelineBenchmark.BenchmarkConfig.parse(
+                new String[]{"--objective=4"}
+        );
+
+        assertEquals("CONTROL", named.objectiveName());
+        assertEquals("BALANCED", ordinal.objectiveName());
+    }
 }

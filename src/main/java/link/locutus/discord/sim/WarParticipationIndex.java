@@ -1,13 +1,16 @@
 package link.locutus.discord.sim;
 
-import java.util.ArrayList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntLists;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * World-owned index for active war participation and same-opponent redeclare lockout state.
@@ -15,9 +18,9 @@ import java.util.Set;
 final class WarParticipationIndex {
     static final int RECENT_OPPONENT_LOCKOUT_TURNS = WarSlotRules.sameOpponentLockoutTurns();
 
-    private final Map<Integer, LinkedHashSet<Integer>> activeWarIdsByNation = new HashMap<>();
-    private final Set<Long> activePairKeys = new HashSet<>();
-    private final Map<Long, Integer> pairUnlockTurnByKey = new HashMap<>();
+    private final Int2ObjectOpenHashMap<IntLinkedOpenHashSet> activeWarIdsByNation = new Int2ObjectOpenHashMap<>();
+    private final LongOpenHashSet activePairKeys = new LongOpenHashSet();
+    private final Long2IntOpenHashMap pairUnlockTurnByKey = new Long2IntOpenHashMap();
 
     void onWarAdded(SimWar war) {
         long pairKey = pairKey(war.attackerNationId(), war.defenderNationId());
@@ -28,10 +31,10 @@ final class WarParticipationIndex {
             );
         }
         activeWarIdsByNation
-                .computeIfAbsent(war.attackerNationId(), ignored -> new LinkedHashSet<>())
+            .computeIfAbsent(war.attackerNationId(), ignored -> new IntLinkedOpenHashSet())
                 .add(war.warId());
         activeWarIdsByNation
-                .computeIfAbsent(war.defenderNationId(), ignored -> new LinkedHashSet<>())
+            .computeIfAbsent(war.defenderNationId(), ignored -> new IntLinkedOpenHashSet())
                 .add(war.warId());
         pairUnlockTurnByKey.remove(pairKey);
     }
@@ -45,16 +48,17 @@ final class WarParticipationIndex {
     }
 
     boolean hasActiveWar(int nationId) {
-        LinkedHashSet<Integer> warIds = activeWarIdsByNation.get(nationId);
+        IntLinkedOpenHashSet warIds = activeWarIdsByNation.get(nationId);
         return warIds != null && !warIds.isEmpty();
     }
 
     List<Integer> activeWarIdsForNation(int nationId) {
-        LinkedHashSet<Integer> warIds = activeWarIdsByNation.get(nationId);
+        IntLinkedOpenHashSet warIds = activeWarIdsByNation.get(nationId);
         if (warIds == null || warIds.isEmpty()) {
             return Collections.emptyList();
         }
-        return List.copyOf(new ArrayList<>(warIds));
+        IntList orderedWarIds = new IntArrayList(warIds);
+        return IntLists.unmodifiable(orderedWarIds);
     }
 
     boolean hasActivePairConflict(int nationIdA, int nationIdB) {
@@ -63,10 +67,10 @@ final class WarParticipationIndex {
 
     boolean isSameOpponentLockoutActive(int nationIdA, int nationIdB, int currentTurn) {
         long pairKey = pairKey(nationIdA, nationIdB);
-        Integer unlockTurn = pairUnlockTurnByKey.get(pairKey);
-        if (unlockTurn == null) {
+        if (!pairUnlockTurnByKey.containsKey(pairKey)) {
             return false;
         }
+        int unlockTurn = pairUnlockTurnByKey.get(pairKey);
         if (currentTurn >= unlockTurn) {
             pairUnlockTurnByKey.remove(pairKey);
             return false;
@@ -76,8 +80,8 @@ final class WarParticipationIndex {
 
     WarParticipationIndex deepCopy() {
         WarParticipationIndex copy = new WarParticipationIndex();
-        for (Map.Entry<Integer, LinkedHashSet<Integer>> entry : activeWarIdsByNation.entrySet()) {
-            copy.activeWarIdsByNation.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
+        for (Int2ObjectMap.Entry<IntLinkedOpenHashSet> entry : activeWarIdsByNation.int2ObjectEntrySet()) {
+            copy.activeWarIdsByNation.put(entry.getIntKey(), new IntLinkedOpenHashSet(entry.getValue()));
         }
         copy.activePairKeys.addAll(activePairKeys);
         copy.pairUnlockTurnByKey.putAll(pairUnlockTurnByKey);
@@ -85,7 +89,7 @@ final class WarParticipationIndex {
     }
 
     private void removeActiveWarId(int nationId, int warId) {
-        LinkedHashSet<Integer> warIds = activeWarIdsByNation.get(nationId);
+        IntLinkedOpenHashSet warIds = activeWarIdsByNation.get(nationId);
         if (warIds == null) {
             return;
         }
