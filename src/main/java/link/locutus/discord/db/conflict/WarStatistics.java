@@ -411,15 +411,20 @@ public class WarStatistics {
         root.put("cities", citiesSorted);
 
         List<Integer> allianceIds = getSortedAllianceIds();
-        // Cap published ranges at the current turn / day so that an in-progress
-        // conflict (turnEnd == Long.MAX_VALUE) or any stale future-keyed graph
-        // entry cannot push range[1] far past the present and cause the
-        // frontend to iterate hundreds of millions of empty time indices.
+        // Cap published ranges at the conflict's end turn (or, for an active
+        // conflict with turnEnd == Long.MAX_VALUE, the current turn). Without
+        // the conflict-end cap, stale graph entries keyed past the conflict's
+        // end day leak into per-coalition ranges and disagree with the
+        // top-level conflict range, which uses the conflict's own end.
         long currentTurn = TimeUtil.getTurn();
-        long currentDay = TimeUtil.getDayFromTurn(currentTurn);
+        long conflictEndTurn = parent.getParent().getEndTurn();
+        long effectiveEndTurn = conflictEndTurn == Long.MAX_VALUE
+                ? currentTurn
+                : Math.min(conflictEndTurn, currentTurn);
+        long effectiveEndDay = TimeUtil.getDayFromTurn(effectiveEndTurn);
         long[] turnRange = ConflictUtil.computeRange(turnData);
         long minTurn = turnRange[0];
-        long maxTurn = turnData.isEmpty() ? turnRange[1] : Math.min(turnRange[1], currentTurn);
+        long maxTurn = turnData.isEmpty() ? turnRange[1] : Math.min(turnRange[1], effectiveEndTurn);
         if (maxTurn < minTurn) {
             maxTurn = minTurn;
         }
@@ -440,7 +445,7 @@ public class WarStatistics {
 
         long[] dayRange = ConflictUtil.computeRange(dayData);
         long minDay = dayRange[0];
-        long maxDay = dayData.isEmpty() ? dayRange[1] : Math.min(dayRange[1], currentDay);
+        long maxDay = dayData.isEmpty() ? dayRange[1] : Math.min(dayRange[1], effectiveEndDay);
         if (maxDay < minDay) {
             maxDay = minDay;
         }
