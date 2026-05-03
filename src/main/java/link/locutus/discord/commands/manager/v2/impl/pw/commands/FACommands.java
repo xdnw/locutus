@@ -423,9 +423,6 @@ public class FACommands {
                 return "Embassy: <#" + channel.getId() + ">";
             }
         }
-        if (me.getPosition() <= 2) {
-            return "You must be an officer to create an embassy";
-        }
 
         String embassyName = aa.getName() + "-" + aa.getId();
 
