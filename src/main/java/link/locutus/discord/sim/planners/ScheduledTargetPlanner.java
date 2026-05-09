@@ -18,18 +18,12 @@ import java.util.Set;
  * Rolling bucket scheduler that re-plans each bucket against planner-owned carried state.
  */
 public final class ScheduledTargetPlanner {
-    enum CarryStateMode {
-        DIRECT_CONFLICT,
-        PROJECTION_STATE
-    }
-
     private final SimTuning tuning;
     private final TreatyProvider treatyProvider;
     private final OverrideSet overrides;
     private final StrategicObjective objective;
     private final SnapshotActivityProvider snapshotActivityProvider;
     private final PlannerTransitionSemantics transitionSemantics;
-    private final CarryStateMode carryStateMode;
 
     public ScheduledTargetPlanner(SimTuning tuning, TreatyProvider treatyProvider, OverrideSet overrides, StrategicObjective objective) {
         this(
@@ -38,8 +32,7 @@ public final class ScheduledTargetPlanner {
                 overrides,
                 objective,
                 SnapshotActivityProvider.BASELINE,
-                PlannerTransitionSemantics.NONE,
-                CarryStateMode.PROJECTION_STATE
+                PlannerTransitionSemantics.NONE
         );
     }
 
@@ -50,8 +43,7 @@ public final class ScheduledTargetPlanner {
                 overrides,
                 objective,
                 activityProvider,
-                PlannerTransitionSemantics.NONE,
-                CarryStateMode.PROJECTION_STATE
+                PlannerTransitionSemantics.NONE
         );
     }
 
@@ -63,25 +55,12 @@ public final class ScheduledTargetPlanner {
             SnapshotActivityProvider activityProvider,
             PlannerTransitionSemantics transitionSemantics
     ) {
-        this(tuning, treatyProvider, overrides, objective, activityProvider, transitionSemantics, CarryStateMode.PROJECTION_STATE);
-    }
-
-    ScheduledTargetPlanner(
-            SimTuning tuning,
-            TreatyProvider treatyProvider,
-            OverrideSet overrides,
-            StrategicObjective objective,
-            SnapshotActivityProvider activityProvider,
-            PlannerTransitionSemantics transitionSemantics,
-            CarryStateMode carryStateMode
-    ) {
         this.tuning = Objects.requireNonNull(tuning, "tuning");
         this.treatyProvider = Objects.requireNonNull(treatyProvider, "treatyProvider");
         this.overrides = Objects.requireNonNull(overrides, "overrides");
         this.objective = Objects.requireNonNull(objective, "objective");
         this.snapshotActivityProvider = Objects.requireNonNull(activityProvider, "activityProvider");
         this.transitionSemantics = transitionSemantics == null ? PlannerTransitionSemantics.NONE : transitionSemantics;
-        this.carryStateMode = carryStateMode == null ? CarryStateMode.PROJECTION_STATE : carryStateMode;
     }
 
     public ScheduledTargetPlanner(SimTuning tuning) {
@@ -138,19 +117,14 @@ public final class ScheduledTargetPlanner {
                     .max()
                     .orElse(minTurn);
 
-            PlannerProjectionState rollingProjectionState = carryStateMode == CarryStateMode.PROJECTION_STATE
-                    ? PlannerProjectionState.seed(overrides, seedById.values(), List.of(), minTurn)
-                    : null;
-            PlannerLocalConflict rollingConflict = carryStateMode == CarryStateMode.DIRECT_CONFLICT
-                    ? PlannerLocalConflict.createWithActiveWars(
-                            overrides,
-                            seedById.values(),
-                            List.of(),
-                            minTurn,
-                            tuning,
-                            transitionSemantics
-                    )
-                    : null;
+                PlannerLocalConflict rollingConflict = PlannerLocalConflict.createWithActiveWars(
+                    overrides,
+                    seedById.values(),
+                    List.of(),
+                    minTurn,
+                    tuning,
+                    transitionSemantics
+                );
             PlannerSimSupport.collectResetDiagnostics(attackerSeeds, defenderList, diagnostics);
 
             List<Integer> defenderIds = defenderList.stream().map(DBNationSnapshot::nationId).toList();
@@ -170,13 +144,13 @@ public final class ScheduledTargetPlanner {
                 BlitzAssignment assignment = new BlitzAssignment(Map.of(), List.of(), 0.0);
 
                 if (!availableList.isEmpty()) {
-                    List<DBNationSnapshot> currentAttackers = currentSnapshots(rollingConflict, rollingProjectionState, availableList);
+                    List<DBNationSnapshot> currentAttackers = currentSnapshots(rollingConflict, availableList);
                     currentAttackers = currentAttackers.stream()
                             .filter(snapshot -> overrides.effectiveFreeOff(snapshot) > 0)
                             .sorted(Comparator.comparingInt(DBNationSnapshot::nationId))
                             .toList();
 
-                    List<DBNationSnapshot> currentDefenders = currentSnapshots(rollingConflict, rollingProjectionState, defenderIds).stream()
+                    List<DBNationSnapshot> currentDefenders = currentSnapshots(rollingConflict, defenderIds).stream()
                             .filter(snapshot -> overrides.effectiveFreeDef(snapshot) > 0)
                             .sorted(Comparator.comparingInt(DBNationSnapshot::nationId))
                             .toList();
@@ -184,21 +158,20 @@ public final class ScheduledTargetPlanner {
                     if (!currentAttackers.isEmpty() && !currentDefenders.isEmpty()) {
                         eligibleList = currentAttackers.stream().map(DBNationSnapshot::nationId).toList();
                         BlitzPlanner planner = new BlitzPlanner(tuning, treatyProvider, overrides, objective, snapshotActivityProvider);
-                        assignment = planner.assign(currentAttackers, currentDefenders, bucketStart);
+                        assignment = planner.assign(
+                                currentAttackers,
+                                currentDefenders,
+                                SidePolicy.legacy("acting", planner.objective()),
+                                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                                bucketStart,
+                                List.of(),
+                                1
+                        );
                     }
                 }
 
                 buckets.add(new ScheduledBucketAssignment(bucketStart, bucketEndExclusive - 1, availableList, eligibleList, assignment));
-                if (rollingConflict != null) {
-                    rollingConflict.applyAssignmentHorizon(assignment.assignment(), bucketEndExclusive - bucketStart);
-                } else {
-                    rollingProjectionState = rollingProjectionState.advance(
-                            tuning,
-                            assignment.assignment(),
-                            bucketEndExclusive - bucketStart,
-                            transitionSemantics
-                    );
-                }
+                rollingConflict.applyAssignmentHorizon(assignment.assignment(), bucketEndExclusive - bucketStart);
             }
 
             PlannerProfiler.addCounter(PlannerProfiler.Scope.SCHEDULED_ASSIGN, "buckets", buckets.size());
@@ -209,12 +182,8 @@ public final class ScheduledTargetPlanner {
 
     private List<DBNationSnapshot> currentSnapshots(
             PlannerLocalConflict rollingConflict,
-            PlannerProjectionState rollingProjectionState,
             Collection<Integer> nationIds
     ) {
-        if (rollingConflict != null) {
-            return rollingConflict.snapshotsFor(nationIds);
-        }
-        return rollingProjectionState.snapshotsFor(nationIds);
+        return rollingConflict.snapshotsFor(nationIds);
     }
 }

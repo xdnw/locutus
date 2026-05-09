@@ -615,6 +615,19 @@ public class CM {
                     public static final city_refund cmd = new city_refund();
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="clearAllApiKeys")
+                public static class clearAllApiKeys extends CommandRef {
+                    public static final clearAllApiKeys cmd = new clearAllApiKeys();
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="clearInvalidAccounts")
+                public static class clearInvalidAccounts extends CommandRef {
+                    public static final clearInvalidAccounts cmd = new clearInvalidAccounts();
+                public clearInvalidAccounts force(String value) {
+                    return set("force", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="reloadConfig")
                 public static class config extends CommandRef {
                     public static final config cmd = new config();
@@ -652,6 +665,34 @@ public class CM {
                 }
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="importTreatyHistoryLegacy")
+                public static class import_treaty_history extends CommandRef {
+                    public static final import_treaty_history cmd = new import_treaty_history();
+                public import_treaty_history sourceRoot(String value) {
+                    return set("sourceRoot", value);
+                }
+
+                public import_treaty_history replace(String value) {
+                    return set("replace", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listDuplicateAllianceBankTransfers")
+                public static class list_dupe_tx extends CommandRef {
+                    public static final list_dupe_tx cmd = new list_dupe_tx();
+                public list_dupe_tx alliance(String value) {
+                    return set("alliance", value);
+                }
+
+                public list_dupe_tx start(String value) {
+                    return set("start", value);
+                }
+
+                public list_dupe_tx end(String value) {
+                    return set("end", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncMail")
                 public static class mail extends CommandRef {
                     public static final mail cmd = new mail();
@@ -663,6 +704,19 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="runMilitarizationAlerts")
                 public static class militarization_alerts extends CommandRef {
                     public static final militarization_alerts cmd = new militarization_alerts();
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="repairBankTransactionPayloads")
+                public static class repair_tx extends CommandRef {
+                    public static final repair_tx cmd = new repair_tx();
+                public repair_tx apply(String value) {
+                    return set("apply", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="resetTreatyHistoryBootstrap")
+                public static class reset_treaty_history extends CommandRef {
+                    public static final reset_treaty_history cmd = new reset_treaty_history();
 
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncTaxes")
@@ -690,6 +744,27 @@ public class CM {
                     public static final uid cmd = new uid();
                 public uid all(String value) {
                     return set("all", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="validateTreatyHistoryBootstrap")
+                public static class validate_treaty_history extends CommandRef {
+                    public static final validate_treaty_history cmd = new validate_treaty_history();
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="saveWebPojos")
+                public static class web_pojos extends CommandRef {
+                    public static final web_pojos cmd = new web_pojos();
+                public web_pojos pathRelative(String value) {
+                    return set("pathRelative", value);
+                }
+
+                public web_pojos skipEndpoints(String value) {
+                    return set("skipEndpoints", value);
+                }
+
+                public web_pojos skipCommands(String value) {
+                    return set("skipCommands", value);
                 }
 
                 }
@@ -1734,8 +1809,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands.class,method="sendTreaty")
                 public static class send extends CommandRef {
                     public static final send cmd = new send();
-                public send receiver(String value) {
-                    return set("receiver", value);
+                public send receivers(String value) {
+                    return set("receivers", value);
                 }
 
                 public send type(String value) {
@@ -3039,6 +3114,20 @@ public class CM {
 
             }
         }
+        public static class coalitions{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands.class,method="renameCoalition")
+            public static class rename extends CommandRef {
+                public static final rename cmd = new rename();
+            public rename coalition(String value) {
+                return set("coalition", value);
+            }
+
+            public rename rename_to(String value) {
+                return set("rename_to", value);
+            }
+
+            }
+        }
         public static class color{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="calculateColorRevenue")
             public static class revenue extends CommandRef {
@@ -3244,8 +3333,8 @@ public class CM {
                     return set("conflict", value);
                 }
 
-                public add_forum_post url(String value) {
-                    return set("url", value);
+                public add_forum_post urls(String value) {
+                    return set("urls", value);
                 }
 
                 public add_forum_post desc(String value) {
@@ -3293,6 +3382,26 @@ public class CM {
                 }
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="detectConflictStart")
+                public static class detect_start extends CommandRef {
+                    public static final detect_start cmd = new detect_start();
+                public detect_start conflict(String value) {
+                    return set("conflict", value);
+                }
+
+                public detect_start turn_allowance(String value) {
+                    return set("turn_allowance", value);
+                }
+
+                public detect_start force(String value) {
+                    return set("force", value);
+                }
+
+                public detect_start token(String value) {
+                    return set("token", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictEnd")
                 public static class end extends CommandRef {
                     public static final end cmd = new end();
@@ -3306,6 +3415,18 @@ public class CM {
 
                 public end alliance(String value) {
                     return set("alliance", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="removeAnnouncement")
+                public static class remove_forum_post extends CommandRef {
+                    public static final remove_forum_post cmd = new remove_forum_post();
+                public remove_forum_post conflict(String value) {
+                    return set("conflict", value);
+                }
+
+                public remove_forum_post url(String value) {
+                    return set("url", value);
                 }
 
                 }
@@ -3342,26 +3463,6 @@ public class CM {
 
                 public start alliance(String value) {
                     return set("alliance", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="detectConflictStart")
-                public static class detect_start extends CommandRef {
-                    public static final detect_start cmd = new detect_start();
-                public detect_start conflict(String value) {
-                    return set("conflict", value);
-                }
-
-                public detect_start turn_allowance(String value) {
-                    return set("turn_allowance", value);
-                }
-
-                public detect_start force(String value) {
-                    return set("force", value);
-                }
-
-                public detect_start token(String value) {
-                    return set("token", value);
                 }
 
                 }
@@ -3479,6 +3580,18 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importAllianceNames")
                 public static class alliance_names extends CommandRef {
                     public static final alliance_names cmd = new alliance_names();
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importCloudData")
+                public static class cloud_providers extends CommandRef {
+                    public static final cloud_providers cmd = new cloud_providers();
+                public cloud_providers fromS3(String value) {
+                    return set("fromS3", value);
+                }
+
+                public cloud_providers fromR2(String value) {
+                    return set("fromR2", value);
+                }
 
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importCtowned")
@@ -6305,6 +6418,10 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="find_placeholder")
             public static class find_nation_placeholder extends CommandRef {
                 public static final find_nation_placeholder cmd = new find_nation_placeholder();
+            public find_nation_placeholder type(String value) {
+                return set("type", value);
+            }
+
             public find_nation_placeholder search(String value) {
                 return set("search", value);
             }
@@ -7623,6 +7740,10 @@ public class CM {
                     return set("total", value);
                 }
 
+                public nationRanking title(String value) {
+                    return set("title", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="warStatusRankingByNation")
                 public static class warStatusRankingByNation extends CommandRef {
@@ -8357,6 +8478,10 @@ public class CM {
                 return set("military_doctrine", value);
             }
 
+            public cost nation(String value) {
+                return set("nation", value);
+            }
+
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ResearchCommands.class,method="researchSheet")
             public static class sheet extends CommandRef {
@@ -8367,6 +8492,10 @@ public class CM {
 
             public sheet sheet(String value) {
                 return set("sheet", value);
+            }
+
+            public sheet snapshotDate(String value) {
+                return set("snapshotDate", value);
             }
 
             }
@@ -8411,6 +8540,10 @@ public class CM {
                 public static final view_nation cmd = new view_nation();
             public view_nation nation(String value) {
                 return set("nation", value);
+            }
+
+            public view_nation snapshotTime(String value) {
+                return set("snapshotTime", value);
             }
 
             }
@@ -9743,6 +9876,14 @@ public class CM {
                 public static final MAIL_NEW_APPLICANTS cmd = new MAIL_NEW_APPLICANTS();
             public MAIL_NEW_APPLICANTS enabled(String value) {
                 return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MAIL_NEW_APPLICANTS_SUBJECT", field="MAIL_NEW_APPLICANTS_SUBJECT")
+            public static class MAIL_NEW_APPLICANTS_SUBJECT extends CommandRef {
+                public static final MAIL_NEW_APPLICANTS_SUBJECT cmd = new MAIL_NEW_APPLICANTS_SUBJECT();
+            public MAIL_NEW_APPLICANTS_SUBJECT message(String value) {
+                return set("message", value);
             }
 
             }
@@ -11449,7 +11590,7 @@ public class CM {
                 }
 
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="Spyops")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="spyops")
                 public static class target extends CommandRef {
                     public static final target cmd = new target();
                 public target targets(String value) {
@@ -12197,6 +12338,10 @@ public class CM {
 
             public nationRanking total(String value) {
                 return set("total", value);
+            }
+
+            public nationRanking title(String value) {
+                return set("title", value);
             }
 
             }
@@ -13027,8 +13172,8 @@ public class CM {
                 return set("allowedAttacks", value);
             }
 
-            public warCostRanking warAlliances(String value) {
-                return set("warAlliances", value);
+            public warCostRanking allowed_alliances(String value) {
+                return set("allowed_alliances", value);
             }
 
             public warCostRanking onlyOffensiveWars(String value) {
@@ -14236,8 +14381,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands.class,method="sendTreaty")
             public static class send extends CommandRef {
                 public static final send cmd = new send();
-            public send receiver(String value) {
-                return set("receiver", value);
+            public send receivers(String value) {
+                return set("receivers", value);
             }
 
             public send type(String value) {
@@ -14604,6 +14749,10 @@ public class CM {
 
                 public damage targetCityMax(String value) {
                     return set("targetCityMax", value);
+                }
+
+                public damage targetBeigeMax(String value) {
+                    return set("targetBeigeMax", value);
                 }
 
                 public damage includeBeige(String value) {

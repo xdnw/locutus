@@ -19,7 +19,7 @@ final class ControlObjective implements StrategicObjective {
         return (4.0d * metrics.controlLeverage())
                 + (3.0d * metrics.futureWarLeverage())
                 + (4.0d * metrics.targetPressure())
-                + (0.20d * metrics.immediateHarm())
+                + (0.10d * metrics.immediateHarm())
                 - (0.35d * metrics.selfExposure());
     }
 
@@ -28,10 +28,10 @@ final class ControlObjective implements StrategicObjective {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = (0.20d * (totals.ownValue() - totals.enemyValue()));
         if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlScoreForTeam(teamId);
-            score += controlView.activeWarStrategicScoreForTeam(teamId, 4.0d, 3.0d);
-            score += 1.5d * controlView.activeWarSlotDenialScoreForTeam(teamId);
-            score += 1.5d * controlView.controlRegimeScoreForTeam(teamId);
+            score += controlView.controlCompositeScoreForTeam(
+                    teamId,
+                    new TeamWarControlView.ControlComponentWeights(1.0d, 4.0d, 0.0d, 3.0d, 1.5d, 1.5d)
+            );
         }
         return score;
     }

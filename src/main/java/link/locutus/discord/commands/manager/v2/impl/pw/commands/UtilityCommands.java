@@ -2314,9 +2314,21 @@ public class UtilityCommands {
 
         String arg0;
         String title;
-        if ((snapshotDate == null && nationOrAlliances.size() == 1) || nations.size() == 1) {
-            NationOrAlliance nationOrAA = snapshotDate == null ? nationOrAlliances.iterator().next()
-                    : nations.iterator().next();
+        if ((snapshotDate == null && nationOrAlliances.size() == 1) || nations.size() == 1
+                || (snapshotDate != null && nationOrAlliances.size() == 1 && nationOrAlliances.iterator().next().isAlliance())) {
+            NationOrAlliance nationOrAA;
+            if (snapshotDate != null && nationOrAlliances.size() == 1 && nationOrAlliances.iterator().next().isAlliance()) {
+                AlliancePlaceholders alliancePlaceholders = Locutus.imp().getCommandManager().getV2().getAlliancePlaceholders();
+                Set<DBAlliance> snapshotAlliances = alliancePlaceholders.parseSet(
+                        alliancePlaceholders.createLocals(guild, author, me), filter, snapshotDate);
+                if (snapshotAlliances.size() == 1) {
+                    nationOrAA = snapshotAlliances.iterator().next();
+                } else {
+                    nationOrAA = nations.iterator().next();
+                }
+            } else {
+                nationOrAA = snapshotDate == null ? nationOrAlliances.iterator().next() : nations.iterator().next();
+            }
             if (nationOrAA.isNation()) {
                 DBNation nation = nationOrAA.asNation();
                 title = nation.getNation();
@@ -2383,10 +2395,6 @@ public class UtilityCommands {
 
                 msg.send(RateLimitedSources.COMMAND_RESULT);
             } else {
-                if (snapshotDate != null) {
-                    throw new IllegalArgumentException(
-                            "You specified a `snapshotDate`, but alliance snapshots are not currently supported.");
-                }
                 DBAlliance alliance = nationOrAA.asAlliance();
                 title = alliance.getName();
                 IShrink markdown = alliance.toShrinkMarkdown().append("\n");

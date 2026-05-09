@@ -3,16 +3,19 @@ package link.locutus.discord.sim;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.sim.planners.BlitzAssignment;
+import link.locutus.discord.sim.planners.BlitzFixedEdge;
 import link.locutus.discord.sim.planners.BlitzPlanner;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.PlannerDiagnostic;
+import link.locutus.discord.sim.planners.SidePolicy;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -68,10 +71,33 @@ class BlitzPlannerTest {
         return arr;
     }
 
+    private BlitzAssignment assign(BlitzPlanner planner, Collection<DBNationSnapshot> attackerPool, Collection<DBNationSnapshot> defenderPool) {
+        return assign(planner, attackerPool, defenderPool, 0, List.of(), 1);
+    }
+
+    private BlitzAssignment assign(
+            BlitzPlanner planner,
+            Collection<DBNationSnapshot> attackerPool,
+            Collection<DBNationSnapshot> defenderPool,
+            int currentTurn,
+            Collection<BlitzFixedEdge> fixedEdges,
+            int horizonTurns
+    ) {
+        return planner.assign(
+                attackerPool,
+                defenderPool,
+                SidePolicy.legacy(planner.objective()),
+                SidePolicy.legacyPassive(planner.objective()),
+                currentTurn,
+                fixedEdges,
+                horizonTurns
+        );
+    }
+
     @Test
     void assignmentIsNonEmpty_10v10() {
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         assertFalse(result.assignment().isEmpty(), "Expected at least some assignments for a 10v10 with all in range");
         assertTrue(result.pairCount() > 0, "Expected at least one pair assigned");
@@ -80,7 +106,7 @@ class BlitzPlannerTest {
     @Test
     void eachAttackerAssignedAtMostMaxOff() {
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         for (DBNationSnapshot att : attackers) {
             List<Integer> assigned = result.targetsFor(att.nationId());
@@ -93,7 +119,7 @@ class BlitzPlannerTest {
     @Test
     void eachDefenderAssignedAtMostMaxDef() {
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         for (DBNationSnapshot def : defenders) {
             int assignedCount = (int) result.assignment().values().stream()
@@ -109,27 +135,24 @@ class BlitzPlannerTest {
     @Test
     void deterministicAcrossMultipleRuns() {
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment r1 = planner.assign(attackers, defenders);
-        BlitzAssignment r2 = planner.assign(attackers, defenders);
+        BlitzAssignment r1 = assign(planner, attackers, defenders);
+        BlitzAssignment r2 = assign(planner, attackers, defenders);
 
         assertEquals(r1.assignment(), r2.assignment(), "BlitzPlanner must be deterministic for same inputs");
     }
 
     @Test
-    void assignOverloadsShareCanonicalPlannerPath() {
+    void explicitPlannerEntryKeepsDefaultArgumentsStable() {
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
 
-        BlitzAssignment baseline = planner.assign(attackers, defenders);
-        BlitzAssignment explicitTurn = planner.assign(attackers, defenders, 0);
-        BlitzAssignment explicitFixedEdges = planner.assign(attackers, defenders, 0, List.of());
-        BlitzAssignment explicitHorizon = planner.assign(attackers, defenders, 0, List.of(), 1);
+        BlitzAssignment baseline = assign(planner, attackers, defenders);
+        BlitzAssignment explicitFixedEdges = assign(planner, attackers, defenders, 0, List.of(), 1);
+        BlitzAssignment explicitLongerHorizon = assign(planner, attackers, defenders, 0, List.of(), 3);
 
-        assertEquals(baseline.assignment(), explicitTurn.assignment());
         assertEquals(baseline.assignment(), explicitFixedEdges.assignment());
-        assertEquals(baseline.assignment(), explicitHorizon.assignment());
-        assertEquals(baseline.objectiveSummary(), explicitTurn.objectiveSummary());
+        assertEquals(baseline.assignment(), explicitLongerHorizon.assignment());
         assertEquals(baseline.objectiveSummary(), explicitFixedEdges.objectiveSummary());
-        assertEquals(baseline.objectiveSummary(), explicitHorizon.objectiveSummary());
+        assertEquals(baseline.objectiveSummary(), explicitLongerHorizon.objectiveSummary());
     }
 
         @Test
@@ -166,12 +189,13 @@ class BlitzPlannerTest {
         List<DBNationSnapshot> combined = List.of(attackerSide, defenderSide);
         TreatyProvider oppositeSideOnly = (attackerId, defenderId) -> attackerId == defenderId
             || ((attackerId < 100) == (defenderId < 100));
-        BlitzAssignment result = new BlitzPlanner(
+        BlitzPlanner planner = new BlitzPlanner(
             SimTuning.defaults(),
             oppositeSideOnly,
             OverrideSet.EMPTY,
             new DamageObjective()
-        ).assign(combined, combined);
+        );
+        BlitzAssignment result = assign(planner, combined, combined);
 
         assertEquals(1, result.pairCount(), "Overlapping pools should keep only one direction of the same nation pair");
         assertFalse(result.targetsFor(1).contains(101) && result.targetsFor(101).contains(1));
@@ -182,7 +206,7 @@ class BlitzPlannerTest {
         // Build defenders with 10x the score (clearly out of range for attackers)
         List<DBNationSnapshot> outOfRangeDefs = buildNations(201, 5, 9999, ATTACKER_SCORE * 100, 300, 300);
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, outOfRangeDefs);
+        BlitzAssignment result = assign(planner, attackers, outOfRangeDefs);
 
         assertEquals(0, result.pairCount(), "No assignments should be made when all defenders are out of range");
     }
@@ -221,8 +245,8 @@ class BlitzPlannerTest {
 
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
 
-        assertEquals(0, planner.assign(List.of(vmAttacker), List.of(normalDefender)).pairCount());
-        assertEquals(0, planner.assign(List.of(normalDefender), List.of(vmAttacker)).pairCount());
+        assertEquals(0, assign(planner, List.of(vmAttacker), List.of(normalDefender)).pairCount());
+        assertEquals(0, assign(planner, List.of(normalDefender), List.of(vmAttacker)).pairCount());
     }
 
     @Test
@@ -231,7 +255,7 @@ class BlitzPlannerTest {
         List<DBNationSnapshot> sturdyDefenders = buildNations(401, 3, 9999, DEFENDER_SCORE, 300, 300);
 
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(weakAttackers, sturdyDefenders);
+        BlitzAssignment result = assign(planner, weakAttackers, sturdyDefenders);
 
         assertEquals(0, result.pairCount(), "Kernel-EV probe should prune non-missile zero-strength edges");
     }
@@ -257,12 +281,13 @@ class BlitzPlannerTest {
         mixedDefenders.add(strongestDefender);
         mixedDefenders.addAll(buildNations(702, 2, 9999, 1_000.0, 300, 300));
 
-        BlitzAssignment result = new BlitzPlanner(
+        BlitzPlanner planner = new BlitzPlanner(
                 SimTuning.defaults(),
                 TreatyProvider.NONE,
                 OverrideSet.EMPTY,
                 BlitzObjective.CONTROL.objective()
-        ).assign(focusedAttackers, mixedDefenders);
+        );
+        BlitzAssignment result = assign(planner, focusedAttackers, mixedDefenders);
 
         boolean assignedStrongestDefender = result.assignment().values().stream()
                 .flatMap(List::stream)
@@ -294,12 +319,13 @@ class BlitzPlannerTest {
         mixedDefenders.add(highThreatDefender);
         mixedDefenders.addAll(easyDownDeclares);
 
-        BlitzAssignment result = new BlitzPlanner(
+        BlitzPlanner planner = new BlitzPlanner(
                 SimTuning.defaults(),
                 TreatyProvider.NONE,
                 OverrideSet.EMPTY,
                 BlitzObjective.CONTROL.objective()
-        ).assign(focusedAttackers, mixedDefenders);
+        );
+        BlitzAssignment result = assign(planner, focusedAttackers, mixedDefenders);
 
         boolean assignedHighThreatDefender = result.assignment().values().stream()
                 .flatMap(List::stream)
@@ -313,7 +339,7 @@ class BlitzPlannerTest {
         TreatyProvider allTreated = (a, d) -> true;
         SimTuning tuning = SimTuning.defaults();
         BlitzPlanner planner = new BlitzPlanner(tuning, allTreated, OverrideSet.EMPTY, new DamageObjective());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         assertEquals(0, result.pairCount(), "TreatyProvider blocking all pairs should produce empty assignment");
     }
@@ -321,7 +347,7 @@ class BlitzPlannerTest {
     @Test
     void objectiveScoreIsNonNegativeForValidAssignment() {
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         if (result.pairCount() > 0) {
             // Objective can legitimately be negative (own losses may exceed enemy damage in edge cases)
@@ -347,7 +373,7 @@ class BlitzPlannerTest {
         }
         // Without override: no assignments
         BlitzPlanner plannerNoOverride = new BlitzPlanner(SimTuning.defaults(), TreatyProvider.NONE, OverrideSet.EMPTY, new DamageObjective());
-        BlitzAssignment withoutOverride = plannerNoOverride.assign(occupiedAtts, defenders);
+        BlitzAssignment withoutOverride = assign(plannerNoOverride, occupiedAtts, defenders);
         assertEquals(0, withoutOverride.pairCount(), "Without forceFreeOff override, zero-free-slot attackers cannot be assigned");
 
         // With forceFreeOff: they should get assignments
@@ -357,7 +383,7 @@ class BlitzPlannerTest {
         }
         OverrideSet overrides = ob.build();
         BlitzPlanner plannerWithOverride = new BlitzPlanner(SimTuning.defaults(), TreatyProvider.NONE, overrides, new DamageObjective());
-        BlitzAssignment withOverride = plannerWithOverride.assign(occupiedAtts, defenders);
+        BlitzAssignment withOverride = assign(plannerWithOverride, occupiedAtts, defenders);
         assertTrue(withOverride.pairCount() > 0, "forceFreeOff override should enable assignment for fully-slotted attackers");
     }
 
@@ -369,7 +395,7 @@ class BlitzPlannerTest {
                 .withStochasticSampleCount(4);
 
         BlitzPlanner planner = new BlitzPlanner(tuning);
-        BlitzAssignment result = planner.assign(attackers.subList(0, 2), defenders.subList(0, 2));
+    BlitzAssignment result = assign(planner, attackers.subList(0, 2), defenders.subList(0, 2));
 
         assertEquals(4, result.objectiveSummary().sampleCount());
         assertTrue(result.objectiveSummary().p10() <= result.objectiveSummary().p50());
@@ -402,7 +428,7 @@ class BlitzPlannerTest {
                 .build();
 
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(List.of(attacker), List.of(blockedDefender));
+    BlitzAssignment result = assign(planner, List.of(attacker), List.of(blockedDefender));
 
         assertEquals(0, result.pairCount(), "Existing attacker/defender pair conflict should be filtered before assignment");
     }
@@ -434,7 +460,7 @@ class BlitzPlannerTest {
         .warPolicy(WarPolicy.ATTRITION)
         .build();
 
-    BlitzAssignment result = new BlitzPlanner(SimTuning.defaults()).assign(List.of(attacker), List.of(defender));
+    BlitzAssignment result = assign(new BlitzPlanner(SimTuning.defaults()), List.of(attacker), List.of(defender));
 
     assertTrue(result.diagnostics().stream().anyMatch(diagnostic ->
         diagnostic.code() == PlannerDiagnostic.Code.RESET_HOUR_FALLBACK

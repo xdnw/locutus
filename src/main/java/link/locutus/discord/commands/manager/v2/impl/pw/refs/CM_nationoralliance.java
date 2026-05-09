@@ -22,6 +22,11 @@ public class CM_nationoralliance {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid.class,method="getSheetUrl")
+        public static class getSheetUrl extends CommandRef {
+            public static final getSheetUrl cmd = new getSheetUrl();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.pnw.NationOrAlliance.class,method="isValid")
         public static class isValid extends CommandRef {
             public static final isValid cmd = new isValid();

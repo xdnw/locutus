@@ -18,7 +18,7 @@ public record CompiledActiveWar(
         int defenderMaps,
         int attackerResistance,
         int defenderResistance,
-        ControlOwner groundControlOwner,
+        ControlOwner groundSuperiorityOwner,
         ControlOwner airSuperiorityOwner,
         ControlOwner blockadeOwner,
         boolean attackerFortified,
@@ -39,7 +39,7 @@ public record CompiledActiveWar(
         defenderMaps = clamp(defenderMaps, 0, 12);
         attackerResistance = clamp(attackerResistance, 0, 100);
         defenderResistance = clamp(defenderResistance, 0, 100);
-        groundControlOwner = groundControlOwner == null ? ControlOwner.NONE : groundControlOwner;
+        groundSuperiorityOwner = groundSuperiorityOwner == null ? ControlOwner.NONE : groundSuperiorityOwner;
         airSuperiorityOwner = airSuperiorityOwner == null ? ControlOwner.NONE : airSuperiorityOwner;
         blockadeOwner = blockadeOwner == null ? ControlOwner.NONE : blockadeOwner;
     }

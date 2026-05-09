@@ -284,6 +284,11 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "importTreatyHistoryLegacy","import_treaty_history");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "validateTreatyHistoryBootstrap","validate_treaty_history");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "resetTreatyHistoryBootstrap","reset_treaty_history");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "pushTreatyRuntimeToCloud","push_treaty_history");
+
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "listDuplicateAllianceBankTransfers","list_dupe_tx");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "repairBankTransactionPayloads","repair_tx");
 

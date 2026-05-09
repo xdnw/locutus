@@ -7,12 +7,14 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.BlitzObjective;
+import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.Turn1DeclarePolicy;
 import link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
@@ -190,6 +192,10 @@ class PlannerReplayProjectorTest {
                 Map.of(),
                 List.of(hitDefender),
                 List.of(attacker, otherAttacker),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
                 BlitzObjective.DAMAGE.objective(),
                 SimTuning.defaults(),
                 2
@@ -235,6 +241,102 @@ class PlannerReplayProjectorTest {
         assertTrue(
                 hasAttacksAfterTurn(trace, declaredTurn, false),
                 "Counter wars must keep executing daily attacks after their declaration turn instead of idling outside the assignment map"
+        );
+    }
+
+    @Test
+    void replayAutonomousCountersHonorPassedSideOpeningAdmissionPolicy() {
+        DBNationSnapshot target = nation(101, 1)
+                .unit(MilitaryUnit.AIRCRAFT, 500)
+                .unit(MilitaryUnit.SOLDIER, 8_500)
+                .unit(MilitaryUnit.TANK, 320)
+                .build();
+        DBNationSnapshot counterDeclarer = nation(202, 2)
+                .unit(MilitaryUnit.AIRCRAFT, 520)
+                .unit(MilitaryUnit.SOLDIER, 8_000)
+                .unit(MilitaryUnit.TANK, 300)
+                .build();
+
+        SidePolicy permissivePolicy = SidePolicy.legacy("counterDeclarer", BlitzObjective.DAMAGE.objective());
+        SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
+                Arrays.copyOf(permissivePolicy.opening().warTypeWeights(), permissivePolicy.opening().warTypeWeights().length),
+                Arrays.copyOf(permissivePolicy.opening().attackTypeWeights(), permissivePolicy.opening().attackTypeWeights().length),
+                new CandidateEdgeAdmissionPolicy(1.0d, false, false)
+        );
+        SidePolicy restrictivePolicy = new SidePolicy(
+                "restrictiveCounterDeclarer",
+                permissivePolicy.objective(),
+                permissivePolicy.planner(),
+                restrictiveOpening,
+                permissivePolicy.projection(),
+                permissivePolicy.turnActor(),
+                permissivePolicy.allowInitialDeclarations()
+        );
+        SidePolicy passiveTargetPolicy = SidePolicy.legacyPassive("counterTarget", BlitzObjective.DAMAGE.objective());
+
+        List<DBNationSnapshot> nations = List.of(target, counterDeclarer);
+        SimTuning tuning = SimTuning.defaults().withTurn1DeclarePolicy(Turn1DeclarePolicy.BOTH_FREE);
+
+        BlitzReplayTrace permissiveTrace = PlannerReplayProjector.capture(
+                tuning,
+                OverrideSet.EMPTY,
+                nations,
+                ids(List.of(target)),
+                ids(List.of(counterDeclarer)),
+                Map.of(),
+                Map.of(),
+                List.of(counterDeclarer),
+                List.of(target),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                permissivePolicy,
+                passiveTargetPolicy,
+                permissivePolicy,
+                passiveTargetPolicy,
+                permissivePolicy,
+                passiveTargetPolicy,
+                ids(nations),
+                new int[0],
+                0,
+                1
+        );
+        BlitzReplayTrace restrictiveTrace = PlannerReplayProjector.capture(
+                tuning,
+                OverrideSet.EMPTY,
+                nations,
+                ids(List.of(target)),
+                ids(List.of(counterDeclarer)),
+                Map.of(),
+                Map.of(),
+                List.of(counterDeclarer),
+                List.of(target),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                restrictivePolicy,
+                passiveTargetPolicy,
+                restrictivePolicy,
+                passiveTargetPolicy,
+                restrictivePolicy,
+                passiveTargetPolicy,
+                ids(nations),
+                new int[0],
+                0,
+                1
+        );
+        PARTICIPANT_IDS_BY_TRACE.put(permissiveTrace, ids(nations));
+        PARTICIPANT_IDS_BY_TRACE.put(restrictiveTrace, ids(nations));
+
+        assertTrue(
+                hasDeclaredWar(permissiveTrace, counterDeclarer.nationId(), target.nationId()),
+                "Replay capture should honor a permissive autonomous counter declarer policy"
+        );
+        assertFalse(
+                hasDeclaredWar(restrictiveTrace, counterDeclarer.nationId(), target.nationId()),
+                "Replay capture should honor a restrictive autonomous counter declarer admission policy"
         );
     }
 
@@ -418,6 +520,11 @@ class PlannerReplayProjectorTest {
                 conflict,
                 new int[]{attacker.nationId()},
                 Map.of(attacker.nationId(), List.of(defender.nationId())),
+                Map.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of(),
                 BlitzObjective.DAMAGE.objective(),
@@ -449,6 +556,294 @@ class PlannerReplayProjectorTest {
 
         assertTrue(maxProjectedUnits(trace, List.of(nation), List.of(), nation.nationId(), MilitaryUnit.SOLDIER) > 0,
                 "Replay should queue and materialize projected daily rebuys instead of leaving depleted nations dead for the whole trace");
+    }
+
+    @Test
+    void initialPlannedDeclarerGetsOpeningAttacksFirst() {
+        DBNationSnapshot attacker = nation(101, 1)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 2_000)
+                .unit(MilitaryUnit.AIRCRAFT, 1_200)
+                .build();
+        DBNationSnapshot defender = nation(202, 2)
+                .unit(MilitaryUnit.SOLDIER, 16_000)
+                .unit(MilitaryUnit.TANK, 1_200)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(attacker),
+                List.of(defender),
+                Map.of(attacker.nationId(), List.of(defender.nationId())),
+                Map.of(),
+                List.of(),
+                List.of(),
+                BlitzObjective.DAMAGE.objective(),
+                SimTuning.defaults(),
+                1
+        );
+
+        TurnSlice declaredTurn = firstDeclaredTurn(trace);
+        assertTrue(declaredTurn != null, "expected planned declaration turn");
+        assertTrue(attackCountOnTurn(trace, declaredTurn.absoluteTurn(), true) > 0,
+                "planned declarer should take opening attacks on the declaration turn");
+        assertEquals(0, attackCountOnTurn(trace, declaredTurn.absoluteTurn(), false),
+                "the target side should not act before the planned declarer in a newly declared war");
+    }
+
+    @Test
+    void attackerSideAutonomouslyRedeclaresAfterInitialWarCycle() {
+        DBNationSnapshot attacker = nation(101, 1)
+                .maxOff(2)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_400)
+                .build();
+        DBNationSnapshot initialTarget = nation(202, 2)
+                .unit(MilitaryUnit.SOLDIER, 14_000)
+                .unit(MilitaryUnit.TANK, 900)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .build();
+        DBNationSnapshot reserveTarget = nation(203, 2)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_200)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(attacker),
+                List.of(initialTarget, reserveTarget),
+                Map.of(attacker.nationId(), List.of(initialTarget.nationId())),
+                Map.of(),
+                List.of(),
+                List.of(),
+                BlitzObjective.DAMAGE.objective(),
+                SimTuning.defaults(),
+                72
+        );
+
+        assertTrue(totalDeclaredWarCount(trace, attacker.nationId()) > 1,
+                "attacker side should be able to declare additional wars beyond the initial planned opening over long replay horizons");
+    }
+
+    @Test
+    void attackerSideCanDeclareAdditionalWarsBeforeTurnSixtyWhenSlotsAreFree() {
+        DBNationSnapshot attacker = nation(101, 1)
+                .maxOff(2)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_400)
+                .build();
+        DBNationSnapshot initialTarget = nation(202, 2)
+                .unit(MilitaryUnit.SOLDIER, 14_000)
+                .unit(MilitaryUnit.TANK, 900)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .build();
+        DBNationSnapshot reserveTarget = nation(203, 2)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_200)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(attacker),
+                List.of(initialTarget, reserveTarget),
+                Map.of(attacker.nationId(), List.of(initialTarget.nationId())),
+                Map.of(),
+                List.of(),
+                List.of(),
+                BlitzObjective.DAMAGE.objective(),
+                SimTuning.defaults(),
+                12
+        );
+
+        int reserveDeclareTurn = declaredTurn(trace, attacker.nationId(), reserveTarget.nationId());
+        assertTrue(
+                reserveDeclareTurn >= 0,
+                "attacker side should be able to use a free offensive slot for an additional declaration before turn 60 instead of waiting for an arbitrary expiration gate"
+        );
+        assertTrue(
+                reserveDeclareTurn < 60,
+                "the extra attacker declaration should happen before turn 60 when the slot is already free"
+        );
+    }
+
+    @Test
+    void attackerAutonomousRedeclarerGetsOpeningAttacksFirst() {
+        DBNationSnapshot attacker = nation(101, 1)
+                .maxOff(2)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_400)
+                .build();
+        DBNationSnapshot initialTarget = nation(202, 2)
+                .unit(MilitaryUnit.SOLDIER, 14_000)
+                .unit(MilitaryUnit.TANK, 900)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .build();
+        DBNationSnapshot reserveTarget = nation(203, 2)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_200)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(attacker),
+                List.of(initialTarget, reserveTarget),
+                Map.of(attacker.nationId(), List.of(initialTarget.nationId())),
+                Map.of(),
+                List.of(),
+                List.of(),
+                BlitzObjective.DAMAGE.objective(),
+                SimTuning.defaults(),
+                72
+        );
+
+        int redeclareTurn = firstDeclaredTurnByDeclarerAfter(trace, attacker.nationId(), 1);
+        assertTrue(redeclareTurn > 0, "expected attacker-side autonomous redeclaration after the initial turn");
+        assertTrue(attackCountOnTurn(trace, redeclareTurn, true) > 0,
+                "attacker redeclarer should take opening attacks on the redeclaration turn");
+        assertEquals(0, attackCountOnTurn(trace, redeclareTurn, false),
+                "the redeclared-on side should not act before the attacker redeclarer on the declaration turn");
+    }
+
+    @Test
+    void attackerAutonomousRedeclarationPreservesPlannerSelectedWarType() {
+        DBNationSnapshot attacker = nation(101, 1)
+                .maxOff(2)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .build();
+        DBNationSnapshot initialTarget = nation(202, 2)
+                .unit(MilitaryUnit.AIRCRAFT, 250)
+                .unit(MilitaryUnit.SOLDIER, 8_000)
+                .unit(MilitaryUnit.TANK, 250)
+                .build();
+        DBNationSnapshot reserveTarget = nation(203, 2)
+                .unit(MilitaryUnit.AIRCRAFT, 250)
+                .unit(MilitaryUnit.SOLDIER, 8_000)
+                .unit(MilitaryUnit.TANK, 250)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(attacker),
+                List.of(initialTarget, reserveTarget),
+                Map.of(attacker.nationId(), List.of(initialTarget.nationId())),
+                Map.of(),
+                List.of(),
+                List.of(),
+                BlitzObjective.NET_DAMAGE.objective(),
+                SimTuning.defaults(),
+                72
+        );
+
+        assertTrue(totalDeclaredWarCount(trace, attacker.nationId()) > 1,
+                "expected the attacker to redeclare on the reserve target over the long replay horizon");
+        assertEquals(
+                WarType.ATT.ordinal(),
+                declaredWarTypeOrdinal(trace, attacker.nationId(), reserveTarget.nationId()),
+                "later autonomous redeclarations should preserve the autonomous planner's selected war type instead of defaulting to ORD"
+        );
+    }
+
+    @Test
+    void defenderSideAutonomouslyRedeclaresAfterInitialWarCycleWhenDefendersAreBlitzing() {
+        DBNationSnapshot initialTarget = nation(101, 1)
+                .unit(MilitaryUnit.SOLDIER, 14_000)
+                .unit(MilitaryUnit.TANK, 900)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .build();
+        DBNationSnapshot reserveTarget = nation(102, 1)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_200)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+        DBNationSnapshot defenderDeclarer = nation(202, 2)
+                .maxOff(2)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_400)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(initialTarget, reserveTarget),
+                List.of(defenderDeclarer),
+                Map.of(defenderDeclarer.nationId(), List.of(initialTarget.nationId())),
+                Map.of(),
+                List.of(),
+                List.of(),
+                List.of(defenderDeclarer),
+                List.of(initialTarget, reserveTarget),
+                List.of(),
+                List.of(),
+                BlitzObjective.DAMAGE.objective(),
+                SimTuning.defaults(),
+                72
+        );
+
+        assertTrue(totalDeclaredWarCount(trace, defenderDeclarer.nationId()) > 1,
+                "the original defender population should be able to redeclare later when DEFENDERS_ONLY is the declaring side");
+    }
+
+    @Test
+    void bothModeReplayAllowsLaterRedeclarationsFromBothOriginalSides() {
+        DBNationSnapshot attackerDeclarer = nation(101, 1)
+                .maxOff(2)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_400)
+                .build();
+        DBNationSnapshot attackerInitialTarget = nation(102, 1)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_100)
+                .unit(MilitaryUnit.AIRCRAFT, 850)
+                .build();
+        DBNationSnapshot attackerReserveTarget = nation(103, 1)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_100)
+                .unit(MilitaryUnit.AIRCRAFT, 850)
+                .build();
+        DBNationSnapshot defenderDeclarer = nation(202, 2)
+                .maxOff(2)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_400)
+                .build();
+        DBNationSnapshot defenderInitialTarget = nation(203, 2)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_100)
+                .unit(MilitaryUnit.AIRCRAFT, 850)
+                .build();
+        DBNationSnapshot defenderReserveTarget = nation(204, 2)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_100)
+                .unit(MilitaryUnit.AIRCRAFT, 850)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
+                List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
+                Map.of(
+                        attackerDeclarer.nationId(), List.of(defenderInitialTarget.nationId()),
+                        defenderDeclarer.nationId(), List.of(attackerInitialTarget.nationId())
+                ),
+                Map.of(),
+                List.of(),
+                List.of(),
+                List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
+                List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
+                List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
+                List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
+                BlitzObjective.DAMAGE.objective(),
+                SimTuning.defaults(),
+                72
+        );
+
+        assertTrue(totalDeclaredWarCount(trace, attackerDeclarer.nationId()) > 1,
+                "BOTH mode should still allow later redeclarations from the original attacker population");
+        assertTrue(totalDeclaredWarCount(trace, defenderDeclarer.nationId()) > 1,
+                "BOTH mode should also allow later redeclarations from the original defender population");
     }
 
     @Test
@@ -487,10 +882,6 @@ class PlannerReplayProjectorTest {
         assertEquals(2 * WarType.values.length, turn.summaryWarTypeCounts().length);
         assertEquals(2 * AttackType.values().length * SuccessType.values.length, turn.summaryAttackOutcomeCounts().length);
         assertTrue(sum(turn.summaryAttackOutcomeCounts()) > 0 || sum(turn.summaryUnitLossCounts()) > 0);
-        assertEquals(2, turn.summaryStrategicUnitLossCents().length);
-        if (sum(turn.summaryUnitLossCounts()) > 0) {
-            assertTrue(sum(turn.summaryStrategicUnitLossCents()) > 0);
-        }
     }
 
     private static BlitzReplayTrace capture(
@@ -500,6 +891,38 @@ class PlannerReplayProjectorTest {
             Map<Long, Integer> warTypeOrdinalsByPair,
             List<DBNationSnapshot> counterDeclarers,
             List<DBNationSnapshot> counterTargets,
+            link.locutus.discord.sim.StrategicObjective counterObjective,
+            SimTuning tuning,
+            int horizonTurns
+    ) {
+        return capture(
+                attackers,
+                defenders,
+                assignment,
+                warTypeOrdinalsByPair,
+                counterDeclarers,
+                counterTargets,
+                attackers,
+                defenders,
+                List.of(),
+                List.of(),
+                counterObjective,
+                tuning,
+                horizonTurns
+        );
+    }
+
+    private static BlitzReplayTrace capture(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            Map<Integer, List<Integer>> assignment,
+            Map<Long, Integer> warTypeOrdinalsByPair,
+            List<DBNationSnapshot> counterDeclarers,
+            List<DBNationSnapshot> counterTargets,
+            List<DBNationSnapshot> redeclareDeclarers,
+            List<DBNationSnapshot> redeclareTargets,
+            List<DBNationSnapshot> secondaryRedeclareDeclarers,
+            List<DBNationSnapshot> secondaryRedeclareTargets,
             link.locutus.discord.sim.StrategicObjective counterObjective,
             SimTuning tuning,
             int horizonTurns
@@ -517,6 +940,10 @@ class PlannerReplayProjectorTest {
                 warTypeOrdinalsByPair,
                 counterDeclarers,
                 counterTargets,
+                redeclareDeclarers,
+                redeclareTargets,
+                secondaryRedeclareDeclarers,
+                secondaryRedeclareTargets,
                 counterObjective,
                 0,
                 horizonTurns
@@ -624,6 +1051,54 @@ class PlannerReplayProjectorTest {
         return false;
     }
 
+        private static int attackCountOnTurn(BlitzReplayTrace trace, int absoluteTurn, boolean attackerSide) {
+                int sideOffset = attackerSide ? 0 : AttackType.values().length * SuccessType.values.length;
+                int span = AttackType.values().length * SuccessType.values.length;
+                for (int turnIndex = 0; turnIndex < turnCount(trace); turnIndex++) {
+                        TurnSlice delta = turn(trace, turnIndex);
+                        if (delta.absoluteTurn() != absoluteTurn) {
+                                continue;
+                        }
+                        int[] counts = delta.summaryAttackOutcomeCounts();
+                        int total = 0;
+                        for (int i = 0; i < span; i++) {
+                                total += counts[sideOffset + i];
+                        }
+                        return total;
+                }
+                return 0;
+        }
+
+        private static int totalDeclaredWarCount(BlitzReplayTrace trace, int declarerNationId) {
+                int[] participantIds = participantIds(trace);
+                int count = 0;
+                for (int turnIndex = 0; turnIndex < turnCount(trace); turnIndex++) {
+                        TurnSlice turn = turn(trace, turnIndex);
+                        for (int offset = 0; offset + 1 < turn.declaredWarPairs().length; offset += 2) {
+                                if (participantIds[turn.declaredWarPairs()[offset]] == declarerNationId) {
+                                        count++;
+                                }
+                        }
+                }
+                return count;
+        }
+
+        private static int firstDeclaredTurnByDeclarerAfter(BlitzReplayTrace trace, int declarerNationId, int minAbsoluteTurnExclusive) {
+                int[] participantIds = participantIds(trace);
+                for (int turnIndex = 0; turnIndex < turnCount(trace); turnIndex++) {
+                        TurnSlice turn = turn(trace, turnIndex);
+                        if (turn.absoluteTurn() <= minAbsoluteTurnExclusive) {
+                                continue;
+                        }
+                        for (int offset = 0; offset + 1 < turn.declaredWarPairs().length; offset += 2) {
+                                if (participantIds[turn.declaredWarPairs()[offset]] == declarerNationId) {
+                                        return turn.absoluteTurn();
+                                }
+                        }
+                }
+                return -1;
+        }
+
     private static int maxProjectedUnits(
             BlitzReplayTrace trace,
             List<DBNationSnapshot> attackers,
@@ -685,7 +1160,6 @@ class PlannerReplayProjectorTest {
         int summaryAttackOutcomeLaneStart = trace.turnMetaLanes()[metaOffset + 9];
         int summaryUnitLossLaneStart = trace.turnMetaLanes()[metaOffset + 10];
         int summaryInfraLossLaneStart = trace.turnMetaLanes()[metaOffset + 11];
-        int summaryStrategicUnitLossLaneStart = trace.turnMetaLanes()[metaOffset + 12];
 
         int changedNationEntryEnd = turnIndex + 1 < turnCount(trace)
                 ? trace.turnMetaLanes()[nextMetaOffset]
@@ -723,9 +1197,6 @@ class PlannerReplayProjectorTest {
         int summaryInfraLossLaneEnd = turnIndex + 1 < turnCount(trace)
                 ? trace.turnMetaLanes()[nextMetaOffset + 11]
                 : trace.summaryInfraLossCents().length;
-        int summaryStrategicUnitLossLaneEnd = turnIndex + 1 < turnCount(trace)
-                ? trace.turnMetaLanes()[nextMetaOffset + 12]
-                : trace.summaryStrategicUnitLossCents().length;
 
         return new TurnSlice(
                 trace.startTurn() + turnIndex + 1,
@@ -742,8 +1213,7 @@ class PlannerReplayProjectorTest {
                 java.util.Arrays.copyOfRange(trace.summaryWarTypeCounts(), summaryWarTypeLaneStart, summaryWarTypeLaneEnd),
                 java.util.Arrays.copyOfRange(trace.summaryAttackOutcomeCounts(), summaryAttackOutcomeLaneStart, summaryAttackOutcomeLaneEnd),
                 java.util.Arrays.copyOfRange(trace.summaryUnitLossCounts(), summaryUnitLossLaneStart, summaryUnitLossLaneEnd),
-                java.util.Arrays.copyOfRange(trace.summaryInfraLossCents(), summaryInfraLossLaneStart, summaryInfraLossLaneEnd),
-                java.util.Arrays.copyOfRange(trace.summaryStrategicUnitLossCents(), summaryStrategicUnitLossLaneStart, summaryStrategicUnitLossLaneEnd)
+                java.util.Arrays.copyOfRange(trace.summaryInfraLossCents(), summaryInfraLossLaneStart, summaryInfraLossLaneEnd)
         );
     }
 
@@ -770,8 +1240,7 @@ class PlannerReplayProjectorTest {
             int[] summaryWarTypeCounts,
             int[] summaryAttackOutcomeCounts,
             int[] summaryUnitLossCounts,
-            int[] summaryInfraLossCents,
-            int[] summaryStrategicUnitLossCents
+            int[] summaryInfraLossCents
     ) {
     }
 

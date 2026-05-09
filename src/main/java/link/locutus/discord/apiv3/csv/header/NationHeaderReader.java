@@ -19,7 +19,7 @@ public class NationHeaderReader extends DataReader<NationHeader> {
 
     public NationHeaderReader(NationHeader header, long date) {
         super(header, date);
-        this.wrapper = new LocalDataWrapper<>(date, header);
+        this.wrapper = new LocalDataWrapper<>(date, header, null);
     }
 
     public void clear() {

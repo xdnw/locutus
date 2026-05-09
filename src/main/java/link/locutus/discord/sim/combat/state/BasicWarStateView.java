@@ -9,8 +9,8 @@ public record BasicWarStateView(
     boolean attackerIsOriginalAttacker,
         boolean attackerHasAirControl,
         boolean defenderHasAirControl,
-        boolean attackerHasGroundControl,
-        boolean defenderHasGroundControl,
+        boolean attackerHasGroundSuperiority,
+        boolean defenderHasGroundSuperiority,
         boolean attackerFortified,
         boolean defenderFortified,
         int attackerMaps,
@@ -53,7 +53,7 @@ public record BasicWarStateView(
             WarType warType,
             boolean attackerHasAirControl,
             boolean defenderHasAirControl,
-            boolean attackerHasGroundControl,
+            boolean attackerHasGroundSuperiority,
             boolean defenderFortified
     ) {
         return ofActorPerspective(
@@ -61,7 +61,7 @@ public record BasicWarStateView(
                 true,
                 attackerHasAirControl,
                 defenderHasAirControl,
-                attackerHasGroundControl,
+                attackerHasGroundSuperiority,
                 false,
                 false,
                 defenderFortified,
@@ -78,8 +78,8 @@ public record BasicWarStateView(
             boolean actorIsOriginalAttacker,
             boolean originalAttackerHasAirControl,
             boolean originalDefenderHasAirControl,
-            boolean originalAttackerHasGroundControl,
-            boolean originalDefenderHasGroundControl,
+            boolean originalattackerHasGroundSuperiority,
+            boolean originaldefenderHasGroundSuperiority,
             boolean originalAttackerFortified,
             boolean originalDefenderFortified,
             int originalAttackerMaps,
@@ -94,12 +94,12 @@ public record BasicWarStateView(
         boolean defenderHasAirControl = actorIsOriginalAttacker
                 ? originalDefenderHasAirControl
                 : originalAttackerHasAirControl;
-        boolean attackerHasGroundControl = actorIsOriginalAttacker
-                ? originalAttackerHasGroundControl
-                : originalDefenderHasGroundControl;
-        boolean defenderHasGroundControl = actorIsOriginalAttacker
-                ? originalDefenderHasGroundControl
-                : originalAttackerHasGroundControl;
+        boolean attackerHasGroundSuperiority = actorIsOriginalAttacker
+                ? originalattackerHasGroundSuperiority
+                : originaldefenderHasGroundSuperiority;
+        boolean defenderHasGroundSuperiority = actorIsOriginalAttacker
+                ? originaldefenderHasGroundSuperiority
+                : originalattackerHasGroundSuperiority;
         boolean attackerFortified = actorIsOriginalAttacker
                 ? originalAttackerFortified
                 : originalDefenderFortified;
@@ -120,8 +120,8 @@ public record BasicWarStateView(
                 actorIsOriginalAttacker,
                 attackerHasAirControl,
                 defenderHasAirControl,
-                attackerHasGroundControl,
-                defenderHasGroundControl,
+                attackerHasGroundSuperiority,
+                defenderHasGroundSuperiority,
                 attackerFortified,
                 defenderFortified,
                 attackerMaps,

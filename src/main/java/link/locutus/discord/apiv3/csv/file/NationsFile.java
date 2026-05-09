@@ -3,6 +3,7 @@ package link.locutus.discord.apiv3.csv.file;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
+import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
@@ -30,6 +31,28 @@ public class NationsFile extends DataFile<DBNation, NationHeader, NationHeaderRe
         return readNations(fetchCities);
     }
 
+    public synchronized Map<Integer, DBNationSnapshot> readNations(Function<Integer, Map<Integer, DBCity>> fetchCities,
+            AllianceLookup allianceLookup) throws IOException {
+        if (allianceLookup == null) {
+            return readNations(fetchCities);
+        }
+
+        NationHeader header = getGlobalHeader();
+        byte[] data = this.getBytes();
+        Header<DBNation> colInfo = header.readIndexes(data);
+        int bytesPerRow = colInfo.bytesPerRow;
+        int rows = (data.length - colInfo.initialOffset) / bytesPerRow;
+
+        DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities, allianceLookup);
+
+        Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>(rows);
+        for (int i = colInfo.initialOffset; i < data.length; i += bytesPerRow) {
+            DBNationSnapshot nation = new DBNationSnapshot(wrapper, i);
+            result.put(nation.getNation_id(), nation);
+        }
+        return result;
+    }
+
     public synchronized Map<Integer, DBNationSnapshot> readNations(Function<Integer, Map<Integer, DBCity>> fetchCities)
             throws IOException {
         boolean hasCities = fetchCities != null;
@@ -45,7 +68,7 @@ public class NationsFile extends DataFile<DBNation, NationHeader, NationHeaderRe
         int bytesPerRow = colInfo.bytesPerRow;
         int rows = (data.length - colInfo.initialOffset) / bytesPerRow;
 
-        DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities);
+        DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities, null);
 
         Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>(rows);
         for (int i = colInfo.initialOffset; i < data.length; i += bytesPerRow) {

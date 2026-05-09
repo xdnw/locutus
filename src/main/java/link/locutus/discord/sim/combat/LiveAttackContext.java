@@ -59,13 +59,13 @@ public final class LiveAttackContext implements CombatKernel.AttackContext {
     }
 
     @Override
-    public boolean attackerHasGroundControl() {
-        return controlOwnerMatchesPerspective(war.groundControlOwner());
+    public boolean attackerHasGroundSuperiority() {
+        return controlOwnerMatchesPerspective(war.groundSuperiorityOwner());
     }
 
     @Override
-    public boolean defenderHasGroundControl() {
-        return opposingControlOwnerMatchesPerspective(war.groundControlOwner());
+    public boolean defenderHasGroundSuperiority() {
+        return opposingControlOwnerMatchesPerspective(war.groundSuperiorityOwner());
     }
 
     @Override

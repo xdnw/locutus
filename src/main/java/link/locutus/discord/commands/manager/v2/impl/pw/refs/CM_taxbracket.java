@@ -25,6 +25,11 @@ public class CM_taxbracket {
             public static final getId cmd = new getId();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid.class,method="getMarkdownUrl")
+        public static class getMarkdownUrl extends CommandRef {
+            public static final getMarkdownUrl cmd = new getMarkdownUrl();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.TaxBracket.class,method="getMoneyRate")
         public static class getMoneyRate extends CommandRef {
             public static final getMoneyRate cmd = new getMoneyRate();
@@ -66,6 +71,11 @@ public class CM_taxbracket {
         @AutoRegister(clazz=link.locutus.discord.db.entities.TaxBracket.class,method="getRssRate")
         public static class getRssRate extends CommandRef {
             public static final getRssRate cmd = new getRssRate();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid.class,method="getSheetUrl")
+        public static class getSheetUrl extends CommandRef {
+            public static final getSheetUrl cmd = new getSheetUrl();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.TaxBracket.class,method="getUrl")

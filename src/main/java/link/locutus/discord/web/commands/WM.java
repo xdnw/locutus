@@ -309,6 +309,59 @@ public class WM {
                 public static final bank_access cmd = new bank_access();
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="baseballChallengeEarningsRanking")
+            public static class baseballChallengeEarningsRanking extends CommandRef {
+                public static final baseballChallengeEarningsRanking cmd = new baseballChallengeEarningsRanking();
+            public baseballChallengeEarningsRanking byAlliance(String value) {
+                return set("byAlliance", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="baseballChallengeRanking")
+            public static class baseballChallengeRanking extends CommandRef {
+                public static final baseballChallengeRanking cmd = new baseballChallengeRanking();
+            public baseballChallengeRanking byAlliance(String value) {
+                return set("byAlliance", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="baseballEarningsRanking")
+            public static class baseballEarningsRanking extends CommandRef {
+                public static final baseballEarningsRanking cmd = new baseballEarningsRanking();
+            public baseballEarningsRanking date(String value) {
+                return set("date", value);
+            }
+
+            public baseballEarningsRanking byAlliance(String value) {
+                return set("byAlliance", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="baseballRanking")
+            public static class baseballRanking extends CommandRef {
+                public static final baseballRanking cmd = new baseballRanking();
+            public baseballRanking date(String value) {
+                return set("date", value);
+            }
+
+            public baseballRanking byAlliance(String value) {
+                return set("byAlliance", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.SimEndpoints.class,method="blitzPlan")
+            public static class blitzPlan extends CommandRef {
+                public static final blitzPlan cmd = new blitzPlan();
+            public blitzPlan request(String value) {
+                return set("request", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.SimEndpoints.class,method="blitzRules")
+            public static class blitzRules extends CommandRef {
+                public static final blitzRules cmd = new blitzRules();
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.WarEndpoints.class,method="bounty")
             public static class bounty extends CommandRef {
                 public static final bounty cmd = new bounty();
@@ -666,6 +719,78 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.ConflictEndpoints.class,method="detectConflictStart")
+            public static class detectConflictStart extends CommandRef {
+                public static final detectConflictStart cmd = new detectConflictStart();
+            public detectConflictStart conflict(String value) {
+                return set("conflict", value);
+            }
+
+            public detectConflictStart turn_allowance(String value) {
+                return set("turn_allowance", value);
+            }
+
+            public detectConflictStart force(String value) {
+                return set("force", value);
+            }
+
+            public detectConflictStart token(String value) {
+                return set("token", value);
+            }
+
+            public detectConflictStart candidate_turn(String value) {
+                return set("candidate_turn", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="findOffshoreRanking")
+            public static class findOffshoreRanking extends CommandRef {
+                public static final findOffshoreRanking cmd = new findOffshoreRanking();
+            public findOffshoreRanking alliance(String value) {
+                return set("alliance", value);
+            }
+
+            public findOffshoreRanking cutoffMs(String value) {
+                return set("cutoffMs", value);
+            }
+
+            public findOffshoreRanking transfer_count(String value) {
+                return set("transfer_count", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="findTraderRanking")
+            public static class findTraderRanking extends CommandRef {
+                public static final findTraderRanking cmd = new findTraderRanking();
+            public findTraderRanking type(String value) {
+                return set("type", value);
+            }
+
+            public findTraderRanking cutoff(String value) {
+                return set("cutoff", value);
+            }
+
+            public findTraderRanking buyOrSell(String value) {
+                return set("buyOrSell", value);
+            }
+
+            public findTraderRanking groupByAlliance(String value) {
+                return set("groupByAlliance", value);
+            }
+
+            public findTraderRanking includeMoneyTrades(String value) {
+                return set("includeMoneyTrades", value);
+            }
+
+            public findTraderRanking show_absolute(String value) {
+                return set("show_absolute", value);
+            }
+
+            public findTraderRanking nations(String value) {
+                return set("nations", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.CoalitionGraphEndpoints.class,method="globalStats")
             public static class globalStats extends CommandRef {
                 public static final globalStats cmd = new globalStats();
@@ -706,11 +831,43 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="incentiveRanking")
+            public static class incentiveRanking extends CommandRef {
+                public static final incentiveRanking cmd = new incentiveRanking();
+            public incentiveRanking timestamp(String value) {
+                return set("timestamp", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.EndpointPages.class,method="input_options")
             public static class input_options extends CommandRef {
                 public static final input_options cmd = new input_options();
             public input_options type(String value) {
                 return set("type", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.SpyEndpoints.class,method="intel")
+            public static class intel extends CommandRef {
+                public static final intel cmd = new intel();
+            public intel attacker(String value) {
+                return set("attacker", value);
+            }
+
+            public intel dnrTopX(String value) {
+                return set("dnrTopX", value);
+            }
+
+            public intel ignoreDNR(String value) {
+                return set("ignoreDNR", value);
+            }
+
+            public intel score(String value) {
+                return set("score", value);
+            }
+
+            public intel numResults(String value) {
+                return set("numResults", value);
             }
 
             }
@@ -976,6 +1133,14 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="prolificOffshoresRanking")
+            public static class prolificOffshoresRanking extends CommandRef {
+                public static final prolificOffshoresRanking cmd = new prolificOffshoresRanking();
+            public prolificOffshoresRanking days(String value) {
+                return set("days", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.EndpointPages.class,method="query")
             public static class query extends CommandRef {
                 public static final query cmd = new query();
@@ -1181,6 +1346,94 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.SimEndpoints.class,method="simAdhoc")
+            public static class simAdhoc extends CommandRef {
+                public static final simAdhoc cmd = new simAdhoc();
+            public simAdhoc attacker(String value) {
+                return set("attacker", value);
+            }
+
+            public simAdhoc defenders(String value) {
+                return set("defenders", value);
+            }
+
+            public simAdhoc numResults(String value) {
+                return set("numResults", value);
+            }
+
+            public simAdhoc horizonTurns(String value) {
+                return set("horizonTurns", value);
+            }
+
+            public simAdhoc stochastic(String value) {
+                return set("stochastic", value);
+            }
+
+            public simAdhoc stochasticSamples(String value) {
+                return set("stochasticSamples", value);
+            }
+
+            public simAdhoc stochasticSeed(String value) {
+                return set("stochasticSeed", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.SimEndpoints.class,method="simBlitz")
+            public static class simBlitz extends CommandRef {
+                public static final simBlitz cmd = new simBlitz();
+            public simBlitz attackers(String value) {
+                return set("attackers", value);
+            }
+
+            public simBlitz defenders(String value) {
+                return set("defenders", value);
+            }
+
+            public simBlitz stochastic(String value) {
+                return set("stochastic", value);
+            }
+
+            public simBlitz stochasticSamples(String value) {
+                return set("stochasticSamples", value);
+            }
+
+            public simBlitz stochasticSeed(String value) {
+                return set("stochasticSeed", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.SimEndpoints.class,method="simSchedule")
+            public static class simSchedule extends CommandRef {
+                public static final simSchedule cmd = new simSchedule();
+            public simSchedule attackers(String value) {
+                return set("attackers", value);
+            }
+
+            public simSchedule defenders(String value) {
+                return set("defenders", value);
+            }
+
+            public simSchedule availability(String value) {
+                return set("availability", value);
+            }
+
+            public simSchedule bucketSizeTurns(String value) {
+                return set("bucketSizeTurns", value);
+            }
+
+            public simSchedule stochastic(String value) {
+                return set("stochastic", value);
+            }
+
+            public simSchedule stochasticSamples(String value) {
+                return set("stochasticSamples", value);
+            }
+
+            public simSchedule stochasticSeed(String value) {
+                return set("stochasticSeed", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="spyTierGraph")
             public static class spyTierGraph extends CommandRef {
                 public static final spyTierGraph cmd = new spyTierGraph();
@@ -1206,6 +1459,34 @@ public class WM {
 
             public spyTierGraph barGraph(String value) {
                 return set("barGraph", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.SpyEndpoints.class,method="spyops")
+            public static class spyops extends CommandRef {
+                public static final spyops cmd = new spyops();
+            public spyops attacker(String value) {
+                return set("attacker", value);
+            }
+
+            public spyops targets(String value) {
+                return set("targets", value);
+            }
+
+            public spyops operations(String value) {
+                return set("operations", value);
+            }
+
+            public spyops requiredSuccess(String value) {
+                return set("requiredSuccess", value);
+            }
+
+            public spyops prioritizeKills(String value) {
+                return set("prioritizeKills", value);
+            }
+
+            public spyops numResults(String value) {
+                return set("numResults", value);
             }
 
             }
@@ -1425,6 +1706,22 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.RankingEndpoints.class,method="tradeProfitRanking")
+            public static class tradeProfitRanking extends CommandRef {
+                public static final tradeProfitRanking cmd = new tradeProfitRanking();
+            public tradeProfitRanking nations(String value) {
+                return set("nations", value);
+            }
+
+            public tradeProfitRanking time(String value) {
+                return set("time", value);
+            }
+
+            public tradeProfitRanking groupByAlliance(String value) {
+                return set("groupByAlliance", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="tradeTotalByDay")
             public static class tradeTotalByDay extends CommandRef {
                 public static final tradeTotalByDay cmd = new tradeTotalByDay();
@@ -1477,12 +1774,22 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.TreatyVisRuntimeEndpoints.class,method="treaty_atlas")
+            public static class treaty_atlas extends CommandRef {
+                public static final treaty_atlas cmd = new treaty_atlas();
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.TreatyEndpoints.class,method="treaty_changes")
             public static class treaty_changes extends CommandRef {
                 public static final treaty_changes cmd = new treaty_changes();
             public treaty_changes start(String value) {
                 return set("start", value);
             }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.TreatyVisRuntimeEndpoints.class,method="treaty_history")
+            public static class treaty_history extends CommandRef {
+                public static final treaty_history cmd = new treaty_history();
 
             }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.WarEndpoints.class,method="unprotected")
@@ -1710,8 +2017,8 @@ public class WM {
                 return set("allowedAttacks", value);
             }
 
-            public warCostRanking warAlliances(String value) {
-                return set("warAlliances", value);
+            public warCostRanking allowed_alliances(String value) {
+                return set("allowed_alliances", value);
             }
 
             public warCostRanking onlyOffensiveWars(String value) {
@@ -1851,6 +2158,50 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.StatEndpoints.class,method="warsBetween")
+            public static class warsBetween extends CommandRef {
+                public static final warsBetween cmd = new warsBetween();
+            public warsBetween sideA(String value) {
+                return set("sideA", value);
+            }
+
+            public warsBetween sideB(String value) {
+                return set("sideB", value);
+            }
+
+            public warsBetween columns(String value) {
+                return set("columns", value);
+            }
+
+            public warsBetween startTime(String value) {
+                return set("startTime", value);
+            }
+
+            public warsBetween endTime(String value) {
+                return set("endTime", value);
+            }
+
+            public warsBetween includeInactiveWars(String value) {
+                return set("includeInactiveWars", value);
+            }
+
+            public warsBetween allowedWarTypes(String value) {
+                return set("allowedWarTypes", value);
+            }
+
+            public warsBetween allowedWarStatuses(String value) {
+                return set("allowedWarStatuses", value);
+            }
+
+            public warsBetween onlyOffensiveWars(String value) {
+                return set("onlyOffensiveWars", value);
+            }
+
+            public warsBetween onlyDefensiveWars(String value) {
+                return set("onlyDefensiveWars", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="warsCostRankingByDay")
             public static class warsCostRankingByDay extends CommandRef {
                 public static final warsCostRankingByDay cmd = new warsCostRankingByDay();
@@ -1928,6 +2279,46 @@ public class WM {
 
             public warsCostRankingByDay allowedVictoryTypes(String value) {
                 return set("allowedVictoryTypes", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.StatEndpoints.class,method="warsInvolving")
+            public static class warsInvolving extends CommandRef {
+                public static final warsInvolving cmd = new warsInvolving();
+            public warsInvolving coalition1(String value) {
+                return set("coalition1", value);
+            }
+
+            public warsInvolving columns(String value) {
+                return set("columns", value);
+            }
+
+            public warsInvolving startTime(String value) {
+                return set("startTime", value);
+            }
+
+            public warsInvolving endTime(String value) {
+                return set("endTime", value);
+            }
+
+            public warsInvolving includeInactiveWars(String value) {
+                return set("includeInactiveWars", value);
+            }
+
+            public warsInvolving allowedWarTypes(String value) {
+                return set("allowedWarTypes", value);
+            }
+
+            public warsInvolving allowedWarStatuses(String value) {
+                return set("allowedWarStatuses", value);
+            }
+
+            public warsInvolving onlyOffensiveWars(String value) {
+                return set("onlyOffensiveWars", value);
+            }
+
+            public warsInvolving onlyDefensiveWars(String value) {
+                return set("onlyDefensiveWars", value);
             }
 
             }

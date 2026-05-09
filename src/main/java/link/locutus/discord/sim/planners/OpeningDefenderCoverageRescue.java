@@ -40,21 +40,41 @@ final class OpeningDefenderCoverageRescue {
         }
     }
 
-    static void emitSelectedEdge(
+    static boolean emitSelectedEdge(
             OpeningEvaluator.TopKEdgeCollector collector,
             int selectedIndex,
             CandidateEdgeTable out,
             long[][] emittedPairWordsByAttacker,
             int[] defenderCoverageCounts
     ) {
-        int attackerIndex = collector.attackerIndexAt(selectedIndex);
-        int defenderIndex = collector.defenderIndexAt(selectedIndex);
-        if (!markEdgeEmitted(emittedPairWordsByAttacker, attackerIndex, defenderIndex)) {
-            return;
+        return emitEdge(
+            collector.attackerIndexAt(selectedIndex),
+            collector.defenderIndexAt(selectedIndex),
+            collector.preferredWarTypeIdAt(selectedIndex),
+            collector.bestAttackTypeIdAt(selectedIndex),
+            collector.scoreAt(selectedIndex),
+            collector.counterRiskAt(selectedIndex),
+            collector.immediateHarmAt(selectedIndex),
+            collector.selfExposureAt(selectedIndex),
+            collector.resourceSwingAt(selectedIndex),
+            collector.controlLeverageAt(selectedIndex),
+            collector.futureWarLeverageAt(selectedIndex),
+            out,
+            emittedPairWordsByAttacker,
+            defenderCoverageCounts
+        );
         }
-        out.add(
-                attackerIndex,
-                defenderIndex,
+
+    static boolean emitSelectedEdge(
+            OpeningEvaluator.CoveragePriorityCollector collector,
+            int selectedIndex,
+            CandidateEdgeTable out,
+            long[][] emittedPairWordsByAttacker,
+            int[] defenderCoverageCounts
+    ) {
+        return emitEdge(
+                collector.attackerIndexAt(selectedIndex),
+                collector.defenderIndexAt(selectedIndex),
                 collector.preferredWarTypeIdAt(selectedIndex),
                 collector.bestAttackTypeIdAt(selectedIndex),
                 collector.scoreAt(selectedIndex),
@@ -63,9 +83,47 @@ final class OpeningDefenderCoverageRescue {
                 collector.selfExposureAt(selectedIndex),
                 collector.resourceSwingAt(selectedIndex),
                 collector.controlLeverageAt(selectedIndex),
-                collector.futureWarLeverageAt(selectedIndex)
+                collector.futureWarLeverageAt(selectedIndex),
+                out,
+                emittedPairWordsByAttacker,
+                defenderCoverageCounts
+        );
+    }
+
+        static boolean emitEdge(
+            int attackerIndex,
+            int defenderIndex,
+            byte preferredWarTypeId,
+            byte bestAttackTypeId,
+            float score,
+            float counterRisk,
+            float immediateHarm,
+            float selfExposure,
+            float resourceSwing,
+            float controlLeverage,
+            float futureWarLeverage,
+            CandidateEdgeTable out,
+            long[][] emittedPairWordsByAttacker,
+            int[] defenderCoverageCounts
+        ) {
+        if (!markEdgeEmitted(emittedPairWordsByAttacker, attackerIndex, defenderIndex)) {
+            return false;
+        }
+        out.add(
+            attackerIndex,
+            defenderIndex,
+            preferredWarTypeId,
+            bestAttackTypeId,
+            score,
+            counterRisk,
+            immediateHarm,
+            selfExposure,
+            resourceSwing,
+            controlLeverage,
+            futureWarLeverage
         );
         defenderCoverageCounts[defenderIndex]++;
+        return true;
     }
 
     private static boolean markEdgeEmitted(long[][] emittedPairWordsByAttacker, int attackerIndex, int defenderIndex) {

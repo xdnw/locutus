@@ -132,7 +132,7 @@ class PlannerProjectionStateTest {
         assertEquals(Math.min(12, firstBucketWar.defenderMaps() + 1), carriedWar.defenderMaps());
         assertEquals(firstBucketWar.attackerResistance(), carriedWar.attackerResistance());
         assertEquals(firstBucketWar.defenderResistance(), carriedWar.defenderResistance());
-        assertEquals(firstBucketWar.groundControlOwner(), carriedWar.groundControlOwner());
+        assertEquals(firstBucketWar.groundSuperiorityOwner(), carriedWar.groundSuperiorityOwner());
         assertEquals(firstBucketWar.airSuperiorityOwner(), carriedWar.airSuperiorityOwner());
         assertEquals(firstBucketWar.blockadeOwner(), carriedWar.blockadeOwner());
         assertEquals(firstBucketWar.attackerFortified(), carriedWar.attackerFortified());

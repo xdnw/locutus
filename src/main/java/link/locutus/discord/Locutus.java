@@ -47,6 +47,7 @@ import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -54,7 +55,10 @@ import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.multi.MultiUpdater;
 import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeDailyIngestionService;
 import link.locutus.discord.util.update.*;
+import link.locutus.discord.web.jooby.CloudStorage;
+import link.locutus.discord.web.jooby.S3CompatibleStorage;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
@@ -100,11 +104,13 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class Locutus extends ListenerAdapter {
     private static Locutus INSTANCE;
     private final RepeatingTasks taskTrack;
     private ILoader loader;
+    private final CachedSupplier<CloudStorage> cloudStorageSupplier;
 
     private final ThreadPoolExecutor executor;
     private final ThreadPoolExecutor commandExecutor;
@@ -214,6 +220,7 @@ public final class Locutus extends ListenerAdapter {
         // Background follow-up work must stay off gateway/interaction threads and degrade by backlog rather than inline execution.
         this.executor = newQueuedExecutor("Locutus-Background", backgroundThreads);
         this.taskTrack = new RepeatingTasks(scheduler);
+        this.cloudStorageSupplier = CachedSupplier.of(() -> S3CompatibleStorage.isConfigured() ? S3CompatibleStorage.setupAuto() : null);
         Logg.text("Created Executors (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
 
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
@@ -564,6 +571,10 @@ public final class Locutus extends ListenerAdapter {
 
     public WarDB getWarDb() {
         return loader.getWarDB();
+    }
+
+    public CloudStorage getCloudStorage() {
+        return cloudStorageSupplier.get();
     }
 
     public BaseballDB getBaseballDB() {
@@ -923,6 +934,15 @@ public final class Locutus extends ListenerAdapter {
 
             {
                 runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
+
+            taskTrack.addTask("Treaty-Vis Runtime Daily Ingestion", new CaughtTask() {
+                private final TreatyVisRuntimeDailyIngestionService runtimeIngestionService = new TreatyVisRuntimeDailyIngestionService();
+
+                @Override
+                public void runUnsafe() throws Exception {
+                    runtimeIngestionService.runDailyIngestion();
+                }
+            }, TreatyVisRuntimeDailyIngestionService.DEFAULT_RUN_INTERVAL_MINUTES, TimeUnit.MINUTES);
                 runEventsAsync(events -> getNationDB().updateCitiesV2(events));
                 synchronized (warUpdateLock) {
                     runEventsAsync(e -> getWarDb().updateAttacksAndWarsV3(true, e));
@@ -1638,6 +1658,10 @@ public final class Locutus extends ListenerAdapter {
             rateLimitCompleteExecutor.shutdownNow();
             executor.shutdownNow();
             scheduler.shutdownNow();
+            CloudStorage cloudStorage = cloudStorageSupplier.getOrNull();
+            if (cloudStorage != null) {
+                cloudStorage.close();
+            }
             CommandManager cmdManager = getCommandManager();
             if (cmdManager != null && cmdManager.getExecutor() != scheduler) cmdManager.getExecutor().shutdownNow();
 

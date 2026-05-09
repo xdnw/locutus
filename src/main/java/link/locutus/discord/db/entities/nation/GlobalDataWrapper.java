@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities.nation;
 
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
+import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.TimeUtil;
 
@@ -12,15 +13,23 @@ import java.util.function.Function;
 public class GlobalDataWrapper<T extends DataHeader> extends DataWrapper<T> {
     public final byte[] data;
     public final Function<Integer, Map<Integer, DBCity>> getCities;
+    public final AllianceLookup allianceLookup;
 
-    public GlobalDataWrapper(long date, T header, byte[] data, Function<Integer, Map<Integer, DBCity>> getCities) {
+    public GlobalDataWrapper(long date, T header, byte[] data, Function<Integer, Map<Integer, DBCity>> getCities,
+            AllianceLookup allianceLookup) {
         super(date, header);
         this.data = data;
         this.getCities = getCities;
+        this.allianceLookup = allianceLookup;
     }
 
     public Function<Integer, Map<Integer, DBCity>> getGetCities() {
         return getCities;
+    }
+
+    @Override
+    public AllianceLookup getAllianceLookup() {
+        return allianceLookup;
     }
 
     @Override

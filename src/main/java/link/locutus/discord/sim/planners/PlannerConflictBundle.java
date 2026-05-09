@@ -71,6 +71,19 @@ record PlannerConflictBundle(
             return EMPTY;
         }
 
+        static PlannerAssignmentView ofDenseAssignment(
+                int[] attackerIds,
+                int[] attackerOffsets,
+                int[] defenderCounts,
+                int[] defenderIds,
+                int[] warTypeOrdinals
+        ) {
+            if (defenderIds.length == 0) {
+                return EMPTY;
+            }
+            return new PlannerAssignmentView(attackerIds, attackerOffsets, defenderCounts, defenderIds, warTypeOrdinals);
+        }
+
         static PlannerAssignmentView fromOrderedAssignment(Map<Integer, List<Integer>> assignment, List<Integer> attackerOrder) {
             return fromOrderedAssignment(assignment, attackerOrder, Map.of());
         }
@@ -320,7 +333,7 @@ record PlannerConflictBundle(
             return -1;
         }
 
-        private static int warTypeForPair(Map<Long, Integer> warTypeOrdinalsByPair, int attackerId, int defenderId) {
+        static int warTypeForPair(Map<Long, Integer> warTypeOrdinalsByPair, int attackerId, int defenderId) {
             if (warTypeOrdinalsByPair == null || warTypeOrdinalsByPair.isEmpty()) {
                 return link.locutus.discord.apiv1.enums.WarType.ORD.ordinal();
             }

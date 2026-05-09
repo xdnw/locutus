@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities.nation;
 
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
+import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.entities.DBCity;
 
 import java.util.Map;
@@ -25,6 +26,8 @@ public abstract class DataWrapper<T extends DataHeader> {
     }
 
     public abstract Function<Integer, Map<Integer, DBCity>> getGetCities();
+
+    public abstract AllianceLookup getAllianceLookup();
 
     public <T, V> V getSafe(ColumnInfo<T, V> get, int offset) {
         if (get.getOffset() == -1) return get.getDefault();

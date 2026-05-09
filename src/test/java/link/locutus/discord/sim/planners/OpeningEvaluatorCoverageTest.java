@@ -8,6 +8,7 @@ import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimWorld;
+import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicValueView;
@@ -33,6 +34,186 @@ class OpeningEvaluatorCoverageTest {
             new CandidateEdgeComponentPolicy(true, false, false, true, false);
     private static final StrategicObjective SPARSE_COMPONENT_OBJECTIVE =
             new SparseComponentObjective(SPARSE_COMPONENT_POLICY);
+
+    @Test
+    void capabilityDamageCanOutrankCostlierShipLossWhenAirPowerMattersMore() {
+        DBNationSnapshot aircraftFront = buildNation(701, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 2_600, 32);
+        DBNationSnapshot navalFront = buildNation(702, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 300, 260);
+
+        double[] aircraftLosses = new double[MilitaryUnit.values.length];
+        aircraftLosses[MilitaryUnit.AIRCRAFT.ordinal()] = 90d;
+        double[] shipLosses = new double[MilitaryUnit.values.length];
+        shipLosses[MilitaryUnit.SHIP.ordinal()] = 18d;
+
+        double aircraftCost = StrategicAssetValue.unitValue(MilitaryUnit.AIRCRAFT, 90d, aircraftFront.researchBits());
+        double shipCost = StrategicAssetValue.unitValue(MilitaryUnit.SHIP, 18d, navalFront.researchBits());
+        double aircraftDamage = OpeningMetricSummary.expectedCapabilityDamage(
+                aircraftFront,
+                aircraftLosses,
+                false,
+                false,
+                false,
+                false,
+                false
+        );
+        double shipDamage = OpeningMetricSummary.expectedCapabilityDamage(
+                navalFront,
+                shipLosses,
+                false,
+                false,
+                false,
+                false,
+                false
+        );
+
+        assertTrue(
+                shipCost > aircraftCost,
+                "Test setup must keep the ship loss more expensive under converted-cost pricing"
+                        + " (shipCost=" + shipCost + ", aircraftCost=" + aircraftCost + ')'
+        );
+        assertTrue(
+                aircraftDamage > shipDamage,
+                "Opening capability damage should be able to price concentrated aircraft losses above costlier ship losses"
+                        + " (aircraftDamage=" + aircraftDamage + ", shipDamage=" + shipDamage + ')'
+        );
+    }
+
+    @Test
+    void capabilityDamagePricesHoldabilityLossSeparatelyFromRawUnitLoss() {
+        DBNationSnapshot airHolder = buildNation(703, ATTACKER_TEAM, 1_650.0, 26,
+                18_000, 1_200, 120, 10);
+        double[] losses = new double[MilitaryUnit.values.length];
+        losses[MilitaryUnit.AIRCRAFT.ordinal()] = 120d;
+
+        double withoutHoldPenalty = OpeningMetricSummary.expectedCapabilityDamage(
+                airHolder,
+                losses,
+                false,
+                false,
+                false,
+                false,
+                false
+        );
+        double withHoldPenalty = OpeningMetricSummary.expectedCapabilityDamage(
+                airHolder,
+                losses,
+                false,
+                false,
+                false,
+                true,
+                false
+        );
+
+        assertTrue(withHoldPenalty > withoutHoldPenalty, "Losing the units needed to hold air control should add explicit opening exposure/harm beyond the raw unit loss");
+    }
+
+    @Test
+    void slotCapabilityValueCanOutrankCostlierShipStackWhenAirPowerIsBroaderThreat() {
+        DBNationSnapshot aircraftFront = buildNation(704, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 2_600, 32);
+        DBNationSnapshot navalFront = buildNation(705, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 300, 260);
+
+        double aircraftCost = StrategicAssetValue.unitValue(MilitaryUnit.AIRCRAFT, 90d, aircraftFront.researchBits());
+        double shipCost = StrategicAssetValue.unitValue(MilitaryUnit.SHIP, 18d, navalFront.researchBits());
+
+        assertTrue(shipCost > aircraftCost, "Test setup must keep the ship stack more expensive under converted-cost pricing");
+        assertTrue(
+                PlannerStrategicValue.slotCapabilityValue(aircraftFront) > PlannerStrategicValue.slotCapabilityValue(navalFront),
+                "Slot capability should price broader air-heavy future pressure above a costlier but narrower ship-heavy stack"
+        );
+    }
+
+    @Test
+    void defenderControlPressureUsesSlotCapabilityBonusNotLocalStrategicValueTotals() {
+        DBNationSnapshot aircraftFront = buildNation(706, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 2_600, 32);
+        DBNationSnapshot navalFront = buildNation(707, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 300, 260);
+
+        assertTrue(
+                OpeningMetricSummary.defenderControlPressure(aircraftFront)
+                        > OpeningMetricSummary.defenderControlPressure(navalFront),
+                "Opening pressure should inherit the slot-capability bonus instead of favoring a narrower costlier ship stack"
+        );
+    }
+
+    @Test
+    void plannerStrategicValueCanOutrankCostlierShipStackWithCapabilityLane() {
+        DBNationSnapshot aircraftFront = buildNation(708, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 2_600, 32);
+        DBNationSnapshot navalFront = buildNation(709, ATTACKER_TEAM, 2_150.0, 34,
+                40_000, 2_400, 120, 320);
+        double aircraftStrategicValue = PlannerStrategicValue.localStrategicValue(aircraftFront);
+        double navalStrategicValue = PlannerStrategicValue.localStrategicValue(navalFront);
+        assertTrue(
+                aircraftStrategicValue > navalStrategicValue,
+                "Planner strategic value should now prefer broader combat capability over a narrower ship-heavy stack"
+                        + " (aircraftStrategicValue=" + aircraftStrategicValue
+                        + ", navalStrategicValue=" + navalStrategicValue + ')'
+        );
+    }
+
+    @Test
+    void plannerStrategicValueRetainsRebuildRunwaySeparateFromReplacementCost() {
+        DBNationSnapshot fresh = buildNation(710, ATTACKER_TEAM, 1_850.0, 28,
+                24_000, 1_800, 1_700, 70);
+        int aircraftDailyCap = fresh.dailyBuyCap(MilitaryUnit.AIRCRAFT);
+        assertTrue(aircraftDailyCap > 0, "Test setup must provide positive aircraft rebuy capacity");
+
+        DBNationSnapshot exhausted = fresh.toBuilder()
+                .unitBoughtToday(MilitaryUnit.AIRCRAFT, aircraftDailyCap)
+                .build();
+
+        double freshReplacement = StrategicAssetValue.replacementMilitaryValue(
+                fresh::unit,
+                fresh::pendingBuysNextTurn,
+                fresh.researchBits()
+        );
+        double exhaustedReplacement = StrategicAssetValue.replacementMilitaryValue(
+                exhausted::unit,
+                exhausted::pendingBuysNextTurn,
+                exhausted.researchBits()
+        );
+
+        assertEquals(freshReplacement, exhaustedReplacement, 1.0e-9,
+                "Replacement cost should stay constant when only current-day buy exhaustion changes");
+        assertTrue(
+                PlannerStrategicValue.localStrategicValue(fresh)
+                        > PlannerStrategicValue.localStrategicValue(exhausted),
+                "Planner strategic value should retain explicit rebuild-runway signal after replacement cost is split out"
+        );
+    }
+
+    @Test
+    void capabilityVectorUpdateMovesSharedReducersAndOpeningPressureTogether() {
+        DBNationSnapshot baseline = buildNation(711, ATTACKER_TEAM, 1_950.0, 30,
+                28_000, 2_000, 900, 90);
+        DBNationSnapshot strongerAirFront = baseline.toBuilder()
+                .unit(MilitaryUnit.AIRCRAFT, 1_800)
+                .build();
+
+        StrategicCapabilityVector baselineVector = PlannerStrategicValue.capabilityVector(baseline);
+        StrategicCapabilityVector strongerVector = PlannerStrategicValue.capabilityVector(strongerAirFront);
+
+        assertTrue(
+                StrategicCapabilityReducer.slotCapabilityValue(strongerVector)
+                        > StrategicCapabilityReducer.slotCapabilityValue(baselineVector),
+                "The shared capability reducer should raise slot capability when the vector gains real combat strength"
+        );
+        assertTrue(
+                StrategicCapabilityReducer.strategicMilitaryValue(strongerVector, PlannerStrategicValue.localRelevance(strongerAirFront))
+                        > StrategicCapabilityReducer.strategicMilitaryValue(baselineVector, PlannerStrategicValue.localRelevance(baseline)),
+                "The shared capability reducer should raise strategic military value from the same vector update"
+        );
+        assertTrue(
+                OpeningMetricSummary.defenderControlPressure(strongerAirFront)
+                        > OpeningMetricSummary.defenderControlPressure(baseline),
+                "Opening pressure should now inherit the same capability-vector increase rather than a parallel helper formula"
+        );
+    }
 
     @Test
     void rescuesViableDefenderCoverageBeyondPerAttackerTopK() {
@@ -130,6 +311,96 @@ class OpeningEvaluatorCoverageTest {
         assertTrue(
                 strongEdge.score() > weakEdge.score(),
                 "Control scoring should prefer the stronger higher-probe opener on the same high-threat defender"
+        );
+    }
+
+    @Test
+    void spilloverCanAddHighPriorityDefenderWhileCoverageRemainsBelowTarget() {
+        StrategicObjective objective = BlitzObjective.CONTROL.objective();
+        DBNationSnapshot strongAttacker = buildNation(13, ATTACKER_TEAM, 2_050.0, 27, 450_000, 36_000, 2_900, 420);
+        DBNationSnapshot flexibleAttacker = buildNation(14, ATTACKER_TEAM, 820.0, 18, 37_500, 3_000, 240, 37);
+        DBNationSnapshot highPriorityDefender = buildNation(112, DEFENDER_TEAM, 1_990.0, 25, 387_500, 31_000, 2_480, 387);
+        DBNationSnapshot softerDefender = buildNation(113, DEFENDER_TEAM, 1_200.0, 11, 1_200, 160, 120, 24);
+
+        OpeningEvaluator.EvaluatedEdge strongAttackerHighPriority = OpeningEvaluator.evaluateOpening(
+                strongAttacker,
+                highPriorityDefender,
+                objective,
+                CandidateEdgeComponentPolicy.none()
+        );
+        OpeningEvaluator.EvaluatedEdge strongAttackerSofter = OpeningEvaluator.evaluateOpening(
+                strongAttacker,
+                softerDefender,
+                objective,
+                CandidateEdgeComponentPolicy.none()
+        );
+        OpeningEvaluator.EvaluatedEdge flexibleAttackerHighPriority = OpeningEvaluator.evaluateOpening(
+                flexibleAttacker,
+                highPriorityDefender,
+                objective,
+                CandidateEdgeComponentPolicy.none()
+        );
+        OpeningEvaluator.EvaluatedEdge flexibleAttackerSofter = OpeningEvaluator.evaluateOpening(
+                flexibleAttacker,
+                softerDefender,
+                objective,
+                CandidateEdgeComponentPolicy.none()
+        );
+
+        assertTrue(Float.isFinite(strongAttackerHighPriority.score()), "Expected high-priority defender to be admitted for the strong attacker");
+        assertTrue(Float.isFinite(strongAttackerSofter.score()), "Expected softer defender to be admitted for the strong attacker");
+        assertTrue(Float.isFinite(flexibleAttackerHighPriority.score()), "Expected high-priority defender to remain admitted for the flexible attacker");
+        assertTrue(Float.isFinite(flexibleAttackerSofter.score()), "Expected softer defender to remain admitted for the flexible attacker");
+        assertTrue(
+                strongAttackerHighPriority.score() > strongAttackerSofter.score(),
+                "Test setup must make the strong attacker emit the high-priority defender first"
+        );
+        assertTrue(
+                flexibleAttackerSofter.score() > flexibleAttackerHighPriority.score(),
+                "Test setup must leave the high-priority defender for the spillover path on the second attacker"
+        );
+
+        CompiledScenario scenario = SCENARIO_COMPILER.compile(
+                List.of(strongAttacker, flexibleAttacker),
+                List.of(highPriorityDefender, softerDefender),
+                OverrideSet.EMPTY,
+                TreatyProvider.NONE,
+                Map.of()
+        );
+        CandidateEdgeTable out = new CandidateEdgeTable();
+
+        OpeningEvaluator.evaluate(
+                scenario,
+                tuningWithCandidatesPerAttacker(1),
+                OverrideSet.EMPTY,
+                objective,
+                new int[]{2, 2},
+                new int[]{1, 1},
+                out
+        );
+
+        boolean hasStrongAttackerHighPriority = false;
+        boolean hasFlexibleAttackerSofter = false;
+        boolean hasFlexibleAttackerHighPriority = false;
+        for (int edge = 0; edge < out.edgeCount(); edge++) {
+            int attackerNationId = scenario.attackerNationId(out.attackerIndex(edge));
+            int defenderNationId = scenario.defenderNationId(out.defenderIndex(edge));
+            if (attackerNationId == strongAttacker.nationId() && defenderNationId == highPriorityDefender.nationId()) {
+                hasStrongAttackerHighPriority = true;
+            }
+            if (attackerNationId == flexibleAttacker.nationId() && defenderNationId == softerDefender.nationId()) {
+                hasFlexibleAttackerSofter = true;
+            }
+            if (attackerNationId == flexibleAttacker.nationId() && defenderNationId == highPriorityDefender.nationId()) {
+                hasFlexibleAttackerHighPriority = true;
+            }
+        }
+
+        assertTrue(hasStrongAttackerHighPriority, "Expected the high-priority defender to keep the strong attacker's primary edge");
+        assertTrue(hasFlexibleAttackerSofter, "Expected the second attacker to keep its softer primary edge");
+        assertTrue(
+                hasFlexibleAttackerHighPriority,
+                "Spillover should still emit a high-priority defender while that defender remains below the global coverage target"
         );
     }
 
@@ -377,6 +648,45 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
+    void snapshotTargetPressureRewardsHighCapacityDefendersButKeepsBonusBounded() {
+        DBNationSnapshot highCapacityDefender = buildNation(161, DEFENDER_TEAM, 2_250.0, 52,
+                387_500, 31_000, 2_480, 387);
+        DBNationSnapshot mediumCapacityDefender = buildNation(162, DEFENDER_TEAM, 1_900.0, 44,
+                300_000, 24_000, 1_920, 300);
+
+        double highCapacityRawPressure = OpeningMetricSummary.defenderControlPressure(
+                OpeningMetricSummary.groundStrength(
+                        highCapacityDefender.unit(MilitaryUnit.SOLDIER),
+                        highCapacityDefender.unit(MilitaryUnit.TANK),
+                        false
+                ),
+                highCapacityDefender.unit(MilitaryUnit.AIRCRAFT),
+                highCapacityDefender.unit(MilitaryUnit.SHIP)
+        );
+        double mediumCapacityRawPressure = OpeningMetricSummary.defenderControlPressure(
+                OpeningMetricSummary.groundStrength(
+                        mediumCapacityDefender.unit(MilitaryUnit.SOLDIER),
+                        mediumCapacityDefender.unit(MilitaryUnit.TANK),
+                        false
+                ),
+                mediumCapacityDefender.unit(MilitaryUnit.AIRCRAFT),
+                mediumCapacityDefender.unit(MilitaryUnit.SHIP)
+        );
+
+        double highCapacityPressure = OpeningMetricSummary.defenderControlPressure(highCapacityDefender);
+        double mediumCapacityPressure = OpeningMetricSummary.defenderControlPressure(mediumCapacityDefender);
+
+        assertTrue(highCapacityPressure > highCapacityRawPressure,
+                "Snapshot-backed pressure should add strategic-capacity bonus for high-capacity defenders");
+        assertTrue(mediumCapacityPressure > mediumCapacityRawPressure,
+                "Snapshot-backed pressure should add strategic-capacity bonus for medium-capacity defenders too");
+        assertTrue(highCapacityPressure > mediumCapacityPressure,
+                "Higher-capacity strategically stronger defenders should carry more target pressure");
+        assertTrue(highCapacityPressure - highCapacityRawPressure < 4.5d,
+                "Strategic-capacity pressure bonus should stay bounded and not swamp the base military pressure");
+    }
+
+    @Test
     void openingRolloutDoesNotPreferInfraWhenUnitDamageIsAvailable() {
         DBNationSnapshot attacker = buildNation(41, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220)
             .toBuilder()
@@ -401,6 +711,46 @@ class OpeningEvaluatorCoverageTest {
             "Opening rollout should value unit/control progress before raw infra damage"
         );
     }
+
+        @Test
+        void coveragePriorityCollectorPrefersHigherPriorityStrongDefenderLane() {
+                OpeningEvaluator.CoveragePriorityCollector collector =
+                                new OpeningEvaluator.CoveragePriorityCollector(1, CandidateEdgeComponentPolicy.none());
+
+                collector.consider(50f, 1, 101, (byte) 0, (byte) 0, 150f, 0f, 0f, 0f, 0f, 0f, 0f);
+                collector.consider(75f, 2, 102, (byte) 0, (byte) 0, 100f, 0f, 0f, 0f, 0f, 0f, 0f);
+                collector.sortSelectedDescending();
+
+                assertEquals(1, collector.size());
+                int selectedIndex = collector.sortedIndexAt(0);
+                assertEquals(2, collector.attackerIndexAt(selectedIndex));
+                assertEquals(102, collector.defenderIndexAt(selectedIndex));
+                assertEquals(75f, collector.priorityAt(selectedIndex), 1.0e-5f);
+        }
+
+        @Test
+        void defenderCoverageRescueCanEmitPriorityCollectorEdge() {
+                CandidateEdgeTable out = new CandidateEdgeTable();
+                long[][] emittedPairWordsByAttacker = new long[2][1];
+                int[] defenderCoverageCounts = new int[1];
+                OpeningEvaluator.CoveragePriorityCollector collector =
+                                new OpeningEvaluator.CoveragePriorityCollector(1, CandidateEdgeComponentPolicy.none());
+                collector.consider(75f, 1, 0, (byte) 0, (byte) 0, 42f, 0f, 0f, 0f, 0f, 0f, 0f);
+                collector.sortSelectedDescending();
+
+                boolean emitted = OpeningDefenderCoverageRescue.emitSelectedEdge(
+                                collector,
+                                collector.sortedIndexAt(0),
+                                out,
+                                emittedPairWordsByAttacker,
+                                defenderCoverageCounts
+                );
+
+                assertTrue(emitted);
+                assertEquals(1, out.edgeCount());
+                assertEquals(1, out.attackerIndex(0));
+                assertEquals(0, out.defenderIndex(0));
+        }
 
     private static SimTuning tuningWithCandidatesPerAttacker(int candidatesPerAttacker) {
         SimTuning defaults = SimTuning.defaults();

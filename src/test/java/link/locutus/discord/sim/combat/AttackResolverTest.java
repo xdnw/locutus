@@ -236,21 +236,23 @@ class AttackResolverTest {
         AttackScratch scratch = new AttackScratch();
         MutableAttackResult out = new MutableAttackResult();
 
-        AttackOutcome expectedMostLikely = AttackResolver.resolve(
-                cv(attacker),
-                cv(defender),
-                AttackResolver.Flags.defaults().toWarState(WarType.ORD),
+        AttackOutcome expectedMostLikely = resolve(
+                attacker,
+                defender,
                 AttackType.GROUND,
+                WarType.ORD,
+                AttackResolver.Flags.defaults(),
                 ResolutionMode.MOST_LIKELY
         );
         AttackResolver.resolveInto(context, AttackType.GROUND, ResolutionMode.MOST_LIKELY, scratch, out);
         assertEquivalent(expectedMostLikely, out);
 
-        AttackOutcome expectedEv = AttackResolver.resolve(
-                cv(attacker),
-                cv(defender),
-                AttackResolver.Flags.defaults().toWarState(WarType.ORD),
+        AttackOutcome expectedEv = resolve(
+                attacker,
+                defender,
                 AttackType.GROUND,
+                WarType.ORD,
+                AttackResolver.Flags.defaults(),
                 ResolutionMode.DETERMINISTIC_EV
         );
         AttackResolver.resolveInto(context, AttackType.GROUND, ResolutionMode.DETERMINISTIC_EV, scratch, out);
@@ -626,7 +628,10 @@ class AttackResolverTest {
             DBNation att, DBNation def,
             AttackType type, WarType wt,
             AttackResolver.Flags flags, ResolutionMode mode) {
-                return AttackResolver.resolve(cv(att), cv(def), type, wt, flags, mode);
+                AttackScratch scratch = new AttackScratch();
+                MutableAttackResult result = new MutableAttackResult();
+                AttackResolver.resolveInto(cv(att), cv(def), type, wt, flags, mode, scratch, result);
+                return result.toAttackOutcome();
     }
 
     private static AttackOutcome resolve(
@@ -634,7 +639,10 @@ class AttackResolverTest {
             AttackType type, WarType wt,
             AttackResolver.Flags flags, ResolutionMode mode,
             RandomSource rng, long streamKey) {
-                return AttackResolver.resolve(cv(att), cv(def), type, wt, flags, mode, rng, streamKey);
+                AttackScratch scratch = new AttackScratch();
+                MutableAttackResult result = new MutableAttackResult();
+                AttackResolver.resolveInto(cv(att), cv(def), type, wt, flags, mode, rng, streamKey, scratch, result);
+                return result.toAttackOutcome();
     }
 
     private static AttackOutcome resolve(
@@ -642,7 +650,10 @@ class AttackResolverTest {
             AttackType type, WarType wt,
             AttackResolver.Flags flags, ResolutionMode mode,
             RandomSource rng, long streamKey, OddsModel oddsModel) {
-        return AttackResolver.resolve(cv(att), cv(def), type, wt, flags, mode, rng, streamKey, oddsModel);
+                AttackScratch scratch = new AttackScratch();
+                MutableAttackResult result = new MutableAttackResult();
+                AttackResolver.resolveInto(cv(att), cv(def), type, wt, flags, mode, rng, streamKey, oddsModel, scratch, result);
+                return result.toAttackOutcome();
     }
 
     private static double[] oddsVector(

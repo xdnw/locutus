@@ -85,7 +85,10 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
     }
 
     public static long parseDateFromFile(String fileName) {
-        String dateStr = fileName.replace("nations-", "").replace("cities-", "").replace(".csv", "").replace(".bin", "");
+        int extensionIndex = fileName.lastIndexOf('.');
+        String baseName = extensionIndex == -1 ? fileName : fileName.substring(0, extensionIndex);
+        int prefixSeparator = baseName.indexOf('-');
+        String dateStr = prefixSeparator == -1 ? baseName : baseName.substring(prefixSeparator + 1);
         return TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, dateStr);
     }
 
@@ -177,6 +180,8 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                         numWithIndex++;
                         column.setIndex(i, 0);
                         columnsInCsv.add(column);
+                    } else if (parent.isIgnoredColumn(header)) {
+                        continue;
                     } else {
                         throw new IllegalArgumentException("Unknown header: `" + header + "` in " + csvFile);
                     }

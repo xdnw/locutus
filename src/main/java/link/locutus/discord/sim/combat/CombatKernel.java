@@ -188,9 +188,9 @@ public final class CombatKernel {
 
         boolean defenderHasAirControl();
 
-        boolean attackerHasGroundControl();
+        boolean attackerHasGroundSuperiority();
 
-        boolean defenderHasGroundControl();
+        boolean defenderHasGroundSuperiority();
 
         boolean attackerFortified();
 
@@ -214,9 +214,9 @@ public final class CombatKernel {
 
         boolean defenderHasAirControl(int warIndex);
 
-        boolean attackerHasGroundControl(int warIndex);
+        boolean attackerHasGroundSuperiority(int warIndex);
 
-        boolean defenderHasGroundControl(int warIndex);
+        boolean defenderHasGroundSuperiority(int warIndex);
 
         boolean attackerFortified(int warIndex);
 
@@ -265,13 +265,13 @@ public final class CombatKernel {
         }
 
         @Override
-        default boolean attackerHasGroundControl() {
-            return warBuffer().attackerHasGroundControl(warIndex());
+        default boolean attackerHasGroundSuperiority() {
+            return warBuffer().attackerHasGroundSuperiority(warIndex());
         }
 
         @Override
-        default boolean defenderHasGroundControl() {
-            return warBuffer().defenderHasGroundControl(warIndex());
+        default boolean defenderHasGroundSuperiority() {
+            return warBuffer().defenderHasGroundSuperiority(warIndex());
         }
 
         @Override
@@ -308,52 +308,6 @@ public final class CombatKernel {
         default int blockadeOwner() {
             return warBuffer().blockadeOwner(warIndex());
         }
-    }
-
-    /** Deterministic or most-likely resolution. Callers with view types use {@link AttackResolver}. */
-    public static AttackOutcome resolve(
-            AttackContext context,
-            AttackType type,
-            ResolutionMode mode
-    ) {
-        AttackScratch scratch = new AttackScratch();
-        MutableAttackResult result = new MutableAttackResult();
-        resolveInto(
-            context,
-            type,
-            mode,
-            EngagementOptions.defaults(),
-            null,
-            streamKey(context.attacker().nationId(), context.defender().nationId(), type),
-            OddsModel.DEFAULT,
-            scratch,
-            result
-        );
-        return result.toAttackOutcome();
-    }
-
-    /** Stochastic resolution. Callers with view types use {@link AttackResolver}. */
-    public static AttackOutcome resolve(
-            AttackContext context,
-            AttackType type,
-            ResolutionMode mode,
-            RandomSource rng,
-            long streamKey
-    ) {
-        AttackScratch scratch = new AttackScratch();
-        MutableAttackResult result = new MutableAttackResult();
-        resolveInto(
-            context,
-            type,
-            mode,
-            EngagementOptions.defaults(),
-            rng,
-            streamKey,
-            OddsModel.DEFAULT,
-            scratch,
-            result
-        );
-        return result.toAttackOutcome();
     }
 
     /** Allocation-free resolve into caller-owned scratch and result buffers. */
@@ -622,7 +576,7 @@ public final class CombatKernel {
     }
 
     private interface ControlDeltaProvider {
-        ControlFlagDelta controlDelta(SuccessType success);
+        SuperiorityFlagDelta controlDelta(SuccessType success);
     }
 
     private static void resolveInternalInto(
@@ -796,7 +750,7 @@ public final class CombatKernel {
         }
     }
 
-    static ControlFlagDelta computeControlDelta(AttackContext context, AttackType type, SuccessType success) {
+    static SuperiorityFlagDelta computeControlDelta(AttackContext context, AttackType type, SuccessType success) {
         return WarControlRules.controlDelta(context, type, success);
     }
 
@@ -820,7 +774,7 @@ public final class CombatKernel {
                 context.defenderFortified(),
                 options.equipAttackerSoldiers(),
                 options.equipDefenderSoldiers(),
-                context.attackerHasGroundControl(),
+                context.attackerHasGroundSuperiority(),
                 scratch
         );
     }

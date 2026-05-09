@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderEngine;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.LiveDBAlliance;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashSet;
@@ -43,7 +44,7 @@ class AlliancePlaceholdersRuntimeTest {
     }
 
         private static DBAlliance alliance(int id, String name) {
-                return new DBAlliance(id, name, "", "", "", "", "", 0L, NationColor.GRAY,
+                return new LiveDBAlliance(id, name, "", "", "", "", "", 0L, NationColor.GRAY,
                                 (Int2ObjectOpenHashMap<byte[]>) null);
         }
 }

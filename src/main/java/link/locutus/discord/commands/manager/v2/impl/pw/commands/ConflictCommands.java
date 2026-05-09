@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.AllianceNameHistoryRepository;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.conflict.CoalitionSide;
 import link.locutus.discord.db.conflict.ConflictStartDetector;
@@ -931,13 +932,14 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importAllianceNames(ConflictManager manager) throws IOException, ParseException {
-        manager.saveDataCsvAllianceNames();
+        AllianceNameHistoryRepository allianceNameHistory = manager.getDb().getAllianceNameHistory();
+        allianceNameHistory.importAllianceNamesFromDataDump();
         for (Map.Entry<String, Integer> entry : PWWikiUtil.getWikiAllianceIds().entrySet()) {
-            if (manager.getAllianceName(entry.getValue()) != null)
+            if (allianceNameHistory.getAllianceNameOrNull(entry.getValue()) != null)
                 continue;
-            if (manager.getAllianceId(entry.getKey(), Long.MAX_VALUE) != null)
+            if (allianceNameHistory.getAllianceId(entry.getKey(), Long.MAX_VALUE) != null)
                 continue;
-            manager.addLegacyName(entry.getValue(), entry.getKey(), 0);
+            allianceNameHistory.addName(entry.getValue(), entry.getKey(), 0);
         }
         return "Done!\nNote: this does not push the data to the site";
     }

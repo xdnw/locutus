@@ -94,6 +94,17 @@ import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.AutoRoleTextFormatter;
 import link.locutus.discord.util.update.AllianceListener;
 import link.locutus.discord.util.update.WarUpdateProcessor;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeBootstrapService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeBootstrapScoreStateService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeBootstrapFlagStateService;
+import link.locutus.discord.treatyvis.runtime.TreatyHistoryService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeDailyIngestionService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeRepository;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeValidationService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeLegacyFlagImportService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeLegacyTreatyCheckpointImportService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeLegacyScoreImportService;
+import link.locutus.discord.treatyvis.runtime.TreatyVisRuntimeLegacyTreatyImportService;
 import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -123,6 +134,7 @@ import java.lang.reflect.Type;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -1401,6 +1413,92 @@ public class AdminCommands {
     public String reloadConfig() {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         return "Done!";
+    }
+
+    @Command(desc = "Stage legacy treaty history source artifacts for the treaty history runtime bootstrap importer")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importTreatyHistoryLegacy(@Default String sourceRoot, @Switch("r") boolean replace) throws IOException {
+        TreatyVisRuntimeBootstrapService service = new TreatyVisRuntimeBootstrapService();
+        Path resolvedSourceRoot = (sourceRoot == null || sourceRoot.isBlank())
+                ? TreatyVisRuntimeBootstrapService.DEFAULT_LEGACY_SOURCE_ROOT
+                : Path.of(sourceRoot);
+        TreatyVisRuntimeBootstrapService.RuntimeBootstrapImportResult result = service.importLegacyRuntime(resolvedSourceRoot, replace);
+        return "Staged treaty history legacy bootstrap sources from " + result.stagedImport().sourceRoot()
+                + " into " + result.stagedImport().importRoot()
+                + " (" + result.stagedImport().copiedFileCount() + " files, "
+                + result.stagedImport().flagCacheFileCount() + " flag-cache files, "
+                + result.stagedImport().copiedBytes() + " bytes) and imported "
+                + result.treatyImport().importedChangeCount() + " historical treaty change row(s)"
+                + " (days " + result.treatyImport().minDay() + ".." + result.treatyImport().maxDay() + "), "
+                + result.checkpointImport().activeEntryCount() + " active treaty checkpoint row entry(ies)"
+                + " at day " + result.checkpointImport().checkpointDay() + ", "
+                + result.scoreImport().importedDayCount() + " historical score day(s) into TOP_N_SCORE_BY_DAY"
+                + " (" + result.scoreImport().importedRowCount() + " rows, days "
+                + result.scoreImport().minDay() + ".." + result.scoreImport().maxDay() + "), bootstrapped "
+                + result.scoreBootstrap().helperAllianceCount() + " live alliance score helper row(s)"
+                + (result.scoreBootstrap().wroteBootstrapDay()
+                    ? " and wrote bootstrap score day " + result.scoreBootstrap().bootstrapDay()
+                    : " without writing a new bootstrap score day")
+                + ", plus "
+                + result.flagImport().importedChangeCount() + " historical flag change row(s)"
+                + ", " + result.flagImport().importedIconCount() + " flag icon row(s), "
+                + result.flagImport().importedAtlasAssignmentCount() + " atlas assignment row(s), "
+                + result.flagImport().importedLastFlagUrlCount() + " latest flag URL row(s), and "
+                + result.flagImport().copiedRawCacheCount() + " copied raw flag cache file(s), then bootstrapped "
+                + result.flagBootstrap().helperAllianceCount() + " live alliance flag helper row(s), "
+                + result.flagBootstrap().changedAllianceCount() + " bootstrap-day flag change row(s), and "
+                + result.flagBootstrap().newIconCount() + " new live flag icon row(s).";
+    }
+
+    @Command(desc = "Validate the staged treaty history bootstrap source set and write a runtime validation report")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String validateTreatyHistoryBootstrap() throws IOException {
+        TreatyVisRuntimeValidationService service = new TreatyVisRuntimeValidationService();
+        TreatyVisRuntimeValidationService.RuntimeValidationResult result = service.validateImportedRuntime();
+        if (result.valid()) {
+            return "Validated treaty history runtime bootstrap state and imported runtime tables (report at " + result.reportPath() + ").";
+        }
+        return "Treaty history runtime validation found issues: "
+                + String.join(", ", result.issues())
+                + " (report at " + result.reportPath() + ").";
+    }
+
+    @Command(desc = "Reset staged treaty history bootstrap sources and runtime validation artifacts")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String resetTreatyHistoryBootstrap() throws IOException {
+        TreatyVisRuntimeBootstrapService service = new TreatyVisRuntimeBootstrapService();
+        TreatyVisRuntimeBootstrapService.RuntimeBootstrapResetResult result = service.resetImportedRuntime();
+        return "Reset treaty history runtime bootstrap artifacts (deleted " + result.artifactReset().deletedPaths().size()
+            + " staged/report path(s), " + result.artifactReset().missingPaths().size() + " already absent, cleared "
+            + result.treatyReset().deletedChangeCount() + " imported treaty change row(s), "
+            + result.checkpointReset().deletedCheckpointCount() + " imported treaty checkpoint row(s), "
+            + result.scoreReset().deletedDayCount() + " imported score day(s), "
+            + result.scoreBootstrapReset().deletedHelperRowCount() + " live score helper row(s), "
+            + result.flagReset().deletedChangeCount() + " imported flag change row(s), and "
+            + result.flagReset().deletedRawCacheFileCount() + " imported raw flag cache file(s), then reset bootstrap state).";
+    }
+
+    @Command(desc = "Run treaty runtime ingestion immediately and push the treaty runtime artifacts to cloud when configured")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String pushTreatyRuntimeToCloud() throws IOException {
+        TreatyVisRuntimeDailyIngestionService service = new TreatyVisRuntimeDailyIngestionService();
+        TreatyVisRuntimeDailyIngestionService.DailyIngestionResult result = service.runDailyIngestion();
+        if (!result.executed()) {
+            return "Skipped treaty runtime ingestion: " + String.join(", ", result.gatingIssues());
+        }
+
+        TreatyVisRuntimeDailyIngestionService.PublishedTreatyArtifacts artifacts = result.publishedArtifacts();
+        String historyRef = artifacts.historyUrl() != null
+                ? artifacts.historyUrl()
+                : artifacts.historyKey() + " (cloud not configured)";
+        String atlasRef = artifacts.atlasUrl() != null
+                ? artifacts.atlasUrl()
+                : artifacts.atlasKey() + " (cloud not configured)";
+        return "Ran treaty runtime ingestion and published artifacts. History: " + historyRef
+                + " [" + artifacts.historyBytes() + " bytes], Atlas: " + atlasRef
+                + " [" + artifacts.atlasBytes() + " bytes]. Stable keys: "
+                + TreatyHistoryService.TREATY_HISTORY_OBJECT_KEY + ", "
+                + TreatyHistoryService.TREATY_ATLAS_OBJECT_KEY + ".";
     }
 
     @Command(desc = "Remove all guild settings that correspond to channels the bot cannot access")

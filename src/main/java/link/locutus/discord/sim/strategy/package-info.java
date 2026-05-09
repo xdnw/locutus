@@ -5,6 +5,11 @@
  * planner evaluation authority, and planner assignment/search code must not copy its score-era
  * attack valuation directly.</p>
  *
+ * <p>Control-like heuristics in this package are intentionally local tactical rules, not the
+ * canonical planner definition of control. Air-control bonuses, local timing bonuses, and similar
+ * scripted preferences here must not be reused as planner terminal control semantics, future-war
+ * leverage, or durable-control logic.</p>
+ *
  * <p>The package contains composable decision-making components that drive scripted nation
  * behavior during simulation:
  * 

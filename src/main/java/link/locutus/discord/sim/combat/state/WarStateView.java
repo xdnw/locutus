@@ -19,9 +19,9 @@ public interface WarStateView {
 
     boolean defenderHasAirControl();
 
-    boolean attackerHasGroundControl();
+    boolean attackerHasGroundSuperiority();
 
-    boolean defenderHasGroundControl();
+    boolean defenderHasGroundSuperiority();
 
     boolean attackerFortified();
 

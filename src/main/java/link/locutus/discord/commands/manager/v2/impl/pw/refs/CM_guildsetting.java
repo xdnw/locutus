@@ -2,6 +2,14 @@ package link.locutus.discord.commands.manager.v2.impl.pw.refs;
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 public class CM_guildsetting {
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="allowed")
+        public static class allowed extends CommandRef {
+            public static final allowed cmd = new allowed();
+        public allowed throwException(String value) {
+            return set("throwException", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getCategory")
         public static class getCategory extends CommandRef {
             public static final getCategory cmd = new getCategory();
@@ -10,6 +18,11 @@ public class CM_guildsetting {
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getCommandMention")
         public static class getCommandMention extends CommandRef {
             public static final getCommandMention cmd = new getCommandMention();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getCommandPaths")
+        public static class getCommandPaths extends CommandRef {
+            public static final getCommandPaths cmd = new getCommandPaths();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getKeyName")
@@ -42,14 +55,43 @@ public class CM_guildsetting {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getSubgroup")
+        public static class getSubgroup extends CommandRef {
+            public static final getSubgroup cmd = new getSubgroup();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getTypeName")
         public static class getTypeName extends CommandRef {
             public static final getTypeName cmd = new getTypeName();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getValue")
+        public static class getValue extends CommandRef {
+            public static final getValue cmd = new getValue();
+        public getValue checkDelegate(String value) {
+            return set("checkDelegate", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getValueRaw")
+        public static class getValueRaw extends CommandRef {
+            public static final getValueRaw cmd = new getValueRaw();
+        public getValueRaw checkDelegate(String value) {
+            return set("checkDelegate", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getValueString")
         public static class getValueString extends CommandRef {
             public static final getValueString cmd = new getValueString();
+        public getValueString checkDelegate(String value) {
+            return set("checkDelegate", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="getWebType")
+        public static class getWebType extends CommandRef {
+            public static final getWebType cmd = new getWebType();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildSetting.class,method="hasInvalidValue")

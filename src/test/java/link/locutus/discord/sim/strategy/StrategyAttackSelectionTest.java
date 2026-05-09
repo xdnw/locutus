@@ -4,14 +4,21 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.sim.DecisionContext;
+import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimNation;
+import link.locutus.discord.sim.SimWorld;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.input.NationInit;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -67,10 +74,44 @@ class StrategyAttackSelectionTest {
         assertTrue(StrategyAttackSelection.candidateAttackTypes(legalGround).contains(AttackType.GROUND));
     }
 
+    @Test
+    void bestDamageChoiceUsesLiveWorldCombatPath() {
+        SimNation attacker = nation(901, 0L);
+        attacker.setUnitCount(MilitaryUnit.SOLDIER, 5_000);
+        attacker.setUnitCount(MilitaryUnit.TANK, 200);
+        attacker.setUnitCount(MilitaryUnit.AIRCRAFT, 20);
+
+        SimNation defender = nation(902, 0L);
+        defender.setUnitCount(MilitaryUnit.SOLDIER, 4_000);
+        defender.setUnitCount(MilitaryUnit.TANK, 150);
+        defender.setUnitCount(MilitaryUnit.AIRCRAFT, 10);
+
+        SimWorld world = new SimWorld();
+        world.addNation(attacker);
+        world.addNation(defender);
+        world.declareWar(77, attacker.nationId(), defender.nationId(), WarType.ORD);
+
+        DecisionContext ctx = new DecisionContext(world, world.currentTurn(), Set.of(defender.nationId()), new DamageObjective());
+        StrategyAttackSelection.AttackChoice choice = StrategyAttackSelection.bestDamageChoice(
+                world,
+                attacker,
+                world.requireWar(77),
+                ctx
+        );
+
+        assertNotNull(choice);
+        assertTrue(StrategyAttackSelection.candidateAttackTypes(attacker).contains(choice.attackType()));
+        assertEquals(StrategyAttackSelection.netDamageScore(choice), choice.score(), 1e-9);
+    }
+
     private static SimNation nationWithSpecialists(long projectBits) {
+        return nation(901, projectBits);
+    }
+
+    private static SimNation nation(int nationId, long projectBits) {
         return new SimNation(new NationInit(
-                901,
-                901,
+                nationId,
+                nationId,
                 WarPolicy.ATTRITION,
                 ResourceType.getBuffer(),
                 100d,

@@ -2,12 +2,12 @@ package link.locutus.discord.commands.manager.v2.impl.pw.refs;
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 public class CM_alliance {
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="countMembers")
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="countMembers")
         public static class countMembers extends CommandRef {
             public static final countMembers cmd = new countMembers();
 
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="countNations")
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="countNations")
         public static class countNations extends CommandRef {
             public static final countNations cmd = new countNations();
         public countNations filter(String value) {
@@ -20,6 +20,18 @@ public class CM_alliance {
             public static final exponentialCityStrength cmd = new exponentialCityStrength();
         public exponentialCityStrength power(String value) {
             return set("power", value);
+        }
+
+        public exponentialCityStrength removeVm(String value) {
+            return set("removeVm", value);
+        }
+
+        public exponentialCityStrength removeInactive(String value) {
+            return set("removeInactive", value);
+        }
+
+        public exponentialCityStrength removeApplicants(String value) {
+            return set("removeApplicants", value);
         }
 
         }
@@ -38,7 +50,7 @@ public class CM_alliance {
             public static final getAlliance_id cmd = new getAlliance_id();
 
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getAverage")
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getAverage")
         public static class getAverage extends CommandRef {
             public static final getAverage cmd = new getAverage();
         public getAverage attribute(String value) {
@@ -50,7 +62,20 @@ public class CM_alliance {
         }
 
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getAveragePer")
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getAverageMMR")
+        public static class getAverageMMR extends CommandRef {
+            public static final getAverageMMR cmd = new getAverageMMR();
+        public getAverageMMR update(String value) {
+            return set("update", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getAverageMMRUnit")
+        public static class getAverageMMRUnit extends CommandRef {
+            public static final getAverageMMRUnit cmd = new getAverageMMRUnit();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getAveragePer")
         public static class getAveragePer extends CommandRef {
             public static final getAveragePer cmd = new getAveragePer();
         public getAveragePer attribute(String value) {
@@ -79,6 +104,10 @@ public class CM_alliance {
 
         public getBoughtAssetCount end(String value) {
             return set("end", value);
+        }
+
+        public getBoughtAssetCount nations(String value) {
+            return set("nations", value);
         }
 
         }
@@ -146,6 +175,10 @@ public class CM_alliance {
             return set("end", value);
         }
 
+        public getEffectiveBoughtAssetCount nations(String value) {
+            return set("nations", value);
+        }
+
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getEffectiveSpending")
         public static class getEffectiveSpending extends CommandRef {
@@ -162,6 +195,10 @@ public class CM_alliance {
             return set("end", value);
         }
 
+        public getEffectiveSpending nations(String value) {
+            return set("nations", value);
+        }
+
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getEffectiveSpendingValue")
         public static class getEffectiveSpendingValue extends CommandRef {
@@ -176,6 +213,10 @@ public class CM_alliance {
 
         public getEffectiveSpendingValue end(String value) {
             return set("end", value);
+        }
+
+        public getEffectiveSpendingValue nations(String value) {
+            return set("nations", value);
         }
 
         }
@@ -244,6 +285,10 @@ public class CM_alliance {
             return set("end", value);
         }
 
+        public getMembershipChangeAssetCount nations(String value) {
+            return set("nations", value);
+        }
+
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getMembershipChangeAssetRss")
         public static class getMembershipChangeAssetRss extends CommandRef {
@@ -264,6 +309,10 @@ public class CM_alliance {
             return set("end", value);
         }
 
+        public getMembershipChangeAssetRss nations(String value) {
+            return set("nations", value);
+        }
+
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getMembershipChangeAssetValue")
         public static class getMembershipChangeAssetValue extends CommandRef {
@@ -281,6 +330,26 @@ public class CM_alliance {
         }
 
         public getMembershipChangeAssetValue end(String value) {
+            return set("end", value);
+        }
+
+        public getMembershipChangeAssetValue nations(String value) {
+            return set("nations", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getMembershipChangeUniqueNationsByReason")
+        public static class getMembershipChangeUniqueNationsByReason extends CommandRef {
+            public static final getMembershipChangeUniqueNationsByReason cmd = new getMembershipChangeUniqueNationsByReason();
+        public getMembershipChangeUniqueNationsByReason reasons(String value) {
+            return set("reasons", value);
+        }
+
+        public getMembershipChangeUniqueNationsByReason start(String value) {
+            return set("start", value);
+        }
+
+        public getMembershipChangeUniqueNationsByReason end(String value) {
             return set("end", value);
         }
 
@@ -344,6 +413,18 @@ public class CM_alliance {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getName")
         public static class getName extends CommandRef {
             public static final getName cmd = new getName();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getNations")
+        public static class getNations extends CommandRef {
+            public static final getNations cmd = new getNations();
+        public getNations filter(String value) {
+            return set("filter", value);
+        }
+
+        public getNations timestamp(String value) {
+            return set("timestamp", value);
+        }
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getNetAsset")
@@ -431,12 +512,12 @@ public class CM_alliance {
         }
 
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getRevenue")
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getRevenue")
         public static class getRevenue extends CommandRef {
             public static final getRevenue cmd = new getRevenue();
 
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getRevenueConverted")
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getRevenueConverted")
         public static class getRevenueConverted extends CommandRef {
             public static final getRevenueConverted cmd = new getRevenueConverted();
 
@@ -469,6 +550,10 @@ public class CM_alliance {
             return set("end", value);
         }
 
+        public getSpending nations(String value) {
+            return set("nations", value);
+        }
+
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getSpendingValue")
         public static class getSpendingValue extends CommandRef {
@@ -485,8 +570,12 @@ public class CM_alliance {
             return set("end", value);
         }
 
+        public getSpendingValue nations(String value) {
+            return set("nations", value);
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getTotal")
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationList.class,method="getTotal")
         public static class getTotal extends CommandRef {
             public static final getTotal cmd = new getTotal();
         public getTotal attribute(String value) {

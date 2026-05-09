@@ -151,6 +151,53 @@ final class PlannerConflictExecutor {
     }
 
     static double scoreAssignmentDelta(
+            PlannerLocalConflict conflict,
+            StrategicObjective objective,
+            int attackerTeamId,
+            PlannerConflictBundle.PlannerAssignmentView currentAssignment,
+            PlannerConflictBundle.PlannerAssignmentView candidateAssignment
+    ) {
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.EXACT_ASSIGNMENT_DELTA)) {
+            if (currentAssignment.equals(candidateAssignment)) {
+                return 0.0;
+            }
+
+            PlannerProfiler.addCounter(
+                    PlannerProfiler.Scope.EXACT_ASSIGNMENT_DELTA,
+                    "attackers",
+                    Math.max(currentAssignment.attackerCount(), candidateAssignment.attackerCount())
+            );
+            PlannerProfiler.addCounter(
+                    PlannerProfiler.Scope.EXACT_ASSIGNMENT_DELTA,
+                    "defenders",
+                    Math.max(currentAssignment.edgeCount(), candidateAssignment.edgeCount())
+            );
+
+            int sharedPrefixEdges = currentAssignment.commonPrefixEdgeCount(candidateAssignment);
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.EXACT_ASSIGNMENT_DELTA, "sharedPrefixEdges", sharedPrefixEdges);
+            if (sharedPrefixEdges == 0) {
+                double currentScore = scoreAssignment(conflict, objective, attackerTeamId, currentAssignment);
+                double candidateScore = scoreAssignment(conflict, objective, attackerTeamId, candidateAssignment);
+                return candidateScore - currentScore;
+            }
+
+            PlannerConflictBundle.PlannerAssignmentView sharedPrefix = currentAssignment.prefixEdges(sharedPrefixEdges);
+            PlannerConflictBundle.PlannerAssignmentView currentSuffix = currentAssignment.suffixEdges(sharedPrefixEdges);
+            PlannerConflictBundle.PlannerAssignmentView candidateSuffix = candidateAssignment.suffixEdges(sharedPrefixEdges);
+
+            PlannerLocalConflict.Mark sharedMark = conflict.mark();
+            try {
+                conflict.evaluateAssignmentOpenings(sharedPrefix);
+                double currentScore = scoreAssignmentFromCurrentState(conflict, objective, attackerTeamId, currentSuffix);
+                double candidateScore = scoreAssignmentFromCurrentState(conflict, objective, attackerTeamId, candidateSuffix);
+                return candidateScore - currentScore;
+            } finally {
+                conflict.rollback(sharedMark);
+            }
+        }
+    }
+
+    static double scoreAssignmentDelta(
             SimTuning tuning,
             OverrideSet overrides,
             StrategicObjective objective,
@@ -724,8 +771,11 @@ final class PlannerConflictExecutor {
         double controlLeverage = policy.retainControlLeverage()
             ? controlLeverage(projectedWar)
                 : 0.0;
-        double futureWarLeverage = policy.retainFutureWarLeverage()
-            ? futureWarLeverage(attacker, projectedAttacker, defender, projectedDefender, projectedWar)
+        double tacticalMomentum = policy.retainFutureWarLeverage()
+            ? tacticalMomentumScore(projectedWar)
+                : 0.0;
+        double forceWindowAdvantage = policy.retainFutureWarLeverage()
+            ? forceWindowScore(attacker, projectedAttacker, defender, projectedDefender, projectedWar)
                 : 0.0;
 
         return new DeclaredWarEvaluation(
@@ -734,7 +784,8 @@ final class PlannerConflictExecutor {
             selfExposure,
             resourceSwing,
             controlLeverage,
-            futureWarLeverage
+            tacticalMomentum,
+            forceWindowAdvantage
         );
     }
 
@@ -783,9 +834,9 @@ final class PlannerConflictExecutor {
         PlannerLocalConflict.ControlOwner enemyOwner = subjectIsWarAttacker
                 ? PlannerLocalConflict.ControlOwner.DEFENDER
                 : PlannerLocalConflict.ControlOwner.ATTACKER;
-        int ownControls = projectedControlCount(war, ownOwner);
-        int enemyControls = projectedControlCount(war, enemyOwner);
-        return StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+        int ownControls = PlannerControlStateReducer.controlCountForProjectedWar(war, ownOwner);
+        int enemyControls = PlannerControlStateReducer.controlCountForProjectedWar(war, enemyOwner);
+        return PlannerControlStateReducer.activeWarContextFromRelativeState(
                 1,
                 1.0d,
                 subjectIsWarAttacker ? war.attackerMaps() : war.defenderMaps(),
@@ -797,32 +848,23 @@ final class PlannerConflictExecutor {
         );
     }
 
-    private static int projectedControlCount(PlannerProjectedWar war, PlannerLocalConflict.ControlOwner owner) {
-        int count = 0;
-        if (war.groundControlOwner() == owner) {
-            count++;
-        }
-        if (war.airSuperiorityOwner() == owner) {
-            count++;
-        }
-        if (war.blockadeOwner() == owner) {
-            count++;
-        }
-        return count;
-    }
-
     private static double controlLeverage(PlannerProjectedWar war) {
         if (war == null) {
             return 0.0;
         }
         return OpeningMetricSummary.controlLeverage(
-                war.groundControlOwner() == PlannerLocalConflict.ControlOwner.ATTACKER,
+                war.groundSuperiorityOwner() == PlannerLocalConflict.ControlOwner.ATTACKER,
                 war.airSuperiorityOwner() == PlannerLocalConflict.ControlOwner.ATTACKER,
                 war.blockadeOwner() == PlannerLocalConflict.ControlOwner.ATTACKER
         );
     }
 
-    private static double futureWarLeverage(
+    private static double tacticalMomentumScore(PlannerProjectedWar projectedWar) {
+        int defenderResistance = projectedWar == null ? 0 : projectedWar.defenderResistance();
+        return OpeningMetricSummary.tacticalMomentumScore(defenderResistance);
+    }
+
+    private static double forceWindowScore(
             DBNationSnapshot initialAttacker,
             DBNationSnapshot projectedAttacker,
             DBNationSnapshot initialDefender,
@@ -833,8 +875,7 @@ final class PlannerConflictExecutor {
                 && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.ControlOwner.ATTACKER;
         boolean defenderHasAirControl = projectedWar != null
                 && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.ControlOwner.DEFENDER;
-        int defenderResistance = projectedWar == null ? 0 : projectedWar.defenderResistance();
-        return OpeningMetricSummary.futureWarLeverage(
+        return OpeningMetricSummary.forceWindowScore(
                 OpeningMetricSummary.groundStrength(
                         initialAttacker.unit(MilitaryUnit.SOLDIER),
                         initialAttacker.unit(MilitaryUnit.TANK),
@@ -862,8 +903,7 @@ final class PlannerConflictExecutor {
                 initialAttacker.unit(MilitaryUnit.SHIP),
                 projectedAttacker.unit(MilitaryUnit.SHIP),
                 initialDefender.unit(MilitaryUnit.SHIP),
-                projectedDefender.unit(MilitaryUnit.SHIP),
-                defenderResistance
+                projectedDefender.unit(MilitaryUnit.SHIP)
         );
     }
 
@@ -873,10 +913,11 @@ final class PlannerConflictExecutor {
             double selfExposure,
             double resourceSwing,
             double controlLeverage,
-            double futureWarLeverage
+            double tacticalMomentum,
+            double forceWindowAdvantage
     ) implements StrategicEvaluationComponents {
         static DeclaredWarEvaluation scoreOnly(double objectiveScore) {
-            return new DeclaredWarEvaluation(objectiveScore, 0.0, 0.0, 0.0, 0.0, 0.0);
+            return new DeclaredWarEvaluation(objectiveScore, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         }
     }
 }

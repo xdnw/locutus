@@ -40,6 +40,7 @@ import link.locutus.discord.sim.planners.BlitzPlanner;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.ScheduledAttacker;
+import link.locutus.discord.sim.planners.SidePolicy;
 import link.locutus.discord.sim.planners.SnapshotActivityProvider;
 import link.locutus.discord.sim.planners.ScheduledTargetPlan;
 import link.locutus.discord.sim.combat.ResolutionMode;
@@ -411,12 +412,29 @@ public class SimEndpoints {
                 assignment.initialWarTypeOrdinalsByPair(),
                 counterDeclarers(context, sideMode),
                 counterTargets(context, sideMode),
-                objectiveForRequest(context.request()),
+                redeclareDeclarers(context, sideMode),
+                redeclareTargets(context, sideMode),
+                secondaryRedeclareDeclarers(context, sideMode),
+                secondaryRedeclareTargets(context, sideMode),
+                autonomousDeclarerPolicy(context, "counterDeclarer"),
+                autonomousTargetPolicy(context, "counterTarget"),
+                autonomousDeclarerPolicy(context, "redeclareDeclarer"),
+                autonomousTargetPolicy(context, "redeclareTarget"),
+                autonomousDeclarerPolicy(context, "secondaryRedeclareDeclarer"),
+                autonomousTargetPolicy(context, "secondaryRedeclareTarget"),
                 context.participantIds(),
                 context.existingWarPairs(),
                 context.currentTurn(),
                 context.horizonTurns()
         );
+    }
+
+    private static SidePolicy autonomousDeclarerPolicy(BlitzPlanContext context, String name) {
+        return SidePolicy.legacy(name, objectiveForRequest(context.request()));
+    }
+
+    private static SidePolicy autonomousTargetPolicy(BlitzPlanContext context, String name) {
+        return SidePolicy.legacyPassive(name, objectiveForRequest(context.request()));
     }
 
     private static List<DBNationSnapshot> counterDeclarers(BlitzPlanContext context, BlitzSideMode sideMode) {
@@ -433,6 +451,28 @@ public class SimEndpoints {
             case DEFENDERS_ONLY -> context.defenderSnapshots();
             case BOTH -> List.of();
         };
+    }
+
+    private static List<DBNationSnapshot> redeclareDeclarers(BlitzPlanContext context, BlitzSideMode sideMode) {
+        return switch (sideMode) {
+            case ATTACKERS_ONLY, BOTH -> context.attackerSnapshots();
+            case DEFENDERS_ONLY -> context.defenderSnapshots();
+        };
+    }
+
+    private static List<DBNationSnapshot> redeclareTargets(BlitzPlanContext context, BlitzSideMode sideMode) {
+        return switch (sideMode) {
+            case ATTACKERS_ONLY, BOTH -> context.defenderSnapshots();
+            case DEFENDERS_ONLY -> context.attackerSnapshots();
+        };
+    }
+
+    private static List<DBNationSnapshot> secondaryRedeclareDeclarers(BlitzPlanContext context, BlitzSideMode sideMode) {
+        return sideMode == BlitzSideMode.BOTH ? context.defenderSnapshots() : List.of();
+    }
+
+    private static List<DBNationSnapshot> secondaryRedeclareTargets(BlitzPlanContext context, BlitzSideMode sideMode) {
+        return sideMode == BlitzSideMode.BOTH ? context.attackerSnapshots() : List.of();
     }
 
     private static List<DBNationSnapshot> combinedSnapshots(
@@ -1075,7 +1115,7 @@ public class SimEndpoints {
     private static int packWarFlags(
             int warTypeOrdinal,
             int warStatusOrdinal,
-            int groundControlOwnerOrdinal,
+            int groundSuperiorityOwnerOrdinal,
             int airSuperiorityOwnerOrdinal,
             int blockadeOwnerOrdinal,
             boolean attackerFortified,
@@ -1083,7 +1123,7 @@ public class SimEndpoints {
     ) {
         int flags = (warTypeOrdinal & 0x3F)
                 | ((warStatusOrdinal & 0x1F) << 6)
-                | ((groundControlOwnerOrdinal & 0x3) << 11)
+                | ((groundSuperiorityOwnerOrdinal & 0x3) << 11)
                 | ((airSuperiorityOwnerOrdinal & 0x3) << 13)
                 | ((blockadeOwnerOrdinal & 0x3) << 15);
         if (attackerFortified) {
@@ -1612,13 +1652,23 @@ public class SimEndpoints {
             StrategicObjective objective,
             int horizonTurns
     ) {
-        return new BlitzPlanner(
+        BlitzPlanner planner = new BlitzPlanner(
                 tuning,
                 treatyProvider,
             overrides,
                 objective,
                 activityProvider
-        ).assign(declarers, targets, currentTurn, fixedEdges, horizonTurns);
+        );
+        return planner.assignSymmetric(
+            declarers,
+            targets,
+            SidePolicy.legacy("acting", objective),
+            SidePolicy.legacyPassive("nonActing", objective),
+            currentTurn,
+            fixedEdges,
+            List.of(),
+            horizonTurns
+        ).sideAAssignment();
     }
 
     private static IntSet excludedWarIds(BlitzPlanRequest request) {

@@ -11,6 +11,7 @@ import link.locutus.discord.sim.planners.BlitzAssignment;
 import link.locutus.discord.sim.planners.BlitzPlanner;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
+import link.locutus.discord.sim.planners.SidePolicy;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import link.locutus.discord.util.TimeUtil;
 import org.junit.jupiter.api.Test;
@@ -101,14 +102,30 @@ class CompositeBlitzActivityPlannerIntegrationTest {
                 OverrideSet.EMPTY,
                 new DamageObjective(),
                 disabled.snapshotProvider()
-        ).assign(combined, combined);
+        ).assign(
+                combined,
+                combined,
+                SidePolicy.legacy("acting", new DamageObjective()),
+                SidePolicy.legacyPassive("nonActing", new DamageObjective()),
+                0,
+                List.of(),
+                1
+        );
         BlitzAssignment enabledAssignment = new BlitzPlanner(
                 SimTuning.defaults(),
                 oppositeSideOnly,
                 OverrideSet.EMPTY,
                 new DamageObjective(),
                 enabled.snapshotProvider()
-        ).assign(combined, combined);
+        ).assign(
+                combined,
+                combined,
+                SidePolicy.legacy("acting", new DamageObjective()),
+                SidePolicy.legacyPassive("nonActing", new DamageObjective()),
+                0,
+                List.of(),
+                1
+        );
 
         assertEquals(1, disabledAssignment.pairCount());
         assertEquals(1, enabledAssignment.pairCount());

@@ -164,7 +164,7 @@ public final class LongHorizonProjectionBenchmark {
                             defenderNationIds,
                             List.of(),
                             horizonTurns,
-                            new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new DamageObjective())
+                            LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new DamageObjective())
                     )
                     : LongHorizonAssignmentOptimizer.solveDetailed(
                             edges,

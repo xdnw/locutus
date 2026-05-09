@@ -58,6 +58,7 @@ import link.locutus.discord.web.commands.api.RoleEndpoints;
 import link.locutus.discord.web.commands.api.SimEndpoints;
 import link.locutus.discord.web.commands.api.SpyEndpoints;
 import link.locutus.discord.web.commands.api.StatEndpoints;
+import link.locutus.discord.web.commands.api.TreatyVisRuntimeEndpoints;
 import link.locutus.discord.web.commands.api.WarEndpoints;
 import link.locutus.discord.web.commands.api.TaxEndpoints;
 import link.locutus.discord.web.commands.api.CoalitionEndpoints;
@@ -84,7 +85,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
-import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -185,11 +185,12 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new RoleEndpoints(), "api");
         this.commands.registerSubCommands(new MultiEndpoints(), "api");
         this.commands.registerSubCommands(new TreatyEndpoints(), "api");
+        this.commands.registerSubCommands(new TreatyVisRuntimeEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
-        this.serializer = new ObjectMapper(new MessagePackFactory());
+        this.serializer = WebSerializers.MSGPACK;
 
         this.webOptionStore = new SimpleValueStore();
         webOptionStore.addLazyProvider(Key.of(PlaceholderRegistry.class), () -> placeholders);
@@ -617,10 +618,12 @@ public class PageHandler implements Handler {
                         throw new IllegalArgumentException("No subcommand specified for `" + path + "` | remaining: " + StringMan.join(args, " "));
                     }
                     if (result != null) {
-                        if (result instanceof byte[] bytes) {
+                        if (result instanceof BinaryResponse binaryResponse) {
+                            ctx.result(binaryResponse.bytes());
+                            ctx.contentType(binaryResponse.contentType());
+                        } else if (result instanceof byte[] bytes) {
                             ctx.result(bytes);
-                            ctx.header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
-                            ctx.header("Accept", "application/msgpack");
+                            ctx.contentType("application/msgpack");
                         } else if (!(result instanceof String) || !result.toString().isEmpty()) {
                             ctx.result(WebUtil.minify(result.toString()));
                         } else {
@@ -661,8 +664,7 @@ public class PageHandler implements Handler {
             try {
                 byte[] data = serializer.writeValueAsBytes(raw);
                 ctx.result(data);
-                ctx.header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
-                ctx.header("Accept", "application/msgpack");
+                ctx.contentType("application/msgpack");
             } catch (JsonProcessingException ex) {
                 ex.printStackTrace();
                 ctx.result("Internal server error");
@@ -676,7 +678,9 @@ public class PageHandler implements Handler {
 
     private Object wrap(WebStore ws, Object call, Context ctx, boolean isApi) {
         if (isApi) {
-            if (call instanceof byte[] bytes) {
+            if (call instanceof BinaryResponse binaryResponse) {
+                return binaryResponse;
+            } else if (call instanceof byte[] bytes) {
                 return bytes;
             } else {
                 try {

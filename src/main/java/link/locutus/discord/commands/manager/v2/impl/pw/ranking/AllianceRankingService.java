@@ -64,16 +64,16 @@ public final class AllianceRankingService {
                 .map(DBAlliance::getAlliance_id)
                 .collect(Collectors.toSet());
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricMap =
+        Map<Integer, Map<AllianceMetric, Map<Long, Double>>> metricMap =
                 Locutus.imp().getNationDB().getAllianceMetrics(allianceIds, request.metric(), turn);
 
         Map<Integer, Double> values = new LinkedHashMap<>();
-        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metricMap.entrySet()) {
+        for (Map.Entry<Integer, Map<AllianceMetric, Map<Long, Double>>> entry : metricMap.entrySet()) {
             Double value = metricValueAtOrBefore(entry.getValue().get(request.metric()), turn);
             if (value == null || !Double.isFinite(value)) {
                 continue;
             }
-            values.put(entry.getKey().getAlliance_id(), value);
+            values.put(entry.getKey(), value);
         }
 
         return RankingBuilders.singleMetricRanking(
@@ -121,22 +121,22 @@ public final class AllianceRankingService {
                 .map(DBAlliance::getAlliance_id)
                 .collect(Collectors.toSet());
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart =
+        Map<Integer, Map<AllianceMetric, Map<Long, Double>>> metricsStart =
                 Locutus.imp().getNationDB().getAllianceMetrics(allianceIds, request.metric(), turnStart);
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsEnd =
+        Map<Integer, Map<AllianceMetric, Map<Long, Double>>> metricsEnd =
                 Locutus.imp().getNationDB().getAllianceMetrics(allianceIds, request.metric(), turnEnd);
 
         Map<Integer, Double> startValuesByAllianceId = new HashMap<>();
-        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metricsStart.entrySet()) {
+        for (Map.Entry<Integer, Map<AllianceMetric, Map<Long, Double>>> entry : metricsStart.entrySet()) {
             Double value = metricValueAtOrBefore(entry.getValue().get(request.metric()), turnStart);
             if (value != null && Double.isFinite(value)) {
-                startValuesByAllianceId.put(entry.getKey().getAlliance_id(), value);
+                startValuesByAllianceId.put(entry.getKey(), value);
             }
         }
 
         Map<Integer, Double> values = new LinkedHashMap<>();
-        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metricsEnd.entrySet()) {
-            int allianceId = entry.getKey().getAlliance_id();
+        for (Map.Entry<Integer, Map<AllianceMetric, Map<Long, Double>>> entry : metricsEnd.entrySet()) {
+            int allianceId = entry.getKey();
             Double startValue = startValuesByAllianceId.get(allianceId);
             Double endValue = metricValueAtOrBefore(entry.getValue().get(request.metric()), turnEnd);
             if (startValue == null || endValue == null || !Double.isFinite(endValue)) {

@@ -11,7 +11,7 @@ import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
-import link.locutus.discord.sim.combat.ControlFlagDelta;
+import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
@@ -75,6 +75,8 @@ final class OpeningEvaluator {
     };
 
     static record OpeningBaseline(
+            DBNationSnapshot attackerSnapshot,
+            DBNationSnapshot defenderSnapshot,
             double attackerGround,
             double defenderGround,
             double attackerAir,
@@ -99,17 +101,15 @@ final class OpeningEvaluator {
             double attackerNaval = attacker.unit(MilitaryUnit.SHIP);
             double defenderNaval = defender.unit(MilitaryUnit.SHIP);
             return new OpeningBaseline(
+                    attacker,
+                    defender,
                     attackerGround,
                     defenderGround,
                     attackerAir,
                     defenderAir,
                     attackerNaval,
                     defenderNaval,
-                    OpeningMetricSummary.defenderControlPressure(
-                            defenderGround,
-                            defenderAir,
-                            defenderNaval
-                    )
+                    OpeningMetricSummary.defenderControlPressure(defender)
             );
         }
     }
@@ -128,7 +128,7 @@ final class OpeningEvaluator {
         OpeningCandidateAdmission candidateAdmission = new OpeningCandidateAdmission(resolveAdmissionPolicy(objective));
         if (!candidateAdmission.admit(attacker, defender)) {
             if (candidateAdmission.admitPositiveOpeningBaseline()
-                    && evaluatePositiveBaselineOpening(attacker, defender, objective, evaluation)) {
+                    && evaluatePositiveBaselineOpening(attacker, defender, objective, null, evaluation)) {
                 OpeningEdgeEvaluationWriter.retainComponents(evaluation, componentPolicy);
                 return new EvaluatedEdge(
                         evaluation.score(),
@@ -272,31 +272,52 @@ final class OpeningEvaluator {
             int[] defenderCaps,
             CandidateEdgeTable out
     ) {
+        evaluate(scenario, tuning, overrides, objective, null, attackerCaps, defenderCaps, out);
+        }
+
+        static void evaluate(
+            CompiledScenario scenario,
+            SimTuning tuning,
+            OverrideSet overrides,
+            StrategicObjective objective,
+            SideOpeningSettings openingSettings,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            CandidateEdgeTable out
+        ) {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.OPENING_EVALUATE)) {
             PlannerProfiler.addCounter(PlannerProfiler.Scope.OPENING_EVALUATE, "attackers", scenario.attackerCount());
             PlannerProfiler.addCounter(PlannerProfiler.Scope.OPENING_EVALUATE, "defenders", scenario.defenderCount());
             CandidateEdgeComponentPolicy componentPolicy = objective.candidateEdgeComponentPolicy();
             out.configureComponentRetention(componentPolicy);
-            CandidateEdgeAdmissionPolicy admissionPolicy = objective.candidateEdgeAdmissionPolicy();
-            CandidateEdgeAdmissionPolicy resolvedAdmissionPolicy = admissionPolicy == null
-                ? CandidateEdgeAdmissionPolicy.defaultPolicy()
-                : admissionPolicy;
+            CandidateEdgeAdmissionPolicy resolvedAdmissionPolicy = resolveAdmissionPolicy(objective, openingSettings);
             int candidatesPerAttacker = tuning.candidatesPerAttacker();
+            int maxCandidatesPerAttacker = maxCandidatesPerAttacker(attackerCaps, candidatesPerAttacker);
+            int defenderCoverageTarget = defenderCoverageCapacity(maxCandidatesPerAttacker);
+            float[] defenderCoveragePriorities = new float[scenario.defenderCount()];
+            for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
+                defenderCoveragePriorities[defenderIndex] = (float) OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
+            }
             int[] defenderCoverageCounts = new int[scenario.defenderCount()];
             long[][] emittedPairWordsByAttacker = new long[scenario.attackerCount()][(scenario.defenderCount() + Long.SIZE - 1) / Long.SIZE];
             TopKEdgeCollector[] defenderCoverageCollectors = new TopKEdgeCollector[scenario.defenderCount()];
             for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
                 if (defenderCaps[defenderIndex] > 0) {
-                    defenderCoverageCollectors[defenderIndex] = new TopKEdgeCollector(candidatesPerAttacker, componentPolicy);
+                    defenderCoverageCollectors[defenderIndex] = new TopKEdgeCollector(defenderCoverageTarget, componentPolicy);
                 }
             }
             DefenderAdmissionCollector collector = new DefenderAdmissionCollector(
                     scenario,
                     objective,
+                    openingSettings,
                     resolvedAdmissionPolicy,
                     componentPolicy,
+                    attackerCaps,
                     defenderCaps,
                     candidatesPerAttacker,
+                    maxCandidatesPerAttacker,
+                    defenderCoverageTarget,
+                        defenderCoveragePriorities,
                     defenderCoverageCollectors,
                     out,
                     emittedPairWordsByAttacker,
@@ -315,7 +336,7 @@ final class OpeningEvaluator {
             OpeningDefenderCoverageRescue.emit(
                     defenderCoverageCollectors,
                     defenderCaps,
-                    candidatesPerAttacker,
+                    defenderCoverageTarget,
                     out,
                     emittedPairWordsByAttacker,
                     defenderCoverageCounts
@@ -327,10 +348,13 @@ final class OpeningEvaluator {
     private static final class DefenderAdmissionCollector implements IntConsumer {
         private final CompiledScenario scenario;
         private final StrategicObjective objective;
+        private final SideOpeningSettings openingSettings;
         private final CandidateEdgeComponentPolicy componentPolicy;
         private final CandidateEdgeAdmissionPolicy admissionPolicy;
         private final int[] defenderCaps;
+        private final float[] defenderCoveragePriorities;
         private final TopKEdgeCollector topK;
+        private final CoveragePriorityCollector coverageSpillovers;
         private final TopKEdgeCollector[] defenderCoverageCollectors;
         private final CandidateEdgeTable out;
         private final long[][] emittedPairWordsByAttacker;
@@ -344,10 +368,15 @@ final class OpeningEvaluator {
         private DefenderAdmissionCollector(
                 CompiledScenario scenario,
                 StrategicObjective objective,
+            SideOpeningSettings openingSettings,
                 CandidateEdgeAdmissionPolicy admissionPolicy,
                 CandidateEdgeComponentPolicy componentPolicy,
+                int[] attackerCaps,
                 int[] defenderCaps,
                 int candidatesPerAttacker,
+                int maxCandidatesPerAttacker,
+                int defenderCoverageTarget,
+                float[] defenderCoveragePriorities,
                 TopKEdgeCollector[] defenderCoverageCollectors,
                 CandidateEdgeTable out,
                 long[][] emittedPairWordsByAttacker,
@@ -355,10 +384,14 @@ final class OpeningEvaluator {
         ) {
             this.scenario = scenario;
             this.objective = objective;
+            this.openingSettings = openingSettings;
             this.componentPolicy = componentPolicy == null ? CandidateEdgeComponentPolicy.none() : componentPolicy;
             this.admissionPolicy = admissionPolicy;
             this.defenderCaps = defenderCaps;
-            this.topK = new TopKEdgeCollector(candidatesPerAttacker, this.componentPolicy);
+            this.defenderCoverageTarget = defenderCoverageTarget;
+            this.defenderCoveragePriorities = defenderCoveragePriorities;
+            this.topK = new TopKEdgeCollector(maxCandidatesPerAttacker, this.componentPolicy);
+            this.coverageSpillovers = new CoveragePriorityCollector(coverageSpilloverCapacity(maxCandidatesPerAttacker), this.componentPolicy);
             this.defenderCoverageCollectors = defenderCoverageCollectors;
             this.out = out;
             this.emittedPairWordsByAttacker = emittedPairWordsByAttacker;
@@ -366,12 +399,20 @@ final class OpeningEvaluator {
             this.candidateAdmission = new OpeningCandidateAdmission(admissionPolicy);
             this.rolloutEdgeEvaluator = new OpeningRolloutSearch(DEFAULT_ACTION_BUDGET);
             this.edgeEvaluation = new EdgeEvaluation();
+            this.attackerCaps = attackerCaps;
+            this.candidatesPerAttacker = candidatesPerAttacker;
         }
+
+        private final int[] attackerCaps;
+        private final int candidatesPerAttacker;
+        private final int defenderCoverageTarget;
 
         private void beginAttacker(int attackerIndex) {
             this.attackerIndex = attackerIndex;
             this.attacker = scenario.attacker(attackerIndex);
             this.topK.clear();
+            this.coverageSpillovers.clear();
+            this.topK.setActiveLimit(retentionCapacity(attackerCaps[attackerIndex], candidatesPerAttacker));
         }
 
         @Override
@@ -389,7 +430,7 @@ final class OpeningEvaluator {
             DBNationSnapshot defender = scenario.defender(defenderIndex);
             if (!candidateAdmission.admit(attacker, defender)) {
                 if (!candidateAdmission.admitPositiveOpeningBaseline()
-                        || !evaluatePositiveBaselineOpening(attacker, defender, objective, edgeEvaluation)) {
+                        || !evaluatePositiveBaselineOpening(attacker, defender, objective, openingSettings, edgeEvaluation)) {
                     return;
                 }
                 OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
@@ -397,25 +438,19 @@ final class OpeningEvaluator {
                 return;
             }
             float probe = candidateAdmission.probe();
-            byte bestAttackTypeId = candidateAdmission.bestAttackTypeId();
-            byte preferredWarTypeId = candidateAdmission.preferredWarTypeId();
             rolloutEdgeEvaluator.evaluate(
                     attacker,
                     defender,
                     objective,
+                    openingSettings,
                     actionBudgetForProbe(probe, rolloutEdgeEvaluator.maxActionBudget()),
                     edgeEvaluation
             );
             OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
+            finalizeEdgeSelection(edgeEvaluation, candidateAdmission.preferredWarTypeId(), candidateAdmission.bestAttackTypeId());
             float score = edgeEvaluation.score();
             if (!Float.isFinite(score)) {
                 return;
-            }
-            if (edgeEvaluation.firstAttackTypeId() >= 0) {
-                bestAttackTypeId = edgeEvaluation.firstAttackTypeId();
-            }
-            if (edgeEvaluation.preferredWarTypeId() >= 0) {
-                preferredWarTypeId = edgeEvaluation.preferredWarTypeId();
             }
             retainEvaluatedEdge(defenderIndex, edgeEvaluation);
         }
@@ -440,9 +475,9 @@ final class OpeningEvaluator {
                     controlLeverage,
                     futureWarLeverage
             );
-            TopKEdgeCollector defenderCoverageCollector = defenderCoverageCollectors[defenderIndex];
-            if (defenderCoverageCollector != null) {
-                defenderCoverageCollector.consider(
+                    TopKEdgeCollector defenderCoverageCollector = defenderCoverageCollectors[defenderIndex];
+                    if (defenderCoverageCollector != null) {
+                    defenderCoverageCollector.consider(
                         attackerIndex,
                         defenderIndex,
                         edgeEvaluation.preferredWarTypeId(),
@@ -454,8 +489,22 @@ final class OpeningEvaluator {
                         resourceSwing,
                         controlLeverage,
                         futureWarLeverage
-                );
-            }
+                    );
+                    }
+                    coverageSpillovers.consider(
+                        defenderCoveragePriorities[defenderIndex],
+                        attackerIndex,
+                        defenderIndex,
+                        edgeEvaluation.preferredWarTypeId(),
+                        edgeEvaluation.firstAttackTypeId(),
+                        edgeEvaluation.score(),
+                        counterRisk,
+                        immediateHarm,
+                        selfExposure,
+                        resourceSwing,
+                        controlLeverage,
+                        futureWarLeverage
+                    );
         }
 
         private void emit() {
@@ -463,7 +512,8 @@ final class OpeningEvaluator {
                 return;
             }
             topK.sortSelectedDescending();
-            for (int order = 0; order < topK.size(); order++) {
+            int emitCount = Math.min(topK.size(), Math.max(1, candidatesPerAttacker));
+            for (int order = 0; order < emitCount; order++) {
                 OpeningDefenderCoverageRescue.emitSelectedEdge(
                         topK,
                         topK.sortedIndexAt(order),
@@ -472,13 +522,58 @@ final class OpeningEvaluator {
                         defenderCoverageCounts
                 );
             }
+            emitCoverageSpillover();
         }
+
+        private void emitCoverageSpillover() {
+            if (coverageSpillovers.size() == 0) {
+                return;
+            }
+            coverageSpillovers.sortSelectedDescending();
+            for (int order = 0; order < coverageSpillovers.size(); order++) {
+                int candidateIndex = coverageSpillovers.sortedIndexAt(order);
+                int defenderIndex = coverageSpillovers.defenderIndexAt(candidateIndex);
+                if (defenderCoverageCounts[defenderIndex] >= defenderCoverageTarget) {
+                    continue;
+                }
+                if (OpeningDefenderCoverageRescue.emitSelectedEdge(
+                        coverageSpillovers,
+                        candidateIndex,
+                        out,
+                        emittedPairWordsByAttacker,
+                        defenderCoverageCounts
+                )) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private static int maxCandidatesPerAttacker(int[] attackerCaps, int baseCandidatesPerAttacker) {
+        int max = Math.max(1, baseCandidatesPerAttacker);
+        for (int attackerCap : attackerCaps) {
+            max = Math.max(max, retentionCapacity(attackerCap, baseCandidatesPerAttacker));
+        }
+        return max;
+    }
+
+    private static int retentionCapacity(int attackerCap, int baseCandidatesPerAttacker) {
+        return Math.max(baseCandidatesPerAttacker, Math.max(1, (2 * Math.max(0, attackerCap)) - 2));
+    }
+
+    private static int defenderCoverageCapacity(int maxCandidatesPerAttacker) {
+        return Math.max(maxCandidatesPerAttacker, maxCandidatesPerAttacker * 2);
+    }
+
+    private static int coverageSpilloverCapacity(int maxCandidatesPerAttacker) {
+        return Math.max(1, Math.min(4, maxCandidatesPerAttacker));
     }
 
     private static boolean evaluatePositiveBaselineOpening(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             StrategicObjective objective,
+            SideOpeningSettings openingSettings,
             EdgeEvaluation out
     ) {
         out.clear();
@@ -488,12 +583,16 @@ final class OpeningEvaluator {
         OpeningBaseline baseline = OpeningBaseline.from(attacker, defender);
         OpeningMetricVector.Mutable metrics = new OpeningMetricVector.Mutable();
         metrics.set(0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
-        float score = (float) objective.scoreOpening(metrics, attacker.teamId());
-        if (!Float.isFinite(score) || score <= 0f) {
-            return false;
-        }
         byte firstAttackTypeId = firstLegalOpeningAttack(attacker);
         if (firstAttackTypeId < 0) {
+            return false;
+        }
+        float score = (float) objective.scoreOpening(metrics, attacker.teamId());
+        if (openingSettings != null) {
+            score *= (float) (openingSettings.warTypeWeight(WarType.ORD)
+                    * openingSettings.attackTypeWeight(AttackType.values[firstAttackTypeId]));
+        }
+        if (!Float.isFinite(score) || score <= 0f) {
             return false;
         }
         out.set(score, (byte) WarType.ORD.ordinal(), firstAttackTypeId, 0f, 0f, 0f, 0f, 0f);
@@ -544,10 +643,40 @@ final class OpeningEvaluator {
     }
 
     private static CandidateEdgeAdmissionPolicy resolveAdmissionPolicy(StrategicObjective objective) {
+        return resolveAdmissionPolicy(objective, null);
+    }
+
+    private static CandidateEdgeAdmissionPolicy resolveAdmissionPolicy(StrategicObjective objective, SideOpeningSettings openingSettings) {
+        if (openingSettings != null && openingSettings.admissionPolicy() != null) {
+            return openingSettings.admissionPolicy();
+        }
         CandidateEdgeAdmissionPolicy candidateAdmissionPolicy = objective.candidateEdgeAdmissionPolicy();
         return candidateAdmissionPolicy == null
                 ? CandidateEdgeAdmissionPolicy.defaultPolicy()
                 : candidateAdmissionPolicy;
+    }
+
+    private static void finalizeEdgeSelection(EdgeEvaluation edgeEvaluation, byte fallbackWarTypeId, byte fallbackAttackTypeId) {
+        byte resolvedWarTypeId = edgeEvaluation.preferredWarTypeId() >= 0
+                ? edgeEvaluation.preferredWarTypeId()
+                : fallbackWarTypeId;
+        byte resolvedAttackTypeId = edgeEvaluation.firstAttackTypeId() >= 0
+                ? edgeEvaluation.firstAttackTypeId()
+                : fallbackAttackTypeId;
+        if (resolvedWarTypeId == edgeEvaluation.preferredWarTypeId()
+                && resolvedAttackTypeId == edgeEvaluation.firstAttackTypeId()) {
+            return;
+        }
+        edgeEvaluation.set(
+                edgeEvaluation.score(),
+                resolvedWarTypeId,
+                resolvedAttackTypeId,
+                edgeEvaluation.immediateHarm(),
+                edgeEvaluation.selfExposure(),
+                edgeEvaluation.resourceSwing(),
+                edgeEvaluation.controlLeverage(),
+                edgeEvaluation.futureWarLeverage()
+        );
     }
 
     private static CandidateEdgeComponentPolicy resolveComponentPolicy(StrategicObjective objective) {
@@ -590,6 +719,7 @@ final class OpeningEvaluator {
     static final class TopKEdgeCollector {
         private final CandidateEdgeStorage edges;
         private final int[] sortedIndexes;
+        private int activeLimit;
         private int size;
         private boolean sortedDirty;
 
@@ -597,6 +727,7 @@ final class OpeningEvaluator {
             int capacity = Math.max(0, k);
             this.edges = new CandidateEdgeStorage(capacity, componentPolicy);
             this.sortedIndexes = new int[capacity];
+            this.activeLimit = capacity;
             this.size = 0;
             this.sortedDirty = true;
         }
@@ -607,6 +738,14 @@ final class OpeningEvaluator {
 
         private void clear() {
             size = 0;
+            sortedDirty = true;
+        }
+
+        private void setActiveLimit(int value) {
+            this.activeLimit = Math.max(0, Math.min(edges.capacity(), value));
+            if (size > activeLimit) {
+                size = activeLimit;
+            }
             sortedDirty = true;
         }
 
@@ -671,10 +810,10 @@ final class OpeningEvaluator {
                 float controlLeverage,
                 float futureWarLeverage
         ) {
-            if (edges.capacity() == 0) {
+            if (activeLimit == 0) {
                 return;
             }
-            if (size < edges.capacity()) {
+            if (size < activeLimit) {
                 edges.write(
                         size,
                         attackerIndex,
@@ -782,10 +921,10 @@ final class OpeningEvaluator {
 
         private boolean isWorse(int lhsIndex, int rhsIndex) {
             return isBetter(
-                    edges.scoreAt(rhsIndex),
+                edges.scoreAt(rhsIndex),
                     edges.attackerIndexAt(rhsIndex),
                     edges.defenderIndexAt(rhsIndex),
-                    edges.scoreAt(lhsIndex),
+                edges.scoreAt(lhsIndex),
                     edges.attackerIndexAt(lhsIndex),
                     edges.defenderIndexAt(lhsIndex)
             );
@@ -815,6 +954,282 @@ final class OpeningEvaluator {
         }
 
         private void swap(int lhs, int rhs) {
+            edges.swap(lhs, rhs);
+        }
+    }
+
+    static final class CoveragePriorityCollector {
+        private final CandidateEdgeStorage edges;
+        private final float[] priorities;
+        private final int[] sortedIndexes;
+        private int size;
+        private boolean sortedDirty;
+
+        CoveragePriorityCollector(int k, CandidateEdgeComponentPolicy componentPolicy) {
+            int capacity = Math.max(0, k);
+            this.edges = new CandidateEdgeStorage(capacity, componentPolicy);
+            this.priorities = new float[capacity];
+            this.sortedIndexes = new int[capacity];
+            this.size = 0;
+            this.sortedDirty = true;
+        }
+
+        void clear() {
+            size = 0;
+            sortedDirty = true;
+        }
+
+        int size() {
+            return size;
+        }
+
+        int sortedIndexAt(int order) {
+            return sortedIndexes[order];
+        }
+
+        int attackerIndexAt(int index) {
+            return edges.attackerIndexAt(index);
+        }
+
+        int defenderIndexAt(int index) {
+            return edges.defenderIndexAt(index);
+        }
+
+        byte preferredWarTypeIdAt(int index) {
+            return edges.preferredWarTypeIdAt(index);
+        }
+
+        byte bestAttackTypeIdAt(int index) {
+            return edges.bestAttackTypeIdAt(index);
+        }
+
+        float scoreAt(int index) {
+            return edges.scoreAt(index);
+        }
+
+        float counterRiskAt(int index) {
+            return edges.counterRiskAt(index);
+        }
+
+        float immediateHarmAt(int index) {
+            return edges.retainsImmediateHarm() ? edges.immediateHarmAt(index) : 0f;
+        }
+
+        float selfExposureAt(int index) {
+            return edges.retainsSelfExposure() ? edges.selfExposureAt(index) : 0f;
+        }
+
+        float resourceSwingAt(int index) {
+            return edges.retainsResourceSwing() ? edges.resourceSwingAt(index) : 0f;
+        }
+
+        float controlLeverageAt(int index) {
+            return edges.retainsControlLeverage() ? edges.controlLeverageAt(index) : 0f;
+        }
+
+        float futureWarLeverageAt(int index) {
+            return edges.retainsFutureWarLeverage() ? edges.futureWarLeverageAt(index) : 0f;
+        }
+
+        float priorityAt(int index) {
+            return priorities[index];
+        }
+
+        void consider(
+                float priority,
+                int attackerIndex,
+                int defenderIndex,
+                byte preferredWarTypeId,
+                byte bestAttackTypeId,
+                float score,
+                float counterRisk,
+                float immediateHarm,
+                float selfExposure,
+                float resourceSwing,
+                float controlLeverage,
+                float futureWarLeverage
+        ) {
+            if (edges.capacity() == 0 || !Float.isFinite(priority)) {
+                return;
+            }
+            if (size < edges.capacity()) {
+                write(
+                        size,
+                        priority,
+                        attackerIndex,
+                        defenderIndex,
+                        preferredWarTypeId,
+                        bestAttackTypeId,
+                        score,
+                        counterRisk,
+                        immediateHarm,
+                        selfExposure,
+                        resourceSwing,
+                        controlLeverage,
+                        futureWarLeverage
+                );
+                siftUp(size);
+                size++;
+                sortedDirty = true;
+                return;
+            }
+            if (!isHigherPriority(
+                    priority,
+                    score,
+                    defenderIndex,
+                    priorities[0],
+                    edges.scoreAt(0),
+                    edges.defenderIndexAt(0)
+            )) {
+                return;
+            }
+            write(
+                    0,
+                    priority,
+                    attackerIndex,
+                    defenderIndex,
+                    preferredWarTypeId,
+                    bestAttackTypeId,
+                    score,
+                    counterRisk,
+                    immediateHarm,
+                    selfExposure,
+                    resourceSwing,
+                    controlLeverage,
+                    futureWarLeverage
+            );
+            siftDown(0);
+            sortedDirty = true;
+        }
+
+        void sortSelectedDescending() {
+            if (!sortedDirty) {
+                return;
+            }
+            for (int i = 0; i < size; i++) {
+                sortedIndexes[i] = i;
+            }
+            for (int i = 1; i < size; i++) {
+                int cursor = i;
+                while (cursor > 0 && isHigherPriority(
+                        priorities[sortedIndexes[cursor]],
+                        edges.scoreAt(sortedIndexes[cursor]),
+                        edges.defenderIndexAt(sortedIndexes[cursor]),
+                        priorities[sortedIndexes[cursor - 1]],
+                        edges.scoreAt(sortedIndexes[cursor - 1]),
+                        edges.defenderIndexAt(sortedIndexes[cursor - 1])
+                )) {
+                    int swap = sortedIndexes[cursor - 1];
+                    sortedIndexes[cursor - 1] = sortedIndexes[cursor];
+                    sortedIndexes[cursor] = swap;
+                    cursor--;
+                }
+            }
+            sortedDirty = false;
+        }
+
+        static boolean isHigherPriority(
+                float lhsPriority,
+                float lhsScore,
+                int lhsDefenderIndex,
+                float rhsPriority,
+                float rhsScore,
+                int rhsDefenderIndex
+        ) {
+            if (lhsPriority > rhsPriority) {
+                return true;
+            }
+            if (lhsPriority < rhsPriority) {
+                return false;
+            }
+            if (lhsScore > rhsScore) {
+                return true;
+            }
+            if (lhsScore < rhsScore) {
+                return false;
+            }
+            return lhsDefenderIndex < rhsDefenderIndex;
+        }
+
+        private void write(
+                int index,
+                float priority,
+                int attackerIndex,
+                int defenderIndex,
+                byte preferredWarTypeId,
+                byte bestAttackTypeId,
+                float score,
+                float counterRisk,
+                float immediateHarm,
+                float selfExposure,
+                float resourceSwing,
+                float controlLeverage,
+                float futureWarLeverage
+        ) {
+            priorities[index] = priority;
+            edges.write(
+                    index,
+                    attackerIndex,
+                    defenderIndex,
+                    preferredWarTypeId,
+                    bestAttackTypeId,
+                    score,
+                    counterRisk,
+                    immediateHarm,
+                    selfExposure,
+                    resourceSwing,
+                    controlLeverage,
+                    futureWarLeverage
+            );
+        }
+
+        private void siftUp(int index) {
+            int child = index;
+            while (child > 0) {
+                int parent = (child - 1) / 2;
+                if (!isLowerPriority(child, parent)) {
+                    break;
+                }
+                swap(child, parent);
+                child = parent;
+            }
+        }
+
+        private void siftDown(int index) {
+            int parent = index;
+            while (true) {
+                int left = parent * 2 + 1;
+                if (left >= size) {
+                    return;
+                }
+                int smallest = left;
+                int right = left + 1;
+                if (right < size && isLowerPriority(right, left)) {
+                    smallest = right;
+                }
+                if (!isLowerPriority(smallest, parent)) {
+                    return;
+                }
+                swap(parent, smallest);
+                parent = smallest;
+            }
+        }
+
+        private boolean isLowerPriority(int lhsIndex, int rhsIndex) {
+            return isHigherPriority(
+                    priorities[rhsIndex],
+                    edges.scoreAt(rhsIndex),
+                    edges.defenderIndexAt(rhsIndex),
+                    priorities[lhsIndex],
+                    edges.scoreAt(lhsIndex),
+                    edges.defenderIndexAt(lhsIndex)
+            );
+        }
+
+        private void swap(int lhs, int rhs) {
+            float prioritySwap = priorities[lhs];
+            priorities[lhs] = priorities[rhs];
+            priorities[rhs] = prioritySwap;
             edges.swap(lhs, rhs);
         }
     }
@@ -997,8 +1412,8 @@ final class OpeningEvaluator {
         private int defenderResistance = SimWar.INITIAL_RESISTANCE;
         private boolean attackerHasAirControl;
         private boolean defenderHasAirControl;
-        private boolean attackerHasGroundControl;
-        private boolean defenderHasGroundControl;
+        private boolean attackerHasGroundSuperiority;
+        private boolean defenderHasGroundSuperiority;
         private boolean attackerFortified;
         private boolean defenderFortified;
         private int blockadeOwner = CombatKernel.AttackContext.BLOCKADE_NONE;
@@ -1013,8 +1428,8 @@ final class OpeningEvaluator {
             defenderResistance = SimWar.INITIAL_RESISTANCE;
             attackerHasAirControl = false;
             defenderHasAirControl = false;
-            attackerHasGroundControl = false;
-            defenderHasGroundControl = false;
+            attackerHasGroundSuperiority = false;
+            defenderHasGroundSuperiority = false;
             attackerFortified = false;
             defenderFortified = false;
             blockadeOwner = CombatKernel.AttackContext.BLOCKADE_NONE;
@@ -1046,13 +1461,13 @@ final class OpeningEvaluator {
         }
 
         @Override
-        public boolean attackerHasGroundControl() {
-            return attackerHasGroundControl;
+        public boolean attackerHasGroundSuperiority() {
+            return attackerHasGroundSuperiority;
         }
 
         @Override
-        public boolean defenderHasGroundControl() {
-            return defenderHasGroundControl;
+        public boolean defenderHasGroundSuperiority() {
+            return defenderHasGroundSuperiority;
         }
 
         @Override
@@ -1111,19 +1526,19 @@ final class OpeningEvaluator {
             return blockadeOwner == CombatKernel.AttackContext.BLOCKADE_ATTACKER;
         }
 
-        private void applyControlDelta(ControlFlagDelta controlDelta) {
+        private void applyControlDelta(SuperiorityFlagDelta controlDelta) {
             if (controlDelta == null) {
                 return;
             }
-            if (controlDelta.clearGroundControl()) {
-                defenderHasGroundControl = false;
+            if (controlDelta.clearGroundSuperiority()) {
+                defenderHasGroundSuperiority = false;
             }
-            if (controlDelta.groundControl() > 0) {
-                attackerHasGroundControl = true;
-                defenderHasGroundControl = false;
-            } else if (controlDelta.groundControl() < 0) {
-                attackerHasGroundControl = false;
-                defenderHasGroundControl = true;
+            if (controlDelta.groundSuperiority() > 0) {
+                attackerHasGroundSuperiority = true;
+                defenderHasGroundSuperiority = false;
+            } else if (controlDelta.groundSuperiority() < 0) {
+                attackerHasGroundSuperiority = false;
+                defenderHasGroundSuperiority = true;
             }
             if (controlDelta.clearAirSuperiority()) {
                 defenderHasAirControl = false;
@@ -1194,20 +1609,16 @@ final class OpeningEvaluator {
         }
 
         void applyInfraDamage(double damage) {
-            double remaining = damage;
-            while (remaining > 0d) {
-                int highestIndex = highestInfraCityIndex();
-                if (highestIndex < 0) {
-                    return;
-                }
-                double removed = Math.min(remaining, cityInfra[highestIndex]);
-                if (removed <= 0d) {
-                    return;
-                }
-                cityInfra[highestIndex] -= removed;
-                totalInfra -= removed;
-                remaining -= removed;
+            int highestIndex = highestInfraCityIndex();
+            if (highestIndex < 0) {
+                return;
             }
+            double removed = Math.min(damage, cityInfra[highestIndex]);
+            if (removed <= 0d) {
+                return;
+            }
+            cityInfra[highestIndex] -= removed;
+            totalInfra -= removed;
         }
 
         double unitCount(MilitaryUnit unit) {

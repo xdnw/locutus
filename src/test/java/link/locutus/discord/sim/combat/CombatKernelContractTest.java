@@ -209,7 +209,7 @@ class CombatKernelContractTest {
             AttackResolver.EngagementOptions.defaults(),
             OddsModel.DEFAULT
         );
-        AttackOutcome outcome = CombatKernel.resolve(context, AttackType.MISSILE, ResolutionMode.DETERMINISTIC_EV);
+        AttackOutcome outcome = resolve(context, AttackType.MISSILE, ResolutionMode.DETERMINISTIC_EV);
 
         assertEquals(0.30d, ProjectileDefenseMath.interceptionChance(AttackType.MISSILE, defender), 1e-12);
         assertEquals(1, ProjectileDefenseMath.preventedImprovementLosses(AttackType.MISSILE, attacker, defender));
@@ -315,8 +315,8 @@ class CombatKernelContractTest {
 
         assertArrayEquals(expected, actual, 1e-12);
 
-        AttackOutcome expectedMoneyStrike = CombatKernel.resolve(snapshotContext, AttackType.AIRSTRIKE_MONEY, ResolutionMode.DETERMINISTIC_EV);
-        AttackOutcome actualMoneyStrike = CombatKernel.resolve(directContext, AttackType.AIRSTRIKE_MONEY, ResolutionMode.DETERMINISTIC_EV);
+        AttackOutcome expectedMoneyStrike = resolve(snapshotContext, AttackType.AIRSTRIKE_MONEY, ResolutionMode.DETERMINISTIC_EV);
+        AttackOutcome actualMoneyStrike = resolve(directContext, AttackType.AIRSTRIKE_MONEY, ResolutionMode.DETERMINISTIC_EV);
         assertEquals(expectedMoneyStrike.loot(), actualMoneyStrike.loot(), 1e-12);
     }
 
@@ -329,21 +329,21 @@ class CombatKernelContractTest {
         war.reserveMaps(warDefender.nationId(), 1);
         war.applyAttack(warAttacker.nationId(), AttackType.FORTIFY);
         war.applyAttack(warDefender.nationId(), AttackType.FORTIFY);
-        war.applyControlFlagChanges(warAttacker.nationId(), 1, -1, 1);
+        war.applySuperiorityFlagChanges(warAttacker.nationId(), 1, -1, 1);
 
         assertLiveParity(warAttacker, warDefender, war, SimSide.ATTACKER, AttackType.GROUND);
         assertLiveParity(warDefender, warAttacker, war, SimSide.DEFENDER, AttackType.AIRSTRIKE_AIRCRAFT);
     }
 
     @Test
-    void snapshotWarViewRetainsDefenderHeldGroundControl() {
+    void snapshotWarViewRetainsDefenderHeldGroundSuperiority() {
         SimNation warAttacker = simNation(21, 50_000, 2_000, 700, 22, 1_350d, 1_180d);
         SimNation warDefender = simNation(22, 47_000, 1_850, 620, 24, 1_460d, 1_205d);
         SimWar war = new SimWar(8, warAttacker.nationId(), warDefender.nationId(), WarType.ORD);
-        war.applyControlFlagChanges(warDefender.nationId(), 1, 0, 0);
+        war.applySuperiorityFlagChanges(warDefender.nationId(), 1, 0, 0);
 
         WarStateView snapshotWar = war.asWarStateViewFor(SimSide.ATTACKER);
-        assertTrue(snapshotWar.defenderHasGroundControl());
+        assertTrue(snapshotWar.defenderHasGroundSuperiority());
 
         CombatKernel.AttackContext liveContext = new LiveAttackContext().bind(warAttacker, warDefender, war, SimSide.ATTACKER);
         AttackResolver.AttackRanges snapshotRanges = AttackResolver.rangesForSuccess(
@@ -353,7 +353,7 @@ class CombatKernelContractTest {
                 AttackType.GROUND,
                 SuccessType.MODERATE_SUCCESS
         );
-        ControlFlagDelta liveDelta = WarControlRules.controlDelta(liveContext, AttackType.GROUND, SuccessType.MODERATE_SUCCESS);
+        SuperiorityFlagDelta liveDelta = WarControlRules.controlDelta(liveContext, AttackType.GROUND, SuccessType.MODERATE_SUCCESS);
 
         assertEquals(liveDelta, snapshotRanges.controlDelta());
     }
@@ -381,6 +381,17 @@ class CombatKernelContractTest {
 
     private static CombatantView cv(DBNation nation) {
         return CombatantViewAdapter.of(nation);
+    }
+
+    private static AttackOutcome resolve(
+            CombatKernel.AttackContext context,
+            AttackType attackType,
+            ResolutionMode mode
+    ) {
+        AttackScratch scratch = new AttackScratch();
+        MutableAttackResult result = new MutableAttackResult();
+        CombatKernel.resolveInto(context, attackType, mode, scratch, result);
+        return result.toAttackOutcome();
     }
 
         private static void assertLiveParity(
@@ -411,8 +422,8 @@ class CombatKernelContractTest {
         );
         assertArrayEquals(expectedOdds, actualOdds, 1e-12);
 
-        AttackOutcome expected = CombatKernel.resolve(snapshotContext, attackType, ResolutionMode.DETERMINISTIC_EV);
-        AttackOutcome actual = CombatKernel.resolve(liveContext, attackType, ResolutionMode.DETERMINISTIC_EV);
+        AttackOutcome expected = resolve(snapshotContext, attackType, ResolutionMode.DETERMINISTIC_EV);
+        AttackOutcome actual = resolve(liveContext, attackType, ResolutionMode.DETERMINISTIC_EV);
         assertEquals(expected.controlDelta(), actual.controlDelta());
         assertEquals(expected.mapCost(), actual.mapCost());
         assertEquals(expected.attackerResistanceDelta(), actual.attackerResistanceDelta(), 1e-12);
@@ -705,8 +716,8 @@ class CombatKernelContractTest {
             WarType warType,
             boolean attackerAirControl,
             boolean defenderAirControl,
-            boolean attackerGroundControl,
-            boolean defenderGroundControl,
+            boolean attackerGroundSuperiority,
+            boolean defenderGroundSuperiority,
             int attackerMaps,
             int defenderMaps,
             int attackerResistance,
@@ -729,13 +740,13 @@ class CombatKernelContractTest {
         }
 
         @Override
-        public boolean attackerHasGroundControl(int warIndex) {
-            return attackerGroundControl;
+        public boolean attackerHasGroundSuperiority(int warIndex) {
+            return attackerGroundSuperiority;
         }
 
         @Override
-        public boolean defenderHasGroundControl(int warIndex) {
-            return defenderGroundControl;
+        public boolean defenderHasGroundSuperiority(int warIndex) {
+            return defenderGroundSuperiority;
         }
 
         @Override
@@ -806,13 +817,13 @@ class CombatKernelContractTest {
         }
 
         @Override
-        public boolean attackerHasGroundControl() {
-            return war.attackerHasGroundControl(0);
+        public boolean attackerHasGroundSuperiority() {
+            return war.attackerHasGroundSuperiority(0);
         }
 
         @Override
-        public boolean defenderHasGroundControl() {
-            return war.defenderHasGroundControl(0);
+        public boolean defenderHasGroundSuperiority() {
+            return war.defenderHasGroundSuperiority(0);
         }
 
         @Override

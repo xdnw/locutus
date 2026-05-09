@@ -34,9 +34,9 @@ class NationDBAllianceMetricLatestValueTest {
             nationDb.addAllianceMetric(aa2, AllianceMetric.SCORE, 12L, 12d, false);
 
             Map<Integer, Double> latestByAlliance = new LinkedHashMap<>();
-            nationDb.getAllianceMetrics(Set.of(1, 2), AllianceMetric.SCORE, 10L).forEach((alliance, byMetric) ->
+                nationDb.getAllianceMetrics(Set.of(1, 2), AllianceMetric.SCORE, 10L).forEach((allianceId, byMetric) ->
                     latestByAlliance.put(
-                            alliance.getAlliance_id(),
+                        allianceId,
                             byMetric.get(AllianceMetric.SCORE).values().iterator().next()
                     )
             );

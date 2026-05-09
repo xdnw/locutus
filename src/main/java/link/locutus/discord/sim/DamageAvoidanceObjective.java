@@ -19,10 +19,10 @@ final class DamageAvoidanceObjective implements StrategicObjective {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = totals.ownValue() - (0.35d * totals.enemyValue());
         if (view instanceof TeamWarControlView controlView) {
-            score += 0.35d * controlView.controlScoreForTeam(teamId);
-            score += controlView.activeWarStrategicScoreForTeam(teamId, 0.35d, 0.35d);
-            score += 0.35d * controlView.activeWarSlotDenialScoreForTeam(teamId);
-            score += 0.35d * controlView.controlRegimeScoreForTeam(teamId);
+            score += controlView.controlCompositeScoreForTeam(
+                    teamId,
+                    new TeamWarControlView.ControlComponentWeights(0.35d, 0.35d, 0.0d, 0.35d, 0.35d, 0.35d)
+            );
         }
         return score;
     }

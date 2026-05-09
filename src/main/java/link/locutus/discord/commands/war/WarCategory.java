@@ -27,7 +27,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.sim.combat.ControlFlagDelta;
+import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 import link.locutus.discord.sim.combat.WarControlRules;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.util.MathMan;
@@ -869,14 +869,14 @@ public class WarCategory {
             SuccessType success,
             boolean trackedNationIsAttacker
     ) {
-        ControlFlagDelta delta = WarControlRules.controlDelta(
+        SuperiorityFlagDelta delta = WarControlRules.controlDelta(
                 attackType,
                 success,
                 !trackedNationIsAttacker,
                 !trackedNationIsAttacker,
                 !trackedNationIsAttacker
         );
-        if (delta == ControlFlagDelta.NONE) {
+        if (delta == SuperiorityFlagDelta.NONE) {
             return RoomControlUpdate.NONE;
         }
 
@@ -884,7 +884,7 @@ public class WarCategory {
         Boolean airSuperiority = null;
         Boolean blockade = null;
 
-        if (delta.clearGroundControl()) {
+        if (delta.clearGroundSuperiority()) {
             groundControl = Boolean.FALSE;
         }
         if (delta.clearAirSuperiority()) {
@@ -893,8 +893,8 @@ public class WarCategory {
         if (delta.clearBlockade()) {
             blockade = Boolean.FALSE;
         }
-        if (delta.groundControl() != 0) {
-            groundControl = trackedNationIsAttacker == (delta.groundControl() > 0);
+        if (delta.groundSuperiority() != 0) {
+            groundControl = trackedNationIsAttacker == (delta.groundSuperiority() > 0);
         }
         if (delta.airSuperiority() != 0) {
             airSuperiority = trackedNationIsAttacker == (delta.airSuperiority() > 0);

@@ -25,7 +25,7 @@ class DefeatHandlingTest {
             }
 
             @Override
-            public void onControlFlagChange(SimWar war) {
+            public void onSuperiorityFlagChange(SimWar war) {
                 // No-op for this test
             }
         };
@@ -88,7 +88,7 @@ class DefeatHandlingTest {
             }
 
             @Override
-            public void onControlFlagChange(SimWar war) {
+            public void onSuperiorityFlagChange(SimWar war) {
             }
         };
 

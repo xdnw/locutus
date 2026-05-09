@@ -117,6 +117,21 @@ final class LongHorizonAssignmentOptimizer {
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "horizonTurns", horizonTurns);
                 boolean includeSlotDenialScoring = projectionScoringContext != null
                         && projectionScoringContext.objective().usesWarSlotDenial();
+                SideProjectionPolicies attackerProjectionPolicies = projectionScoringContext == null
+                    ? SideProjectionPolicies.heuristic()
+                    : projectionScoringContext.attackerProjectionPolicies();
+                SideProjectionPolicies defenderProjectionPolicies = projectionScoringContext == null
+                    ? SideProjectionPolicies.heuristic()
+                    : projectionScoringContext.defenderProjectionPolicies();
+                int projectedAuditLimit = projectionScoringContext == null
+                    ? LARGE_PROJECTED_PORTFOLIO_AUDIT_LIMIT
+                    : projectionScoringContext.projectedAuditLimit();
+                SidePlannerSettings attackerPlannerSettings = projectionScoringContext == null
+                    ? SidePlannerSettings.legacy()
+                    : projectionScoringContext.attackerPlannerSettings();
+                SidePlannerSettings defenderPlannerSettings = projectionScoringContext == null
+                    ? SidePlannerSettings.legacy()
+                    : projectionScoringContext.defenderPlannerSettings();
 
                 boolean[] initialEdgeAssigned = new boolean[edgeCount];
                 int[] initialAttackerCounts = new int[attackerCount];
@@ -159,9 +174,17 @@ final class LongHorizonAssignmentOptimizer {
                     scenario,
                     attackerCaps,
                     defenderCaps,
+                    attackerStrengthRanks,
                     horizonTurns,
                     horizonFactor(horizonTurns),
-                    includeSlotDenialScoring
+                    includeSlotDenialScoring,
+                    projectionScoringContext == null ? null : projectionScoringContext.objective(),
+                    projectionScoringContext == null ? null : projectionScoringContext.attackerOpeningSettings(),
+                    projectionScoringContext == null ? null : projectionScoringContext.defenderOpeningSettings(),
+                    attackerPlannerSettings,
+                    defenderPlannerSettings,
+                    attackerProjectionPolicies,
+                    defenderProjectionPolicies
                 );
                 double initialScore = terminalProjection.assignmentScoreDense(
                     initialEdgeAssigned,
@@ -202,76 +225,26 @@ final class LongHorizonAssignmentOptimizer {
                 LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(scenario, projectionScoringContext);
                 best = evaluator.betterCandidate(best, marginalCandidate, terminalProjection);
 
-                int marginalPairCount = assignmentPairCount(marginalCandidate.assignment());
-                boolean runFullProjectedPortfolio = evaluator.canScoreObjectiveProjection()
-                        && shouldRunFullProjectedPortfolio(edgeCount, marginalPairCount);
-                if (runFullProjectedPortfolio) {
-                    int[] realizedCounters = evaluator.realizedCounters(
-                        marginalCandidate,
-                        terminalProjection
-                    );
-                    for (Candidate reliefCandidate : LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
-                        baseEdges,
-                        scenario,
-                        attackerCaps,
-                        defenderCaps,
-                        attackerStrengthRanks,
-                        attackerNationIds,
-                        defenderNationIds,
-                        fixedEdges,
-                        horizonTurns,
-                        marginalCandidate,
-                        terminalProjection,
-                        realizedCounters
-                    )) {
-                        best = evaluator.betterCandidate(best, reliefCandidate, terminalProjection);
+                if (evaluator.canScoreObjectiveProjection()) {
+                    if (shouldRunFixedPointFeedback(edgeCount, assignmentPairCount(marginalCandidate.assignment()))) {
+                        best = evaluator.betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
+                            baseEdges,
+                            scenario,
+                            attackerCaps,
+                            defenderCaps,
+                            attackerStrengthRanks,
+                            attackerNationIds,
+                            defenderNationIds,
+                            fixedEdges,
+                            horizonTurns,
+                            best,
+                            terminalProjection,
+                            evaluator,
+                            attackerPlannerSettings
+                        ), terminalProjection);
+                    } else {
+                        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "fixedPointFeedbackDeferred", 1);
                     }
-                    int[] feedbackCounters = evaluator.realizedCounters(
-                        best,
-                        terminalProjection
-                    );
-                    best = evaluator.betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
-                        baseEdges,
-                        scenario,
-                        attackerCaps,
-                        defenderCaps,
-                        attackerStrengthRanks,
-                        attackerNationIds,
-                        defenderNationIds,
-                        fixedEdges,
-                        horizonTurns,
-                        best,
-                        feedbackCounters,
-                        terminalProjection,
-                        evaluator
-                    ), terminalProjection);
-                    best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
-                        baseEdges,
-                        scenario,
-                        attackerCaps,
-                        defenderCaps,
-                        attackerStrengthRanks,
-                        attackerNationIds,
-                        defenderNationIds,
-                        fixedEdges,
-                        horizonTurns,
-                        includeSlotDenialScoring,
-                        1
-                    ), terminalProjection);
-                    best = evaluator.betterCandidate(best, solveWithAttackerCapLimit(
-                        baseEdges,
-                        scenario,
-                        attackerCaps,
-                        defenderCaps,
-                        attackerStrengthRanks,
-                        attackerNationIds,
-                        defenderNationIds,
-                        fixedEdges,
-                        horizonTurns,
-                        includeSlotDenialScoring,
-                        2
-                    ), terminalProjection);
-                } else if (evaluator.canScoreObjectiveProjection()) {
                     best = evaluateBoundedProjectedPortfolio(
                             best,
                             baseEdges,
@@ -286,7 +259,10 @@ final class LongHorizonAssignmentOptimizer {
                             includeSlotDenialScoring,
                             marginalCandidate,
                             terminalProjection,
-                            evaluator
+                            evaluator,
+                            attackerPlannerSettings,
+                            projectionScoringContext.objective().usesWarSlotDenial(),
+                            projectedAuditLimit
                     );
                 }
                 ObjectiveValueSummary projectedObjectiveSummary = evaluator.objectiveSummary(
@@ -298,10 +274,10 @@ final class LongHorizonAssignmentOptimizer {
             }
     }
 
-            private static boolean shouldRunFullProjectedPortfolio(int edgeCount, int assignmentPairs) {
+                static boolean shouldRunFixedPointFeedback(int edgeCount, int assignmentPairs) {
                 return edgeCount <= FULL_PROJECTED_PORTFOLIO_EDGE_LIMIT
-                        && assignmentPairs <= FULL_PROJECTED_PORTFOLIO_PAIR_LIMIT;
-            }
+                    && assignmentPairs <= FULL_PROJECTED_PORTFOLIO_PAIR_LIMIT;
+                }
 
             private static Candidate evaluateBoundedProjectedPortfolio(
                     Candidate currentBest,
@@ -317,12 +293,14 @@ final class LongHorizonAssignmentOptimizer {
                     boolean includeSlotDenialScoring,
                     Candidate marginalCandidate,
                     LongHorizonControlProjection terminalProjection,
-                    LongHorizonCandidateEvaluator projectedEvaluator
+                    LongHorizonCandidateEvaluator projectedEvaluator,
+                    SidePlannerSettings attackerPlannerSettings,
+                    boolean preserveCapLimitBreadth,
+                    int projectedAuditLimit
             ) {
                 LongHorizonCandidateEvaluator cheapEvaluator = LongHorizonCandidateEvaluator.create(scenario, null);
                 int[] realizedCounters = projectedEvaluator.realizedCounters(marginalCandidate, terminalProjection);
-                List<Candidate> candidates = new ArrayList<>();
-                candidates.addAll(LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
+                List<Candidate> reliefCandidates = new ArrayList<>(LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
                         baseEdges,
                         scenario,
                         attackerCaps,
@@ -334,10 +312,10 @@ final class LongHorizonAssignmentOptimizer {
                         horizonTurns,
                         marginalCandidate,
                         terminalProjection,
-                        realizedCounters
-                ));
-                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "fixedPointFeedbackDeferred", 1);
-                candidates.add(solveWithAttackerCapLimit(
+                        realizedCounters,
+                        attackerPlannerSettings
+                    ));
+                    Candidate capLimitOne = solveWithAttackerCapLimit(
                         baseEdges,
                         scenario,
                         attackerCaps,
@@ -348,9 +326,10 @@ final class LongHorizonAssignmentOptimizer {
                         fixedEdges,
                         horizonTurns,
                         includeSlotDenialScoring,
+                        attackerPlannerSettings,
                         1
-                ));
-                candidates.add(solveWithAttackerCapLimit(
+                    );
+                    Candidate capLimitTwo = solveWithAttackerCapLimit(
                         baseEdges,
                         scenario,
                         attackerCaps,
@@ -361,26 +340,98 @@ final class LongHorizonAssignmentOptimizer {
                         fixedEdges,
                         horizonTurns,
                         includeSlotDenialScoring,
+                        attackerPlannerSettings,
                         2
-                ));
-                candidates.removeIf(candidate -> candidate == null || candidate == marginalCandidate);
-                candidates.sort((left, right) -> Double.compare(
+                );
+                reliefCandidates.removeIf(candidate -> candidate == null || candidate == marginalCandidate);
+                reliefCandidates.sort((left, right) -> Double.compare(
                         cheapEvaluator.score(right, terminalProjection),
                         cheapEvaluator.score(left, terminalProjection)
                 ));
+                Candidate bestCapLimit = betterCapLimitCandidate(
+                    marginalCandidate,
+                    capLimitOne,
+                    capLimitTwo,
+                    cheapEvaluator,
+                    terminalProjection
+                );
                 int audited = 0;
+                int reliefAudited = 0;
                 Candidate best = currentBest;
-                for (Candidate candidate : candidates) {
-                    if (audited >= LARGE_PROJECTED_PORTFOLIO_AUDIT_LIMIT) {
+                for (Candidate candidate : reliefCandidates) {
+                    if (reliefAudited >= projectedAuditLimit) {
                         break;
                     }
                     best = projectedEvaluator.betterCandidate(best, candidate, terminalProjection);
                     audited++;
+                    reliefAudited++;
+                }
+                if (preserveCapLimitBreadth) {
+                    if (capLimitOne != null && capLimitOne != marginalCandidate) {
+                        best = projectedEvaluator.betterCandidate(best, capLimitOne, terminalProjection);
+                        audited++;
+                    }
+                    if (capLimitTwo != null && capLimitTwo != marginalCandidate && capLimitTwo != capLimitOne) {
+                        best = projectedEvaluator.betterCandidate(best, capLimitTwo, terminalProjection);
+                        audited++;
+                    }
+                } else if (bestCapLimit != null) {
+                    best = projectedEvaluator.betterCandidate(best, bestCapLimit, terminalProjection);
+                    audited++;
                 }
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedPortfolio", 1);
-                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCandidates", candidates.size());
+                int capLimitCandidateCount = preserveCapLimitBreadth
+                        ? distinctCapLimitCandidateCount(marginalCandidate, capLimitOne, capLimitTwo)
+                        : (bestCapLimit != null ? 1 : 0);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCandidates", reliefCandidates.size()
+                        + capLimitCandidateCount);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedAudits", audited);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedReliefAudits", reliefAudited);
                 return best;
+            }
+
+            private static int distinctCapLimitCandidateCount(
+                    Candidate marginalCandidate,
+                    Candidate capLimitOne,
+                    Candidate capLimitTwo
+            ) {
+                Candidate normalizedOne = normalizeCapLimitCandidate(capLimitOne, marginalCandidate);
+                Candidate normalizedTwo = normalizeCapLimitCandidate(capLimitTwo, marginalCandidate);
+                if (normalizedOne == null) {
+                    return normalizedTwo == null ? 0 : 1;
+                }
+                if (normalizedTwo == null || normalizedTwo == normalizedOne) {
+                    return 1;
+                }
+                return 2;
+            }
+
+            private static Candidate betterCapLimitCandidate(
+                    Candidate marginalCandidate,
+                    Candidate capLimitOne,
+                    Candidate capLimitTwo,
+                    LongHorizonCandidateEvaluator cheapEvaluator,
+                    LongHorizonControlProjection terminalProjection
+            ) {
+                Candidate best = normalizeCapLimitCandidate(capLimitOne, marginalCandidate);
+                Candidate alternative = normalizeCapLimitCandidate(capLimitTwo, marginalCandidate);
+                if (best == null) {
+                    return alternative;
+                }
+                if (alternative == null) {
+                    return best;
+                }
+                return cheapEvaluator.score(alternative, terminalProjection)
+                        > cheapEvaluator.score(best, terminalProjection) + EPSILON
+                        ? alternative
+                        : best;
+            }
+
+            private static Candidate normalizeCapLimitCandidate(Candidate candidate, Candidate marginalCandidate) {
+                if (candidate == null || candidate == marginalCandidate) {
+                    return null;
+                }
+                return candidate;
             }
 
             private static int assignmentPairCount(Map<Integer, List<Integer>> assignment) {
@@ -402,6 +453,7 @@ final class LongHorizonAssignmentOptimizer {
             List<BlitzFixedEdge> fixedEdges,
             int horizonTurns,
             boolean includeSlotDenialScoring,
+                SidePlannerSettings attackerPlannerSettings,
             int attackerCapLimit
     ) {
         int[] limitedCaps = new int[attackerCaps.length];
@@ -418,7 +470,8 @@ final class LongHorizonAssignmentOptimizer {
                 defenderNationIds,
                 fixedEdges,
                 horizonTurns,
-                includeSlotDenialScoring
+                includeSlotDenialScoring,
+                attackerPlannerSettings
         );
     }
 
@@ -459,14 +512,44 @@ final class LongHorizonAssignmentOptimizer {
             int horizonTurns,
             boolean includeSlotDenialScoring
     ) {
+            return solveWithAttackerCaps(
+                baseEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges,
+                horizonTurns,
+                includeSlotDenialScoring,
+                SidePlannerSettings.legacy()
+            );
+            }
+
+            static Candidate solveWithAttackerCaps(
+                CandidateEdgeTable baseEdges,
+                CompiledScenario scenario,
+                int[] attackerCaps,
+                int[] defenderCaps,
+                int[] attackerStrengthRanks,
+                int[] attackerNationIds,
+                int[] defenderNationIds,
+                List<BlitzFixedEdge> fixedEdges,
+                int horizonTurns,
+                boolean includeSlotDenialScoring,
+                SidePlannerSettings attackerPlannerSettings
+            ) {
         LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
                 baseEdges,
                 scenario,
                 attackerCaps,
                 defenderCaps,
+                attackerStrengthRanks,
                 horizonTurns,
                 horizonFactor(horizonTurns),
-                includeSlotDenialScoring
+                includeSlotDenialScoring,
+                attackerPlannerSettings
         );
         LongHorizonMarginalFlowSolver.Result result = LongHorizonMarginalFlowSolver.solve(
                 baseEdges,
@@ -499,6 +582,30 @@ final class LongHorizonAssignmentOptimizer {
             int[] attackerNationIds,
             int[] defenderNationIds
     ) {
+        return projectedObjectiveSummary(
+            baseEdges,
+            scenario,
+            attackerCaps,
+            defenderCaps,
+            horizonTurns,
+            assignment,
+            ProjectionScoringContext.legacy(objective),
+            attackerNationIds,
+            defenderNationIds
+        );
+        }
+
+        static ObjectiveValueSummary projectedObjectiveSummary(
+            CandidateEdgeTable baseEdges,
+            CompiledScenario scenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int horizonTurns,
+            Map<Integer, List<Integer>> assignment,
+            ProjectionScoringContext projectionScoringContext,
+            int[] attackerNationIds,
+            int[] defenderNationIds
+        ) {
         if (assignment.isEmpty()) {
             return ObjectiveValueSummary.identical(0d);
         }
@@ -508,7 +615,15 @@ final class LongHorizonAssignmentOptimizer {
                 attackerCaps,
                 defenderCaps,
                 horizonTurns,
-                horizonFactor(horizonTurns)
+                horizonFactor(horizonTurns),
+                projectionScoringContext.objective().usesWarSlotDenial(),
+            projectionScoringContext.objective(),
+            projectionScoringContext.attackerOpeningSettings(),
+            projectionScoringContext.defenderOpeningSettings(),
+                projectionScoringContext.attackerPlannerSettings(),
+                projectionScoringContext.defenderPlannerSettings(),
+                projectionScoringContext.attackerProjectionPolicies(),
+                projectionScoringContext.defenderProjectionPolicies()
         );
         DenseAssignment denseAssignment = denseAssignment(
                 baseEdges,
@@ -519,7 +634,7 @@ final class LongHorizonAssignmentOptimizer {
         );
         int attackerTeamId = scenario.attackerCount() == 0 ? 1 : scenario.attacker(0).teamId();
         return ObjectiveValueSummary.identical(projection.projectedObjectiveScore(
-                objective,
+            projectionScoringContext.objective(),
                 attackerTeamId,
                 denseAssignment.edgeAssigned(),
                 denseAssignment.attackerCounts(),
@@ -596,8 +711,106 @@ final class LongHorizonAssignmentOptimizer {
     }
 
         record ProjectionScoringContext(
-            StrategicObjective objective
+            StrategicObjective objective,
+            SideOpeningSettings attackerOpeningSettings,
+            SideOpeningSettings defenderOpeningSettings,
+            SidePlannerSettings attackerPlannerSettings,
+            SidePlannerSettings defenderPlannerSettings,
+            SideProjectionPolicies attackerProjectionPolicies,
+            SideProjectionPolicies defenderProjectionPolicies
     ) {
+        static ProjectionScoringContext legacy(StrategicObjective objective) {
+            return fromSidePolicies(
+                objective,
+                SidePolicy.legacy("attacker", objective),
+                SidePolicy.legacyPassive("defender", objective)
+            );
+        }
+
+        static ProjectionScoringContext fromSidePolicies(
+            StrategicObjective objective,
+            SidePolicy attackerPolicy,
+            SidePolicy defenderPolicy
+        ) {
+            if (attackerPolicy == null) {
+            throw new IllegalArgumentException("attackerPolicy must not be null");
+            }
+            if (defenderPolicy == null) {
+            throw new IllegalArgumentException("defenderPolicy must not be null");
+            }
+            return new ProjectionScoringContext(
+                objective,
+                attackerPolicy.opening(),
+                defenderPolicy.opening(),
+                attackerPolicy.planner(),
+                defenderPolicy.planner(),
+                attackerPolicy.projection(),
+                defenderPolicy.projection()
+            );
+        }
+
+        ProjectionScoringContext(
+            StrategicObjective objective,
+            SidePlannerSettings attackerPlannerSettings,
+            SidePlannerSettings defenderPlannerSettings,
+            SideProjectionPolicies attackerProjectionPolicies,
+            SideProjectionPolicies defenderProjectionPolicies
+        ) {
+            this(
+                objective,
+                SideOpeningSettings.legacy(objective),
+                SideOpeningSettings.legacy(objective),
+                attackerPlannerSettings,
+                defenderPlannerSettings,
+                attackerProjectionPolicies,
+                defenderProjectionPolicies
+            );
+        }
+
+        ProjectionScoringContext(
+                StrategicObjective objective,
+                SideProjectionPolicies attackerProjectionPolicies,
+                SideProjectionPolicies defenderProjectionPolicies,
+                int projectedAuditLimit
+        ) {
+            this(
+                    objective,
+                    SidePolicy.legacy(objective).opening(),
+                    SidePolicy.legacyPassive(objective).opening(),
+                    SidePolicy.legacy(objective).planner().withProjectedAuditLimit(projectedAuditLimit),
+                    SidePolicy.legacyPassive(objective).planner(),
+                    attackerProjectionPolicies,
+                    defenderProjectionPolicies
+            );
+        }
+
+        ProjectionScoringContext {
+            if (objective == null) {
+                throw new IllegalArgumentException("objective must not be null");
+            }
+            if (attackerPlannerSettings == null) {
+                throw new IllegalArgumentException("attackerPlannerSettings must not be null");
+            }
+            if (attackerOpeningSettings == null) {
+                throw new IllegalArgumentException("attackerOpeningSettings must not be null");
+            }
+            if (defenderOpeningSettings == null) {
+                throw new IllegalArgumentException("defenderOpeningSettings must not be null");
+            }
+            if (defenderPlannerSettings == null) {
+                throw new IllegalArgumentException("defenderPlannerSettings must not be null");
+            }
+            if (attackerProjectionPolicies == null) {
+                throw new IllegalArgumentException("attackerProjectionPolicies must not be null");
+            }
+            if (defenderProjectionPolicies == null) {
+                throw new IllegalArgumentException("defenderProjectionPolicies must not be null");
+            }
+        }
+
+        int projectedAuditLimit() {
+            return attackerPlannerSettings.projectedAuditLimit();
+        }
     }
 
     record Result(

@@ -24,13 +24,13 @@ public final class WarControlRules {
     public interface MutableWarControlState {
         boolean isActive();
 
-        Integer groundControlNationId();
+        Integer groundSuperiorityNationId();
 
         Integer airSuperiorityNationId();
 
         Integer blockadeNationId();
 
-        void setGroundControlNationId(Integer nationId);
+        void setgroundSuperiorityNationId(Integer nationId);
 
         void setAirSuperiorityNationId(Integer nationId);
 
@@ -40,12 +40,12 @@ public final class WarControlRules {
         GROUND {
             @Override
             Integer owner(MutableWarControlState war) {
-                return war.groundControlNationId();
+                return war.groundSuperiorityNationId();
             }
 
             @Override
             void setOwner(MutableWarControlState war, Integer nationId) {
-                war.setGroundControlNationId(nationId);
+                war.setgroundSuperiorityNationId(nationId);
             }
 
             @Override
@@ -59,13 +59,13 @@ public final class WarControlRules {
             }
 
             @Override
-            int delta(ControlFlagDelta delta) {
-                return delta.groundControl();
+            int delta(SuperiorityFlagDelta delta) {
+                return delta.groundSuperiority();
             }
 
             @Override
-            boolean clearDefender(ControlFlagDelta delta) {
-                return delta.clearGroundControl();
+            boolean clearDefender(SuperiorityFlagDelta delta) {
+                return delta.clearGroundSuperiority();
             }
         },
         AIR {
@@ -90,12 +90,12 @@ public final class WarControlRules {
             }
 
             @Override
-            int delta(ControlFlagDelta delta) {
+            int delta(SuperiorityFlagDelta delta) {
                 return delta.airSuperiority();
             }
 
             @Override
-            boolean clearDefender(ControlFlagDelta delta) {
+            boolean clearDefender(SuperiorityFlagDelta delta) {
                 return delta.clearAirSuperiority();
             }
         },
@@ -121,12 +121,12 @@ public final class WarControlRules {
             }
 
             @Override
-            int delta(ControlFlagDelta delta) {
+            int delta(SuperiorityFlagDelta delta) {
                 return delta.blockade();
             }
 
             @Override
-            boolean clearDefender(ControlFlagDelta delta) {
+            boolean clearDefender(SuperiorityFlagDelta delta) {
                 return delta.clearBlockade();
             }
         };
@@ -139,12 +139,12 @@ public final class WarControlRules {
 
         abstract boolean attackCanStrip(AttackType type);
 
-        abstract int delta(ControlFlagDelta delta);
+        abstract int delta(SuperiorityFlagDelta delta);
 
-        abstract boolean clearDefender(ControlFlagDelta delta);
+        abstract boolean clearDefender(SuperiorityFlagDelta delta);
     }
 
-    public static ControlFlagDelta controlDelta(
+    public static SuperiorityFlagDelta controlDelta(
             CombatKernel.AttackContext context,
             AttackType type,
             SuccessType success
@@ -156,16 +156,16 @@ public final class WarControlRules {
         return controlDelta(
                 type,
                 success,
-                context.defenderHasGroundControl(),
+                context.defenderHasGroundSuperiority(),
                 context.defenderHasAirControl(),
                 context.blockadeOwner() == CombatKernel.AttackContext.BLOCKADE_DEFENDER
         );
     }
 
-    public static ControlFlagDelta controlDelta(
+    public static SuperiorityFlagDelta controlDelta(
             AttackType type,
             SuccessType success,
-            boolean defenderHasGroundControl,
+            boolean defenderHasGroundSuperiority,
             boolean defenderHasAirControl,
             boolean defenderHasBlockade
     ) {
@@ -173,25 +173,25 @@ public final class WarControlRules {
         Objects.requireNonNull(success, "success");
 
         if (success == SuccessType.UTTER_FAILURE) {
-            return ControlFlagDelta.NONE;
+            return SuperiorityFlagDelta.NONE;
         }
 
-        boolean clearGround = ControlKind.GROUND.attackCanStrip(type) && defenderHasGroundControl;
+        boolean clearGround = ControlKind.GROUND.attackCanStrip(type) && defenderHasGroundSuperiority;
         boolean clearAir = ControlKind.AIR.attackCanStrip(type) && defenderHasAirControl;
         boolean clearBlockade = ControlKind.BLOCKADE.attackCanStrip(type) && defenderHasBlockade;
 
         if (success != SuccessType.IMMENSE_TRIUMPH) {
-            return ControlFlagDelta.of(0, 0, 0, clearGround, clearAir, clearBlockade);
+            return SuperiorityFlagDelta.of(0, 0, 0, clearGround, clearAir, clearBlockade);
         }
 
         return switch (type) {
-            case GROUND -> ControlFlagDelta.of(1, 0, 0, clearGround, clearAir, clearBlockade);
+            case GROUND -> SuperiorityFlagDelta.of(1, 0, 0, clearGround, clearAir, clearBlockade);
             case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY,
                     AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT ->
-                    ControlFlagDelta.of(0, 1, 0, clearGround, clearAir, clearBlockade);
+                    SuperiorityFlagDelta.of(0, 1, 0, clearGround, clearAir, clearBlockade);
             case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND ->
-                    ControlFlagDelta.of(0, 0, 1, clearGround, clearAir, clearBlockade);
-            default -> ControlFlagDelta.of(0, 0, 0, clearGround, clearAir, clearBlockade);
+                    SuperiorityFlagDelta.of(0, 0, 1, clearGround, clearAir, clearBlockade);
+            default -> SuperiorityFlagDelta.of(0, 0, 0, clearGround, clearAir, clearBlockade);
         };
     }
 
@@ -199,7 +199,7 @@ public final class WarControlRules {
             W currentWar,
             CombatKernel.NationState actor,
             CombatKernel.NationState defender,
-            ControlFlagDelta delta,
+            SuperiorityFlagDelta delta,
             IntFunction<? extends Iterable<W>> activeWarsForNation,
             Consumer<? super W> onBlockadeChanged
     ) {
@@ -209,7 +209,7 @@ public final class WarControlRules {
         Objects.requireNonNull(activeWarsForNation, "activeWarsForNation");
         Consumer<? super W> blockadeCallback = onBlockadeChanged == null ? war -> { } : onBlockadeChanged;
 
-        ControlFlagDelta resolvedDelta = delta == null ? ControlFlagDelta.NONE : delta;
+        SuperiorityFlagDelta resolvedDelta = delta == null ? SuperiorityFlagDelta.NONE : delta;
         applySameWarDelta(currentWar, actor.nationId(), defender.nationId(), resolvedDelta, blockadeCallback);
         reconcileNation(actor, snapshotWars(activeWarsForNation.apply(actor.nationId())), blockadeCallback);
         reconcileNation(defender, snapshotWars(activeWarsForNation.apply(defender.nationId())), blockadeCallback);
@@ -219,7 +219,7 @@ public final class WarControlRules {
             W war,
             int actorNationId,
             int defenderNationId,
-            ControlFlagDelta delta
+            SuperiorityFlagDelta delta
     ) {
         Objects.requireNonNull(war, "war");
         boolean[] blockadeChanged = new boolean[1];
@@ -227,7 +227,7 @@ public final class WarControlRules {
                 war,
                 actorNationId,
                 defenderNationId,
-                delta == null ? ControlFlagDelta.NONE : delta,
+                delta == null ? SuperiorityFlagDelta.NONE : delta,
                 ignored -> blockadeChanged[0] = true
         );
         return blockadeChanged[0];
@@ -237,7 +237,7 @@ public final class WarControlRules {
             W war,
             int actorNationId,
             int defenderNationId,
-            ControlFlagDelta delta,
+            SuperiorityFlagDelta delta,
             Consumer<? super W> onBlockadeChanged
     ) {
         applySameWarDelta(war, ControlKind.GROUND, actorNationId, defenderNationId, delta, onBlockadeChanged);
@@ -250,7 +250,7 @@ public final class WarControlRules {
             ControlKind kind,
             int actorNationId,
             int defenderNationId,
-            ControlFlagDelta delta,
+            SuperiorityFlagDelta delta,
             Consumer<? super W> onBlockadeChanged
     ) {
         Integer newOwner = kind.owner(war);

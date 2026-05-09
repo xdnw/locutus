@@ -32,7 +32,7 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
     private boolean slotsReleased;
 
     // Control flags: null means no one has the control, otherwise ATTACKER or DEFENDER holds it
-    private SimSide groundControlOwner = null;
+    private SimSide groundSuperiorityOwner = null;
     private SimSide airSuperiorityOwner = null;
     private SimSide blockadeOwner = null;
 
@@ -124,8 +124,8 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
         return status.isActive();
     }
 
-    public SimSide groundControlOwner() {
-        return groundControlOwner;
+    public SimSide groundSuperiorityOwner() {
+        return groundSuperiorityOwner;
     }
 
     public SimSide airSuperiorityOwner() {
@@ -137,8 +137,8 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
     }
 
     @Override
-    public Integer groundControlNationId() {
-        return controlNationId(groundControlOwner);
+    public Integer groundSuperiorityNationId() {
+        return controlNationId(groundSuperiorityOwner);
     }
 
     @Override
@@ -152,8 +152,8 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
     }
 
     @Override
-    public void setGroundControlNationId(Integer nationId) {
-        groundControlOwner = controlSide(nationId);
+    public void setgroundSuperiorityNationId(Integer nationId) {
+        groundSuperiorityOwner = controlSide(nationId);
     }
 
     @Override
@@ -171,14 +171,14 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
         * This is a compatibility/setup helper for callers that need to seed war state explicitly.
      * 
      * @param actorNationId the nation performing the attack
-     * @param groundControlDelta +1 if attacker gained ground, -1 if defender gained ground, 0 for no change
+     * @param groundSuperiorityDelta +1 if attacker gained ground, -1 if defender gained ground, 0 for no change
      * @param airSuperiorityDelta similar semantics
      * @param blockadeDelta similar semantics
      * @return true if blockade state changed (triggering EconomyProvider callback)
      */
-    public boolean applyControlFlagChanges(
+    public boolean applySuperiorityFlagChanges(
             int actorNationId,
-            int groundControlDelta,
+            int groundSuperiorityDelta,
             int airSuperiorityDelta,
             int blockadeDelta
     ) {
@@ -188,8 +188,8 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
                 this,
                 actorNationId,
                 defenderNationId,
-                link.locutus.discord.sim.combat.ControlFlagDelta.of(
-                        groundControlDelta,
+                link.locutus.discord.sim.combat.SuperiorityFlagDelta.of(
+                        groundSuperiorityDelta,
                         airSuperiorityDelta,
                         blockadeDelta,
                         false,
@@ -323,8 +323,8 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
                 actorIsAttacker,
                 airSuperiorityOwner == SimSide.ATTACKER,
                 airSuperiorityOwner == SimSide.DEFENDER,
-                groundControlOwner == SimSide.ATTACKER,
-                groundControlOwner == SimSide.DEFENDER,
+                groundSuperiorityOwner == SimSide.ATTACKER,
+                groundSuperiorityOwner == SimSide.DEFENDER,
                 attackerFortified,
                 defenderFortified,
                 attackerSpendableMaps(),
@@ -427,7 +427,7 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
         copy.defenderReservedMaps = this.defenderReservedMaps;
         copy.status = this.status;
         copy.slotsReleased = this.slotsReleased;
-        copy.groundControlOwner = this.groundControlOwner;
+        copy.groundSuperiorityOwner = this.groundSuperiorityOwner;
         copy.airSuperiorityOwner = this.airSuperiorityOwner;
         copy.blockadeOwner = this.blockadeOwner;
         return copy;

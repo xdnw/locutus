@@ -240,14 +240,14 @@ public class SimulatedWarNode {
         setupWarType(war.getWarType());
         setupLootFactor();
 
-        int groundControl = war.getGroundControl();
+        int groundSuperiority = war.getGroundControl();
         int airSuperiority = war.getAirControl();
         int blockade = war.getBlockader();
 
-        if (groundControl == war.getAttacker_id()) {
-            aggressor.setGroundControl(true);
-        } else if (groundControl == war.getDefender_id()) {
-            defender.setGroundControl(true);
+        if (groundSuperiority == war.getAttacker_id()) {
+            aggressor.setGroundSuperiority(true);
+        } else if (groundSuperiority == war.getDefender_id()) {
+            defender.setGroundSuperiority(true);
         }
 
         if (airSuperiority==(war.getAttacker_id())) {
@@ -299,9 +299,9 @@ public class SimulatedWarNode {
             total += Math.abs(aggLoss);
         }
 
-        if (aggressor.isGroundControl()) {
+        if (aggressor.isGroundSuperiority()) {
             total -= Math.abs(defLoss) * 0.5;
-        } else if (defender.isGroundControl()) {
+        } else if (defender.isGroundSuperiority()) {
             total += Math.abs(aggLoss) * 0.5;
         }
 

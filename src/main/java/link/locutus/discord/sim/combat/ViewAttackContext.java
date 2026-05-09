@@ -30,13 +30,13 @@ record ViewAttackContext(
     }
 
     @Override
-    public boolean attackerHasGroundControl() {
-        return war.attackerHasGroundControl();
+    public boolean attackerHasGroundSuperiority() {
+        return war.attackerHasGroundSuperiority();
     }
 
     @Override
-    public boolean defenderHasGroundControl() {
-        return war.defenderHasGroundControl();
+    public boolean defenderHasGroundSuperiority() {
+        return war.defenderHasGroundSuperiority();
     }
 
     @Override

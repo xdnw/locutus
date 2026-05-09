@@ -57,7 +57,8 @@ public record BlitzMilitaryRules(
         int[] researchScoreByOrdinal,
         int projectScore,
         double[] unitScoreByOrdinal,
-        boolean[] unitScoreCappedAt50ByOrdinal
+        boolean[] unitScoreCappedAt50ByOrdinal,
+        double[] unitBaseCostByOrdinal
 ) {
 
     private static final BlitzMilitaryRules INSTANCE = build();
@@ -157,6 +158,14 @@ public record BlitzMilitaryRules(
             unitScoreCappedAt50ByOrdinal[ord] = unit.getScore(100) == unit.getScore(50);
         }
 
+        // Base purchase cost per unit in dollars (no research reduction).
+        // Frontend uses count * baseCost to show monetary losses without
+        // bloating the per-turn trace with redundant total-value lanes.
+        double[] unitBaseCostByOrdinal = new double[unitCount];
+        for (MilitaryUnit unit : scoreUnits) {
+            unitBaseCostByOrdinal[unit.ordinal()] = unit.getConvertedCost((java.util.function.Function<Research, Integer>) r -> 0);
+        }
+
         return new BlitzMilitaryRules(
                 PW.WAR_RANGE_MIN_MODIFIER,
                 PW.WAR_RANGE_MAX_MODIFIER,
@@ -195,7 +204,8 @@ public record BlitzMilitaryRules(
                 researchScoreByOrdinal,
                 Projects.getScore(),
                 unitScoreByOrdinal,
-                unitScoreCappedAt50ByOrdinal
+                unitScoreCappedAt50ByOrdinal,
+                unitBaseCostByOrdinal
         );
     }
 }

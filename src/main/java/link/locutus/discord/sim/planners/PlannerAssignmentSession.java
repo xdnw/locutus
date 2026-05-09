@@ -357,6 +357,77 @@ final class PlannerAssignmentSession {
         invalidateDefenderReverseIndex();
     }
 
+    PlannerConflictBundle.PlannerAssignmentView assignmentView(Map<Long, Integer> warTypeOrdinalsByPair) {
+        return assignmentView(null, warTypeOrdinalsByPair);
+    }
+
+    PlannerConflictBundle.PlannerAssignmentView assignmentView(
+            PlannerAssignmentChange change,
+            Map<Long, Integer> warTypeOrdinalsByPair
+    ) {
+        if (attackerNationIds.length == 0) {
+            return PlannerConflictBundle.PlannerAssignmentView.empty();
+        }
+
+        int attackerCount = attackerNationIds.length;
+        int[] attackerIds = attackerNationIds.clone();
+        int[] attackerOffsets = new int[attackerCount];
+        int[] defenderCounts = new int[attackerCount];
+
+        int edgeCount = 0;
+        for (int attackerSlot = 0; attackerSlot < attackerCount; attackerSlot++) {
+            attackerOffsets[attackerSlot] = edgeCount;
+            int defenderCount = changeDefenderCount(change, attackerNationIds[attackerSlot], assignmentLengths[attackerSlot]);
+            defenderCounts[attackerSlot] = defenderCount;
+            edgeCount += defenderCount;
+        }
+
+        if (edgeCount == 0) {
+            return PlannerConflictBundle.PlannerAssignmentView.empty();
+        }
+
+        int[] defenderIds = new int[edgeCount];
+        int[] warTypeOrdinals = new int[edgeCount];
+        for (int attackerSlot = 0; attackerSlot < attackerCount; attackerSlot++) {
+            int attackerId = attackerNationIds[attackerSlot];
+            int offset = attackerOffsets[attackerSlot];
+            int changeIndex = changeIndex(change, attackerId);
+            if (changeIndex >= 0) {
+                int defenderCount = change.defenderCountAt(changeIndex);
+                for (int defenderIndex = 0; defenderIndex < defenderCount; defenderIndex++) {
+                    int defenderId = change.defenderIdAt(changeIndex, defenderIndex);
+                    defenderIds[offset + defenderIndex] = defenderId;
+                    warTypeOrdinals[offset + defenderIndex] = PlannerConflictBundle.PlannerAssignmentView.warTypeForPair(
+                            warTypeOrdinalsByPair,
+                            attackerId,
+                            defenderId
+                    );
+                }
+                continue;
+            }
+
+            int slotOffset = this.attackerOffsets[attackerSlot];
+            int defenderCount = assignmentLengths[attackerSlot];
+            for (int defenderIndex = 0; defenderIndex < defenderCount; defenderIndex++) {
+                int defenderId = defenderNationIds[assignedDefenderSlots[slotOffset + defenderIndex]];
+                defenderIds[offset + defenderIndex] = defenderId;
+                warTypeOrdinals[offset + defenderIndex] = PlannerConflictBundle.PlannerAssignmentView.warTypeForPair(
+                        warTypeOrdinalsByPair,
+                        attackerId,
+                        defenderId
+                );
+            }
+        }
+
+        return PlannerConflictBundle.PlannerAssignmentView.ofDenseAssignment(
+                attackerIds,
+                attackerOffsets,
+                defenderCounts,
+                defenderIds,
+                warTypeOrdinals
+        );
+    }
+
     Map<Integer, List<Integer>> toAssignmentMap() {
         if (attackerNationIds.length == 0) {
             return Map.of();
@@ -416,6 +487,23 @@ final class PlannerAssignmentSession {
         } else {
             changeScratch.addSecondaryDefender(defenderId);
         }
+    }
+
+    private static int changeDefenderCount(PlannerAssignmentChange change, int attackerId, int fallbackCount) {
+        int changeIndex = changeIndex(change, attackerId);
+        return changeIndex >= 0 ? change.defenderCountAt(changeIndex) : fallbackCount;
+    }
+
+    private static int changeIndex(PlannerAssignmentChange change, int attackerId) {
+        if (change == null) {
+            return -1;
+        }
+        for (int changeIndex = 0; changeIndex < change.size(); changeIndex++) {
+            if (change.attackerIdAt(changeIndex) == attackerId) {
+                return changeIndex;
+            }
+        }
+        return -1;
     }
 
     private static Long2IntOpenHashMap lockedEdgeCounts(List<BlitzFixedEdge> lockedEdges) {

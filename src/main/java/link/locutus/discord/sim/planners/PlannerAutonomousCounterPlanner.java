@@ -1,10 +1,11 @@
 package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.sim.DamageObjective;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
@@ -14,21 +15,96 @@ import java.util.Map;
 
 final class PlannerAutonomousCounterPlanner {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
-    private static final StrategicObjective DEFAULT_OBJECTIVE = new DamageObjective();
 
     private PlannerAutonomousCounterPlanner() {
     }
 
-    static Map<Integer, List<Integer>> plan(
+    static Plan plan(
             List<DBNationSnapshot> declarerSnapshots,
             List<DBNationSnapshot> targetSnapshots,
             SimTuning tuning,
-            StrategicObjective counterObjective,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy,
             int remainingTurns
     ) {
-        if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
-            return Map.of();
+        return planInternal(
+            declarerSnapshots,
+            targetSnapshots,
+            tuning,
+            declarerPolicy,
+            targetPolicy,
+            remainingTurns,
+            null
+        );
         }
+
+        static Plan planWithProjectionContext(
+            List<DBNationSnapshot> declarerSnapshots,
+            List<DBNationSnapshot> targetSnapshots,
+            SimTuning tuning,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy,
+            int remainingTurns
+        ) {
+        return planInternal(
+            declarerSnapshots,
+            targetSnapshots,
+            tuning,
+            declarerPolicy,
+            targetPolicy,
+            remainingTurns,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+                declarerPolicy.objective(),
+                declarerPolicy,
+                targetPolicy
+            )
+        );
+        }
+
+        static Plan planScorerOnly(
+            CompiledScenario scenario,
+            CandidateEdgeTable edges,
+            SidePlannerSettings declarerPlannerSettings,
+            int remainingTurns
+        ) {
+        if (scenario.attackerCount() == 0 || scenario.defenderCount() == 0 || edges.edgeCount() == 0) {
+            return Plan.empty();
+        }
+            LongHorizonAssignmentOptimizer.Candidate candidate = LongHorizonAssignmentOptimizer.solveWithAttackerCaps(
+                    edges,
+                    scenario,
+                    attackerCaps(scenario),
+                    defenderCaps(scenario),
+                    attackerStrengthRanks(scenario),
+                    attackerNationIds(scenario),
+                    defenderNationIds(scenario),
+                    List.of(),
+                    Math.max(1, remainingTurns),
+                    false,
+                    declarerPlannerSettings
+            );
+            return new Plan(candidate.assignment(), assignmentWarTypeOrdinals(candidate.assignment(), edges, scenario));
+        }
+
+        private static Plan planInternal(
+            List<DBNationSnapshot> declarerSnapshots,
+            List<DBNationSnapshot> targetSnapshots,
+            SimTuning tuning,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy,
+            int remainingTurns,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+        ) {
+        if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
+            return Plan.empty();
+        }
+        if (declarerPolicy == null) {
+            throw new IllegalArgumentException("declarerPolicy must not be null");
+        }
+        if (targetPolicy == null) {
+            throw new IllegalArgumentException("targetPolicy must not be null");
+        }
+        SimTuning effectiveTuning = tuningForPlannerSettings(tuning, declarerPolicy.planner());
 
         CompiledScenario scenario = SCENARIO_COMPILER.compile(
                 declarerSnapshots,
@@ -42,17 +118,19 @@ final class PlannerAutonomousCounterPlanner {
         CandidateEdgeTable edges = new CandidateEdgeTable();
         OpeningEvaluator.evaluate(
                 scenario,
-                tuning,
+            effectiveTuning,
                 OverrideSet.EMPTY,
-                counterObjective == null ? DEFAULT_OBJECTIVE : counterObjective,
+                declarerPolicy.objective(),
+                declarerPolicy.opening(),
                 attackerCaps,
                 defenderCaps,
                 edges
         );
         if (edges.edgeCount() == 0) {
-            return Map.of();
+            return Plan.empty();
         }
-        return LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> assignment = projectionContext == null
+            ? LongHorizonAssignmentOptimizer.solve(
                 edges,
                 scenario,
                 attackerCaps,
@@ -62,7 +140,36 @@ final class PlannerAutonomousCounterPlanner {
                 defenderNationIds(scenario),
                 List.of(),
                 Math.max(1, remainingTurns)
-        );
+            )
+            : LongHorizonAssignmentOptimizer.solveDetailed(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks(scenario),
+                attackerNationIds(scenario),
+                defenderNationIds(scenario),
+                List.of(),
+                Math.max(1, remainingTurns),
+                projectionContext
+            ).assignment();
+        return new Plan(assignment, assignmentWarTypeOrdinals(assignment, edges, scenario));
+    }
+
+    record Plan(
+            Map<Integer, List<Integer>> assignment,
+            Map<Long, Integer> warTypeOrdinalsByPair
+    ) {
+        static Plan empty() {
+            return new Plan(Map.of(), Map.of());
+        }
+
+        int warTypeOrdinal(int declarerNationId, int targetNationId) {
+            return warTypeOrdinalsByPair.getOrDefault(
+                    PlannerLocalConflict.pairKey(declarerNationId, targetNationId),
+                    WarType.ORD.ordinal()
+            );
+        }
     }
 
     private static TreatyProvider sameTeamTreaty(List<DBNationSnapshot> declarers, List<DBNationSnapshot> targets) {
@@ -132,5 +239,63 @@ final class PlannerAutonomousCounterPlanner {
                 snapshot.unit(MilitaryUnit.TANK),
                 false
         ) + (3d * snapshot.unit(MilitaryUnit.AIRCRAFT)) + (2d * snapshot.unit(MilitaryUnit.SHIP));
+    }
+
+    static SimTuning tuningForPlannerSettings(SimTuning tuning, SidePlannerSettings plannerSettings) {
+        SimTuning baseTuning = tuning == null ? SimTuning.defaults() : tuning;
+        if (plannerSettings == null) {
+            return baseTuning;
+        }
+        return new SimTuning(
+                baseTuning.intraTurnPasses(),
+                plannerSettings.turn1DeclarePolicy(),
+                plannerSettings.wartimeActivityUplift(),
+                plannerSettings.activityActThreshold(),
+                baseTuning.policyCooldownTurns(),
+                plannerSettings.localSearchBudgetMs(),
+                plannerSettings.localSearchMaxIterations(),
+                plannerSettings.candidatesPerAttacker(),
+                baseTuning.beigeTurnsOnDefeat(),
+                baseTuning.stateResolutionMode(),
+                baseTuning.stochasticSeed(),
+                baseTuning.stochasticSampleCount()
+        );
+    }
+
+    private static Map<Long, Integer> assignmentWarTypeOrdinals(
+            Map<Integer, List<Integer>> assignment,
+            CandidateEdgeTable edges,
+            CompiledScenario scenario
+    ) {
+        if (assignment.isEmpty() || edges.edgeCount() == 0) {
+            return Map.of();
+        }
+        Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, assignmentPairCount(assignment) * 2));
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            int attackerNationId = scenario.attackerNationId(edges.attackerIndex(edgeIndex));
+            int defenderNationId = scenario.defenderNationId(edges.defenderIndex(edgeIndex));
+            if (!assignment.getOrDefault(attackerNationId, List.of()).contains(defenderNationId)) {
+                continue;
+            }
+            ordinalsByPair.put(
+                    PlannerLocalConflict.pairKey(attackerNationId, defenderNationId),
+                    validWarTypeOrdinal(edges.preferredWarTypeId(edgeIndex))
+            );
+        }
+        return Long2IntMaps.unmodifiable(ordinalsByPair);
+    }
+
+    private static int assignmentPairCount(Map<Integer, List<Integer>> assignment) {
+        int count = 0;
+        for (List<Integer> targets : assignment.values()) {
+            count += targets.size();
+        }
+        return count;
+    }
+
+    private static int validWarTypeOrdinal(byte warTypeOrdinal) {
+        return warTypeOrdinal >= 0 && warTypeOrdinal < WarType.values.length
+                ? warTypeOrdinal
+                : WarType.ORD.ordinal();
     }
 }

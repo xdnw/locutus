@@ -6,7 +6,6 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.SimUnits;
-import link.locutus.discord.sim.StrategicAssetValue;
 
 import java.util.function.IntPredicate;
 
@@ -25,7 +24,6 @@ final class PlannerReplayTurnMetrics {
     private final int[] summaryAttackOutcomeCounts = new int[SIDE_COUNT * ATTACK_TYPE_COUNT * SUCCESS_TYPE_COUNT];
     private final int[] summaryUnitLossCounts = new int[SIDE_COUNT * PURCHASABLE_UNIT_COUNT];
     private final int[] summaryInfraLossCents = new int[SIDE_COUNT];
-    private final int[] summaryStrategicUnitLossCents = new int[SIDE_COUNT];
     private boolean touched;
 
     PlannerReplayTurnMetrics(IntPredicate isAttackerNationId) {
@@ -102,10 +100,6 @@ final class PlannerReplayTurnMetrics {
         return summaryInfraLossCents.clone();
     }
 
-    int[] summaryStrategicUnitLossCents() {
-        return summaryStrategicUnitLossCents.clone();
-    }
-
     private int sideIndex(int nationId) {
         return isAttackerNationId.test(nationId) ? ATTACKER_SIDE_INDEX : DEFENDER_SIDE_INDEX;
     }
@@ -119,7 +113,6 @@ final class PlannerReplayTurnMetrics {
             return;
         }
         int sideOffset = sideIndex * PURCHASABLE_UNIT_COUNT;
-        double strategicValue = 0d;
         for (int unitIndex = 0; unitIndex < PURCHASABLE_UNIT_COUNT; unitIndex++) {
             MilitaryUnit unit = SimUnits.PURCHASABLE_UNITS[unitIndex];
             int ordinal = unit.ordinal();
@@ -127,15 +120,8 @@ final class PlannerReplayTurnMetrics {
                 int loss = Math.max(0, source[ordinal]);
                 if (loss > 0) {
                     summaryUnitLossCounts[sideOffset + unitIndex] += loss;
-                    strategicValue += StrategicAssetValue.unitValue(unit, loss, researchBits);
                 }
             }
-        }
-        if (strategicValue > 0d) {
-            long cents = Math.max(0L, Math.round(strategicValue * 100d));
-            summaryStrategicUnitLossCents[sideIndex] = Math.toIntExact(
-                    Math.min((long) Integer.MAX_VALUE, summaryStrategicUnitLossCents[sideIndex] + cents)
-            );
         }
         touched = true;
     }

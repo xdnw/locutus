@@ -20,7 +20,7 @@ public record AttackOutcome(
         double defenderResistanceDelta,
         int mapCost,
         double[] consumption,
-        ControlFlagDelta controlDelta
+        SuperiorityFlagDelta controlDelta
 ) {
     public AttackOutcome {
         Objects.requireNonNull(success, "success");
@@ -52,7 +52,7 @@ public record AttackOutcome(
         attackerLossesEv = attackerLossesEv == null ? null : attackerLossesEv.clone();
         defenderLossesEv = defenderLossesEv == null ? null : defenderLossesEv.clone();
         consumption = consumption == null ? new double[ResourceType.values.length] : consumption.clone();
-        controlDelta = controlDelta == null ? ControlFlagDelta.NONE : controlDelta;
+        controlDelta = controlDelta == null ? SuperiorityFlagDelta.NONE : controlDelta;
     }
 
     public static AttackOutcome discrete(
@@ -66,7 +66,7 @@ public record AttackOutcome(
             double defenderResistanceDelta,
             int mapCost,
                 double[] consumption,
-            ControlFlagDelta controlDelta
+            SuperiorityFlagDelta controlDelta
     ) {
         if (mode == ResolutionMode.DETERMINISTIC_EV) {
             throw new IllegalArgumentException("Use expected(...) for DETERMINISTIC_EV outcomes");
@@ -98,7 +98,7 @@ public record AttackOutcome(
             double defenderResistanceDelta,
             int mapCost,
                 double[] consumption,
-            ControlFlagDelta controlDelta
+            SuperiorityFlagDelta controlDelta
     ) {
         return new AttackOutcome(
                 successHint,

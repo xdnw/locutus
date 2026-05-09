@@ -2920,7 +2920,8 @@ public abstract class DBNation implements NationOrAlliance {
     public String getAllianceName() {
         if (data()._allianceId() == 0)
             return "AA:0";
-        return Locutus.imp().getNationDB().getAllianceName(data()._allianceId());
+        DBAlliance alliance = getAlliance(false);
+        return alliance != null ? alliance.getName() : "AA:" + data()._allianceId();
     }
 
     @Command(desc = "The alliance class")
@@ -2931,11 +2932,14 @@ public abstract class DBNation implements NationOrAlliance {
     public DBAlliance getAlliance(boolean createIfNotExist) {
         if (data()._allianceId() == 0)
             return null;
+        return resolveAlliance(createIfNotExist);
+    }
+
+    protected DBAlliance resolveAlliance(boolean createIfNotExist) {
         if (createIfNotExist) {
             return Locutus.imp().getNationDB().getOrCreateAlliance(data()._allianceId());
-        } else {
-            return Locutus.imp().getNationDB().getAlliance(data()._allianceId());
         }
+        return Locutus.imp().getNationDB().getAlliance(data()._allianceId());
     }
 
     @Command(desc = "Minutes since last active in-game")

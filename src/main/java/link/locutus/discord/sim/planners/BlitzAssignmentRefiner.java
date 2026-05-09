@@ -15,7 +15,7 @@ final class BlitzAssignmentRefiner {
     static Map<Integer, List<Integer>> refine(
             SimTuning tuning,
             OverrideSet overrides,
-            StrategicObjective objective,
+            SidePolicy sidePolicy,
             Map<Integer, List<Integer>> assignment,
             BlitzGeneratedCandidates candidates,
             Map<Long, Integer> warTypeOrdinalsByPair,
@@ -26,13 +26,25 @@ final class BlitzAssignmentRefiner {
             List<BlitzFixedEdge> fixedEdges,
             boolean excludeReciprocalPairs) {
 
-        long budgetMs = tuning.localSearchBudgetMs();
-        int maxIterations = tuning.localSearchMaxIterations();
+        long budgetMs = sidePolicy.planner().localSearchBudgetMs();
+        int maxIterations = sidePolicy.planner().localSearchMaxIterations();
         if (budgetMs <= 0 || maxIterations <= 0) {
             return assignment;
         }
 
+        var objective = sidePolicy.objective();
+
         long deadline = System.currentTimeMillis() + budgetMs;
+    Map<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId =
+        PlannerStrategicValue.relevanceByNationId(attackers, defenders);
+    PlannerLocalConflict conflict = PlannerLocalConflict.create(
+        overrides,
+        attackers,
+        defenders,
+        tuning,
+        PlannerTransitionSemantics.NONE,
+        relevanceByNationId
+    );
         PlannerAssignmentSession best = PlannerAssignmentSession.create(
             assignment,
             attackers,
@@ -44,8 +56,7 @@ final class BlitzAssignmentRefiner {
         int[][] candidateDefenderSlotsByAttacker = candidateDefenderSlotsByAttacker(candidates, best);
         int attackerTeamId = attackers.isEmpty() ? 1 : attackers.get(0).teamId();
         RefinementAggregates aggregates = RefinementAggregates.fromAssignment(best);
-        Map<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId =
-                PlannerStrategicValue.relevanceByNationId(attackers, defenders);
+        PlannerConflictBundle.PlannerAssignmentView currentAssignmentView = best.assignmentView(warTypeOrdinalsByPair);
 
         int iteration = 0;
         while (iteration < maxIterations && System.currentTimeMillis() < deadline) {
@@ -116,17 +127,14 @@ final class BlitzAssignmentRefiner {
                             if (!aggregates.isPromising(surrogateDelta)) {
                                 continue;
                             }
-                            double exactDelta = exactBundleDelta(
-                                tuning,
-                                overrides,
+                            PlannerConflictBundle.PlannerAssignmentView candidateAssignmentView =
+                                    best.assignmentView(candidate, warTypeOrdinalsByPair);
+                            double exactDelta = exactAssignmentDelta(
+                                conflict,
                                 objective,
-                                best,
-                                candidate,
-                                attackers,
-                                defenders,
                                 attackerTeamId,
-                                warTypeOrdinalsByPair,
-                                relevanceByNationId
+                                currentAssignmentView,
+                                candidateAssignmentView
                             );
                             if (exactDelta > 1e-9) {
                                 best.applySwap(
@@ -137,6 +145,7 @@ final class BlitzAssignmentRefiner {
                                     defenderTwoIndex,
                                     defenderOneSlot
                                 );
+                                currentAssignmentView = candidateAssignmentView;
                                 aggregates.applySwap();
                                 improved = true;
                                 break outer;
@@ -185,20 +194,18 @@ final class BlitzAssignmentRefiner {
                             if (!aggregates.isPromising(surrogateDelta)) {
                                 continue;
                             }
-                            double exactDelta = exactBundleDelta(
-                                tuning,
-                                overrides,
+                            PlannerConflictBundle.PlannerAssignmentView candidateAssignmentView =
+                                    best.assignmentView(candidate, warTypeOrdinalsByPair);
+                            double exactDelta = exactAssignmentDelta(
+                                conflict,
                                 objective,
-                                best,
-                                candidate,
-                                attackers,
-                                defenders,
                                 attackerTeamId,
-                                warTypeOrdinalsByPair,
-                                relevanceByNationId
+                                currentAssignmentView,
+                                candidateAssignmentView
                             );
                             if (exactDelta > 1e-9) {
                                 best.applyMove(attackerSlot, assignedIndex, nextDefenderSlot);
+                                currentAssignmentView = candidateAssignmentView;
                                 aggregates.applyMove(previousDefenderSlot, nextDefenderSlot);
                                 improved = true;
                                 break outerMove;
@@ -239,20 +246,18 @@ final class BlitzAssignmentRefiner {
                         if (!aggregates.isPromising(surrogateDelta)) {
                             continue;
                         }
-                        double exactDelta = exactBundleDelta(
-                            tuning,
-                            overrides,
+                        PlannerConflictBundle.PlannerAssignmentView candidateAssignmentView =
+                                best.assignmentView(candidate, warTypeOrdinalsByPair);
+                        double exactDelta = exactAssignmentDelta(
+                            conflict,
                             objective,
-                            best,
-                            candidate,
-                            attackers,
-                            defenders,
                             attackerTeamId,
-                            warTypeOrdinalsByPair,
-                            relevanceByNationId
+                            currentAssignmentView,
+                            candidateAssignmentView
                         );
                         if (exactDelta > 1e-9) {
                             best.applyAdd(attackerSlot, defenderSlot);
+                            currentAssignmentView = candidateAssignmentView;
                             aggregates.applyAdd(attackerSlot, defenderSlot);
                             improved = true;
                             break;
@@ -280,20 +285,18 @@ final class BlitzAssignmentRefiner {
                         if (!aggregates.isPromising(surrogateDelta)) {
                             continue;
                         }
-                        double exactDelta = exactBundleDelta(
-                            tuning,
-                            overrides,
+                        PlannerConflictBundle.PlannerAssignmentView candidateAssignmentView =
+                                best.assignmentView(candidate, warTypeOrdinalsByPair);
+                        double exactDelta = exactAssignmentDelta(
+                            conflict,
                             objective,
-                            best,
-                            candidate,
-                            attackers,
-                            defenders,
                             attackerTeamId,
-                            warTypeOrdinalsByPair,
-                            relevanceByNationId
+                            currentAssignmentView,
+                            candidateAssignmentView
                         );
                         if (exactDelta > 1e-9) {
                             best.applyDrop(attackerSlot, assignedIndex);
+                            currentAssignmentView = candidateAssignmentView;
                             aggregates.applyDrop(attackerSlot, removedDefenderSlot);
                             improved = true;
                             break outerDrop;
@@ -312,29 +315,19 @@ final class BlitzAssignmentRefiner {
         return best.toAssignmentMap();
     }
 
-    private static double exactBundleDelta(
-            SimTuning tuning,
-            OverrideSet overrides,
+    private static double exactAssignmentDelta(
+            PlannerLocalConflict conflict,
             StrategicObjective objective,
-            PlannerAssignmentSession currentAssignment,
-            PlannerAssignmentChange candidateChange,
-            List<DBNationSnapshot> attackers,
-            List<DBNationSnapshot> defenders,
             int attackerTeamId,
-            Map<Long, Integer> warTypeOrdinalsByPair,
-            Map<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId
+            PlannerConflictBundle.PlannerAssignmentView currentAssignment,
+            PlannerConflictBundle.PlannerAssignmentView candidateAssignment
     ) {
         return PlannerConflictExecutor.scoreAssignmentDelta(
-            tuning,
-            overrides,
+            conflict,
             objective,
-            currentAssignment,
-            candidateChange,
-            attackers,
-            defenders,
             attackerTeamId,
-            warTypeOrdinalsByPair,
-            relevanceByNationId
+            currentAssignment,
+            candidateAssignment
         );
     }
 

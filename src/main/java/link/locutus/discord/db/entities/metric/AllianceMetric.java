@@ -1465,10 +1465,6 @@ public enum AllianceMetric implements IAllianceMetric {
         return totalValuesByTurnByCoal;
     }
 
-    public static Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Collection<AllianceMetric> metrics, long minTurn, Set<DBAlliance>... coalitions) {
-        return getMetrics(metrics, minTurn, TimeUtil.getTurn(), coalitions);
-    }
-
     public static Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Collection<AllianceMetric> metrics, long minTurn, long maxTurn, Set<DBAlliance>... coalitions) {
         if (minTurn < maxTurn - Short.MAX_VALUE) throw new IllegalArgumentException("Time range too large");
         if (maxTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
@@ -1485,6 +1481,15 @@ public enum AllianceMetric implements IAllianceMetric {
                 }
             }
         }
-        return Locutus.imp().getNationDB().getAllianceMetrics(aaIds, finalMetrics, minTurn, maxTurn);
+        Map<Integer, Map<AllianceMetric, Map<Long, Double>>> byAllianceId = Locutus.imp().getNationDB()
+                .getAllianceMetrics(aaIds, finalMetrics, minTurn, maxTurn);
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> byAlliance = new LinkedHashMap<>();
+        for (DBAlliance alliance : allAlliances) {
+            Map<AllianceMetric, Map<Long, Double>> metricMap = byAllianceId.get(alliance.getAlliance_id());
+            if (metricMap != null) {
+                byAlliance.put(alliance, metricMap);
+            }
+        }
+        return byAlliance;
     }
 }

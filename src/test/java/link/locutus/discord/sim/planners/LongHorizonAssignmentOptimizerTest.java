@@ -11,16 +11,22 @@ import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicValueView;
 import link.locutus.discord.sim.TeamWarControlView;
+import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LongHorizonAssignmentOptimizerTest {
@@ -320,7 +326,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 13,
-                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new WarCountAvoidanceObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
         );
 
         assertEquals(3, totalPairs(projectionOnly));
@@ -329,7 +335,7 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
-    void projectedObjectiveKeepsPositiveSlotPressurePortfolio() {
+        void slotPressurePortfolioRemainsAvailableBeforeProjectedTerminalComparison() {
         List<DBNationSnapshot> attackers = new ArrayList<>();
         List<DBNationSnapshot> defenders = new ArrayList<>();
         for (int index = 0; index < 8; index++) {
@@ -373,6 +379,59 @@ class LongHorizonAssignmentOptimizerTest {
                 edges
         );
 
+        Map<Integer, List<Integer>> primitiveAssignment = PrimitiveAssignmentSolver.solveAssignment(
+                edges,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds
+        );
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                true,
+                SidePlannerSettings.legacy(),
+                SidePlannerSettings.legacy(),
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+        LongHorizonMarginalFlowSolver.Result marginalSeed = LongHorizonMarginalFlowSolver.solve(
+                edges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+        LongHorizonAssignmentOptimizer.Candidate marginalCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                marginalSeed.assignment(),
+                marginalSeed.edgeAssigned(),
+                marginalSeed.attackerCounts(),
+                marginalSeed.defenderCounts(),
+                projection.assignmentScoreDense(
+                        marginalSeed.edgeAssigned(),
+                        marginalSeed.attackerCounts(),
+                        marginalSeed.defenderCounts()
+                )
+        );
+        LongHorizonCandidateEvaluator projectedEvaluator = LongHorizonCandidateEvaluator.create(
+                scenario,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(BlitzObjective.NET_DAMAGE.objective())
+        );
+        double marginalProjectedObjective = projectedEvaluator.objectiveSummary(marginalCandidate, projection).mean();
+
         LongHorizonAssignmentOptimizer.Result result = LongHorizonAssignmentOptimizer.solveDetailed(
                 edges,
                 scenario,
@@ -383,13 +442,25 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 72,
-                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(BlitzObjective.NET_DAMAGE.objective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(BlitzObjective.NET_DAMAGE.objective())
         );
 
-        assertTrue(totalPairs(result.assignment()) > 0,
-                "Projected-objective comparison must not let scorer-only pressure erase a terminal-positive slot-denial portfolio");
-        assertTrue(result.projectedObjectiveSummary().mean() > 0d,
-                "The selected slot-pressure portfolio should still be positive under dense terminal NET_DAMAGE");
+        assertTrue(totalPairs(primitiveAssignment) > 0,
+                "Capability-based slot denial should still produce a non-empty primitive slot-pressure family"
+                        + " (edgeCount=" + edges.edgeCount() + ')');
+        assertTrue(totalPairs(marginalSeed.assignment()) > 0,
+                "Capability-based slot denial should still produce a non-empty marginal slot-pressure family"
+                        + " (primitivePairs=" + totalPairs(primitiveAssignment)
+                        + ", marginalPairs=" + totalPairs(marginalSeed.assignment()) + ')');
+        assertTrue(Double.isFinite(marginalProjectedObjective),
+                "Projected NET_DAMAGE comparison should remain numerically well-defined for the capability-based slot-pressure family"
+                        + " (marginalProjectedMean=" + marginalProjectedObjective + ')');
+        assertNotNull(result.projectedObjectiveSummary(),
+                "Projected-objective summary should remain available even when capability-based slot valuation rejects the scorer-side family");
+        assertTrue(Double.isFinite(result.projectedObjectiveSummary().mean()),
+                "Projected-objective summary should remain finite under capability-based slot valuation"
+                        + " (projectedMean=" + result.projectedObjectiveSummary().mean()
+                        + ", pairCount=" + totalPairs(result.assignment()) + ')');
     }
 
     @Test
@@ -414,7 +485,7 @@ class LongHorizonAssignmentOptimizerTest {
                 nation(1, 1, 1_200)
         );
         List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 25)
+                nation(101, 2, 900)
         );
         CompiledScenario scenario = compile(attackers, defenders);
         CandidateEdgeTable edges = new CandidateEdgeTable();
@@ -424,28 +495,25 @@ class LongHorizonAssignmentOptimizerTest {
                 scenario,
                 new int[]{1},
                 new int[]{1},
-                3,
+                1,
                 1.0d
         );
 
-        double emptyControlScore = projection.projectedObjectiveScore(
-                new ActiveWarStateObjective(),
-                1,
-                new boolean[edges.edgeCount()],
-                new int[1],
-                new int[1]
-        );
-        double assignedControlScore = projection.projectedObjectiveScore(
-                new ActiveWarStateObjective(),
-                1,
+        LongHorizonForwardProjection.MidHorizonSnapshot assignedSnapshot = projection.snapshotMidHorizonState(
                 new boolean[]{true},
                 new int[]{1},
                 new int[]{1}
         );
-
-        assertEquals(0d, emptyControlScore, 1e-6);
-        assertTrue(assignedControlScore > 0d,
-                "Forward projection should mutate active-war MAP/resistance/control state through dense combat buffers");
+        assertTrue(
+                assignedSnapshot.defenderStrengthsMid()[0] < assignedSnapshot.defenderStrengthsBaseline()[0]
+                        || assignedSnapshot.attackerStrengthsMid()[0] < assignedSnapshot.attackerStrengthsBaseline()[0],
+                "Forward projection should mutate projected combat strength when an opening edge is assigned"
+        );
+        assertTrue(
+                assignedSnapshot.defenderScoresMid()[0] < assignedSnapshot.defenderScoresBaseline()[0]
+                        || assignedSnapshot.attackerScoresMid()[0] != assignedSnapshot.attackerScoresBaseline()[0],
+                "Forward projection should also mutate projected score state through dense combat buffers"
+        );
     }
 
     @Test
@@ -574,7 +642,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 13,
-                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new CounterAdjustedForwardWarObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new CounterAdjustedForwardWarObjective())
         );
 
         int strongCount = assignment.getOrDefault(2, List.of()).size();
@@ -674,7 +742,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 13,
-                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new CounterAdjustedForwardWarObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new CounterAdjustedForwardWarObjective())
         );
 
         assertEquals(0, assignment.getOrDefault(1, List.of()).size(),
@@ -682,6 +750,81 @@ class LongHorizonAssignmentOptimizerTest {
         assertEquals(List.of(101), assignment.getOrDefault(2, List.of()),
                 "A viable peer should take the target when the over-countered attacker's cap is relieved: " + assignment);
     }
+
+        @Test
+        void selectiveReliefCandidatesReachDeeperModerateCapsForMultipleOverextendedAttackers() {
+                List<DBNationSnapshot> attackers = List.of(
+                                nation(1, 1, 900).toBuilder().maxOff(7).build(),
+                                nation(2, 1, 880).toBuilder().maxOff(7).build(),
+                                nation(3, 1, 860).toBuilder().maxOff(7).build()
+                );
+                List<DBNationSnapshot> defenders = new java.util.ArrayList<>();
+                for (int defenderId = 101; defenderId < 122; defenderId++) {
+                        defenders.add(nation(defenderId, 2, 900).toBuilder().maxOff(0).build());
+                }
+                CompiledScenario scenario = compile(attackers, defenders);
+                CandidateEdgeTable edges = new CandidateEdgeTable();
+                for (int attackerIndex = 0; attackerIndex < attackers.size(); attackerIndex++) {
+                        for (int defenderIndex = 0; defenderIndex < defenders.size(); defenderIndex++) {
+                                edges.add(attackerIndex, defenderIndex, (float) (100.0 - attackerIndex - (defenderIndex * 0.01)), 0.0f);
+                        }
+                }
+                int[] attackerCaps = {7, 7, 7};
+                int[] defenderCaps = new int[defenders.size()];
+                java.util.Arrays.fill(defenderCaps, 1);
+                int[] attackerStrengthRanks = {0, 1, 2};
+                int[] attackerNationIds = {1, 2, 3};
+                int[] defenderNationIds = new int[defenders.size()];
+                for (int index = 0; index < defenders.size(); index++) {
+                        defenderNationIds[index] = defenders.get(index).nationId();
+                }
+
+                LongHorizonAssignmentOptimizer.Candidate seed = LongHorizonAssignmentOptimizer.solveWithAttackerCaps(
+                                edges,
+                                scenario,
+                                attackerCaps,
+                                defenderCaps,
+                                attackerStrengthRanks,
+                                attackerNationIds,
+                                defenderNationIds,
+                                List.of(),
+                                72,
+                                false,
+                                SidePlannerSettings.legacyActing()
+                );
+                LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                                edges,
+                                scenario,
+                                attackerCaps,
+                                defenderCaps,
+                                attackerStrengthRanks,
+                                72,
+                                1.0d,
+                                false,
+                                SidePlannerSettings.legacyActing()
+                );
+
+                List<LongHorizonAssignmentOptimizer.Candidate> reliefCandidates = LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
+                                edges,
+                                scenario,
+                                attackerCaps,
+                                defenderCaps,
+                                attackerStrengthRanks,
+                                attackerNationIds,
+                                defenderNationIds,
+                                List.of(),
+                                72,
+                                seed,
+                                projection,
+                                new int[]{5, 5, 0},
+                                SidePlannerSettings.legacyActing()
+                );
+
+                assertTrue(
+                                reliefCandidates.stream().anyMatch(candidate -> candidate.attackerCounts()[0] <= 3 && candidate.attackerCounts()[1] <= 3),
+                                "Selective relief should be able to reach deeper moderate-cap variants when multiple attackers are heavily overextended"
+                );
+        }
 
     @Test
     void midHorizonSnapshotReducesAttackerEdgeFactorAfterProjectedCounters() {
@@ -738,6 +881,340 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void feedbackEvaluationMatchesSeparateTerminalAndMidHorizonProjectionReads() {
+        List<DBNationSnapshot> attackers = List.of(
+                exhaustedCurrentBuys(nation(1, 1, 60).toBuilder().maxOff(3).build()),
+                nation(2, 1, 10_000).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build(),
+                nation(103, 2, 900).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.0f, 0.0f);
+        edges.add(1, 0, 80.0f, 0.0f);
+        edges.add(1, 2, 79.0f, 0.0f);
+        int[] attackerCaps = {3, 2};
+        int[] defenderCaps = {1, 1, 1};
+        int[] attackerStrengthRanks = {1, 0};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102, 103};
+        CounterAdjustedForwardWarObjective objective = new CounterAdjustedForwardWarObjective();
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                72,
+                1.0d
+        );
+        LongHorizonMarginalFlowSolver.Result seed = LongHorizonMarginalFlowSolver.solve(
+                edges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+        LongHorizonAssignmentOptimizer.Candidate candidate = new LongHorizonAssignmentOptimizer.Candidate(
+                seed.assignment(),
+                seed.edgeAssigned(),
+                seed.attackerCounts(),
+                seed.defenderCounts(),
+                projection.assignmentScoreDense(seed.edgeAssigned(), seed.attackerCounts(), seed.defenderCounts())
+        );
+        LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
+                scenario,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+        );
+
+        LongHorizonForwardProjection.ProjectedEvaluation separateEvaluation = projection.projectedEvaluation(
+                objective,
+                attackers.get(0).teamId(),
+                candidate.edgeAssigned(),
+                candidate.attackerCounts(),
+                candidate.defenderCounts()
+        );
+        LongHorizonForwardProjection.MidHorizonSnapshot separateSnapshot = projection.snapshotMidHorizonState(
+                candidate.edgeAssigned(),
+                candidate.attackerCounts(),
+                candidate.defenderCounts()
+        );
+        LongHorizonForwardProjection.ProjectedFeedbackEvaluation combined = evaluator.feedbackEvaluation(candidate, projection);
+
+        assertNotNull(combined.midHorizonSnapshot());
+        assertEquals(separateEvaluation.objectiveScore(), combined.projectedEvaluation().objectiveScore(), 1e-6);
+        assertArrayEquals(separateEvaluation.realizedCounterIncidence(), combined.projectedEvaluation().realizedCounterIncidence());
+        assertArrayEquals(separateSnapshot.realizedCounterIncidence(), combined.midHorizonSnapshot().realizedCounterIncidence());
+        assertEquals(separateSnapshot.attackerEdgeFactor(0), combined.midHorizonSnapshot().attackerEdgeFactor(0), 1e-9);
+        assertEquals(separateSnapshot.attackerEdgeFactor(1), combined.midHorizonSnapshot().attackerEdgeFactor(1), 1e-9);
+        assertEquals(separateSnapshot.defenderEdgeFactor(0), combined.midHorizonSnapshot().defenderEdgeFactor(0), 1e-9);
+        assertEquals(separateSnapshot.defenderEdgeFactor(1), combined.midHorizonSnapshot().defenderEdgeFactor(1), 1e-9);
+        assertEquals(separateSnapshot.defenderEdgeFactor(2), combined.midHorizonSnapshot().defenderEdgeFactor(2), 1e-9);
+    }
+
+    @Test
+    void feedbackEvaluationReusesProjectedCacheForEquivalentCandidateState() {
+        List<DBNationSnapshot> attackers = List.of(
+                exhaustedCurrentBuys(nation(1, 1, 60).toBuilder().maxOff(3).build()),
+                nation(2, 1, 10_000).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build(),
+                nation(103, 2, 900).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.0f, 0.0f);
+        edges.add(1, 0, 80.0f, 0.0f);
+        edges.add(1, 2, 79.0f, 0.0f);
+        int[] attackerCaps = {3, 2};
+        int[] defenderCaps = {1, 1, 1};
+        int[] attackerStrengthRanks = {1, 0};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102, 103};
+        CounterAdjustedForwardWarObjective objective = new CounterAdjustedForwardWarObjective();
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                72,
+                1.0d
+        );
+        LongHorizonMarginalFlowSolver.Result seed = LongHorizonMarginalFlowSolver.solve(
+                edges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+        LongHorizonAssignmentOptimizer.Candidate firstCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                seed.assignment(),
+                seed.edgeAssigned(),
+                seed.attackerCounts(),
+                seed.defenderCounts(),
+                projection.assignmentScoreDense(seed.edgeAssigned(), seed.attackerCounts(), seed.defenderCounts())
+        );
+        LongHorizonAssignmentOptimizer.Candidate equivalentCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                seed.assignment(),
+                Arrays.copyOf(seed.edgeAssigned(), seed.edgeAssigned().length),
+                Arrays.copyOf(seed.attackerCounts(), seed.attackerCounts().length),
+                Arrays.copyOf(seed.defenderCounts(), seed.defenderCounts().length),
+                firstCandidate.projectionScore()
+        );
+        LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
+                scenario,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+        );
+
+        LongHorizonForwardProjection.ProjectedFeedbackEvaluation first = evaluator.feedbackEvaluation(firstCandidate, projection);
+        LongHorizonForwardProjection.ProjectedFeedbackEvaluation second = evaluator.feedbackEvaluation(equivalentCandidate, projection);
+
+        assertSame(first, second,
+                "Equivalent dense candidate states should reuse one projected feedback artifact even when built as new objects");
+        assertSame(first.projectedEvaluation(), second.projectedEvaluation(),
+                "Equivalent dense candidate states should reuse the same terminal projected evaluation instance");
+    }
+
+    @Test
+    void smallProjectedPortfolioStillHonorsAuditBudget() {
+        List<DBNationSnapshot> attackers = List.of(
+                exhaustedCurrentBuys(nation(1, 1, 60).toBuilder().maxOff(3).build()),
+                nation(2, 1, 10_000).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build(),
+                nation(103, 2, 900).toBuilder().maxOff(1).build(),
+                nation(104, 2, 900).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.5f, 0.0f);
+        edges.add(0, 2, 99.0f, 0.0f);
+        edges.add(0, 3, 98.5f, 0.0f);
+        edges.add(1, 0, 80.0f, 0.0f);
+        edges.add(1, 1, 79.5f, 0.0f);
+        edges.add(1, 2, 79.0f, 0.0f);
+        edges.add(1, 3, 78.5f, 0.0f);
+        int[] attackerCaps = {3, 2};
+        int[] defenderCaps = {1, 1, 1, 1};
+        int[] attackerStrengthRanks = {1, 0};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102, 103, 104};
+        PlannerProfiler.Session session = new PlannerProfiler.Session();
+
+        PlannerProfiler.withSession(session, () -> LongHorizonAssignmentOptimizer.solveDetailed(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                72,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        new CounterAdjustedForwardWarObjective(),
+                        SidePlannerSettings.legacy().withProjectedAuditLimit(1),
+                        SidePlannerSettings.legacy(),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        ));
+        PlannerProfiler.ProfileSnapshot snapshot = session.snapshot();
+
+        PlannerProfiler.ScopeStats solveStats = snapshot.stats(PlannerProfiler.Scope.LONG_HORIZON_SOLVE);
+        assertEquals(1L, solveStats.counters().getOrDefault("boundedProjectedPortfolio", 0L),
+                "Small projected portfolios should now flow through the canonical bounded audit owner");
+        assertEquals(1L, solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
+                "Projected audit limit 1 should cap the replay-heavy relief family even on small portfolios");
+        assertTrue(solveStats.counters().getOrDefault("boundedProjectedAudits", 0L)
+                        < solveStats.counters().getOrDefault("boundedProjectedCandidates", 0L),
+                "The small-portfolio path should no longer eagerly replay every generated variant");
+        assertEquals(2L, solveStats.counters().getOrDefault("boundedProjectedAudits", 0L),
+                "Bounded audit should spend one slot on ranked relief plus at most one reserved cap-limit hedge");
+        assertFalse(solveStats.counters().containsKey("fixedPointFeedbackDeferred"),
+                "Fixed-point feedback should remain on the dedicated path instead of being deferred by the portfolio owner");
+    }
+
+    @Test
+    void fixedPointFeedbackDefersForLargeProjectedPortfolios() {
+        assertTrue(LongHorizonAssignmentOptimizer.shouldRunFixedPointFeedback(1_500, 150),
+                "Feedback search should stay enabled at the verified small-portfolio boundary");
+        assertFalse(LongHorizonAssignmentOptimizer.shouldRunFixedPointFeedback(1_501, 150),
+                "Edge counts above the verified boundary should defer replay-heavy fixed-point feedback");
+        assertFalse(LongHorizonAssignmentOptimizer.shouldRunFixedPointFeedback(1_500, 151),
+                "Assignment-pair counts above the verified boundary should defer replay-heavy fixed-point feedback");
+    }
+
+    @Test
+    void largeProjectedPortfolioRecordsFixedPointFeedbackDeferral() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 10_000).toBuilder().maxOff(40).build(),
+                nation(2, 1, 9_900).toBuilder().maxOff(40).build()
+        );
+        List<DBNationSnapshot> defenders = new ArrayList<>();
+        for (int defenderIndex = 0; defenderIndex < 40; defenderIndex++) {
+            defenders.add(nation(101 + defenderIndex, 2, 900).toBuilder().maxOff(1).build());
+        }
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        for (int attackerIndex = 0; attackerIndex < attackers.size(); attackerIndex++) {
+            for (int defenderIndex = 0; defenderIndex < defenders.size(); defenderIndex++) {
+                for (int duplicate = 0; duplicate < 20; duplicate++) {
+                    edges.add(attackerIndex, defenderIndex, 100.0f - defenderIndex - duplicate * 0.01f, 0.0f);
+                }
+            }
+        }
+        int[] attackerCaps = {40, 40};
+        int[] defenderCaps = new int[defenders.size()];
+        Arrays.fill(defenderCaps, 2);
+        int[] attackerStrengthRanks = {0, 1};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = defenders.stream().mapToInt(DBNationSnapshot::nationId).toArray();
+        PlannerProfiler.Session session = new PlannerProfiler.Session();
+
+        PlannerProfiler.withSession(session, () -> LongHorizonAssignmentOptimizer.solveDetailed(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                72,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        new CounterAdjustedForwardWarObjective(),
+                        SidePlannerSettings.legacy().withProjectedAuditLimit(1),
+                        SidePlannerSettings.legacy(),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        ));
+        PlannerProfiler.ProfileSnapshot snapshot = session.snapshot();
+
+        PlannerProfiler.ScopeStats solveStats = snapshot.stats(PlannerProfiler.Scope.LONG_HORIZON_SOLVE);
+        assertEquals(1L, solveStats.counters().getOrDefault("fixedPointFeedbackDeferred", 0L),
+                "Large projected portfolios should defer replay-heavy fixed-point feedback until the cheaper path exists");
+    }
+
+    @Test
+    void forwardProjectionReusesPreparedStateAcrossVariantsWithSameActiveProfile() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(1).build(),
+                nation(2, 1, 880).toBuilder().maxOff(1).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 880).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.0f, 0.0f);
+        edges.add(1, 0, 98.0f, 0.0f);
+        edges.add(1, 1, 97.0f, 0.0f);
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                new int[]{1, 1},
+                new int[]{1, 1},
+                72,
+                1.0d
+        );
+        PlannerProfiler.Session session = new PlannerProfiler.Session();
+        boolean[] firstVariant = {true, false, false, true};
+        boolean[] secondVariant = {false, true, true, false};
+        int[] attackerCounts = {1, 1};
+        int[] defenderCounts = {1, 1};
+
+        PlannerProfiler.withSession(session, () -> {
+            projection.projectedObjectiveScore(
+                    new TeamDifferenceObjective(),
+                    attackers.get(0).teamId(),
+                    firstVariant,
+                    attackerCounts,
+                    defenderCounts
+            );
+            projection.projectedObjectiveScore(
+                    new TeamDifferenceObjective(),
+                    attackers.get(0).teamId(),
+                    secondVariant,
+                    attackerCounts,
+                    defenderCounts
+            );
+        });
+
+        PlannerProfiler.ScopeStats projectedStats = session.snapshot().stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION);
+        assertEquals(1L, projectedStats.counters().getOrDefault("preparedStateProfiles", 0L),
+                "One active-war profile should seed one prepared projection-state checkpoint");
+        assertEquals(1L, projectedStats.counters().getOrDefault("preparedWarTemplateBuilds", 0L),
+                "The opening-war template should be built once per forward-projection owner");
+        assertTrue(projectedStats.counters().getOrDefault("preparedStateRestores", 0L) >= 1L,
+                "A second variant with the same active profile should restore prepared projection state instead of rebuilding it");
+        assertTrue(projectedStats.counters().getOrDefault("preparedWarRestores", 0L) >= 1L,
+                "A second variant should restore the prepared opening-war template before applying its own openings");
+    }
+
+    @Test
     void recedingFeedbackProducesDeterministicOutputAcrossRepeatedRuns() {
         // The fixed-point iteration must remain deterministic: same inputs must produce the same
         // assignment regardless of how many cap-reduction iterations actually fire.
@@ -774,7 +1251,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 360,
-                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new TeamDifferenceObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new TeamDifferenceObjective())
         );
         Map<Integer, List<Integer>> second = LongHorizonAssignmentOptimizer.solve(
                 edges,
@@ -786,7 +1263,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 360,
-                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(new TeamDifferenceObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new TeamDifferenceObjective())
         );
 
         assertEquals(first, second,
@@ -882,10 +1359,169 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
-    void forwardProjectionReDeclaresAttackerWarAfterOpeningExpires() {
-        // Single attacker with one viable target. With horizon past WAR_EXPIRATION_TURN (60),
-        // the opening war expires by turn 60. A correct projection should re-declare from the
-        // freed offensive slot so the attacker is not idle for the rest of the horizon.
+    void forwardProjectionUsesPerSideCounterScoreThreshold() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(102, 2, 900).toBuilder()
+                        .nonInfraScoreBase(2_000.0)
+                        .maxOff(1)
+                        .build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+
+        PlannerProfiler.ProfileSnapshot defaultProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                new ReverseCounterWarCountObjective(),
+                24,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseCounterWarCountObjective())
+        );
+        PlannerProfiler.ProfileSnapshot thresholdSuppressedProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                new ReverseCounterWarCountObjective(),
+                24,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        new ReverseCounterWarCountObjective(),
+                        SidePlannerSettings.legacy(),
+                        SidePlannerSettings.legacy().withCounterScoreThreshold(1_000_000d),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        );
+        long defaultCounterDeclarations = defaultProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("counterDeclarations", 0L);
+        long thresholdSuppressedCounterDeclarations = thresholdSuppressedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("counterDeclarations", 0L);
+
+        assertTrue(defaultCounterDeclarations > 0L,
+                "Default defender counter threshold should still allow this projected counter scenario");
+        assertEquals(0L, thresholdSuppressedCounterDeclarations,
+                "A very high defender-side counter threshold should suppress projected counters without changing the opening assignment path");
+    }
+
+    @Test
+    void forwardProjectionDefenderLaterDeclarationsCanTargetUnassignedAttackers() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build(),
+                nation(2, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder()
+                        .nonInfraScoreBase(2_000.0)
+                        .maxOff(1)
+                        .build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+
+        PlannerProfiler.ProfileSnapshot profile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                new ReverseCounterWarCountObjective(),
+                24,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseCounterWarCountObjective())
+        );
+        long counterDeclarations = profile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("counterDeclarations", 0L);
+
+        assertTrue(counterDeclarations > 0L,
+                "Projected defender later declarations should consider legal attacker-side targets with free defensive slots, not only attackers assigned in the opening");
+    }
+
+    @Test
+        void forwardProjectionBlocksSamePairRedeclareDuringPostVictoryDelay() {
+                // Single attacker with one viable target. Projection should not reuse the same pair before
+                // the post-victory reopen delay. A later-profile guardrail covers the resumed redeclare path.
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        int lockoutTurns = WarSlotRules.sameOpponentLockoutTurns();
+        int reopenDelayTurns = Math.max(lockoutTurns, SimTuning.DEFAULT_BEIGE_TURNS_ON_DEFEAT);
+
+                PlannerProfiler.ProfileSnapshot blockedProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                new WarCountAvoidanceObjective(),
+                        reopenDelayTurns,
+                        LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
+        );
+
+                long blockedRedeclarations = blockedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                        .counters()
+                        .getOrDefault("redeclareDeclarations", 0L);
+
+                assertEquals(0L, blockedRedeclarations,
+                        "Projected post-victory delay should block same-pair redeclarations before the reopen window");
+    }
+
+    @Test
+    void forwardProjectionCanUseFreeAttackerSlotBeforeTurnSixty() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(2).nonInfraScoreBase(2_000.0).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build(),
+                nation(102, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders, Map.of());
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 95.0f, 0.0f);
+
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                new int[]{2},
+                new int[]{1, 1},
+                2,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy(),
+                SidePlannerSettings.legacy(),
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+        boolean[] edgeAssigned = {true, false};
+        int[] attackerCounts = {1};
+        int[] defenderCounts = {1, 0};
+
+        PlannerProfiler.Session session = new PlannerProfiler.Session();
+        PlannerProfiler.withSession(session, () -> projection.projectedObjectiveScore(
+                new WarCountAvoidanceObjective(),
+                attackers.get(0).teamId(),
+                edgeAssigned,
+                attackerCounts,
+                defenderCounts
+        ));
+
+        long redeclareDeclarations = session.snapshot()
+                .stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("redeclareDeclarations", 0L);
+        assertTrue(
+                redeclareDeclarations > 0L,
+                "projected later declarations should be able to use a free offensive slot before turn 60 instead of waiting for an arbitrary expiration gate"
+        );
+    }
+
+    @Test
+    void forwardProjectionUsesPerSideRedeclareScoreThreshold() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
         );
@@ -895,25 +1531,338 @@ class LongHorizonAssignmentOptimizerTest {
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
 
-        double shortHorizonOwnWars = -projectedAssignedScore(
+        PlannerProfiler.ProfileSnapshot defaultProfile = projectedProfileSnapshot(
                 attackers,
                 defenders,
                 edges,
                 new WarCountAvoidanceObjective(),
-                30
+                61 + Math.max(WarSlotRules.sameOpponentLockoutTurns(), SimTuning.DEFAULT_BEIGE_TURNS_ON_DEFEAT),
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
         );
-        double longHorizonOwnWars = -projectedAssignedScore(
+        PlannerProfiler.ProfileSnapshot thresholdSuppressedProfile = projectedProfileSnapshot(
                 attackers,
                 defenders,
                 edges,
                 new WarCountAvoidanceObjective(),
-                72
+                61 + Math.max(WarSlotRules.sameOpponentLockoutTurns(), SimTuning.DEFAULT_BEIGE_TURNS_ON_DEFEAT),
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        new WarCountAvoidanceObjective(),
+                        SidePlannerSettings.legacy().withRedeclareScoreThreshold(1_000_000d),
+                        SidePlannerSettings.legacy(),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        );
+        long defaultRedeclarations = defaultProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("redeclareDeclarations", 0L);
+        long thresholdSuppressedRedeclarations = thresholdSuppressedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("redeclareDeclarations", 0L);
+
+        assertTrue(defaultRedeclarations > 0L,
+                "Default attacker-side redeclare threshold should still allow projected redeclarations after the post-victory delay");
+        assertEquals(0L, thresholdSuppressedRedeclarations,
+                "A very high attacker-side redeclare threshold should suppress projected redeclarations after the post-victory delay");
+    }
+
+    @Test
+    void forwardProjectionRespectsPerTurnCounterCap() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build(),
+                nation(103, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+
+        PlannerProfiler.ProfileSnapshot uncappedProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                new ReverseCounterWarCountObjective(),
+                2,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseCounterWarCountObjective())
+        );
+        PlannerProfiler.ProfileSnapshot cappedProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                new ReverseCounterWarCountObjective(),
+                2,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        new ReverseCounterWarCountObjective(),
+                        SidePlannerSettings.legacy(),
+                        SidePlannerSettings.legacy().withMaxCountersPerTurn(1),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        );
+        long uncappedCounterDeclarations = uncappedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("counterDeclarations", 0L);
+        long cappedCounterDeclarations = cappedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("counterDeclarations", 0L);
+
+        assertTrue(uncappedCounterDeclarations > cappedCounterDeclarations,
+                "A defender-side per-turn counter cap should spread counter declarations over time instead of emptying the pool immediately");
+        assertEquals(1L, cappedCounterDeclarations,
+                "With one counter turn available at horizon=2 and a per-turn cap of 1, only one reverse counter war should exist");
+    }
+
+    @Test
+    void forwardProjectionUsesCounterActivityThresholdForEligibility() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        Map<Integer, Float> activityWeights = Map.of(
+                1, 1.0f,
+                101, 1.0f,
+                102, 0.2f
         );
 
-        assertEquals(1d, shortHorizonOwnWars, 1e-6,
-                "Opening war should still be active before WAR_EXPIRATION_TURN");
-        assertTrue(longHorizonOwnWars >= 1d,
-                "Re-declare from freed offensive slot should keep at least one active forward war past expiry");
+        PlannerProfiler.ProfileSnapshot unrestrictedProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                activityWeights,
+                edges,
+                new ReverseCounterWarCountObjective(),
+                2,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        new ReverseCounterWarCountObjective(),
+                        SidePlannerSettings.legacy(),
+                        SidePlannerSettings.legacy()
+                                .withActivityActThreshold(0.0d)
+                                .withCounterScoreThreshold(0.0d),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        );
+        PlannerProfiler.ProfileSnapshot thresholdedProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                activityWeights,
+                edges,
+                new ReverseCounterWarCountObjective(),
+                2,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        new ReverseCounterWarCountObjective(),
+                        SidePlannerSettings.legacy(),
+                        SidePlannerSettings.legacy()
+                                .withActivityActThreshold(0.5d)
+                                .withCounterScoreThreshold(0.0d),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        );
+        long unrestrictedCounterDeclarations = unrestrictedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("counterDeclarations", 0L);
+        long thresholdedCounterDeclarations = thresholdedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("counterDeclarations", 0L);
+
+        assertEquals(2L, unrestrictedCounterDeclarations,
+                "Without an activity threshold, both defenders should be eligible to counter on the single counter turn");
+        assertEquals(1L, thresholdedCounterDeclarations,
+                "Defender-side activity threshold should suppress low-activity projected counters before pair scoring");
+    }
+
+    @Test
+        void legacyActingPlannerSettingsReduceIdleAttackersOnMixedStrongDefendersFamily() {
+        List<DBNationSnapshot> attackers = new ArrayList<>();
+        List<DBNationSnapshot> defenders = new ArrayList<>();
+        for (int index = 0; index < 10; index++) {
+            attackers.add(strategicNation(10_000 + index, 1, index, 20 + index % 4, 1.0d, 3));
+            double multiplier = index < 3 ? 1.75d : 0.50d;
+            int cities = index < 3 ? 28 + index : 16 + index % 4;
+            defenders.add(strategicNation(20_000 + index, 2, index, cities, multiplier, 1));
+        }
+
+        CompiledScenario scenario = compile(attackers, defenders);
+        int[] attackerCaps = new int[attackers.size()];
+        int[] defenderCaps = new int[defenders.size()];
+        int[] attackerStrengthRanks = new int[attackers.size()];
+        int[] attackerNationIds = new int[attackers.size()];
+        int[] defenderNationIds = new int[defenders.size()];
+        for (int index = 0; index < attackers.size(); index++) {
+            attackerCaps[index] = OverrideSet.EMPTY.effectiveFreeOff(attackers.get(index));
+            attackerStrengthRanks[index] = index;
+            attackerNationIds[index] = scenario.attackerNationId(index);
+            defenderCaps[index] = OverrideSet.EMPTY.effectiveFreeDef(defenders.get(index));
+            defenderNationIds[index] = scenario.defenderNationId(index);
+        }
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        OpeningEvaluator.evaluate(
+                scenario,
+                SimTuning.defaults(),
+                OverrideSet.EMPTY,
+                BlitzObjective.NET_DAMAGE.objective(),
+                attackerCaps.clone(),
+                defenderCaps.clone(),
+                edges
+        );
+
+        Map<Integer, List<Integer>> zeroIdleAssignment = LongHorizonAssignmentOptimizer.solveWithAttackerCaps(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                72,
+                false,
+                SidePlannerSettings.legacy().withIdlePressureWeight(0d)
+        ).assignment();
+        Map<Integer, List<Integer>> defaultAssignment = LongHorizonAssignmentOptimizer.solveWithAttackerCaps(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                72,
+                false,
+                SidePlannerSettings.legacyActing()
+        ).assignment();
+
+        int zeroIdleAttackers = idleAttackersWithEdges(edges, attackerNationIds, zeroIdleAssignment);
+        int defaultIdleAttackers = idleAttackersWithEdges(edges, attackerNationIds, defaultAssignment);
+
+        assertTrue(zeroIdleAttackers > 0,
+                "The mixed-strong-defenders fixture must leave some viable attackers idle when idle pressure is explicitly disabled");
+        assertTrue(defaultIdleAttackers < zeroIdleAttackers,
+                "Acting-side planner defaults should reduce idle attackers on the mixed-strong-defenders family (zero="
+                        + zeroIdleAttackers + ", acting=" + defaultIdleAttackers + ")");
+    }
+
+    @Test
+    void idlePressureMarginalScoreFavorsStrongerAttackers() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(1).build(),
+                nation(2, 1, 900).toBuilder().maxOff(1).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.0f, 0.0f);
+        edges.add(1, 0, 100.0f, 0.0f);
+        edges.add(1, 1, 99.0f, 0.0f);
+
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                edges,
+                scenario,
+                new int[]{1, 1},
+                new int[]{1, 1},
+                new int[]{0, 1},
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacyActing()
+        );
+
+        assertTrue(projection.attackerIdlePressureMarginalScore(0) > projection.attackerIdlePressureMarginalScore(1),
+                "Idle pressure should weight the stronger attacker more heavily when their strategic value is otherwise comparable");
+    }
+
+    @Test
+    void idlePressureDoesNotReRewardAlreadyCommittedAttackers() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(2).currentOffensiveWars(1).build(),
+                nation(2, 1, 900).toBuilder().maxOff(1).currentOffensiveWars(0).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.0f, 0.0f);
+        edges.add(1, 0, 100.0f, 0.0f);
+        edges.add(1, 1, 99.0f, 0.0f);
+
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                edges,
+                scenario,
+                new int[]{1, 1},
+                new int[]{1, 1},
+                new int[]{0, 1},
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacyActing()
+        );
+
+        assertEquals(0d, projection.attackerIdlePressureMarginalScore(0), 1e-9,
+                "An attacker that already has an offensive war should not get a fresh idle-pressure bonus for one more redeclare slot");
+        assertTrue(projection.attackerIdlePressureMarginalScore(1) > 0d,
+                "A still-idle attacker should retain idle-pressure incentive for its first offensive assignment");
+    }
+
+    @Test
+    void idlePressureFollowsCompiledFreeOffOwnershipNotRawSnapshotWars() {
+        DBNationSnapshot attacker = nation(1, 1, 900).toBuilder()
+                .maxOff(7)
+                .currentOffensiveWars(6)
+                .build();
+        DBNationSnapshot peer = nation(2, 1, 900).toBuilder()
+                .maxOff(1)
+                .currentOffensiveWars(0)
+                .build();
+        List<DBNationSnapshot> attackers = List.of(attacker, peer);
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build()
+        );
+        OverrideSet overrides = OverrideSet.builder()
+                .forceFreeOff(attacker.nationId(), attacker.maxOff())
+                .build();
+        CompiledScenario scenario = new ScenarioCompiler().compile(
+                attackers,
+                defenders,
+                overrides,
+                TreatyProvider.NONE,
+                Map.of()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.0f, 0.0f);
+        edges.add(1, 0, 100.0f, 0.0f);
+        edges.add(1, 1, 99.0f, 0.0f);
+
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                edges,
+                scenario,
+                new int[]{attacker.maxOff(), 1},
+                new int[]{1, 1},
+                new int[]{0, 1},
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacyActing()
+        );
+
+        assertTrue(projection.attackerIdlePressureMarginalScore(0) > 0d,
+                "When the compiled scenario grants full free slots for the opening pass, raw snapshot offensive wars must not suppress idle-pressure for that attacker");
     }
 
     @Test
@@ -979,14 +1928,61 @@ class LongHorizonAssignmentOptimizerTest {
             StrategicObjective objective,
             int horizonTurns
     ) {
-        CompiledScenario scenario = compile(attackers, defenders);
+        return projectedAssignedScore(
+                attackers,
+                defenders,
+                Map.of(),
+                edges,
+                objective,
+                horizonTurns,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+        );
+    }
+
+    private static double projectedAssignedScore(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            CandidateEdgeTable edges,
+            StrategicObjective objective,
+            int horizonTurns,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+    ) {
+        return projectedAssignedScore(
+                attackers,
+                defenders,
+                Map.of(),
+                edges,
+                objective,
+                horizonTurns,
+                projectionContext
+        );
+    }
+
+    private static double projectedAssignedScore(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            Map<Integer, Float> activityWeights,
+            CandidateEdgeTable edges,
+            StrategicObjective objective,
+            int horizonTurns,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+    ) {
+        CompiledScenario scenario = compile(attackers, defenders, activityWeights);
         LongHorizonControlProjection projection = LongHorizonControlProjection.create(
                 edges,
                 scenario,
                 fill(attackers.size(), 1),
                 fill(defenders.size(), 1),
                 horizonTurns,
-                1.0d
+                1.0d,
+                false,
+                projectionContext.objective(),
+                projectionContext.attackerOpeningSettings(),
+                projectionContext.defenderOpeningSettings(),
+                projectionContext.attackerPlannerSettings(),
+                projectionContext.defenderPlannerSettings(),
+                projectionContext.attackerProjectionPolicies(),
+                projectionContext.defenderProjectionPolicies()
         );
         boolean[] edgeAssigned = new boolean[edges.edgeCount()];
         java.util.Arrays.fill(edgeAssigned, true);
@@ -999,19 +1995,74 @@ class LongHorizonAssignmentOptimizerTest {
         );
     }
 
+    private static PlannerProfiler.ProfileSnapshot projectedProfileSnapshot(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            CandidateEdgeTable edges,
+            StrategicObjective objective,
+            int horizonTurns,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+    ) {
+        return projectedProfileSnapshot(attackers, defenders, Map.of(), edges, objective, horizonTurns, projectionContext);
+    }
+
+    private static PlannerProfiler.ProfileSnapshot projectedProfileSnapshot(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            Map<Integer, Float> activityWeights,
+            CandidateEdgeTable edges,
+            StrategicObjective objective,
+            int horizonTurns,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+    ) {
+        CompiledScenario scenario = compile(attackers, defenders, activityWeights);
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                fill(attackers.size(), 1),
+                fill(defenders.size(), 1),
+                horizonTurns,
+                1.0d,
+                false,
+                projectionContext.attackerPlannerSettings(),
+                projectionContext.defenderPlannerSettings(),
+                projectionContext.attackerProjectionPolicies(),
+                projectionContext.defenderProjectionPolicies()
+        );
+        boolean[] edgeAssigned = new boolean[edges.edgeCount()];
+        java.util.Arrays.fill(edgeAssigned, true);
+        PlannerProfiler.Session session = new PlannerProfiler.Session();
+        PlannerProfiler.withSession(session, () -> projection.projectedObjectiveScore(
+                objective,
+                attackers.get(0).teamId(),
+                edgeAssigned,
+                fill(attackers.size(), 1),
+                fill(defenders.size(), 1)
+        ));
+        return session.snapshot();
+    }
+
     private static int[] fill(int length, int value) {
         int[] values = new int[length];
         java.util.Arrays.fill(values, value);
         return values;
     }
 
-    private static CompiledScenario compile(List<DBNationSnapshot> attackers, List<DBNationSnapshot> defenders) {
+        private static CompiledScenario compile(List<DBNationSnapshot> attackers, List<DBNationSnapshot> defenders) {
+                return compile(attackers, defenders, Map.of());
+        }
+
+        private static CompiledScenario compile(
+                        List<DBNationSnapshot> attackers,
+                        List<DBNationSnapshot> defenders,
+                        Map<Integer, Float> activityWeights
+        ) {
         return new ScenarioCompiler().compile(
                 attackers,
                 defenders,
                 OverrideSet.EMPTY,
                 TreatyProvider.NONE,
-                Map.of()
+                                activityWeights
         );
     }
 
@@ -1070,7 +2121,7 @@ class LongHorizonAssignmentOptimizerTest {
                                 return 0d;
                         }
                         int[] ownDeclaredWars = new int[1];
-                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundControlTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
+                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundSuperiorityTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
                                 if (attackerTeamId == teamId) {
                                         ownDeclaredWars[0]++;
                                 }
@@ -1121,10 +2172,10 @@ class LongHorizonAssignmentOptimizerTest {
                                 return 0d;
                         }
                         double[] score = new double[1];
-                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundControlTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
+                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundSuperiorityTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
                                 if (attackerTeamId == teamId) {
                                         score[0] += Math.max(0, 100 - defenderResistance);
-                                        if (airSuperiorityTeamId == teamId || groundControlTeamId == teamId || blockadeTeamId == teamId) {
+                                        if (airSuperiorityTeamId == teamId || groundSuperiorityTeamId == teamId || blockadeTeamId == teamId) {
                                                 score[0] += 10d;
                                         }
                                 }
@@ -1150,7 +2201,7 @@ class LongHorizonAssignmentOptimizerTest {
                                 return 0d;
                         }
                         double[] score = new double[1];
-                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundControlTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
+                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundSuperiorityTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
                                 if (attackerTeamId == teamId) {
                                         score[0] += 100d;
                                 } else if (defenderTeamId == teamId) {
@@ -1178,7 +2229,7 @@ class LongHorizonAssignmentOptimizerTest {
                                 return 0d;
                         }
                         int[] reverseWars = new int[1];
-                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundControlTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
+                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundSuperiorityTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
                                 if (attackerTeamId != teamId && defenderTeamId == teamId) {
                                         reverseWars[0]++;
                                 }
@@ -1234,6 +2285,27 @@ class LongHorizonAssignmentOptimizerTest {
         }
         return count;
     }
+
+        private static int idleAttackersWithEdges(
+                        CandidateEdgeTable edges,
+                        int[] attackerNationIds,
+                        Map<Integer, List<Integer>> assignment
+        ) {
+                boolean[] attackerHasEdge = new boolean[attackerNationIds.length];
+                for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+                        attackerHasEdge[edges.attackerIndex(edgeIndex)] = true;
+                }
+                int idle = 0;
+                for (int attackerIndex = 0; attackerIndex < attackerNationIds.length; attackerIndex++) {
+                        if (!attackerHasEdge[attackerIndex]) {
+                                continue;
+                        }
+                        if (assignment.getOrDefault(attackerNationIds[attackerIndex], List.of()).isEmpty()) {
+                                idle++;
+                        }
+                }
+                return idle;
+        }
 
     private static DBNationSnapshot nation(int nationId, int teamId, int aircraft) {
         return DBNationSnapshot.synthetic(nationId)

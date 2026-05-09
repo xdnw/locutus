@@ -17,7 +17,7 @@ public final class StrategicAssetValue {
     static final double INFRASTRUCTURE_STRATEGIC_WEIGHT = 0.015d;
     static final double DEFENSIVE_SLOT_DENIAL_VALUE_WEIGHT = 0.25d;
     static final double OFFENSIVE_SLOT_OPPORTUNITY_COST_WEIGHT = 0.04d;
-    static final int DEFAULT_STARTING_MAPS = 12;
+    static final int DEFAULT_STARTING_MAPS = SimWar.INITIAL_MAPS;
     private static final UnitReader ZERO_READER = unit -> 0;
 
     private StrategicAssetValue() {
@@ -38,6 +38,39 @@ public final class StrategicAssetValue {
         double value = 0d;
         for (MilitaryUnit unit : SimUnits.PURCHASABLE_UNITS) {
             value += unitValue(unit, units.units(unit), researchBits);
+        }
+        return value;
+    }
+
+    public static double replacementMilitaryValue(UnitReader units, UnitReader pendingBuys, int researchBits) {
+        if (units == null) {
+            return 0d;
+        }
+        UnitReader effectivePendingBuys = pendingBuys == null ? ZERO_READER : pendingBuys;
+        double value = 0d;
+        for (MilitaryUnit unit : SimUnits.PURCHASABLE_UNITS) {
+            int holdings = Math.max(0, units.units(unit)) + Math.max(0, effectivePendingBuys.units(unit));
+            if (holdings > 0) {
+                value += unitValue(unit, holdings, researchBits);
+            }
+        }
+        return value;
+    }
+
+    public static double replacementMilitaryValue(UnitReader units, int researchBits) {
+        return replacementMilitaryValue(units, ZERO_READER, researchBits);
+    }
+
+    public static double replacementLossValue(UnitReader losses, int researchBits) {
+        if (losses == null) {
+            return 0d;
+        }
+        double value = 0d;
+        for (MilitaryUnit unit : SimUnits.PURCHASABLE_UNITS) {
+            int amount = Math.max(0, losses.units(unit));
+            if (amount > 0) {
+                value += unitValue(unit, amount, researchBits);
+            }
         }
         return value;
     }
@@ -256,11 +289,16 @@ public final class StrategicAssetValue {
         return infrastructureValue(index -> cityInfra[index], cityInfra.length, activeWarContext, relevance);
     }
 
-    public static double infrastructureValue(
+    public static double replacementInfrastructureValue(double[] cityInfra) {
+        if (cityInfra == null || cityInfra.length == 0) {
+            return 0d;
+        }
+        return replacementInfrastructureValue(index -> cityInfra[index], cityInfra.length);
+    }
+
+    public static double replacementInfrastructureValue(
             CityInfraReader cityInfra,
-            int cityCount,
-            ActiveWarContext activeWarContext,
-            StrategicRelevance relevance
+            int cityCount
     ) {
         if (cityInfra == null || cityCount <= 0) {
             return 0d;
@@ -272,6 +310,16 @@ public final class StrategicAssetValue {
                 replacementValue += PW.City.Infra.calculateInfra(0d, infra);
             }
         }
+        return replacementValue / CONVERTED_VALUE_SCALE;
+    }
+
+    public static double infrastructureValue(
+            CityInfraReader cityInfra,
+            int cityCount,
+            ActiveWarContext activeWarContext,
+            StrategicRelevance relevance
+    ) {
+        double replacementValue = replacementInfrastructureValue(cityInfra, cityCount) * CONVERTED_VALUE_SCALE;
         if (!(replacementValue > 0d)) {
             return 0d;
         }
@@ -340,8 +388,7 @@ public final class StrategicAssetValue {
             int ownResistance,
             int enemyResistance,
             int ownControls,
-            int enemyControls,
-            double strategicValueEdge
+            int enemyControls
     ) {
         return controlRegimeScore(
                 DEFAULT_STARTING_MAPS,
@@ -349,8 +396,7 @@ public final class StrategicAssetValue {
                 ownResistance,
                 enemyResistance,
                 ownControls,
-                enemyControls,
-                strategicValueEdge
+            enemyControls
         );
     }
 
@@ -360,8 +406,7 @@ public final class StrategicAssetValue {
             int ownResistance,
             int enemyResistance,
             int ownControls,
-            int enemyControls,
-            double strategicValueEdge
+            int enemyControls
     ) {
         ActiveWarContext context = ActiveWarContext.fromRelativeWarState(
                 1,
@@ -374,12 +419,20 @@ public final class StrategicAssetValue {
                 enemyControls
         );
         double controlBalance = Math.max(0, ownControls) - Math.max(0, enemyControls);
-        double resistanceBalance = (Math.max(0, ownResistance) - Math.max(0, enemyResistance)) / 40.0d;
         double tenability = durableControlMultiplier(context);
-        double edgeMultiplier = 0.35d + (0.65d * tenability);
+        double timingWindowBalance = StrategicTimingValue.victoryTimingWindowValue(
+            ownResistance,
+            enemyResistance,
+            ownControls,
+            enemyControls
+        ) - StrategicTimingValue.victoryTimingWindowValue(
+            enemyResistance,
+            ownResistance,
+            enemyControls,
+            ownControls
+        );
         double warSignal = (2.5d * controlBalance * tenability)
-                + (2.0d * resistanceBalance)
-                + (4.0d * clampSigned(strategicValueEdge) * edgeMultiplier);
+            + (2.0d * timingWindowBalance * tenability);
         return Math.max(-18.0d, Math.min(18.0d, warSignal));
     }
 
@@ -460,6 +513,10 @@ public final class StrategicAssetValue {
 
     private static int remainingRecoveryCapacity(MilitaryUnit unit, UnitReader unitsBoughtToday, UnitReader dailyBuyCaps) {
         return Math.max(0, dailyBuyCaps.units(unit) - unitsBoughtToday.units(unit));
+    }
+
+    public static double strategicRelevanceMultiplier(StrategicRelevance relevance) {
+        return Math.max(0.72d, Math.min(1.28d, 1d + contextualRelevanceAdjustment(relevance)));
     }
 
     private static double contextualRelevanceAdjustment(StrategicRelevance relevance) {
@@ -574,8 +631,7 @@ public final class StrategicAssetValue {
     }
 
     private static double infrastructureRelevanceMultiplier(StrategicRelevance relevance) {
-        double adjustment = contextualRelevanceAdjustment(relevance);
-        return Math.max(0.45d, Math.min(1.25d, 1d + adjustment));
+        return Math.max(0.45d, Math.min(1.25d, strategicRelevanceMultiplier(relevance)));
     }
 
     private static double normalizedDifference(double own, double enemy, double floor) {

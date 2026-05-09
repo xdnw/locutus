@@ -82,7 +82,7 @@ class ActorAndObjectiveIntegrationTest {
         world.requireNation(2).setUnitCount(MilitaryUnit.AIRCRAFT, 60);
         world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 400);
         world.requireNation(2).setUnitCount(MilitaryUnit.TANK, 120);
-        world.applyControlFlagChanges(1002, 1, 0, 1, 0);
+        world.applySuperiorityFlagChanges(1002, 1, 0, 1, 0);
 
         RuleBasedActor actor = new RuleBasedActor();
         actor.addPrimitive(new AirControlBuild());

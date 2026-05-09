@@ -67,57 +67,67 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum.*;
 import static link.locutus.discord.util.MathMan.orElse;
 
-public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance {
+public abstract class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance {
     private final int allianceId;
     private String name;
     private String acronym;
     private String flag;
-    private String forum_link;
-    private String discord_link;
-    private String wiki_link;
     private long dateCreated;
     private NationColor color;
-    private volatile long lastUpdated = 0;
-    private OffshoreInstance bank;
-    private LootEntry lootEntry;
-    private boolean cachedLootEntry;
-    private Int2ObjectOpenHashMap<byte[]> metaCache = null;
-    private int treasureCount = -1;
 
-    public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
+    protected DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
+        this.name = "";
         this.acronym = "";
         this.flag = "";
-        this.forum_link = "";
-        this.discord_link = "";
-        this.wiki_link = "";
+        this.dateCreated = 0L;
+        this.color = NationColor.GRAY;
         set(alliance, null);
     }
 
-    public DBAlliance(DBAlliance other) {
-        this(other.allianceId,
-                other.name,
-                other.acronym,
-                other.flag,
-                other.forum_link,
-                other.discord_link,
-                other.wiki_link,
-                other.dateCreated,
-                other.color,
-                other.metaCache);
+    protected DBAlliance(DBAlliance other) {
+        this(other.allianceId, other.name, other.acronym, other.flag, other.dateCreated, other.color);
+    }
+
+    protected DBAlliance copyForChangeTracking() {
+        throw new UnsupportedOperationException("Alliance change tracking is only supported for live alliances.");
+    }
+
+    protected void markAllianceUpdated(long timestamp) {
+    }
+
+    protected void applyForumLink(String forumLink) {
+    }
+
+    protected void applyDiscordLink(String discordLink) {
+    }
+
+    protected void applyWikiLink(String wikiLink) {
+    }
+
+    public Long getSnapshotDate() {
+        return null;
+    }
+
+    protected long resolveEndMillis(Long end) {
+        Long snapshotDate = getSnapshotDate();
+        if (snapshotDate == null) {
+            return end == null ? System.currentTimeMillis() : end;
+        }
+        if (end == null) {
+            return snapshotDate;
+        }
+        return Math.min(end, snapshotDate);
     }
 
     @Command(desc = "Number of treasures in the alliance")
     public int getNumTreasures() {
         if (allianceId == 0)
             return 0;
-        if (treasureCount >= 0)
-            return treasureCount;
-        return treasureCount = Locutus.imp().getNationDB().countTreasures(allianceId);
+        return Locutus.imp().getNationDB().countTreasures(allianceId);
     }
 
     public void markTreasuresDirty() {
-        this.treasureCount = -1;
     }
 
     @Command(desc = "Treasure bonus (decimal percent between 0-1)")
@@ -144,12 +154,15 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                     Set<Integer> aaIds = new IntOpenHashSet(f.size());
                     for (DBAlliance alliance : f)
                         aaIds.add(alliance.allianceId);
-                    Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = db.getAllianceMetrics(aaIds,
+                    Map<Integer, Map<AllianceMetric, Map<Long, Double>>> metrics = db.getAllianceMetrics(aaIds,
                             metric, turn);
                     Map<DBAlliance, Double> result = new Object2ObjectOpenHashMap<>();
-                    for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metrics.entrySet()) {
-                        DBAlliance aa = entry.getKey();
-                        for (Map.Entry<AllianceMetric, Map<Long, Double>> entry2 : entry.getValue().entrySet()) {
+                    for (DBAlliance aa : f) {
+                        Map<AllianceMetric, Map<Long, Double>> metricMap = metrics.get(aa.getAlliance_id());
+                        if (metricMap == null) {
+                            continue;
+                        }
+                        for (Map.Entry<AllianceMetric, Map<Long, Double>> entry2 : metricMap.entrySet()) {
                             entry2.getValue().forEach((k, v) -> {
                                 result.put(aa, v);
                             });
@@ -170,7 +183,16 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                     Set<Integer> aaIds = new IntOpenHashSet(f.size());
                     for (DBAlliance alliance : f)
                         aaIds.add(alliance.allianceId);
-                    return Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metrics, turnStart, turnEnd);
+                    Map<Integer, Map<AllianceMetric, Map<Long, Double>>> byAllianceId = Locutus.imp().getNationDB()
+                            .getAllianceMetrics(aaIds, metrics, turnStart, turnEnd);
+                    Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> byAlliance = new Object2ObjectOpenHashMap<>();
+                    for (DBAlliance alliance : f) {
+                        Map<AllianceMetric, Map<Long, Double>> metricMap = byAllianceId.get(alliance.getAlliance_id());
+                        if (metricMap != null) {
+                            byAlliance.put(alliance, metricMap);
+                        }
+                    }
+                    return byAlliance;
                 });
         return result == null ? Collections.emptyMap() : result;
     }
@@ -196,19 +218,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public void setLoot(LootEntry lootEntry) {
-        this.lootEntry = lootEntry;
-        cachedLootEntry = true;
+        throw new UnsupportedOperationException("Alliance loot cache mutation is only supported for live alliances.");
     }
 
     public LootEntry getLoot() {
-        if (cachedLootEntry) {
-            return lootEntry;
-        }
-        if (lootEntry == null) {
-            lootEntry = Locutus.imp().getNationDB().getAllianceLoot(allianceId);
-            cachedLootEntry = true;
-        }
-        return lootEntry;
+        return Locutus.imp().getNationDB().getAllianceLoot(allianceId);
     }
 
     @Command(desc = "Loot value for a specific score")
@@ -292,17 +306,17 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command
     public String getForum_link() {
-        return forum_link;
+        return "";
     }
 
     @Command
     public String getDiscord_link() {
-        return discord_link;
+        return "";
     }
 
     @Command
     public String getWiki_link() {
-        return wiki_link;
+        return "";
     }
 
     @Command
@@ -316,11 +330,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public long getLastUpdated() {
-        return lastUpdated;
+        return 0L;
     }
 
     public boolean set(com.politicsandwar.graphql.model.Alliance alliance, Consumer<Event> eventConsumer) {
-        lastUpdated = System.currentTimeMillis();
+        markAllianceUpdated(System.currentTimeMillis());
 
         boolean dirty = false;
 
@@ -333,7 +347,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (alliance.getName() != null && !alliance.getName().equals(name)) {
             dirty = true;
             if (copy == null && eventConsumer != null)
-                copy = new DBAlliance(this);
+                copy = copyForChangeTracking();
             this.name = alliance.getName();
             if (eventConsumer != null)
                 eventConsumer.accept(new AllianceChangeNameEvent(copy, this));
@@ -341,7 +355,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (alliance.getAcronym() != null && !alliance.getAcronym().equals(acronym)) {
             dirty = true;
             if (copy == null && eventConsumer != null)
-                copy = new DBAlliance(this);
+                copy = copyForChangeTracking();
             this.acronym = alliance.getAcronym();
             if (eventConsumer != null)
                 eventConsumer.accept(new AllianceChangeAcronymEvent(copy, this));
@@ -351,7 +365,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             if (newColor != this.color) {
                 dirty = true;
                 if (copy == null && eventConsumer != null)
-                    copy = new DBAlliance(this);
+                    copy = copyForChangeTracking();
                 this.color = newColor;
                 if (eventConsumer != null)
                     eventConsumer.accept(new AllianceChangeColorEvent(copy, this));
@@ -360,32 +374,35 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (alliance.getFlag() != null && !alliance.getFlag().equals(flag)) {
             dirty = true;
             if (copy == null && eventConsumer != null)
-                copy = new DBAlliance(this);
+                copy = copyForChangeTracking();
             this.flag = alliance.getFlag();
             if (eventConsumer != null)
                 eventConsumer.accept(new AllianceChangeFlagEvent(copy, this));
         }
-        if (alliance.getForum_link() != null && !alliance.getForum_link().equals(forum_link)) {
+        String forumLink = getForum_link();
+        if (alliance.getForum_link() != null && !alliance.getForum_link().equals(forumLink)) {
             dirty = true;
             if (copy == null && eventConsumer != null)
-                copy = new DBAlliance(this);
-            this.forum_link = alliance.getForum_link();
+                copy = copyForChangeTracking();
+            applyForumLink(alliance.getForum_link());
             if (eventConsumer != null)
                 eventConsumer.accept(new AllianceChangeForumLinkEvent(copy, this));
         }
-        if (alliance.getDiscord_link() != null && !alliance.getDiscord_link().equals(discord_link)) {
+        String discordLink = getDiscord_link();
+        if (alliance.getDiscord_link() != null && !alliance.getDiscord_link().equals(discordLink)) {
             dirty = true;
             if (copy == null && eventConsumer != null)
-                copy = new DBAlliance(this);
-            this.discord_link = alliance.getDiscord_link();
+                copy = copyForChangeTracking();
+            applyDiscordLink(alliance.getDiscord_link());
             if (eventConsumer != null)
                 eventConsumer.accept(new AllianceChangeDiscordLinkEvent(copy, this));
         }
-        if (alliance.getWiki_link() != null && !alliance.getWiki_link().equals(wiki_link)) {
+        String wikiLink = getWiki_link();
+        if (alliance.getWiki_link() != null && !alliance.getWiki_link().equals(wikiLink)) {
             dirty = true;
             if (copy == null && eventConsumer != null)
-                copy = new DBAlliance(this);
-            this.wiki_link = alliance.getWiki_link();
+                copy = copyForChangeTracking();
+            applyWikiLink(alliance.getWiki_link());
             if (eventConsumer != null)
                 eventConsumer.accept(new AllianceChangeWikiLinkEvent(copy, this));
         }
@@ -436,27 +453,30 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     public static DBAlliance getOrCreate(int aaId) {
         if (aaId == 0)
-            return new DBAlliance(0, "None", "", "", "", "", "", 0, NationColor.GRAY, null);
+            return new LiveDBAlliance(0, "None", "", "", "", "", "", 0, NationColor.GRAY, null);
         return Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
     }
 
-    public DBAlliance(int allianceId, String name, String acronym, String flag, String forum_link, String discord_link,
-            String wiki_link, long dateCreated, NationColor color, Int2ObjectOpenHashMap<byte[]> metaCache) {
+    protected DBAlliance(int allianceId, String name, String acronym, String flag, long dateCreated, NationColor color) {
         this.allianceId = allianceId;
         this.dateCreated = dateCreated;
         this.name = name;
         this.acronym = acronym;
         this.color = color;
         this.flag = flag;
-        this.forum_link = forum_link;
-        this.discord_link = discord_link;
-        this.wiki_link = wiki_link;
-        this.metaCache = metaCache;
     }
 
     @Command(desc = "Number of offensive and defensive wars since date")
     public int getNumWarsSince(long date) {
-        return Locutus.imp().getWarDb().countWarsByAlliance(allianceId, date);
+        Long snapshotDate = getSnapshotDate();
+        if (snapshotDate == null) {
+            return Locutus.imp().getWarDb().countWarsByAlliance(allianceId, date);
+        }
+        long startDate = date <= 0 ? Long.MIN_VALUE : date;
+        if (startDate > snapshotDate) {
+            return 0;
+        }
+        return Locutus.imp().getWarDb().countWarsByAlliance(allianceId, startDate, snapshotDate);
     }
 
     @Command
@@ -588,16 +608,19 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         body = body.append(" | `#").append(Integer.toString(getRank())).append("`\n");
 
         String prefix = "";
-        if (discord_link != null && !discord_link.isEmpty()) {
-            body = body.append(MarkupUtil.markdownUrl("Discord", discord_link));
+        String discordLinkBody = getDiscord_link();
+        if (discordLinkBody != null && !discordLinkBody.isEmpty()) {
+            body = body.append(MarkupUtil.markdownUrl("Discord", discordLinkBody));
             prefix = " | ";
         }
-        if (wiki_link != null && !wiki_link.isEmpty()) {
-            body = body.append(prefix).append(MarkupUtil.markdownUrl("Wiki", wiki_link));
+        String wikiLinkBody = getWiki_link();
+        if (wikiLinkBody != null && !wikiLinkBody.isEmpty()) {
+            body = body.append(prefix).append(MarkupUtil.markdownUrl("Wiki", wikiLinkBody));
             prefix = " | ";
         }
-        if (forum_link != null && !forum_link.isEmpty()) {
-            body = body.append(prefix).append(MarkupUtil.markdownUrl("Forum", forum_link));
+        String forumLinkBody = getForum_link();
+        if (forumLinkBody != null && !forumLinkBody.isEmpty()) {
+            body = body.append(prefix).append(MarkupUtil.markdownUrl("Forum", forumLinkBody));
             prefix = " | ";
         }
         {
@@ -1012,7 +1035,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command
     public double getScore(@NoFormat @Default NationFilter filter) {
         if (filter != null) {
-            return new SimpleNationList(getNations(filter.toCached(Long.MAX_VALUE))).getScore();
+            long filterDate = getSnapshotDate() == null ? Long.MAX_VALUE : getSnapshotDate();
+            return new SimpleNationList(getNations(filter.toCached(filterDate))).getScore();
         }
         long nationSnapshotVersion = Locutus.imp().getNationDB().getNationSnapshotVersion();
         if (scoreCached == -1 || scoreCachedNationSnapshotVersion != nationSnapshotVersion) {
@@ -1070,14 +1094,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (o == null || getClass() != o.getClass()) {
+        if (!(o instanceof DBAlliance alliance)) {
             if (o instanceof Number) {
                 return ((Number) o).intValue() == allianceId;
             }
             return false;
         }
-
-        DBAlliance alliance = (DBAlliance) o;
 
         return allianceId == alliance.allianceId;
     }
@@ -1126,15 +1148,29 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public List<AllianceChange> getRankChanges() {
-        return Locutus.imp().getNationDB().getRankChangesByAA(allianceId);
+        Long snapshotDate = getSnapshotDate();
+        if (snapshotDate == null) {
+            return Locutus.imp().getNationDB().getRankChangesByAA(allianceId);
+        }
+        return Locutus.imp().getNationDB().getRankChangesByAA(allianceId, Long.MIN_VALUE, snapshotDate);
     }
 
     public List<AllianceChange> getRankChanges(long timeStart) {
-        return Locutus.imp().getNationDB().getRankChangesByAA(allianceId, timeStart);
+        Long snapshotDate = getSnapshotDate();
+        if (snapshotDate == null) {
+            return Locutus.imp().getNationDB().getRankChangesByAA(allianceId, timeStart);
+        }
+        return Locutus.imp().getNationDB().getRankChangesByAA(allianceId, timeStart <= 0 ? Long.MIN_VALUE : timeStart,
+                snapshotDate);
     }
 
     public List<AllianceChange> getDepartures(long timeStart) {
-        return Locutus.imp().getNationDB().getDeparturesAA(allianceId, timeStart);
+        Long snapshotDate = getSnapshotDate();
+        if (snapshotDate == null) {
+            return Locutus.imp().getNationDB().getDeparturesAA(allianceId, timeStart);
+        }
+        return Locutus.imp().getNationDB().getDeparturesAA(allianceId, timeStart <= 0 ? Long.MIN_VALUE : timeStart,
+                snapshotDate);
     }
 
     public Set<DBWar> getActiveWars() {
@@ -1142,25 +1178,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public void deleteMeta(AllianceMeta key) {
-        if (metaCache != null && metaCache.remove(key.ordinal()) != null) {
-            Locutus.imp().getNationDB().deleteMeta(-allianceId, key.ordinal());
-        }
+        throw new UnsupportedOperationException("Alliance meta persistence is only supported for live alliances.");
     }
 
     public boolean setMetaRaw(int id, byte[] value) {
-        if (metaCache == null) {
-            synchronized (this) {
-                if (metaCache == null) {
-                    metaCache = new Int2ObjectOpenHashMap<>();
-                }
-            }
-        }
-        byte[] existing = metaCache.isEmpty() ? null : metaCache.get(id);
-        if (existing == null || !Arrays.equals(existing, value)) {
-            metaCache.put(id, value);
-            return true;
-        }
-        return false;
+        throw new UnsupportedOperationException("Alliance meta persistence is only supported for live alliances.");
     }
 
     public void setMeta(AllianceMeta key, byte... value) {
@@ -1170,11 +1192,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public ByteBuffer getMeta(AllianceMeta key) {
-        if (metaCache == null) {
-            return null;
-        }
-        byte[] result = metaCache.get(key.ordinal());
-        return result == null ? null : ByteBuffer.wrap(result);
+        throw new UnsupportedOperationException("Alliance meta persistence is only supported for live alliances.");
     }
 
     public void setMeta(AllianceMeta key, byte value) {
@@ -1681,14 +1699,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public OffshoreInstance getBank() {
-        if (bank == null) {
-            synchronized (this) {
-                if (bank == null) {
-                    bank = new OffshoreInstance(allianceId);
-                }
-            }
-        }
-        return bank;
+        throw new UnsupportedOperationException("Alliance bank access is only supported for live alliances.");
     }
 
     public int updateTaxesLegacy(Long latestDate) {
@@ -1706,12 +1717,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
         long now = System.currentTimeMillis();
         if (!existing.isEmpty()) {
-
             long date = existing.get(existing.size() - 1).date;
             if (date < now) {
                 latestDate = Math.max(latestDate, date);
             }
-            latestId = existing.get(existing.size() - 1).index;
         }
 
         List<TaxDeposit> taxes = new GetTaxesTask(auth, latestDate).call();
@@ -1856,12 +1865,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command
     public Map<String, Object> getMetricsGraph(Set<AllianceMetric> metrics, @Default @Timestamp Long start,
             @Default @Timestamp Long end) {
-        if (end == null)
-            end = System.currentTimeMillis();
-        if (start == null)
-            start = end - TimeUnit.DAYS.toMillis(7);
-        long startTurn = TimeUtil.getTurn(start);
-        long endTurn = TimeUtil.getTurn(end);
+        long effectiveEnd = resolveEndMillis(end);
+        long effectiveStart = start == null ? effectiveEnd - TimeUnit.DAYS.toMillis(7) : start;
+        long startTurn = TimeUtil.getTurn(effectiveStart);
+        long endTurn = TimeUtil.getTurn(effectiveEnd);
         CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, this.getName(),
                 Collections.singleton(this));
         WebGraph toSerialize = table.toHtmlJson();
@@ -1971,7 +1978,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public GrowthSummary.AllianceGrowthSummary getGrowthSummary(ValueStore store, @Timestamp long start,
             @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         long dayStart = TimeUtil.getDay(start);
-        long dayEnd = end == null ? TimeUtil.getDay() : TimeUtil.getDay(end);
+        long dayEnd = TimeUtil.getDay(resolveEndMillis(end));
         int nationFilterKey = nations == null ? 0 : nations.hashCode();
         ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class,
                 getGrowthSummary.of(dayStart, dayEnd, nationFilterKey));
@@ -2017,25 +2024,23 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command(desc = "Net change in an asset count between start and end snapshots")
     public int getNetAsset(ValueStore store, GrowthAsset asset, @Timestamp long start, @Timestamp @Default Long end) {
-        if (end == null)
-            end = System.currentTimeMillis();
+        long effectiveEnd = resolveEndMillis(end);
         int startVal = (int) getMetricAt(store, asset.count, start);
-        int endVal = (int) getMetricAt(store, asset.count, end);
+        int endVal = (int) getMetricAt(store, asset.count, effectiveEnd);
         return endVal - startVal;
     }
 
     @Command(desc = "How much the market value of selected assets types changed between the start and end of the period for the alliance")
     public double getNetAssetValue(ValueStore store, Set<GrowthAsset> asset, @Timestamp long start,
             @Timestamp @Default Long end) {
-        if (end == null)
-            end = System.currentTimeMillis();
+        long effectiveEnd = resolveEndMillis(end);
         double startVal = 0;
         for (GrowthAsset a : asset) {
             startVal += getMetricAt(store, a.value, start);
         }
         double endVal = 0;
         for (GrowthAsset a : asset) {
-            endVal += getMetricAt(store, a.value, end);
+            endVal += getMetricAt(store, a.value, effectiveEnd);
         }
         return endVal - startVal;
     }
@@ -2171,7 +2176,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public Map<ResourceType, Double> getCumulativeRevenue(ValueStore store, @Timestamp long start,
             @Timestamp @Default Long end) {
         long turnStart = TimeUtil.getTurn(start);
-        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
+        long turnEnd = TimeUtil.getTurn(resolveEndMillis(end));
         if (turnEnd - turnStart > 365 * 12) {
             throw new IllegalArgumentException("Cannot calculate cumulative revenue over more than 365 days");
         }

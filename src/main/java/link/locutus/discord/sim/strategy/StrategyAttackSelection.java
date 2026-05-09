@@ -7,9 +7,11 @@ import link.locutus.discord.sim.SimNation;
 import link.locutus.discord.sim.SimSide;
 import link.locutus.discord.sim.SimWar;
 import link.locutus.discord.sim.SimWorld;
+import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.AttackOutcome;
 import link.locutus.discord.sim.combat.LiveAttackContext;
+import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.ResolutionMode;
 
 import java.util.ArrayList;
@@ -53,11 +55,14 @@ final class StrategyAttackSelection {
 
         SimNation defender = world.requireNation(war.defenderNationId());
         LiveAttackContext attackContext = new LiveAttackContext().bind(self, defender, war, SimSide.ATTACKER);
+        AttackScratch scratch = new AttackScratch();
+        MutableAttackResult result = new MutableAttackResult();
 
         AttackChoice best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
         for (AttackType attackType : candidateAttackTypes(self)) {
-            AttackOutcome outcome = CombatKernel.resolve(attackContext, attackType, ResolutionMode.DETERMINISTIC_EV);
+            CombatKernel.resolveInto(attackContext, attackType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
+            AttackOutcome outcome = result.toAttackOutcome();
             AttackChoice candidate = new AttackChoice(attackType, outcome, familyFor(attackType), Double.NEGATIVE_INFINITY);
             double score = scorer.score(world, self, war, ctx, candidate);
             if (score > bestScore) {

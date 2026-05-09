@@ -28,6 +28,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.LiveDBAlliance;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
@@ -960,7 +961,7 @@ public final class CommandRuntimeMigrationAudit {
         }
 
         private static DBAlliance alliance(int id, String name) {
-            return new DBAlliance(id, name, "", "", "", "", "", 0L, NationColor.GRAY,
+            return new LiveDBAlliance(id, name, "", "", "", "", "", 0L, NationColor.GRAY,
                     (Int2ObjectOpenHashMap<byte[]>) null);
         }
     }

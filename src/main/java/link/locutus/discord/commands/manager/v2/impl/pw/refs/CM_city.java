@@ -135,6 +135,11 @@ public class CM_city {
             public static final getRequiredInfra cmd = new getRequiredInfra();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.apiv1.enums.city.ICity.class,method="getRequiredInfraWithoutMilitaryAndPower")
+        public static class getRequiredInfraWithoutMilitaryAndPower extends CommandRef {
+            public static final getRequiredInfraWithoutMilitaryAndPower cmd = new getRequiredInfraWithoutMilitaryAndPower();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders.class,method="getResource")
         public static class getResource extends CommandRef {
             public static final getResource cmd = new getResource();
@@ -173,6 +178,14 @@ public class CM_city {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBCity.class,method="getUrl")
         public static class getUrl extends CommandRef {
             public static final getUrl cmd = new getUrl();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.apiv1.enums.city.ICity.class,method="toJson")
+        public static class toJson extends CommandRef {
+            public static final toJson cmd = new toJson();
+        public toJson pretty(String value) {
+            return set("pretty", value);
+        }
 
         }
 

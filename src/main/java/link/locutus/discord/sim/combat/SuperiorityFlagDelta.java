@@ -1,7 +1,7 @@
 package link.locutus.discord.sim.combat;
 
 /**
- * Transitions in {@code {groundControl, airSuperiority, blockade}} ownership produced by a
+ * Transitions in {@code {groundSuperiority, airSuperiority, blockade}} ownership produced by a
  * single attack resolution from the current attacker's perspective.
  *
  * <p>Owner fields encode the post-attack owner side:
@@ -9,43 +9,43 @@ package link.locutus.discord.sim.combat;
  * Clear flags express successful strip-to-none behavior for defender-held control in the current war.
  * Acquisition takes precedence over a matching clear when both are present.</p>
  */
-public record ControlFlagDelta(
-        int groundControl,
+public record SuperiorityFlagDelta(
+        int groundSuperiority,
         int airSuperiority,
         int blockade,
-        boolean clearGroundControl,
+        boolean clearGroundSuperiority,
         boolean clearAirSuperiority,
         boolean clearBlockade
 ) {
-    public static final ControlFlagDelta NONE = new ControlFlagDelta(0, 0, 0, false, false, false);
+    public static final SuperiorityFlagDelta NONE = new SuperiorityFlagDelta(0, 0, 0, false, false, false);
 
-    public ControlFlagDelta {
-        validateDelta(groundControl, "groundControl");
+    public SuperiorityFlagDelta {
+        validateDelta(groundSuperiority, "groundSuperiority");
         validateDelta(airSuperiority, "airSuperiority");
         validateDelta(blockade, "blockade");
     }
 
-    public static ControlFlagDelta of(
-            int groundControl,
+    public static SuperiorityFlagDelta of(
+            int groundSuperiority,
             int airSuperiority,
             int blockade,
-            boolean clearGroundControl,
+            boolean clearGroundSuperiority,
             boolean clearAirSuperiority,
             boolean clearBlockade
     ) {
-        if (groundControl == 0
+        if (groundSuperiority == 0
                 && airSuperiority == 0
                 && blockade == 0
-                && !clearGroundControl
+                && !clearGroundSuperiority
                 && !clearAirSuperiority
                 && !clearBlockade) {
             return NONE;
         }
-        return new ControlFlagDelta(
-                groundControl,
+        return new SuperiorityFlagDelta(
+                groundSuperiority,
                 airSuperiority,
                 blockade,
-                clearGroundControl,
+                clearGroundSuperiority,
                 clearAirSuperiority,
                 clearBlockade
         );

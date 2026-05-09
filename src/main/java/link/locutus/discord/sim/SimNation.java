@@ -525,9 +525,8 @@ public final class SimNation implements CombatantView {
         setNonInfraScoreBase(scoreBase);
     }
 
-    // Applies infra damage to the highest-infra city first, then spills into the next-highest, etc.
-    // This matches PnW semantics: each attack targets the city with maximum infra (the formula caps on
-    // defender.maxCityInfra()), so the max city takes the hit rather than spreading evenly.
+    // Applies infra damage to the highest-infra city only.
+    // Attack infra damage does not spill into additional cities; excess damage is clipped at 0 for that city.
     // Recomputes score. No-op if this nation has no cities or damage <= 0.
     public void applyInfraDamage(double totalInfraDestroyed) {
         int cityOffset = storage.cityInfraOffsets[nationIndex];
@@ -535,19 +534,16 @@ public final class SimNation implements CombatantView {
         if (totalInfraDestroyed <= 0d || cityCount == 0) {
             return;
         }
-        double remaining = totalInfraDestroyed;
-        while (remaining > 0d) {
-            // Find highest-infra city index
-            int maxIdx = 0;
-            for (int i = 1; i < cityCount; i++) {
-                if (storage.cityInfraFlat[cityOffset + i] > storage.cityInfraFlat[cityOffset + maxIdx]) maxIdx = i;
-            }
-            double currentInfra = storage.cityInfraFlat[cityOffset + maxIdx];
-            if (currentInfra <= 0d) break; // all cities at 0
-            double removed = Math.min(remaining, currentInfra);
-            storage.cityInfraFlat[cityOffset + maxIdx] = currentInfra - removed;
-            remaining -= removed;
+        int maxIdx = 0;
+        for (int i = 1; i < cityCount; i++) {
+            if (storage.cityInfraFlat[cityOffset + i] > storage.cityInfraFlat[cityOffset + maxIdx]) maxIdx = i;
         }
+        double currentInfra = storage.cityInfraFlat[cityOffset + maxIdx];
+        if (currentInfra <= 0d) {
+            return;
+        }
+        double removed = Math.min(totalInfraDestroyed, currentInfra);
+        storage.cityInfraFlat[cityOffset + maxIdx] = currentInfra - removed;
         recalculateScoreAndNotify();
     }
 

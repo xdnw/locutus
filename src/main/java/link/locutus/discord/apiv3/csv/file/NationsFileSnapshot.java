@@ -9,6 +9,10 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.db.AllianceLookup;
+import link.locutus.discord.db.entities.AllianceSnapshotContext;
+import link.locutus.discord.db.entities.DataDumpDBAlliance;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
@@ -28,11 +32,12 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-public class NationsFileSnapshot implements INationSnapshot {
+public class NationsFileSnapshot implements INationSnapshot, AllianceLookup {
     private final Map<Integer, DBNationSnapshot> nations;
     private final long day;
     private final DataDumpParser dumper;
     private final boolean loadCities;
+    private final AllianceSnapshotContext allianceContext;
     private volatile Map<Integer, Set<DBNation>> allianceIndex;
     private volatile Map<String, DBNation> leaderIndex;
     private volatile Map<String, DBNation> nameIndex;
@@ -41,8 +46,28 @@ public class NationsFileSnapshot implements INationSnapshot {
         this.day = day;
         this.dumper = dumper;
         this.loadCities = loadCities;
-        // Snapshot instances may apply VM overlays; keep per-instance state isolated.
-        this.nations = new Int2ObjectOpenHashMap<>(dumper.getNations(day, loadCities));
+        this.nations = new Int2ObjectOpenHashMap<>();
+        this.allianceContext = new AllianceSnapshotContext(TimeUtil.getTimeFromDay(day),
+                () -> {
+                    try {
+                        return dumper.getAlliances(day);
+                    } catch (IOException | ParseException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                () -> nations.values());
+
+        Map<Integer, DBNationSnapshot> loadedNations = dumper.getNations(day, loadCities);
+        if (!loadedNations.isEmpty()) {
+            DBNationSnapshot firstNation = loadedNations.values().iterator().next();
+            GlobalDataWrapper<NationHeader> wrapper = (GlobalDataWrapper<NationHeader>) firstNation.getWrapper();
+            DataWrapper<NationHeader> snapshotWrapper = new GlobalDataWrapper<>(wrapper.date, wrapper.header,
+                    wrapper.data, wrapper.getCities, allianceContext);
+            for (Map.Entry<Integer, DBNationSnapshot> entry : loadedNations.entrySet()) {
+                DBNationSnapshot nation = entry.getValue();
+                this.nations.put(entry.getKey(), new DBNationSnapshot(snapshotWrapper, nation.getOffset()));
+            }
+        }
     }
 
     public NationsFileSnapshot loadVm(@Nullable Set<Integer> nationIds) throws IOException, ParseException {
@@ -121,7 +146,7 @@ public class NationsFileSnapshot implements INationSnapshot {
                             GlobalDataWrapper<NationHeader> wrapper = (GlobalDataWrapper<NationHeader>) nation
                                     .getWrapper();
                             DataWrapper<NationHeader> newWrapper = new GlobalDataWrapper<>(timestamp, wrapper.header,
-                                    wrapper.data, wrapper.getCities);
+                                    wrapper.data, wrapper.getCities, allianceContext);
 
                             DBNationSnapshotVm newNation = new DBNationSnapshotVm(newWrapper, nation.getOffset(),
                                     leavingVmMs, enteredVmMs);
@@ -168,6 +193,11 @@ public class NationsFileSnapshot implements INationSnapshot {
         allianceIndex = alliances;
         leaderIndex = leaders;
         nameIndex = names;
+    }
+
+    @Override
+    public DBAlliance getAlliance(int allianceId) {
+        return allianceContext.getAlliance(allianceId);
     }
 
     @Override

@@ -45,9 +45,6 @@ public class CM_treasure {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBTreasure.class,method="getNationsInRange")
         public static class getNationsInRange extends CommandRef {
             public static final getNationsInRange cmd = new getNationsInRange();
-        public getNationsInRange maxNationScore(String value) {
-            return set("maxNationScore", value);
-        }
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBTreasure.class,method="getNumNationsInRange")

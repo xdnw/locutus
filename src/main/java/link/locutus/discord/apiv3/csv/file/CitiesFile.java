@@ -70,7 +70,7 @@ public class CitiesFile extends DataFile<DBCity, CityHeader, CityHeaderReader> {
             if (cached != null) return getCityMap(cached.map.get(nationId), cached.wrapper);
             byte[] data = this.getBytes();
             Map<Integer, int[]> newCache = generateCityIdsCache(data);
-            cached = new CityCache(newCache, new GlobalDataWrapper<>(getDate(), getGlobalHeader(), data, null));
+            cached = new CityCache(newCache, new GlobalDataWrapper<>(getDate(), getGlobalHeader(), data, null, null));
             cityIdsCache = new SoftReference<>(cached);
             return getCityMap(cached.map.get(nationId), cached.wrapper);
         }

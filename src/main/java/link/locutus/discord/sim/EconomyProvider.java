@@ -19,7 +19,7 @@ public interface EconomyProvider {
         }
 
         @Override
-        public void onControlFlagChange(SimWar war) {
+        public void onSuperiorityFlagChange(SimWar war) {
             // Intentionally no-op.
         }
     };
@@ -42,7 +42,7 @@ public interface EconomyProvider {
      * 
      * @param war the war whose control flags changed
      */
-    void onControlFlagChange(SimWar war);
+    void onSuperiorityFlagChange(SimWar war);
 
     /**
      * Return the per-resource cost vector for purchasing a single unit.

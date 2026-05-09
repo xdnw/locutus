@@ -215,7 +215,6 @@ public final class BlitzPlannerPipelineBenchmark {
         BLITZ("blitz"),
         REPLAY("replay"),
         SCHEDULED("scheduled"),
-        SCHEDULED_DIRECT("scheduledDirect"),
         OPENING("opening"),
         LONG_HORIZON("longHorizon"),
         DELTA("delta");
@@ -542,8 +541,7 @@ public final class BlitzPlannerPipelineBenchmark {
             return switch (slice) {
                 case BLITZ -> runBlitz(horizonTurns);
                 case REPLAY -> runReplay(horizonTurns);
-                case SCHEDULED -> runScheduled(horizonTurns, bucketSizeTurns, ScheduledTargetPlanner.CarryStateMode.PROJECTION_STATE);
-                case SCHEDULED_DIRECT -> runScheduled(horizonTurns, bucketSizeTurns, ScheduledTargetPlanner.CarryStateMode.DIRECT_CONFLICT);
+                case SCHEDULED -> runScheduled(horizonTurns, bucketSizeTurns);
                 case OPENING -> runOpening();
                 case LONG_HORIZON -> runLongHorizon(horizonTurns, projectionScoring);
                 case DELTA -> runDelta();
@@ -552,13 +550,29 @@ public final class BlitzPlannerPipelineBenchmark {
 
         private Outcome runBlitz(int horizonTurns) {
             BlitzPlanner planner = new BlitzPlanner(tuning, TreatyProvider.NONE, OverrideSet.EMPTY, objective);
-            BlitzAssignment assignment = planner.assign(attackers, defenders, 0, List.of(), horizonTurns);
+            BlitzAssignment assignment = planner.assign(
+                attackers,
+                defenders,
+                SidePolicy.legacy("acting", planner.objective()),
+                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                0,
+                List.of(),
+                horizonTurns
+            );
             return new Outcome(pairCount(assignment.assignment()), assignment.objectiveScore(), -1L, -1L);
         }
 
         private Outcome runReplay(int horizonTurns) {
             BlitzPlanner planner = new BlitzPlanner(tuning, TreatyProvider.NONE, OverrideSet.EMPTY, objective);
-            BlitzAssignment assignment = planner.assign(attackers, defenders, 0, List.of(), horizonTurns);
+            BlitzAssignment assignment = planner.assign(
+                attackers,
+                defenders,
+                SidePolicy.legacy("acting", planner.objective()),
+                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                0,
+                List.of(),
+                horizonTurns
+            );
             BlitzReplayTrace trace = PlannerReplayProjector.capture(
                     tuning,
                     OverrideSet.EMPTY,
@@ -575,8 +589,7 @@ public final class BlitzPlannerPipelineBenchmark {
 
         private Outcome runScheduled(
             int horizonTurns,
-            int bucketSizeTurns,
-            ScheduledTargetPlanner.CarryStateMode carryStateMode
+            int bucketSizeTurns
         ) {
             ScheduledTargetPlanner planner = new ScheduledTargetPlanner(
                 tuning,
@@ -584,8 +597,7 @@ public final class BlitzPlannerPipelineBenchmark {
                 OverrideSet.EMPTY,
                 objective,
                 SnapshotActivityProvider.BASELINE,
-                PlannerTransitionSemantics.NONE,
-                carryStateMode
+                PlannerTransitionSemantics.NONE
             );
             List<ScheduledAttacker> scheduledAttackers = attackers.stream()
                     .map(attacker -> new ScheduledAttacker(attacker, List.of(new AvailabilityWindow(0, Math.max(0, horizonTurns - 1)))))
@@ -623,7 +635,7 @@ public final class BlitzPlannerPipelineBenchmark {
                     defenderNationIds,
                     List.of(),
                     horizonTurns,
-                    projectionScoring ? new LongHorizonAssignmentOptimizer.ProjectionScoringContext(objective) : null
+                        projectionScoring ? LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective) : null
             );
             ObjectiveValueSummary summary = result.projectedObjectiveSummary() != null
                     ? result.projectedObjectiveSummary()

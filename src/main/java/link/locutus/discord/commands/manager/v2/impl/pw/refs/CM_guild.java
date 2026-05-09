@@ -17,6 +17,11 @@ public class CM_guild {
             public static final getIdLong cmd = new getIdLong();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid.class,method="getMarkdownUrl")
+        public static class getMarkdownUrl extends CommandRef {
+            public static final getMarkdownUrl cmd = new getMarkdownUrl();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.GuildDB.class,method="getName")
         public static class getName extends CommandRef {
             public static final getName cmd = new getName();
@@ -48,6 +53,11 @@ public class CM_guild {
         public getResourceValue resources(String value) {
             return set("resources", value);
         }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid.class,method="getSheetUrl")
+        public static class getSheetUrl extends CommandRef {
+            public static final getSheetUrl cmd = new getSheetUrl();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.GuildDB.class,method="hasAlliance")

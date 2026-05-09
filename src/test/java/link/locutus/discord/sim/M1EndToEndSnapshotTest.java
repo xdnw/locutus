@@ -116,10 +116,10 @@ class M1EndToEndSnapshotTest {
         assertEquals(0, attacker.pendingBuys(MilitaryUnit.SOLDIER), "Pending should clear");
 
         // Test 9: Control flag changes
-        boolean blockadeChanged = war.applyControlFlagChanges(1, 1, 0, 0);
+        boolean blockadeChanged = war.applySuperiorityFlagChanges(1, 1, 0, 0);
         assertFalse(blockadeChanged, "Non-blockade delta should not trigger blockade callback");
 
-        blockadeChanged = war.applyControlFlagChanges(1, 0, 0, 1);
+        blockadeChanged = war.applySuperiorityFlagChanges(1, 0, 0, 1);
         assertTrue(blockadeChanged, "Blockade delta should trigger callback");
         assertEquals(SimSide.ATTACKER, war.blockadeOwner(), "Attacker should own blockade");
 
@@ -224,7 +224,7 @@ class M1EndToEndSnapshotTest {
             public void onVictoryLootTransferred(SimNation winner, SimNation loser, SimWar war, double transferredMoney) {}
 
             @Override
-            public void onControlFlagChange(SimWar war) {
+            public void onSuperiorityFlagChange(SimWar war) {
                 blockadeChanges.add(war);
             }
         };
@@ -252,11 +252,11 @@ class M1EndToEndSnapshotTest {
         worldWithTracking.declareWar(1001, 1, 2, WarType.ORD);
 
         // Non-blockade change should not trigger callback
-        worldWithTracking.applyControlFlagChanges(1001, 1, 1, 0, 0);
+        worldWithTracking.applySuperiorityFlagChanges(1001, 1, 1, 0, 0);
         assertEquals(0, blockadeChanges.size(), "Non-blockade change should not trigger callback");
 
         // Blockade change should trigger callback
-        worldWithTracking.applyControlFlagChanges(1001, 1, 0, 0, 1);
+        worldWithTracking.applySuperiorityFlagChanges(1001, 1, 0, 0, 1);
         assertEquals(1, blockadeChanges.size(), "Blockade change should trigger callback");
         assertEquals(SimSide.ATTACKER, worldWithTracking.requireWar(1001).blockadeOwner());
     }

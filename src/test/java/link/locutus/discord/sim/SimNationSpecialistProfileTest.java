@@ -84,4 +84,25 @@ class SimNationSpecialistProfileTest {
         assertEquals(infraBefore, city.getInfra(), 1e-12);
         assertEquals(missileBefore, city.getMissileDamage(snapshot::hasProject));
     }
+
+    @Test
+    void infraDamageClampsToSingleHighestInfraCityWithoutSpillover() {
+        NationInit init = new NationInit(
+                99,
+                99,
+                WarPolicy.ATTRITION,
+                ResourceType.getBuffer(),
+                100d,
+                new double[]{500d, 300d},
+                5,
+                (byte) 0
+        );
+
+        SimNation nation = new SimNation(init);
+        nation.applyInfraDamage(700d);
+
+        // Attack infra damage is applied to one city only (highest infra), then clipped at zero.
+        assertEquals(0d, nation.cityInfra(0), 1e-12);
+        assertEquals(300d, nation.cityInfra(1), 1e-12);
+    }
 }

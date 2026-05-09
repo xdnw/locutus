@@ -3,9 +3,27 @@ package link.locutus.discord.sim;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StrategicAssetValueTest {
+        @Test
+        void activeWarContextNormalizesMapsAgainstSimStartingMaps() {
+                StrategicAssetValue.ActiveWarContext fullMapAdvantage = StrategicAssetValue.ActiveWarContext.fromRelativeWarState(
+                                1,
+                                1.0d,
+                                SimWar.INITIAL_MAPS,
+                                0,
+                                50,
+                                50,
+                                0,
+                                0
+                );
+
+                assertEquals(1.0d, fullMapAdvantage.mapPosition(), 1.0e-9,
+                                "Strategic control math should treat a full 6-to-0 MAP edge as a full starting-MAP swing, matching the sim war state");
+        }
+
     @Test
     void higherCityTierAndRangeCoverageIncreaseStrategicValue() {
         StrategicAssetValue.StrategicRelevance frontline = StrategicAssetValue.relevanceForWarRange(
@@ -287,29 +305,25 @@ class StrategicAssetValueTest {
                 18,
                 86,
                 0,
-                3,
-                0d
+                3
         );
         double lostTinySwing = StrategicAssetValue.controlRegimeScore(
                 18,
                 86,
                 1,
-                2,
-                0d
+                2
         );
         double tenableBaseline = StrategicAssetValue.controlRegimeScore(
                 65,
                 55,
                 0,
-                0,
-                0d
+                0
         );
         double tenableControlGain = StrategicAssetValue.controlRegimeScore(
                 65,
                 55,
                 1,
-                0,
-                0d
+                0
         );
 
         double lostSwingValue = lostTinySwing - lostBaseline;
@@ -322,26 +336,43 @@ class StrategicAssetValueTest {
     }
 
     @Test
-    void controlRegimeDoesNotLetStrategicEdgeOverrideLostControlState() {
-        double lostWithStrongStrategicEdge = StrategicAssetValue.controlRegimeScore(
+    void controlRegimeRemainsWarStateDriven() {
+        double lostState = StrategicAssetValue.controlRegimeScore(
                 18,
                 86,
                 1,
-                2,
-                1d
+                2
         );
-        double tenableWithStrongStrategicEdge = StrategicAssetValue.controlRegimeScore(
+        double tenableState = StrategicAssetValue.controlRegimeScore(
                 70,
                 55,
                 1,
-                0,
-                1d
+                0
         );
 
-        assertTrue(lostWithStrongStrategicEdge < 0d,
-                "A large strategic-value edge should not by itself make a tactically lost active war look controlled");
-        assertTrue(tenableWithStrongStrategicEdge > 0d,
-                "Strategic edge should still matter once the active war state is tactically tenable");
+        assertTrue(lostState < 0d,
+                "A tactically lost active war should still score as a lost regime from war-state inputs alone");
+        assertTrue(tenableState > 0d,
+                "A tactically tenable active war should still score as favorable from war-state inputs alone");
+    }
+
+    @Test
+    void controlRegimeDoesNotLinearlyRewardNearVictoryResistanceSaturation() {
+        double contestedWindow = StrategicAssetValue.controlRegimeScore(
+                90,
+                45,
+                2,
+                0
+        );
+        double nearVictory = StrategicAssetValue.controlRegimeScore(
+                90,
+                5,
+                2,
+                0
+        );
+
+        assertTrue(contestedWindow > nearVictory,
+                "Timing value should peak in a tenable contested window instead of always rising as enemy resistance approaches zero");
     }
 
     @Test

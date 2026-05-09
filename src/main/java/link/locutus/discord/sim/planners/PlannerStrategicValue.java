@@ -1,6 +1,7 @@
 package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.StrategicAssetValue;
 
 import java.util.ArrayList;
@@ -80,15 +81,8 @@ final class PlannerStrategicValue {
             StrategicAssetValue.StrategicRelevance relevance
     ) {
         StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(snapshot);
-        return StrategicAssetValue.contextualMilitaryValue(
-                snapshot::unit,
-                snapshot::pendingBuysNextTurn,
-                snapshot::unitsBoughtToday,
-                snapshot::dailyBuyCap,
-                snapshot.researchBits(),
-                activeWarContext,
-                relevance
-        ).totalValue() + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
+        return strategicMilitaryValue(snapshot, relevance)
+                + StrategicAssetValue.infrastructureValue(snapshot.cityInfraRaw(), activeWarContext, relevance);
     }
 
     static double strategicValue(DBNationSnapshot snapshot, Collection<DBNationSnapshot> opposingNations) {
@@ -103,9 +97,112 @@ final class PlannerStrategicValue {
         return strategicValue(snapshot, localRelevance(snapshot));
     }
 
+    static double strategicMilitaryValue(
+            DBNationSnapshot snapshot,
+            StrategicAssetValue.StrategicRelevance relevance
+    ) {
+        return StrategicCapabilityReducer.strategicMilitaryValue(capabilityVector(snapshot), relevance);
+    }
+
+    static double strategicMilitaryValue(
+            StrategicCapabilityVector capabilityVector,
+            StrategicAssetValue.StrategicRelevance relevance
+    ) {
+        return StrategicCapabilityReducer.strategicMilitaryValue(capabilityVector, relevance);
+    }
+
+    static double slotCapabilityValue(DBNationSnapshot snapshot) {
+        return StrategicCapabilityReducer.slotCapabilityValue(capabilityVector(snapshot));
+    }
+
+    static double slotCapabilityValue(StrategicCapabilityVector capabilityVector) {
+        return StrategicCapabilityReducer.slotCapabilityValue(capabilityVector);
+    }
+
+    static double offensiveSlotCapabilityValue(DBNationSnapshot snapshot, double slotPressure) {
+        return StrategicCapabilityReducer.offensiveSlotCapabilityValue(capabilityVector(snapshot), slotPressure);
+    }
+
+    static double offensiveSlotCapabilityValue(StrategicCapabilityVector capabilityVector, double slotPressure) {
+        return StrategicCapabilityReducer.offensiveSlotCapabilityValue(capabilityVector, slotPressure);
+    }
+
+    static double offensiveSlotCapabilityValue(double slotCapabilityValue, double slotPressure) {
+        return StrategicCapabilityReducer.offensiveSlotCapabilityValue(slotCapabilityValue, slotPressure);
+    }
+
+    static double defensiveSlotCapabilityValue(DBNationSnapshot snapshot, double slotPressure) {
+        return StrategicCapabilityReducer.defensiveSlotCapabilityValue(capabilityVector(snapshot), slotPressure);
+    }
+
+    static double defensiveSlotCapabilityValue(StrategicCapabilityVector capabilityVector, double slotPressure) {
+        return StrategicCapabilityReducer.defensiveSlotCapabilityValue(capabilityVector, slotPressure);
+    }
+
+    static double defensiveSlotCapabilityValue(double slotCapabilityValue, double slotPressure) {
+        return StrategicCapabilityReducer.defensiveSlotCapabilityValue(slotCapabilityValue, slotPressure);
+    }
+
     static double marginalActionSpaceValue(DBNationSnapshot snapshot) {
-        return localStrategicValue(snapshot)
+        return strategicMilitaryValue(snapshot, localRelevance(snapshot))
                 * StrategicAssetValue.marginalActionSpaceMultiplier(activeWarContext(snapshot));
+    }
+
+    static StrategicCapabilityVector capabilityVector(DBNationSnapshot snapshot) {
+        if (snapshot == null) {
+            return new StrategicCapabilityVector(0d, 0d, 0d, 0d, 0d, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+        return capabilityVector(
+                OpeningMetricSummary.groundStrength(
+                        snapshot.unit(MilitaryUnit.SOLDIER),
+                        snapshot.unit(MilitaryUnit.TANK),
+                        false
+                ),
+                snapshot.unit(MilitaryUnit.AIRCRAFT),
+                snapshot.unit(MilitaryUnit.SHIP),
+                snapshot.unit(MilitaryUnit.MISSILE),
+                snapshot.unit(MilitaryUnit.NUKE),
+                remainingRecoveryCapacity(snapshot, MilitaryUnit.SOLDIER),
+                Math.max(0, snapshot.dailyBuyCap(MilitaryUnit.SOLDIER)),
+                remainingRecoveryCapacity(snapshot, MilitaryUnit.TANK),
+                Math.max(0, snapshot.dailyBuyCap(MilitaryUnit.TANK)),
+                remainingRecoveryCapacity(snapshot, MilitaryUnit.AIRCRAFT),
+                Math.max(0, snapshot.dailyBuyCap(MilitaryUnit.AIRCRAFT)),
+                remainingRecoveryCapacity(snapshot, MilitaryUnit.SHIP),
+                Math.max(0, snapshot.dailyBuyCap(MilitaryUnit.SHIP))
+        );
+    }
+
+    static StrategicCapabilityVector capabilityVector(
+            double groundCapability,
+            double airCapability,
+            double navalCapability,
+            double missileCapability,
+            double nukeCapability,
+            int soldierRemainingRecovery,
+            int soldierDailyCap,
+            int tankRemainingRecovery,
+            int tankDailyCap,
+            int airRemainingRecovery,
+            int airDailyCap,
+            int navalRemainingRecovery,
+            int navalDailyCap
+    ) {
+        return new StrategicCapabilityVector(
+                groundCapability,
+                airCapability,
+                navalCapability,
+                missileCapability,
+                nukeCapability,
+                soldierRemainingRecovery,
+                soldierDailyCap,
+                tankRemainingRecovery,
+                tankDailyCap,
+                airRemainingRecovery,
+                airDailyCap,
+                navalRemainingRecovery,
+                navalDailyCap
+        );
     }
 
     static StrategicAssetValue.ActiveWarContext activeWarContext(DBNationSnapshot snapshot) {
@@ -133,5 +230,9 @@ final class PlannerStrategicValue {
             }
         }
         return new ArrayList<>(byId.values());
+    }
+
+    private static int remainingRecoveryCapacity(DBNationSnapshot snapshot, MilitaryUnit unit) {
+        return Math.max(0, snapshot.dailyBuyCap(unit) - snapshot.unitsBoughtToday(unit) - snapshot.pendingBuysNextTurn(unit));
     }
 }

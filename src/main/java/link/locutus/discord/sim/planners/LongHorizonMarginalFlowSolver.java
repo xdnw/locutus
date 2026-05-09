@@ -8,8 +8,10 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 
 /**
  * Direct min-cost-flow solve for the long-horizon projection objective.
@@ -102,6 +104,9 @@ final class LongHorizonMarginalFlowSolver {
                 int assignedBefore = attackerCounts[attackerIndex] + (slot - attackerSlotOffsets[attackerIndex]);
                 double marginalScore = scorer.attackerCommitmentMarginalScore(attackerIndex, assignedBefore)
                     + scorer.attackerCounterOpportunityMarginalScore(attackerIndex, assignedBefore);
+                if (assignedBefore == 0) {
+                    marginalScore += scorer.attackerIdlePressureMarginalScore(attackerIndex);
+                }
                 pointer = addEdgePair(to, capacity, cost, next, head, pointer, source, attackerSlotStart + slot, 1, -marginalScore);
             }
         }
@@ -169,47 +174,128 @@ final class LongHorizonMarginalFlowSolver {
             int sink,
             int vertexCount
     ) {
-        double[] distance = new double[vertexCount];
+        double[] potential = initialPotentials(to, capacity, cost, next, head, source, vertexCount);
+        double[] reducedDistance = new double[vertexCount];
         int[] previousEdge = new int[vertexCount];
-        boolean[] inQueue = new boolean[vertexCount];
-        IntArrayFIFOQueue queue = new IntArrayFIFOQueue(vertexCount);
+        PriorityQueue<QueueNode> queue = new PriorityQueue<>(Comparator.comparingDouble(QueueNode::distance));
         while (true) {
-            Arrays.fill(distance, Double.POSITIVE_INFINITY);
+            Arrays.fill(reducedDistance, Double.POSITIVE_INFINITY);
             Arrays.fill(previousEdge, -1);
-            distance[source] = 0d;
+            reducedDistance[source] = 0d;
             queue.clear();
-            queue.enqueue(source);
-            inQueue[source] = true;
+            queue.add(new QueueNode(source, 0d));
             while (!queue.isEmpty()) {
-                int current = queue.dequeueInt();
-                inQueue[current] = false;
+                QueueNode node = queue.poll();
+                int current = node.vertex();
+                if (node.distance() > reducedDistance[current] + 1e-12) {
+                    continue;
+                }
                 for (int edge = head[current]; edge != -1; edge = next[edge]) {
                     if (capacity[edge] <= 0) {
                         continue;
                     }
                     int nextVertex = to[edge];
-                    double nextDistance = distance[current] + cost[edge];
-                    if (nextDistance < distance[nextVertex] - 1e-12) {
-                        distance[nextVertex] = nextDistance;
+                    double reducedCost = cost[edge] + potential[current] - potential[nextVertex];
+                    if (reducedCost < 0d && reducedCost > -1e-9) {
+                        reducedCost = 0d;
+                    }
+                    double nextDistance = reducedDistance[current] + reducedCost;
+                    if (nextDistance < reducedDistance[nextVertex] - 1e-12) {
+                        reducedDistance[nextVertex] = nextDistance;
                         previousEdge[nextVertex] = edge;
-                        if (!inQueue[nextVertex]) {
-                            queue.enqueue(nextVertex);
-                            inQueue[nextVertex] = true;
-                        }
+                        queue.add(new QueueNode(nextVertex, nextDistance));
                     }
                 }
             }
-            if (distance[sink] == Double.POSITIVE_INFINITY || distance[sink] >= -1e-12) {
+            if (previousEdge[sink] < 0) {
                 return;
             }
+            double originalPathCost = pathCost(previousEdge, to, cost, source, sink);
+            if (originalPathCost >= -1e-12) {
+                return;
+            }
+            for (int vertex = 0; vertex < vertexCount; vertex++) {
+                if (reducedDistance[vertex] < Double.POSITIVE_INFINITY) {
+                    potential[vertex] += reducedDistance[vertex];
+                }
+            }
             int vertex = sink;
+            int amount = Integer.MAX_VALUE;
             while (vertex != source) {
                 int edge = previousEdge[vertex];
-                capacity[edge]--;
-                capacity[edge ^ 1]++;
+                amount = Math.min(amount, capacity[edge]);
+                vertex = to[edge ^ 1];
+            }
+            vertex = sink;
+            while (vertex != source) {
+                int edge = previousEdge[vertex];
+                capacity[edge] -= amount;
+                capacity[edge ^ 1] += amount;
                 vertex = to[edge ^ 1];
             }
         }
+    }
+
+    private static double[] initialPotentials(
+            int[] to,
+            int[] capacity,
+            double[] cost,
+            int[] next,
+            int[] head,
+            int source,
+            int vertexCount
+    ) {
+        double[] distance = new double[vertexCount];
+        boolean[] inQueue = new boolean[vertexCount];
+        IntArrayFIFOQueue queue = new IntArrayFIFOQueue(vertexCount);
+        Arrays.fill(distance, Double.POSITIVE_INFINITY);
+        distance[source] = 0d;
+        queue.enqueue(source);
+        inQueue[source] = true;
+        while (!queue.isEmpty()) {
+            int current = queue.dequeueInt();
+            inQueue[current] = false;
+            for (int edge = head[current]; edge != -1; edge = next[edge]) {
+                if (capacity[edge] <= 0) {
+                    continue;
+                }
+                int nextVertex = to[edge];
+                double nextDistance = distance[current] + cost[edge];
+                if (nextDistance < distance[nextVertex] - 1e-12) {
+                    distance[nextVertex] = nextDistance;
+                    if (!inQueue[nextVertex]) {
+                        queue.enqueue(nextVertex);
+                        inQueue[nextVertex] = true;
+                    }
+                }
+            }
+        }
+        for (int vertex = 0; vertex < vertexCount; vertex++) {
+            if (distance[vertex] == Double.POSITIVE_INFINITY) {
+                distance[vertex] = 0d;
+            }
+        }
+        return distance;
+    }
+
+    private static double pathCost(
+            int[] previousEdge,
+            int[] to,
+            double[] cost,
+            int source,
+            int sink
+    ) {
+        double total = 0d;
+        int vertex = sink;
+        while (vertex != source) {
+            int edge = previousEdge[vertex];
+            total += cost[edge];
+            vertex = to[edge ^ 1];
+        }
+        return total;
+    }
+
+    private record QueueNode(int vertex, double distance) {
     }
 
     private static int expandedEdgePairCapacity(

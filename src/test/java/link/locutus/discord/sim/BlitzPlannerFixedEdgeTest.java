@@ -8,9 +8,11 @@ import link.locutus.discord.sim.planners.BlitzFixedEdge;
 import link.locutus.discord.sim.planners.BlitzPlanner;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
+import link.locutus.discord.sim.planners.SidePolicy;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,16 +25,34 @@ class BlitzPlannerFixedEdgeTest {
     private static final int DEFENDER_TEAM = 2000;
     private static final double SCORE = 1000.0;
 
+    private static BlitzAssignment assign(
+            BlitzPlanner planner,
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            Collection<BlitzFixedEdge> fixedEdges
+    ) {
+        return planner.assign(
+                attackers,
+                defenders,
+                SidePolicy.legacy("acting", planner.objective()),
+                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                0,
+                fixedEdges,
+                1
+        );
+    }
+
     @Test
     void fixedEdgeConsumesCapacityWithoutDuplicatePlannerAssignment() {
         DBNationSnapshot attacker = nation(1, ATTACKER_TEAM, 1, 350, 500);
         DBNationSnapshot fixedDefender = nation(101, DEFENDER_TEAM, 3, 200, 250);
         DBNationSnapshot alternateDefender = nation(102, DEFENDER_TEAM, 3, 200, 250);
 
-        BlitzAssignment assignment = new BlitzPlanner(SimTuning.defaults()).assign(
+        BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
+        BlitzAssignment assignment = assign(
+                planner,
                 List.of(attacker),
                 List.of(fixedDefender, alternateDefender),
-                0,
                 List.of(new BlitzFixedEdge(attacker.nationId(), fixedDefender.nationId()))
         );
 
@@ -48,16 +68,17 @@ class BlitzPlannerFixedEdgeTest {
         TreatyProvider oppositeSideOnly = (attackerId, defenderId) -> attackerId == defenderId
                 || ((attackerId < 100) == (defenderId < 100));
 
-        BlitzAssignment assignment = new BlitzPlanner(
+        BlitzPlanner planner = new BlitzPlanner(
                 SimTuning.defaults(),
                 oppositeSideOnly,
                 OverrideSet.EMPTY,
                 new DamageObjective()
-        ).assign(
-                combined,
-                combined,
-                0,
-                List.of(new BlitzFixedEdge(defenderSide.nationId(), attackerSide.nationId()))
+        );
+        BlitzAssignment assignment = assign(
+            planner,
+            combined,
+            combined,
+            List.of(new BlitzFixedEdge(defenderSide.nationId(), attackerSide.nationId()))
         );
 
         assertTrue(assignment.targetsFor(defenderSide.nationId()).contains(attackerSide.nationId()));
@@ -70,11 +91,12 @@ class BlitzPlannerFixedEdgeTest {
         DBNationSnapshot attacker = nation(11, ATTACKER_TEAM, 2, 650, 800);
         DBNationSnapshot defender = nation(111, DEFENDER_TEAM, 3, 240, 260);
 
-        BlitzAssignment assignment = new BlitzPlanner(SimTuning.defaults()).assign(
-                List.of(attacker),
-                List.of(defender),
-                0,
-                List.of(new BlitzFixedEdge(attacker.nationId(), defender.nationId(), WarType.ATT.ordinal()))
+        BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
+        BlitzAssignment assignment = assign(
+            planner,
+            List.of(attacker),
+            List.of(defender),
+            List.of(new BlitzFixedEdge(attacker.nationId(), defender.nationId(), WarType.ATT.ordinal()))
         );
 
         assertEquals(WarType.ATT.ordinal(), assignment.initialWarTypeOrdinal(attacker.nationId(), defender.nationId()));

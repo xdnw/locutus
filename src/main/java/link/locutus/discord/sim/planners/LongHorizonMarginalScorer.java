@@ -5,6 +5,8 @@ interface LongHorizonMarginalScorer {
 
     double attackerCommitmentMarginalScore(int attackerIndex, int assignedBefore);
 
+    double attackerIdlePressureMarginalScore(int attackerIndex);
+
     double attackerCounterOpportunityMarginalScore(int attackerIndex, int assignedBefore);
 
     double defenderPressureMarginalScore(int defenderIndex, int assignedBefore);

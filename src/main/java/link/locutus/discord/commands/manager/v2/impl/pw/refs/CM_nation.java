@@ -467,6 +467,11 @@ public class CM_nation {
             public static final getBeigeAbsoluteTurn cmd = new getBeigeAbsoluteTurn();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getBeigeDamageFactor")
+        public static class getBeigeDamageFactor extends CommandRef {
+            public static final getBeigeDamageFactor cmd = new getBeigeDamageFactor();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getBeigeLootTotal")
         public static class getBeigeLootTotal extends CommandRef {
             public static final getBeigeLootTotal cmd = new getBeigeLootTotal();
@@ -574,6 +579,14 @@ public class CM_nation {
             public static final getCitiesSince cmd = new getCitiesSince();
         public getCitiesSince time(String value) {
             return set("time", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getCity")
+        public static class getCity extends CommandRef {
+            public static final getCity cmd = new getCity();
+        public getCity index(String value) {
+            return set("index", value);
         }
 
         }
@@ -813,6 +826,11 @@ public class CM_nation {
             public static final getFreeBuildings cmd = new getFreeBuildings();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getFreeDefensiveSlots")
+        public static class getFreeDefensiveSlots extends CommandRef {
+            public static final getFreeDefensiveSlots cmd = new getFreeDefensiveSlots();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getFreeOffSpyOps")
         public static class getFreeOffSpyOps extends CommandRef {
             public static final getFreeOffSpyOps cmd = new getFreeOffSpyOps();
@@ -923,6 +941,11 @@ public class CM_nation {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMarkdownUrl")
         public static class getMarkdownUrl extends CommandRef {
             public static final getMarkdownUrl cmd = new getMarkdownUrl();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMaxDef")
+        public static class getMaxDef extends CommandRef {
+            public static final getMaxDef cmd = new getMaxDef();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMaxOff")
@@ -1791,6 +1814,11 @@ public class CM_nation {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="isInWarRange")
         public static class isInWarRange extends CommandRef {
             public static final isInWarRange cmd = new isInWarRange();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="isMember")
+        public static class isMember extends CommandRef {
+            public static final isMember cmd = new isMember();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="isOnline")

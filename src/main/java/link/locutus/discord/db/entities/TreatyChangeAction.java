@@ -8,6 +8,7 @@ public enum TreatyChangeAction {
     EXTENDED,
     CANCELLED,
     EXPIRED,
+    ENDED,
     ;
 
     public static final TreatyChangeAction[] values = values();

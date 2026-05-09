@@ -600,11 +600,21 @@ public class BlitzGenerator {
                     return n == null ? 0 : n.getAlliance_id();
                 });
 
+        link.locutus.discord.sim.DamageObjective objective = new link.locutus.discord.sim.DamageObjective();
         link.locutus.discord.sim.planners.BlitzPlanner planner = new link.locutus.discord.sim.planners.BlitzPlanner(
                 tuning, treaties, link.locutus.discord.sim.planners.OverrideSet.EMPTY,
-                new link.locutus.discord.sim.DamageObjective());
+            objective);
 
-        link.locutus.discord.sim.planners.BlitzAssignment result = planner.assign(attackerSnaps, defenderSnaps);
+        link.locutus.discord.sim.planners.BlitzAssignment result = planner.assignSymmetric(
+            attackerSnaps,
+            defenderSnaps,
+            link.locutus.discord.sim.planners.SidePolicy.legacy("acting", objective),
+            link.locutus.discord.sim.planners.SidePolicy.legacyPassive("nonActing", objective),
+            0,
+            java.util.List.of(),
+            java.util.List.of(),
+            1
+        ).sideAAssignment();
 
         // Convert nationId-keyed result back to DBNation
         Map<DBNation, List<DBNation>> assignment = new LinkedHashMap<>();

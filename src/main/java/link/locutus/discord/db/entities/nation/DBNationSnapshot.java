@@ -40,7 +40,8 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
         if (wrapper instanceof UniqueDataWrapper<NationHeader> unique) {
             unique.getCities().put(city.getId(), city);
         } else if (wrapper instanceof LocalDataWrapper<NationHeader> local) {
-            UniqueDataWrapper<NationHeader> unique = new UniqueDataWrapper<>(wrapper.date, wrapper.header);
+            UniqueDataWrapper<NationHeader> unique = new UniqueDataWrapper<>(wrapper.date, wrapper.header,
+                    wrapper.getAllianceLookup());
             wrapper = unique;
             unique.getCities().put(city.getId(), city);
         } else {
@@ -260,8 +261,22 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     }
 
     @Override
-    public DBAlliance getAlliance() {
-        throw unsupported();
+    protected DBAlliance resolveAlliance(boolean createIfNotExist) {
+        int allianceId = getAlliance_id();
+        if (allianceId == 0) {
+            return null;
+        }
+        if (wrapper.getAllianceLookup() != null) {
+            DBAlliance alliance = wrapper.getAllianceLookup().getAlliance(allianceId);
+            if (alliance != null || !createIfNotExist) {
+                return alliance;
+            }
+        }
+        if (!createIfNotExist) {
+            return null;
+        }
+        return new DataDumpDBAlliance(allianceId, "AA:" + allianceId, "", "", wrapper.date,
+            NationColor.GRAY, null, null);
     }
 
     @Override

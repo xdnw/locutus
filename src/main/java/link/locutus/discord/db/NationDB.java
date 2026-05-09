@@ -78,6 +78,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBSpyUpdate;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.db.entities.DBTreatyChange;
+import link.locutus.discord.db.entities.LiveDBAlliance;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
@@ -773,11 +774,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             if (removed) {
                 anyRemoved = true;
                 if (treaty.getTurnEnds() <= turn + 1) {
-                    addTreatyChange(now, TreatyChangeAction.EXPIRED, treaty.getType(),
+                        addUnifiedTreatyChange(now, TreatyChangeAction.EXPIRED, treaty.getType(),
                             treaty.getFromId(), treaty.getToId(), 0);
                     if (eventConsumer != null) eventConsumer.accept(new TreatyExpireEvent(treaty));
                 } else {
-                    addTreatyChange(now, TreatyChangeAction.CANCELLED, treaty.getType(),
+                        addUnifiedTreatyChange(now, TreatyChangeAction.CANCELLED, treaty.getType(),
                             treaty.getFromId(), treaty.getToId(), treaty.isPermanent() ? -1 : treaty.getTurnsRemaining());
                     if (eventConsumer != null) eventConsumer.accept(new TreatyCancelEvent(treaty));
                 }
@@ -816,7 +817,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
 
                 if (existing == null) {
-                    existing = new DBAlliance(alliance);
+                    existing = new LiveDBAlliance(alliance);
                     synchronized (alliancesById) {
                         alliancesById.put(alliance.getId(), existing);
                         allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
@@ -1091,25 +1092,25 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 Treaty current = entry.getValue();
                 int turnsRemaining = current.isPermanent() ? -1 : current.getTurnsRemaining();
                 if (current.getType() != prev.getType()) {
-                    addTreatyChange(now, TreatyChangeAction.SIGNED, current.getType(),
+                    addUnifiedTreatyChange(now, TreatyChangeAction.SIGNED, current.getType(),
                             current.getFromId(), current.getToId(), turnsRemaining);
                 } else if (!prev.isPermanent() && current.getTurnEnds() > prev.getTurnEnds() + 2) {
-                    addTreatyChange(now, TreatyChangeAction.EXTENDED, current.getType(),
+                    addUnifiedTreatyChange(now, TreatyChangeAction.EXTENDED, current.getType(),
                             current.getFromId(), current.getToId(), turnsRemaining);
                 }
             }
             for (Treaty current : deletedOrExpired) {
                 if (current.getTurnEnds() <= turn + 1) {
-                    addTreatyChange(now, TreatyChangeAction.EXPIRED, current.getType(),
+                    addUnifiedTreatyChange(now, TreatyChangeAction.EXPIRED, current.getType(),
                             current.getFromId(), current.getToId(), 0);
                 } else {
-                    addTreatyChange(now, TreatyChangeAction.CANCELLED, current.getType(),
+                    addUnifiedTreatyChange(now, TreatyChangeAction.CANCELLED, current.getType(),
                             current.getFromId(), current.getToId(), current.isPermanent() ? -1 : current.getTurnsRemaining());
                 }
             }
             for (Treaty current : newTreaties) {
                 int turnsRemaining = current.isPermanent() ? -1 : current.getTurnsRemaining();
-                addTreatyChange(now, TreatyChangeAction.SIGNED, current.getType(),
+                addUnifiedTreatyChange(now, TreatyChangeAction.SIGNED, current.getType(),
                         current.getFromId(), current.getToId(), turnsRemaining);
             }
         }
@@ -1919,7 +1920,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public DBAlliance getOrCreateAlliance(int id) {
         DBAlliance existing = getAlliance(id);
         if (existing == null) {
-            existing = new DBAlliance(id,
+            existing = new LiveDBAlliance(id,
             "AA:" + id,
             "",
             "",
@@ -2722,7 +2723,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     private DBAlliance createAlliance(ResultSet rs) throws SQLException {
-        return new DBAlliance(
+        return new LiveDBAlliance(
                 rs.getInt("id"),
                 rs.getString("name"),
                 rs.getString("acronym"),
@@ -4256,13 +4257,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         });
     }
 
-    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turn) {
+    public Map<Integer, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turn) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         List<Integer> alliancesSorted = new ArrayList<>(allianceIds);
         alliancesSorted.sort(Comparator.naturalOrder());
         String allianceQueryStr = StringMan.getString(alliancesSorted);
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new Object2ObjectOpenHashMap<>();
+        Map<Integer, Map<AllianceMetric, Map<Long, Double>>> result = new Int2ObjectOpenHashMap<>();
 
         String query = """
                 SELECT m.*
@@ -4293,9 +4294,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     long turn = rs.getLong("turn");
                     double value = rs.getDouble("value");
 
-                    DBAlliance alliance = getOrCreateAlliance(allianceId);
-                    if (!result.containsKey(alliance)) {
-                        result.computeIfAbsent(alliance, f -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turn, value);
+                    if (!result.containsKey(allianceId)) {
+                        result.computeIfAbsent(allianceId, f -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turn, value);
                     }
                 }
             }
@@ -4303,8 +4303,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return result;
     }
 
-    public Map<DBAlliance, Map<Long, Double>> getAllianceMetrics(AllianceMetric metric, long startTurn) {
-        Map<DBAlliance, Map<Long, Double>> result = new LinkedHashMap<>();
+    public Map<Integer, Map<Long, Double>> getAllianceMetrics(AllianceMetric metric, long startTurn) {
+        Map<Integer, Map<Long, Double>> result = new LinkedHashMap<>();
         String query = "SELECT * FROM ALLIANCE_METRICS WHERE metric = ? and turn >= ? ORDER BY turn ASC";
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
@@ -4319,8 +4319,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     int allianceId = rs.getInt("alliance_id");
                     long turn = rs.getLong("turn");
                     double value = rs.getDouble("value");
-                    DBAlliance alliance = getOrCreateAlliance(allianceId);
-                    result.computeIfAbsent(alliance, f -> new Long2DoubleLinkedOpenHashMap()).put(turn, value);
+                    result.computeIfAbsent(allianceId, f -> new Long2DoubleLinkedOpenHashMap()).put(turn, value);
                 }
             }
         });
@@ -4328,12 +4327,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
 
-    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turnStart, long turnEnd) {
+    public Map<Integer, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turnStart, long turnEnd) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         String allianceQueryStr = StringMan.getString(allianceIds);
         boolean hasTurnEnd = turnEnd > 0 && turnEnd < Long.MAX_VALUE;
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new HashMap<>();
+        Map<Integer, Map<AllianceMetric, Map<Long, Double>>> result = new Int2ObjectOpenHashMap<>();
 
         String query = "SELECT * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn >= ?" + (hasTurnEnd ? " and turn <= ?" : "");
         query(query, new ThrowingConsumer<PreparedStatement>() {
@@ -4352,15 +4351,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     long turn = rs.getLong("turn");
                     double value = rs.getDouble("value");
 
-                    DBAlliance alliance = getOrCreateAlliance(allianceId);
-                    result.computeIfAbsent(alliance, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
+                    result.computeIfAbsent(allianceId, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
                 }
             }
         });
         return result;
     }
 
-    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, Collection<AllianceMetric> metrics, long turnStart, long turnEnd) {
+    public Map<Integer, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, Collection<AllianceMetric> metrics, long turnStart, long turnEnd) {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No alliances provided");
         Set<Integer> aaIdsFU = new IntOpenHashSet(allianceIds);
@@ -4373,7 +4371,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         String metricQueryStr = StringMan.getString(metrics.stream().map(Enum::ordinal).collect(Collectors.toList()));
         boolean hasTurnEnd = turnEnd > 0 && turnEnd < Long.MAX_VALUE;
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new Object2ObjectOpenHashMap<>();
+        Map<Integer, Map<AllianceMetric, Map<Long, Double>>> result = new Int2ObjectOpenHashMap<>();
 
         String query = "SELECT * FROM ALLIANCE_METRICS WHERE turn >= ?" + (hasTurnEnd ? " and turn <= ?" : "") + " AND " + aaInClause + "metric in " + metricQueryStr;
         query(query, new ThrowingConsumer<PreparedStatement>() {
@@ -4394,8 +4392,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     long turn = rs.getLong("turn");
                     double value = rs.getDouble("value");
 
-                    DBAlliance alliance = getOrCreateAlliance(allianceId);
-                    result.computeIfAbsent(alliance, f -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turn, value);
+                    result.computeIfAbsent(allianceId, f -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turn, value);
                 }
             }
         });
@@ -4439,9 +4436,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
-    public void addTreatyChange(long timestamp, TreatyChangeAction action, TreatyType treatyType,
+    private void ensureUnifiedTreatyChangesTable() {
+        executeStmt("CREATE TABLE IF NOT EXISTS `TREATY_CHANGES_UNIFIED` (`timestamp` BIGINT NOT NULL, `action` TINYINT NOT NULL, `treaty_type` TINYINT NOT NULL, `from_alliance_id` INT NOT NULL, `to_alliance_id` INT NOT NULL, `turns_remaining` INT NOT NULL, PRIMARY KEY(`timestamp`, `from_alliance_id`, `to_alliance_id`, `treaty_type`, `action`))");
+    }
+
+    public void addUnifiedTreatyChange(long timestamp, TreatyChangeAction action, TreatyType treatyType,
                                 int fromAllianceId, int toAllianceId, int turnsRemaining) {
-        update("INSERT INTO `TREATY_CHANGES` (`timestamp`, `action`, `treaty_type`, `from_alliance_id`, `to_alliance_id`, `turns_remaining`) VALUES(?, ?, ?, ?, ?, ?)",
+        ensureUnifiedTreatyChangesTable();
+        update("INSERT OR REPLACE INTO `TREATY_CHANGES_UNIFIED` (`timestamp`, `action`, `treaty_type`, `from_alliance_id`, `to_alliance_id`, `turns_remaining`) VALUES(?, ?, ?, ?, ?, ?)",
                 (ThrowingConsumer<PreparedStatement>) stmt -> {
                     stmt.setLong(1, timestamp);
                     stmt.setInt(2, action.ordinal());
@@ -4453,8 +4455,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public List<DBTreatyChange> getTreatyChangesSince(long timestamp) {
+        ensureUnifiedTreatyChangesTable();
         List<DBTreatyChange> result = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("SELECT * FROM TREATY_CHANGES WHERE timestamp >= ? ORDER BY timestamp ASC")) {
+        try (PreparedStatement stmt = prepareQuery("SELECT * FROM TREATY_CHANGES_UNIFIED WHERE timestamp >= ? ORDER BY timestamp ASC")) {
             stmt.setLong(1, timestamp);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -4470,6 +4473,83 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+        return result;
+    }
+
+    public List<DBTreatyChange> getTreatyChangesByAlliance(int allianceId, long startTimestamp, long endTimestamp) {
+        ensureUnifiedTreatyChangesTable();
+        List<DBTreatyChange> result = new ArrayList<>();
+        StringBuilder query = new StringBuilder(
+                "SELECT * FROM TREATY_CHANGES_UNIFIED WHERE (from_alliance_id = ? OR to_alliance_id = ?)");
+        if (startTimestamp != Long.MIN_VALUE) {
+            query.append(" AND timestamp >= ?");
+        }
+        if (endTimestamp != Long.MAX_VALUE) {
+            query.append(" AND timestamp <= ?");
+        }
+        query.append(" ORDER BY timestamp ASC");
+        try (PreparedStatement stmt = prepareQuery(query.toString())) {
+            int index = 1;
+            stmt.setInt(index++, allianceId);
+            stmt.setInt(index++, allianceId);
+            if (startTimestamp != Long.MIN_VALUE) {
+                stmt.setLong(index++, startTimestamp);
+            }
+            if (endTimestamp != Long.MAX_VALUE) {
+                stmt.setLong(index, endTimestamp);
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new DBTreatyChange(
+                            rs.getLong("timestamp"),
+                            TreatyChangeAction.values[rs.getInt("action")],
+                            TreatyType.values[rs.getInt("treaty_type")],
+                            rs.getInt("from_alliance_id"),
+                            rs.getInt("to_alliance_id"),
+                            rs.getInt("turns_remaining")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+    }
+
+    public Map<Integer, Treaty> getTreatiesAt(int allianceId, long timestamp) {
+        List<DBTreatyChange> changes = getTreatyChangesByAlliance(allianceId, Long.MIN_VALUE, timestamp);
+        if (changes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Integer, Treaty> result = new Int2ObjectOpenHashMap<>();
+        for (DBTreatyChange change : changes) {
+            int otherAllianceId = change.getFromAllianceId() == allianceId ? change.getToAllianceId() : change.getFromAllianceId();
+            switch (change.getAction()) {
+                case SIGNED:
+                case EXTENDED:
+                    long turnEnds = change.getTurnsRemaining() < 0
+                            ? Long.MAX_VALUE
+                            : TimeUtil.getTurn(change.getTimestamp()) + change.getTurnsRemaining();
+                    Treaty treaty = new Treaty(
+                            java.util.Objects.hash(change.getFromAllianceId(), change.getToAllianceId(), change.getTreatyType()),
+                            change.getTimestamp(),
+                            change.getTreatyType(),
+                            change.getFromAllianceId(),
+                            change.getToAllianceId(),
+                            turnEnds);
+                    if (treaty.isPermanent() || TimeUtil.getTimeFromTurn(treaty.getTurnEnds()) > timestamp) {
+                        result.put(otherAllianceId, treaty);
+                    } else {
+                        result.remove(otherAllianceId);
+                    }
+                    break;
+                case CANCELLED:
+                case EXPIRED:
+                case ENDED:
+                    result.remove(otherAllianceId);
+                    break;
+            }
         }
         return result;
     }
@@ -4579,6 +4659,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return getLoot(-allianceId);
     }
 
+    public LootEntry getAllianceLootAt(int allianceId, long timestamp) {
+        return getLootAt(-allianceId, timestamp);
+    }
+
     public Map<Integer, LootEntry> getAllianceLootMap(Set<Integer> allianceIds) {
         if (allianceIds == null || allianceIds.isEmpty()) {
             return Collections.emptyMap();
@@ -4609,6 +4693,22 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public LootEntry getLoot(int nationId) {
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id = ? ORDER BY `date` DESC LIMIT 1")) {
             stmt.setInt(1, nationId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new LootEntry(rs);
+                }
+            }
+            return null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public LootEntry getLootAt(int nationId, long timestamp) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id = ? AND date <= ? ORDER BY `date` DESC LIMIT 1")) {
+            stmt.setInt(1, nationId);
+            stmt.setLong(2, timestamp);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return new LootEntry(rs);
@@ -5574,31 +5674,25 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public List<AllianceChange> getRankChangesByAA(int allianceId) {
-        return getRankChangesByAA(allianceId, 0L);
+        return getRankChangesByAA(allianceId, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     public List<AllianceChange> getRankChangesByAA(int allianceId, long cutoff) {
+        return getRankChangesByAA(allianceId, cutoff <= 0 ? Long.MIN_VALUE : cutoff, Long.MAX_VALUE);
+    }
+
+    public List<AllianceChange> getRankChangesByAA(int allianceId, long startTime, long endTime) {
         List<AllianceChange> list = new ObjectArrayList<>();
-        String query = cutoff > 0
-                ? "SELECT * FROM KICKS2 WHERE from_aa = ? AND date > ? " +
-                "UNION " +
-                "SELECT * FROM KICKS2 WHERE to_aa = ? AND date > ? " +
-                "ORDER BY date DESC"
-                : "SELECT * FROM KICKS2 WHERE from_aa = ? " +
-                "UNION " +
-                "SELECT * FROM KICKS2 WHERE to_aa = ? " +
-                "ORDER BY date DESC";
+        String dateBounds = buildAllianceChangeDateBounds(startTime, endTime);
+        String query = "SELECT * FROM KICKS2 WHERE from_aa = ?" + dateBounds +
+                " UNION " +
+                "SELECT * FROM KICKS2 WHERE to_aa = ?" + dateBounds +
+                " ORDER BY date DESC";
 
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
-            if (cutoff > 0) {
-                stmt.setInt(1, allianceId);
-                stmt.setLong(2, cutoff);
-                stmt.setInt(3, allianceId);
-                stmt.setLong(4, cutoff);
-            } else {
-                stmt.setInt(1, allianceId);
-                stmt.setInt(2, allianceId);
-            }
+            int index = 1;
+            index = bindAllianceChangeBounds(stmt, index, allianceId, startTime, endTime);
+            bindAllianceChangeBounds(stmt, index, allianceId, startTime, endTime);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     AllianceChange change = new AllianceChange(rs);
@@ -5613,17 +5707,15 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public List<AllianceChange> getDeparturesAA(int allianceId, long cutoff) {
+        return getDeparturesAA(allianceId, cutoff <= 0 ? Long.MIN_VALUE : cutoff, Long.MAX_VALUE);
+    }
+
+    public List<AllianceChange> getDeparturesAA(int allianceId, long startTime, long endTime) {
         List<AllianceChange> list = new ObjectArrayList<>();
-        String query = cutoff > 0
-                ? "SELECT * FROM KICKS2 WHERE from_aa = ? AND date > ? ORDER BY date DESC"
-                : "SELECT * FROM KICKS2 WHERE from_aa = ? ORDER BY date DESC";
+        String query = "SELECT * FROM KICKS2 WHERE from_aa = ?" + buildAllianceChangeDateBounds(startTime, endTime)
+                + " ORDER BY date DESC";
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
-            if (cutoff > 0) {
-                stmt.setInt(1, allianceId);
-                stmt.setLong(2, cutoff);
-            } else {
-                stmt.setInt(1, allianceId);
-            }
+            bindAllianceChangeBounds(stmt, 1, allianceId, startTime, endTime);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     AllianceChange change = new AllianceChange(rs);
@@ -5635,6 +5727,29 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+
+    private String buildAllianceChangeDateBounds(long startTime, long endTime) {
+        StringBuilder where = new StringBuilder();
+        if (startTime != Long.MIN_VALUE) {
+            where.append(" AND date >= ?");
+        }
+        if (endTime != Long.MAX_VALUE) {
+            where.append(" AND date <= ?");
+        }
+        return where.toString();
+    }
+
+    private int bindAllianceChangeBounds(PreparedStatement stmt, int index, int allianceId, long startTime, long endTime)
+            throws SQLException {
+        stmt.setInt(index++, allianceId);
+        if (startTime != Long.MIN_VALUE) {
+            stmt.setLong(index++, startTime);
+        }
+        if (endTime != Long.MAX_VALUE) {
+            stmt.setLong(index++, endTime);
+        }
+        return index;
     }
 
     public Map<Integer, JavaCity> toJavaCity(Map<Integer, DBCity> cities) {

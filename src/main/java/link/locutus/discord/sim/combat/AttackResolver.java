@@ -21,7 +21,7 @@ public final class AttackResolver {
     public record Flags(
             boolean attAirControl,
             boolean defAirControl,
-            boolean attGroundControl,
+            boolean attGroundSuperiority,
             boolean defFortified,
             boolean equipAttackerSoldiers,
             boolean equipDefenderSoldiers
@@ -29,7 +29,7 @@ public final class AttackResolver {
         public static Flags relative(
                 boolean attAirControl,
                 boolean defAirControl,
-                boolean attGroundControl,
+                boolean attGroundSuperiority,
                 boolean defFortified,
                 boolean equipAttackerSoldiers,
                 boolean equipDefenderSoldiers
@@ -37,7 +37,7 @@ public final class AttackResolver {
             return new Flags(
                     attAirControl,
                     defAirControl,
-                    attGroundControl,
+                    attGroundSuperiority,
                     defFortified,
                     equipAttackerSoldiers,
                     equipDefenderSoldiers
@@ -53,7 +53,7 @@ public final class AttackResolver {
                     warType,
                     attAirControl,
                     defAirControl,
-                    attGroundControl,
+                    attGroundSuperiority,
                     defFortified
             );
         }
@@ -78,14 +78,14 @@ public final class AttackResolver {
             Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderLossRanges,
             double[] consumption,
             int mapCost,
-            ControlFlagDelta controlDelta
+            SuperiorityFlagDelta controlDelta
     ) {
         public AttackRanges {
             Objects.requireNonNull(success, "success");
             attackerLossRanges = immutableRanges(attackerLossRanges);
             defenderLossRanges = immutableRanges(defenderLossRanges);
             consumption = consumption == null ? new double[ResourceType.values.length] : consumption.clone();
-            controlDelta = controlDelta == null ? ControlFlagDelta.NONE : controlDelta;
+            controlDelta = controlDelta == null ? SuperiorityFlagDelta.NONE : controlDelta;
             if (mapCost < 0) {
                 throw new IllegalArgumentException("mapCost must be >= 0");
             }
@@ -110,70 +110,60 @@ public final class AttackResolver {
         }
     }
 
-    public static AttackOutcome resolve(
-            CombatantView attacker,
-            CombatantView defender,
-            WarStateView war,
-            AttackType type,
-            ResolutionMode mode
-    ) {
-        return resolve(new ViewAttackContext(attacker, defender, war), type, mode);
-    }
-
-    public static AttackOutcome resolve(
-            CombatantView attacker,
-            CombatantView defender,
-            AttackType type,
-            WarType warType,
-            Flags flags,
-            ResolutionMode mode
-    ) {
-        Flags resolvedFlags = resolveFlags(flags);
-        return resolve(attacker, defender, resolvedFlags.toWarState(warType), type, mode);
-    }
-
-    static AttackOutcome resolve(
-            CombatKernel.AttackContext context,
-            AttackType type,
-            ResolutionMode mode
-    ) {
-        return CombatKernel.resolve(context, type, mode);
-    }
-
-    public static AttackOutcome resolve(
+    public static void resolveInto(
             CombatantView attacker,
             CombatantView defender,
             WarStateView war,
             AttackType type,
             ResolutionMode mode,
-            RandomSource rng,
-            long streamKey
+            AttackScratch scratch,
+            MutableAttackResult out
     ) {
-        return resolve(new ViewAttackContext(attacker, defender, war), type, mode, rng, streamKey);
+        resolveInto(new ViewAttackContext(attacker, defender, war), type, mode, scratch, out);
     }
 
-    public static AttackOutcome resolve(
+    public static void resolveInto(
             CombatantView attacker,
             CombatantView defender,
             AttackType type,
             WarType warType,
             Flags flags,
             ResolutionMode mode,
-            RandomSource rng,
-            long streamKey
+            AttackScratch scratch,
+            MutableAttackResult out
     ) {
         Flags resolvedFlags = resolveFlags(flags);
-        return resolve(attacker, defender, resolvedFlags.toWarState(warType), type, mode, rng, streamKey);
+        resolveInto(attacker, defender, resolvedFlags.toWarState(warType), type, mode, scratch, out);
     }
 
-    static AttackOutcome resolve(
-            CombatKernel.AttackContext context,
+    public static void resolveInto(
+            CombatantView attacker,
+            CombatantView defender,
+            WarStateView war,
             AttackType type,
             ResolutionMode mode,
             RandomSource rng,
-            long streamKey
+            long streamKey,
+            AttackScratch scratch,
+            MutableAttackResult out
     ) {
-        return CombatKernel.resolve(context, type, mode, rng, streamKey);
+        resolveInto(new ViewAttackContext(attacker, defender, war), type, mode, rng, streamKey, scratch, out);
+    }
+
+    public static void resolveInto(
+            CombatantView attacker,
+            CombatantView defender,
+            AttackType type,
+            WarType warType,
+            Flags flags,
+            ResolutionMode mode,
+            RandomSource rng,
+            long streamKey,
+            AttackScratch scratch,
+            MutableAttackResult out
+    ) {
+        Flags resolvedFlags = resolveFlags(flags);
+        resolveInto(attacker, defender, resolvedFlags.toWarState(warType), type, mode, rng, streamKey, scratch, out);
     }
 
     static void resolveInto(
@@ -196,21 +186,6 @@ public final class AttackResolver {
             MutableAttackResult out
     ) {
         CombatKernel.resolveInto(context, type, mode, rng, streamKey, scratch, out);
-    }
-
-    static AttackOutcome resolve(
-            CombatKernel.AttackContext context,
-            AttackType type,
-            ResolutionMode mode,
-            EngagementOptions options,
-            RandomSource rng,
-            long streamKey,
-            OddsModel oddsModel
-    ) {
-        AttackScratch scratch = new AttackScratch();
-        MutableAttackResult result = new MutableAttackResult();
-        resolveInto(context, type, mode, options, rng, streamKey, oddsModel, scratch, result);
-        return result.toAttackOutcome();
     }
 
     static void resolveInto(
@@ -237,7 +212,7 @@ public final class AttackResolver {
         );
     }
 
-    public static AttackOutcome resolve(
+        public static void resolveInto(
             CombatantView attacker,
             CombatantView defender,
             WarStateView war,
@@ -246,12 +221,14 @@ public final class AttackResolver {
             EngagementOptions options,
             RandomSource rng,
             long streamKey,
-            OddsModel oddsModel
-    ) {
-        return resolve(new ViewAttackContext(attacker, defender, war), type, mode, options, rng, streamKey, oddsModel);
-    }
+            OddsModel oddsModel,
+            AttackScratch scratch,
+            MutableAttackResult out
+        ) {
+        resolveInto(new ViewAttackContext(attacker, defender, war), type, mode, options, rng, streamKey, oddsModel, scratch, out);
+        }
 
-    public static AttackOutcome resolve(
+        public static void resolveInto(
             CombatantView attacker,
             CombatantView defender,
             AttackType type,
@@ -260,21 +237,25 @@ public final class AttackResolver {
             ResolutionMode mode,
             RandomSource rng,
             long streamKey,
-            OddsModel oddsModel
-    ) {
+            OddsModel oddsModel,
+            AttackScratch scratch,
+            MutableAttackResult out
+        ) {
         Flags resolvedFlags = resolveFlags(flags);
-        return resolve(
-                attacker,
-                defender,
-                resolvedFlags.toWarState(warType),
-                type,
-                mode,
-                resolvedFlags.toEngagementOptions(),
-                rng,
-                streamKey,
-                oddsModel
+        resolveInto(
+            attacker,
+            defender,
+            resolvedFlags.toWarState(warType),
+            type,
+            mode,
+            resolvedFlags.toEngagementOptions(),
+            rng,
+            streamKey,
+            oddsModel,
+            scratch,
+            out
         );
-    }
+        }
 
     public static AttackRanges rangesForSuccess(
             CombatantView attacker,
@@ -388,7 +369,7 @@ public final class AttackResolver {
                 context.defenderFortified(),
                 options.equipAttackerSoldiers(),
                 options.equipDefenderSoldiers(),
-                context.attackerHasGroundControl()
+                context.attackerHasGroundSuperiority()
         );
 
         return new AttackRanges(

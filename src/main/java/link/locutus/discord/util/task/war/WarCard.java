@@ -90,7 +90,7 @@ public class WarCard {
             wn.setLootFactor(wn.getLootFactor() / 1.4);
         }
         if (groundControl == nationId) {
-            wn.setGroundControl(true);
+            wn.setGroundSuperiority(true);
         }
         if (airSuperiority == nationId) {
             wn.setAirControl(true);

@@ -6,6 +6,7 @@ import link.locutus.discord.sim.planners.BlitzAssignment;
 import link.locutus.discord.sim.planners.BlitzPlanner;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
+import link.locutus.discord.sim.planners.SidePolicy;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +33,7 @@ class FreeSlotRespectTest {
         List<DBNationSnapshot> defenders = List.of(defender);
 
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         long timesAssigned = result.assignment().values().stream()
                 .flatMap(List::stream)
@@ -50,7 +51,7 @@ class FreeSlotRespectTest {
         List<DBNationSnapshot> defenders = List.of(defender);
 
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         long timesAssigned = result.assignment().values().stream()
                 .flatMap(List::stream)
@@ -71,7 +72,7 @@ class FreeSlotRespectTest {
                 .forceFreeDefSlots(101, 2)
                 .build();
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults(), TreatyProvider.NONE, overrides, new DamageObjective());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         long timesAssigned = result.assignment().values().stream()
                 .flatMap(List::stream)
@@ -92,7 +93,7 @@ class FreeSlotRespectTest {
         List<DBNationSnapshot> attackers = buildAttackers(1, 10);
 
         BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
-        BlitzAssignment result = planner.assign(attackers, defenders);
+        BlitzAssignment result = assign(planner, attackers, defenders);
 
         // Each defender has 2 free defensive slots; total capacity = 5 × 2 = 10
         // Each attacker has 5 free offensive slots; total demand = 10 × 5 = 50
@@ -141,6 +142,18 @@ class FreeSlotRespectTest {
         }
         return list;
     }
+
+        private BlitzAssignment assign(BlitzPlanner planner, List<DBNationSnapshot> attackers, List<DBNationSnapshot> defenders) {
+                return planner.assign(
+                                attackers,
+                                defenders,
+                                SidePolicy.legacy("acting", planner.objective()),
+                                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                                0,
+                                List.of(),
+                                1
+                );
+        }
 
     private double[] uniformInfra(int cities, double infra) {
         double[] arr = new double[cities];

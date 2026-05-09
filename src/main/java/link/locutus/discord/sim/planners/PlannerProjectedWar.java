@@ -13,7 +13,7 @@ record PlannerProjectedWar(
         int defenderMaps,
         int attackerResistance,
         int defenderResistance,
-        PlannerLocalConflict.ControlOwner groundControlOwner,
+        PlannerLocalConflict.ControlOwner groundSuperiorityOwner,
         PlannerLocalConflict.ControlOwner airSuperiorityOwner,
         PlannerLocalConflict.ControlOwner blockadeOwner,
         boolean attackerFortified,

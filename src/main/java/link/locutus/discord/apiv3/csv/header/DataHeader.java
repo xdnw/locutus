@@ -90,6 +90,10 @@ public abstract class DataHeader<T> {
         return result;
     }
 
+    public boolean isIgnoredColumn(String columnName) {
+        return false;
+    }
+
     public final Map<String, ColumnInfo<T, Object>> createHeaders(boolean clear) {
         if (headers == null) {
             synchronized (this) {

@@ -12,6 +12,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,20 +33,28 @@ import java.util.zip.ZipInputStream;
 
 public class DataDumpParser {
 
+    private Map<Long, AlliancesFile> allianceFilesByDay;
     private Map<Long, NationsFile> nationFilesByDay;
     private Map<Long, CitiesFile> cityFilesByDay;
+    private long lastUpdatedAlliances = 0;
     private long lastUpdatedNations = 0;
     private long lastUpdatedCities = 0;
-    private final File cityDir, nationDir;
-    private final Dictionary nationDict, cityDict;
+    private final File allianceDir, cityDir, nationDir;
+    private final Dictionary allianceDict, nationDict, cityDict;
     private final DataUtil util;
 
     public DataDumpParser() {
+        this.allianceDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.ALLIANCES);
         this.cityDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES);
         this.nationDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS);
+        this.allianceDict = new Dictionary(allianceDir);
         this.nationDict = new Dictionary(nationDir);
         this.cityDict = new Dictionary(cityDir);
         this.util = new DataUtil(this);
+    }
+
+    public File getAllianceDir() {
+        return allianceDir;
     }
 
     public File getNationDir() {
@@ -72,6 +81,9 @@ public class DataDumpParser {
     // new method
     public Map<Integer, DBNationSnapshot> getNations(long day, boolean loadCities) throws IOException, ParseException {
         NationsFile nationsFile = getNearestNationFile(day);
+        if (nationsFile == null) {
+            return Collections.emptyMap();
+        }
         Function<Integer, Map<Integer, DBCity>> fetchCities = null;
         if (loadCities) {
             CitiesFile citiesFile = getNearestCityFile(day);
@@ -79,53 +91,101 @@ public class DataDumpParser {
                 fetchCities = citiesFile.loadCities();
             }
         }
-        Map<Integer, DBNationSnapshot> nations = nationsFile.readNations(fetchCities);
+        long snapshotDate = TimeUtil.getTimeFromDay(day);
+        final Map<Integer, DBNationSnapshot>[] nationHolder = new Map[1];
+        AllianceSnapshotContext allianceContext = new AllianceSnapshotContext(snapshotDate,
+                () -> {
+                    try {
+                        return getAlliances(day);
+                    } catch (IOException | ParseException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                () -> {
+                    Map<Integer, DBNationSnapshot> current = nationHolder[0];
+                    return current == null ? Collections.emptySet() : current.values();
+                });
+        Map<Integer, DBNationSnapshot> nations = nationsFile.readNations(fetchCities, allianceContext);
+        nationHolder[0] = nations;
         return nations;
     }
 
+    public Map<Integer, DBAlliance> getAlliances(long day) throws IOException, ParseException {
+        AlliancesFile alliancesFile = getNearestAllianceFile(day);
+        if (alliancesFile == null) {
+            return Collections.emptyMap();
+        }
+        return alliancesFile.readAlliances();
+    }
+
     public DataDumpParser load() throws IOException, ParseException {
+        downloadAllianceFilesByDay();
         downloadNationFilesByDay();
         downloadCityFilesByDay();
         return this;
     }
 
     public DataDumpParser loadDict() {
+        allianceDict.load();
         cityDict.load();
         nationDict.load();
         return this;
     }
 
     public List<Long> getDays(boolean requireNations, boolean requireCities) {
+        return getDays(requireNations, requireCities, false);
+    }
+
+    public List<Long> getDays(boolean requireNations, boolean requireCities, boolean requireAlliances) {
         Set<Long> days = new LongOpenHashSet();
-        if (requireNations) {
-            if (requireCities) {
-                if (nationFilesByDay != null && cityFilesByDay != null) {
-                    synchronized (nationFilesByDay) {
-                        days.addAll(nationFilesByDay.keySet());
-                    }
-                    synchronized (cityFilesByDay) {
-                        days.removeIf(day -> !cityFilesByDay.containsKey(day));
-                    }
-                }
-            } else {
-                if (nationFilesByDay != null) {
-                    synchronized (nationFilesByDay) {
-                        days.addAll(nationFilesByDay.keySet());
-                    }
-                }
+        boolean seeded = false;
+        if (requireNations && nationFilesByDay == null) {
+            return Collections.emptyList();
+        }
+        if (requireCities && cityFilesByDay == null) {
+            return Collections.emptyList();
+        }
+        if (requireAlliances && allianceFilesByDay == null) {
+            return Collections.emptyList();
+        }
+        if (requireNations && nationFilesByDay != null) {
+            synchronized (nationFilesByDay) {
+                days.addAll(nationFilesByDay.keySet());
             }
-        } else if (requireCities) {
-            if (cityFilesByDay != null) {
-                synchronized (cityFilesByDay) {
+            seeded = true;
+        }
+        if (requireCities && cityFilesByDay != null) {
+            synchronized (cityFilesByDay) {
+                if (!seeded) {
                     days.addAll(cityFilesByDay.keySet());
+                    seeded = true;
+                } else {
+                    days.removeIf(day -> !cityFilesByDay.containsKey(day));
                 }
             }
+        }
+        if (requireAlliances && allianceFilesByDay != null) {
+            synchronized (allianceFilesByDay) {
+                if (!seeded) {
+                    days.addAll(allianceFilesByDay.keySet());
+                } else {
+                    days.removeIf(day -> !allianceFilesByDay.containsKey(day));
+                }
+            }
+        }
+        if (requireNations || requireCities || requireAlliances) {
+            return days.stream().sorted().toList();
         }
         return days.stream().sorted().toList();
     }
 
     public long getMinDay() {
         long min = Long.MAX_VALUE;
+        if (allianceFilesByDay != null) {
+            synchronized (allianceFilesByDay) {
+                min = Math.min(min, allianceFilesByDay.keySet().stream().min(Long::compareTo).orElse(Long.MAX_VALUE));
+            }
+        }
         if (nationFilesByDay != null) {
             synchronized (nationFilesByDay) {
                 min = Math.min(min, nationFilesByDay.keySet().stream().min(Long::compareTo).orElse(Long.MAX_VALUE));
@@ -151,6 +211,46 @@ public class DataDumpParser {
                     CitiesFile cityFile = cityFilesByDay.get(day);
                     onEach.accept(day, nationFile, cityFile);
                 }
+            }
+        }
+    }
+
+    public void iterateFilesWithAlliances(QuadConsumer<Long, AlliancesFile, NationsFile, CitiesFile> onEach) {
+        if (allianceFilesByDay == null && nationFilesByDay == null && cityFilesByDay == null) {
+            return;
+        }
+        Set<Long> days = new LongOpenHashSet();
+        if (allianceFilesByDay != null) {
+            synchronized (allianceFilesByDay) {
+                days.addAll(allianceFilesByDay.keySet());
+            }
+        }
+        if (nationFilesByDay != null) {
+            synchronized (nationFilesByDay) {
+                days.addAll(nationFilesByDay.keySet());
+            }
+        }
+        if (cityFilesByDay != null) {
+            synchronized (cityFilesByDay) {
+                days.addAll(cityFilesByDay.keySet());
+            }
+        }
+        for (long day : days.stream().sorted().toList()) {
+            AlliancesFile allianceFile = allianceFilesByDay == null ? null : allianceFilesByDay.get(day);
+            NationsFile nationFile = nationFilesByDay == null ? null : nationFilesByDay.get(day);
+            CitiesFile cityFile = cityFilesByDay == null ? null : cityFilesByDay.get(day);
+            onEach.consume(day, allianceFile, nationFile, cityFile);
+        }
+    }
+
+    public void withAllianceFile(long day, Consumer<AlliancesFile> withFile) throws IOException, ParseException {
+        downloadAllianceFilesByDay();
+        if (allianceFilesByDay == null)
+            return;
+        synchronized (allianceFilesByDay) {
+            AlliancesFile allianceFile = allianceFilesByDay.get(day);
+            if (allianceFile != null) {
+                withFile.accept(allianceFile);
             }
         }
     }
@@ -217,6 +317,14 @@ public class DataDumpParser {
 
     public DataUtil getUtil() {
         return util;
+    }
+
+    public Map<Long, AlliancesFile> getAllianceFilesByDay() {
+        if (allianceFilesByDay == null)
+            return Collections.emptyMap();
+        synchronized (allianceFilesByDay) {
+            return new Long2ObjectLinkedOpenHashMap<>(allianceFilesByDay);
+        }
     }
 
     public Map<Long, CitiesFile> getCityFilesByDay() {
@@ -304,6 +412,49 @@ public class DataDumpParser {
         return getNearest(cityFilesByDay, day);
     }
 
+    private AlliancesFile getNearestAllianceFile(long day) {
+        return getNearest(allianceFilesByDay, day);
+    }
+
+    private Map<Long, AlliancesFile> downloadAllianceFilesByDay() throws IOException, ParseException {
+        if (allianceFilesByDay == null) {
+            synchronized (this) {
+                if (allianceFilesByDay == null) {
+                    if (!allianceDir.exists()) {
+                        allianceDir.mkdirs();
+                    }
+                    allianceFilesByDay = new Long2ObjectLinkedOpenHashMap<>();
+
+                    String prefix = "alliances";
+                    for (File file : allianceDir.listFiles()) {
+                        if (!DataFile.isValidName(file, prefix))
+                            continue;
+                        AlliancesFile allianceFile = new AlliancesFile(file, allianceDict);
+                        long day = allianceFile.getDay();
+                        allianceFilesByDay.putIfAbsent(day, allianceFile);
+                    }
+                    lastUpdatedAlliances = allianceFilesByDay.keySet().stream().max(Long::compareTo).orElse(0L);
+                }
+            }
+        }
+        long currentDay = TimeUtil.getDay();
+        if (currentDay > lastUpdatedAlliances) {
+            synchronized (this) {
+                if (currentDay > lastUpdatedAlliances) {
+                    Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/alliances/",
+                            new File(Settings.INSTANCE.DATABASE.DATA_DUMP.ALLIANCES));
+                    downloaded.forEach((time, file) -> {
+                        long day = TimeUtil.getDay(time);
+                        AlliancesFile allianceFile = new AlliancesFile(file, allianceDict);
+                        allianceFilesByDay.putIfAbsent(day, allianceFile);
+                    });
+                    lastUpdatedAlliances = currentDay;
+                }
+            }
+        }
+        return allianceFilesByDay;
+    }
+
     private Map<Long, NationsFile> downloadNationFilesByDay() throws IOException, ParseException {
         if (nationFilesByDay == null) {
             synchronized (this) {
@@ -385,5 +536,9 @@ public class DataDumpParser {
 
     public Dictionary getDict(boolean isNations) {
         return isNations ? nationDict : cityDict;
+    }
+
+    public Dictionary getAllianceDict() {
+        return allianceDict;
     }
 }

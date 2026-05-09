@@ -29,10 +29,10 @@ final class BalancedBlitzObjective implements StrategicObjective {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = totals.ownValue() - totals.enemyValue();
         if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlScoreForTeam(teamId);
-            score += controlView.activeWarStrategicScoreForTeam(teamId, 1.0d, 1.0d);
-            score += controlView.activeWarSlotDenialScoreForTeam(teamId);
-            score += controlView.controlRegimeScoreForTeam(teamId);
+            score += controlView.controlCompositeScoreForTeam(
+                    teamId,
+                    new TeamWarControlView.ControlComponentWeights(1.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d)
+            );
         }
         return score;
     }

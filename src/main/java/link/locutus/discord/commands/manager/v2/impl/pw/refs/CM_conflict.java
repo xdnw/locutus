@@ -22,6 +22,14 @@ public class CM_conflict {
             public static final getCategory cmd = new getCategory();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.conflict.Conflict.class,method="getCoalitionName")
+        public static class getCoalitionName extends CommandRef {
+            public static final getCoalitionName cmd = new getCoalitionName();
+        public getCoalitionName side(String value) {
+            return set("side", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.conflict.Conflict.class,method="getCol1List")
         public static class getCol1List extends CommandRef {
             public static final getCol1List cmd = new getCol1List();
@@ -131,11 +139,6 @@ public class CM_conflict {
         @AutoRegister(clazz=link.locutus.discord.db.conflict.Conflict.class,method="getWiki")
         public static class getWiki extends CommandRef {
             public static final getWiki cmd = new getWiki();
-
-        }
-        @AutoRegister(clazz=link.locutus.discord.db.conflict.Conflict.class,method="isDirty")
-        public static class isDirty extends CommandRef {
-            public static final isDirty cmd = new isDirty();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.conflict.Conflict.class,method="isParticipant")

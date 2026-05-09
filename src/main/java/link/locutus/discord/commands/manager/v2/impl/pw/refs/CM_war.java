@@ -141,6 +141,16 @@ public class CM_war {
             public static final isActive cmd = new isActive();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBWar.class,method="isAttApplicant")
+        public static class isAttApplicant extends CommandRef {
+            public static final isAttApplicant cmd = new isAttApplicant();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBWar.class,method="isDefApplicant")
+        public static class isDefApplicant extends CommandRef {
+            public static final isDefApplicant cmd = new isDefApplicant();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBWar.class,method="possibleEndDate")
         public static class possibleEndDate extends CommandRef {
             public static final possibleEndDate cmd = new possibleEndDate();

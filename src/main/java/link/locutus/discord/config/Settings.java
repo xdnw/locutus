@@ -796,6 +796,9 @@ public class Settings extends Config {
             @Comment("If the data csv parser is enabled (~25gb of raw csv data)")
             public boolean ENABLED = false;
 
+            @Comment({"The directory to store alliance data dumps in",
+                    "These are historical csv files  provided by P&W (not a database)"})
+            public String ALLIANCES = "data/alliances";
             @Comment({"The directory to store city data dumps in",
                     "These are historical csv files  provided by P&W (not a database)"})
             public String CITIES = "data/cities";

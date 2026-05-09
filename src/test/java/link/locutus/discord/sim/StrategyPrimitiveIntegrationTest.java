@@ -42,7 +42,7 @@ class StrategyPrimitiveIntegrationTest {
         world.addNation(nation(2, WarPolicy.TURTLE, 5_000d, 400d, 380d));
 
         world.declareWar(2001, 1, 2, WarType.ORD);
-        world.applyControlFlagChanges(2001, 1, 0, 1, 0);
+        world.applySuperiorityFlagChanges(2001, 1, 0, 1, 0);
         world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 12);
         world.requireNation(2).setUnitCount(MilitaryUnit.AIRCRAFT, 2);
 
@@ -67,7 +67,7 @@ class StrategyPrimitiveIntegrationTest {
         world.addNation(nation(2, WarPolicy.TURTLE, 5_000d, 160d, 160d));
 
         world.declareWar(2002, 1, 2, WarType.ORD);
-        world.applyControlFlagChanges(2002, 1, 0, 1, 0);
+        world.applySuperiorityFlagChanges(2002, 1, 0, 1, 0);
         world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 10);
         world.requireNation(2).addResource(ResourceType.MONEY, 8_000_000d);
 
@@ -92,7 +92,7 @@ class StrategyPrimitiveIntegrationTest {
         world.addNation(nation(2, WarPolicy.TURTLE, 5_000d, 160d, 160d));
 
         world.declareWar(2007, 1, 2, WarType.ORD);
-        world.applyControlFlagChanges(2007, 1, 0, 1, 0);
+        world.applySuperiorityFlagChanges(2007, 1, 0, 1, 0);
         world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 10);
         world.requireNation(2).addResource(ResourceType.ALUMINUM, 8_000_000d);
 
@@ -260,7 +260,7 @@ class StrategyPrimitiveIntegrationTest {
         world.declareWar(2008, 1, 2, WarType.ORD);
         world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 6);
         world.requireNation(2).setUnitCount(MilitaryUnit.AIRCRAFT, 10);
-        world.applyControlFlagChanges(2008, 2, 0, 1, 0);
+        world.applySuperiorityFlagChanges(2008, 2, 0, 1, 0);
 
         RuleBasedActor actor = new RuleBasedActor();
         actor.addPrimitive(new MapReserveForReaction());
@@ -285,7 +285,7 @@ class StrategyPrimitiveIntegrationTest {
         world.requireNation(1).setUnitCount(MilitaryUnit.TANK, 12);
         world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 6);
         world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 24);
-        world.applyControlFlagChanges(2009, 1, 1, 1, 0);
+        world.applySuperiorityFlagChanges(2009, 1, 1, 1, 0);
 
         RuleBasedActor actor = new RuleBasedActor();
         actor.addPrimitive(new SaveAndStrike());

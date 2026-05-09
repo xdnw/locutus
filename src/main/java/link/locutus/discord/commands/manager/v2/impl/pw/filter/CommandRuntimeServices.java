@@ -16,6 +16,7 @@ import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.LiveDBAlliance;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
@@ -646,7 +647,7 @@ public final class CommandRuntimeServices implements CommandRuntimeLookupContext
     }
 
     private static DBAlliance createPlaceholderAlliance(int allianceId) {
-        return new DBAlliance(allianceId, allianceId == 0 ? "None" : "AA:" + allianceId,
+        return new LiveDBAlliance(allianceId, allianceId == 0 ? "None" : "AA:" + allianceId,
                 "", "", "", "", "", 0L, link.locutus.discord.apiv1.enums.NationColor.GRAY, null);
     }
 

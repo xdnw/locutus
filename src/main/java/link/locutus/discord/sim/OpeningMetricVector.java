@@ -4,13 +4,14 @@ package link.locutus.discord.sim;
  * Objective-facing summary of a bounded opening rollout.
  */
 public class OpeningMetricVector implements StrategicEvaluationComponents {
-    public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d, 0d);
+    public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d, 0d, 0d);
 
     private final double immediateHarm;
     private final double selfExposure;
     private final double resourceSwing;
     private final double controlLeverage;
-    private final double futureWarLeverage;
+    private final double tacticalMomentum;
+    private final double forceWindowAdvantage;
     private final double targetPressure;
 
     public OpeningMetricVector(
@@ -18,9 +19,10 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
             double selfExposure,
             double resourceSwing,
             double controlLeverage,
-            double futureWarLeverage
+            double tacticalMomentum,
+            double forceWindowAdvantage
     ) {
-        this(immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage, 0d);
+        this(immediateHarm, selfExposure, resourceSwing, controlLeverage, tacticalMomentum, forceWindowAdvantage, 0d);
     }
 
     public OpeningMetricVector(
@@ -28,14 +30,16 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
             double selfExposure,
             double resourceSwing,
             double controlLeverage,
-            double futureWarLeverage,
+            double tacticalMomentum,
+            double forceWindowAdvantage,
             double targetPressure
     ) {
         this.immediateHarm = immediateHarm;
         this.selfExposure = selfExposure;
         this.resourceSwing = resourceSwing;
         this.controlLeverage = controlLeverage;
-        this.futureWarLeverage = futureWarLeverage;
+        this.tacticalMomentum = tacticalMomentum;
+        this.forceWindowAdvantage = forceWindowAdvantage;
         this.targetPressure = targetPressure;
     }
 
@@ -55,8 +59,14 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         return controlLeverage;
     }
 
-    public double futureWarLeverage() {
-        return futureWarLeverage;
+    @Override
+    public double tacticalMomentum() {
+        return tacticalMomentum;
+    }
+
+    @Override
+    public double forceWindowAdvantage() {
+        return forceWindowAdvantage;
     }
 
     public double targetPressure() {
@@ -75,7 +85,8 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 && Double.compare(selfExposure(), that.selfExposure()) == 0
                 && Double.compare(resourceSwing(), that.resourceSwing()) == 0
                 && Double.compare(controlLeverage(), that.controlLeverage()) == 0
-                && Double.compare(futureWarLeverage(), that.futureWarLeverage()) == 0
+                && Double.compare(tacticalMomentum(), that.tacticalMomentum()) == 0
+                && Double.compare(forceWindowAdvantage(), that.forceWindowAdvantage()) == 0
                 && Double.compare(targetPressure(), that.targetPressure()) == 0;
     }
 
@@ -85,7 +96,8 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         result = 31 * result + Double.hashCode(selfExposure());
         result = 31 * result + Double.hashCode(resourceSwing());
         result = 31 * result + Double.hashCode(controlLeverage());
-        result = 31 * result + Double.hashCode(futureWarLeverage());
+        result = 31 * result + Double.hashCode(tacticalMomentum());
+        result = 31 * result + Double.hashCode(forceWindowAdvantage());
         result = 31 * result + Double.hashCode(targetPressure());
         return result;
     }
@@ -97,7 +109,8 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 + ", selfExposure=" + selfExposure()
                 + ", resourceSwing=" + resourceSwing()
                 + ", controlLeverage=" + controlLeverage()
-                + ", futureWarLeverage=" + futureWarLeverage()
+                + ", tacticalMomentum=" + tacticalMomentum()
+                + ", forceWindowAdvantage=" + forceWindowAdvantage()
                 + ", targetPressure=" + targetPressure()
                 + ']';
     }
@@ -114,15 +127,16 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         private double selfExposure;
         private double resourceSwing;
         private double controlLeverage;
-        private double futureWarLeverage;
+        private double tacticalMomentum;
+        private double forceWindowAdvantage;
         private double targetPressure;
 
         public Mutable() {
-            super(0d, 0d, 0d, 0d, 0d);
+            super(0d, 0d, 0d, 0d, 0d, 0d);
         }
 
         public void clear() {
-            set(0d, 0d, 0d, 0d, 0d);
+            set(0d, 0d, 0d, 0d, 0d, 0d);
         }
 
         public void copyFrom(OpeningMetricVector source) {
@@ -131,7 +145,8 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                     source.selfExposure(),
                     source.resourceSwing(),
                     source.controlLeverage(),
-                    source.futureWarLeverage(),
+                    source.tacticalMomentum(),
+                    source.forceWindowAdvantage(),
                     source.targetPressure()
             );
         }
@@ -141,9 +156,10 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 double selfExposure,
                 double resourceSwing,
                 double controlLeverage,
-                double futureWarLeverage
+                double tacticalMomentum,
+                double forceWindowAdvantage
         ) {
-            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage, 0d);
+            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, tacticalMomentum, forceWindowAdvantage, 0d);
         }
 
         public void set(
@@ -151,14 +167,16 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 double selfExposure,
                 double resourceSwing,
                 double controlLeverage,
-                double futureWarLeverage,
+                double tacticalMomentum,
+                double forceWindowAdvantage,
                 double targetPressure
         ) {
             this.immediateHarm = immediateHarm;
             this.selfExposure = selfExposure;
             this.resourceSwing = resourceSwing;
             this.controlLeverage = controlLeverage;
-            this.futureWarLeverage = futureWarLeverage;
+            this.tacticalMomentum = tacticalMomentum;
+            this.forceWindowAdvantage = forceWindowAdvantage;
             this.targetPressure = targetPressure;
         }
 
@@ -183,8 +201,13 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         }
 
         @Override
-        public double futureWarLeverage() {
-            return futureWarLeverage;
+        public double tacticalMomentum() {
+            return tacticalMomentum;
+        }
+
+        @Override
+        public double forceWindowAdvantage() {
+            return forceWindowAdvantage;
         }
 
         @Override

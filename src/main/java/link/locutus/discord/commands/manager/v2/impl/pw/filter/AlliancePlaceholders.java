@@ -4,6 +4,7 @@ import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.LiveAppPlaceholderExtension;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -15,10 +16,14 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.INationSnapshot;
+import link.locutus.discord.db.AllianceLookup;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
@@ -69,13 +74,21 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> impleme
                 new SelectorInfo("ALLIANCE_ID", "790", "An alliance id"),
                 new SelectorInfo("coalition:COALITION", "coalition:allies", "A qualified coalition name"),
                 new SelectorInfo("~COALITION", "~enemies", "A coalition name"),
-                new SelectorInfo("*", null, "All alliances")
+                new SelectorInfo("*", null, "All alliances"),
+                new SelectorInfo("alliance(<timestamp>):SELECTOR", "alliance(5d):aa:Rose",
+                    "Alliance snapshot at a specific date")
         ));
     }
 
     @Override
     public Set<String> getSheetColumns() {
         return new ObjectLinkedOpenHashSet<>(List.of("alliance", "{id}", "{name}", "{getname}", "{getid}"));
+    }
+
+    @NoFormat
+    @Command(desc = "Alliance snapshot settings (optional)")
+    public Long create(@Arg("The date to use, rounded to the nearest day") @Switch("t") @Timestamp Long timestamp) {
+        return timestamp;
     }
 
     @NoFormat
@@ -148,6 +161,36 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> impleme
     }
 
     @Override
+    protected Set<DBAlliance> parseSingleElem(ValueStore store, String input, Long modifier) {
+        if (modifier == null) {
+            return parseSingleElem(store, input);
+        }
+        INationSnapshot snapshot = runtime.nationSnapshots().resolve(new NationModifier(modifier, false, false));
+        if (!(snapshot instanceof AllianceLookup allianceLookup)) {
+            throw new IllegalArgumentException("Alliance snapshots are not available for this selection.");
+        }
+        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        if (input.equalsIgnoreCase("*")) {
+            Set<Integer> ids = snapshot.getAllNations().stream().map(DBNation::getAlliance_id)
+                    .filter(id -> id != 0).collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
+            return ids.stream().map(allianceLookup::getAlliance).filter(Objects::nonNull)
+                    .collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
+        }
+        if (SpreadSheet.isSheet(input)) {
+            return SpreadSheet.parseSheet(input, List.of("alliance", "{name}", "{id}", "{getname}", "{getid}"), true,
+                    s -> switch (s.toLowerCase()) {
+                        case "alliance", "{name}", "{id}", "{getname}", "{getid}" -> 0;
+                        default -> null;
+                    },
+                    (type, str) -> {
+                        Set<DBAlliance> alliances = parseIdsSnapshot(guild, str, allianceLookup, true);
+                        return alliances.isEmpty() ? null : alliances.iterator().next();
+                    });
+        }
+        return parseIdsSnapshot(guild, input, allianceLookup, true);
+    }
+
+    @Override
     protected Predicate<DBAlliance> parseSingleFilter(ValueStore store, String input) {
         if (input.equalsIgnoreCase("*")) {
             return Predicates.alwaysTrue();
@@ -182,6 +225,22 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> impleme
         return f -> aaIds.contains(f.getId());
     }
 
+    @Override
+    protected Predicate<DBAlliance> parseSingleFilter(ValueStore store, String input, Long modifier) {
+        if (modifier == null) {
+            return parseSingleFilter(store, input);
+        }
+        if (input.equalsIgnoreCase("*")) {
+            return Predicates.alwaysTrue();
+        }
+        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input, true);
+        if (aaIds == null) {
+            throw new IllegalArgumentException("Invalid alliances: " + input);
+        }
+        return alliance -> aaIds.contains(alliance.getId());
+    }
+
     private Set<DBAlliance> parseIds(Guild guild, String input, boolean throwError) {
         Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input, true);
         if (aaIds == null) {
@@ -191,6 +250,31 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> impleme
         Set<DBAlliance> alliances = new HashSet<>();
         for (Integer aaId : aaIds) {
             alliances.add(runtime.lookup().getAllianceOrCreate(aaId));
+        }
+        return alliances;
+    }
+
+    private Set<DBAlliance> parseIdsSnapshot(Guild guild, String input, AllianceLookup lookup, boolean throwError) {
+        if (MathMan.isInteger(input)) {
+            int allianceId = Integer.parseInt(input);
+            DBAlliance alliance = lookup.getAlliance(allianceId);
+            if (alliance != null) {
+                return Set.of(alliance);
+            }
+        }
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input, true);
+        if (aaIds == null) {
+            if (!throwError) {
+                return null;
+            }
+            throw new IllegalArgumentException("Invalid alliances: " + input);
+        }
+        Set<DBAlliance> alliances = new ObjectLinkedOpenHashSet<>();
+        for (int aaId : aaIds) {
+            DBAlliance alliance = lookup.getAlliance(aaId);
+            if (alliance != null) {
+                alliances.add(alliance);
+            }
         }
         return alliances;
     }

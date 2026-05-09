@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class WarNation {
     private final DBNation nation;
-    private boolean groundControl;
+    private boolean groundSuperiority;
     private boolean airControl;
     private int blockade;
     private int resistance;
@@ -143,7 +143,7 @@ public class WarNation {
     }
 
     public void updateStats(WarNation other) {
-        this.groundControl = other.groundControl;
+        this.groundSuperiority = other.groundSuperiority;
         this.airControl = other.airControl;
         this.blockade = other.blockade;
         this.resistance = other.resistance;
@@ -199,12 +199,12 @@ public class WarNation {
         return (int) Math.round(getMoney() * WarOutcomeMath.victoryNationLootPercent(getLootFactor()));
     }
 
-    public boolean isGroundControl() {
-        return groundControl;
+    public boolean isGroundSuperiority() {
+        return groundSuperiority;
     }
 
-    public void setGroundControl(boolean groundControl) {
-        this.groundControl = groundControl;
+    public void setGroundSuperiority(boolean groundSuperiority) {
+        this.groundSuperiority = groundSuperiority;
     }
 
     public boolean isAirControl() {
@@ -267,7 +267,7 @@ public class WarNation {
     }
 
     public int getMaxAirStrength(WarNation enemy) {
-        return (int) (getAircraft());// * (enemy.isGroundControl() ? 0.66 : 1));
+        return (int) (getAircraft());// * (enemy.isGroundSuperiority() ? 0.66 : 1));
     }
 
     public int getMaxTankStrength(WarNation enemy) {
@@ -316,7 +316,7 @@ public class WarNation {
         enemy.consume(ResourceType.MUNITIONS, enemyMuni, victory, attMuni);
         enemy.consume(ResourceType.GASOLINE, enemyGas, victory, attGas);
 
-        boolean hadGc = isGroundControl();
+        boolean hadGc = isGroundSuperiority();
         long money = enemy.getMoney();
         switch (victory) {
             case 0:
@@ -325,7 +325,7 @@ public class WarNation {
                 }
                 break;
             case 3:
-                setGroundControl(true);
+                setGroundSuperiority(true);
                 enemy.decrementResistance(3);
             case 2:
                 enemy.decrementResistance(3);
@@ -346,7 +346,7 @@ Soldiers is rand (88, 110) / 100 * Soldiers
 
                 enemy.setAvg_infra((int) (enemy.getAvg_infra() - (infra / enemy.getCities())));
 
-                enemy.setGroundControl(false);
+                enemy.setGroundSuperiority(false);
         }
 
         if (hadGc && victory != 0) {

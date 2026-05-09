@@ -37,12 +37,12 @@ class WarControlRulesTest {
                 CombatKernel.AttackContext.BLOCKADE_NONE
         );
 
-        ControlFlagDelta moderate = WarControlRules.controlDelta(context, AttackType.NAVAL_AIR, SuccessType.MODERATE_SUCCESS);
+        SuperiorityFlagDelta moderate = WarControlRules.controlDelta(context, AttackType.NAVAL_AIR, SuccessType.MODERATE_SUCCESS);
         assertEquals(0, moderate.airSuperiority());
         assertTrue(moderate.clearAirSuperiority());
         assertEquals(0, moderate.blockade());
 
-        ControlFlagDelta immense = WarControlRules.controlDelta(context, AttackType.NAVAL_AIR, SuccessType.IMMENSE_TRIUMPH);
+        SuperiorityFlagDelta immense = WarControlRules.controlDelta(context, AttackType.NAVAL_AIR, SuccessType.IMMENSE_TRIUMPH);
         assertEquals(1, immense.blockade());
         assertTrue(immense.clearAirSuperiority());
     }
@@ -67,7 +67,7 @@ class WarControlRulesTest {
                 currentWar,
                 attacker,
                 defender,
-                ControlFlagDelta.of(0, 0, 1, false, false, false),
+                SuperiorityFlagDelta.of(0, 0, 1, false, false, false),
                 activeWars(warsByNation),
                 war -> blockadeChangedWars.add(war.warId)
         );
@@ -96,7 +96,7 @@ class WarControlRulesTest {
                 currentWar,
                 attacker,
                 defenderWithoutAircraft,
-                ControlFlagDelta.NONE,
+                SuperiorityFlagDelta.NONE,
                 activeWars(warsByNation),
                 ignored -> { }
         );
@@ -120,13 +120,13 @@ class WarControlRulesTest {
             CombatKernel.AttackContext.BLOCKADE_DEFENDER
         );
 
-        ControlFlagDelta fromContext =
+        SuperiorityFlagDelta fromContext =
             WarControlRules.controlDelta(context, AttackType.NAVAL_GROUND, SuccessType.MODERATE_SUCCESS);
-        ControlFlagDelta fromBooleans =
+        SuperiorityFlagDelta fromBooleans =
             WarControlRules.controlDelta(AttackType.NAVAL_GROUND, SuccessType.MODERATE_SUCCESS, true, true, true);
 
         assertEquals(fromContext, fromBooleans);
-        assertFalse(fromBooleans == ControlFlagDelta.NONE);
+        assertFalse(fromBooleans == SuperiorityFlagDelta.NONE);
     }
 
     private static IntFunction<Iterable<TestWar>> activeWars(Map<Integer, List<TestWar>> warsByNation) {
@@ -155,8 +155,8 @@ class WarControlRulesTest {
             CombatKernel.NationState defender,
             boolean attackerHasAirControl,
             boolean defenderHasAirControl,
-            boolean attackerHasGroundControl,
-            boolean defenderHasGroundControl,
+            boolean attackerHasGroundSuperiority,
+            boolean defenderHasGroundSuperiority,
             boolean attackerFortified,
             boolean defenderFortified,
             int blockadeOwner
@@ -191,7 +191,7 @@ class WarControlRulesTest {
         private final int warId;
         private final int attackerNationId;
         private final int defenderNationId;
-        private Integer groundControlNationId;
+        private Integer groundSuperiorityNationId;
         private Integer airSuperiorityNationId;
         private Integer blockadeNationId;
 
@@ -215,8 +215,8 @@ class WarControlRulesTest {
         }
 
         @Override
-        public Integer groundControlNationId() {
-            return groundControlNationId;
+        public Integer groundSuperiorityNationId() {
+            return groundSuperiorityNationId;
         }
 
         @Override
@@ -230,8 +230,8 @@ class WarControlRulesTest {
         }
 
         @Override
-        public void setGroundControlNationId(Integer nationId) {
-            groundControlNationId = nationId;
+        public void setgroundSuperiorityNationId(Integer nationId) {
+            groundSuperiorityNationId = nationId;
         }
 
         @Override

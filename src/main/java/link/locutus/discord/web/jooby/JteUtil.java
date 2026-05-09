@@ -12,7 +12,6 @@ import gg.jte.output.StringOutput;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
-import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -34,19 +33,8 @@ import java.util.zip.GZIPOutputStream;
 
 public class JteUtil {
 
-    private static volatile ObjectMapper serializer;
-
     public static ObjectMapper getSerializer() {
-        ObjectMapper m = serializer;
-        if (m == null) {
-            synchronized (JteUtil.class) {
-                m = serializer;
-                if (m == null) {
-                    serializer = m = new ObjectMapper(new MessagePackFactory());
-                }
-            }
-        }
-        return m;
+        return WebSerializers.MSGPACK;
     }
 
     public static void copyArrayElements(ObjectMapper mapper, JsonGenerator out, byte[] arrayBytes)

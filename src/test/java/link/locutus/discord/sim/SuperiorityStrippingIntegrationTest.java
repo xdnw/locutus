@@ -24,7 +24,7 @@ class ControlStrippingIntegrationTest {
             }
 
             @Override
-            public void onControlFlagChange(SimWar war) {
+            public void onSuperiorityFlagChange(SimWar war) {
                 blockadeChangedWars.add(war.warId());
             }
         };
@@ -50,7 +50,7 @@ class ControlStrippingIntegrationTest {
         world.addWar(alphaVsBeta);
         world.addWar(betaVsGamma);
 
-        world.applyControlFlagChanges(3002, 2, 0, 0, 1);
+        world.applySuperiorityFlagChanges(3002, 2, 0, 0, 1);
         blockadeChangedWars.clear();
 
         world.resolveAttack(3001, 1, AttackType.NAVAL);

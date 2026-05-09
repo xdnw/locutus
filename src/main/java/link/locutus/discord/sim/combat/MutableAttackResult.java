@@ -28,7 +28,7 @@ public final class MutableAttackResult {
     private double defenderResistanceDelta;
     private int mapCost;
     private final double[] consumption = new double[ResourceType.values.length];
-    private ControlFlagDelta controlDelta = ControlFlagDelta.NONE;
+    private SuperiorityFlagDelta controlDelta = SuperiorityFlagDelta.NONE;
 
     void setDiscrete(
             SuccessType success,
@@ -41,7 +41,7 @@ public final class MutableAttackResult {
             double defenderResistanceDelta,
             int mapCost,
             double[] consumption,
-            ControlFlagDelta controlDelta
+            SuperiorityFlagDelta controlDelta
     ) {
         this.success = Objects.requireNonNull(success, "success");
         this.mode = Objects.requireNonNull(mode, "mode");
@@ -55,7 +55,7 @@ public final class MutableAttackResult {
         this.defenderResistanceDelta = defenderResistanceDelta;
         this.mapCost = mapCost;
         copyConsumption(consumption);
-        this.controlDelta = controlDelta == null ? ControlFlagDelta.NONE : controlDelta;
+        this.controlDelta = controlDelta == null ? SuperiorityFlagDelta.NONE : controlDelta;
     }
 
     void setExpected(
@@ -68,7 +68,7 @@ public final class MutableAttackResult {
             double defenderResistanceDelta,
             int mapCost,
             double[] consumption,
-            ControlFlagDelta controlDelta
+            SuperiorityFlagDelta controlDelta
     ) {
         this.success = Objects.requireNonNull(success, "success");
         this.mode = ResolutionMode.DETERMINISTIC_EV;
@@ -82,7 +82,7 @@ public final class MutableAttackResult {
         this.defenderResistanceDelta = defenderResistanceDelta;
         this.mapCost = mapCost;
         copyConsumption(consumption);
-        this.controlDelta = controlDelta == null ? ControlFlagDelta.NONE : controlDelta;
+        this.controlDelta = controlDelta == null ? SuperiorityFlagDelta.NONE : controlDelta;
     }
 
     private void copyConsumption(double[] source) {
@@ -145,7 +145,7 @@ public final class MutableAttackResult {
         return consumption;
     }
 
-    public ControlFlagDelta controlDelta() {
+    public SuperiorityFlagDelta controlDelta() {
         return controlDelta;
     }
 

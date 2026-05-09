@@ -122,6 +122,7 @@ public class WarDB extends DBMainV2 {
     private static final int LEGACY_FIX_ATTACK_ID_2 = 24413762;
     private static final int LEGACY_FIX_ATTACK_ID_3 = 24412909;
 
+    private Supplier<AllianceNameHistoryRepository> allianceNameHistorySupplier;
     private Supplier<ConflictManager> conflictManagerSupplier;
 
     public WarDB() throws SQLException {
@@ -134,6 +135,7 @@ public class WarDB extends DBMainV2 {
         executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
         update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
                 "victory_attacks_reserialized", "true");
+        allianceNameHistorySupplier = CachedSupplier.of(() -> new AllianceNameHistoryRepository(this));
 
     }
 
@@ -1519,6 +1521,10 @@ public class WarDB extends DBMainV2 {
 
     public ConflictManager getConflicts() {
         return conflictManagerSupplier.get();
+    }
+
+    public AllianceNameHistoryRepository getAllianceNameHistory() {
+        return allianceNameHistorySupplier.get();
     }
 
     public ObjectOpenHashSet<DBWar> getActiveWars() {
@@ -3662,6 +3668,18 @@ public class WarDB extends DBMainV2 {
             Object wars = warsByAllianceId.get(alliance_id);
             if (wars == null) return 0;
             return ArrayUtil.countElements(DBWar.class, wars, war -> war.getDate() > date);
+        }
+    }
+
+    public int countWarsByAlliance(int allianceId, long startDate, long endDate) {
+        synchronized (warsByAllianceId) {
+            Object wars = warsByAllianceId.get(allianceId);
+            if (wars == null) {
+                return 0;
+            }
+            return ArrayUtil.countElements(DBWar.class, wars,
+                    war -> (startDate == Long.MIN_VALUE || war.getDate() >= startDate)
+                            && (endDate == Long.MAX_VALUE || war.getDate() <= endDate));
         }
     }
 

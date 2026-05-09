@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.bank.TaxBracketLookup;
 import link.locutus.discord.db.entities.nation.DBNationData;
@@ -77,8 +76,7 @@ class TaxBracketLookupTest {
         private final Map<Integer, TaxBracket> brackets;
 
         private StubAlliance(int id, String name, Map<Integer, TaxBracket> brackets) {
-            super(id, name, "", "", "", "", "", 0L, NationColor.GRAY,
-                    (Int2ObjectOpenHashMap<byte[]>) null);
+            super(id, name, "", "", 0L, NationColor.GRAY);
             this.brackets = new LinkedHashMap<>(brackets);
         }
 

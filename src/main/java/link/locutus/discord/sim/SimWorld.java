@@ -191,21 +191,21 @@ public final class SimWorld {
      * 
      * @param warId the war ID
      * @param actorNationId the nation that attacked
-     * @param groundControlDelta +1/-1/0 control change
+     * @param groundSuperiorityDelta +1/-1/0 control change
      * @param airSuperiorityDelta similar
      * @param blockadeDelta similar
      */
-    public void applyControlFlagChanges(
+    public void applySuperiorityFlagChanges(
             int warId,
             int actorNationId,
-            int groundControlDelta,
+            int groundSuperiorityDelta,
             int airSuperiorityDelta,
             int blockadeDelta
     ) {
         SimWar war = requireWar(warId);
-        boolean blockadeChanged = war.applyControlFlagChanges(actorNationId, groundControlDelta, airSuperiorityDelta, blockadeDelta);
+        boolean blockadeChanged = war.applySuperiorityFlagChanges(actorNationId, groundSuperiorityDelta, airSuperiorityDelta, blockadeDelta);
         if (blockadeChanged) {
-            economyProvider.onControlFlagChange(war);
+            economyProvider.onSuperiorityFlagChange(war);
         }
     }
 
@@ -477,7 +477,7 @@ public final class SimWorld {
             defenderNation,
             attackResult.controlDelta(),
             this::activeWarsForNation,
-            economyProvider::onControlFlagChange
+            economyProvider::onSuperiorityFlagChange
         );
 
         // 8. Check for defeat now that resistance may have reached 0

@@ -15,7 +15,6 @@ import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
@@ -28,6 +27,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.AllianceNameHistoryRepository;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -39,7 +39,6 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.war.AttackEvent;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -49,7 +48,6 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.web.jooby.CloudStorage;
 import link.locutus.discord.web.jooby.JteUtil;
-import link.locutus.discord.web.jooby.S3CompatibleStorage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -71,11 +69,9 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -104,7 +100,7 @@ public class ConflictManager {
     }
 
     private final WarDB db;
-    private final CloudStorage aws;
+    private final AllianceNameHistoryRepository allianceNameHistory;
 
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
     private Conflict[] conflictArr;
@@ -112,9 +108,6 @@ public class ConflictManager {
     private long lastTurn = 0;
     private final Object conflictArrLock = new Object();
     private final Int2ObjectMap<IntSet> activeConflictOrdByAllianceId = new Int2ObjectOpenHashMap<>();
-
-    private final Map<Integer, String> legacyNames2 = new Int2ObjectOpenHashMap<>();
-    private final Map<String, Map<Long, Integer>> legacyIdsByDate = new ConcurrentHashMap<>();
 
     private final Set<Integer> conflictAlliances = new IntOpenHashSet();
 
@@ -143,7 +136,7 @@ public class ConflictManager {
         }
         INSTANCE = this;
         this.db = db;
-        this.aws = S3CompatibleStorage.setupAuto();
+        this.allianceNameHistory = db.getAllianceNameHistory();
 
         // Tables
         {
@@ -187,9 +180,6 @@ public class ConflictManager {
                     "side BOOLEAN, start BIGINT NOT NULL, " +
                     "end BIGINT NOT NULL, " +
                     "PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-            db.executeStmt(
-                    "CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
-
             db.executeStmt(
                     "CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
 
@@ -255,21 +245,6 @@ public class ConflictManager {
                 if (c != null && c.isActive())
                     activeConflictsOrd.add(c.getOrdinal());
             }
-
-            db.query("SELECT * FROM legacy_names2", stmt -> {
-            }, (ThrowingConsumer<ResultSet>) rs -> {
-                while (rs.next()) {
-                    System.out.println("Loading legacy name: " + rs.getInt("id") + " -> " + rs.getString("name")
-                            + " at " + rs.getLong("date"));
-                    int id = rs.getInt("id");
-                    String name = rs.getString("name");
-                    long date = rs.getLong("date");
-                    legacyNames2.put(id, name);
-                    String nameLower = name.toLowerCase(Locale.ROOT);
-                    legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap()).put(date, id);
-                }
-            });
-
             db.query("SELECT * FROM conflict_participant", stmt -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
@@ -277,19 +252,6 @@ public class ConflictManager {
                     conflictAlliances.add(allianceId);
                 }
             });
-
-            for (Map.Entry<String, Integer> entry : LegacyAllianceNames.get().entrySet()) {
-                String name = entry.getKey();
-                int id = entry.getValue();
-                if (!legacyNames2.containsKey(id)) {
-                    legacyNames2.put(id, name);
-                }
-                String nameLower = name.toLowerCase(Locale.ROOT);
-                Map<Long, Integer> map = legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap());
-                if (map.isEmpty()) {
-                    map.put(Long.MAX_VALUE, id);
-                }
-            }
 
             List<Conflict> actives = getActiveConflicts();
             if (!actives.isEmpty()) {
@@ -354,6 +316,7 @@ public class ConflictManager {
             db.executeStmt("DELETE FROM " + table);
             importData(otherDb, db.getDb(), table);
         }
+        allianceNameHistory.reload();
     }
 
     public String pushIndex(long time) {
@@ -1131,19 +1094,7 @@ public class ConflictManager {
     }
 
     public void saveDataCsvAllianceNames() throws IOException, ParseException {
-        Locutus.imp().getDataDumper(true).load().iterateAll(Predicates.alwaysTrue(),
-                (h, r) -> r.required(h.alliance_id, h.alliance),
-                null,
-                (day, r) -> {
-                    int aaId = r.header.alliance_id.get();
-                    if (aaId == 0)
-                        return;
-                    String name = r.header.alliance.get();
-                    if (name != null && !name.isEmpty()) {
-                        long date = TimeUtil.getTimeFromDay(day);
-                        addLegacyName(aaId, name, date);
-                    }
-                }, null, null);
+        allianceNameHistory.importAllianceNamesFromDataDump();
     }
 
     // private void saveDefaultNames() {
@@ -1331,29 +1282,7 @@ public class ConflictManager {
     }
 
     public void addLegacyName(int id, String name, long date) {
-        String nameLower = name.toLowerCase(Locale.ROOT);
-        Map<Long, Integer> byDate = legacyIdsByDate.computeIfAbsent(nameLower, f -> new Long2IntOpenHashMap());
-        Integer otherId = null;
-        Long lastDate = null;
-        for (Map.Entry<Long, Integer> entry : byDate.entrySet()) {
-            long otherDate = entry.getKey();
-            if (otherDate <= date && (lastDate == null || otherDate > lastDate)) {
-                lastDate = otherDate;
-                otherId = entry.getValue();
-            }
-        }
-        if (otherId == null || otherId != id) {
-            byDate.put(date, id);
-            synchronized (legacyNames2) {
-                legacyNames2.putIfAbsent(id, name);
-            }
-            db.update("INSERT OR IGNORE INTO legacy_names2 (id, name, date) VALUES (?, ?, ?)",
-                    (ThrowingConsumer<PreparedStatement>) stmt -> {
-                        stmt.setInt(1, id);
-                        stmt.setString(2, name);
-                        stmt.setLong(3, date);
-                    });
-        }
+        allianceNameHistory.addName(id, name, date);
     }
 
     public Conflict addConflict(String name, long creator, ConflictCategory category, String col1, String col2,
@@ -1524,57 +1453,19 @@ public class ConflictManager {
     }
 
     public Integer getAllianceId(String name, long date, boolean parseInt) {
-        Integer id = getAllianceId(name, date);
-        if (id == null && parseInt && MathMan.isInteger(name)) {
-            id = Integer.parseInt(name);
-        }
-        return id;
+        return allianceNameHistory.getAllianceId(name, date, parseInt);
     }
 
     public Integer getAllianceId(String name, long date) {
-        String nameLower = name.toLowerCase(Locale.ROOT);
-        synchronized (legacyIdsByDate) {
-            Map<Long, Integer> idsByDate = legacyIdsByDate.get(nameLower);
-            if (idsByDate != null && !idsByDate.isEmpty()) {
-                if (idsByDate.size() == 1) {
-                    return idsByDate.values().iterator().next();
-                }
-                Long lastDate = null;
-                Integer lastId = null;
-                for (Map.Entry<Long, Integer> entry : idsByDate.entrySet()) {
-                    long otherDate = entry.getKey();
-                    if (lastDate == null || (otherDate <= date && otherDate > lastDate)) {
-                        lastDate = otherDate;
-                        lastId = entry.getValue();
-                    }
-                }
-                return lastId;
-            }
-        }
-        DBAlliance alliance = DBAlliance.parse(name, false);
-        if (alliance != null) {
-            addLegacyName(alliance.getId(), name, 0);
-            return alliance.getId();
-        }
-        return null;
+        return allianceNameHistory.getAllianceId(name, date);
     }
 
     public String getAllianceName(int id) {
-        String name = getAllianceNameOrNull(id);
-        if (name == null)
-            name = "AA:" + id;
-        return name;
+        return allianceNameHistory.getAllianceName(id);
     }
 
     public String getAllianceNameOrNull(int id) {
-        DBAlliance alliance = DBAlliance.get(id);
-        if (alliance != null)
-            return alliance.getName();
-        String name;
-        synchronized (legacyNames2) {
-            name = legacyNames2.get(id);
-        }
-        return name;
+        return allianceNameHistory.getAllianceNameOrNull(id);
     }
 
     public void deleteConflict(Conflict conflict) {
@@ -1862,16 +1753,7 @@ public class ConflictManager {
     }
 
     public Map.Entry<String, Double> getMostSimilar(String name) {
-        double distance = Integer.MAX_VALUE;
-        String similar = null;
-        for (Map.Entry<Integer, String> entry : legacyNames2.entrySet()) {
-            double d = StringMan.distanceWeightedQwertSift4(name, entry.getValue());
-            if (d < distance) {
-                distance = d;
-                similar = entry.getValue();
-            }
-        }
-        return distance == Integer.MAX_VALUE ? null : KeyValue.of(similar, distance);
+        return allianceNameHistory.getMostSimilar(name);
     }
 
     public void updateConflictCategory(int conflictId, ConflictCategory category) {
@@ -1883,7 +1765,7 @@ public class ConflictManager {
     }
 
     public CloudStorage getCloud() {
-        return aws;
+        return Locutus.imp().getCloudStorage();
     }
 
     private PreparedCloudUpload prepareIndexUpload(long time) {
@@ -1891,8 +1773,12 @@ public class ConflictManager {
     }
 
     String uploadPrepared(PreparedCloudUpload upload) {
-        aws.putObject(upload.key, upload.data, upload.maxAge);
-        return aws.getLink(upload.key);
+        CloudStorage cloud = getCloud();
+        if (cloud == null) {
+            throw new IllegalStateException("Cloud storage is not configured");
+        }
+        cloud.putObject(upload.key, upload.data, upload.maxAge);
+        return cloud.getLink(upload.key);
     }
 
     List<String> uploadPrepared(List<PreparedCloudUpload> uploads) {
