@@ -50,14 +50,16 @@ lastBackup.txt
 /database-test
 /database-main
 /database-main
-/.github
-.github/.copilot-instructions.md
+/.github/*
+!/.github/agents/
+!/.github/agents/**
+!/.github/copilot-instructions.md
 
 /.vscode
 /.copilot
 .vscode/settings.json
 docs/
-AGENTS.md
+!AGENTS.md
 /repro-out
 /tools
 /.claude
