@@ -189,6 +189,7 @@ class TreatyVisRuntimeValidationServiceTest {
                             new TreatyVisRuntimeValidationService.LiveAllianceFlagRow(4729, "https://flags.test/alpha.png"),
                             new TreatyVisRuntimeValidationService.LiveAllianceFlagRow(881, "https://flags.test/beta.png")
                     ),
+                    allianceId -> "Alliance " + allianceId,
                     json
             );
 
@@ -206,6 +207,176 @@ class TreatyVisRuntimeValidationServiceTest {
                         assertTrue(report.contains("bootstrapLiveHandoff"));
                         assertTrue(report.contains("scoreMatchesCurrentLive"));
             assertEquals(reportPath.toAbsolutePath().normalize(), result.reportPath());
+            assertTrue(repository.loadBootstrapState().validationComplete());
+        }
+    }
+
+    @Test
+    void ignoresCurrentLiveScoreDriftWhenImportedScoreStateIsInternallyConsistent() throws Exception {
+        Path stagedImportRoot = tempDir.resolve("drift-import");
+        Path stagedData = stagedImportRoot.resolve("data");
+        Path stagedPublicData = stagedImportRoot.resolve(Path.of("public", "data"));
+        Files.createDirectories(stagedData.resolve("flag_cache"));
+        Files.createDirectories(stagedPublicData);
+
+        byte[] alphaRaw = createPngBytes(new Color(120, 80, 20));
+        byte[] betaRaw = createPngBytes(new Color(20, 80, 120));
+        String alphaRawHash = TreatyVisRuntimeFlagAssetUtil.sha256(alphaRaw).toString();
+        String betaRawHash = TreatyVisRuntimeFlagAssetUtil.sha256(betaRaw).toString();
+        String alphaNormalizedHash = "e".repeat(64);
+        String betaNormalizedHash = "f".repeat(64);
+        Files.write(stagedData.resolve(Path.of("flag_cache", "alpha-cache.png")), alphaRaw);
+        Files.write(stagedData.resolve(Path.of("flag_cache", "beta-cache.png")), betaRaw);
+
+        Files.writeString(stagedData.resolve("treaties.json"), "[]\n");
+        Files.writeString(stagedData.resolve("treaties_archive.json"), "{}\n");
+        Map<String, Object> activeTreaty = new LinkedHashMap<>();
+        activeTreaty.put("treaty_type", "MDP");
+        activeTreaty.put("opened_at", "2026-03-01T00:00:00Z");
+        activeTreaty.put("expires_at", null);
+        activeTreaty.put("last_event_id", "event-a");
+
+        json.writeValue(stagedData.resolve("incremental_state.json").toFile(), Map.of(
+                "schema_version", 1,
+                "event_store", Map.of(
+                        "max_timestamp", "2026-03-03T14:04:08.958000Z",
+                        "active", Map.of(
+                                "4729:881", Map.of(
+                                        "MDP", activeTreaty
+                                )
+                        )
+                )
+        ));
+        json.writeValue(stagedData.resolve("flag_download_state.json").toFile(), Map.of(
+                "urls", Map.of(
+                        "https://flags.test/alpha.png", Map.of("cache_file", "alpha-cache.png", "content_sha256", alphaRawHash),
+                        "https://flags.test/beta.png", Map.of("cache_file", "beta-cache.png", "content_sha256", betaRawHash)
+                )
+        ));
+        msgpack.writeValue(stagedData.resolve("flags_day_cache.msgpack").toFile(), Map.of(
+                "raw_events_after_legacy", List.of(
+                        Map.of("timestamp", "2025-01-01T00:00:00Z", "alliance_id", 4729, "raw_flag_url", "https://flags.test/alpha.png"),
+                        Map.of("timestamp", "2025-01-02T00:00:00Z", "alliance_id", 881, "raw_flag_url", "https://flags.test/beta.png")
+                ),
+                "url_to_hash", Map.of(
+                        "https://flags.test/alpha.png", alphaNormalizedHash,
+                        "https://flags.test/beta.png", betaNormalizedHash
+                )
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("flag_assets.msgpack").toFile(), Map.of(
+                "atlas", Map.of("columns", 16),
+                "assets", Map.of(
+                        "a", Map.of("x", 0, "y", 0, "w", 16, "h", 10, "hash", alphaNormalizedHash),
+                        "b", Map.of("x", 16, "y", 0, "w", 16, "h", 10, "hash", betaNormalizedHash)
+                )
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("treaty_changes_reconciled_index.msgpack").toFile(), Map.of(
+                "schema_version", 1,
+                "delta_file", "treaty_changes_reconciled_delta.msgpack",
+                "windows", List.of(Map.of("file", "treaty_changes_reconciled_window_2025-01.msgpack"))
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("treaty_changes_reconciled_window_2025-01.msgpack").toFile(), List.of(
+                Map.of(
+                        "timestamp", "2025-01-01T00:00:00Z",
+                        "action", "signed",
+                        "treaty_type", "MDP",
+                        "from_alliance_id", 4729,
+                        "to_alliance_id", 881,
+                        "time_remaining_turns", 12,
+                        "source", "endpoint_delta"
+                )
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("treaty_changes_reconciled_delta.msgpack").toFile(), List.of(
+                Map.of(
+                        "timestamp", "2026-03-03T16:04:08.958Z",
+                        "action", "expired",
+                        "treaty_type", "MDP",
+                        "from_alliance_id", 4729,
+                        "to_alliance_id", 881,
+                        "turns_remaining", 0,
+                        "source", "current_truth_reconcile"
+                )
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("treaty_changes_reconciled_summary.msgpack").toFile(), Map.of());
+        msgpack.writeValue(stagedPublicData.resolve("alliance_scores_v2_index.msgpack").toFile(), Map.of());
+        msgpack.writeValue(stagedPublicData.resolve("alliance_scores_v2_delta.msgpack").toFile(), Map.of());
+        msgpack.writeValue(stagedPublicData.resolve("alliance_score_ranks_daily.msgpack").toFile(), Map.of());
+        msgpack.writeValue(stagedPublicData.resolve("flags_index.msgpack").toFile(), Map.of());
+        msgpack.writeValue(stagedPublicData.resolve("flags_delta.msgpack").toFile(), Map.of());
+        msgpack.writeValue(stagedPublicData.resolve("alliance_scores_v2_window_2025-01.msgpack").toFile(), Map.of(
+                "schema_version", 2,
+                "quantization_scale", TreatyHistoryRuntimeConfig.SCORE_QUANTIZATION,
+                "day_keys", List.of("2025-01-01", "2025-01-02"),
+                "days", List.of(
+                        List.of(List.of(4729, 182340), List.of(881, 175210)),
+                        List.of(List.of(4729, 183100), List.of(881, 175210))
+                )
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("flags_window_2025-01.msgpack").toFile(), Map.of());
+
+        Path importRoot = tempDir.resolve("runtime-drift-import");
+        Path reportPath = tempDir.resolve("runtime_validate_drift_report.json");
+        Path runtimeFlagCacheRoot = tempDir.resolve(Path.of("runtime-drift", "flag_cache"));
+
+        TreatyVisRuntimeBootstrapService bootstrapService = new TreatyVisRuntimeBootstrapService(importRoot, reportPath, json);
+        bootstrapService.importLegacyArtifacts(stagedImportRoot, false);
+
+        try (DBMainV2 db = new DBMainV2(tempDir.resolve("runtime-drift.db").toFile())) {
+            TreatyVisRuntimeRepository repository = new TreatyVisRuntimeRepository(db);
+            TreatyVisRuntimeLegacyTreatyImportService treatyImportService = new TreatyVisRuntimeLegacyTreatyImportService(importRoot, repository, msgpack);
+            TreatyVisRuntimeLegacyScoreImportService scoreImportService = new TreatyVisRuntimeLegacyScoreImportService(importRoot, repository, msgpack);
+            TreatyVisRuntimeLegacyFlagImportService flagImportService = new TreatyVisRuntimeLegacyFlagImportService(importRoot, runtimeFlagCacheRoot, repository, msgpack, json);
+
+            treatyImportService.importHistoricalTreaties(false);
+            scoreImportService.importHistoricalScores(false);
+            flagImportService.importHistoricalFlags(false);
+            repository.replaceTreatyCheckpoint(new TreatyVisRuntimeRepository.TreatyCheckpoint(
+                    Math.toIntExact(LocalDate.parse("2026-03-03").toEpochDay()),
+                    Instant.parse("2026-03-03T14:04:08.958000Z").toEpochMilli(),
+                    List.of(new TreatyVisRuntimeRepository.TreatyCheckpointEntry(4729, 881, TreatyType.MDP, -1))
+            ));
+            repository.replaceLastAllianceScores(List.of(
+                    new TreatyVisRuntimeRepository.LastAllianceScoreRow(4729, 183100),
+                    new TreatyVisRuntimeRepository.LastAllianceScoreRow(881, 175210)
+            ));
+            repository.replaceTopNScoreRows(Map.of(
+                    Math.toIntExact(LocalDate.parse("2025-01-01").toEpochDay()), TreatyVisRuntimeScoreRowCodec.encode(List.of(
+                            new TreatyVisRuntimeLegacyScoreImportService.ScoreRow(4729, 182340),
+                            new TreatyVisRuntimeLegacyScoreImportService.ScoreRow(881, 175210)
+                    )),
+                    Math.toIntExact(LocalDate.parse("2025-01-02").toEpochDay()), TreatyVisRuntimeScoreRowCodec.encode(List.of(
+                            new TreatyVisRuntimeLegacyScoreImportService.ScoreRow(4729, 183100),
+                            new TreatyVisRuntimeLegacyScoreImportService.ScoreRow(881, 175210)
+                    ))
+            ));
+
+            TreatyVisRuntimeValidationService service = new TreatyVisRuntimeValidationService(
+                    bootstrapService,
+                    repository,
+                    treatyImportService,
+                    scoreImportService,
+                    flagImportService,
+                    new TreatyVisRuntimeImportedSnapshotService(repository),
+                    reportPath,
+                    runtimeFlagCacheRoot,
+                    List::of,
+                    () -> List.of(
+                            new TreatyVisRuntimeValidationService.LiveAllianceScoreRow(4729, 190000),
+                            new TreatyVisRuntimeValidationService.LiveAllianceScoreRow(881, 175210)
+                    ),
+                    () -> List.of(
+                            new TreatyVisRuntimeValidationService.LiveAllianceFlagRow(4729, "https://flags.test/alpha.png"),
+                            new TreatyVisRuntimeValidationService.LiveAllianceFlagRow(881, "https://flags.test/beta.png")
+                    ),
+                    allianceId -> "Alliance " + allianceId,
+                    json
+            );
+
+            TreatyVisRuntimeValidationService.RuntimeValidationResult result = service.validateImportedRuntime();
+
+            assertTrue(result.valid());
+            String report = Files.readString(reportPath);
+            assertTrue(report.contains("\"scoreMatchesCurrentLive\" : false"));
             assertTrue(repository.loadBootstrapState().validationComplete());
         }
     }
@@ -358,6 +529,7 @@ class TreatyVisRuntimeValidationServiceTest {
                             new TreatyVisRuntimeValidationService.LiveAllianceFlagRow(4729, "https://flags.test/alpha.png"),
                             new TreatyVisRuntimeValidationService.LiveAllianceFlagRow(881, "https://flags.test/beta.png")
                     ),
+                    allianceId -> "Alliance " + allianceId,
                     json
             );
 

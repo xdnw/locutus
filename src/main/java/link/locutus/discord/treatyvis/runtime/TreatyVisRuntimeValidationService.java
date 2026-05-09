@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 public final class TreatyVisRuntimeValidationService {
@@ -35,6 +36,7 @@ public final class TreatyVisRuntimeValidationService {
     private final Supplier<List<TreatyVisRuntimeTreatyCheckpointRefreshService.CurrentTreatyRow>> currentTreatySupplier;
     private final Supplier<List<LiveAllianceScoreRow>> liveScoreSupplier;
     private final Supplier<List<LiveAllianceFlagRow>> liveFlagSupplier;
+    private final IntFunction<String> allianceNameResolver;
     private final ObjectMapper json;
 
     public TreatyVisRuntimeValidationService() {
@@ -50,6 +52,7 @@ public final class TreatyVisRuntimeValidationService {
                 TreatyVisRuntimeValidationService::loadCurrentTreatyTruth,
                 TreatyVisRuntimeValidationService::loadCurrentLiveScores,
                 TreatyVisRuntimeValidationService::loadCurrentLiveFlags,
+                Locutus.imp().getWarDb().getAllianceNameHistory()::getAllianceName,
                 TreatyVisRuntimeSerializers.JSON
         );
     }
@@ -66,6 +69,7 @@ public final class TreatyVisRuntimeValidationService {
             Supplier<List<TreatyVisRuntimeTreatyCheckpointRefreshService.CurrentTreatyRow>> currentTreatySupplier,
             Supplier<List<LiveAllianceScoreRow>> liveScoreSupplier,
             Supplier<List<LiveAllianceFlagRow>> liveFlagSupplier,
+                IntFunction<String> allianceNameResolver,
             ObjectMapper json
     ) {
         this.bootstrapService = Objects.requireNonNull(bootstrapService, "bootstrapService");
@@ -79,6 +83,7 @@ public final class TreatyVisRuntimeValidationService {
         this.currentTreatySupplier = Objects.requireNonNull(currentTreatySupplier, "currentTreatySupplier");
         this.liveScoreSupplier = Objects.requireNonNull(liveScoreSupplier, "liveScoreSupplier");
         this.liveFlagSupplier = Objects.requireNonNull(liveFlagSupplier, "liveFlagSupplier");
+        this.allianceNameResolver = Objects.requireNonNull(allianceNameResolver, "allianceNameResolver");
         this.json = Objects.requireNonNull(json, "json");
     }
 
@@ -100,9 +105,7 @@ public final class TreatyVisRuntimeValidationService {
         boolean importedSnapshotAvailable = false;
         TreatyVisRuntimeImportedSnapshotService.ImportedSnapshot importedSnapshot = null;
         try {
-            importedSnapshot = importedSnapshotService.buildImportedSnapshot(
-                    Locutus.imp().getWarDb().getAllianceNameHistory()::getAllianceName
-            );
+            importedSnapshot = importedSnapshotService.buildImportedSnapshot(allianceNameResolver);
             importedSnapshotAvailable = importedSnapshot != null;
             if (!importedSnapshotAvailable) {
                 issues.add("Imported runtime snapshot could not be materialized from imported tables.");
@@ -299,9 +302,6 @@ public final class TreatyVisRuntimeValidationService {
         }
         Map<Integer, Integer> actualScores = repository.loadLastAllianceScores();
         boolean scoreMatches = actualScores.equals(expectedScores);
-        if (!scoreMatches) {
-            issues.add("LAST_ALLIANCE_SCORES does not match the captured bootstrap live score snapshot.");
-        }
 
         Map<Integer, String> expectedFlags = new LinkedHashMap<>();
         for (LiveAllianceFlagRow flag : liveFlagSupplier.get()) {
