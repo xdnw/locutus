@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Files;
+import java.util.IdentityHashMap;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -192,6 +193,10 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     Set<ColumnInfo<T, Object>> present = new ObjectLinkedOpenHashSet<>(columnsInCsv);
                     writeOrder.removeIf(f -> !present.contains(f));
                 }
+                Map<ColumnInfo<T, Object>, Integer> rowDataIndexes = new IdentityHashMap<>(columnsInCsv.size());
+                for (int i = 0; i < columnsInCsv.size(); i++) {
+                    rowDataIndexes.put(columnsInCsv.get(i), i);
+                }
 
                 {
                     int expected = columnsInCsv.size();
@@ -228,7 +233,11 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     dos.writeInt(all.size());
                     for (List<Object> rowData : all) {
                         for (ColumnInfo<T, Object> column : writeOrder) {
-                            column.write(dos, rowData.get(column.getIndex()));
+                            Integer rowDataIndex = rowDataIndexes.get(column);
+                            if (rowDataIndex == null) {
+                                throw new IllegalStateException("Missing row data index for column `" + column.getName() + "` in file: " + csvFile.getName());
+                            }
+                            column.write(dos, rowData.get(rowDataIndex));
                         }
                     }
                 }
