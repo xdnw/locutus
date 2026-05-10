@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAllian
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingPresentationSupport;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.TradeProfitRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.TradeRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.TradeRankingRequests;
@@ -705,12 +706,13 @@ public class TradeCommands {
                                @Timestamp long time,
                                @Arg("Group by alliance instead of nation")
                                @Switch("a") boolean groupByAlliance, @Switch("u") boolean uploadFile) {
+        var request = TradeRankingRequests.tradeProfit(nations, time, groupByAlliance);
+        var result = TradeProfitRankingService.ranking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                TradeProfitRankingService.ranking(
-                        TradeRankingRequests.tradeProfit(nations, time, groupByAlliance)
-                ),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
         );
         return null;
@@ -1242,22 +1244,21 @@ public class TradeCommands {
                              @Switch("p") boolean includeMoneyTrades,
                              @Switch("s") boolean show_absolute,
                              @Switch("n") Set<DBNation> nations) {
+                    var request = TradeRankingRequests.findTrader(
+                        type,
+                        cutoff,
+                        buyOrSell,
+                        groupByAlliance,
+                        includeMoneyTrades,
+                        show_absolute,
+                        nations
+                    );
+                    var result = TradeRankingService.ranking(manager, db, request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                TradeRankingService.ranking(
-                        manager,
-                        db,
-                        TradeRankingRequests.findTrader(
-                                type,
-                                cutoff,
-                                buyOrSell,
-                                groupByAlliance,
-                                includeMoneyTrades,
-                                show_absolute,
-                                nations
-                        )
-                ),
+                        result,
+                        RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
         );
         return null;

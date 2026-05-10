@@ -1,6 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.ranking;
 
 import com.google.common.base.Predicates;
+import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
@@ -20,7 +23,6 @@ import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.scheduler.TriFunction;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -76,10 +78,10 @@ public final class WarRankingService {
             if (onlyOffensiveWars && onlyDefensiveWars) {
                 throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
             }
-            if (type == WarCostMode.PROFIT && stat.unit() != null) {
+            if (type.isProfitLike() && stat.unit() != null) {
                 throw new IllegalArgumentException("Cannot rank by `type: profit` with a unit stat");
             }
-            if (type == WarCostMode.PROFIT && stat.isAttack()) {
+            if (type.isProfitLike() && stat.isAttack()) {
                 throw new IllegalArgumentException("Cannot rank by `type: profit` with an attack type stat");
             }
             if (timeEndMs < timeStartMs) {
@@ -152,15 +154,15 @@ public final class WarRankingService {
         IntSet allowedAllianceIds = request.warAllianceIds().isEmpty() ? null : new IntOpenHashSet(request.warAllianceIds());
 
         Map<Integer, DBWar> wars = parser.getWars();
-        Map<Integer, Integer> warsByGroup = request.scalePerWar()
+    Int2IntOpenHashMap warsByGroup = request.scalePerWar()
                 ? countWarsByGroup(wars.values(), request.groupByAlliance(), allowedAllianceIds)
-                : Map.of();
-        Map<Integer, Integer> allianceCityCountCache = request.scalePerCity() && request.groupByAlliance()
-                ? new HashMap<>()
-                : Map.of();
-        Map<Integer, Integer> nationCityCountCache = request.scalePerCity() && !request.groupByAlliance()
-                ? new HashMap<>()
-                : Map.of();
+        : null;
+    Int2IntOpenHashMap allianceCityCountCache = request.scalePerCity() && request.groupByAlliance()
+        ? new Int2IntOpenHashMap()
+        : null;
+    Int2IntOpenHashMap nationCityCountCache = request.scalePerCity() && !request.groupByAlliance()
+        ? new Int2IntOpenHashMap()
+        : null;
 
         TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc = request.stat().getFunction(
                 request.excludeUnits(),
@@ -170,10 +172,14 @@ public final class WarRankingService {
                 request.excludeBuildings(),
                 request.type()
         );
-        TriFunction<Boolean, DBWar, AbstractCursor, Double> attackValueFunc = request.type().getAttackFunc(valueFunc);
+        TriFunction<Boolean, DBWar, AbstractCursor, Double> attackValueFunc = request.type().getUncheckedAttackFunc(valueFunc);
+        boolean filterAttackOrigins = !request.type().includesAllAttackOrigins();
 
-        Map<Integer, Double> values = new LinkedHashMap<>();
+        Int2DoubleOpenHashMap values = new Int2DoubleOpenHashMap();
         parser.getAttacks().accept((war, attack) -> {
+            if (filterAttackOrigins && !request.type().includesAttack(war, attack)) {
+                return;
+            }
             if (request.onlyRankCoalition1()) {
                 boolean isPrimary = parser.getIsPrimary().apply(war);
                 addWarCostValue(values, warsByGroup, allianceCityCountCache, nationCityCountCache, request, war, attack, isPrimary, attackValueFunc, allowedAllianceIds);
@@ -206,7 +212,7 @@ public final class WarRankingService {
         WarParser parser = WarParser.of(request.attackers(), request.defenders(), request.timeStartMs(), endMs);
         Map<Integer, DBWar> wars = parser.getWars();
 
-        Map<Integer, Double> values = new LinkedHashMap<>();
+        Int2DoubleOpenHashMap values = new Int2DoubleOpenHashMap();
         for (DBWar war : wars.values()) {
             if (request.warType() != null && war.getWarType() != request.warType()) {
                 continue;
@@ -232,26 +238,26 @@ public final class WarRankingService {
 
             if (!request.rankByNation()) {
                 if (includeAttacker && !request.onlyDefensives() && war.getAttacker_aa() != 0) {
-                    values.merge(war.getAttacker_aa(), 1d, Double::sum);
+                    values.addTo(war.getAttacker_aa(), 1d);
                 }
                 if (includeDefender && !request.onlyOffensives() && war.getDefender_aa() != 0) {
-                    values.merge(war.getDefender_aa(), 1d, Double::sum);
+                    values.addTo(war.getDefender_aa(), 1d);
                 }
             } else {
                 if (includeAttacker && !request.onlyDefensives()) {
-                    values.merge(war.getAttacker_id(), 1d, Double::sum);
+                    values.addTo(war.getAttacker_id(), 1d);
                 }
                 if (includeDefender && !request.onlyOffensives()) {
-                    values.merge(war.getDefender_id(), 1d, Double::sum);
+                    values.addTo(war.getDefender_id(), 1d);
                 }
             }
         }
 
         if (request.normalizePerMember() && !request.rankByNation()) {
-            Map<Integer, Double> normalized = new LinkedHashMap<>();
-            for (Map.Entry<Integer, Double> entry : values.entrySet()) {
+            Int2DoubleOpenHashMap normalized = new Int2DoubleOpenHashMap(values.size());
+            for (Int2DoubleMap.Entry entry : values.int2DoubleEntrySet()) {
                 int memberCount = allianceMemberCount(entry.getKey(), request.ignoreInactiveNations());
-                normalized.put(entry.getKey(), memberCount <= 0 ? 0d : entry.getValue() / memberCount);
+                normalized.put(entry.getIntKey(), memberCount <= 0 ? 0d : entry.getDoubleValue() / memberCount);
             }
             values = normalized;
         }
@@ -275,45 +281,50 @@ public final class WarRankingService {
 
     public static RankingResult attackTypeRanking(AttackTypeRequest request) {
         Set<DBAlliance> selectedAlliances = request.alliances();
-        Set<Integer> allianceIds = selectedAlliances.stream()
-                .map(DBAlliance::getAlliance_id)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        IntOpenHashSet allianceIdSet = new IntOpenHashSet();
+        for (DBAlliance alliance : selectedAlliances) {
+            allianceIdSet.add(alliance.getAlliance_id());
+        }
 
         AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withActiveWars(Predicates.alwaysTrue(), war -> {
-            if (!request.onlyDefWars() && allianceIds.contains(war.getAttacker_aa())) {
+            if (!request.onlyDefWars() && allianceIdSet.contains(war.getAttacker_aa())) {
                 return true;
             }
-            return !request.onlyOffWars() && allianceIds.contains(war.getDefender_aa());
+            return !request.onlyOffWars() && allianceIdSet.contains(war.getDefender_aa());
         }).afterDate(request.timeMs());
 
-        Map<Integer, Integer> totalAttacks = new HashMap<>();
-        Map<Integer, Integer> attackOfType = new HashMap<>();
-        Map<Integer, Integer> attackerAllianceCache = new HashMap<>();
+        Int2IntOpenHashMap totalAttacks = new Int2IntOpenHashMap();
+        Int2IntOpenHashMap attackOfType = new Int2IntOpenHashMap();
+        Int2IntOpenHashMap attackerAllianceCache = new Int2IntOpenHashMap();
+        attackerAllianceCache.defaultReturnValue(Integer.MIN_VALUE);
 
         query.iterateAttacks((war, attack) -> {
             int attackerId = attack.getAttacker_id();
-            int allianceId = attackerAllianceCache.computeIfAbsent(attackerId, id -> {
-                DBNation nation = Locutus.imp().getNationDB().getNationById(id);
+            int allianceId = attackerAllianceCache.get(attackerId);
+            if (allianceId == Integer.MIN_VALUE) {
+                DBNation nation = Locutus.imp().getNationDB().getNationById(attackerId);
                 if (nation == null || nation.getAlliance_id() == 0 || nation.getPosition() <= 1) {
-                    return 0;
+                    allianceId = 0;
+                } else {
+                    allianceId = nation.getAlliance_id();
                 }
-                return nation.getAlliance_id();
-            });
+                attackerAllianceCache.put(attackerId, allianceId);
+            }
 
-            if (allianceId == 0 || !allianceIds.contains(allianceId)) {
+            if (allianceId == 0 || !allianceIdSet.contains(allianceId)) {
                 return;
             }
 
-            totalAttacks.merge(allianceId, 1, Integer::sum);
+            totalAttacks.addTo(allianceId, 1);
             if (attack.getAttack_type() == request.type()) {
-                attackOfType.merge(allianceId, 1, Integer::sum);
+                attackOfType.addTo(allianceId, 1);
             }
         });
 
-        Map<Integer, Double> values = new LinkedHashMap<>();
-        for (Map.Entry<Integer, Integer> entry : totalAttacks.entrySet()) {
-            int allianceId = entry.getKey();
-            int total = entry.getValue();
+        Int2DoubleOpenHashMap values = new Int2DoubleOpenHashMap(totalAttacks.size());
+        for (Int2IntMap.Entry entry : totalAttacks.int2IntEntrySet()) {
+            int allianceId = entry.getIntKey();
+            int total = entry.getIntValue();
             if (total <= 0) {
                 continue;
             }
@@ -340,10 +351,10 @@ public final class WarRankingService {
     }
 
     private static void addWarCostValue(
-            Map<Integer, Double> values,
-            Map<Integer, Integer> warsByGroup,
-            Map<Integer, Integer> allianceCityCountCache,
-            Map<Integer, Integer> nationCityCountCache,
+            Int2DoubleOpenHashMap values,
+            Int2IntOpenHashMap warsByGroup,
+            Int2IntOpenHashMap allianceCityCountCache,
+            Int2IntOpenHashMap nationCityCountCache,
             WarCostRequest request,
             DBWar war,
             AbstractCursor attack,
@@ -377,7 +388,7 @@ public final class WarRankingService {
             return;
         }
 
-        values.merge(entityId, scaled, Double::sum);
+        values.addTo(entityId, scaled);
     }
 
     private static double scaleWarCostValue(
@@ -388,16 +399,16 @@ public final class WarRankingService {
             boolean groupByAlliance,
             boolean scalePerWar,
             boolean scalePerCity,
-            Map<Integer, Integer> warsByGroup,
-            Map<Integer, Integer> allianceCityCountCache,
-            Map<Integer, Integer> nationCityCountCache
+                Int2IntOpenHashMap warsByGroup,
+                Int2IntOpenHashMap allianceCityCountCache,
+                Int2IntOpenHashMap nationCityCountCache
     ) {
         int warCount = scalePerWar ? warsByGroup.getOrDefault(entityId, 0) : 1;
 
         int cityCount = 1;
         if (scalePerCity) {
             cityCount = groupByAlliance
-                    ? allianceCityCountCache.computeIfAbsent(entityId, WarRankingService::allianceCityCount)
+                    ? cachedAllianceCityCount(entityId, allianceCityCountCache)
                     : nationCityCount(entityId, war, attackerSide, nationCityCountCache);
         }
 
@@ -417,16 +428,16 @@ public final class WarRankingService {
         return RankingValueFormat.MONEY;
     }
 
-    static Map<Integer, Integer> countWarsByGroup(Iterable<DBWar> wars, boolean groupByAlliance, IntSet allowedAllianceIds) {
+    static Int2IntOpenHashMap countWarsByGroup(Iterable<DBWar> wars, boolean groupByAlliance, IntSet allowedAllianceIds) {
         Int2IntOpenHashMap counts = new Int2IntOpenHashMap();
         for (DBWar war : wars) {
             int attackerEntityId = rankedEntityId(war, groupByAlliance, true, allowedAllianceIds);
             if (attackerEntityId != 0) {
-                counts.merge(attackerEntityId, 1, Integer::sum);
+                counts.addTo(attackerEntityId, 1);
             }
             int defenderEntityId = rankedEntityId(war, groupByAlliance, false, allowedAllianceIds);
             if (defenderEntityId != 0) {
-                counts.merge(defenderEntityId, 1, Integer::sum);
+                counts.addTo(defenderEntityId, 1);
             }
         }
         return counts;
@@ -470,16 +481,29 @@ public final class WarRankingService {
         return total;
     }
 
-    private static int nationCityCount(int nationId, DBWar war, boolean attackerSide, Map<Integer, Integer> nationCityCountCache) {
+    private static int cachedAllianceCityCount(int allianceId, Int2IntOpenHashMap allianceCityCountCache) {
+        if (allianceCityCountCache.containsKey(allianceId)) {
+            return allianceCityCountCache.get(allianceId);
+        }
+        int cityCount = allianceCityCount(allianceId);
+        allianceCityCountCache.put(allianceId, cityCount);
+        return cityCount;
+    }
+
+    private static int nationCityCount(int nationId, DBWar war, boolean attackerSide, Int2IntOpenHashMap nationCityCountCache) {
         int cities = war.getCities(attackerSide);
         if (cities != 0) {
             return cities;
         }
 
-        return nationCityCountCache.computeIfAbsent(nationId, id -> {
-            DBNation nation = DBNation.getById(id);
-            return nation == null ? 1 : Math.max(1, nation.getCities());
-        });
+        if (nationCityCountCache.containsKey(nationId)) {
+            return nationCityCountCache.get(nationId);
+        }
+
+        DBNation nation = DBNation.getById(nationId);
+        int cityCount = nation == null ? 1 : Math.max(1, nation.getCities());
+        nationCityCountCache.put(nationId, cityCount);
+        return cityCount;
     }
 
     static double applyNormalization(double value, int warCount, int cityCount, boolean scalePerWar, boolean scalePerCity) {

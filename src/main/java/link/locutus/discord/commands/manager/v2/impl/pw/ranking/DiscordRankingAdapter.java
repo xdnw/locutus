@@ -33,6 +33,10 @@ public final class DiscordRankingAdapter {
     }
 
     public static void send(IMessageIO channel, JSONObject command, RankingResult result, RenderOptions options) {
+        send(channel, command, result, null, options);
+    }
+
+    public static void send(IMessageIO channel, JSONObject command, RankingResult result, String fallbackTitle, RenderOptions options) {
         int rowLimit = options == null ? 25 : options.effectiveRowLimit();
         boolean wantFile = options != null && options.uploadFile();
 
@@ -40,7 +44,7 @@ public final class DiscordRankingAdapter {
         List<String> fileLines = wantFile ? new ArrayList<>() : null;
         boolean attachFile = false;
 
-        String baseTitle = resolveTitle(command, result);
+        String baseTitle = resolveTitle(command, result, fallbackTitle);
         if (result.sectionRanges().isEmpty()) {
             message.embed(baseTitle, "No rows.");
             if (options != null && options.mentionUser() != null) {
@@ -168,41 +172,24 @@ public final class DiscordRankingAdapter {
     }
 
     private static String renderSectionLabel(RankingSectionKind kind) {
-        return humanize(kind.name());
+        return RankingPresentationSupport.sectionLabel(kind);
     }
 
     private static String renderValueLabel(RankingValueKind kind) {
-        return switch (kind) {
-            case PRIMARY -> null;
-            case AMOUNT -> "Amt";
-            case PRICE_PER_UNIT -> "PPU";
-        };
+        return RankingPresentationSupport.valueLabel(kind);
     }
 
-    private static String resolveTitle(JSONObject command, RankingResult result) {
+    private static String resolveTitle(JSONObject command, RankingResult result, String fallbackTitle) {
         if (command != null) {
             String title = command.optString("title", null);
             if (title != null && !title.isBlank()) {
                 return title;
             }
         }
-        return humanize(result.kind().name());
-    }
-
-    private static String humanize(String value) {
-        if (value == null || value.isBlank()) {
-            return "Ranking";
+        if (fallbackTitle != null && !fallbackTitle.isBlank()) {
+            return fallbackTitle;
         }
-        String normalized = value.replace('.', '_').replace('-', '_').replace(' ', '_');
-        String[] parts = normalized.split("_+");
-        List<String> words = new ArrayList<>(parts.length);
-        for (String part : parts) {
-            if (part.isBlank()) {
-                continue;
-            }
-            words.add(Character.toUpperCase(part.charAt(0)) + part.substring(1).toLowerCase(Locale.ROOT));
-        }
-        return words.isEmpty() ? value : String.join(" ", words);
+        return RankingPresentationSupport.fallbackTitle(result);
     }
 
     private static String formatInteger(BigDecimal value) {

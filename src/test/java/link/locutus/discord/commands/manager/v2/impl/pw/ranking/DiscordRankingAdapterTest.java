@@ -48,4 +48,48 @@ class DiscordRankingAdapterTest {
         assertTrue(message.getFiles().containsKey("war_count.txt"));
         assertTrue(message.getButtons().containsValue("Refresh"));
     }
+
+    @Test
+    void adapterUsesProvidedFallbackTitle() {
+        RankingResult result = RankingBuilders.singleMetricRanking(
+                RankingKind.WAR_COUNT,
+                RankingEntityType.ALLIANCE,
+                RankingValueFormat.COUNT,
+                List.of(RankingBuilders.singleMetricSection(
+                        RankingSectionKind.ALLIANCES,
+                        RankingSortDirection.DESC,
+                        Map.of(1, 1)
+                )),
+                Set.of(),
+                12345L
+        );
+
+        StringMessageIO io = new StringMessageIO(null, null);
+        DiscordRankingAdapter.send(io, new JSONObject(), result, "Meaningful war title", new DiscordRankingAdapter.RenderOptions(2, false, null));
+
+        assertTrue(io.getMessages().get(0).toString().contains("Meaningful war title"));
+    }
+
+    @Test
+    void adapterCommandTitleOverridesFallbackTitle() {
+        RankingResult result = RankingBuilders.singleMetricRanking(
+                RankingKind.WAR_COUNT,
+                RankingEntityType.ALLIANCE,
+                RankingValueFormat.COUNT,
+                List.of(RankingBuilders.singleMetricSection(
+                        RankingSectionKind.ALLIANCES,
+                        RankingSortDirection.DESC,
+                        Map.of(1, 1)
+                )),
+                Set.of(),
+                12345L
+        );
+
+        StringMessageIO io = new StringMessageIO(null, null);
+        DiscordRankingAdapter.send(io, new JSONObject().put("title", "Command title"), result, "Fallback title", new DiscordRankingAdapter.RenderOptions(2, false, null));
+
+        String rendered = io.getMessages().get(0).toString();
+        assertTrue(rendered.contains("Command title"));
+        assertTrue(!rendered.contains("Fallback title"));
+    }
 }

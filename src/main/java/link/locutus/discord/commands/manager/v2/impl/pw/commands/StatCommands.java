@@ -38,6 +38,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.ranking.AllianceRankingS
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.BaseballRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingPresentationSupport;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarStatusRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.AllianceRankingRequests;
@@ -299,33 +300,36 @@ public class StatCommands {
                                  @Switch("n") Integer num_results,
                                  @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
+        var request = WarRankingRequests.cost(
+            timeStart,
+            timeEnd,
+            coalition1,
+            coalition2,
+            onlyRankCoalition1,
+            type,
+            stat,
+            excludeInfra,
+            excludeConsumption,
+            excludeLoot,
+            excludeBuildings,
+            excludeUnits,
+            groupByAlliance,
+            scalePerWar,
+            scalePerCity,
+            allowedWarTypes,
+            allowedWarStatuses,
+            allowedAttacks,
+            allowed_alliances,
+            onlyOffensiveWars,
+            onlyDefensiveWars,
+            highlight
+        );
+        var result = WarRankingService.warCostRanking(request);
         DiscordRankingAdapter.send(
                 io,
                 command,
-                WarRankingService.warCostRanking(WarRankingRequests.cost(
-                        timeStart,
-                        timeEnd,
-                        coalition1,
-                        coalition2,
-                        onlyRankCoalition1,
-                        type,
-                        stat,
-                        excludeInfra,
-                        excludeConsumption,
-                        excludeLoot,
-                        excludeBuildings,
-                        excludeUnits,
-                        groupByAlliance,
-                        scalePerWar,
-                        scalePerCity,
-                        allowedWarTypes,
-                        allowedWarStatuses,
-                        allowedAttacks,
-                        allowed_alliances,
-                        onlyOffensiveWars,
-                        onlyDefensiveWars,
-                        highlight
-                )),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
         return null;
@@ -595,10 +599,13 @@ public class StatCommands {
                                 AllianceMetric metric, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
                                 @Switch("n") Integer num_results,
                                 @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
+        var request = AllianceRankingRequests.metric(alliances, metric, reverseOrder, highlight);
+        var result = AllianceRankingService.metricRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.metricRanking(AllianceRankingRequests.metric(alliances, metric, reverseOrder, highlight)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -612,10 +619,13 @@ public class StatCommands {
                                          @Switch("r") boolean reverseOrder,
                                          @Switch("f") boolean uploadFile,
                                          @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
+        var request = AllianceRankingRequests.attribute(alliances, attribute, reverseOrder, highlight);
+        var result = AllianceRankingService.attributeRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.attributeRanking(AllianceRankingRequests.attribute(alliances, attribute, reverseOrder, highlight)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -625,10 +635,13 @@ public class StatCommands {
                                     Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
                                     @Switch("n") Integer num_results,
                                     @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
+        var request = AllianceRankingRequests.delta(alliances, metric, timeStart, timeEnd, reverseOrder, highlight);
+        var result = AllianceRankingService.deltaRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.deltaRanking(AllianceRankingRequests.delta(alliances, metric, timeStart, timeEnd, reverseOrder, highlight)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
     }
@@ -644,20 +657,21 @@ public class StatCommands {
                               @Switch("s") @Timestamp Long snapshotDate,
                               @Arg("Total value instead of average per nation") @Switch("t") boolean total,
                               @Switch("n") String title) {
+        var request = NationRankingRequests.attribute(
+            db == null ? null : db.getGuild(),
+            nations,
+            attribute,
+            groupByAlliance,
+            reverseOrder,
+            snapshotDate,
+            total
+        );
+        var result = NationValueRankingService.attributeRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                NationValueRankingService.attributeRanking(
-                        NationRankingRequests.attribute(
-                                db == null ? null : db.getGuild(),
-                                nations,
-                                attribute,
-                                groupByAlliance,
-                                reverseOrder,
-                                snapshotDate,
-                                total
-                        )
-                ),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
         );
     }
@@ -1057,10 +1071,13 @@ public class StatCommands {
     public void baseballRanking(BaseballDB db, @Me JSONObject command, @Me IMessageIO channel,
                                 @Arg("Date to start from")
                                 @Timestamp long date, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
+        var request = BaseballRankingRequests.games(date, byAlliance);
+        var result = BaseballRankingService.ranking(db, request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                BaseballRankingService.ranking(db, BaseballRankingRequests.games(date, byAlliance)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
         );
     }
@@ -1068,10 +1085,13 @@ public class StatCommands {
     @Command(desc = "Rank of nations by number of challenge baseball games", viewable = true)
     public void baseballChallengeRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                          @Arg("Group the rankings by alliance instead of nations") @Switch("a") boolean byAlliance) {
+        var request = BaseballRankingRequests.challengeGames(byAlliance);
+        var result = BaseballRankingService.ranking(db, request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                BaseballRankingService.ranking(db, BaseballRankingRequests.challengeGames(byAlliance)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
         );
     }
@@ -1114,10 +1134,13 @@ public class StatCommands {
                                         @Timestamp long date, @Switch("f") boolean uploadFile,
                                         @Arg("Group the rankings by alliance instead of nations")
                                         @Switch("a") boolean byAlliance) {
+        var request = BaseballRankingRequests.earnings(date, byAlliance);
+        var result = BaseballRankingService.ranking(db, request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                BaseballRankingService.ranking(db, BaseballRankingRequests.earnings(date, byAlliance)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
         );
     }
@@ -1126,10 +1149,13 @@ public class StatCommands {
     public void baseballChallengeEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                                  @Arg("Group the rankings by alliance instead of nations")
                                                  @Switch("a") boolean byAlliance) {
+        var request = BaseballRankingRequests.challengeEarnings(byAlliance);
+        var result = BaseballRankingService.ranking(db, request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                BaseballRankingService.ranking(db, BaseballRankingRequests.challengeEarnings(byAlliance)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, uploadFile, null)
         );
     }
@@ -1149,10 +1175,13 @@ public class StatCommands {
     }
 
     public void warStatusRankingBy(boolean isAA, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
+        var request = WarStatusRankingRequests.status(isAA, attackers, defenders, time);
+        var result = WarStatusRankingService.ranking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                WarStatusRankingService.ranking(WarStatusRankingRequests.status(isAA, attackers, defenders, time)),
+            result,
+            RankingPresentationSupport.title(request),
                 null
         );
     }
@@ -2615,10 +2644,13 @@ public class StatCommands {
                                  @Switch("h") @AllowDeleted Set<DBAlliance> highlight,
                                  @Switch("n") Integer num_results
             ) {
+        var request = AllianceRankingRequests.loot(time, show_total, min_score, max_score, highlight);
+        var result = AllianceRankingService.lootRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                AllianceRankingService.lootRanking(AllianceRankingRequests.loot(time, show_total, min_score, max_score, highlight)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(num_results, attach_file, author)
         );
         return null;
@@ -2633,18 +2665,21 @@ public class StatCommands {
             @Switch("p") boolean percent,
             @Switch("o") boolean only_off_wars,
             @Switch("d") boolean only_def_wars) {
+        var request = WarRankingRequests.attackType(
+            time,
+            type,
+            alliances,
+            only_top_x,
+            percent,
+            only_off_wars,
+            only_def_wars
+        );
+        var result = WarRankingService.attackTypeRanking(request);
         DiscordRankingAdapter.send(
                 io,
                 command,
-                WarRankingService.attackTypeRanking(WarRankingRequests.attackType(
-                        time,
-                        type,
-                        alliances,
-                        only_top_x,
-                        percent,
-                        only_off_wars,
-                        only_def_wars
-                )),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
         );
         return null;

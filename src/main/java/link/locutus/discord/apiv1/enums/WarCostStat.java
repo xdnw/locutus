@@ -93,58 +93,69 @@ public enum WarCostStat {
 
     public final TriFunction<Boolean, DBWar, AbstractCursor, Double> getFunction(boolean excludeUnits, boolean excludeInfra, boolean excludeConsumption, boolean excludeLoot, boolean excludeBuildings, WarCostMode mode) {
         if (unit != null) {
-            if (!mode.includeOffAttacks()) {
-                return (attacker, war, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : 0);
-            } else if (!mode.includeDefAttacks()) {
-                return (attacker, war, attack) -> (double) (attacker ? 0 : attack.getDefUnitLosses(unit()));
-            }
-            return (attacker, war, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : attack.getDefUnitLosses(unit()));
+            return (rankedSideIsWarAttacker, war, attack) -> {
+                boolean rankedSideIsAttackAttacker = rankedSideIsAttackAttacker(rankedSideIsWarAttacker, war, attack);
+                return (double) (rankedSideIsAttackAttacker ? attack.getAttUnitLosses(unit()) : attack.getDefUnitLosses(unit()));
+            };
         } else if (resource != null) {
             double[] rssBuffer = ResourceType.getBuffer();
-            if (!mode.includeOffAttacks()) {
-                return (attacker, war, attack) -> {
-                    rssBuffer[resource.ordinal()] = 0;
-                    return !attacker ? 0 : attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
-                };
-            } else if (!mode.includeDefAttacks()) {
-                return (attacker, war, attack) -> {
-                    rssBuffer[resource.ordinal()] = 0;
-                    return attacker ? 0 : attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
-                };
-            }
-            if (mode == WarCostMode.DEALT_NO_SUBTRACT_LOOT && !excludeLoot) {
-                return (attacker, war, attack) -> {
-                    rssBuffer[resource.ordinal()] = 0;
-                    return attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !attacker, !excludeBuildings)[resource.ordinal()];
-                };
-            }
-            return (attacker, war, attack) -> {
+            return (rankedSideIsWarAttacker, war, attack) -> {
                 rssBuffer[resource.ordinal()] = 0;
-                return attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
+                boolean rankedSideIsAttackAttacker = rankedSideIsAttackAttacker(rankedSideIsWarAttacker, war, attack);
+                return attack.addLosses(
+                        rssBuffer,
+                        war,
+                        rankedSideIsAttackAttacker,
+                        !excludeUnits,
+                        !excludeInfra,
+                        !excludeConsumption,
+                        includeLoot(mode, excludeLoot, rankedSideIsAttackAttacker),
+                        !excludeBuildings
+                )[resource.ordinal()];
             };
         } else if (isAttack != null) {
-            if (!mode.includeDefAttacks()) {
-                throw new IllegalArgumentException("Cannot count defender attacks for attack type (as defenders are not attacking)");
-            }
-            return (attacker, war, attack) -> isAttack.test(attack.getAttack_type()) ? 1d : 0d;
+            return (rankedSideIsWarAttacker, war, attack) -> {
+                if (!isAttack.test(attack.getAttack_type())) {
+                    return 0d;
+                }
+                return rankedSideIsAttackAttacker(rankedSideIsWarAttacker, war, attack) ? 0d : 1d;
+            };
         } else {
-            if (!mode.includeOffAttacks()) {
-                return (attacker, war, attack) -> {
-                    return !attacker ? 0 : attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
-                };
-            } else if (!mode.includeDefAttacks()) {
-                return (attacker, war, attack) -> {
-                    return attacker ? 0 : attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
-                };
-            }
-            if (mode == WarCostMode.DEALT_NO_SUBTRACT_LOOT && !excludeLoot) {
-                return (attacker, war, attack) -> {
-                    return attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !attacker, !excludeBuildings);
-                };
-            }
-            return (attacker, war, attack) -> {
-                return attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
+            return (rankedSideIsWarAttacker, war, attack) -> {
+                boolean rankedSideIsAttackAttacker = rankedSideIsAttackAttacker(rankedSideIsWarAttacker, war, attack);
+                return attack.getLossesConverted(
+                        war,
+                        rankedSideIsAttackAttacker,
+                        !excludeUnits,
+                        !excludeInfra,
+                        !excludeConsumption,
+                        includeLoot(mode, excludeLoot, rankedSideIsAttackAttacker),
+                        !excludeBuildings
+                );
             };
         }
     }
+
+    private static boolean rankedSideIsAttackAttacker(boolean rankedSideIsWarAttacker, DBWar war, AbstractCursor attack) {
+        if (war == null) {
+            return rankedSideIsWarAttacker;
+        }
+
+        int rankedNationId = rankedSideIsWarAttacker ? war.getAttacker_id() : war.getDefender_id();
+        if (rankedNationId == attack.getAttacker_id()) {
+            return true;
+        }
+        if (rankedNationId == attack.getDefender_id()) {
+            return false;
+        }
+        return rankedSideIsWarAttacker;
+    }
+
+    private static boolean includeLoot(WarCostMode mode, boolean excludeLoot, boolean rankedSideIsAttackAttacker) {
+        if (excludeLoot) {
+            return false;
+        }
+        return mode != WarCostMode.DEALT_NO_SUBTRACT_LOOT || !rankedSideIsAttackAttacker;
+    }
+
 }

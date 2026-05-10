@@ -72,41 +72,70 @@ public enum WarCostMode {
         return includeOffAttacks;
     }
 
+    public boolean isProfitLike() {
+        return !includeDealt() && includeReceived() && !addReceived();
+    }
+
     public TriFunction<Boolean, DBWar, AbstractCursor, Double> getAttackFunc(TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc) {
-        TriFunction<Boolean, DBWar, AbstractCursor, Double> applyDealt;
-        TriFunction<Boolean, DBWar, AbstractCursor, Double> applyReceived;
+        TriFunction<Boolean, DBWar, AbstractCursor, Double> delegate = getUncheckedAttackFunc(valueFunc);
+        if (includesAllAttackOrigins()) {
+            return delegate;
+        }
+        return (rankedSideIsWarAttacker, war, attack) ->
+                includesAttack(war, attack) ? delegate.apply(rankedSideIsWarAttacker, war, attack) : 0d;
+    }
+
+    public TriFunction<Boolean, DBWar, AbstractCursor, Double> getUncheckedAttackFunc(TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc) {
         if (includeDealt()) {
-            if (addDealt()) {
-                applyDealt = (isAttacker, war, attack) -> valueFunc.apply(!isAttacker, war, attack);
-            } else {
-                applyDealt = (isAttacker, war, attack) -> -valueFunc.apply(!isAttacker, war, attack);
+            if (includeReceived()) {
+                if (addDealt()) {
+                    if (addReceived()) {
+                        return (rankedSideIsWarAttacker, war, attack) ->
+                                valueFunc.apply(!rankedSideIsWarAttacker, war, attack)
+                                        + valueFunc.apply(rankedSideIsWarAttacker, war, attack);
+                    }
+                    return (rankedSideIsWarAttacker, war, attack) ->
+                            valueFunc.apply(!rankedSideIsWarAttacker, war, attack)
+                                    - valueFunc.apply(rankedSideIsWarAttacker, war, attack);
+                }
+                if (addReceived()) {
+                    return (rankedSideIsWarAttacker, war, attack) ->
+                            valueFunc.apply(rankedSideIsWarAttacker, war, attack)
+                                    - valueFunc.apply(!rankedSideIsWarAttacker, war, attack);
+                }
+                return (rankedSideIsWarAttacker, war, attack) ->
+                        -valueFunc.apply(!rankedSideIsWarAttacker, war, attack)
+                                - valueFunc.apply(rankedSideIsWarAttacker, war, attack);
             }
-        } else {
-            applyDealt = null;
+            if (addDealt()) {
+                return (rankedSideIsWarAttacker, war, attack) -> valueFunc.apply(!rankedSideIsWarAttacker, war, attack);
+            }
+            return (rankedSideIsWarAttacker, war, attack) -> -valueFunc.apply(!rankedSideIsWarAttacker, war, attack);
         }
         if (includeReceived()) {
             if (addReceived()) {
-                applyReceived = valueFunc::apply;
-            } else {
-                applyReceived = (isAttacker, war, attack) -> -valueFunc.apply(isAttacker, war, attack);
+                return valueFunc;
             }
-        } else {
-            applyReceived = null;
+            return (rankedSideIsWarAttacker, war, attack) -> -valueFunc.apply(rankedSideIsWarAttacker, war, attack);
         }
+        return (rankedSideIsWarAttacker, war, attack) -> 0d;
+    }
 
-        TriFunction<Boolean, DBWar, AbstractCursor, Double> applyBoth;
-        if (applyDealt != null) {
-            if (applyReceived != null) {
-                applyBoth = (isAttacker, war, attack) -> applyDealt.apply(isAttacker, war, attack) + applyReceived.apply(isAttacker, war, attack);
-            } else {
-                applyBoth = applyDealt;
-            }
-        } else if (applyReceived != null) {
-            applyBoth = applyReceived;
-        } else {
-            applyBoth = (isAttacker, war, attack) -> 0d;
+    public boolean includesAttack(DBWar war, AbstractCursor attack) {
+        if (war == null) {
+            return true;
         }
-        return applyBoth;
+        if (attack.getAttacker_id() == war.getAttacker_id()) {
+            return includeOffAttacks();
+        }
+        if (attack.getAttacker_id() == war.getDefender_id()) {
+            return includeDefAttacks();
+        }
+        return true;
+    }
+
+    public boolean includesAllAttackOrigins() {
+        return includeOffAttacks() && includeDefAttacks();
     }
 
     public BiFunction<Double, Double, Double> getCostFunc() {
@@ -144,6 +173,5 @@ public enum WarCostMode {
         }
         return applyBoth;
     }
-
 
 }

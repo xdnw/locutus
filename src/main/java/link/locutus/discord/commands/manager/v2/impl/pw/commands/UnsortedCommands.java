@@ -36,6 +36,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.NationValueRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.OffshoreRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingPresentationSupport;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.NationRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.OffshoreRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -1469,25 +1470,26 @@ public class UnsortedCommands {
             @Arg(value = "Upload the results as a file", group = 3) @Switch("u") boolean uploadFile,
             @Arg(value = "The number of results to show", group = 3) @Switch("r") Integer num_results,
             @Arg(value = "Highlight specific entries in the result", group = 3) @Switch("h") @AllowDeleted Set<NationOrAlliance> highlight) {
+            var request = NationRankingRequests.production(
+                guild,
+                resources,
+                nationList,
+                ignoreMilitaryUpkeep,
+                ignoreTradeBonus,
+                ignoreNationBonus,
+                includeNegative,
+                includeInactive,
+                listByNation,
+                listAverage,
+                snapshotDate,
+                highlight
+            );
+            var result = NationValueRankingService.productionRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                NationValueRankingService.productionRanking(
-                        NationRankingRequests.production(
-                                guild,
-                                resources,
-                                nationList,
-                                ignoreMilitaryUpkeep,
-                                ignoreTradeBonus,
-                                ignoreNationBonus,
-                                includeNegative,
-                                includeInactive,
-                                listByNation,
-                                listAverage,
-                                snapshotDate,
-                                highlight
-                        )
-                ),
+                result,
+                RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(num_results, uploadFile, null)
         );
         return null;
@@ -2735,10 +2737,13 @@ public class UnsortedCommands {
             @Range(min = 1, max = 365) int days,
             @Switch("f") boolean upload_file) {
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
+        var request = OffshoreRankingRequests.prolific(cutoffMs);
+        var result = OffshoreRankingService.prolificOffshoreRanking(request);
         DiscordRankingAdapter.send(
                 io,
                 command,
-                OffshoreRankingService.prolificOffshoreRanking(OffshoreRankingRequests.prolific(cutoffMs)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(10, upload_file, author)
         );
 

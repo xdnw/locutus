@@ -39,6 +39,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.CommandRuntimeLoo
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.IncentiveRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingPresentationSupport;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.IncentiveRankingRequests;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -1366,10 +1367,13 @@ public class IACommands {
     @RolePermission(value = { Roles.INTERNAL_AFFAIRS, Roles.ECON }, any = true)
     public String incentiveRanking(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
             @Timestamp long timestamp) {
+        var request = IncentiveRankingRequests.ranking(timestamp);
+        var result = IncentiveRankingService.ranking(db, request);
         DiscordRankingAdapter.send(
                 io,
                 command,
-                IncentiveRankingService.ranking(db, IncentiveRankingRequests.ranking(timestamp)),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
         );
         return null;

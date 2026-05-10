@@ -38,6 +38,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAllian
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.DiscordRankingAdapter;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.OffshoreRankingService;
+import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RankingPresentationSupport;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.RecruitmentRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.WarRankingService;
 import link.locutus.discord.commands.manager.v2.impl.pw.ranking.builders.OffshoreRankingRequests;
@@ -402,12 +403,13 @@ public class UtilityCommands {
     public static String findOffshore(@Me IMessageIO channel, @Me JSONObject command, @AllowDeleted DBAlliance alliance,
             @Default @Timestamp Long cutoffMs,
             @Switch("c") @Arg("Display the transfer count instead of value") boolean transfer_count) {
+        var request = OffshoreRankingRequests.potential(alliance, cutoffMs, transfer_count);
+        var result = OffshoreRankingService.potentialOffshoreRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                OffshoreRankingService.potentialOffshoreRanking(
-                        OffshoreRankingRequests.potential(alliance, cutoffMs, transfer_count)
-                ),
+            result,
+            RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
         );
         return null;
@@ -959,22 +961,25 @@ public class UtilityCommands {
             @Arg("Rank by nation instead of alliance") @Switch("a") boolean rankByNation,
             @Arg("Only rank these war types") @Switch("t") WarType warType,
             @Arg("Only rank wars with these statuses") @Switch("s") Set<WarStatus> statuses) {
+            var request = WarRankingRequests.count(
+                time,
+                attackers,
+                defenders,
+                onlyOffensives,
+                onlyDefensives,
+                only_rank_attackers,
+                normalizePerMember,
+                ignore2dInactives,
+                rankByNation,
+                warType,
+                statuses
+            );
+            var result = WarRankingService.warRanking(request);
         DiscordRankingAdapter.send(
                 channel,
                 command,
-                WarRankingService.warRanking(WarRankingRequests.count(
-                        time,
-                        attackers,
-                        defenders,
-                        onlyOffensives,
-                        onlyDefensives,
-                        only_rank_attackers,
-                        normalizePerMember,
-                        ignore2dInactives,
-                        rankByNation,
-                        warType,
-                        statuses
-                )),
+                result,
+                RankingPresentationSupport.title(request),
                 new DiscordRankingAdapter.RenderOptions(null, true, null)
         );
 
@@ -2795,11 +2800,12 @@ public class UtilityCommands {
             @Arg("Date to start from") @Timestamp long cutoff,
             @Arg("Top X alliances to show in the ranking") @Range(min = 1, max = 150) @Default("80") int topX,
             @Switch("u") boolean uploadFile) {
-        var result = RecruitmentRankingService.ranking(RecruitmentRankingRequests.ranking(cutoff, topX));
+        var request = RecruitmentRankingRequests.ranking(cutoff, topX);
+        var result = RecruitmentRankingService.ranking(request);
         if (result.rowCount() == 0) {
             return "No new members found over the specified timeframe. Check your arguments are valid";
         }
-        DiscordRankingAdapter.send(channel, command, result, new DiscordRankingAdapter.RenderOptions(null, uploadFile, author));
+        DiscordRankingAdapter.send(channel, command, result, RankingPresentationSupport.title(request), new DiscordRankingAdapter.RenderOptions(null, uploadFile, author));
         return null;
     }
 
