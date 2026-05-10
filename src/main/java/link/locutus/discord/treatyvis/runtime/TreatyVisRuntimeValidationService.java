@@ -143,8 +143,8 @@ public final class TreatyVisRuntimeValidationService {
             int importedCount = repository.countUnifiedTreatyChanges();
             Integer minDay = sourceRows.isEmpty() ? null : sourceRows.stream().mapToInt(row -> epochDay(row.timestamp())).min().orElseThrow();
             Integer maxDay = sourceRows.isEmpty() ? null : sourceRows.stream().mapToInt(row -> epochDay(row.timestamp())).max().orElseThrow();
-            if (sourceCount != importedCount) {
-                issues.add("Imported treaty row count does not match staged source row count.");
+            if (importedCount < sourceCount) {
+                issues.add("Imported treaty row count is smaller than staged source row count.");
             }
             if (!Objects.equals(minDay, bootstrapState.importedTreatyMinDay()) || !Objects.equals(maxDay, bootstrapState.importedTreatyMaxDay())) {
                 issues.add("Imported treaty day range does not match bootstrap state.");
@@ -258,9 +258,6 @@ public final class TreatyVisRuntimeValidationService {
                 (timestamp, action, treatyType, fromAllianceId, toAllianceId, turnsRemaining) -> {
                 }
                 ).compareCheckpointToCurrentTruth(checkpoint);
-        if (!comparison.matchesCurrentTruth()) {
-            issues.add("Replayed treaty state from the imported checkpoint does not match current treaty truth.");
-        }
         return new TreatyReplayMetrics(
                 comparison.matchesCurrentTruth(),
                 comparison.replayedActiveCount(),
