@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TreatyVisRuntimeFlagAssetUtilTest {
     @Test
@@ -16,6 +17,16 @@ class TreatyVisRuntimeFlagAssetUtilTest {
         byte[] rawBytes = createPngBytes(TreatyHistoryRuntimeConfig.FLAG_IMAGE_MAX_WIDTH + 1, 1, new Color(200, 20, 20));
 
         assertThrows(IOException.class, () -> TreatyVisRuntimeFlagAssetUtil.encodeNormalizedIcon(rawBytes));
+    }
+
+    @Test
+    void normalizedRawIconRemainsVisibleAfterRoundTrip() throws Exception {
+        byte[] rawBytes = createPngBytes(8, 6, new Color(20, 120, 220));
+
+        byte[] iconBytes = TreatyVisRuntimeFlagAssetUtil.encodeNormalizedIcon(rawBytes);
+        BufferedImage decodedIcon = TreatyVisRuntimeFlagAssetUtil.decodeValidatedImage(iconBytes);
+
+        assertTrue(hasVisiblePixels(decodedIcon));
     }
 
     private static byte[] createPngBytes(int width, int height, Color color) throws IOException {
@@ -29,5 +40,16 @@ class TreatyVisRuntimeFlagAssetUtilTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ImageIO.write(image, "png", output);
         return output.toByteArray();
+    }
+
+    private static boolean hasVisiblePixels(BufferedImage image) {
+        for (int y = 0; y < image.getHeight(); y += 1) {
+            for (int x = 0; x < image.getWidth(); x += 1) {
+                if (((image.getRGB(x, y) >>> 24) & 0xFF) != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

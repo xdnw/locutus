@@ -285,6 +285,21 @@ class TreatyVisRuntimeLegacyFlagImportServiceTest {
         }
     }
 
+        @Test
+        void copiedAtlasTileRemainsVisibleAfterWebpRoundTrip() throws Exception {
+                byte[] atlasBytes = createAtlasWebpBytes(
+                                List.of(new Color(50, 200, 50), new Color(200, 50, 50), new Color(50, 50, 200)),
+                                16,
+                                10
+                );
+
+                BufferedImage decodedAtlas = ImageIO.read(new java.io.ByteArrayInputStream(atlasBytes));
+                byte[] iconBytes = TreatyVisRuntimeFlagAssetUtil.encodeAtlasTileIcon(decodedAtlas, 16, 0, 16, 10);
+                BufferedImage decodedIcon = TreatyVisRuntimeFlagAssetUtil.decodeValidatedImage(iconBytes);
+
+                assertTrue(hasVisiblePixels(decodedIcon));
+        }
+
     private static byte[] createPngBytes(Color color) throws IOException {
         BufferedImage image = new BufferedImage(4, 3, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < image.getHeight(); y += 1) {
@@ -315,4 +330,15 @@ class TreatyVisRuntimeLegacyFlagImportServiceTest {
     private static String repeatHex(String value, int length) {
         return value.repeat(length);
     }
+
+        private static boolean hasVisiblePixels(BufferedImage image) {
+                for (int y = 0; y < image.getHeight(); y += 1) {
+                        for (int x = 0; x < image.getWidth(); x += 1) {
+                                if (((image.getRGB(x, y) >>> 24) & 0xFF) != 0) {
+                                        return true;
+                                }
+                        }
+                }
+                return false;
+        }
 }

@@ -42,7 +42,7 @@ final class TreatyVisRuntimeImportedSnapshotService {
         int baseDay = importedTreatyMinDay;
         List<TreatyVisRuntimeRepository.FlagAtlasStateRow> atlasRows = repository.loadFlagAtlasStateRows();
         Map<HashCode, Integer> flagIndexByHash = TreatyVisRuntimeFlagAssetUtil.buildDenseTileIndexByHash(atlasRows);
-        Map<Integer, byte[]> iconByFlagIndex = buildIconByFlagIndex(flagIndexByHash);
+        Map<Integer, byte[]> iconByFlagIndex = TreatyVisRuntimeFlagAssetUtil.buildIconBytesByIndex(flagIndexByHash, repository.loadFlagIconRows());
         validateAtlasIcons(flagIndexByHash, iconByFlagIndex);
 
         TreatyTimelineProjection treatyTimeline = buildTreatyTimeline(baseDay);
@@ -190,17 +190,6 @@ final class TreatyVisRuntimeImportedSnapshotService {
             snapshots.add(new TreatyVisRuntimeInput.ScoreSnapshot(entry.getKey() - baseDay, decodeAllianceScores(entry.getValue())));
         }
         return List.copyOf(snapshots);
-    }
-
-    private Map<Integer, byte[]> buildIconByFlagIndex(Map<HashCode, Integer> flagIndexByHash) {
-        Map<Integer, byte[]> iconsByIndex = new LinkedHashMap<>();
-        for (TreatyVisRuntimeRepository.FlagIconRow row : repository.loadFlagIconRows()) {
-            Integer tileIndex = flagIndexByHash.get(TreatyVisRuntimeFlagAssetUtil.hashCode(row.flagHash()));
-            if (tileIndex != null) {
-                iconsByIndex.put(tileIndex, row.iconBytes());
-            }
-        }
-        return Map.copyOf(iconsByIndex);
     }
 
     private static void validateAtlasIcons(

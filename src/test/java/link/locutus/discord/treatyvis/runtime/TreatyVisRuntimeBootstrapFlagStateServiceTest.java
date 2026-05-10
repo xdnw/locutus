@@ -156,6 +156,38 @@ class TreatyVisRuntimeBootstrapFlagStateServiceTest {
         }
     }
 
+    @Test
+    void liveBootstrapStoresVisibleIconsForNewFlags() throws Exception {
+        byte[] gammaRaw = createPngBytes(new Color(20, 220, 20));
+        com.google.common.hash.HashCode gammaHash = TreatyVisRuntimeFlagAssetUtil.sha256(gammaRaw);
+
+        try (DBMainV2 db = new DBMainV2(tempDir.resolve("runtime-visible-icons.db").toFile())) {
+            TreatyVisRuntimeRepository repository = new TreatyVisRuntimeRepository(db);
+            repository.replaceLastFlagUrls(List.of(
+                    new TreatyVisRuntimeRepository.LastFlagUrlRow(1, null, null)
+            ));
+            repository.markHistoricalFlagImportComplete(
+                    Math.toIntExact(LocalDate.parse("2025-01-01").toEpochDay()),
+                    Math.toIntExact(LocalDate.parse("2025-01-01").toEpochDay())
+            );
+
+            Path runtimeFlagCacheRoot = tempDir.resolve(Path.of("runtime-visible-icons", "flag_cache"));
+            TreatyVisRuntimeBootstrapFlagStateService service = new TreatyVisRuntimeBootstrapFlagStateService(
+                    repository,
+                    runtimeFlagCacheRoot,
+                    () -> List.of(new TreatyVisRuntimeBootstrapFlagStateService.LiveAllianceFlag(300, "https://flags.test/gamma.png")),
+                    flagUrl -> gammaRaw
+            );
+
+            TreatyVisRuntimeBootstrapFlagStateService.FlagBootstrapResult result = service.bootstrapCurrentFlags();
+
+            assertEquals(1, result.newIconCount());
+            TreatyVisRuntimeRepository.FlagIconRow storedIcon = repository.loadFlagIconRows().get(0);
+            assertEquals(gammaHash, TreatyVisRuntimeFlagAssetUtil.hashCode(storedIcon.flagHash()));
+            assertTrue(hasVisiblePixels(TreatyVisRuntimeFlagAssetUtil.decodeValidatedImage(storedIcon.iconBytes())));
+        }
+    }
+
     private static byte[] createPngBytes(Color color) throws Exception {
         BufferedImage image = new BufferedImage(4, 3, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < image.getHeight(); y += 1) {
@@ -167,4 +199,15 @@ class TreatyVisRuntimeBootstrapFlagStateServiceTest {
         ImageIO.write(image, "png", output);
         return output.toByteArray();
     }
+
+        private static boolean hasVisiblePixels(BufferedImage image) {
+                for (int y = 0; y < image.getHeight(); y += 1) {
+                        for (int x = 0; x < image.getWidth(); x += 1) {
+                                if (((image.getRGB(x, y) >>> 24) & 0xFF) != 0) {
+                                        return true;
+                                }
+                        }
+                }
+                return false;
+        }
 }

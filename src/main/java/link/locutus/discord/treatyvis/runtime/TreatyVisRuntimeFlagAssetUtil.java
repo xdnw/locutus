@@ -65,6 +65,10 @@ final class TreatyVisRuntimeFlagAssetUtil {
         return encodeWebp(icon, TreatyHistoryRuntimeConfig.FLAG_ICON_WEBP_QUALITY);
     }
 
+    static byte[] encodeAtlasTileIcon(BufferedImage atlasImage, int x, int y, int width, int height) throws IOException {
+        return encodeWebp(copyTile(atlasImage, x, y, width, height), TreatyHistoryRuntimeConfig.FLAG_ICON_WEBP_QUALITY);
+    }
+
     static BufferedImage decodeValidatedImage(byte[] rawBytes) throws IOException {
         try (ImageInputStream imageInput = ImageIO.createImageInputStream(new ByteArrayInputStream(rawBytes))) {
             if (imageInput == null) {
@@ -119,6 +123,17 @@ final class TreatyVisRuntimeFlagAssetUtil {
         return icon;
     }
 
+    static BufferedImage copyTile(BufferedImage source, int x, int y, int width, int height) {
+        BufferedImage tile = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = tile.createGraphics();
+        try {
+            graphics.drawImage(source, 0, 0, width, height, x, y, x + width, y + height, null);
+        } finally {
+            graphics.dispose();
+        }
+        return tile;
+    }
+
     static byte[] encodeWebp(BufferedImage image, float quality) throws IOException {
         ImageWriter writer = ImageIO.getImageWritersByMIMEType("image/webp").hasNext()
                 ? ImageIO.getImageWritersByMIMEType("image/webp").next()
@@ -165,6 +180,20 @@ final class TreatyVisRuntimeFlagAssetUtil {
             }
         }
         return Map.copyOf(flagIndexByHash);
+    }
+
+    static Map<Integer, byte[]> buildIconBytesByIndex(
+            Map<HashCode, Integer> flagIndexByHash,
+            List<TreatyVisRuntimeRepository.FlagIconRow> iconRows
+    ) {
+        Map<Integer, byte[]> iconsByIndex = new LinkedHashMap<>();
+        for (TreatyVisRuntimeRepository.FlagIconRow row : iconRows) {
+            Integer tileIndex = flagIndexByHash.get(hashCode(row.flagHash()));
+            if (tileIndex != null) {
+                iconsByIndex.put(tileIndex, row.iconBytes());
+            }
+        }
+        return Map.copyOf(iconsByIndex);
     }
 
     static HashCode hashCode(byte[] bytes) {

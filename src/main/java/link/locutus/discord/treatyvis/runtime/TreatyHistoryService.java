@@ -138,7 +138,7 @@ public final class TreatyHistoryService {
         TreatyVisRuntimeInput input = new TreatyVisRuntimeInput(
                 currentEpochDayUtc(),
                 TreatyHistoryRuntimeConfig.SCORE_QUANTIZATION,
-            alliances,
+                alliances,
                 treaties,
                 initialFlags,
                 scores
@@ -278,14 +278,7 @@ public final class TreatyHistoryService {
 
     private static Map<Integer, byte[]> buildStoredIconBytesByIndex(TreatyVisRuntimeRepository repository) throws IOException {
         Map<HashCode, Integer> flagIndexByHash = TreatyVisRuntimeFlagAssetUtil.buildDenseTileIndexByHash(repository.loadFlagAtlasStateRows());
-        Map<Integer, byte[]> iconBytesByIndex = new LinkedHashMap<>();
-        for (TreatyVisRuntimeRepository.FlagIconRow row : repository.loadFlagIconRows()) {
-            Integer tileIndex = flagIndexByHash.get(TreatyVisRuntimeFlagAssetUtil.hashCode(row.flagHash()));
-            if (tileIndex != null) {
-                iconBytesByIndex.put(tileIndex, row.iconBytes());
-            }
-        }
-        return Map.copyOf(iconBytesByIndex);
+        return TreatyVisRuntimeFlagAssetUtil.buildIconBytesByIndex(flagIndexByHash, repository.loadFlagIconRows());
     }
 
     static Map<Integer, byte[]> normalizeDenseFlagIconIndexMap(Map<Integer, byte[]> flagIconBytesByIndex) {
@@ -316,7 +309,7 @@ public final class TreatyHistoryService {
     private record PayloadSnapshotData(TreatyVisRuntimePayload payload) {
     }
 
-        public record BuiltTreatyArtifacts(
+    public record BuiltTreatyArtifacts(
             byte[] historyBytes,
             byte[] atlasBytes,
             byte[] historySha256

@@ -372,8 +372,7 @@ public final class TreatyVisRuntimeLegacyFlagImportService {
             if (x + width > atlasImage.getWidth() || y + height > atlasImage.getHeight()) {
                 continue;
             }
-            BufferedImage tile = atlasImage.getSubimage(x, y, width, height);
-            iconBytesByNormalizedHash.put(normalizedHash, TreatyVisRuntimeFlagAssetUtil.encodeWebp(tile, TreatyHistoryRuntimeConfig.FLAG_ICON_WEBP_QUALITY));
+            iconBytesByNormalizedHash.put(normalizedHash, TreatyVisRuntimeFlagAssetUtil.encodeAtlasTileIcon(atlasImage, x, y, width, height));
         }
         return Map.copyOf(iconBytesByNormalizedHash);
     }
