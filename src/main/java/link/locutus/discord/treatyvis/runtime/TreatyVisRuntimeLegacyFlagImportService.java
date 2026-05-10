@@ -152,6 +152,8 @@ public final class TreatyVisRuntimeLegacyFlagImportService {
             resolvedEventCount,
             resolvedEventCount == 0 ? null : minDay,
             resolvedEventCount == 0 ? null : maxDay,
+                iconBytesByNormalizedHash.size(),
+                tileIndexByNormalizedHash.size(),
                 Map.copyOf(rawHashByUrl),
                 Map.copyOf(latestHashByAlliance)
         );
@@ -269,10 +271,21 @@ public final class TreatyVisRuntimeLegacyFlagImportService {
             FlagsDayCache cache,
             Map<String, DownloadedFlag> downloadedFlagsByUrl,
             Map<HashCode, Integer> tileIndexByNormalizedHash,
-                Map<HashCode, byte[]> iconBytesByNormalizedHash
+            Map<HashCode, byte[]> iconBytesByNormalizedHash
     ) throws IOException {
         Map<HashCode, TreatyVisRuntimeRepository.FlagIconRow> iconByHash = new LinkedHashMap<>();
         Map<HashCode, TreatyVisRuntimeRepository.FlagAtlasStateRow> atlasByHash = new LinkedHashMap<>();
+
+        for (Map.Entry<HashCode, Integer> entry : tileIndexByNormalizedHash.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .toList()) {
+            byte[] iconBytes = iconBytesByNormalizedHash.get(entry.getKey());
+            if (iconBytes == null) {
+                continue;
+            }
+            iconByHash.put(entry.getKey(), new TreatyVisRuntimeRepository.FlagIconRow(entry.getKey().asBytes(), iconBytes));
+            atlasByHash.put(entry.getKey(), new TreatyVisRuntimeRepository.FlagAtlasStateRow(entry.getKey().asBytes(), entry.getValue()));
+        }
 
         Map<AllianceDayKey, TreatyVisRuntimeRepository.FlagChangeRow> changeByAllianceAndDay = new LinkedHashMap<>();
         Map<Integer, TreatyVisRuntimeRepository.LastFlagUrlRow> latestByAlliance = new LinkedHashMap<>();
@@ -382,7 +395,7 @@ public final class TreatyVisRuntimeLegacyFlagImportService {
             if (iconBytes == null) {
                 iconBytes = uncheckedEncodeIcon(downloadedFlag.rawBytes());
             }
-            return new ResolvedHistoricalFlag(downloadedFlag.rawHash(), iconBytes, tileIndex);
+            return new ResolvedHistoricalFlag(downloadedFlag.normalizedHash(), iconBytes, tileIndex);
         }
 
         HashCode normalizedHash = cache.urlToHash().get(rawUrl);
@@ -487,6 +500,8 @@ public final class TreatyVisRuntimeLegacyFlagImportService {
             int sourceEventCount,
             Integer minDay,
             Integer maxDay,
+            int sourceIconCount,
+            int sourceAtlasAssignmentCount,
             Map<String, HashCode> rawHashByUrl,
             Map<Integer, byte[]> latestHashByAlliance
         ) {

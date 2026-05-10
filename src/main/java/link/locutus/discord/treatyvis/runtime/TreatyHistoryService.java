@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 public final class TreatyHistoryService {
@@ -287,6 +288,23 @@ public final class TreatyHistoryService {
         return Map.copyOf(iconBytesByIndex);
     }
 
+    static Map<Integer, byte[]> normalizeDenseFlagIconIndexMap(Map<Integer, byte[]> flagIconBytesByIndex) {
+        Map<Integer, byte[]> normalized = new LinkedHashMap<>();
+        int nextDenseIndex = 1;
+        for (Entry<Integer, byte[]> entry : flagIconBytesByIndex.entrySet().stream()
+                .sorted(Entry.comparingByKey())
+                .toList()) {
+            Integer index = entry.getKey();
+            byte[] iconBytes = entry.getValue();
+            if (index == null || index <= 0 || iconBytes == null) {
+                continue;
+            }
+            normalized.put(nextDenseIndex, iconBytes);
+            nextDenseIndex += 1;
+        }
+        return Map.copyOf(normalized);
+    }
+
     private static int currentEpochDayUtc() {
         return Math.toIntExact(LocalDate.now(ZoneOffset.UTC).toEpochDay());
     }
@@ -306,6 +324,10 @@ public final class TreatyHistoryService {
     }
 
     private record AtlasSnapshotData(Map<Integer, byte[]> flagIconBytesByIndex) {
+        private AtlasSnapshotData {
+            flagIconBytesByIndex = normalizeDenseFlagIconIndexMap(flagIconBytesByIndex);
+        }
+
         TreatyHistoryAtlasCache.TreatyHistoryAtlasSource toAtlasSource() {
             return new TreatyHistoryAtlasCache.TreatyHistoryAtlasSource(flagIconBytesByIndex);
         }

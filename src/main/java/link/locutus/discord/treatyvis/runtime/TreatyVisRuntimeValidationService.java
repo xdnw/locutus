@@ -197,8 +197,16 @@ public final class TreatyVisRuntimeValidationService {
         try {
             TreatyVisRuntimeLegacyFlagImportService.FlagValidationData source = flagImportService.loadHistoricalFlagValidationData();
             List<TreatyVisRuntimeRepository.FlagChangeRow> importedRows = repository.loadFlagChangeRows();
+            int importedIconCount = repository.loadFlagIconRows().size();
+            int importedAtlasAssignmentCount = repository.loadFlagAtlasStateRows().size();
             if (importedRows.size() < source.sourceEventCount()) {
                 issues.add("Imported flag change row count is smaller than staged source event count.");
+            }
+            if (importedIconCount < source.sourceIconCount()) {
+                issues.add("Imported flag icon row count is smaller than staged atlas icon count.");
+            }
+            if (importedAtlasAssignmentCount < source.sourceAtlasAssignmentCount()) {
+                issues.add("Imported flag atlas assignment count is smaller than staged atlas assignment count.");
             }
             if (!Objects.equals(source.minDay(), bootstrapState.importedFlagMinDay()) || !Objects.equals(source.maxDay(), bootstrapState.importedFlagMaxDay())) {
                 issues.add("Imported flag day range does not match bootstrap state.");
@@ -236,10 +244,21 @@ public final class TreatyVisRuntimeValidationService {
                     issues.add("LAST_FLAG_URLS hash does not match latest FLAG_CHANGES row for alliance " + entry.getKey() + ".");
                 }
             }
-            return new FlagMetrics(source.sourceEventCount(), importedRows.size(), source.minDay(), source.maxDay(), rawCacheHashesValid, helperMatchesLatest);
+            return new FlagMetrics(
+                    source.sourceEventCount(),
+                    importedRows.size(),
+                    source.sourceIconCount(),
+                    importedIconCount,
+                    source.sourceAtlasAssignmentCount(),
+                    importedAtlasAssignmentCount,
+                    source.minDay(),
+                    source.maxDay(),
+                    rawCacheHashesValid,
+                    helperMatchesLatest
+            );
         } catch (IOException ex) {
             issues.add("Flag validation failed: " + ex.getMessage());
-            return new FlagMetrics(null, null, null, null, false, false);
+            return new FlagMetrics(null, null, null, null, null, null, null, null, false, false);
         }
     }
 
@@ -610,11 +629,26 @@ public final class TreatyVisRuntimeValidationService {
         }
     }
 
-    private record FlagMetrics(Integer sourceEventCount, Integer importedEventCount, Integer minDay, Integer maxDay, boolean rawCacheHashesValid, boolean helperMatchesLatest) {
+        private record FlagMetrics(
+            Integer sourceEventCount,
+            Integer importedEventCount,
+            Integer sourceIconCount,
+            Integer importedIconCount,
+            Integer sourceAtlasAssignmentCount,
+            Integer importedAtlasAssignmentCount,
+            Integer minDay,
+            Integer maxDay,
+            boolean rawCacheHashesValid,
+            boolean helperMatchesLatest
+        ) {
         Map<String, Object> asReportMap() {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("sourceEventCount", sourceEventCount);
             map.put("importedEventCount", importedEventCount);
+            map.put("sourceIconCount", sourceIconCount);
+            map.put("importedIconCount", importedIconCount);
+            map.put("sourceAtlasAssignmentCount", sourceAtlasAssignmentCount);
+            map.put("importedAtlasAssignmentCount", importedAtlasAssignmentCount);
             map.put("minDay", minDay);
             map.put("maxDay", maxDay);
             map.put("rawCacheHashesValid", rawCacheHashesValid);

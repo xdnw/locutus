@@ -8,8 +8,14 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.awt.Color;
+import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+
+import javax.imageio.ImageIO;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -121,5 +127,108 @@ class TreatyVisRuntimeImportedSnapshotServiceTest {
                         assertArrayEquals(alphaIcon, imported.flagIconBytesByIndex().get(1));
                         assertArrayEquals(betaIcon, imported.flagIconBytesByIndex().get(2));
         }
+    }
+
+    @Test
+    void carriesFullImportedFlagAtlasCatalogWhenEventStreamUsesOnlySubset() throws Exception {
+        Path stagedImportRoot = tempDir.resolve("legacy-import-full-catalog-snapshot");
+        Path stagedData = stagedImportRoot.resolve("data");
+        Path stagedPublicData = stagedImportRoot.resolve(Path.of("public", "data"));
+        Files.createDirectories(stagedData.resolve("flag_cache"));
+        Files.createDirectories(stagedPublicData);
+
+        String alphaNormalizedHash = "1".repeat(64);
+        String betaNormalizedHash = "2".repeat(64);
+        String gammaNormalizedHash = "3".repeat(64);
+        int baseDay = Math.toIntExact(LocalDate.parse("2025-01-01").toEpochDay());
+
+        com.fasterxml.jackson.databind.ObjectMapper msgpack = TreatyVisRuntimeSerializers.MSGPACK;
+        com.fasterxml.jackson.databind.ObjectMapper json = TreatyVisRuntimeSerializers.JSON;
+
+        msgpack.writeValue(stagedData.resolve("flags_day_cache.msgpack").toFile(), Map.of(
+                "raw_events_after_legacy", List.of(
+                        Map.of("timestamp", "2025-01-01T00:00:00Z", "alliance_id", 100, "raw_flag_url", "https://flags.test/alpha.png")
+                ),
+                "url_to_hash", Map.of(
+                        "https://flags.test/alpha.png", alphaNormalizedHash
+                )
+        ));
+        json.writeValue(stagedData.resolve("flag_download_state.json").toFile(), Map.of(
+                "created_at", "2026-02-24T20:41:59Z",
+                "schema_version", 2,
+                "updated_at", "2026-03-01T07:07:08Z",
+                "urls", Map.of()
+        ));
+        Files.write(stagedPublicData.resolve("flag_atlas.webp"), createAtlasWebpBytes(
+                List.of(new Color(50, 200, 50), new Color(200, 50, 50), new Color(50, 50, 200)),
+                16,
+                10
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("flag_assets.msgpack").toFile(), Map.of(
+                "atlas", Map.of(
+                        "columns", 3,
+                        "tile_width", 16,
+                        "tile_height", 10,
+                        "rows", 1,
+                        "width", 48,
+                        "height", 10,
+                        "count", 3,
+                        "webp", "/data/flag_atlas.webp"
+                ),
+                "assets", Map.of(
+                        "f0", Map.of("x", 0, "y", 0, "w", 16, "h", 10, "hash", alphaNormalizedHash),
+                        "f1", Map.of("x", 16, "y", 0, "w", 16, "h", 10, "hash", betaNormalizedHash),
+                        "f2", Map.of("x", 32, "y", 0, "w", 16, "h", 10, "hash", gammaNormalizedHash)
+                )
+        ));
+
+        try (DBMainV2 db = new DBMainV2(tempDir.resolve("runtime-full-catalog-snapshot.db").toFile())) {
+            TreatyVisRuntimeRepository repository = new TreatyVisRuntimeRepository(db);
+            TreatyVisRuntimeLegacyFlagImportService flagImportService = new TreatyVisRuntimeLegacyFlagImportService(
+                    stagedImportRoot,
+                    tempDir.resolve(Path.of("runtime-full-catalog-snapshot", "flag_cache")),
+                    repository,
+                    msgpack,
+                    json
+            );
+            flagImportService.importHistoricalFlags(false);
+
+            repository.markHistoricalTreatyImportComplete(baseDay, baseDay);
+            repository.markHistoricalScoreImportComplete(baseDay, baseDay);
+            repository.replaceTopNScoreRows(Map.of(
+                    baseDay,
+                    TreatyVisRuntimeScoreRowCodec.encode(List.of(
+                            new TreatyVisRuntimeLegacyScoreImportService.ScoreRow(100, 12345)
+                    ))
+            ));
+            repository.replaceUnifiedTreatyChanges(List.of());
+
+            TreatyVisRuntimeImportedSnapshotService service = new TreatyVisRuntimeImportedSnapshotService(repository);
+            TreatyVisRuntimeImportedSnapshotService.ImportedSnapshot imported = service.buildImportedSnapshot(
+                    allianceId -> "AA:" + allianceId
+            );
+
+            assertNotNull(imported);
+            assertEquals(3, imported.flagIconBytesByIndex().size());
+            assertNotNull(imported.flagIconBytesByIndex().get(1));
+            assertNotNull(imported.flagIconBytesByIndex().get(2));
+            assertNotNull(imported.flagIconBytesByIndex().get(3));
+            assertEquals(List.of(new TreatyVisRuntimeInput.AllianceFlag(100, 1)), imported.input().initialFlags());
+        }
+    }
+
+    private static byte[] createAtlasWebpBytes(List<Color> colors, int tileWidth, int tileHeight) throws Exception {
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(colors.size() * tileWidth, tileHeight, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        for (int index = 0; index < colors.size(); index += 1) {
+            Color color = colors.get(index);
+            for (int y = 0; y < tileHeight; y += 1) {
+                for (int x = 0; x < tileWidth; x += 1) {
+                    image.setRGB((index * tileWidth) + x, y, color.getRGB());
+                }
+            }
+        }
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ImageIO.write(image, "webp", output);
+        return output.toByteArray();
     }
 }

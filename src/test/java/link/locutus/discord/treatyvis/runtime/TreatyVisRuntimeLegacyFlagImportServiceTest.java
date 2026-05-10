@@ -131,7 +131,7 @@ class TreatyVisRuntimeLegacyFlagImportServiceTest {
             assertEquals(Math.toIntExact(java.time.LocalDate.parse("2025-01-02").toEpochDay()), bootstrapState.importedFlagMaxDay());
 
             Map<Integer, byte[]> lastFlagHashes = repository.loadLastFlagHashesByAlliance();
-            assertEquals(TreatyVisRuntimeFlagAssetUtil.sha256(betaRaw), TreatyVisRuntimeFlagAssetUtil.hashCode(lastFlagHashes.get(100)));
+            assertEquals(betaNormalizedHash, TreatyVisRuntimeFlagAssetUtil.hashCode(lastFlagHashes.get(100)).toString());
             assertEquals(null, lastFlagHashes.get(200));
 
             TreatyVisRuntimeLegacyFlagImportService.FlagResetResult resetResult = service.resetImportedHistoricalFlags();
@@ -210,6 +210,78 @@ class TreatyVisRuntimeLegacyFlagImportServiceTest {
 
             Map<Integer, byte[]> lastFlagHashes = repository.loadLastFlagHashesByAlliance();
             assertEquals(alphaNormalizedHash, TreatyVisRuntimeFlagAssetUtil.hashCode(lastFlagHashes.get(100)).toString());
+        }
+    }
+
+    @Test
+    void importsFullHistoricalAtlasCatalogEvenWhenOnlySubsetOfFlagsAppearInEvents() throws Exception {
+        Path stagedImportRoot = tempDir.resolve("legacy-import-full-atlas-catalog");
+        Path stagedData = stagedImportRoot.resolve("data");
+        Path stagedPublicData = stagedImportRoot.resolve(Path.of("public", "data"));
+        Files.createDirectories(stagedData.resolve("flag_cache"));
+        Files.createDirectories(stagedPublicData);
+
+        String alphaNormalizedHash = repeatHex("1", 64);
+        String betaNormalizedHash = repeatHex("2", 64);
+        String gammaNormalizedHash = repeatHex("3", 64);
+
+        msgpack.writeValue(stagedData.resolve("flags_day_cache.msgpack").toFile(), Map.of(
+                "raw_events_after_legacy", List.of(
+                        Map.of("timestamp", "2025-01-01T00:00:00Z", "alliance_id", 100, "raw_flag_url", "https://flags.test/alpha.png")
+                ),
+                "url_to_hash", Map.of(
+                        "https://flags.test/alpha.png", alphaNormalizedHash
+                )
+        ));
+
+        json.writeValue(stagedData.resolve("flag_download_state.json").toFile(), Map.of(
+                "created_at", "2026-02-24T20:41:59Z",
+                "schema_version", 2,
+                "updated_at", "2026-03-01T07:07:08Z",
+                "urls", Map.of()
+        ));
+
+        Files.write(stagedPublicData.resolve("flag_atlas.webp"), createAtlasWebpBytes(
+                List.of(new Color(50, 200, 50), new Color(200, 50, 50), new Color(50, 50, 200)),
+                16,
+                10
+        ));
+        msgpack.writeValue(stagedPublicData.resolve("flag_assets.msgpack").toFile(), Map.of(
+                "atlas", Map.of(
+                        "columns", 3,
+                        "tile_width", 16,
+                        "tile_height", 10,
+                        "rows", 1,
+                        "width", 48,
+                        "height", 10,
+                        "count", 3,
+                        "webp", "/data/flag_atlas.webp"
+                ),
+                "assets", Map.of(
+                        "f0", Map.of("x", 0, "y", 0, "w", 16, "h", 10, "hash", alphaNormalizedHash),
+                        "f1", Map.of("x", 16, "y", 0, "w", 16, "h", 10, "hash", betaNormalizedHash),
+                        "f2", Map.of("x", 32, "y", 0, "w", 16, "h", 10, "hash", gammaNormalizedHash)
+                )
+        ));
+
+        try (DBMainV2 db = new DBMainV2(tempDir.resolve("runtime-full-atlas-catalog.db").toFile())) {
+            TreatyVisRuntimeRepository repository = new TreatyVisRuntimeRepository(db);
+            Path runtimeFlagCacheRoot = tempDir.resolve(Path.of("runtime-full-atlas-catalog", "flag_cache"));
+            TreatyVisRuntimeLegacyFlagImportService service = new TreatyVisRuntimeLegacyFlagImportService(
+                    stagedImportRoot,
+                    runtimeFlagCacheRoot,
+                    repository,
+                    msgpack,
+                    json
+            );
+
+            TreatyVisRuntimeLegacyFlagImportService.FlagImportResult result = service.importHistoricalFlags(false);
+
+            assertEquals(1, result.importedChangeCount());
+            assertEquals(3, result.importedIconCount());
+            assertEquals(3, result.importedAtlasAssignmentCount());
+            assertEquals(1, result.importedLastFlagUrlCount());
+            assertEquals(0, result.copiedRawCacheCount());
         }
     }
 
