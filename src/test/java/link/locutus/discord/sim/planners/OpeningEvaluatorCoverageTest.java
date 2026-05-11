@@ -782,6 +782,44 @@ class OpeningEvaluatorCoverageTest {
         );
     }
 
+    @Test
+    void topKCollectorSortSelectedDescendingOrdersAttackerStableByScoreThenDefender() {
+        OpeningEvaluator.TopKEdgeCollector collector =
+                new OpeningEvaluator.TopKEdgeCollector(3, CandidateEdgeComponentPolicy.none(), true);
+
+        collector.consider(4, 12, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
+        collector.consider(4, 7, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
+        collector.consider(4, 9, (byte) 0, (byte) 0, 80f, 0f, 0f, 0f, 0f, 0f, 0f);
+
+        collector.sortSelectedDescending();
+
+        assertEquals(9, collector.defenderIndexAt(collector.sortedIndexAt(0)));
+        assertEquals(7, collector.defenderIndexAt(collector.sortedIndexAt(1)));
+        assertEquals(12, collector.defenderIndexAt(collector.sortedIndexAt(2)));
+    }
+
+    @Test
+    void topKCollectorSortSelectedDescendingOrdersMixedCollectorByScoreThenAttackerThenDefender() {
+        OpeningEvaluator.TopKEdgeCollector collector =
+                new OpeningEvaluator.TopKEdgeCollector(4, CandidateEdgeComponentPolicy.none(), false);
+
+        collector.consider(2, 12, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
+        collector.consider(1, 20, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
+        collector.consider(1, 9, (byte) 0, (byte) 0, 80f, 0f, 0f, 0f, 0f, 0f, 0f);
+        collector.consider(1, 18, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
+
+        collector.sortSelectedDescending();
+
+        assertEquals(1, collector.attackerIndexAt(collector.sortedIndexAt(0)));
+        assertEquals(9, collector.defenderIndexAt(collector.sortedIndexAt(0)));
+        assertEquals(1, collector.attackerIndexAt(collector.sortedIndexAt(1)));
+        assertEquals(18, collector.defenderIndexAt(collector.sortedIndexAt(1)));
+        assertEquals(1, collector.attackerIndexAt(collector.sortedIndexAt(2)));
+        assertEquals(20, collector.defenderIndexAt(collector.sortedIndexAt(2)));
+        assertEquals(2, collector.attackerIndexAt(collector.sortedIndexAt(3)));
+        assertEquals(12, collector.defenderIndexAt(collector.sortedIndexAt(3)));
+    }
+
         @Test
         void coveragePriorityCollectorPrefersHigherPriorityStrongDefenderLane() {
                 OpeningEvaluator.CoveragePriorityCollector collector =

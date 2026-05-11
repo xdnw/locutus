@@ -910,7 +910,7 @@ final class OpeningEvaluator {
         private int size;
         private boolean sortedDirty;
 
-        private TopKEdgeCollector(int k, CandidateEdgeComponentPolicy componentPolicy, boolean attackerIndexStable) {
+        TopKEdgeCollector(int k, CandidateEdgeComponentPolicy componentPolicy, boolean attackerIndexStable) {
             int capacity = Math.max(0, k);
             this.edges = new CandidateEdgeStorage(capacity, componentPolicy);
             this.sortedIndexes = new int[capacity];
@@ -985,7 +985,7 @@ final class OpeningEvaluator {
             return edges.bestAttackTypeIdAt(index);
         }
 
-        private void consider(
+        void consider(
                 int attackerIndex,
                 int defenderIndex,
                 byte preferredWarTypeId,
@@ -1021,7 +1021,7 @@ final class OpeningEvaluator {
                 sortedDirty = true;
                 return;
             }
-                if (!isBetterForOrdering(
+            if (!isBetterForOrdering(
                     score,
                     attackerIndex,
                     defenderIndex,
@@ -1056,23 +1056,53 @@ final class OpeningEvaluator {
             for (int i = 0; i < size; i++) {
                 sortedIndexes[i] = i;
             }
-            for (int i = 1; i < size; i++) {
-                int cursor = i;
-                while (cursor > 0 && isBetterForOrdering(
-                    edges.scoreAt(sortedIndexes[cursor]),
-                    edges.attackerIndexAt(sortedIndexes[cursor]),
-                    edges.defenderIndexAt(sortedIndexes[cursor]),
-                    edges.scoreAt(sortedIndexes[cursor - 1]),
-                    edges.attackerIndexAt(sortedIndexes[cursor - 1]),
-                    edges.defenderIndexAt(sortedIndexes[cursor - 1])
-                )) {
-                    int swap = sortedIndexes[cursor - 1];
-                    sortedIndexes[cursor - 1] = sortedIndexes[cursor];
-                    sortedIndexes[cursor] = swap;
-                    cursor--;
-                }
+            if (size > 1) {
+                quickSortSelectedIndexes(0, size - 1);
             }
             sortedDirty = false;
+        }
+
+        private void quickSortSelectedIndexes(int left, int right) {
+            while (left < right) {
+                int pivotIndex = partitionSelectedIndexes(left, right, (left + right) >>> 1);
+                if (pivotIndex - left < right - pivotIndex) {
+                    quickSortSelectedIndexes(left, pivotIndex - 1);
+                    left = pivotIndex + 1;
+                } else {
+                    quickSortSelectedIndexes(pivotIndex + 1, right);
+                    right = pivotIndex - 1;
+                }
+            }
+        }
+
+        private int partitionSelectedIndexes(int left, int right, int pivotIndex) {
+            int pivotValue = sortedIndexes[pivotIndex];
+            swapSortedIndexes(pivotIndex, right);
+            int storeIndex = left;
+            for (int index = left; index < right; index++) {
+                if (isSortedIndexBefore(sortedIndexes[index], pivotValue)) {
+                    swapSortedIndexes(storeIndex++, index);
+                }
+            }
+            swapSortedIndexes(storeIndex, right);
+            return storeIndex;
+        }
+
+        private boolean isSortedIndexBefore(int lhsIndex, int rhsIndex) {
+            return isBetterForOrdering(
+                    edges.scoreAt(lhsIndex),
+                    edges.attackerIndexAt(lhsIndex),
+                    edges.defenderIndexAt(lhsIndex),
+                    edges.scoreAt(rhsIndex),
+                    edges.attackerIndexAt(rhsIndex),
+                    edges.defenderIndexAt(rhsIndex)
+            );
+        }
+
+        private void swapSortedIndexes(int lhs, int rhs) {
+            int swap = sortedIndexes[lhs];
+            sortedIndexes[lhs] = sortedIndexes[rhs];
+            sortedIndexes[rhs] = swap;
         }
 
         private void siftUp(int index) {
@@ -1294,16 +1324,16 @@ final class OpeningEvaluator {
                 sortedDirty = true;
                 return;
             }
-                if (!isHigherPriority(
-                        priority,
-                        score,
-                        defenderIndex,
-                        priorities[0],
-                        edges.scoreAt(0),
-                        edges.defenderIndexAt(0)
-                )) {
-                    return;
-                }
+            if (!isHigherPriority(
+                    priority,
+                    score,
+                    defenderIndex,
+                    priorities[0],
+                    edges.scoreAt(0),
+                    edges.defenderIndexAt(0)
+            )) {
+                return;
+            }
             write(
                     0,
                     priority,
@@ -1330,23 +1360,53 @@ final class OpeningEvaluator {
             for (int i = 0; i < size; i++) {
                 sortedIndexes[i] = i;
             }
-            for (int i = 1; i < size; i++) {
-                int cursor = i;
-                while (cursor > 0 && isHigherPriority(
-                        priorities[sortedIndexes[cursor]],
-                        edges.scoreAt(sortedIndexes[cursor]),
-                        edges.defenderIndexAt(sortedIndexes[cursor]),
-                        priorities[sortedIndexes[cursor - 1]],
-                        edges.scoreAt(sortedIndexes[cursor - 1]),
-                        edges.defenderIndexAt(sortedIndexes[cursor - 1])
-                )) {
-                    int swap = sortedIndexes[cursor - 1];
-                    sortedIndexes[cursor - 1] = sortedIndexes[cursor];
-                    sortedIndexes[cursor] = swap;
-                    cursor--;
-                }
+            if (size > 1) {
+                quickSortSelectedIndexes(0, size - 1);
             }
             sortedDirty = false;
+        }
+
+        private void quickSortSelectedIndexes(int left, int right) {
+            while (left < right) {
+                int pivotIndex = partitionSelectedIndexes(left, right, (left + right) >>> 1);
+                if (pivotIndex - left < right - pivotIndex) {
+                    quickSortSelectedIndexes(left, pivotIndex - 1);
+                    left = pivotIndex + 1;
+                } else {
+                    quickSortSelectedIndexes(pivotIndex + 1, right);
+                    right = pivotIndex - 1;
+                }
+            }
+        }
+
+        private int partitionSelectedIndexes(int left, int right, int pivotIndex) {
+            int pivotValue = sortedIndexes[pivotIndex];
+            swapSortedIndexes(pivotIndex, right);
+            int storeIndex = left;
+            for (int index = left; index < right; index++) {
+                if (isSortedIndexBefore(sortedIndexes[index], pivotValue)) {
+                    swapSortedIndexes(storeIndex++, index);
+                }
+            }
+            swapSortedIndexes(storeIndex, right);
+            return storeIndex;
+        }
+
+        private boolean isSortedIndexBefore(int lhsIndex, int rhsIndex) {
+            return isHigherPriority(
+                    priorities[lhsIndex],
+                    edges.scoreAt(lhsIndex),
+                    edges.defenderIndexAt(lhsIndex),
+                    priorities[rhsIndex],
+                    edges.scoreAt(rhsIndex),
+                    edges.defenderIndexAt(rhsIndex)
+            );
+        }
+
+        private void swapSortedIndexes(int lhs, int rhs) {
+            int swap = sortedIndexes[lhs];
+            sortedIndexes[lhs] = sortedIndexes[rhs];
+            sortedIndexes[rhs] = swap;
         }
 
         static boolean isHigherPriority(
