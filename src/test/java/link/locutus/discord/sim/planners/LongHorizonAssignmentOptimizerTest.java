@@ -1157,6 +1157,67 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void slotDenialProjectedPortfolioAddsOneDiversityHedgeAudit() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(3).build(),
+                nation(2, 1, 880).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build(),
+                nation(103, 2, 900).toBuilder().maxOff(1).build(),
+                nation(104, 2, 900).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.5f, 0.0f);
+        edges.add(0, 2, 99.0f, 0.0f);
+        edges.add(0, 3, 98.5f, 0.0f);
+        edges.add(1, 0, 80.0f, 0.0f);
+        edges.add(1, 1, 79.5f, 0.0f);
+        edges.add(1, 2, 79.0f, 0.0f);
+        edges.add(1, 3, 78.5f, 0.0f);
+        int[] attackerCaps = {3, 2};
+        int[] defenderCaps = {1, 1, 1, 1};
+        int[] attackerStrengthRanks = {1, 0};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102, 103, 104};
+        PlannerProfiler.Session session = new PlannerProfiler.Session();
+
+        PlannerProfiler.withSession(session, () -> LongHorizonAssignmentOptimizer.solveDetailed(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                72,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        BlitzObjective.CONTROL.objective(),
+                        SidePlannerSettings.legacy().withProjectedAuditLimit(1),
+                        SidePlannerSettings.legacy(),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                )
+        ));
+        PlannerProfiler.ProfileSnapshot snapshot = session.snapshot();
+
+        PlannerProfiler.ScopeStats solveStats = snapshot.stats(PlannerProfiler.Scope.LONG_HORIZON_SOLVE);
+        assertEquals(1L, solveStats.counters().getOrDefault("boundedProjectedPortfolio", 0L),
+                "Slot-denial objectives should stay on the same bounded projected-portfolio owner");
+        assertEquals(1L, solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
+                "The explicit relief audit budget should remain unchanged for slot-denial objectives");
+        assertEquals(1L, solveStats.counters().getOrDefault("boundedProjectedDiversityAudits", 0L),
+                "Slot-denial objectives should spend one extra audit on a structurally different relief hedge");
+        assertTrue(solveStats.counters().getOrDefault("boundedProjectedAudits", 0L)
+                        > solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
+                "The extra diversity hedge should increase total projected audits without widening the relief budget itself");
+    }
+
+    @Test
     void forwardProjectionReusesPreparedStateAcrossVariantsWithSameActiveProfile() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900).toBuilder().maxOff(1).build(),

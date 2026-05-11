@@ -34,6 +34,7 @@ final class LongHorizonAssignmentOptimizer {
     private static final int FULL_PROJECTED_PORTFOLIO_EDGE_LIMIT = 1_500;
     private static final int FULL_PROJECTED_PORTFOLIO_PAIR_LIMIT = 150;
     private static final int LARGE_PROJECTED_PORTFOLIO_AUDIT_LIMIT = 1;
+    private static final int SLOT_DENIAL_DIVERSITY_HEDGE_AUDITS = 1;
     static final double PRESSURE_SCORE_WEIGHT = 0.24d;
     static final double EPSILON = 1e-9;
 
@@ -355,8 +356,12 @@ final class LongHorizonAssignmentOptimizer {
                     cheapEvaluator,
                     terminalProjection
                 );
+                Candidate diversityHedge = preserveCapLimitBreadth
+                        ? selectDiversityHedge(reliefCandidates, marginalCandidate, projectedAuditLimit)
+                        : null;
                 int audited = 0;
                 int reliefAudited = 0;
+                int diversityAudited = 0;
                 Candidate best = currentBest;
                 for (Candidate candidate : reliefCandidates) {
                     if (reliefAudited >= projectedAuditLimit) {
@@ -365,6 +370,11 @@ final class LongHorizonAssignmentOptimizer {
                     best = projectedEvaluator.betterCandidate(best, candidate, terminalProjection);
                     audited++;
                     reliefAudited++;
+                }
+                if (diversityHedge != null) {
+                    best = projectedEvaluator.betterCandidate(best, diversityHedge, terminalProjection);
+                    audited++;
+                    diversityAudited++;
                 }
                 if (preserveCapLimitBreadth) {
                     if (capLimitOne != null && capLimitOne != marginalCandidate) {
@@ -387,7 +397,48 @@ final class LongHorizonAssignmentOptimizer {
                         + capLimitCandidateCount);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedAudits", audited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedReliefAudits", reliefAudited);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedDiversityAudits", diversityAudited);
                 return best;
+            }
+
+            private static Candidate selectDiversityHedge(
+                    List<Candidate> reliefCandidates,
+                    Candidate marginalCandidate,
+                    int projectedAuditLimit
+            ) {
+                if (reliefCandidates.size() <= projectedAuditLimit || SLOT_DENIAL_DIVERSITY_HEDGE_AUDITS <= 0) {
+                    return null;
+                }
+                Candidate best = null;
+                int bestDistance = 0;
+                for (int index = projectedAuditLimit; index < reliefCandidates.size(); index++) {
+                    Candidate candidate = reliefCandidates.get(index);
+                    int distance = structuralDistance(marginalCandidate, candidate);
+                    if (distance <= 0) {
+                        continue;
+                    }
+                    if (best == null || distance > bestDistance) {
+                        best = candidate;
+                        bestDistance = distance;
+                    }
+                }
+                return best;
+            }
+
+            private static int structuralDistance(Candidate baseline, Candidate candidate) {
+                int distance = 0;
+                for (int index = 0; index < baseline.attackerCounts().length; index++) {
+                    distance += Math.abs(baseline.attackerCounts()[index] - candidate.attackerCounts()[index]);
+                }
+                for (int index = 0; index < baseline.defenderCounts().length; index++) {
+                    distance += Math.abs(baseline.defenderCounts()[index] - candidate.defenderCounts()[index]);
+                }
+                for (int index = 0; index < baseline.edgeAssigned().length; index++) {
+                    if (baseline.edgeAssigned()[index] != candidate.edgeAssigned()[index]) {
+                        distance++;
+                    }
+                }
+                return distance;
             }
 
             private static int distinctCapLimitCandidateCount(
