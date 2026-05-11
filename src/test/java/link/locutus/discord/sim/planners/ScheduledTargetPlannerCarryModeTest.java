@@ -7,6 +7,7 @@ import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -19,28 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ScheduledTargetPlannerCarryModeTest {
     @Test
     void scheduledPlannerProducesExpectedSingleBucketPlan() {
-        DBNationSnapshot attacker = DBNationSnapshot.synthetic(201)
-                .teamId(1)
-                .allianceId(10)
-                .maxOff(3)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 15_000)
-                .unit(MilitaryUnit.TANK, 500)
-                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                .unit(MilitaryUnit.SHIP, 8)
-                .build();
-        DBNationSnapshot defender = DBNationSnapshot.synthetic(202)
-                .teamId(2)
-                .allianceId(20)
-                .maxOff(3)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 10_000)
-                .unit(MilitaryUnit.TANK, 200)
-                .unit(MilitaryUnit.AIRCRAFT, 500)
-                .unit(MilitaryUnit.SHIP, 4)
-                .build();
+        DBNationSnapshot attacker = combatant(201, 1, 1_000.0, 15_000, 500, 1_000, 8);
+        DBNationSnapshot defender = combatant(202, 2, 950.0, 10_000, 200, 500, 4);
 
         List<ScheduledAttacker> attackers = List.of(new ScheduledAttacker(attacker, List.of(new AvailabilityWindow(0, 1))));
         List<DBNationSnapshot> defenders = List.of(defender);
@@ -77,6 +58,36 @@ class ScheduledTargetPlannerCarryModeTest {
                 }
                 assertEquals(expected.timingComparisons(), actual.timingComparisons());
                 assertEquals(expected.diagnostics(), actual.diagnostics());
+        }
+
+        private static DBNationSnapshot combatant(
+                int nationId,
+                int teamId,
+                double targetScore,
+                int soldiers,
+                int tanks,
+                int aircraft,
+                int ships
+        ) {
+                int cities = 3;
+                double staticScore = PW.computeStaticScoreComponent(cities, 0, 0);
+                double unitScore = MilitaryUnit.SOLDIER.getScore(soldiers)
+                        + MilitaryUnit.TANK.getScore(tanks)
+                        + MilitaryUnit.AIRCRAFT.getScore(aircraft)
+                        + MilitaryUnit.SHIP.getScore(ships);
+                double infraPerCity = Math.max(0d, ((targetScore - staticScore - unitScore) * 40.0d) / cities);
+                return DBNationSnapshot.synthetic(nationId)
+                        .teamId(teamId)
+                        .allianceId(teamId == 1 ? 10 : 20)
+                        .maxOff(3)
+                        .cities(cities)
+                        .cityInfra(new double[]{infraPerCity, infraPerCity, infraPerCity})
+                        .warPolicy(WarPolicy.ATTRITION)
+                        .unit(MilitaryUnit.SOLDIER, soldiers)
+                        .unit(MilitaryUnit.TANK, tanks)
+                        .unit(MilitaryUnit.AIRCRAFT, aircraft)
+                        .unit(MilitaryUnit.SHIP, ships)
+                        .build();
         }
 }
 

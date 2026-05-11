@@ -104,7 +104,7 @@ class ActorAndObjectiveIntegrationTest {
                 99,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                new double[0],
+            new double[]{1_000, 1_000, 1_000},
                 5,
                 (byte) 0
         )));
@@ -113,7 +113,7 @@ class ActorAndObjectiveIntegrationTest {
                 99,
                 WarPolicy.TURTLE,
                 ResourceType.getBuffer(),
-                new double[0],
+            new double[]{900, 900, 900},
                 5,
                 (byte) 0
         )));
@@ -122,20 +122,28 @@ class ActorAndObjectiveIntegrationTest {
                 3,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                new double[0],
+            new double[]{1_400, 1_400, 1_400},
                 5,
                 (byte) 0
         )));
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 12_000);
+        world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 400);
+        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 8_000);
+        world.requireNation(2).setUnitCount(MilitaryUnit.TANK, 150);
+        world.requireNation(3).setUnitCount(MilitaryUnit.SOLDIER, 18_000);
+        world.requireNation(3).setUnitCount(MilitaryUnit.TANK, 400);
+        world.requireNation(3).setUnitCount(MilitaryUnit.AIRCRAFT, 700);
 
         Objective objective = Objective.DAMAGE;
         double team99Score = objective.scoreTerminal(world, 99);
         double team3Score = objective.scoreTerminal(world, 3);
+        StrategicValueTotals team99Totals = StrategicValueTotals.of(StrategicValueView.of(world), 99);
+        StrategicValueTotals team3Totals = StrategicValueTotals.of(StrategicValueView.of(world), 3);
 
-        // DamageObjective: scoreTerminal = ownTeamScore - enemyTeamScore (net proxy)
-        // team99: own=15+10=25, enemy=40  => 25-40 = -15
-        // team3:  own=40,       enemy=25  => 40-25 = 15
-        assertEquals(-15.0, team99Score, 0.01);
-        assertEquals(15.0, team3Score, 0.01);
+        assertEquals(team99Totals.ownValue() - team99Totals.enemyValue(), team99Score, 0.01);
+        assertEquals(team3Totals.ownValue() - team3Totals.enemyValue(), team3Score, 0.01);
+        assertTrue(team3Score > team99Score);
+        assertEquals(-team99Score, team3Score, 0.01);
     }
 
     @Test

@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.TreatyProvider;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -228,11 +229,14 @@ class CompiledScenarioTest {
     }
 
     private static DBNationSnapshot.Builder nation(int nationId, double score) {
+        int cities = 5;
+        double staticScore = PW.computeStaticScoreComponent(cities, 0, 0);
+        double infraPerCity = Math.max(0d, ((score - staticScore) * 40.0d) / cities);
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(nationId)
                 .allianceId(nationId)
-                .cities(5)
-                .cityInfra(new double[]{1_000, 1_000, 1_000, 1_000, 1_000})
+                .cities(cities)
+                .cityInfra(new double[]{infraPerCity, infraPerCity, infraPerCity, infraPerCity, infraPerCity})
                 .warPolicy(WarPolicy.ATTRITION);
     }
 

@@ -11,6 +11,7 @@ import link.locutus.discord.sim.planners.PlannerDiagnostic;
 import link.locutus.discord.sim.planners.SidePolicy;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import link.locutus.discord.sim.combat.ResolutionMode;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,13 +46,17 @@ class BlitzPlannerTest {
     private List<DBNationSnapshot> buildNations(int idStart, int count, int teamId, double score,
                                                 int aircraft, int soldiers) {
         List<DBNationSnapshot> result = new ArrayList<>();
+        int cities = 10;
+        double staticScore = PW.computeStaticScoreComponent(cities, 0, 0);
+        double unitScore = MilitaryUnit.AIRCRAFT.getScore(aircraft) + MilitaryUnit.SOLDIER.getScore(soldiers);
+        double infraPerCity = Math.max(0d, ((score - staticScore - unitScore) * 40.0d) / cities);
         for (int i = 0; i < count; i++) {
             int id = idStart + i;
             result.add(DBNationSnapshot.synthetic(id)
                     .teamId(teamId)
                     .allianceId(teamId)
-                    .cities(10)
-                    .cityInfra(uniformInfra(10, 1000.0))
+                .cities(cities)
+                .cityInfra(uniformInfra(cities, infraPerCity))
                     .maxOff(5)
                     .currentOffensiveWars(0)
                     .currentDefensiveWars(0)

@@ -19,6 +19,7 @@ import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -1284,23 +1285,30 @@ class PlannerConflictExecutorTest {
 
     @Test
     void openingEvaluatorRetainsRequestedComponentsForCustomObjective() {
-        DBNationSnapshot attacker = nation(305, 1)
-                .unit(MilitaryUnit.SOLDIER, 65_000)
-                .unit(MilitaryUnit.TANK, 3_500)
-                .unit(MilitaryUnit.AIRCRAFT, 2_200)
-                .unit(MilitaryUnit.SHIP, 18)
-                .resource(ResourceType.MONEY, 0d)
-                .warPolicy(WarPolicy.PIRATE)
-                .projectBits(1L << Projects.PIRATE_ECONOMY.ordinal())
-                .build();
-        DBNationSnapshot defender = nation(306, 2)
-                .unit(MilitaryUnit.SOLDIER, 5_500)
-                .unit(MilitaryUnit.TANK, 220)
-                .unit(MilitaryUnit.AIRCRAFT, 120)
-                .unit(MilitaryUnit.SHIP, 3)
-                .resource(ResourceType.MONEY, 5_000_000d)
-                .warPolicy(WarPolicy.ATTRITION)
-                .build();
+        DBNationSnapshot attacker = retainedComponentNation(
+                305,
+                1,
+                1_600.0,
+                WarPolicy.PIRATE,
+                1L << Projects.PIRATE_ECONOMY.ordinal(),
+                65_000,
+                3_500,
+                2_200,
+                18,
+                0d
+        );
+        DBNationSnapshot defender = retainedComponentNation(
+                306,
+                2,
+                1_450.0,
+                WarPolicy.ATTRITION,
+                0L,
+                5_500,
+                220,
+                120,
+                3,
+                5_000_000d
+        );
 
         CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true, true, true);
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
@@ -1349,23 +1357,30 @@ class PlannerConflictExecutorTest {
 
     @Test
     void openingEvaluatorRetainsOnlyRequestedSparseComponentSubset() {
-        DBNationSnapshot attacker = nation(321, 1)
-                .unit(MilitaryUnit.SOLDIER, 65_000)
-                .unit(MilitaryUnit.TANK, 3_500)
-                .unit(MilitaryUnit.AIRCRAFT, 2_200)
-                .unit(MilitaryUnit.SHIP, 18)
-                .resource(ResourceType.MONEY, 0d)
-                .warPolicy(WarPolicy.PIRATE)
-                .projectBits(1L << Projects.PIRATE_ECONOMY.ordinal())
-                .build();
-        DBNationSnapshot defender = nation(322, 2)
-                .unit(MilitaryUnit.SOLDIER, 5_500)
-                .unit(MilitaryUnit.TANK, 220)
-                .unit(MilitaryUnit.AIRCRAFT, 120)
-                .unit(MilitaryUnit.SHIP, 3)
-                .resource(ResourceType.MONEY, 5_000_000d)
-                .warPolicy(WarPolicy.ATTRITION)
-                .build();
+        DBNationSnapshot attacker = retainedComponentNation(
+                321,
+                1,
+                1_600.0,
+                WarPolicy.PIRATE,
+                1L << Projects.PIRATE_ECONOMY.ordinal(),
+                65_000,
+                3_500,
+                2_200,
+                18,
+                0d
+        );
+        DBNationSnapshot defender = retainedComponentNation(
+                322,
+                2,
+                1_450.0,
+                WarPolicy.ATTRITION,
+                0L,
+                5_500,
+                220,
+                120,
+                3,
+                5_000_000d
+        );
 
         CandidateEdgeComponentPolicy sparsePolicy = new CandidateEdgeComponentPolicy(false, false, true, false, true);
         DamageObjective objective = new RetainedComponentDamageObjective(sparsePolicy);
@@ -2089,6 +2104,41 @@ class PlannerConflictExecutorTest {
                                 .maxOff(3)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION);
+        }
+
+        private static DBNationSnapshot retainedComponentNation(
+                int nationId,
+                int teamId,
+                double targetScore,
+                WarPolicy warPolicy,
+                long projectBits,
+                int soldiers,
+                int tanks,
+                int aircraft,
+                int ships,
+                double money
+        ) {
+                int cities = 3;
+                double staticScore = PW.computeStaticScoreComponent(cities, Long.bitCount(projectBits), 0);
+                double unitScore = MilitaryUnit.SOLDIER.getScore(soldiers)
+                                + MilitaryUnit.TANK.getScore(tanks)
+                                + MilitaryUnit.AIRCRAFT.getScore(aircraft)
+                                + MilitaryUnit.SHIP.getScore(ships);
+                double infraPerCity = Math.max(0d, ((targetScore - staticScore - unitScore) * 40.0d) / cities);
+                return DBNationSnapshot.synthetic(nationId)
+                                .teamId(teamId)
+                                .allianceId(teamId)
+                                .cities(cities)
+                                .maxOff(3)
+                                .cityInfra(new double[]{infraPerCity, infraPerCity, infraPerCity})
+                                .warPolicy(warPolicy)
+                                .projectBits(projectBits)
+                                .unit(MilitaryUnit.SOLDIER, soldiers)
+                                .unit(MilitaryUnit.TANK, tanks)
+                                .unit(MilitaryUnit.AIRCRAFT, aircraft)
+                                .unit(MilitaryUnit.SHIP, ships)
+                                .resource(ResourceType.MONEY, money)
+                                .build();
         }
 
         private static List<Integer> nationIds(List<DBNationSnapshot> snapshots) {
