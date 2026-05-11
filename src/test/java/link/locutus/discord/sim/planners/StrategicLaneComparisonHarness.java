@@ -42,16 +42,37 @@ public final class StrategicLaneComparisonHarness {
     public static void main(String[] args) {
         int horizonTurns = optionInt(args, "horizon", DEFAULT_HORIZON_TURNS);
         int repetitions = Math.max(1, optionInt(args, "repetitions", 1));
-        int requestedPopulation = optionInt(args, "population", DEFAULT_POPULATION);
-        System.out.print(renderCsv(horizonTurns, repetitions, requestedPopulation, ProjectionPolicyPath.DEFAULT));
+        int requestedPopulation = optionInt(args, "population", optionInt(args, "maxPopulation", DEFAULT_POPULATION));
+        ProjectionPolicyPath projectionPolicyPath = projectionPolicyPath(option(args, "projectionPolicyPath"));
+        System.out.print(renderCsv(
+                horizonTurns,
+                repetitions,
+                requestedPopulation,
+                projectionPolicyPath,
+                option(args, "scenarios"),
+                option(args, "lane")
+        ));
     }
 
     static String renderCsv(int horizonTurns, int repetitions, int requestedPopulation, ProjectionPolicyPath projectionPolicyPath) {
+        return renderCsv(horizonTurns, repetitions, requestedPopulation, projectionPolicyPath, null, null);
+    }
+
+    static String renderCsv(
+            int horizonTurns,
+            int repetitions,
+            int requestedPopulation,
+            ProjectionPolicyPath projectionPolicyPath,
+            String scenarioFilter,
+            String laneFilter
+    ) {
+        List<ScenarioFamily> families = selectedScenarios(scenarioFilter);
+        List<Lane> lanes = selectedLanes(laneFilter);
         StringBuilder out = new StringBuilder();
         out.append(CSV_HEADER).append(System.lineSeparator());
-        for (ScenarioFamily family : ScenarioFamily.values()) {
+        for (ScenarioFamily family : families) {
             Fixture fixture = family.fixture(requestedPopulation);
-            for (Lane lane : Lane.values()) {
+            for (Lane lane : lanes) {
                 for (BlitzObjective objective : lane.objectives()) {
                     Scorecard best = null;
                     long totalNanos = 0L;
@@ -131,6 +152,18 @@ public final class StrategicLaneComparisonHarness {
         EXPLICIT_LEGACY
     }
 
+    static ProjectionPolicyPath projectionPolicyPath(String value) {
+        if (value == null || value.isBlank()) {
+            return ProjectionPolicyPath.DEFAULT;
+        }
+        for (ProjectionPolicyPath path : ProjectionPolicyPath.values()) {
+            if (path.name().equalsIgnoreCase(value)) {
+                return path;
+            }
+        }
+        throw new IllegalArgumentException("Unknown projection policy path: " + value);
+    }
+
     private static String formatDouble(double value, int scale) {
         return String.format(Locale.ROOT, "%1$." + scale + "f", value);
     }
@@ -150,7 +183,7 @@ public final class StrategicLaneComparisonHarness {
         return null;
     }
 
-    private enum Lane {
+    enum Lane {
         OPENING_PRIMITIVE("openingPrimitive", List.of(BlitzObjective.NET_DAMAGE)),
         LONG_HORIZON_SCALAR("longHorizonScalar", List.of(BlitzObjective.NET_DAMAGE)),
         PROJECTED_OBJECTIVE("projectedObjective", List.of(
@@ -172,9 +205,30 @@ public final class StrategicLaneComparisonHarness {
         List<BlitzObjective> objectives() {
             return objectives;
         }
+
+        static Lane parse(String value) {
+            for (Lane lane : values()) {
+                if (lane.cliName.equalsIgnoreCase(value) || lane.name().equalsIgnoreCase(value)) {
+                    return lane;
+                }
+            }
+            throw new IllegalArgumentException("Unknown lane: " + value);
+        }
     }
 
-    private enum TierSegment {
+    private static List<Lane> selectedLanes(String filter) {
+        if (filter == null || filter.isBlank()) {
+            return List.of(Lane.values());
+        }
+        String[] names = filter.split(",");
+        List<Lane> lanes = new ArrayList<>(names.length);
+        for (String name : names) {
+            lanes.add(Lane.parse(name.trim()));
+        }
+        return List.copyOf(lanes);
+    }
+
+    enum TierSegment {
         LOW("low"),
         MID("mid"),
         HIGH("high");
@@ -196,7 +250,7 @@ public final class StrategicLaneComparisonHarness {
         }
     }
 
-    private enum ScenarioFamily {
+    enum ScenarioFamily {
         PARITY("parity", 8),
         ATTACKER_FAVORED("attackerFavored", 8),
         DEFENDER_FAVORED("defenderFavored", 8),
@@ -252,6 +306,19 @@ public final class StrategicLaneComparisonHarness {
                 case CONTROL_UNATTAINABLE -> Fixture.create(cliName, population, this::controlUnattainableAttacker, this::controlUnattainableDefender);
                 case ALLY_SLOT_CONFLICT -> Fixture.create(cliName, population, this::allySlotConflictAttacker, this::allySlotConflictDefender);
             };
+        }
+
+        static ScenarioFamily parse(String value) {
+            for (ScenarioFamily family : values()) {
+                if (family.cliName.equalsIgnoreCase(value) || family.name().equalsIgnoreCase(value)) {
+                    return family;
+                }
+            }
+            throw new IllegalArgumentException("Unknown scenario family: " + value);
+        }
+
+        String cliName() {
+            return cliName;
         }
 
         private DBNationSnapshot parityAttacker(int index) {
@@ -488,14 +555,27 @@ public final class StrategicLaneComparisonHarness {
         }
     }
 
-    private interface NationFactory {
+    private static List<ScenarioFamily> selectedScenarios(String filter) {
+        if (filter == null || filter.isBlank()) {
+            return List.of(ScenarioFamily.values());
+        }
+        String[] names = filter.split(",");
+        List<ScenarioFamily> families = new ArrayList<>(names.length);
+        for (String name : names) {
+            families.add(ScenarioFamily.parse(name.trim()));
+        }
+        return List.copyOf(families);
+    }
+
+    interface NationFactory {
         DBNationSnapshot create(int index);
     }
 
-    private record Fixture(
+    record Fixture(
             String label,
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
+            List<CompiledActiveWar> activeWars,
             CompiledScenario scenario,
             int[] attackerCaps,
             int[] defenderCaps,
@@ -595,6 +675,7 @@ public final class StrategicLaneComparisonHarness {
                     label,
                     List.copyOf(attackers),
                     List.copyOf(defenders),
+                    List.copyOf(activeWars),
                     scenario,
                     attackerCaps,
                     defenderCaps,
@@ -604,8 +685,21 @@ public final class StrategicLaneComparisonHarness {
             );
         }
 
+        Fixture reversed(String label) {
+            return create(label, defenders.size(), defenders::get, attackers::get, reverseActiveWars(activeWars));
+        }
+
         Scorecard run(Lane lane, BlitzObjective blitzObjective, int horizonTurns, ProjectionPolicyPath projectionPolicyPath) {
             StrategicObjective objective = blitzObjective.objective();
+            return run(lane, objective, projectionContext(objective, projectionPolicyPath), horizonTurns);
+        }
+
+        Scorecard run(
+                Lane lane,
+                StrategicObjective objective,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext,
+                int horizonTurns
+        ) {
             CandidateEdgeTable edges = openingEdges(objective);
             LongHorizonAssignmentOptimizer.Result result = switch (lane) {
                 case OPENING_PRIMITIVE -> new LongHorizonAssignmentOptimizer.Result(
@@ -634,7 +728,7 @@ public final class StrategicLaneComparisonHarness {
                         defenderNationIds,
                         List.of(),
                         horizonTurns,
-                        projectionContext(objective, projectionPolicyPath)
+                        projectionContext
                 );
             };
             ObjectiveValueSummary summary = result.projectedObjectiveSummary() != null
@@ -646,11 +740,11 @@ public final class StrategicLaneComparisonHarness {
                             defenderCaps,
                             horizonTurns,
                             result.assignment(),
-                                projectionContext(objective, projectionPolicyPath),
+                            projectionContext,
                             attackerNationIds,
                             defenderNationIds
                     );
-                        return scorecard(edges, result.assignment(), summary.mean(), horizonTurns, projectionPolicyPath);
+            return scorecard(edges, result.assignment(), summary.mean(), horizonTurns, projectionContext);
         }
 
         private CandidateEdgeTable openingEdges(StrategicObjective objective) {
@@ -686,7 +780,7 @@ public final class StrategicLaneComparisonHarness {
                 Map<Integer, List<Integer>> assignment,
                 double terminalObjective,
             int horizonTurns,
-            ProjectionPolicyPath projectionPolicyPath
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
         ) {
             int[] attackerCounts = new int[scenario.attackerCount()];
             int[] defenderCounts = new int[scenario.defenderCount()];
@@ -737,8 +831,8 @@ public final class StrategicLaneComparisonHarness {
                     horizonTurns,
                     LongHorizonAssignmentOptimizer.horizonFactor(horizonTurns),
                     false,
-                    projectionContext(BlitzObjective.NET_DAMAGE.objective(), projectionPolicyPath).attackerProjectionPolicies(),
-                    projectionContext(BlitzObjective.NET_DAMAGE.objective(), projectionPolicyPath).defenderProjectionPolicies()
+                    projectionContext.attackerProjectionPolicies(),
+                    projectionContext.defenderProjectionPolicies()
             ).projectionDiagnostics(edgeAssigned, attackerCounts, defenderCounts);
             return new Scorecard(
                     edges.edgeCount(),
@@ -922,7 +1016,7 @@ public final class StrategicLaneComparisonHarness {
             return bytes;
         }
 
-        private LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext(
+        LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext(
                 StrategicObjective objective,
                 ProjectionPolicyPath projectionPolicyPath
         ) {
@@ -938,10 +1032,43 @@ public final class StrategicLaneComparisonHarness {
         }
     }
 
-        private record TierCoverage(int[] covered, int[] totals) {
+    private static List<CompiledActiveWar> reverseActiveWars(List<CompiledActiveWar> activeWars) {
+        if (activeWars.isEmpty()) {
+            return List.of();
         }
+        List<CompiledActiveWar> reversed = new ArrayList<>(activeWars.size());
+        for (CompiledActiveWar war : activeWars) {
+            reversed.add(new CompiledActiveWar(
+                    war.defenderNationId(),
+                    war.attackerNationId(),
+                    war.warType(),
+                    war.startTurn(),
+                    war.defenderMaps(),
+                    war.attackerMaps(),
+                    war.defenderResistance(),
+                    war.attackerResistance(),
+                    reverseOwner(war.groundSuperiorityOwner()),
+                    reverseOwner(war.airSuperiorityOwner()),
+                    reverseOwner(war.blockadeOwner()),
+                    war.defenderFortified(),
+                    war.attackerFortified()
+            ));
+        }
+        return List.copyOf(reversed);
+    }
 
-    private record Scorecard(
+    private static CompiledActiveWar.ControlOwner reverseOwner(CompiledActiveWar.ControlOwner owner) {
+        return switch (owner) {
+            case NONE -> CompiledActiveWar.ControlOwner.NONE;
+            case ATTACKER -> CompiledActiveWar.ControlOwner.DEFENDER;
+            case DEFENDER -> CompiledActiveWar.ControlOwner.ATTACKER;
+        };
+    }
+
+    record TierCoverage(int[] covered, int[] totals) {
+    }
+
+    record Scorecard(
             int edgeCount,
             int assignmentCount,
             int idleAttackersWithEdges,
@@ -1111,13 +1238,15 @@ public final class StrategicLaneComparisonHarness {
             double militaryMultiplier,
             int freeOffSlots
     ) {
+        double nonInfraScoreBase = 400.0d + cities * 35.0d;
+        double[] cityInfra = uniformInfra(cities, 1_800.0d + (offset % 4) * 150.0d);
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(900.0d + cities * 45.0d + offset)
+                .score(derivedScore(nonInfraScoreBase, cityInfra))
                 .cities(cities)
-                .nonInfraScoreBase(400.0d + cities * 35.0d)
-                .cityInfra(uniformInfra(cities, 1_800.0d + (offset % 4) * 150.0d))
+                .nonInfraScoreBase(nonInfraScoreBase)
+                .cityInfra(cityInfra)
                 .maxOff(freeOffSlots)
                 .unit(MilitaryUnit.SOLDIER, scaled(250_000 + offset * 2_000, militaryMultiplier))
                 .unit(MilitaryUnit.TANK, scaled(20_000 + offset * 150, militaryMultiplier))
@@ -1125,14 +1254,22 @@ public final class StrategicLaneComparisonHarness {
                 .unit(MilitaryUnit.SHIP, scaled(250 + offset * 4, militaryMultiplier))
                 .unit(MilitaryUnit.MISSILE, militaryMultiplier < 0.30d ? 3 : 0)
                 .unit(MilitaryUnit.NUKE, militaryMultiplier < 0.30d ? 1 : 0)
-                .resource(ResourceType.MONEY, 8_000_000d + cities * 450_000d)
-                .resource(ResourceType.FOOD, 200_000d + cities * 15_000d)
-                .resource(ResourceType.GASOLINE, 80_000d + cities * 8_000d)
-                .resource(ResourceType.MUNITIONS, 80_000d + cities * 8_000d)
-                .resource(ResourceType.STEEL, 80_000d + cities * 8_000d)
-                .resource(ResourceType.ALUMINUM, 80_000d + cities * 8_000d)
+                .resource(ResourceType.MONEY, 1_000_000d + cities * 125_000d)
+                .resource(ResourceType.FOOD, 2_000d + cities * 900d)
+                .resource(ResourceType.GASOLINE, 1_000d + cities * 450d)
+                .resource(ResourceType.MUNITIONS, 1_000d + cities * 450d)
+                .resource(ResourceType.STEEL, 900d + cities * 325d)
+                .resource(ResourceType.ALUMINUM, 900d + cities * 325d)
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
+    }
+
+    private static double derivedScore(double nonInfraScoreBase, double[] cityInfra) {
+        double totalInfra = 0d;
+        for (double infra : cityInfra) {
+            totalInfra += infra;
+        }
+        return nonInfraScoreBase + totalInfra / 40.0d;
     }
 
     private static int scaled(int value, double multiplier) {

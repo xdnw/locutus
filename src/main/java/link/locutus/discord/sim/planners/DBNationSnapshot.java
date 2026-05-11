@@ -477,6 +477,11 @@ public final class DBNationSnapshot {
 
         public Builder allianceId(int v) { this.allianceId = v; return this; }
         public Builder teamId(int v) { this.teamId = v; return this; }
+        /**
+         * Sets the imported/reporting score used for range checks and diagnostics.
+         * Planner value must be derived from explicit state such as
+         * {@link #nonInfraScoreBase(double)}, city infra, units, and buys.
+         */
         public Builder score(double v) { this.score = v; return this; }
         public Builder cities(int v) { this.cities = v; return this; }
         public Builder currentOffensiveWars(int v) { this.currentOffensiveWars = v; return this; }
