@@ -7,6 +7,11 @@ public final class HeuristicAttackChoicePolicy implements AttackChoicePolicy {
     public static final HeuristicAttackChoicePolicy INSTANCE = new HeuristicAttackChoicePolicy();
 
     @FunctionalInterface
+    interface BestAttackObserver {
+        void recordBestAttack();
+    }
+
+    @FunctionalInterface
     interface AttackEvaluator {
         void evaluate(AttackType attackType, MutableAttackCandidate out);
     }
@@ -76,7 +81,8 @@ public final class HeuristicAttackChoicePolicy implements AttackChoicePolicy {
             AttackType[] attackTypes,
             int mapsAvailable,
             AttackEvaluator evaluator,
-            MutableAttackCandidate candidate
+            MutableAttackCandidate candidate,
+            BestAttackObserver bestAttackObserver
     ) {
         AttackType bestAttackType = null;
         double bestScore = Double.NEGATIVE_INFINITY;
@@ -95,6 +101,9 @@ public final class HeuristicAttackChoicePolicy implements AttackChoicePolicy {
                     || (score == bestScore && attackType.ordinal() < bestAttackType.ordinal())) {
                 bestAttackType = attackType;
                 bestScore = score;
+                if (bestAttackObserver != null) {
+                    bestAttackObserver.recordBestAttack();
+                }
             }
         }
         return bestScore > 0d ? bestAttackType : null;

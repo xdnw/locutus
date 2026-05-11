@@ -108,6 +108,31 @@ public final class UnitEconomy {
         );
     }
 
+            public static int maxBuyPerDayFor(
+                int cities,
+                MilitaryUnit unit,
+                long projectBits,
+                int researchBits
+            ) {
+            return unit.getMaxPerDay(cities, projectBits, researchBits);
+            }
+
+            public static int maxBuyPerDayFor(
+                int cities,
+                MilitaryUnit unit,
+                long projectBits,
+                int researchBits,
+                int beigeTurns,
+                boolean hasActiveWars
+            ) {
+            return applyBeigeDailyBuyBonus(
+                maxBuyPerDayFor(cities, unit, projectBits, researchBits),
+                unit,
+                beigeTurns,
+                hasActiveWars
+            );
+            }
+
     private static boolean receivesBeigeDailyBuyBonus(MilitaryUnit unit) {
         return switch (unit) {
             case SOLDIER, TANK, AIRCRAFT, SHIP -> true;

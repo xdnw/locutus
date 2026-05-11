@@ -149,6 +149,25 @@ public final class MutableAttackResult {
         return controlDelta;
     }
 
+    public void copyFrom(MutableAttackResult other) {
+        if (other == null) {
+            throw new IllegalArgumentException("other must not be null");
+        }
+        this.success = other.success;
+        this.mode = other.mode;
+        System.arraycopy(other.attackerLosses, 0, this.attackerLosses, 0, this.attackerLosses.length);
+        System.arraycopy(other.defenderLosses, 0, this.defenderLosses, 0, this.defenderLosses.length);
+        System.arraycopy(other.attackerLossesEv, 0, this.attackerLossesEv, 0, this.attackerLossesEv.length);
+        System.arraycopy(other.defenderLossesEv, 0, this.defenderLossesEv, 0, this.defenderLossesEv.length);
+        this.infraDestroyed = other.infraDestroyed;
+        this.loot = other.loot;
+        this.attackerResistanceDelta = other.attackerResistanceDelta;
+        this.defenderResistanceDelta = other.defenderResistanceDelta;
+        this.mapCost = other.mapCost;
+        System.arraycopy(other.consumption, 0, this.consumption, 0, this.consumption.length);
+        this.controlDelta = other.controlDelta;
+    }
+
     public AttackOutcome toAttackOutcome() {
         if (mode == ResolutionMode.DETERMINISTIC_EV) {
             return AttackOutcome.expected(
