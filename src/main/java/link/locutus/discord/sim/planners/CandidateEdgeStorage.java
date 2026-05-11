@@ -170,6 +170,30 @@ final class CandidateEdgeStorage {
         retainedComponents.swap(lhs, rhs);
     }
 
+    void swapIgnoringAttacker(int lhs, int rhs) {
+        int defenderSwap = defenderIndexes[lhs];
+        defenderIndexes[lhs] = defenderIndexes[rhs];
+        defenderIndexes[rhs] = defenderSwap;
+
+        byte warTypeSwap = preferredWarTypeIds[lhs];
+        preferredWarTypeIds[lhs] = preferredWarTypeIds[rhs];
+        preferredWarTypeIds[rhs] = warTypeSwap;
+
+        byte attackTypeSwap = bestAttackTypeIds[lhs];
+        bestAttackTypeIds[lhs] = bestAttackTypeIds[rhs];
+        bestAttackTypeIds[rhs] = attackTypeSwap;
+
+        float scoreSwap = scalarScores[lhs];
+        scalarScores[lhs] = scalarScores[rhs];
+        scalarScores[rhs] = scoreSwap;
+
+        float counterRiskSwap = counterRisks[lhs];
+        counterRisks[lhs] = counterRisks[rhs];
+        counterRisks[rhs] = counterRiskSwap;
+
+        retainedComponents.swap(lhs, rhs);
+    }
+
     CandidateEdgeStorage deepCopy() {
         CandidateEdgeStorage copy = new CandidateEdgeStorage(0, CandidateEdgeComponentPolicy.none());
         copy.attackerIndexes = Arrays.copyOf(attackerIndexes, attackerIndexes.length);

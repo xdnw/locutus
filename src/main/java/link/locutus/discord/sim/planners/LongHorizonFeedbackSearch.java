@@ -2,7 +2,6 @@ package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntComparator;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.ArrayList;
@@ -273,19 +272,7 @@ final class LongHorizonFeedbackSearch {
             }
             order.add(attackerIndex);
         }
-        order.sort((IntComparator) (left, right) -> {
-            double leftPriority = reliefPriority(left, attackerCounts, terminalProjection, realizedCounters);
-            double rightPriority = reliefPriority(right, attackerCounts, terminalProjection, realizedCounters);
-            int priorityOrder = Double.compare(rightPriority, leftPriority);
-            if (priorityOrder != 0) {
-                return priorityOrder;
-            }
-            int countOrder = Integer.compare(attackerCounts[right], attackerCounts[left]);
-            if (countOrder != 0) {
-                return countOrder;
-            }
-            return Integer.compare(left, right);
-        });
+        sortReliefOrder(order, attackerCounts, terminalProjection, realizedCounters);
         return order;
     }
 
@@ -315,18 +302,92 @@ final class LongHorizonFeedbackSearch {
             }
             overCountered.add(attackerIndex);
         }
-        overCountered.sort((IntComparator) (left, right) -> {
-            int countOrder = Integer.compare(realizedCounters[right], realizedCounters[left]);
-            if (countOrder != 0) {
-                return countOrder;
-            }
-            int seedOrder = Integer.compare(attackerCounts[right], attackerCounts[left]);
-            if (seedOrder != 0) {
-                return seedOrder;
-            }
-            return Integer.compare(left, right);
-        });
+        sortOverCounteredAttackers(overCountered, realizedCounters, attackerCounts);
         return overCountered;
+    }
+
+    private static void sortReliefOrder(
+            IntArrayList order,
+            int[] attackerCounts,
+            LongHorizonControlProjection terminalProjection,
+            int[] realizedCounters
+    ) {
+        int size = order.size();
+        if (size < 2) {
+            return;
+        }
+        double[] priorities = new double[size];
+        for (int index = 0; index < size; index++) {
+            priorities[index] = reliefPriority(order.getInt(index), attackerCounts, terminalProjection, realizedCounters);
+        }
+        for (int index = 1; index < size; index++) {
+            int attackerIndex = order.getInt(index);
+            double priority = priorities[index];
+            int cursor = index;
+            while (cursor > 0 && compareReliefOrder(attackerIndex, priority, order.getInt(cursor - 1), priorities[cursor - 1], attackerCounts) < 0) {
+                order.set(cursor, order.getInt(cursor - 1));
+                priorities[cursor] = priorities[cursor - 1];
+                cursor--;
+            }
+            order.set(cursor, attackerIndex);
+            priorities[cursor] = priority;
+        }
+    }
+
+    private static int compareReliefOrder(
+            int leftAttackerIndex,
+            double leftPriority,
+            int rightAttackerIndex,
+            double rightPriority,
+            int[] attackerCounts
+    ) {
+        int priorityOrder = Double.compare(rightPriority, leftPriority);
+        if (priorityOrder != 0) {
+            return priorityOrder;
+        }
+        int countOrder = Integer.compare(attackerCounts[rightAttackerIndex], attackerCounts[leftAttackerIndex]);
+        if (countOrder != 0) {
+            return countOrder;
+        }
+        return Integer.compare(leftAttackerIndex, rightAttackerIndex);
+    }
+
+    private static void sortOverCounteredAttackers(IntArrayList overCountered, int[] realizedCounters, int[] attackerCounts) {
+        int size = overCountered.size();
+        if (size < 2) {
+            return;
+        }
+        for (int index = 1; index < size; index++) {
+            int attackerIndex = overCountered.getInt(index);
+            int cursor = index;
+            while (cursor > 0 && compareOverCounteredAttackers(
+                    attackerIndex,
+                    overCountered.getInt(cursor - 1),
+                    realizedCounters,
+                    attackerCounts
+            ) < 0) {
+                overCountered.set(cursor, overCountered.getInt(cursor - 1));
+                cursor--;
+            }
+            overCountered.set(cursor, attackerIndex);
+        }
+    }
+
+    private static int compareOverCounteredAttackers(
+            int leftAttackerIndex,
+            int rightAttackerIndex,
+            int[] realizedCounters,
+            int[] attackerCounts
+    ) {
+        int countOrder = Integer.compare(realizedCounters[rightAttackerIndex], realizedCounters[leftAttackerIndex]);
+        if (countOrder != 0) {
+            return countOrder;
+        }
+        int seedOrder = Integer.compare(attackerCounts[rightAttackerIndex], attackerCounts[leftAttackerIndex]);
+        if (seedOrder != 0) {
+            return seedOrder;
+        }
+        return Integer.compare(leftAttackerIndex, rightAttackerIndex);
     }
 
     private static void rebuildAttackerEdgesFromMidHorizon(

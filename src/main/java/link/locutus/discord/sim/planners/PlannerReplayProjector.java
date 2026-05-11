@@ -27,6 +27,7 @@ public final class PlannerReplayProjector {
     static final int WAR_MASK_COMBAT_STATE = 0x1;
     static final int WAR_MASK_FLAGS = 0x2;
     static final int TURN_META_BLOCK_SIZE = 12;
+    private static final Comparator<DBNationSnapshot> NATION_ID_ORDER = Comparator.comparingInt(DBNationSnapshot::nationId);
 
     private PlannerReplayProjector() {
     }
@@ -709,7 +710,7 @@ public final class PlannerReplayProjector {
                 filtered.add(snapshot);
             }
         }
-        filtered.sort(Comparator.comparingInt(DBNationSnapshot::nationId));
+        filtered.sort(NATION_ID_ORDER);
         return Collections.unmodifiableList(filtered);
     }
 

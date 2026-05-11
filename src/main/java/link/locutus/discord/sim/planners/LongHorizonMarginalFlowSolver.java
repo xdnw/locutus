@@ -25,6 +25,7 @@ import java.util.PriorityQueue;
 final class LongHorizonMarginalFlowSolver {
     private static final double EPS1 = 1e-3;
     private static final double EPS2 = 1e-6;
+    private static final Comparator<QueueNode> QUEUE_NODE_DISTANCE_ORDER = Comparator.comparingDouble(QueueNode::distance);
 
     private LongHorizonMarginalFlowSolver() {
     }
@@ -177,7 +178,7 @@ final class LongHorizonMarginalFlowSolver {
         double[] potential = initialPotentials(to, capacity, cost, next, head, source, vertexCount);
         double[] reducedDistance = new double[vertexCount];
         int[] previousEdge = new int[vertexCount];
-        PriorityQueue<QueueNode> queue = new PriorityQueue<>(Comparator.comparingDouble(QueueNode::distance));
+        PriorityQueue<QueueNode> queue = new PriorityQueue<>(QUEUE_NODE_DISTANCE_ORDER);
         while (true) {
             Arrays.fill(reducedDistance, Double.POSITIVE_INFINITY);
             Arrays.fill(previousEdge, -1);

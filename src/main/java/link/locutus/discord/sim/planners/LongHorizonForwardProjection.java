@@ -47,6 +47,78 @@ import java.util.Set;
  */
 final class LongHorizonForwardProjection {
     private static final ScenarioCompiler PROJECTED_DECLARATION_SCENARIO_COMPILER = new ScenarioCompiler();
+    private static final PlannerProfiler.CounterToken PROFILED_PREPARED_STATE_PROFILES = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "preparedStateProfiles"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_PREPARED_STATE_RESTORES = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "preparedStateRestores"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_PREPARED_WAR_TEMPLATE_BUILDS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "preparedWarTemplateBuilds"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_PREPARED_WAR_RESTORES = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "preparedWarRestores"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_PROJECTION_TURNS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "projectionTurns"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_COUNTER_TURNS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "counterTurns"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_COUNTER_TURNS_NO_SLOTS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "counterTurnsNoSlots"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_COUNTER_CANDIDATE_EVALUATIONS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "counterCandidateEvaluations"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_COUNTER_DECLARATIONS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "counterDeclarations"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_COUNTER_DECLARATIONS_THROTTLED = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "counterDeclarationsThrottled"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_REDECLARE_TURNS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "redeclareTurns"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_REDECLARE_TURNS_NO_SLOTS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "redeclareTurnsNoSlots"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_REDECLARE_CANDIDATE_EVALUATIONS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "redeclareCandidateEvaluations"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_REDECLARE_DECLARATIONS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "redeclareDeclarations"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_WAR_ITERATIONS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "warIterations"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_ATTACK_CHOICE_CALLS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "attackChoiceCalls"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_ATTACK_TYPE_EVALUATIONS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "attackTypeEvaluations"
+    );
+    private static final PlannerProfiler.CounterToken PROFILED_RESOLVED_ATTACKS = PlannerProfiler.counterToken(
+        PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
+        "resolvedAttacks"
+    );
     private static final int INITIAL_WAR_MAPS = 6;
     private static final int INITIAL_RESISTANCE = 100;
     private static final int MAP_CAP = 12;
@@ -1863,24 +1935,24 @@ final class LongHorizonForwardProjection {
     }
 
     private void flushProjectedEvaluationProfile() {
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "preparedStateProfiles", profiledPreparedStateProfiles);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "preparedStateRestores", profiledPreparedStateRestores);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "preparedWarTemplateBuilds", profiledPreparedWarTemplateBuilds);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "preparedWarRestores", profiledPreparedWarRestores);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "projectionTurns", profiledProjectionTurns);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "counterTurns", profiledCounterTurns);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "counterTurnsNoSlots", profiledCounterTurnsNoSlots);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "counterCandidateEvaluations", profiledCounterCandidateEvaluations);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "counterDeclarations", profiledCounterDeclarations);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "counterDeclarationsThrottled", profiledCounterDeclarationsThrottled);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "redeclareTurns", profiledRedeclareTurns);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "redeclareTurnsNoSlots", profiledRedeclareTurnsNoSlots);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "redeclareCandidateEvaluations", profiledRedeclareCandidateEvaluations);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "redeclareDeclarations", profiledRedeclarations);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "warIterations", profiledWarIterations);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "attackChoiceCalls", profiledAttackChoiceCalls);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "attackTypeEvaluations", profiledAttackTypeEvaluations);
-        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION, "resolvedAttacks", profiledResolvedAttacks);
+        PlannerProfiler.addCounter(PROFILED_PREPARED_STATE_PROFILES, profiledPreparedStateProfiles);
+        PlannerProfiler.addCounter(PROFILED_PREPARED_STATE_RESTORES, profiledPreparedStateRestores);
+        PlannerProfiler.addCounter(PROFILED_PREPARED_WAR_TEMPLATE_BUILDS, profiledPreparedWarTemplateBuilds);
+        PlannerProfiler.addCounter(PROFILED_PREPARED_WAR_RESTORES, profiledPreparedWarRestores);
+        PlannerProfiler.addCounter(PROFILED_PROJECTION_TURNS, profiledProjectionTurns);
+        PlannerProfiler.addCounter(PROFILED_COUNTER_TURNS, profiledCounterTurns);
+        PlannerProfiler.addCounter(PROFILED_COUNTER_TURNS_NO_SLOTS, profiledCounterTurnsNoSlots);
+        PlannerProfiler.addCounter(PROFILED_COUNTER_CANDIDATE_EVALUATIONS, profiledCounterCandidateEvaluations);
+        PlannerProfiler.addCounter(PROFILED_COUNTER_DECLARATIONS, profiledCounterDeclarations);
+        PlannerProfiler.addCounter(PROFILED_COUNTER_DECLARATIONS_THROTTLED, profiledCounterDeclarationsThrottled);
+        PlannerProfiler.addCounter(PROFILED_REDECLARE_TURNS, profiledRedeclareTurns);
+        PlannerProfiler.addCounter(PROFILED_REDECLARE_TURNS_NO_SLOTS, profiledRedeclareTurnsNoSlots);
+        PlannerProfiler.addCounter(PROFILED_REDECLARE_CANDIDATE_EVALUATIONS, profiledRedeclareCandidateEvaluations);
+        PlannerProfiler.addCounter(PROFILED_REDECLARE_DECLARATIONS, profiledRedeclarations);
+        PlannerProfiler.addCounter(PROFILED_WAR_ITERATIONS, profiledWarIterations);
+        PlannerProfiler.addCounter(PROFILED_ATTACK_CHOICE_CALLS, profiledAttackChoiceCalls);
+        PlannerProfiler.addCounter(PROFILED_ATTACK_TYPE_EVALUATIONS, profiledAttackTypeEvaluations);
+        PlannerProfiler.addCounter(PROFILED_RESOLVED_ATTACKS, profiledResolvedAttacks);
     }
 
     private static void clearControlIfUnable(

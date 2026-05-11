@@ -222,16 +222,43 @@ final class PlannerAutonomousDeclarationPlanner {
     }
 
     private static int[] attackerStrengthRanks(CompiledScenario scenario) {
-        List<Integer> indexes = new ArrayList<>(scenario.attackerCount());
-        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            indexes.add(attackerIndex);
+        int attackerCount = scenario.attackerCount();
+        int[] indexes = new int[attackerCount];
+        double[] strengths = new double[attackerCount];
+        for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
+            indexes[attackerIndex] = attackerIndex;
+            strengths[attackerIndex] = counterStrength(scenario.attacker(attackerIndex));
         }
-        indexes.sort((left, right) -> Double.compare(counterStrength(scenario.attacker(right)), counterStrength(scenario.attacker(left))));
+        for (int index = 1; index < attackerCount; index++) {
+            int attackerIndex = indexes[index];
+            double strength = strengths[index];
+            int cursor = index;
+            while (cursor > 0 && compareAttackerStrength(attackerIndex, strength, indexes[cursor - 1], strengths[cursor - 1]) < 0) {
+                indexes[cursor] = indexes[cursor - 1];
+                strengths[cursor] = strengths[cursor - 1];
+                cursor--;
+            }
+            indexes[cursor] = attackerIndex;
+            strengths[cursor] = strength;
+        }
         int[] ranks = new int[scenario.attackerCount()];
-        for (int rank = 0; rank < indexes.size(); rank++) {
-            ranks[indexes.get(rank)] = rank;
+        for (int rank = 0; rank < indexes.length; rank++) {
+            ranks[indexes[rank]] = rank;
         }
         return ranks;
+    }
+
+    private static int compareAttackerStrength(
+            int leftAttackerIndex,
+            double leftStrength,
+            int rightAttackerIndex,
+            double rightStrength
+    ) {
+        int strengthOrder = Double.compare(rightStrength, leftStrength);
+        if (strengthOrder != 0) {
+            return strengthOrder;
+        }
+        return Integer.compare(leftAttackerIndex, rightAttackerIndex);
     }
 
     private static double counterStrength(DBNationSnapshot snapshot) {

@@ -344,10 +344,7 @@ final class LongHorizonAssignmentOptimizer {
                         2
                 );
                 reliefCandidates.removeIf(candidate -> candidate == null || candidate == marginalCandidate);
-                reliefCandidates.sort((left, right) -> Double.compare(
-                        cheapEvaluator.score(right, terminalProjection),
-                        cheapEvaluator.score(left, terminalProjection)
-                ));
+                sortReliefCandidatesByCheapScore(reliefCandidates, cheapEvaluator, terminalProjection);
                 Candidate bestCapLimit = betterCapLimitCandidate(
                     marginalCandidate,
                     capLimitOne,
@@ -422,6 +419,33 @@ final class LongHorizonAssignmentOptimizer {
                     }
                 }
                 return best;
+            }
+
+            private static void sortReliefCandidatesByCheapScore(
+                    List<Candidate> reliefCandidates,
+                    LongHorizonCandidateEvaluator cheapEvaluator,
+                    LongHorizonControlProjection terminalProjection
+            ) {
+                int size = reliefCandidates.size();
+                if (size < 2) {
+                    return;
+                }
+                double[] cheapScores = new double[size];
+                for (int index = 0; index < size; index++) {
+                    cheapScores[index] = cheapEvaluator.score(reliefCandidates.get(index), terminalProjection);
+                }
+                for (int index = 1; index < size; index++) {
+                    Candidate candidate = reliefCandidates.get(index);
+                    double candidateScore = cheapScores[index];
+                    int cursor = index;
+                    while (cursor > 0 && candidateScore > cheapScores[cursor - 1]) {
+                        reliefCandidates.set(cursor, reliefCandidates.get(cursor - 1));
+                        cheapScores[cursor] = cheapScores[cursor - 1];
+                        cursor--;
+                    }
+                    reliefCandidates.set(cursor, candidate);
+                    cheapScores[cursor] = candidateScore;
+                }
             }
 
             private static int structuralDistance(Candidate baseline, Candidate candidate) {

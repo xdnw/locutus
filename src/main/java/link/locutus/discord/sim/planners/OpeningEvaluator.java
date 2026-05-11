@@ -340,7 +340,7 @@ final class OpeningEvaluator {
             TopKEdgeCollector[] defenderCoverageCollectors = new TopKEdgeCollector[scenario.defenderCount()];
             for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
                 if (defenderCaps[defenderIndex] > 0) {
-                    defenderCoverageCollectors[defenderIndex] = new TopKEdgeCollector(defenderCoverageTarget, componentPolicy);
+                    defenderCoverageCollectors[defenderIndex] = new TopKEdgeCollector(defenderCoverageTarget, componentPolicy, false);
                 }
             }
             DefenderAdmissionCollector collector = new DefenderAdmissionCollector(
@@ -442,7 +442,7 @@ final class OpeningEvaluator {
             this.defenderSourceDiversityTarget = defenderSourceDiversityTarget;
             this.defenderSourceDiversityPriorityFloor = defenderSourceDiversityPriorityFloor;
             this.defenderCoveragePriorities = defenderCoveragePriorities;
-            this.topK = new TopKEdgeCollector(maxCandidatesPerAttacker, this.componentPolicy);
+            this.topK = new TopKEdgeCollector(maxCandidatesPerAttacker, this.componentPolicy, true);
             this.coverageSpillovers = new CoveragePriorityCollector(coverageSpilloverCapacity(maxCandidatesPerAttacker), this.componentPolicy);
             this.defenderCoverageCollectors = defenderCoverageCollectors;
             this.out = out;
@@ -905,14 +905,16 @@ final class OpeningEvaluator {
     static final class TopKEdgeCollector {
         private final CandidateEdgeStorage edges;
         private final int[] sortedIndexes;
+        private final boolean attackerIndexStable;
         private int activeLimit;
         private int size;
         private boolean sortedDirty;
 
-        private TopKEdgeCollector(int k, CandidateEdgeComponentPolicy componentPolicy) {
+        private TopKEdgeCollector(int k, CandidateEdgeComponentPolicy componentPolicy, boolean attackerIndexStable) {
             int capacity = Math.max(0, k);
             this.edges = new CandidateEdgeStorage(capacity, componentPolicy);
             this.sortedIndexes = new int[capacity];
+            this.attackerIndexStable = attackerIndexStable;
             this.activeLimit = capacity;
             this.size = 0;
             this.sortedDirty = true;
@@ -1019,7 +1021,7 @@ final class OpeningEvaluator {
                 sortedDirty = true;
                 return;
             }
-            if (!isBetter(
+                if (!isBetterForOrdering(
                     score,
                     attackerIndex,
                     defenderIndex,
@@ -1056,7 +1058,7 @@ final class OpeningEvaluator {
             }
             for (int i = 1; i < size; i++) {
                 int cursor = i;
-                while (cursor > 0 && isBetter(
+                while (cursor > 0 && isBetterForOrdering(
                     edges.scoreAt(sortedIndexes[cursor]),
                     edges.attackerIndexAt(sortedIndexes[cursor]),
                     edges.defenderIndexAt(sortedIndexes[cursor]),
@@ -1106,7 +1108,7 @@ final class OpeningEvaluator {
         }
 
         private boolean isWorse(int lhsIndex, int rhsIndex) {
-            return isBetter(
+            return isBetterForOrdering(
                 edges.scoreAt(rhsIndex),
                     edges.attackerIndexAt(rhsIndex),
                     edges.defenderIndexAt(rhsIndex),
@@ -1114,6 +1116,20 @@ final class OpeningEvaluator {
                     edges.attackerIndexAt(lhsIndex),
                     edges.defenderIndexAt(lhsIndex)
             );
+        }
+
+        private boolean isBetterForOrdering(
+                float lhsScore,
+                int lhsAttackerIndex,
+                int lhsDefenderIndex,
+                float rhsScore,
+                int rhsAttackerIndex,
+                int rhsDefenderIndex
+        ) {
+            if (attackerIndexStable) {
+                return isBetterSameAttacker(lhsScore, lhsDefenderIndex, rhsScore, rhsDefenderIndex);
+            }
+            return isBetter(lhsScore, lhsAttackerIndex, lhsDefenderIndex, rhsScore, rhsAttackerIndex, rhsDefenderIndex);
         }
 
         private static boolean isBetter(
@@ -1139,7 +1155,26 @@ final class OpeningEvaluator {
             return lhsDefenderIndex < rhsDefenderIndex;
         }
 
+        private static boolean isBetterSameAttacker(
+                float lhsScore,
+                int lhsDefenderIndex,
+                float rhsScore,
+                int rhsDefenderIndex
+        ) {
+            if (lhsScore > rhsScore) {
+                return true;
+            }
+            if (lhsScore < rhsScore) {
+                return false;
+            }
+            return lhsDefenderIndex < rhsDefenderIndex;
+        }
+
         private void swap(int lhs, int rhs) {
+            if (attackerIndexStable) {
+                edges.swapIgnoringAttacker(lhs, rhs);
+                return;
+            }
             edges.swap(lhs, rhs);
         }
     }
