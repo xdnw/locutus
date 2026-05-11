@@ -1993,6 +1993,8 @@ final class LongHorizonForwardProjection {
         private final ProjectionNation[] nationViews;
         private final boolean[] resourceBudgetKnown;
         private final boolean[] baseHasActiveWars;
+        private final int[] maxInfraCityIndexByNation;
+        private final int[] runnerUpInfraCityIndexByNation;
         private int[] initialUnitsFlat;
         private int[] initialUnitsBoughtTodayFlat;
         private int[] initialPendingBuysFlat;
@@ -2000,6 +2002,8 @@ final class LongHorizonForwardProjection {
         private double[] initialCityInfraFlat;
         private double[] initialScores;
         private int[] initialBeigeTurns;
+        private int[] initialMaxInfraCityIndexByNation;
+        private int[] initialRunnerUpInfraCityIndexByNation;
         private boolean collectDiagnostics;
         int turnsAttackerHeldNetControl;
         int turnsDefenderHeldNetControl;
@@ -2043,6 +2047,8 @@ final class LongHorizonForwardProjection {
                 ProjectionNation[] nationViews,
                 boolean[] resourceBudgetKnown,
                 boolean[] baseHasActiveWars,
+                int[] maxInfraCityIndexByNation,
+                int[] runnerUpInfraCityIndexByNation,
                 int[] baselineSoldiers,
                 int[] baselineTanks,
                 int[] baselineAircraft,
@@ -2080,6 +2086,8 @@ final class LongHorizonForwardProjection {
             this.nationViews = nationViews;
             this.resourceBudgetKnown = resourceBudgetKnown;
             this.baseHasActiveWars = baseHasActiveWars;
+            this.maxInfraCityIndexByNation = maxInfraCityIndexByNation;
+            this.runnerUpInfraCityIndexByNation = runnerUpInfraCityIndexByNation;
             this.baselineSoldiers = baselineSoldiers;
             this.baselineTanks = baselineTanks;
             this.baselineAircraft = baselineAircraft;
@@ -2138,6 +2146,8 @@ final class LongHorizonForwardProjection {
             ProjectionNation[] nationViews = new ProjectionNation[nationCount];
             boolean[] resourceBudgetKnown = new boolean[nationCount];
             boolean[] baseHasActiveWars = new boolean[nationCount];
+            int[] maxInfraCityIndexByNation = new int[nationCount];
+            int[] runnerUpInfraCityIndexByNation = new int[nationCount];
             int[] baselineSoldiers = new int[nationCount];
             int[] baselineTanks = new int[nationCount];
             int[] baselineAircraft = new int[nationCount];
@@ -2145,6 +2155,8 @@ final class LongHorizonForwardProjection {
             double[] baselineScores = new double[nationCount];
             double[] baselineInfra = new double[nationCount];
             int[] beigeTurns = new int[nationCount];
+            Arrays.fill(maxInfraCityIndexByNation, -1);
+            Arrays.fill(runnerUpInfraCityIndexByNation, -1);
 
             for (int nationIndex = 0; nationIndex < nationCount; nationIndex++) {
                 DBNationSnapshot snapshot = snapshotAt(scenario, attackerCount, nationIndex);
@@ -2218,6 +2230,8 @@ final class LongHorizonForwardProjection {
                     nationViews,
                     resourceBudgetKnown,
                     baseHasActiveWars,
+                    maxInfraCityIndexByNation,
+                    runnerUpInfraCityIndexByNation,
                     baselineSoldiers,
                     baselineTanks,
                     baselineAircraft,
@@ -2228,6 +2242,7 @@ final class LongHorizonForwardProjection {
             );
             for (int nationIndex = 0; nationIndex < nationCount; nationIndex++) {
                 nationViews[nationIndex] = new ProjectionNation(state, nationIndex);
+                state.refreshInfraLeaders(nationIndex);
                 baselineInfra[nationIndex] = state.totalInfra(nationIndex);
                 state.recalculateScore(nationIndex);
                 baselineScores[nationIndex] = state.scores[nationIndex];
@@ -2263,6 +2278,8 @@ final class LongHorizonForwardProjection {
             initialCityInfraFlat = cityInfraFlat.clone();
             initialScores = scores.clone();
             initialBeigeTurns = beigeTurns.clone();
+            initialMaxInfraCityIndexByNation = maxInfraCityIndexByNation.clone();
+            initialRunnerUpInfraCityIndexByNation = runnerUpInfraCityIndexByNation.clone();
         }
 
         void collectDiagnostics(boolean collectDiagnostics) {
@@ -2277,7 +2294,9 @@ final class LongHorizonForwardProjection {
                     resourcesFlat.clone(),
                     cityInfraFlat.clone(),
                     scores.clone(),
-                    beigeTurns.clone()
+                    beigeTurns.clone(),
+                    maxInfraCityIndexByNation.clone(),
+                    runnerUpInfraCityIndexByNation.clone()
             );
         }
 
@@ -2295,6 +2314,8 @@ final class LongHorizonForwardProjection {
             System.arraycopy(initialCityInfraFlat, 0, cityInfraFlat, 0, cityInfraFlat.length);
             System.arraycopy(initialScores, 0, scores, 0, scores.length);
             System.arraycopy(initialBeigeTurns, 0, beigeTurns, 0, beigeTurns.length);
+            System.arraycopy(initialMaxInfraCityIndexByNation, 0, maxInfraCityIndexByNation, 0, maxInfraCityIndexByNation.length);
+            System.arraycopy(initialRunnerUpInfraCityIndexByNation, 0, runnerUpInfraCityIndexByNation, 0, runnerUpInfraCityIndexByNation.length);
         }
 
         void restoreCheckpoint(ProjectionStateCheckpoint checkpoint) {
@@ -2311,6 +2332,8 @@ final class LongHorizonForwardProjection {
             System.arraycopy(checkpoint.cityInfraFlat(), 0, cityInfraFlat, 0, cityInfraFlat.length);
             System.arraycopy(checkpoint.scores(), 0, scores, 0, scores.length);
             System.arraycopy(checkpoint.beigeTurns(), 0, beigeTurns, 0, beigeTurns.length);
+            System.arraycopy(checkpoint.maxInfraCityIndexByNation(), 0, maxInfraCityIndexByNation, 0, maxInfraCityIndexByNation.length);
+            System.arraycopy(checkpoint.runnerUpInfraCityIndexByNation(), 0, runnerUpInfraCityIndexByNation, 0, runnerUpInfraCityIndexByNation.length);
         }
 
         void materializePendingBuys() {
@@ -2436,12 +2459,9 @@ final class LongHorizonForwardProjection {
                 return;
             }
             int cityBase = cityInfraBaseOffsets[nationIndex];
-            int cityCount = cityCounts[nationIndex];
-            int maxCityIndex = 0;
-            for (int cityIndex = 1; cityIndex < cityCount; cityIndex++) {
-                if (cityInfraFlat[cityBase + cityIndex] > cityInfraFlat[cityBase + maxCityIndex]) {
-                    maxCityIndex = cityIndex;
-                }
+            int maxCityIndex = maxInfraCityIndex(nationIndex);
+            if (maxCityIndex < 0) {
+                return;
             }
             int globalCityIndex = cityBase + maxCityIndex;
             double current = cityInfraFlat[globalCityIndex];
@@ -2450,6 +2470,7 @@ final class LongHorizonForwardProjection {
             }
             double removed = Math.min(current, amount);
             cityInfraFlat[globalCityIndex] = current - removed;
+            refreshInfraLeadersAfterDamage(nationIndex, maxCityIndex);
             recalculateScore(nationIndex);
         }
 
@@ -2464,7 +2485,58 @@ final class LongHorizonForwardProjection {
                 int beforeCents = Math.max(0, (int) Math.round(cityInfraFlat[globalCityIndex] * 100d));
                 cityInfraFlat[globalCityIndex] = WarOutcomeMath.victoryInfraAfterCents(beforeCents, percentMilli) * 0.01d;
             }
+            refreshInfraLeaders(nationIndex);
             recalculateScore(nationIndex);
+        }
+
+        private int maxInfraCityIndex(int nationIndex) {
+            if (cityCounts[nationIndex] == 0) {
+                return -1;
+            }
+            if (maxInfraCityIndexByNation[nationIndex] < 0) {
+                refreshInfraLeaders(nationIndex);
+            }
+            return maxInfraCityIndexByNation[nationIndex];
+        }
+
+        private void refreshInfraLeadersAfterDamage(int nationIndex, int maxCityIndex) {
+            int runnerUpCityIndex = runnerUpInfraCityIndexByNation[nationIndex];
+            if (runnerUpCityIndex < 0) {
+                return;
+            }
+            int cityBase = cityInfraBaseOffsets[nationIndex];
+            double currentValue = cityInfraFlat[cityBase + maxCityIndex];
+            double runnerUpValue = cityInfraFlat[cityBase + runnerUpCityIndex];
+            if (currentValue < runnerUpValue
+                    || (currentValue == runnerUpValue && runnerUpCityIndex < maxCityIndex)) {
+                refreshInfraLeaders(nationIndex);
+            }
+        }
+
+        private void refreshInfraLeaders(int nationIndex) {
+            int cityCount = cityCounts[nationIndex];
+            if (cityCount <= 0) {
+                maxInfraCityIndexByNation[nationIndex] = -1;
+                runnerUpInfraCityIndexByNation[nationIndex] = -1;
+                return;
+            }
+            int cityBase = cityInfraBaseOffsets[nationIndex];
+            int maxCityIndex = 0;
+            int runnerUpCityIndex = -1;
+            for (int cityIndex = 1; cityIndex < cityCount; cityIndex++) {
+                double cityInfra = cityInfraFlat[cityBase + cityIndex];
+                double maxInfra = cityInfraFlat[cityBase + maxCityIndex];
+                if (cityInfra > maxInfra) {
+                    runnerUpCityIndex = maxCityIndex;
+                    maxCityIndex = cityIndex;
+                    continue;
+                }
+                if (runnerUpCityIndex < 0 || cityInfra > cityInfraFlat[cityBase + runnerUpCityIndex]) {
+                    runnerUpCityIndex = cityIndex;
+                }
+            }
+            maxInfraCityIndexByNation[nationIndex] = maxCityIndex;
+            runnerUpInfraCityIndexByNation[nationIndex] = runnerUpCityIndex;
         }
 
         double subtractResource(int nationIndex, ResourceType type, double amount) {
@@ -4088,7 +4160,9 @@ final class LongHorizonForwardProjection {
             double[] resourcesFlat,
             double[] cityInfraFlat,
             double[] scores,
-            int[] beigeTurns
+            int[] beigeTurns,
+            int[] maxInfraCityIndexByNation,
+            int[] runnerUpInfraCityIndexByNation
     ) {
     }
 
