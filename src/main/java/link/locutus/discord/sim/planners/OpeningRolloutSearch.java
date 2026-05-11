@@ -14,6 +14,7 @@ final class OpeningRolloutSearch {
     private final OpeningEvaluator.PairAttackContext context = new OpeningEvaluator.PairAttackContext();
     private final AttackScratch scratch = new AttackScratch();
     private final MutableAttackResult result = new MutableAttackResult();
+    private final MutableAttackResult bestResult = new MutableAttackResult();
     private final OpeningMetricVector.Mutable currentMetrics = new OpeningMetricVector.Mutable();
     private final OpeningMetricVector.Mutable bestMetrics = new OpeningMetricVector.Mutable();
     private final OpeningMetricVector.Mutable projectedMetrics = new OpeningMetricVector.Mutable();
@@ -131,6 +132,7 @@ final class OpeningRolloutSearch {
                     bestNextScore = projectedScore;
                     bestType = type;
                     bestMetrics.copyFrom(projectedMetrics);
+                    bestResult.copyFrom(result);
                 }
             }
 
@@ -138,8 +140,7 @@ final class OpeningRolloutSearch {
                 break;
             }
 
-            CombatKernel.resolveInto(context, bestType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
-            context.applyExpectedResult(bestType, result);
+            context.applyExpectedResult(bestType, bestResult);
             currentMetrics.copyFrom(bestMetrics);
             currentScore = bestNextScore;
             if (firstAttackTypeId < 0) {

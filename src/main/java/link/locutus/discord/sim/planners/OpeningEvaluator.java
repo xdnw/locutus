@@ -452,10 +452,13 @@ final class OpeningEvaluator {
         private final int candidatesPerAttacker;
         private final int defenderCoverageTarget;
         private final int[] defenderSourceDiversityCounts;
+        private final OpeningMetricVector.Mutable positiveBaselineMetrics = new OpeningMetricVector.Mutable();
+        private byte attackerFirstLegalOpeningAttackId;
 
         private void beginAttacker(int attackerIndex) {
             this.attackerIndex = attackerIndex;
             this.attacker = scenario.attacker(attackerIndex);
+            this.attackerFirstLegalOpeningAttackId = firstLegalOpeningAttack(attacker);
             this.topK.clear();
             this.coverageSpillovers.clear();
             this.topK.setActiveLimit(retentionCapacity(attackerCaps[attackerIndex], candidatesPerAttacker));
@@ -476,7 +479,16 @@ final class OpeningEvaluator {
             DBNationSnapshot defender = scenario.defender(defenderIndex);
             if (!candidateAdmission.admit(attacker, defender)) {
                 if (!candidateAdmission.admitPositiveOpeningBaseline()
-                        || !evaluatePositiveBaselineOpening(attacker, defender, objective, openingSettings, edgeEvaluation)) {
+                        || !evaluatePositiveBaselineOpening(
+                                attacker,
+                                defender,
+                                objective,
+                                openingSettings,
+                                defenderCoveragePriorities[defenderIndex],
+                                attackerFirstLegalOpeningAttackId,
+                                positiveBaselineMetrics,
+                                edgeEvaluation
+                        )) {
                     return;
                 }
                 OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
@@ -489,6 +501,7 @@ final class OpeningEvaluator {
                     defender,
                     objective,
                     openingSettings,
+                    defenderCoveragePriorities[defenderIndex],
                     actionBudgetForProbe(probe, rolloutEdgeEvaluator.maxActionBudget()),
                     edgeEvaluation
             );
@@ -677,17 +690,36 @@ final class OpeningEvaluator {
             SideOpeningSettings openingSettings,
             EdgeEvaluation out
     ) {
+        return evaluatePositiveBaselineOpening(
+                attacker,
+                defender,
+                objective,
+                openingSettings,
+                OpeningMetricSummary.defenderControlPressure(defender),
+                firstLegalOpeningAttack(attacker),
+                new OpeningMetricVector.Mutable(),
+                out
+        );
+    }
+
+    private static boolean evaluatePositiveBaselineOpening(
+            DBNationSnapshot attacker,
+            DBNationSnapshot defender,
+            StrategicObjective objective,
+            SideOpeningSettings openingSettings,
+            double targetPressure,
+            byte firstAttackTypeId,
+            OpeningMetricVector.Mutable metrics,
+            EdgeEvaluation out
+    ) {
         out.clear();
         if (attacker.vmTurns() > 0 || defender.vmTurns() > 0 || defender.beigeTurns() > 0) {
             return false;
         }
-        OpeningBaseline baseline = OpeningBaseline.from(attacker, defender);
-        OpeningMetricVector.Mutable metrics = new OpeningMetricVector.Mutable();
-        metrics.set(0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
-        byte firstAttackTypeId = firstLegalOpeningAttack(attacker);
         if (firstAttackTypeId < 0) {
             return false;
         }
+        metrics.set(0d, 0d, 0d, 0d, 0d, targetPressure);
         float score = (float) objective.scoreOpening(metrics, attacker.teamId());
         if (openingSettings != null) {
             score *= (float) (openingSettings.warTypeWeight(WarType.ORD)

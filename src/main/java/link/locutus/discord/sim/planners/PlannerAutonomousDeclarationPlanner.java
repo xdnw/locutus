@@ -3,6 +3,7 @@ package link.locutus.discord.sim.planners;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMaps;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.SimTuning;
@@ -270,15 +271,24 @@ final class PlannerAutonomousDeclarationPlanner {
         if (assignment.isEmpty() || edges.edgeCount() == 0) {
             return Map.of();
         }
-        Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, assignmentPairCount(assignment) * 2));
+        int assignmentPairCount = assignmentPairCount(assignment);
+        LongOpenHashSet assignedPairs = new LongOpenHashSet(Math.max(16, assignmentPairCount * 2));
+        for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
+            int attackerNationId = entry.getKey();
+            for (int defenderNationId : entry.getValue()) {
+                assignedPairs.add(PlannerLocalConflict.pairKey(attackerNationId, defenderNationId));
+            }
+        }
+        Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, assignmentPairCount * 2));
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
             int attackerNationId = scenario.attackerNationId(edges.attackerIndex(edgeIndex));
             int defenderNationId = scenario.defenderNationId(edges.defenderIndex(edgeIndex));
-            if (!assignment.getOrDefault(attackerNationId, List.of()).contains(defenderNationId)) {
+            long pairKey = PlannerLocalConflict.pairKey(attackerNationId, defenderNationId);
+            if (!assignedPairs.contains(pairKey)) {
                 continue;
             }
             ordinalsByPair.put(
-                    PlannerLocalConflict.pairKey(attackerNationId, defenderNationId),
+                    pairKey,
                     validWarTypeOrdinal(edges.preferredWarTypeId(edgeIndex))
             );
         }

@@ -2,6 +2,7 @@ package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntComparator;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 import java.util.ArrayList;
@@ -38,7 +39,7 @@ final class LongHorizonFeedbackSearch {
                 SidePlannerSettings attackerPlannerSettings
     ) {
         int[] fixedCounts = fixedAttackerCounts(fixedEdges, attackerNationIds);
-        List<Integer> reliefOrder = reliefOrder(seed.attackerCounts(), fixedCounts, terminalProjection, realizedCounters);
+        IntArrayList reliefOrder = reliefOrder(seed.attackerCounts(), fixedCounts, terminalProjection, realizedCounters);
         if (reliefOrder.isEmpty()) {
             return List.of();
         }
@@ -152,10 +153,10 @@ final class LongHorizonFeedbackSearch {
         int bestOverCountered = overCounteredAttackers(currentRealized, best.attackerCounts(), fixedCounts).size();
         int variantsRemaining = MAX_FEEDBACK_VARIANTS;
         for (int iteration = 0; iteration < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0; iteration++) {
-            List<Integer> overCountered = overCounteredAttackers(
-                    currentRealized,
-                    currentSeed.attackerCounts(),
-                    fixedCounts
+            IntArrayList overCountered = overCounteredAttackers(
+                currentRealized,
+                currentSeed.attackerCounts(),
+                fixedCounts
             );
             if (overCountered.isEmpty()) {
                 break;
@@ -259,20 +260,20 @@ final class LongHorizonFeedbackSearch {
         return counts;
     }
 
-    private static List<Integer> reliefOrder(
+    private static IntArrayList reliefOrder(
             int[] attackerCounts,
             int[] fixedCounts,
             LongHorizonControlProjection terminalProjection,
             int[] realizedCounters
     ) {
-        List<Integer> order = new IntArrayList();
+        IntArrayList order = new IntArrayList();
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
             if (attackerCounts[attackerIndex] <= fixedCounts[attackerIndex]) {
                 continue;
             }
             order.add(attackerIndex);
         }
-        order.sort((left, right) -> {
+        order.sort((IntComparator) (left, right) -> {
             double leftPriority = reliefPriority(left, attackerCounts, terminalProjection, realizedCounters);
             double rightPriority = reliefPriority(right, attackerCounts, terminalProjection, realizedCounters);
             int priorityOrder = Double.compare(rightPriority, leftPriority);
@@ -302,8 +303,8 @@ final class LongHorizonFeedbackSearch {
         return Math.max(0d, counterPenalty) + realized;
     }
 
-    private static List<Integer> overCounteredAttackers(int[] realizedCounters, int[] attackerCounts, int[] fixedCounts) {
-        List<Integer> overCountered = new IntArrayList();
+    private static IntArrayList overCounteredAttackers(int[] realizedCounters, int[] attackerCounts, int[] fixedCounts) {
+        IntArrayList overCountered = new IntArrayList();
         for (int attackerIndex = 0; attackerIndex < realizedCounters.length; attackerIndex++) {
             if (realizedCounters[attackerIndex] < OVERCOUNTER_THRESHOLD) {
                 continue;
@@ -314,7 +315,7 @@ final class LongHorizonFeedbackSearch {
             }
             overCountered.add(attackerIndex);
         }
-        overCountered.sort((left, right) -> {
+        overCountered.sort((IntComparator) (left, right) -> {
             int countOrder = Integer.compare(realizedCounters[right], realizedCounters[left]);
             if (countOrder != 0) {
                 return countOrder;

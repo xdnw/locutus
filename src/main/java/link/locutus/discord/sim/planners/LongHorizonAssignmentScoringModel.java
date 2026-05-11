@@ -214,11 +214,27 @@ final class LongHorizonAssignmentScoringModel {
 
     private static double[] slotDenialScores(CandidateEdgeTable edges, CompiledScenario scenario) {
         double[] scores = new double[edges.edgeCount()];
+        double[] attackerPressures = new double[scenario.attackerCount()];
+        double[] attackerSlotCapabilityValues = new double[scenario.attackerCount()];
+        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
+            DBNationSnapshot attacker = scenario.attacker(attackerIndex);
+            attackerPressures[attackerIndex] = controlPressure(attacker);
+            attackerSlotCapabilityValues[attackerIndex] = PlannerStrategicValue.slotCapabilityValue(attacker);
+        }
+        double[] defenderPressures = new double[scenario.defenderCount()];
+        double[] defenderSlotCapabilityValues = new double[scenario.defenderCount()];
+        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
+            DBNationSnapshot defender = scenario.defender(defenderIndex);
+            defenderPressures[defenderIndex] = controlPressure(defender);
+            defenderSlotCapabilityValues[defenderIndex] = PlannerStrategicValue.slotCapabilityValue(defender);
+        }
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
-            DBNationSnapshot attacker = scenario.attacker(edges.attackerIndex(edgeIndex));
-            DBNationSnapshot defender = scenario.defender(edges.defenderIndex(edgeIndex));
-            double attackerPressure = controlPressure(attacker);
-            double defenderPressure = controlPressure(defender);
+            int attackerIndex = edges.attackerIndex(edgeIndex);
+            int defenderIndex = edges.defenderIndex(edgeIndex);
+            DBNationSnapshot attacker = scenario.attacker(attackerIndex);
+            DBNationSnapshot defender = scenario.defender(defenderIndex);
+            double attackerPressure = attackerPressures[attackerIndex];
+            double defenderPressure = defenderPressures[defenderIndex];
             double attackerSlotPressure = (attacker.currentOffensiveWars() + 1d) / Math.max(1, attacker.maxOff());
             double defenderSlotPressure = (defender.currentDefensiveWars() + 1d) / WarSlotRules.defensiveSlotCap();
             int attackerOpponents = Math.max(
@@ -229,16 +245,14 @@ final class LongHorizonAssignmentScoringModel {
                     defender.activeOpponentNationIds().size() + 1,
                     defender.currentOffensiveWars() + defender.currentDefensiveWars() + 1
             );
-                StrategicCapabilityVector attackerCapability = PlannerStrategicValue.capabilityVector(attacker);
-                StrategicCapabilityVector defenderCapability = PlannerStrategicValue.capabilityVector(defender);
             double attackerCost = StrategicAssetValue.offensiveWarSlotOpportunityCost(
-                    PlannerStrategicValue.offensiveSlotCapabilityValue(attackerCapability, attackerSlotPressure),
+                    PlannerStrategicValue.offensiveSlotCapabilityValue(attackerSlotCapabilityValues[attackerIndex], attackerSlotPressure),
                     attackerPressure,
                     attackerSlotPressure,
                     attackerOpponents
             );
             double defenderDenial = StrategicAssetValue.defensiveWarSlotDenialValue(
-                    PlannerStrategicValue.defensiveSlotCapabilityValue(defenderCapability, defenderSlotPressure),
+                    PlannerStrategicValue.defensiveSlotCapabilityValue(defenderSlotCapabilityValues[defenderIndex], defenderSlotPressure),
                     defenderPressure,
                     defenderSlotPressure,
                     defenderOpponents
