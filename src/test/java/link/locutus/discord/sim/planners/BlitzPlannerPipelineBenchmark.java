@@ -825,9 +825,7 @@ public final class BlitzPlannerPipelineBenchmark {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(1_000.0d + offset)
                 .cities(cities)
-                .nonInfraScoreBase(500.0d + cities * 50.0d)
                 .cityInfra(uniformInfra(cities, 1_800.0d + (offset % 5) * 100.0d))
                 .maxOff(maxOff)
                 .unit(MilitaryUnit.SOLDIER, 250_000 + offset * 100)
@@ -1063,3 +1061,4 @@ public final class BlitzPlannerPipelineBenchmark {
         return endValue - startValue;
     }
 }
+

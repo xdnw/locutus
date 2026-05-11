@@ -25,8 +25,8 @@ class ActorAndObjectiveIntegrationTest {
     @Test
     void ruleBasedActorWithSimplePrimitives() {
         SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4));
+        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4));
+        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4));
 
         RuleBasedActor actor = new RuleBasedActor();
         actor.addPrimitive(new AirControlBuild());
@@ -46,8 +46,8 @@ class ActorAndObjectiveIntegrationTest {
     @Test
     void airControlBuildTargetsOffensiveWarWithAirPressure() {
         SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4));
+        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4));
+        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4));
 
         world.declareWar(1001, 1, 2, WarType.ORD);
 
@@ -71,8 +71,8 @@ class ActorAndObjectiveIntegrationTest {
     @Test
     void groundUnderAirTargetsGroundAfterAirControlIsHeld() {
         SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4));
+        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4));
+        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4));
 
         world.declareWar(1002, 1, 2, WarType.ORD);
 
@@ -104,7 +104,6 @@ class ActorAndObjectiveIntegrationTest {
                 99,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                15.0,
                 new double[0],
                 5,
                 (byte) 0
@@ -114,7 +113,6 @@ class ActorAndObjectiveIntegrationTest {
                 99,
                 WarPolicy.TURTLE,
                 ResourceType.getBuffer(),
-                10.0,
                 new double[0],
                 5,
                 (byte) 0
@@ -124,7 +122,6 @@ class ActorAndObjectiveIntegrationTest {
                 3,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                40.0,
                 new double[0],
                 5,
                 (byte) 0
@@ -175,7 +172,7 @@ class ActorAndObjectiveIntegrationTest {
 
     @Test
     void resetTimeProviderFromNationReturnsNationResetHour() {
-        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 50.0, 4, (byte) 12);
+        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 4, (byte) 12);
         byte resetHour = ResetTimeProvider.FROM_NATION.resetHourUtc(nation, 0);
         assertEquals(12, resetHour);
     }
@@ -212,3 +209,4 @@ class ActorAndObjectiveIntegrationTest {
         assertEquals(3, count);
     }
 }
+

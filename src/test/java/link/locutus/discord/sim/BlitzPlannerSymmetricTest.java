@@ -56,9 +56,7 @@ class BlitzPlannerSymmetricTest {
             result.add(DBNationSnapshot.synthetic(id)
                     .teamId(teamId)
                     .allianceId(teamId)
-                    .score(score)
                     .cities(10)
-                    .nonInfraScoreBase(score)
                     .cityInfra(uniformInfra(10, 1000.0))
                     .maxOff(5)
                     .currentOffensiveWars(0)
@@ -79,3 +77,4 @@ class BlitzPlannerSymmetricTest {
         return arr;
     }
 }
+

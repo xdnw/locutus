@@ -17,8 +17,8 @@ class SimWorldForkTest {
     @Test
     void forkCreatesIndependentNationState() {
         SimWorld world = new SimWorld();
-        SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 2_000_000d, 100d, 3);
-        SimNation defender = new SimNation(2, WarPolicy.TURTLE, 2_000_000d, 100d, 3);
+        SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 2_000_000d, 3, (byte) 0);
+        SimNation defender = new SimNation(2, WarPolicy.TURTLE, 2_000_000d, 3, (byte) 0);
         world.addNation(attacker);
         world.addNation(defender);
 
@@ -81,3 +81,4 @@ class SimWorldForkTest {
         assertNull(world.findNation(32), "Parent world should not see nations appended to the fork");
     }
 }
+

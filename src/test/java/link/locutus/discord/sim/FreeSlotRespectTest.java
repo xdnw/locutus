@@ -116,7 +116,6 @@ class FreeSlotRespectTest {
     private DBNationSnapshot defender(int id, int existingDefWars) {
         return DBNationSnapshot.synthetic(id)
                 .teamId(9999).allianceId(9999)
-                .score(SCORE).cities(10).nonInfraScoreBase(SCORE)
                 .cityInfra(uniformInfra(10, 1000.0))
                 .maxOff(5).currentOffensiveWars(0)
                 .currentDefensiveWars(existingDefWars)
@@ -132,7 +131,6 @@ class FreeSlotRespectTest {
             int id = idStart + i;
             list.add(DBNationSnapshot.synthetic(id)
                     .teamId(1000).allianceId(1000)
-                    .score(SCORE).cities(10).nonInfraScoreBase(SCORE)
                     .cityInfra(uniformInfra(10, 1000.0))
                     .maxOff(5).currentOffensiveWars(0).currentDefensiveWars(0)
                     .unit(MilitaryUnit.AIRCRAFT, 500)

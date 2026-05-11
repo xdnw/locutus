@@ -853,9 +853,7 @@ class OpeningEvaluatorCoverageTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(score)
                 .cities(cities)
-                .nonInfraScoreBase(score)
                 .cityInfra(uniformInfra(cities, 1_200.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -934,3 +932,4 @@ class OpeningEvaluatorCoverageTest {
         }
     }
 }
+

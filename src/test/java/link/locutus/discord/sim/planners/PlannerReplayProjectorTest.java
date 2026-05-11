@@ -348,9 +348,7 @@ class PlannerReplayProjectorTest {
         DBNationSnapshot saturatedDeclarer = DBNationSnapshot.synthetic(302)
                 .teamId(2)
                 .allianceId(2)
-                .score(1_000.0)
                 .cities(10)
-                .nonInfraScoreBase(1_000.0)
                 .cityInfra(uniformInfra(10, 1_000.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -361,9 +359,7 @@ class PlannerReplayProjectorTest {
         DBNationSnapshot scarceTarget = DBNationSnapshot.synthetic(101)
                 .teamId(1)
                 .allianceId(1)
-                .score(1_000.0)
                 .cities(10)
-                .nonInfraScoreBase(1_000.0)
                 .cityInfra(uniformInfra(10, 1_000.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -1260,9 +1256,7 @@ class PlannerReplayProjectorTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(1_000.0)
                 .cities(10)
-                .nonInfraScoreBase(1_000.0)
                 .cityInfra(uniformInfra(10, 1_000.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -1285,3 +1279,4 @@ class PlannerReplayProjectorTest {
         return values;
     }
 }
+

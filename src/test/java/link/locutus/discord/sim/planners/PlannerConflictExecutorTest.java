@@ -156,8 +156,6 @@ class PlannerConflictExecutorTest {
                 .unit(MilitaryUnit.SHIP, 20)
                 .build();
         DBNationSnapshot defender = nation(214, 2)
-                .score(1_500)
-                .nonInfraScoreBase(1_200)
                 .unit(MilitaryUnit.SOLDIER, 14_000)
                 .unit(MilitaryUnit.TANK, 800)
                 .unit(MilitaryUnit.AIRCRAFT, 1_100)
@@ -214,28 +212,24 @@ class PlannerConflictExecutorTest {
     @Test
     void replayExecutionLogReplaysTurnsWithoutCounterReplanning() {
         DBNationSnapshot attackerOne = nation(301, 1)
-                .score(1_200)
                 .unit(MilitaryUnit.SOLDIER, 18_000)
                 .unit(MilitaryUnit.TANK, 900)
                 .unit(MilitaryUnit.AIRCRAFT, 1_200)
                 .unit(MilitaryUnit.SHIP, 10)
                 .build();
         DBNationSnapshot attackerTwo = nation(302, 1)
-                .score(1_150)
                 .unit(MilitaryUnit.SOLDIER, 16_000)
                 .unit(MilitaryUnit.TANK, 800)
                 .unit(MilitaryUnit.AIRCRAFT, 1_000)
                 .unit(MilitaryUnit.SHIP, 8)
                 .build();
         DBNationSnapshot defenderOne = nation(401, 2)
-                .score(1_180)
                 .unit(MilitaryUnit.SOLDIER, 17_000)
                 .unit(MilitaryUnit.TANK, 850)
                 .unit(MilitaryUnit.AIRCRAFT, 1_050)
                 .unit(MilitaryUnit.SHIP, 9)
                 .build();
         DBNationSnapshot defenderTwo = nation(402, 2)
-                .score(1_140)
                 .unit(MilitaryUnit.SOLDIER, 15_000)
                 .unit(MilitaryUnit.TANK, 700)
                 .unit(MilitaryUnit.AIRCRAFT, 900)
@@ -1131,9 +1125,7 @@ class PlannerConflictExecutorTest {
                 DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
                                 .teamId(1)
                                 .allianceId(1)
-                                .score(1_000)
                                 .cities(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .projectBits(pirateBits)
@@ -2090,10 +2082,8 @@ class PlannerConflictExecutorTest {
                 return DBNationSnapshot.synthetic(nationId)
                                 .teamId(teamId)
                                 .allianceId(teamId)
-                                .score(1_000)
                                 .cities(3)
                                 .maxOff(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION);
         }
@@ -2102,3 +2092,4 @@ class PlannerConflictExecutorTest {
                 return snapshots.stream().map(DBNationSnapshot::nationId).toList();
         }
 }
+

@@ -16,7 +16,7 @@ class DoubleBuyResetTest {
     @Test
     void buyPlacementConsumesDailyCapAndMaterializesNextTurnAcrossResetBoundary() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(22));
-        SimNation nation = new SimNation(5, WarPolicy.FORTRESS, 1_000_000_000d, 100d, 2, (byte) 0);
+        SimNation nation = new SimNation(5, WarPolicy.FORTRESS, 1_000_000_000d, 2, (byte) 0);
         nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 5);
         nation.setUnitCap(MilitaryUnit.SOLDIER, 20);
         world.addNation(nation);
@@ -54,7 +54,7 @@ class DoubleBuyResetTest {
     @Test
     void buyPlacementRejectsWhenDailyCapOrResourcesInsufficient() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(0));
-        SimNation nation = new SimNation(6, WarPolicy.TURTLE, 0d, 100d, 2, (byte) 0);
+        SimNation nation = new SimNation(6, WarPolicy.TURTLE, 0d, 2, (byte) 0);
         nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 2);
         nation.setUnitCap(MilitaryUnit.SOLDIER, 10);
         world.addNation(nation);
@@ -70,7 +70,7 @@ class DoubleBuyResetTest {
     @Test
     void buyPlacementRejectsWhenNonMoneyResourceIsMissing() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(0));
-        SimNation nation = new SimNation(8, WarPolicy.FORTRESS, 1_000_000_000d, 100d, 2, (byte) 0);
+        SimNation nation = new SimNation(8, WarPolicy.FORTRESS, 1_000_000_000d, 2, (byte) 0);
         nation.setDailyBuyCap(MilitaryUnit.SHIP, 5);
         nation.setUnitCap(MilitaryUnit.SHIP, 10);
         world.addNation(nation);
@@ -85,7 +85,7 @@ class DoubleBuyResetTest {
     @Test
     void buyPlacementIsAtomicAcrossAllRequestedUnits() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(0));
-        SimNation nation = new SimNation(7, WarPolicy.FORTRESS, 1_000_000d, 100d, 2, (byte) 0);
+        SimNation nation = new SimNation(7, WarPolicy.FORTRESS, 1_000_000d, 2, (byte) 0);
         nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 5);
         nation.setDailyBuyCap(MilitaryUnit.AIRCRAFT, 0);
         nation.setUnitCap(MilitaryUnit.SOLDIER, 10);
@@ -106,7 +106,7 @@ class DoubleBuyResetTest {
     @Test
     void buyPlacementRejectsUnsupportedUnits() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(0));
-        SimNation nation = new SimNation(9, WarPolicy.FORTRESS, 1_000_000_000d, 100d, 2, (byte) 0);
+        SimNation nation = new SimNation(9, WarPolicy.FORTRESS, 1_000_000_000d, 2, (byte) 0);
         world.addNation(nation);
 
         assertThrows(IllegalArgumentException.class, () -> world.apply(new BuyUnitsAction(9, Map.of(MilitaryUnit.SPIES, 1))));
@@ -114,3 +114,4 @@ class DoubleBuyResetTest {
         assertThrows(IllegalArgumentException.class, () -> world.apply(new BuyUnitsAction(9, Map.of(MilitaryUnit.INFRASTRUCTURE, 1))));
     }
 }
+

@@ -231,9 +231,7 @@ class CompiledScenarioTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(nationId)
                 .allianceId(nationId)
-                .score(score)
                 .cities(5)
-                .nonInfraScoreBase(score)
                 .cityInfra(new double[]{1_000, 1_000, 1_000, 1_000, 1_000})
                 .warPolicy(WarPolicy.ATTRITION);
     }
@@ -254,3 +252,4 @@ class CompiledScenarioTest {
         return result;
     }
 }
+

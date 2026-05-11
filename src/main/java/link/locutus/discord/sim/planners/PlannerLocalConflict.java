@@ -2755,7 +2755,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final int allianceId;
         private final int teamId;
         private final WarPolicy warPolicy;
-        private final double nonInfraScoreBase;
+        private final double staticScoreComponent;
         private final int maxOff;
         private final byte resetHourUtc;
         private final int baseCurrentOffensiveWars;
@@ -2791,7 +2791,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 int allianceId,
                 int teamId,
                 WarPolicy warPolicy,
-                double nonInfraScoreBase,
+                double staticScoreComponent,
                 int maxOff,
                 byte resetHourUtc,
                 int baseCurrentOffensiveWars,
@@ -2819,7 +2819,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             this.allianceId = allianceId;
             this.teamId = teamId;
             this.warPolicy = warPolicy;
-            this.nonInfraScoreBase = nonInfraScoreBase;
+            this.staticScoreComponent = staticScoreComponent;
             this.maxOff = maxOff;
             this.resetHourUtc = resetHourUtc;
             this.baseCurrentOffensiveWars = baseCurrentOffensiveWars;
@@ -2861,7 +2861,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     snapshot.allianceId(),
                     snapshot.teamId(),
                     snapshot.warPolicy(),
-                    snapshot.nonInfraScoreBase(),
+                    snapshot.staticScoreComponent(),
                     snapshot.maxOff(),
                     snapshot.resetHourUtc(),
                     snapshot.currentOffensiveWars(),
@@ -3235,7 +3235,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 DBNationSnapshot.Builder builder = DBNationSnapshot.synthetic(nationId)
                         .allianceId(allianceId)
                         .teamId(teamId)
-                        .score(score)
                         .cities(cities())
                         .currentOffensiveWars(offensiveWars)
                         .currentDefensiveWars(defensiveWars)
@@ -3244,7 +3243,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
                         .maxOff(maxOff)
                         .warPolicy(warPolicy)
                         .resources(buffers.copyResources(nationIndex))
-                        .nonInfraScoreBase(nonInfraScoreBase)
                         .cityInfra(buffers.copyCityInfra(nationIndex))
                         .resetHourUtc(resetHourUtc)
                         .activeOpponentNationIds(opponents)
@@ -3274,7 +3272,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         private void recalculateScore() {
-            double total = nonInfraScoreBase;
+            double total = staticScoreComponent;
             int cityBase = buffers.cityInfraBaseOffset(nationIndex);
             int cityCount = buffers.cityCount(nationIndex);
             double[] cityInfraFlat = buffers.cityInfraFlat();

@@ -22,9 +22,7 @@ class ScheduledTargetPlannerCarryModeTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(201)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 15_000)
@@ -35,9 +33,7 @@ class ScheduledTargetPlannerCarryModeTest {
         DBNationSnapshot defender = DBNationSnapshot.synthetic(202)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 10_000)
@@ -83,3 +79,4 @@ class ScheduledTargetPlannerCarryModeTest {
                 assertEquals(expected.diagnostics(), actual.diagnostics());
         }
 }
+

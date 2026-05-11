@@ -34,7 +34,7 @@ final class SimNationArrayStore {
     int[] offSlotsUsed;
     int[] defSlotsUsed;
     int[] dayPhaseTurns;
-    double[] nonInfraScoreBase;
+    double[] staticScoreComponent;
     double[] scores;
     double[] resourcesFlat;
     int[] unitsFlat;
@@ -63,7 +63,7 @@ final class SimNationArrayStore {
         offSlotsUsed = new int[safeNationCapacity];
         defSlotsUsed = new int[safeNationCapacity];
         dayPhaseTurns = new int[safeNationCapacity];
-        nonInfraScoreBase = new double[safeNationCapacity];
+        staticScoreComponent = new double[safeNationCapacity];
         scores = new double[safeNationCapacity];
         resourcesFlat = new double[safeNationCapacity * RESOURCE_COUNT];
         unitsFlat = new int[safeNationCapacity * PURCHASABLE_COUNT];
@@ -111,7 +111,7 @@ final class SimNationArrayStore {
         offSlotsUsed[nationIndex] = snapshot.offSlotsUsed();
         defSlotsUsed[nationIndex] = snapshot.defSlotsUsed();
         dayPhaseTurns[nationIndex] = snapshot.dayPhaseTurn();
-        nonInfraScoreBase[nationIndex] = init.nonInfraScoreBase();
+        staticScoreComponent[nationIndex] = init.staticScoreComponent();
 
         cityInfraOffsets[nationIndex] = cityInfraSize;
         cityCounts[nationIndex] = cityCount;
@@ -161,7 +161,7 @@ final class SimNationArrayStore {
         copy.offSlotsUsed = Arrays.copyOf(offSlotsUsed, size);
         copy.defSlotsUsed = Arrays.copyOf(defSlotsUsed, size);
         copy.dayPhaseTurns = Arrays.copyOf(dayPhaseTurns, size);
-        copy.nonInfraScoreBase = Arrays.copyOf(nonInfraScoreBase, size);
+        copy.staticScoreComponent = Arrays.copyOf(staticScoreComponent, size);
         copy.scores = Arrays.copyOf(scores, size);
         copy.resourcesFlat = Arrays.copyOf(resourcesFlat, size * RESOURCE_COUNT);
         copy.unitsFlat = Arrays.copyOf(unitsFlat, size * PURCHASABLE_COUNT);
@@ -181,7 +181,6 @@ final class SimNationArrayStore {
                         teamIds[nationIndex],
                         policies[nationIndex],
                         copyResources(nationIndex),
-                        nonInfraScoreBase[nationIndex],
                         copyCityInfra(nationIndex),
                         NationCapacityRules.maxOffSlots(maxOffSlotOverrides[nationIndex], projectBits[nationIndex]),
                         resetHoursUtc[nationIndex],
@@ -219,7 +218,7 @@ final class SimNationArrayStore {
     }
 
     void recalculateScore(int nationIndex) {
-        double total = nonInfraScoreBase[nationIndex];
+        double total = staticScoreComponent[nationIndex];
         int cityOffset = cityInfraOffsets[nationIndex];
         int cityCount = cityCounts[nationIndex];
         for (int i = 0; i < cityCount; i++) {
@@ -273,7 +272,7 @@ final class SimNationArrayStore {
             offSlotsUsed = Arrays.copyOf(offSlotsUsed, nextCapacity);
             defSlotsUsed = Arrays.copyOf(defSlotsUsed, nextCapacity);
             dayPhaseTurns = Arrays.copyOf(dayPhaseTurns, nextCapacity);
-            nonInfraScoreBase = Arrays.copyOf(nonInfraScoreBase, nextCapacity);
+            staticScoreComponent = Arrays.copyOf(staticScoreComponent, nextCapacity);
             scores = Arrays.copyOf(scores, nextCapacity);
             resourcesFlat = Arrays.copyOf(resourcesFlat, nextCapacity * RESOURCE_COUNT);
             unitsFlat = Arrays.copyOf(unitsFlat, nextCapacity * PURCHASABLE_COUNT);

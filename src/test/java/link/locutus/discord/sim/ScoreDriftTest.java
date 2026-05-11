@@ -20,11 +20,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ScoreDriftTest {
 
+    private static SimNation nationWithTotalScore(int nationId, WarPolicy policy, double money, double totalScore, int maxOffSlots) {
+        double[] resources = ResourceType.getBuffer();
+        resources[ResourceType.MONEY.ordinal()] = money;
+        double totalInfra = Math.max(0d, (totalScore - 10d) * 40d);
+        return new SimNation(nationId, policy, resources, new double[]{totalInfra}, maxOffSlots, (byte) 0);
+    }
+
     @Test
     void declareRangeUpdatesAfterUnitLosses() {
         SimWorld world = new SimWorld();
-        SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 0d, 100d, 2);
-        SimNation defender = new SimNation(2, WarPolicy.TURTLE, 0d, 100d, 2);
+        SimNation attacker = nationWithTotalScore(1, WarPolicy.FORTRESS, 0d, 100d, 2);
+        SimNation defender = nationWithTotalScore(2, WarPolicy.TURTLE, 0d, 100d, 2);
         defender.setUnitCount(MilitaryUnit.SHIP, 160); // +160 score, initially above attacker's max war range (250)
 
         world.addNation(attacker);
@@ -42,8 +49,8 @@ class ScoreDriftTest {
     @Test
     void buyUnitsRecomputesScoreAndCanCloseDeclareWindow() {
         SimWorld world = new SimWorld();
-        SimNation attacker = new SimNation(10, WarPolicy.PIRATE, 0d, 100d, 2);
-        SimNation defender = new SimNation(20, WarPolicy.TURTLE, 1_000_000d, 245d, 2);
+        SimNation attacker = nationWithTotalScore(10, WarPolicy.PIRATE, 0d, 100d, 2);
+        SimNation defender = nationWithTotalScore(20, WarPolicy.TURTLE, 1_000_000d, 245d, 2);
         defender.addResource(ResourceType.STEEL, 500d);
         defender.setDailyBuyCap(MilitaryUnit.SHIP, 10);
         defender.setUnitCap(MilitaryUnit.SHIP, 20);
@@ -61,13 +68,13 @@ class ScoreDriftTest {
     @Test
     void neighborContextUsesUpdatedDeclareRangeAfterScoreDrift() {
         SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 0d, 100d, 2));
+        world.addNation(nationWithTotalScore(1, WarPolicy.FORTRESS, 0d, 100d, 2));
 
-        SimNation inRangeAfterLoss = new SimNation(2, WarPolicy.TURTLE, 0d, 100d, 2);
+        SimNation inRangeAfterLoss = nationWithTotalScore(2, WarPolicy.TURTLE, 0d, 100d, 2);
         inRangeAfterLoss.setUnitCount(MilitaryUnit.SHIP, 160);
         world.addNation(inRangeAfterLoss);
 
-        SimNation stableNeighbor = new SimNation(3, WarPolicy.TURTLE, 0d, 180d, 2);
+        SimNation stableNeighbor = nationWithTotalScore(3, WarPolicy.TURTLE, 0d, 180d, 2);
         world.addNation(stableNeighbor);
 
         AtomicReference<Set<Integer>> neighborsSeen = new AtomicReference<>(Set.of());
@@ -88,10 +95,11 @@ class ScoreDriftTest {
     @Test
     void buyUnitsRejectsNonBuyablePseudoUnits() {
         SimWorld world = new SimWorld();
-        SimNation nation = new SimNation(30, WarPolicy.FORTRESS, 0d, 100d, 2);
+        SimNation nation = nationWithTotalScore(30, WarPolicy.FORTRESS, 0d, 100d, 2);
         world.addNation(nation);
 
         assertThrows(IllegalArgumentException.class, () -> world.apply(new BuyUnitsAction(30, Map.of(MilitaryUnit.MONEY, 1))));
         assertThrows(IllegalArgumentException.class, () -> world.apply(new BuyUnitsAction(30, Map.of(MilitaryUnit.INFRASTRUCTURE, 1))));
     }
 }
+

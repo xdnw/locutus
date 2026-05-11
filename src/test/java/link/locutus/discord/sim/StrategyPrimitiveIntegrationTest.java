@@ -369,7 +369,9 @@ class StrategyPrimitiveIntegrationTest {
         assertEquals(Map.of(MilitaryUnit.AIRCRAFT, 2), secondBuy.units());
     }
 
-    private static SimNation nation(int nationId, WarPolicy policy, double scoreBase, double... cityInfra) {
-        return new SimNation(nationId, policy, ResourceType.getBuffer(), scoreBase, cityInfra, 4);
+    private static SimNation nation(int nationId, WarPolicy policy, double warchest, double... cityInfra) {
+        double[] resources = ResourceType.getBuffer();
+        resources[ResourceType.MONEY.ordinal()] = warchest;
+        return new SimNation(nationId, policy, resources, cityInfra, 4);
     }
 }

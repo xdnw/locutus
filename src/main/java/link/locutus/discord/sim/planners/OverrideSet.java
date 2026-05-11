@@ -8,6 +8,7 @@ import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.combat.NationCombatProfile;
 import link.locutus.discord.sim.input.NationInit;
+import link.locutus.discord.util.PW;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -18,9 +19,9 @@ import java.util.Objects;
  * After all overrides are folded in, planners recompute derived caps (maxOff, unitCap, etc.)
  * from the overridden state before calling {@link DBNationSnapshot#toNationInit()}.
  *
- * <p>Direct score override is not supported — override the inputs that drive score
- * (citiesOverride, nonInfraScoreBaseOverride) so the sim's incremental score recomputation
- * remains consistent.</p>
+ * <p>Direct score override is not supported — override the immutable inputs that drive score
+ * (currently cities) and let the sim keep its cached score derived from those inputs plus
+ * mutable infra and unit state.</p>
  *
  * <p>This class is immutable once built.</p>
  */
@@ -35,7 +36,6 @@ public final class OverrideSet {
     private final Map<Integer, Integer> forceFreeDefSlots;
     private final Map<Integer, Integer> citiesOverride;
     private final Map<Integer, double[]> resourceOverride;
-    private final Map<Integer, Double> nonInfraScoreBaseOverride;
     private final Map<Integer, Byte> resetHourOverride;
     private final Map<Integer, Map<MilitaryUnit, Integer>> unitOverride;
     private final Map<Integer, Integer> maxOffOverride;
@@ -47,7 +47,6 @@ public final class OverrideSet {
         this.forceFreeDefSlots = Map.copyOf(b.forceFreeDefSlots);
         this.citiesOverride = Map.copyOf(b.citiesOverride);
         this.resourceOverride = copyResourceMap(b.resourceOverride);
-        this.nonInfraScoreBaseOverride = Map.copyOf(b.nonInfraScoreBaseOverride);
         this.resetHourOverride = Map.copyOf(b.resetHourOverride);
         this.unitOverride = copyUnitMap(b.unitOverride);
         this.maxOffOverride = Map.copyOf(b.maxOffOverride);
@@ -77,7 +76,6 @@ public final class OverrideSet {
                 && forceFreeDefSlots.isEmpty()
                 && citiesOverride.isEmpty()
                 && resourceOverride.isEmpty()
-                && nonInfraScoreBaseOverride.isEmpty()
                 && resetHourOverride.isEmpty()
                 && unitOverride.isEmpty()
                 && maxOffOverride.isEmpty();
@@ -119,10 +117,6 @@ public final class OverrideSet {
         return citiesOverride.getOrDefault(snap.nationId(), snap.cities());
     }
 
-    public double effectiveNonInfraScoreBase(DBNationSnapshot snap) {
-        return nonInfraScoreBaseOverride.getOrDefault(snap.nationId(), snap.nonInfraScoreBase());
-    }
-
     /**
      * Returns the overridden unit count for the given nation/unit if provided,
      * otherwise the snapshot count.
@@ -147,7 +141,6 @@ public final class OverrideSet {
                 ? resourceOverride.get(nationId).clone()
                 : snap.resources();
         int maxOff = effectiveMaxOff(snap);
-        double nonInfraScoreBase = effectiveNonInfraScoreBase(snap);
         double[] cityInfra = snap.cityInfra();
         byte resetHour = resetHourOverride.getOrDefault(nationId, snap.resetHourUtc());
 
@@ -169,7 +162,6 @@ public final class OverrideSet {
             teamId,
             policy,
             resources,
-            nonInfraScoreBase,
             cityInfra,
             maxOff,
             resetHour,
@@ -186,7 +178,6 @@ public final class OverrideSet {
     public DBNationSnapshot applyToSnapshot(DBNationSnapshot snap) {
         int nationId = snap.nationId();
         double[] cityInfra = snap.cityInfra();
-        double nonInfraScoreBase = effectiveNonInfraScoreBase(snap);
         DBNationSnapshot.Builder builder = snap.toBuilder()
             .cities(effectiveCities(snap))
             .maxOff(effectiveMaxOff(snap))
@@ -194,20 +185,11 @@ public final class OverrideSet {
             .resources(resourceOverride.containsKey(nationId)
                 ? resourceOverride.get(nationId).clone()
                 : snap.resources())
-            .nonInfraScoreBase(nonInfraScoreBase)
             .resetHourUtc(resetHourOverride.getOrDefault(nationId, snap.resetHourUtc()));
-        double score = nonInfraScoreBase;
-        for (double infra : cityInfra) {
-            score += infra / 40.0;
-        }
         for (MilitaryUnit unit : MilitaryUnit.values) {
             int count = overrideUnitCount(snap, unit);
             builder.unit(unit, count);
-            if (count > 0 && SimUnits.isPurchasable(unit)) {
-                score += unit.getScore(count);
-            }
         }
-        builder.score(score);
         return builder.build();
     }
 
@@ -222,7 +204,6 @@ public final class OverrideSet {
         private final Map<Integer, Integer> forceFreeDefSlots = new Int2IntOpenHashMap();
         private final Map<Integer, Integer> citiesOverride = new Int2IntOpenHashMap();
         private final Map<Integer, double[]> resourceOverride = new Int2ObjectLinkedOpenHashMap<>();
-        private final Map<Integer, Double> nonInfraScoreBaseOverride = new Int2ObjectLinkedOpenHashMap<>();
         private final Map<Integer, Byte> resetHourOverride = new Int2ObjectLinkedOpenHashMap<>();
         private final Map<Integer, Map<MilitaryUnit, Integer>> unitOverride = new Int2ObjectLinkedOpenHashMap<>();
         private final Map<Integer, Integer> maxOffOverride = new Int2IntOpenHashMap();
@@ -236,7 +217,6 @@ public final class OverrideSet {
         public Builder forceFreeDefSlots(int nationId, int freeSlots) { forceFreeDefSlots.put(nationId, freeSlots); return this; }
         public Builder cities(int nationId, int v) { citiesOverride.put(nationId, v); return this; }
         public Builder resources(int nationId, double[] v) { resourceOverride.put(nationId, v.clone()); return this; }
-        public Builder nonInfraScoreBase(int nationId, double v) { nonInfraScoreBaseOverride.put(nationId, v); return this; }
         public Builder resetHour(int nationId, byte v) { resetHourOverride.put(nationId, v); return this; }
         public Builder units(int nationId, Map<MilitaryUnit, Integer> v) { unitOverride.put(nationId, new EnumMap<>(v)); return this; }
         public Builder maxOff(int nationId, int v) { maxOffOverride.put(nationId, v); return this; }

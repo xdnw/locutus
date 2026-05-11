@@ -1697,23 +1697,23 @@ public final class PW {
     }
 
     /**
-     * Computes the static (non-infra, non-unit) score component from the three immutable sim inputs.
+    * Computes the static score component from the three immutable sim inputs.
      * <p>
      * Score decomposition (PnW formula):
      * <pre>
-     *   totalScore = computeNonInfraScoreBase(cities, numProjects, researchBits)
+    *   totalScore = computeStaticScoreComponent(cities, numProjects, researchBits)
      *              + totalInfra / 40.0          // changes as infra is damaged
      *              + sum(unit.getScore(count))   // changes as units are bought / killed
      * </pre>
-     * Callers (planners) should call this once at nation-init time, after applying any overrides to
-     * cities/projects/research, and pass the result as {@code nonInfraScoreBase} to {@code SimNation}.
-     * Score then recomputes cheaply inside SimNation whenever infra or unit counts change.
+    * Sim/planner owners cache this immutable-state component once after cities, projects, and research are fixed.
+    * Public call edges should not expose it as an override knob separate from those inputs. Score then recomputes
+    * cheaply inside sim state whenever infra or unit counts change.
      *
      * @param cities       number of cities (>= 1)
      * @param numProjects  number of projects owned
      * @param researchBits bitmask of research levels (see {@link Research})
      */
-    public static double computeNonInfraScoreBase(int cities, int numProjects, int researchBits) {
+    public static double computeStaticScoreComponent(int cities, int numProjects, int researchBits) {
         double base = 10d;
         if (researchBits > 0) {
             for (Research rs : Research.values) {
@@ -1855,7 +1855,7 @@ public final class PW {
         if (cities == null)
             cities = nation.getCities();
 
-        double base = computeNonInfraScoreBase(cities, projects, researchBits);
+        double base = computeStaticScoreComponent(cities, projects, researchBits);
         base += infra / 40d;
         for (MilitaryUnit unit : MilitaryUnit.values) {
             if (unit == MilitaryUnit.INFRASTRUCTURE)

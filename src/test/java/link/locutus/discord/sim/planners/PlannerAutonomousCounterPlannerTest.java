@@ -168,9 +168,7 @@ class PlannerAutonomousCounterPlannerTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(1_000.0)
                 .cities(10)
-                .nonInfraScoreBase(1_000.0)
                 .cityInfra(uniformInfra(10, 1_000.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -184,3 +182,4 @@ class PlannerAutonomousCounterPlannerTest {
         return values;
     }
 }
+

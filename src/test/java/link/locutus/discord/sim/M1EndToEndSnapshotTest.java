@@ -62,8 +62,8 @@ class M1EndToEndSnapshotTest {
         );
 
         // Add two nations
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4, (byte) 0));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4, (byte) 0));
+        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4, (byte) 0));
+        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4, (byte) 0));
 
         SimNation attacker = world.requireNation(1);
         SimNation defender = world.requireNation(2);
@@ -137,7 +137,7 @@ class M1EndToEndSnapshotTest {
         assertEquals(2, world.currentTurn(), "Should be on turn 2 after two stepTurnStart calls");
 
         // Test 13: Multiple nations' activity
-        SimNation nation3 = new SimNation(3, WarPolicy.FORTRESS, 10000.0, 50.0, 4, (byte) 0);
+        SimNation nation3 = new SimNation(3, WarPolicy.FORTRESS, 10000.0, 4, (byte) 0);
         world.addNation(nation3);
         assertEquals(1.0, world.effectiveActivityAt(nation3), "New nation should have baseline activity");
 
@@ -207,7 +207,7 @@ class M1EndToEndSnapshotTest {
     @Test
     void resetTimeProviderControlsClockState() {
         byte resetHour = 12;
-        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 50.0, 4, resetHour);
+        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 4, resetHour);
 
         ResetTimeProvider provider = ResetTimeProvider.FROM_NATION;
         byte returnedHour = provider.resetHourUtc(nation, 0);
@@ -261,3 +261,4 @@ class M1EndToEndSnapshotTest {
         assertEquals(SimSide.ATTACKER, worldWithTracking.requireWar(1001).blockadeOwner());
     }
 }
+

@@ -465,9 +465,9 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionDerivesScoreFromMutableStateAndCurrentRebuyCapacity() {
-        DBNationSnapshot attackerNoBuysUsed = noCurrentBuysScoreNation(1, 1, 100.0, 400.0);
-        DBNationSnapshot attackerNoRebuyLeft = exhaustedBuysScoreNation(1, 1, 100.0, 400.0);
-        DBNationSnapshot defender = exhaustedBuysScoreNation(101, 2, 50.0, 400.0);
+                DBNationSnapshot attackerNoBuysUsed = noCurrentBuysNationWithTotalScore(1, 1, 100.0);
+                DBNationSnapshot attackerNoRebuyLeft = exhaustedBuysNationWithTotalScore(1, 1, 100.0);
+                DBNationSnapshot defender = exhaustedBuysNationWithTotalScore(101, 2, 50.0);
         CandidateEdgeTable edges = new CandidateEdgeTable();
 
         double noBuysUsedScore = emptyProjectionScore(List.of(attackerNoBuysUsed), List.of(defender), edges, 1);
@@ -518,12 +518,12 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionLimitsProjectedBuysWhenResourcesAreKnownAndInsufficient() {
-        DBNationSnapshot unknownResourceAttacker = noCurrentBuysScoreNation(1, 1, 100.0, 400.0);
-        DBNationSnapshot constrainedAttacker = noCurrentBuysScoreNation(1, 1, 100.0, 400.0)
+        DBNationSnapshot unknownResourceAttacker = noCurrentBuysNationWithTotalScore(1, 1, 100.0);
+        DBNationSnapshot constrainedAttacker = noCurrentBuysNationWithTotalScore(1, 1, 100.0)
                 .toBuilder()
                 .resource(ResourceType.CREDITS, 1.0)
                 .build();
-        DBNationSnapshot defender = exhaustedBuysScoreNation(101, 2, 50.0, 400.0);
+        DBNationSnapshot defender = exhaustedBuysNationWithTotalScore(101, 2, 50.0);
         CandidateEdgeTable edges = new CandidateEdgeTable();
 
         double unknownResourceScore = emptyProjectionScore(List.of(unknownResourceAttacker), List.of(defender), edges, 1);
@@ -537,7 +537,7 @@ class LongHorizonAssignmentOptimizerTest {
     @Test
     void counterOpportunityCostFeedsBackIntoOpeningAssignment() {
         List<DBNationSnapshot> vulnerableAttackers = List.of(
-                nation(1, 1, 80).toBuilder().maxOff(2).build(),
+                withTotalScore(nation(1, 1, 80), 1_600.0).toBuilder().maxOff(2).build(),
                 nation(2, 1, 900)
         );
         List<DBNationSnapshot> passiveDefenders = List.of(
@@ -833,13 +833,13 @@ class LongHorizonAssignmentOptimizerTest {
         // leave the factor at 1.0. This locks in that the optimizer's edge rebuild is keyed off
         // real projected nation state, not a fixed scalar penalty.
         List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build()
+                withTotalScore(nation(1, 1, 900), 2_000.0).toBuilder().maxOff(1).build()
         );
         List<DBNationSnapshot> counterCapableDefenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(1).build()
         );
         List<DBNationSnapshot> passiveDefenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
@@ -1272,14 +1272,12 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionAddsReverseCounterWarsFromProjectedState() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> counterCapableDefenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(1).build()
         );
         List<DBNationSnapshot> passiveDefenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
@@ -1306,12 +1304,9 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionAgesBeigeBeforeProjectedCounterSelection() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 nation(101, 2, 900).toBuilder()
-                        .nonInfraScoreBase(2_000.0)
                         .maxOff(1)
                         .beigeTurns(1)
                         .build()
@@ -1333,12 +1328,9 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionDeclaresCountersWhenProjectedStateAllowsThem() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 nation(102, 2, 900).toBuilder()
-                        .nonInfraScoreBase(2_000.0)
                         .maxOff(1)
                         .beigeTurns(18)
                         .build()
@@ -1360,12 +1352,9 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionUsesPerSideCounterScoreThreshold() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 nation(102, 2, 900).toBuilder()
-                        .nonInfraScoreBase(2_000.0)
                         .maxOff(1)
                         .build()
         );
@@ -1410,12 +1399,11 @@ class LongHorizonAssignmentOptimizerTest {
     @Test
     void forwardProjectionDefenderLaterDeclarationsCanTargetUnassignedAttackers() {
         List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build(),
-                nation(2, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
+                withTotalScore(nation(1, 1, 900), 2_000.0),
+                withTotalScore(nation(2, 1, 900), 2_000.0)
         );
         List<DBNationSnapshot> defenders = List.of(
                 nation(101, 2, 900).toBuilder()
-                        .nonInfraScoreBase(2_000.0)
                         .maxOff(1)
                         .build()
         );
@@ -1442,11 +1430,9 @@ class LongHorizonAssignmentOptimizerTest {
         void forwardProjectionBlocksSamePairRedeclareDuringPostVictoryDelay() {
                 // Single attacker with one viable target. Projection should not reuse the same pair before
                 // the post-victory reopen delay. A later-profile guardrail covers the resumed redeclare path.
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
@@ -1473,11 +1459,11 @@ class LongHorizonAssignmentOptimizerTest {
     @Test
     void forwardProjectionCanUseFreeAttackerSlotBeforeTurnSixty() {
         List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().maxOff(2).nonInfraScoreBase(2_000.0).build()
+                withTotalScore(nation(1, 1, 900), 2_000.0).toBuilder().maxOff(2).build()
         );
         List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build(),
-                nation(102, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build(),
+                withTotalScore(nation(102, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
         );
         CompiledScenario scenario = compile(attackers, defenders, Map.of());
         CandidateEdgeTable edges = new CandidateEdgeTable();
@@ -1522,11 +1508,9 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionUsesPerSideRedeclareScoreThreshold() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(0).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
@@ -1568,13 +1552,11 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionRespectsPerTurnCounterCap() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build(),
-                nation(102, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build(),
-                nation(103, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(1).build(),
+                withTotalScore(nation(102, 2, 900), 2_000.0).toBuilder().maxOff(1).build(),
+                withTotalScore(nation(103, 2, 900), 2_000.0).toBuilder().maxOff(1).build()
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
@@ -1616,12 +1598,10 @@ class LongHorizonAssignmentOptimizerTest {
 
     @Test
     void forwardProjectionUsesCounterActivityThresholdForEligibility() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 900).toBuilder().nonInfraScoreBase(2_000.0).build()
-        );
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build(),
-                nation(102, 2, 900).toBuilder().nonInfraScoreBase(2_000.0).maxOff(1).build()
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(1).build(),
+                withTotalScore(nation(102, 2, 900), 2_000.0).toBuilder().maxOff(1).build()
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
@@ -1869,14 +1849,12 @@ class LongHorizonAssignmentOptimizerTest {
     void forwardProjectionSuppressesCountersAfterProjectedDamageRemovesMeaningfulValue() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 2_500).toBuilder()
-                        .nonInfraScoreBase(3_000.0)
                         .unit(MilitaryUnit.SOLDIER, 600_000)
                         .unit(MilitaryUnit.TANK, 80_000)
                         .build()
         );
         List<DBNationSnapshot> defenders = List.of(
                 nation(101, 2, 25).toBuilder()
-                        .nonInfraScoreBase(3_000.0)
                         .unit(MilitaryUnit.SOLDIER, 0)
                         .unit(MilitaryUnit.TANK, 0)
                         .maxOff(1)
@@ -2311,9 +2289,7 @@ class LongHorizonAssignmentOptimizerTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(1_000.0)
                 .cities(10)
-                .nonInfraScoreBase(1_000.0)
                 .cityInfra(uniformInfra(10, 1_000.0))
                 .maxOff(1)
                 .currentOffensiveWars(0)
@@ -2322,6 +2298,15 @@ class LongHorizonAssignmentOptimizerTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
     }
+
+        private static DBNationSnapshot withTotalScore(DBNationSnapshot snapshot, double totalScore) {
+                double staticScore = snapshot.staticScoreComponent();
+                int cities = Math.max(1, snapshot.cityInfraCount());
+                double totalInfra = Math.max(0d, (totalScore - staticScore) * 40d);
+                return snapshot.toBuilder()
+                                .cityInfra(uniformInfra(cities, totalInfra / cities))
+                                .build();
+        }
 
     private static DBNationSnapshot strategicNation(
             int nationId,
@@ -2334,9 +2319,7 @@ class LongHorizonAssignmentOptimizerTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(900.0d + cities * 45.0d + offset)
                 .cities(cities)
-                .nonInfraScoreBase(400.0d + cities * 35.0d)
                 .cityInfra(uniformInfra(cities, 1_800.0d + (offset % 4) * 150.0d))
                 .maxOff(freeOffSlots)
                 .unit(MilitaryUnit.SOLDIER, scaled(250_000 + offset * 2_000, militaryMultiplier))
@@ -2365,29 +2348,20 @@ class LongHorizonAssignmentOptimizerTest {
         return builder.build();
     }
 
-        private static DBNationSnapshot noCurrentBuysScoreNation(int nationId, int teamId, double nonInfraScoreBase, double cityInfra) {
-                return DBNationSnapshot.synthetic(nationId)
+        private static DBNationSnapshot noCurrentBuysNationWithTotalScore(int nationId, int teamId, double totalScore) {
+                DBNationSnapshot baseline = DBNationSnapshot.synthetic(nationId)
                                 .teamId(teamId)
                                 .allianceId(teamId)
-                                .score(999_999.0)
                                 .cities(1)
-                                .nonInfraScoreBase(nonInfraScoreBase)
-                                .cityInfra(new double[]{cityInfra})
+                                .cityInfra(new double[]{0d})
                                 .maxOff(1)
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .build();
+                return withTotalScore(baseline, totalScore);
         }
 
-        private static DBNationSnapshot exhaustedBuysScoreNation(int nationId, int teamId, double nonInfraScoreBase, double cityInfra) {
-                DBNationSnapshot.Builder builder = DBNationSnapshot.synthetic(nationId)
-                                .teamId(teamId)
-                                .allianceId(teamId)
-                                .score(999_999.0)
-                                .cities(1)
-                                .nonInfraScoreBase(nonInfraScoreBase)
-                                .cityInfra(new double[]{cityInfra})
-                                .maxOff(1)
-                                .warPolicy(WarPolicy.ATTRITION);
+        private static DBNationSnapshot exhaustedBuysNationWithTotalScore(int nationId, int teamId, double totalScore) {
+                DBNationSnapshot.Builder builder = noCurrentBuysNationWithTotalScore(nationId, teamId, totalScore).toBuilder();
                 for (MilitaryUnit unit : List.of(MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP)) {
                         builder.unitBoughtToday(unit, 1_000_000);
                 }
@@ -2400,3 +2374,4 @@ class LongHorizonAssignmentOptimizerTest {
         return values;
     }
 }
+

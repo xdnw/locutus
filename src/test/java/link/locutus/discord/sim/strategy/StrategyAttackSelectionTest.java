@@ -114,7 +114,6 @@ class StrategyAttackSelectionTest {
                 nationId,
                 WarPolicy.ATTRITION,
                 ResourceType.getBuffer(),
-                100d,
                 new double[]{1_000d},
                 5,
                 (byte) 0,

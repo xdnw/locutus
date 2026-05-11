@@ -2,6 +2,9 @@ package link.locutus.discord.sim.planners;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,6 +64,37 @@ class StrategicLaneComparisonHarnessTest {
         assertTrue(lines[2].contains(",BvsA,"));
     }
 
+    @Test
+    void headToHeadSamePolicyAvsBMatchesLaneHarnessScorecard() {
+        String laneCsv = StrategicLaneComparisonHarness.renderCsv(
+                72,
+                1,
+                8,
+                StrategicLaneComparisonHarness.ProjectionPolicyPath.DEFAULT,
+                "parity",
+                "openingPrimitive"
+        );
+        String headToHeadCsv = HeadToHeadComparisonHarness.renderCsv(
+                72,
+                1,
+                8,
+                HeadToHeadComparisonHarness.PolicySpec.parse("legacy:openingPrimitive:NET_DAMAGE", "A"),
+                HeadToHeadComparisonHarness.PolicySpec.parse("legacy:openingPrimitive:NET_DAMAGE", "B"),
+                "parity"
+        );
+
+        Map<String, String> lane = firstDataRow(laneCsv);
+        Map<String, String> headToHead = firstDataRow(headToHeadCsv);
+
+        assertEquals(lane.get("assignments"), headToHead.get("attackerAssignmentCount"));
+        assertEquals(lane.get("idleAttackersFreeSlot"), headToHead.get("attackerIdleViable"));
+        assertEquals(lane.get("strongDefenderCoveragePct"), headToHead.get("attackerStrongDefenderCoveragePct"));
+        assertEquals(lane.get("terminalObjective"), headToHead.get("attackerTerminalObjective"));
+        assertEquals(lane.get("countersDeclared"), headToHead.get("countersDeclared"));
+        assertEquals(lane.get("redeclaresDeclared"), headToHead.get("redeclaresDeclared"));
+        assertEquals(lane.get("countersThrottled"), headToHead.get("countersThrottled"));
+    }
+
     private static String normalizeDeterministicColumns(String csv) {
         String[] lines = csv.split("\\R");
         StringBuilder normalized = new StringBuilder();
@@ -74,5 +108,16 @@ class StrategicLaneComparisonHarnessTest {
                     .append(System.lineSeparator());
         }
         return normalized.toString();
+    }
+
+    private static Map<String, String> firstDataRow(String csv) {
+        String[] lines = csv.split("\\R");
+        String[] headers = lines[0].split(",", -1);
+        String[] values = lines[1].split(",", -1);
+        Map<String, String> row = new HashMap<>();
+        for (int index = 0; index < headers.length; index++) {
+            row.put(headers[index], index < values.length ? values[index] : "");
+        }
+        return row;
     }
 }
