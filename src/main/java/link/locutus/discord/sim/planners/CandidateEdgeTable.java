@@ -40,6 +40,7 @@ final class CandidateEdgeTable {
     private CandidateEdgeStorage edges;
     private int[] cachedPairKeyAttackerNationIds;
     private int[] cachedPairKeyDefenderNationIds;
+    private long[] cachedEdgePairKeys;
     private Long2IntOpenHashMap cachedEdgeIndexByPair;
     private int[] cachedAttackerEdgeOffsets;
     private int[] cachedAttackerEdgeIndexes;
@@ -147,6 +148,12 @@ final class CandidateEdgeTable {
         CandidateEdgeTable copy = new CandidateEdgeTable(Math.max(INITIAL_CAPACITY, source.edgeCount));
         copy.edgeCount = source.edgeCount;
         copy.edges = source.edges.deepCopy();
+        copy.cachedPairKeyAttackerNationIds = source.cachedPairKeyAttackerNationIds;
+        copy.cachedPairKeyDefenderNationIds = source.cachedPairKeyDefenderNationIds;
+        copy.cachedEdgePairKeys = source.cachedEdgePairKeys;
+        copy.cachedEdgeIndexByPair = source.cachedEdgeIndexByPair;
+        copy.cachedAttackerEdgeOffsets = source.cachedAttackerEdgeOffsets;
+        copy.cachedAttackerEdgeIndexes = source.cachedAttackerEdgeIndexes;
         return copy;
     }
 
@@ -164,22 +171,36 @@ final class CandidateEdgeTable {
         return edges.defenderIndexAt(edge);
     }
 
+    long[] edgePairKeys(int[] attackerNationIds, int[] defenderNationIds) {
+        if (cachedEdgePairKeys != null
+                && cachedPairKeyAttackerNationIds == attackerNationIds
+                && cachedPairKeyDefenderNationIds == defenderNationIds) {
+            return cachedEdgePairKeys;
+        }
+        long[] edgePairKeys = new long[edgeCount];
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            edgePairKeys[edgeIndex] = pairKey(
+                    attackerNationIds[attackerIndex(edgeIndex)],
+                    defenderNationIds[defenderIndex(edgeIndex)]
+            );
+        }
+        cachedPairKeyAttackerNationIds = attackerNationIds;
+        cachedPairKeyDefenderNationIds = defenderNationIds;
+        cachedEdgePairKeys = edgePairKeys;
+        return edgePairKeys;
+    }
+
     Long2IntOpenHashMap edgeIndexByPair(int[] attackerNationIds, int[] defenderNationIds) {
         if (cachedEdgeIndexByPair != null
                 && cachedPairKeyAttackerNationIds == attackerNationIds
                 && cachedPairKeyDefenderNationIds == defenderNationIds) {
             return cachedEdgeIndexByPair;
         }
+        long[] edgePairKeys = edgePairKeys(attackerNationIds, defenderNationIds);
         Long2IntOpenHashMap edgeIndexByPair = new Long2IntOpenHashMap(Math.max(16, edgeCount * 2));
         edgeIndexByPair.defaultReturnValue(-1);
         for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
-            edgeIndexByPair.put(
-                    pairKey(
-                            attackerNationIds[attackerIndex(edgeIndex)],
-                            defenderNationIds[defenderIndex(edgeIndex)]
-                    ),
-                    edgeIndex
-            );
+            edgeIndexByPair.put(edgePairKeys[edgeIndex], edgeIndex);
         }
         cachedPairKeyAttackerNationIds = attackerNationIds;
         cachedPairKeyDefenderNationIds = defenderNationIds;
@@ -271,6 +292,7 @@ final class CandidateEdgeTable {
     private void invalidateLookupCaches() {
         cachedPairKeyAttackerNationIds = null;
         cachedPairKeyDefenderNationIds = null;
+        cachedEdgePairKeys = null;
         cachedEdgeIndexByPair = null;
         cachedAttackerEdgeOffsets = null;
         cachedAttackerEdgeIndexes = null;

@@ -803,6 +803,11 @@ class LongHorizonAssignmentOptimizerTest {
                                 false,
                                 SidePlannerSettings.legacyActing()
                 );
+                LongHorizonMarginalFlowSolver.StaticSolveInputs staticSolveInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
+                                attackerNationIds,
+                                defenderNationIds,
+                                List.of()
+                );
 
                 List<LongHorizonAssignmentOptimizer.Candidate> reliefCandidates = LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
                                 edges,
@@ -817,7 +822,8 @@ class LongHorizonAssignmentOptimizerTest {
                                 seed,
                                 projection,
                                 new int[]{5, 5, 0},
-                                SidePlannerSettings.legacyActing()
+                                SidePlannerSettings.legacyActing(),
+                                staticSolveInputs
                 );
 
                 assertTrue(
@@ -1215,6 +1221,74 @@ class LongHorizonAssignmentOptimizerTest {
         assertTrue(solveStats.counters().getOrDefault("boundedProjectedAudits", 0L)
                         > solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
                 "The extra diversity hedge should increase total projected audits without widening the relief budget itself");
+    }
+
+    @Test
+    void marginalFlowStaticInputsReuseAcrossEquivalentEdgeCopies() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900),
+                nation(2, 1, 880)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900),
+                nation(102, 2, 880)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = commitmentScenarioEdges();
+        CandidateEdgeTable copiedEdges = CandidateEdgeTable.copyOf(edges);
+        int[] attackerCaps = {2, 1};
+        int[] defenderCaps = {1, 1};
+        int[] attackerStrengthRanks = {0, 1};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102};
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                copiedEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy()
+        );
+
+        LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+        LongHorizonMarginalFlowSolver.Result withStaticInputs = LongHorizonMarginalFlowSolver.solve(
+                copiedEdges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs
+        );
+        LongHorizonMarginalFlowSolver.Result freshInputs = LongHorizonMarginalFlowSolver.solve(
+                copiedEdges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+
+        assertEquals(freshInputs.assignment(), withStaticInputs.assignment(),
+                "Equivalent edge-table copies should solve identically when the optimizer reuses immutable marginal-flow indexes");
+        assertArrayEquals(freshInputs.edgeAssigned(), withStaticInputs.edgeAssigned());
+        assertArrayEquals(freshInputs.attackerCounts(), withStaticInputs.attackerCounts());
+        assertArrayEquals(freshInputs.defenderCounts(), withStaticInputs.defenderCounts());
     }
 
     @Test

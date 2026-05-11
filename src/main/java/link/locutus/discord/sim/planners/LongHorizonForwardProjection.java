@@ -2,6 +2,7 @@ package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -1287,13 +1288,13 @@ final class LongHorizonForwardProjection {
         );
         int declarations = 0;
         for (Map.Entry<Integer, List<Integer>> entry : plan.assignment().entrySet()) {
-            Integer declarerNationIndex = inputs.declarerOverallIndexesByNationId().get(entry.getKey());
-            if (declarerNationIndex == null) {
+            int declarerNationIndex = inputs.declarerOverallIndexesByNationId().get(entry.getKey());
+            if (declarerNationIndex < 0) {
                 continue;
             }
             for (int targetNationId : entry.getValue()) {
-                Integer targetNationIndex = inputs.targetOverallIndexesByNationId().get(targetNationId);
-                if (targetNationIndex == null) {
+                int targetNationIndex = inputs.targetOverallIndexesByNationId().get(targetNationId);
+                if (targetNationIndex < 0) {
                     continue;
                 }
                 warState.addWar(
@@ -1341,17 +1342,17 @@ final class LongHorizonForwardProjection {
         int selectedDeclarationCount = 0;
         int selectionOrder = 0;
         for (Map.Entry<Integer, List<Integer>> entry : plan.assignment().entrySet()) {
-            Integer declarerNationIndex = inputs.declarerOverallIndexesByNationId().get(entry.getKey());
-            if (declarerNationIndex == null) {
+            int declarerNationIndex = inputs.declarerOverallIndexesByNationId().get(entry.getKey());
+            if (declarerNationIndex < 0) {
                 continue;
             }
             for (int targetNationId : entry.getValue()) {
-                Integer targetNationIndex = inputs.targetOverallIndexesByNationId().get(targetNationId);
-                if (targetNationIndex == null) {
+                int targetNationIndex = inputs.targetOverallIndexesByNationId().get(targetNationId);
+                if (targetNationIndex < 0) {
                     continue;
                 }
-                Integer edgeIndex = inputs.edgeIndexByPair().get(projectedPairKey(entry.getKey(), targetNationId));
-                if (edgeIndex == null) {
+                int edgeIndex = inputs.edgeIndexByPair().get(projectedPairKey(entry.getKey(), targetNationId));
+                if (edgeIndex < 0) {
                     continue;
                 }
                 selectedDeclarationCount++;
@@ -1440,21 +1441,24 @@ final class LongHorizonForwardProjection {
             int[] declarerOverallIndexes,
             int[] targetOverallIndexes
     ) {
-        Map<Integer, Integer> declarerOverallIndexesByNationId = new HashMap<>();
+        Int2IntOpenHashMap declarerOverallIndexesByNationId = new Int2IntOpenHashMap(Math.max(16, projectedScenario.attackerCount() * 2));
+        declarerOverallIndexesByNationId.defaultReturnValue(-1);
         for (int attackerIndex = 0; attackerIndex < projectedScenario.attackerCount(); attackerIndex++) {
             declarerOverallIndexesByNationId.put(
                     projectedScenario.attackerNationId(attackerIndex),
                     declarerOverallIndexes[attackerIndex]
             );
         }
-        Map<Integer, Integer> targetOverallIndexesByNationId = new HashMap<>();
+        Int2IntOpenHashMap targetOverallIndexesByNationId = new Int2IntOpenHashMap(Math.max(16, projectedScenario.defenderCount() * 2));
+        targetOverallIndexesByNationId.defaultReturnValue(-1);
         for (int defenderIndex = 0; defenderIndex < projectedScenario.defenderCount(); defenderIndex++) {
             targetOverallIndexesByNationId.put(
                     projectedScenario.defenderNationId(defenderIndex),
                     targetOverallIndexes[defenderIndex]
             );
         }
-        Map<Long, Integer> edgeIndexByPair = new HashMap<>();
+        Long2IntOpenHashMap edgeIndexByPair = new Long2IntOpenHashMap(Math.max(16, projectedEdges.edgeCount() * 2));
+        edgeIndexByPair.defaultReturnValue(-1);
         for (int edgeIndex = 0; edgeIndex < projectedEdges.edgeCount(); edgeIndex++) {
             edgeIndexByPair.put(
                     projectedPairKey(
@@ -4399,9 +4403,9 @@ final class LongHorizonForwardProjection {
             private record ProjectedLaterDeclarationInputs(
                 CompiledScenario scenario,
                 CandidateEdgeTable edges,
-                Map<Integer, Integer> declarerOverallIndexesByNationId,
-                    Map<Integer, Integer> targetOverallIndexesByNationId,
-                    Map<Long, Integer> edgeIndexByPair
+                Int2IntOpenHashMap declarerOverallIndexesByNationId,
+                    Int2IntOpenHashMap targetOverallIndexesByNationId,
+                    Long2IntOpenHashMap edgeIndexByPair
             ) {
             }
 

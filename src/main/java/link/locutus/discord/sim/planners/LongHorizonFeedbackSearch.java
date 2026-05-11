@@ -34,8 +34,9 @@ final class LongHorizonFeedbackSearch {
             int horizonTurns,
             LongHorizonAssignmentOptimizer.Candidate seed,
             LongHorizonControlProjection terminalProjection,
-                int[] realizedCounters,
-                SidePlannerSettings attackerPlannerSettings
+            int[] realizedCounters,
+            SidePlannerSettings attackerPlannerSettings,
+            LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs
     ) {
         int[] fixedCounts = fixedAttackerCounts(fixedEdges, attackerNationIds);
         IntArrayList reliefOrder = reliefOrder(seed.attackerCounts(), fixedCounts, terminalProjection, realizedCounters);
@@ -69,15 +70,16 @@ final class LongHorizonFeedbackSearch {
                 );
                 LongHorizonMarginalFlowSolver.Result reliefResult = LongHorizonMarginalFlowSolver.solve(
                         baseEdges,
-                    reliefProjection,
-                    scenario.attackerCount(),
-                    scenario.defenderCount(),
+                        reliefProjection,
+                        scenario.attackerCount(),
+                        scenario.defenderCount(),
                         adjustedCaps,
                         defenderCaps,
                         attackerStrengthRanks,
                         attackerNationIds,
                         defenderNationIds,
-                    fixedEdges
+                        fixedEdges,
+                        marginalFlowStaticInputs
                 );
                 double reliefScore = reliefProjection.assignmentScoreDense(
                     reliefResult.edgeAssigned(),
@@ -135,8 +137,9 @@ final class LongHorizonFeedbackSearch {
             int horizonTurns,
             LongHorizonAssignmentOptimizer.Candidate seed,
             LongHorizonControlProjection seedProjection,
-                LongHorizonCandidateEvaluator evaluator,
-                SidePlannerSettings attackerPlannerSettings
+            LongHorizonCandidateEvaluator evaluator,
+            SidePlannerSettings attackerPlannerSettings,
+            LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs
     ) {
         LongHorizonForwardProjection.ProjectedFeedbackEvaluation currentFeedback = evaluator.feedbackEvaluation(seed, seedProjection);
         int[] currentRealized = currentFeedback.projectedEvaluation().realizedCounterIncidence().clone();
@@ -192,7 +195,8 @@ final class LongHorizonFeedbackSearch {
                     attackerStrengthRanks,
                     attackerNationIds,
                     defenderNationIds,
-                    fixedEdges
+                        fixedEdges,
+                        marginalFlowStaticInputs
             );
                 double iterationScore = iterationProjection.assignmentScoreDense(
                     iterationResult.edgeAssigned(),
