@@ -14,6 +14,7 @@ import link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -678,20 +679,21 @@ public final class PlannerReplayProjector {
         if (snapshots.isEmpty()) {
             return List.of();
         }
-        return snapshots.stream()
-                .map(DBNationSnapshot::nationId)
-                .sorted()
-                .toList();
+        int[] nationIds = participantIdsAscending(snapshots);
+        return nationIds(nationIds);
     }
 
     private static List<Integer> nationIds(int[] nationIds) {
         if (nationIds.length == 0) {
             return List.of();
         }
-        return Arrays.stream(nationIds)
-                .sorted()
-                .boxed()
-                .toList();
+        int[] sortedNationIds = Arrays.copyOf(nationIds, nationIds.length);
+        Arrays.sort(sortedNationIds);
+        ArrayList<Integer> ids = new ArrayList<>(sortedNationIds.length);
+        for (int nationId : sortedNationIds) {
+            ids.add(nationId);
+        }
+        return Collections.unmodifiableList(ids);
     }
 
     private static List<DBNationSnapshot> snapshotsForNationIds(Collection<DBNationSnapshot> snapshots, int[] nationIds) {
@@ -702,10 +704,14 @@ public final class PlannerReplayProjector {
         for (int nationId : nationIds) {
             nationIdSet.add(nationId);
         }
-        return snapshots.stream()
-                .filter(snapshot -> nationIdSet.contains(snapshot.nationId()))
-                .sorted(Comparator.comparingInt(DBNationSnapshot::nationId))
-                .toList();
+        ArrayList<DBNationSnapshot> filtered = new ArrayList<>(Math.min(nationIds.length, snapshots.size()));
+        for (DBNationSnapshot snapshot : snapshots) {
+            if (nationIdSet.contains(snapshot.nationId())) {
+                filtered.add(snapshot);
+            }
+        }
+        filtered.sort(Comparator.comparingInt(DBNationSnapshot::nationId));
+        return Collections.unmodifiableList(filtered);
     }
 
     private static int[] defenderNationIds(int[] participantIds, int[] attackerNationIds) {
@@ -713,14 +719,26 @@ public final class PlannerReplayProjector {
         for (int attackerNationId : attackerNationIds) {
             attackerIdSet.add(attackerNationId);
         }
-        return Arrays.stream(participantIds)
-                .filter(participantId -> !attackerIdSet.contains(participantId))
-                .sorted()
-                .toArray();
+        int[] defenderNationIds = new int[participantIds.length];
+        int count = 0;
+        for (int participantId : participantIds) {
+            if (!attackerIdSet.contains(participantId)) {
+                defenderNationIds[count++] = participantId;
+            }
+        }
+        int[] trimmed = Arrays.copyOf(defenderNationIds, count);
+        Arrays.sort(trimmed);
+        return trimmed;
     }
 
     private static int[] participantIdsAscending(Collection<DBNationSnapshot> snapshots) {
-        return snapshots.stream().mapToInt(DBNationSnapshot::nationId).sorted().toArray();
+        int[] participantIds = new int[snapshots.size()];
+        int index = 0;
+        for (DBNationSnapshot snapshot : snapshots) {
+            participantIds[index++] = snapshot.nationId();
+        }
+        Arrays.sort(participantIds);
+        return participantIds;
     }
 
     private static boolean isActive(int statusOrdinal) {
@@ -820,21 +838,33 @@ public final class PlannerReplayProjector {
         private static final Comparator<WarSnapshot> PAIR_ORDER = Comparator
                 .comparingInt(WarSnapshot::declarerNationId)
                 .thenComparingInt(WarSnapshot::targetNationId);
+        private static final Comparator<ChangedWarLane> CHANGED_WAR_ORDER = Comparator.comparingInt(ChangedWarLane::warIndex);
+        private static final Comparator<DeclaredWarLane> DECLARED_WAR_ORDER = Comparator
+            .comparingInt(DeclaredWarLane::declarerNationId)
+            .thenComparingInt(DeclaredWarLane::targetNationId);
+        private static final Comparator<ConcludedWarLane> CONCLUDED_WAR_ORDER = Comparator.comparingInt(ConcludedWarLane::warIndex);
+        private static final int MISSING_WAR_STATE = Integer.MIN_VALUE;
 
-        private final Map<Long, WarSnapshot> previousWarsByPair;
-        private final Map<Long, Integer> activeWarIndexByPair;
+        private final Long2IntOpenHashMap previousCombatStateByPair;
+        private final Long2IntOpenHashMap previousFlagsByPair;
+        private final Long2IntOpenHashMap activeWarIndexByPair;
         private final Int2IntOpenHashMap participantIndexByNationId;
+        private final ArrayList<ChangedWarLane> changedScratch = new ArrayList<>();
+        private final ArrayList<DeclaredWarLane> declaredScratch = new ArrayList<>();
+        private final ArrayList<ConcludedWarLane> concludedScratch = new ArrayList<>();
         private final int initialWarCount;
         private int nextWarIndex;
 
         private WarTableTracker(
-                Map<Long, WarSnapshot> previousWarsByPair,
-                Map<Long, Integer> activeWarIndexByPair,
+            Long2IntOpenHashMap previousCombatStateByPair,
+            Long2IntOpenHashMap previousFlagsByPair,
+            Long2IntOpenHashMap activeWarIndexByPair,
                 Int2IntOpenHashMap participantIndexByNationId,
                 int initialWarCount,
                 int nextWarIndex
         ) {
-            this.previousWarsByPair = previousWarsByPair;
+            this.previousCombatStateByPair = previousCombatStateByPair;
+            this.previousFlagsByPair = previousFlagsByPair;
             this.activeWarIndexByPair = activeWarIndexByPair;
             this.participantIndexByNationId = participantIndexByNationId;
             this.initialWarCount = initialWarCount;
@@ -846,8 +876,12 @@ public final class PlannerReplayProjector {
                 int[] participantIds,
                 int[] existingWarPairs
         ) {
-            Map<Long, WarSnapshot> previousWarsByPair = new Long2ObjectOpenHashMap<>();
-            Map<Long, Integer> activeWarIndexByPair = new Long2IntOpenHashMap();
+            Long2IntOpenHashMap previousCombatStateByPair = new Long2IntOpenHashMap();
+            previousCombatStateByPair.defaultReturnValue(MISSING_WAR_STATE);
+            Long2IntOpenHashMap previousFlagsByPair = new Long2IntOpenHashMap();
+            previousFlagsByPair.defaultReturnValue(MISSING_WAR_STATE);
+            Long2IntOpenHashMap activeWarIndexByPair = new Long2IntOpenHashMap();
+            activeWarIndexByPair.defaultReturnValue(-1);
             Int2IntOpenHashMap participantIndexByNationId = new Int2IntOpenHashMap(Math.max(16, participantIds.length * 2));
             participantIndexByNationId.defaultReturnValue(-1);
             for (int index = 0; index < participantIds.length; index++) {
@@ -877,7 +911,8 @@ public final class PlannerReplayProjector {
                         attackerFortified,
                         defenderFortified
                 );
-                previousWarsByPair.put(pairKey, snapshot);
+                previousCombatStateByPair.put(pairKey, snapshot.packedCombatState());
+                previousFlagsByPair.put(pairKey, snapshot.packedFlags());
                 if (snapshot.isActive()) {
                     activeWars.add(snapshot);
                 }
@@ -901,7 +936,8 @@ public final class PlannerReplayProjector {
             }
 
             return new WarTableTracker(
-                    previousWarsByPair,
+                    previousCombatStateByPair,
+                    previousFlagsByPair,
                     activeWarIndexByPair,
                     participantIndexByNationId,
                     nextWarIndex,
@@ -914,98 +950,100 @@ public final class PlannerReplayProjector {
         }
 
         private WarDelta captureTurn(PlannerLocalConflict conflict, PlannerReplayTurnMetrics metrics) {
-            List<ChangedWarLane> changed = new ArrayList<>();
-            List<WarSnapshot> declared = new ArrayList<>();
-            List<ConcludedWarLane> concluded = new ArrayList<>();
+            changedScratch.clear();
+            declaredScratch.clear();
+            concludedScratch.clear();
 
             conflict.forEachReplayWar((pairKey, declarerNationId, targetNationId, warTypeOrdinal, startTurn,
                                       statusOrdinal, attackerMaps, defenderMaps, attackerResistance,
                                       defenderResistance, groundSuperiorityOwnerOrdinal,
                                       airSuperiorityOwnerOrdinal, blockadeOwnerOrdinal,
                                       attackerFortified, defenderFortified) -> {
-                WarSnapshot current = new WarSnapshot(
-                        pairKey,
-                        declarerNationId,
-                        targetNationId,
+                int packedCombatState = packCombatState(attackerMaps, defenderMaps, attackerResistance, defenderResistance);
+                int packedFlags = packFlags(
                         warTypeOrdinal,
-                        startTurn,
                         statusOrdinal,
-                        attackerMaps,
-                        defenderMaps,
-                        attackerResistance,
-                        defenderResistance,
                         groundSuperiorityOwnerOrdinal,
                         airSuperiorityOwnerOrdinal,
                         blockadeOwnerOrdinal,
                         attackerFortified,
                         defenderFortified
                 );
-                WarSnapshot previous = previousWarsByPair.put(pairKey, current);
-                boolean previousActive = previous != null && previous.isActive();
-                boolean currentActive = current.isActive();
+                int previousFlags = previousFlagsByPair.put(pairKey, packedFlags);
+                int previousCombatState = previousCombatStateByPair.put(pairKey, packedCombatState);
+                boolean previousActive = previousFlags != MISSING_WAR_STATE && PlannerReplayProjector.isActive(unpackStatusOrdinal(previousFlags));
+                boolean currentActive = PlannerReplayProjector.isActive(statusOrdinal);
                 if (currentActive && !previousActive) {
-                    declared.add(current);
-                    metrics.recordDeclaredWar(current.declarerNationId(), current.warTypeOrdinal());
+                    declaredScratch.add(new DeclaredWarLane(
+                            pairKey,
+                            declarerNationId,
+                            targetNationId,
+                            warTypeOrdinal,
+                            startTurn,
+                            packedCombatState,
+                            packedFlags
+                    ));
+                    metrics.recordDeclaredWar(declarerNationId, warTypeOrdinal);
                     return;
                 }
                 if (!currentActive && previousActive) {
-                    Integer warIndex = activeWarIndexByPair.remove(pairKey);
-                    if (warIndex != null) {
-                        concluded.add(new ConcludedWarLane(warIndex, current.statusOrdinal()));
-                        metrics.recordConcludedWar(current.declarerNationId(), current.targetNationId(), current.statusOrdinal());
+                    int warIndex = activeWarIndexByPair.remove(pairKey);
+                    if (warIndex >= 0) {
+                        concludedScratch.add(new ConcludedWarLane(warIndex, statusOrdinal));
+                        metrics.recordConcludedWar(declarerNationId, targetNationId, statusOrdinal);
                     }
                     return;
                 }
                 if (!currentActive) {
                     return;
                 }
-                Integer warIndex = activeWarIndexByPair.get(pairKey);
-                int mask = current.diffMask(previous);
-                if (warIndex != null && mask != 0) {
-                    changed.add(new ChangedWarLane(warIndex, mask, current));
+                int warIndex = activeWarIndexByPair.get(pairKey);
+                int mask = diffMask(previousCombatState, previousFlags, packedCombatState, packedFlags);
+                if (warIndex >= 0 && mask != 0) {
+                    changedScratch.add(new ChangedWarLane(warIndex, mask, packedCombatState, packedFlags));
                 }
             });
 
-            if (changed.isEmpty() && declared.isEmpty() && concluded.isEmpty()) {
+            if (changedScratch.isEmpty() && declaredScratch.isEmpty() && concludedScratch.isEmpty()) {
                 return WarDelta.EMPTY;
             }
 
-            changed.sort(Comparator.comparingInt(ChangedWarLane::warIndex));
-            declared.sort(PAIR_ORDER);
-            concluded.sort(Comparator.comparingInt(ConcludedWarLane::warIndex));
+            changedScratch.sort(CHANGED_WAR_ORDER);
+            declaredScratch.sort(DECLARED_WAR_ORDER);
+            concludedScratch.sort(CONCLUDED_WAR_ORDER);
 
-            IntArrayBuilder changedIndexes = new IntArrayBuilder(changed.size());
-            IntArrayBuilder changedMasks = new IntArrayBuilder(changed.size());
-            IntArrayBuilder changedLanes = new IntArrayBuilder(changed.size() * 2);
-            for (ChangedWarLane lane : changed) {
+            IntArrayBuilder changedIndexes = new IntArrayBuilder(changedScratch.size());
+            IntArrayBuilder changedMasks = new IntArrayBuilder(changedScratch.size());
+            IntArrayBuilder changedLanes = new IntArrayBuilder(changedScratch.size() * 2);
+            for (ChangedWarLane lane : changedScratch) {
                 changedIndexes.add(lane.warIndex());
                 changedMasks.add(lane.mask());
                 if ((lane.mask() & WAR_MASK_COMBAT_STATE) != 0) {
-                    changedLanes.add(lane.snapshot().packedCombatState());
+                    changedLanes.add(lane.packedCombatState());
                 }
                 if ((lane.mask() & WAR_MASK_FLAGS) != 0) {
-                    changedLanes.add(lane.snapshot().packedFlags());
+                    changedLanes.add(lane.packedFlags());
                 }
             }
 
-            IntArrayBuilder declaredPairs = new IntArrayBuilder(declared.size() * 2);
-            IntArrayBuilder declaredLanes = new IntArrayBuilder(declared.size() * 3);
-            for (WarSnapshot snapshot : declared) {
-                activeWarIndexByPair.put(snapshot.pairKey(), nextWarIndex++);
-                int declarerIndex = participantIndexByNationId.get(snapshot.declarerNationId());
-                int targetIndex = participantIndexByNationId.get(snapshot.targetNationId());
+            IntArrayBuilder declaredPairs = new IntArrayBuilder(declaredScratch.size() * 2);
+            IntArrayBuilder declaredLanes = new IntArrayBuilder(declaredScratch.size() * 3);
+            for (DeclaredWarLane lane : declaredScratch) {
+                activeWarIndexByPair.put(lane.pairKey(), nextWarIndex++);
+                int declarerIndex = participantIndexByNationId.get(lane.declarerNationId());
+                int targetIndex = participantIndexByNationId.get(lane.targetNationId());
                 if (declarerIndex < 0 || targetIndex < 0) {
                     continue;
                 }
                 declaredPairs.add(declarerIndex);
                 declaredPairs.add(targetIndex);
-                declaredLanes.add(snapshot.startTurn());
-                declaredLanes.add(snapshot.packedCombatState());
-                declaredLanes.add(snapshot.packedFlags());
+                declaredLanes.add(lane.startTurn());
+                declaredLanes.add(lane.packedCombatState());
+                declaredLanes.add(lane.packedFlags());
             }
 
-            IntArrayBuilder concludedLanes = new IntArrayBuilder(concluded.size() * 2);
-            for (ConcludedWarLane lane : concluded) {
+            IntArrayBuilder concludedLanes = new IntArrayBuilder(concludedScratch.size() * 2);
+            for (ConcludedWarLane lane : concludedScratch) {
                 concludedLanes.add(lane.warIndex());
                 concludedLanes.add(lane.endStatusOrdinal());
             }
@@ -1018,6 +1056,59 @@ public final class PlannerReplayProjector {
                     declaredLanes.toArray(),
                     concludedLanes.toArray()
             );
+        }
+
+        private static int diffMask(int previousCombatState, int previousFlags, int currentCombatState, int currentFlags) {
+            if (previousFlags == MISSING_WAR_STATE) {
+                return WAR_MASK_COMBAT_STATE | WAR_MASK_FLAGS;
+            }
+            int mask = 0;
+            if (previousCombatState != currentCombatState) {
+                mask |= WAR_MASK_COMBAT_STATE;
+            }
+            if (previousFlags != currentFlags) {
+                mask |= WAR_MASK_FLAGS;
+            }
+            return mask;
+        }
+
+        private static int unpackStatusOrdinal(int packedFlags) {
+            return (packedFlags >>> 6) & 0x1F;
+        }
+
+        private static int packCombatState(
+                int attackerMaps,
+                int defenderMaps,
+                int attackerResistance,
+                int defenderResistance
+        ) {
+            return (attackerMaps & 0xF)
+                    | ((defenderMaps & 0xF) << 4)
+                    | ((attackerResistance & 0x7F) << 8)
+                    | ((defenderResistance & 0x7F) << 15);
+        }
+
+        private static int packFlags(
+                int warTypeOrdinal,
+                int statusOrdinal,
+                int groundSuperiorityOwnerOrdinal,
+                int airSuperiorityOwnerOrdinal,
+                int blockadeOwnerOrdinal,
+                boolean attackerFortified,
+                boolean defenderFortified
+        ) {
+            int flags = (warTypeOrdinal & 0x3F)
+                    | ((statusOrdinal & 0x1F) << 6)
+                    | ((groundSuperiorityOwnerOrdinal & 0x3) << 11)
+                    | ((airSuperiorityOwnerOrdinal & 0x3) << 13)
+                    | ((blockadeOwnerOrdinal & 0x3) << 15);
+            if (attackerFortified) {
+                flags |= (1 << 17);
+            }
+            if (defenderFortified) {
+                flags |= (1 << 18);
+            }
+            return flags;
         }
     }
 
@@ -1083,7 +1174,18 @@ public final class PlannerReplayProjector {
         }
     }
 
-    private record ChangedWarLane(int warIndex, int mask, WarSnapshot snapshot) {
+        private record ChangedWarLane(int warIndex, int mask, int packedCombatState, int packedFlags) {
+        }
+
+        private record DeclaredWarLane(
+            long pairKey,
+            int declarerNationId,
+            int targetNationId,
+            int warTypeOrdinal,
+            int startTurn,
+            int packedCombatState,
+            int packedFlags
+        ) {
     }
 
     private record ConcludedWarLane(int warIndex, int endStatusOrdinal) {

@@ -151,7 +151,9 @@ final class OpeningEvaluator {
         if (!candidateAdmission.admit(attacker, defender)) {
             if (candidateAdmission.admitPositiveOpeningBaseline()
                     && evaluatePositiveBaselineOpening(attacker, defender, objective, null, evaluation)) {
-                OpeningEdgeEvaluationWriter.retainComponents(evaluation, componentPolicy);
+                if (componentPolicy != null && componentPolicy.retainsAny()) {
+                    OpeningEdgeEvaluationWriter.retainComponents(evaluation, componentPolicy);
+                }
                 return new EvaluatedEdge(
                         evaluation.score(),
                         evaluation.preferredWarTypeId(),
@@ -333,7 +335,8 @@ final class OpeningEvaluator {
             );
             int[] defenderCoverageCounts = new int[scenario.defenderCount()];
             int[] defenderSourceDiversityCounts = new int[scenario.defenderCount()];
-            long[][] emittedPairWordsByAttacker = new long[scenario.attackerCount()][(scenario.defenderCount() + Long.SIZE - 1) / Long.SIZE];
+                int emittedWordsPerAttacker = (scenario.defenderCount() + Long.SIZE - 1) / Long.SIZE;
+                long[] emittedPairWordsByAttacker = new long[scenario.attackerCount() * emittedWordsPerAttacker];
             TopKEdgeCollector[] defenderCoverageCollectors = new TopKEdgeCollector[scenario.defenderCount()];
             for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
                 if (defenderCaps[defenderIndex] > 0) {
@@ -357,6 +360,7 @@ final class OpeningEvaluator {
                     defenderCoverageCollectors,
                     out,
                     emittedPairWordsByAttacker,
+                        emittedWordsPerAttacker,
                     defenderCoverageCounts,
                     defenderSourceDiversityCounts
             );
@@ -376,6 +380,7 @@ final class OpeningEvaluator {
                     defenderCoverageTarget,
                     out,
                     emittedPairWordsByAttacker,
+                        emittedWordsPerAttacker,
                     defenderCoverageCounts
             );
             PlannerProfiler.addCounter(PlannerProfiler.Scope.OPENING_EVALUATE, "candidateEdges", out.edgeCount());
@@ -396,13 +401,15 @@ final class OpeningEvaluator {
         private final CoveragePriorityCollector coverageSpillovers;
         private final TopKEdgeCollector[] defenderCoverageCollectors;
         private final CandidateEdgeTable out;
-        private final long[][] emittedPairWordsByAttacker;
+        private final long[] emittedPairWordsByAttacker;
+        private final int emittedWordsPerAttacker;
         private final int[] defenderCoverageCounts;
         private int attackerIndex;
         private DBNationSnapshot attacker;
         private final OpeningCandidateAdmission candidateAdmission;
         private final OpeningRolloutSearch rolloutEdgeEvaluator;
         private final EdgeEvaluation edgeEvaluation;
+        private final boolean retainEdgeComponents;
 
         private DefenderAdmissionCollector(
                 CompiledScenario scenario,
@@ -420,7 +427,8 @@ final class OpeningEvaluator {
                 float[] defenderCoveragePriorities,
                 TopKEdgeCollector[] defenderCoverageCollectors,
                 CandidateEdgeTable out,
-                long[][] emittedPairWordsByAttacker,
+                long[] emittedPairWordsByAttacker,
+                int emittedWordsPerAttacker,
                 int[] defenderCoverageCounts,
                 int[] defenderSourceDiversityCounts
         ) {
@@ -439,11 +447,13 @@ final class OpeningEvaluator {
             this.defenderCoverageCollectors = defenderCoverageCollectors;
             this.out = out;
             this.emittedPairWordsByAttacker = emittedPairWordsByAttacker;
+            this.emittedWordsPerAttacker = emittedWordsPerAttacker;
             this.defenderCoverageCounts = defenderCoverageCounts;
             this.defenderSourceDiversityCounts = defenderSourceDiversityCounts;
             this.candidateAdmission = new OpeningCandidateAdmission(admissionPolicy);
             this.rolloutEdgeEvaluator = new OpeningRolloutSearch(DEFAULT_ACTION_BUDGET);
             this.edgeEvaluation = new EdgeEvaluation();
+            this.retainEdgeComponents = this.componentPolicy.retainsAny();
             this.attackerCaps = attackerCaps;
             this.candidatesPerAttacker = candidatesPerAttacker;
         }
@@ -491,7 +501,9 @@ final class OpeningEvaluator {
                         )) {
                     return;
                 }
-                OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
+                if (retainEdgeComponents) {
+                    OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
+                }
                 retainEvaluatedEdge(defenderIndex, edgeEvaluation);
                 return;
             }
@@ -505,7 +517,9 @@ final class OpeningEvaluator {
                     actionBudgetForProbe(probe, rolloutEdgeEvaluator.maxActionBudget()),
                     edgeEvaluation
             );
-            OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
+            if (retainEdgeComponents) {
+                OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
+            }
             finalizeEdgeSelection(edgeEvaluation, candidateAdmission.preferredWarTypeId(), candidateAdmission.bestAttackTypeId());
             float score = edgeEvaluation.score();
             if (!Float.isFinite(score)) {
@@ -578,6 +592,7 @@ final class OpeningEvaluator {
                         topK.sortedIndexAt(order),
                         out,
                         emittedPairWordsByAttacker,
+                        emittedWordsPerAttacker,
                         defenderCoverageCounts
                 );
             }
@@ -601,6 +616,7 @@ final class OpeningEvaluator {
                         candidateIndex,
                         out,
                         emittedPairWordsByAttacker,
+                        emittedWordsPerAttacker,
                         defenderCoverageCounts
                 )) {
                     if (sourceDiversityEmission) {
@@ -678,9 +694,44 @@ final class OpeningEvaluator {
                 positivePriorities[cursor++] = priorities[index];
             }
         }
-        Arrays.sort(positivePriorities);
         int quartileIndex = Math.max(0, (int) Math.floor(positivePriorities.length * 0.75d));
-        return positivePriorities[Math.min(positivePriorities.length - 1, quartileIndex)];
+        return selectKthInPlace(positivePriorities, Math.min(positivePriorities.length - 1, quartileIndex));
+    }
+
+    private static float selectKthInPlace(float[] values, int targetIndex) {
+        int left = 0;
+        int right = values.length - 1;
+        while (left < right) {
+            int pivotIndex = partition(values, left, right, (left + right) >>> 1);
+            if (pivotIndex == targetIndex) {
+                return values[pivotIndex];
+            }
+            if (targetIndex < pivotIndex) {
+                right = pivotIndex - 1;
+            } else {
+                left = pivotIndex + 1;
+            }
+        }
+        return values[left];
+    }
+
+    private static int partition(float[] values, int left, int right, int pivotIndex) {
+        float pivotValue = values[pivotIndex];
+        swap(values, pivotIndex, right);
+        int storeIndex = left;
+        for (int index = left; index < right; index++) {
+            if (values[index] < pivotValue) {
+                swap(values, storeIndex++, index);
+            }
+        }
+        swap(values, storeIndex, right);
+        return storeIndex;
+    }
+
+    private static void swap(float[] values, int lhs, int rhs) {
+        float tmp = values[lhs];
+        values[lhs] = values[rhs];
+        values[rhs] = tmp;
     }
 
     private static boolean evaluatePositiveBaselineOpening(
@@ -829,7 +880,9 @@ final class OpeningEvaluator {
             int actionBudget
     ) {
         rolloutEdgeEvaluator.evaluate(attacker, defender, objective, actionBudget, edgeEvaluation);
-        OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
+        if (componentPolicy != null && componentPolicy.retainsAny()) {
+            OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, componentPolicy);
+        }
         return toEvaluatedEdge(edgeEvaluation);
     }
 

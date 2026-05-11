@@ -85,7 +85,7 @@ public final class ScenarioCompiler {
 
         int minDefenderBucket = minDefenderBucket(defenderScores);
         int[][] defenderIndexesByScoreBucket = compileDefenderScoreBuckets(defenderScores, minDefenderBucket);
-        int[][] treatedDefenderIndexesByAttacker = compileTreatedDefenderIndexesByAttacker(
+        long[][] treatedDefenderWordsByAttacker = compileTreatedDefenderWordsByAttacker(
                 attackerList,
                 defenderList,
                 attackerScores,
@@ -135,7 +135,7 @@ public final class ScenarioCompiler {
                 defenderProjectBits,
                 attackerIndexByNationId,
                 defenderIndexByNationId,
-                treatedDefenderIndexesByAttacker,
+                treatedDefenderWordsByAttacker,
                 activePairConflictWordsByAttacker,
                 defenderIndexesByScoreBucket,
                 minDefenderBucket,
@@ -194,7 +194,7 @@ public final class ScenarioCompiler {
         return flat;
     }
 
-    private static int[][] compileTreatedDefenderIndexesByAttacker(
+    private static long[][] compileTreatedDefenderWordsByAttacker(
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
             double[] attackerScores,
@@ -203,7 +203,8 @@ public final class ScenarioCompiler {
             int minDefenderBucket,
             TreatyProvider treatyProvider
     ) {
-        int[][] treated = new int[attackers.size()][];
+        long[][] treated = new long[attackers.size()][];
+        int wordCount = (defenders.size() + Long.SIZE - 1) / Long.SIZE;
         for (int attackerIndex = 0; attackerIndex < attackers.size(); attackerIndex++) {
             DBNationSnapshot attacker = attackers.get(attackerIndex);
             double attackerScore = attackerScores[attackerIndex];
@@ -211,8 +212,7 @@ public final class ScenarioCompiler {
             double maxScore = attackerScore * link.locutus.discord.util.PW.WAR_RANGE_MAX_MODIFIER;
             int minBucket = CompiledScenario.scoreBucket(minScore);
             int maxBucket = CompiledScenario.scoreBucket(maxScore);
-            int[] indexes = new int[Math.max(0, defenders.size())];
-            int count = 0;
+            long[] words = new long[wordCount];
 
             for (int bucket = minBucket; bucket <= maxBucket; bucket++) {
                 int bucketIndex = bucket - minDefenderBucket;
@@ -227,19 +227,11 @@ public final class ScenarioCompiler {
                     }
                     DBNationSnapshot defender = defenders.get(defenderIndex);
                     if (treatyProvider.isTreated(attacker.nationId(), defender.nationId())) {
-                        indexes[count++] = defenderIndex;
+                        words[defenderIndex >>> 6] |= 1L << (defenderIndex & 63);
                     }
                 }
             }
-
-            if (count == 0) {
-                treated[attackerIndex] = new int[0];
-                continue;
-            }
-
-            int[] trimmed = Arrays.copyOf(indexes, count);
-            Arrays.sort(trimmed);
-            treated[attackerIndex] = trimmed;
+            treated[attackerIndex] = words;
         }
         return treated;
     }

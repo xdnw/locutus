@@ -9,7 +9,8 @@ final class OpeningDefenderCoverageRescue {
             int[] defenderCaps,
             int coverageTarget,
             CandidateEdgeTable out,
-            long[][] emittedPairWordsByAttacker,
+            long[] emittedPairWordsByAttacker,
+            int emittedWordsPerAttacker,
             int[] defenderCoverageCounts
     ) {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.DEFENDER_COVERAGE_RESCUE)) {
@@ -32,6 +33,7 @@ final class OpeningDefenderCoverageRescue {
                             collector.sortedIndexAt(order),
                             out,
                             emittedPairWordsByAttacker,
+                            emittedWordsPerAttacker,
                             defenderCoverageCounts
                     );
                 }
@@ -44,7 +46,8 @@ final class OpeningDefenderCoverageRescue {
             OpeningEvaluator.TopKEdgeCollector collector,
             int selectedIndex,
             CandidateEdgeTable out,
-            long[][] emittedPairWordsByAttacker,
+            long[] emittedPairWordsByAttacker,
+            int emittedWordsPerAttacker,
             int[] defenderCoverageCounts
     ) {
         return emitEdge(
@@ -61,6 +64,7 @@ final class OpeningDefenderCoverageRescue {
             collector.futureWarLeverageAt(selectedIndex),
             out,
             emittedPairWordsByAttacker,
+            emittedWordsPerAttacker,
             defenderCoverageCounts
         );
         }
@@ -69,7 +73,8 @@ final class OpeningDefenderCoverageRescue {
             OpeningEvaluator.CoveragePriorityCollector collector,
             int selectedIndex,
             CandidateEdgeTable out,
-            long[][] emittedPairWordsByAttacker,
+            long[] emittedPairWordsByAttacker,
+            int emittedWordsPerAttacker,
             int[] defenderCoverageCounts
     ) {
         return emitEdge(
@@ -86,9 +91,27 @@ final class OpeningDefenderCoverageRescue {
                 collector.futureWarLeverageAt(selectedIndex),
                 out,
                 emittedPairWordsByAttacker,
+                emittedWordsPerAttacker,
                 defenderCoverageCounts
         );
     }
+
+            static boolean emitSelectedEdge(
+                OpeningEvaluator.CoveragePriorityCollector collector,
+                int selectedIndex,
+                CandidateEdgeTable out,
+                long[][] emittedPairWordsByAttacker,
+                int[] defenderCoverageCounts
+            ) {
+            return emitSelectedEdge(
+                collector,
+                selectedIndex,
+                out,
+                flattenWords(emittedPairWordsByAttacker),
+                emittedPairWordsByAttacker.length == 0 ? 0 : emittedPairWordsByAttacker[0].length,
+                defenderCoverageCounts
+            );
+            }
 
         static boolean emitEdge(
             int attackerIndex,
@@ -103,10 +126,11 @@ final class OpeningDefenderCoverageRescue {
             float controlLeverage,
             float futureWarLeverage,
             CandidateEdgeTable out,
-            long[][] emittedPairWordsByAttacker,
+            long[] emittedPairWordsByAttacker,
+            int emittedWordsPerAttacker,
             int[] defenderCoverageCounts
         ) {
-        if (!markEdgeEmitted(emittedPairWordsByAttacker, attackerIndex, defenderIndex)) {
+        if (!markEdgeEmitted(emittedPairWordsByAttacker, emittedWordsPerAttacker, attackerIndex, defenderIndex)) {
             return false;
         }
         out.add(
@@ -126,14 +150,33 @@ final class OpeningDefenderCoverageRescue {
         return true;
     }
 
-    private static boolean markEdgeEmitted(long[][] emittedPairWordsByAttacker, int attackerIndex, int defenderIndex) {
-        long[] words = emittedPairWordsByAttacker[attackerIndex];
+    private static boolean markEdgeEmitted(long[] emittedPairWordsByAttacker, int emittedWordsPerAttacker, int attackerIndex, int defenderIndex) {
+        int base = attackerIndex * emittedWordsPerAttacker;
         int wordIndex = defenderIndex / Long.SIZE;
         long mask = 1L << (defenderIndex % Long.SIZE);
-        if ((words[wordIndex] & mask) != 0L) {
+        int flatIndex = base + wordIndex;
+        if ((emittedPairWordsByAttacker[flatIndex] & mask) != 0L) {
             return false;
         }
-        words[wordIndex] |= mask;
+        emittedPairWordsByAttacker[flatIndex] |= mask;
         return true;
+    }
+
+    private static long[] flattenWords(long[][] emittedPairWordsByAttacker) {
+        if (emittedPairWordsByAttacker.length == 0) {
+            return new long[0];
+        }
+        int wordsPerAttacker = emittedPairWordsByAttacker[0].length;
+        long[] flat = new long[emittedPairWordsByAttacker.length * wordsPerAttacker];
+        for (int attackerIndex = 0; attackerIndex < emittedPairWordsByAttacker.length; attackerIndex++) {
+            System.arraycopy(
+                    emittedPairWordsByAttacker[attackerIndex],
+                    0,
+                    flat,
+                    attackerIndex * wordsPerAttacker,
+                    wordsPerAttacker
+            );
+        }
+        return flat;
     }
 }

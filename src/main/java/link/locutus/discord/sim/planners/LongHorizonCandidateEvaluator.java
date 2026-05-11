@@ -150,7 +150,7 @@ final class LongHorizonCandidateEvaluator {
                 candidate.attackerCounts(),
                 candidate.defenderCounts()
         );
-            realizedCounters.put(key, realized);
+        realizedCounters.put(key, realized);
         return realized;
     }
 
@@ -219,14 +219,11 @@ final class LongHorizonCandidateEvaluator {
         if (cached != null) {
             return cached;
         }
-        boolean[] edgeAssigned = Arrays.copyOf(candidate.edgeAssigned(), candidate.edgeAssigned().length);
-        int[] attackerCounts = Arrays.copyOf(candidate.attackerCounts(), candidate.attackerCounts().length);
-        int[] defenderCounts = Arrays.copyOf(candidate.defenderCounts(), candidate.defenderCounts().length);
         CandidateStateKey key = new CandidateStateKey(
-            edgeAssigned,
-            attackerCounts,
-            defenderCounts,
-            CandidateStateKey.hash(edgeAssigned, attackerCounts, defenderCounts)
+                candidate.edgeAssigned(),
+                candidate.attackerCounts(),
+                candidate.defenderCounts(),
+                CandidateStateKey.hash(candidate.edgeAssigned(), candidate.attackerCounts(), candidate.defenderCounts())
         );
         candidateKeys.put(candidate, key);
         return key;

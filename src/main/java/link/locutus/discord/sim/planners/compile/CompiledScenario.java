@@ -42,7 +42,7 @@ public final class CompiledScenario {
     private final long[] defenderProjectBits;
     private final Int2IntOpenHashMap attackerIndexByNationId;
     private final Int2IntOpenHashMap defenderIndexByNationId;
-    private final int[][] treatedDefenderIndexesByAttacker;
+    private final long[][] treatedDefenderWordsByAttacker;
     private final long[][] activePairConflictWordsByAttacker;
     private final int[][] defenderIndexesByScoreBucket;
     private final int minDefenderBucket;
@@ -77,7 +77,7 @@ public final class CompiledScenario {
             long[] defenderProjectBits,
             Int2IntOpenHashMap attackerIndexByNationId,
             Int2IntOpenHashMap defenderIndexByNationId,
-            int[][] treatedDefenderIndexesByAttacker,
+            long[][] treatedDefenderWordsByAttacker,
             long[][] activePairConflictWordsByAttacker,
             int[][] defenderIndexesByScoreBucket,
             int minDefenderBucket,
@@ -111,7 +111,7 @@ public final class CompiledScenario {
         this.defenderProjectBits = defenderProjectBits;
         this.attackerIndexByNationId = attackerIndexByNationId;
         this.defenderIndexByNationId = defenderIndexByNationId;
-        this.treatedDefenderIndexesByAttacker = treatedDefenderIndexesByAttacker;
+        this.treatedDefenderWordsByAttacker = treatedDefenderWordsByAttacker;
         this.activePairConflictWordsByAttacker = activePairConflictWordsByAttacker;
         this.defenderIndexesByScoreBucket = defenderIndexesByScoreBucket;
         this.minDefenderBucket = minDefenderBucket;
@@ -220,7 +220,10 @@ public final class CompiledScenario {
     }
 
     public boolean isTreated(int attackerIndex, int defenderIndex) {
-        return Arrays.binarySearch(treatedDefenderIndexesByAttacker[attackerIndex], defenderIndex) >= 0;
+        long[] words = treatedDefenderWordsByAttacker[attackerIndex];
+        int wordIndex = defenderIndex >>> 6;
+        return wordIndex < words.length
+                && (words[wordIndex] & (1L << (defenderIndex & 63))) != 0L;
     }
 
     public boolean hasActivePairConflict(int attackerIndex, int defenderIndex) {

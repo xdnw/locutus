@@ -604,15 +604,19 @@ final class LongHorizonForwardProjection {
     }
 
     private ActiveWarProfileKey activeWarProfileKey(int[] attackerCounts, int[] defenderCounts) {
-        boolean[] attackerActive = new boolean[attackerCounts.length];
-        boolean[] defenderActive = new boolean[defenderCounts.length];
+        long[] activeWords = new long[(scenario.attackerCount() + scenario.defenderCount() + Long.SIZE - 1) / Long.SIZE];
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
-            attackerActive[attackerIndex] = attackerCounts[attackerIndex] > 0;
+            if (attackerCounts[attackerIndex] > 0) {
+                activeWords[attackerIndex >>> 6] |= 1L << (attackerIndex & 63);
+            }
         }
         for (int defenderIndex = 0; defenderIndex < defenderCounts.length; defenderIndex++) {
-            defenderActive[defenderIndex] = defenderCounts[defenderIndex] > 0;
+            if (defenderCounts[defenderIndex] > 0) {
+                int nationIndex = scenario.attackerCount() + defenderIndex;
+                activeWords[nationIndex >>> 6] |= 1L << (nationIndex & 63);
+            }
         }
-        return new ActiveWarProfileKey(attackerActive, defenderActive);
+        return new ActiveWarProfileKey(activeWords, Arrays.hashCode(activeWords));
     }
 
     private MidHorizonBaseline captureMidHorizonBaseline(ProjectionState state) {
@@ -4057,8 +4061,8 @@ final class LongHorizonForwardProjection {
     }
 
     private record ActiveWarProfileKey(
-            boolean[] attackerActive,
-            boolean[] defenderActive
+            long[] activeWords,
+            int hash
     ) {
         @Override
         public boolean equals(Object obj) {
@@ -4068,15 +4072,12 @@ final class LongHorizonForwardProjection {
             if (!(obj instanceof ActiveWarProfileKey other)) {
                 return false;
             }
-            return Arrays.equals(attackerActive, other.attackerActive)
-                    && Arrays.equals(defenderActive, other.defenderActive);
+            return Arrays.equals(activeWords, other.activeWords);
         }
 
         @Override
         public int hashCode() {
-            int result = Arrays.hashCode(attackerActive);
-            result = 31 * result + Arrays.hashCode(defenderActive);
-            return result;
+            return hash;
         }
     }
 
