@@ -13,8 +13,16 @@ final class DamageDealtObjective implements StrategicObjective {
     }
 
     @Override
-    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return metrics.immediateHarm();
+    public double scoreOpening(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure,
+            int teamId
+    ) {
+        return immediateHarm;
     }
 
     @Override

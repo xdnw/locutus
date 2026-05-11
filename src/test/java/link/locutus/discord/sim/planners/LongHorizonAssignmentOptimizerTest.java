@@ -2169,7 +2169,15 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
                         return 0d;
                 }
 
@@ -2194,7 +2202,15 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
                         return 0d;
                 }
 
@@ -2223,7 +2239,15 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
                         return 0d;
                 }
 
@@ -2251,7 +2275,15 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
                         return 0d;
                 }
 
@@ -2277,7 +2309,15 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
                         return 0d;
                 }
 

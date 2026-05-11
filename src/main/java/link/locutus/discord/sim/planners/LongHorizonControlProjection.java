@@ -30,6 +30,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
     private final LongHorizonAssignmentScoringModel assignmentScoringModel;
     private final LongHorizonCounterOpportunityModel counterOpportunityModel;
     private final LongHorizonForwardProjection forwardProjection;
+    private final LongHorizonForwardProjection.ScenarioBoundInputs forwardProjectionScenarioBoundInputs;
     private final int[] attackerCaps;
 
     private LongHorizonControlProjection(
@@ -50,6 +51,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             LongHorizonAssignmentScoringModel assignmentScoringModel,
             LongHorizonCounterOpportunityModel counterOpportunityModel,
             LongHorizonForwardProjection forwardProjection,
+                LongHorizonForwardProjection.ScenarioBoundInputs forwardProjectionScenarioBoundInputs,
             int[] attackerCaps
     ) {
         this.projectionObjective = projectionObjective;
@@ -69,6 +71,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
         this.assignmentScoringModel = assignmentScoringModel;
         this.counterOpportunityModel = counterOpportunityModel;
         this.forwardProjection = forwardProjection;
+        this.forwardProjectionScenarioBoundInputs = forwardProjectionScenarioBoundInputs;
         this.attackerCaps = java.util.Arrays.copyOf(attackerCaps, attackerCaps.length);
     }
 
@@ -299,7 +302,9 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 SideProjectionPolicies attackerProjectionPolicies,
                 SideProjectionPolicies defenderProjectionPolicies
             ) {
-            LongHorizonForwardProjection forwardProjection = LongHorizonForwardProjection.create(
+                LongHorizonForwardProjection.ScenarioBoundInputs scenarioBoundInputs =
+                    LongHorizonForwardProjection.scenarioBoundInputs(scenario, horizonTurns, horizonFactor);
+                LongHorizonForwardProjection forwardProjection = LongHorizonForwardProjection.create(
                 edges,
                 scenario,
                 attackerCaps,
@@ -311,7 +316,8 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 attackerPlannerSettings,
                 defenderPlannerSettings,
                 attackerProjectionPolicies,
-                defenderProjectionPolicies
+                defenderProjectionPolicies,
+                scenarioBoundInputs
             );
         return new LongHorizonControlProjection(
             projectionObjective,
@@ -341,6 +347,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             ),
                 forwardProjection.counterOpportunityModel(),
                 forwardProjection,
+                scenarioBoundInputs,
                 attackerCaps
         );
     }
@@ -401,6 +408,8 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             boolean includeSlotDenial,
             SidePlannerSettings attackerPlannerSettings
         ) {
+        LongHorizonForwardProjection.ScenarioBoundInputs scenarioBoundInputs =
+            LongHorizonForwardProjection.scenarioBoundInputs(scenario, horizonTurns, horizonFactor);
         return new LongHorizonControlProjection(
             null,
             null,
@@ -427,8 +436,9 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 includeSlotDenial,
                 attackerPlannerSettings
             ),
-                LongHorizonForwardProjection.counterOpportunityModel(scenario, horizonTurns, horizonFactor),
+                scenarioBoundInputs.counterOpportunityModel(),
                 null,
+                scenarioBoundInputs,
                 attackerCaps
         );
     }
@@ -439,23 +449,52 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 int[] variantDefenderCaps,
                 int[] variantAttackerStrengthRanks
             ) {
-            return create(
-                variantEdges,
-                scenario,
-                variantAttackerCaps,
-                variantDefenderCaps,
-                variantAttackerStrengthRanks,
-                horizonTurns,
-                horizonFactor,
-                includeSlotDenial,
-                projectionObjective,
-                attackerOpeningSettings,
-                defenderOpeningSettings,
-                attackerPlannerSettings,
-                defenderPlannerSettings,
-                attackerProjectionPolicies,
-                defenderProjectionPolicies
-            );
+                LongHorizonForwardProjection forwardProjection = LongHorizonForwardProjection.create(
+                    variantEdges,
+                    scenario,
+                    variantAttackerCaps,
+                    horizonTurns,
+                    horizonFactor,
+                    projectionObjective,
+                    attackerOpeningSettings,
+                    defenderOpeningSettings,
+                    attackerPlannerSettings,
+                    defenderPlannerSettings,
+                    attackerProjectionPolicies,
+                    defenderProjectionPolicies,
+                    forwardProjectionScenarioBoundInputs
+                );
+                return new LongHorizonControlProjection(
+                    projectionObjective,
+                    attackerOpeningSettings,
+                    defenderOpeningSettings,
+                    variantEdges,
+                    scenario,
+                    variantDefenderCaps,
+                    variantAttackerStrengthRanks,
+                    horizonTurns,
+                    horizonFactor,
+                    includeSlotDenial,
+                    attackerPlannerSettings,
+                    defenderPlannerSettings,
+                    attackerProjectionPolicies,
+                    defenderProjectionPolicies,
+                    LongHorizonAssignmentScoringModel.create(
+                        variantEdges,
+                        scenario,
+                        variantAttackerCaps,
+                        variantDefenderCaps,
+                        variantAttackerStrengthRanks,
+                        horizonTurns,
+                        horizonFactor,
+                        includeSlotDenial,
+                        attackerPlannerSettings
+                    ),
+                    forwardProjection.counterOpportunityModel(),
+                    forwardProjection,
+                    forwardProjectionScenarioBoundInputs,
+                    variantAttackerCaps
+                );
             }
 
     /**

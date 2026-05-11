@@ -46,6 +46,53 @@ import java.util.Set;
  * without constructing local conflict worlds for each assignment candidate.</p>
  */
 final class LongHorizonForwardProjection {
+    static final class ScenarioBoundInputs {
+        private final CompiledScenario scenario;
+        private final int horizonTurns;
+        private final double horizonFactor;
+        private final double[] attackerInitialScores;
+        private final double[] defenderInitialScores;
+        private final double[] attackerProjectedBuyScore;
+        private final double[] defenderProjectedBuyScore;
+        private final double[] attackerCombatStrengths;
+        private final double[] defenderCombatStrengths;
+        private final LongHorizonCounterOpportunityModel counterOpportunityModel;
+
+        private ScenarioBoundInputs(
+                CompiledScenario scenario,
+                int horizonTurns,
+                double horizonFactor,
+                double[] attackerInitialScores,
+                double[] defenderInitialScores,
+                double[] attackerProjectedBuyScore,
+                double[] defenderProjectedBuyScore,
+                double[] attackerCombatStrengths,
+                double[] defenderCombatStrengths,
+                LongHorizonCounterOpportunityModel counterOpportunityModel
+        ) {
+            this.scenario = scenario;
+            this.horizonTurns = horizonTurns;
+            this.horizonFactor = horizonFactor;
+            this.attackerInitialScores = attackerInitialScores;
+            this.defenderInitialScores = defenderInitialScores;
+            this.attackerProjectedBuyScore = attackerProjectedBuyScore;
+            this.defenderProjectedBuyScore = defenderProjectedBuyScore;
+            this.attackerCombatStrengths = attackerCombatStrengths;
+            this.defenderCombatStrengths = defenderCombatStrengths;
+            this.counterOpportunityModel = counterOpportunityModel;
+        }
+
+        private void requireCompatible(CompiledScenario scenario, int horizonTurns, double horizonFactor) {
+            if (this.scenario != scenario || this.horizonTurns != horizonTurns || Double.compare(this.horizonFactor, horizonFactor) != 0) {
+                throw new IllegalArgumentException("Scenario-bound projection inputs do not match the requested projection variant");
+            }
+        }
+
+        LongHorizonCounterOpportunityModel counterOpportunityModel() {
+            return counterOpportunityModel;
+        }
+    }
+
     private static final ScenarioCompiler PROJECTED_DECLARATION_SCENARIO_COMPILER = new ScenarioCompiler();
     private static final PlannerProfiler.CounterToken PROFILED_PREPARED_STATE_PROFILES = PlannerProfiler.counterToken(
         PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
@@ -303,6 +350,67 @@ final class LongHorizonForwardProjection {
             SideProjectionPolicies attackerProjectionPolicies,
             SideProjectionPolicies defenderProjectionPolicies
     ) {
+            return create(
+                edges,
+                scenario,
+                attackerCaps,
+                horizonTurns,
+                horizonFactor,
+                projectionObjective,
+                attackerOpeningSettings,
+                defenderOpeningSettings,
+                attackerPlannerSettings,
+                defenderPlannerSettings,
+                attackerProjectionPolicies,
+                defenderProjectionPolicies,
+                scenarioBoundInputs(scenario, horizonTurns, horizonFactor)
+            );
+            }
+
+            static LongHorizonForwardProjection create(
+                CandidateEdgeTable edges,
+                CompiledScenario scenario,
+                int[] attackerCaps,
+                int horizonTurns,
+                double horizonFactor,
+                StrategicObjective projectionObjective,
+                SideOpeningSettings attackerOpeningSettings,
+                SideOpeningSettings defenderOpeningSettings,
+                SidePlannerSettings attackerPlannerSettings,
+                SidePlannerSettings defenderPlannerSettings,
+                SideProjectionPolicies attackerProjectionPolicies,
+                SideProjectionPolicies defenderProjectionPolicies,
+                ScenarioBoundInputs scenarioBoundInputs
+            ) {
+            scenarioBoundInputs.requireCompatible(scenario, horizonTurns, horizonFactor);
+        return new LongHorizonForwardProjection(
+                edges,
+                scenario,
+                Math.max(1, horizonTurns),
+                horizonFactor,
+                scenarioBoundInputs.attackerInitialScores,
+                scenarioBoundInputs.defenderInitialScores,
+                scenarioBoundInputs.attackerProjectedBuyScore,
+                scenarioBoundInputs.defenderProjectedBuyScore,
+                scenarioBoundInputs.attackerCombatStrengths,
+                scenarioBoundInputs.defenderCombatStrengths,
+                scenarioBoundInputs.counterOpportunityModel,
+                Arrays.copyOf(attackerCaps, attackerCaps.length),
+                projectionObjective,
+                attackerOpeningSettings,
+                defenderOpeningSettings,
+                attackerPlannerSettings,
+                defenderPlannerSettings,
+                attackerProjectionPolicies,
+                defenderProjectionPolicies
+        );
+    }
+
+    static ScenarioBoundInputs scenarioBoundInputs(
+            CompiledScenario scenario,
+            int horizonTurns,
+            double horizonFactor
+    ) {
         double[] attackerInitialScores = new double[scenario.attackerCount()];
         double[] defenderInitialScores = new double[scenario.defenderCount()];
         double[] attackerProjectedBuyScore = new double[scenario.attackerCount()];
@@ -331,8 +439,7 @@ final class LongHorizonForwardProjection {
                 defenderCombatStrengths,
                 horizonFactor
         );
-        return new LongHorizonForwardProjection(
-                edges,
+        return new ScenarioBoundInputs(
                 scenario,
                 Math.max(1, horizonTurns),
                 horizonFactor,
@@ -342,15 +449,7 @@ final class LongHorizonForwardProjection {
                 defenderProjectedBuyScore,
                 attackerCombatStrengths,
                 defenderCombatStrengths,
-                counterOpportunityModel,
-                Arrays.copyOf(attackerCaps, attackerCaps.length),
-                projectionObjective,
-                attackerOpeningSettings,
-                defenderOpeningSettings,
-                attackerPlannerSettings,
-                defenderPlannerSettings,
-                attackerProjectionPolicies,
-                defenderProjectionPolicies
+                counterOpportunityModel
         );
     }
 
@@ -359,27 +458,7 @@ final class LongHorizonForwardProjection {
             int horizonTurns,
             double horizonFactor
     ) {
-        double[] attackerInitialScores = new double[scenario.attackerCount()];
-        double[] attackerProjectedBuyScore = new double[scenario.attackerCount()];
-        double[] attackerCombatStrengths = new double[scenario.attackerCount()];
-        double[] defenderCombatStrengths = new double[scenario.defenderCount()];
-        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            DBNationSnapshot attacker = scenario.attacker(attackerIndex);
-            attackerInitialScores[attackerIndex] = strategicAssetValue(attacker, scenario, true);
-            attackerProjectedBuyScore[attackerIndex] = projectedBuyValue(attacker, horizonTurns);
-            attackerCombatStrengths[attackerIndex] = combatStrength(attacker);
-        }
-        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
-            defenderCombatStrengths[defenderIndex] = combatStrength(scenario.defender(defenderIndex));
-        }
-        return LongHorizonCounterOpportunityModel.create(
-                scenario,
-                attackerInitialScores,
-                attackerProjectedBuyScore,
-                attackerCombatStrengths,
-                defenderCombatStrengths,
-                horizonFactor
-        );
+        return scenarioBoundInputs(scenario, horizonTurns, horizonFactor).counterOpportunityModel();
     }
 
     double attackerCounterOpportunityMarginalScore(int attackerIndex, int assignedBefore) {

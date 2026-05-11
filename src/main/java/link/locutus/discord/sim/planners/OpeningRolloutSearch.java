@@ -190,7 +190,15 @@ final class OpeningRolloutSearch {
             AttackType openingAttackType,
             SideOpeningSettings openingSettings
     ) {
-        float baseScore = (float) objective.scoreOpening(metrics, attackerTeamId);
+        float baseScore = (float) objective.scoreOpening(
+            metrics.immediateHarm(),
+            metrics.selfExposure(),
+            metrics.resourceSwing(),
+            metrics.controlLeverage(),
+            metrics.futureWarLeverage(),
+            metrics.targetPressure(),
+            attackerTeamId
+        );
         if (openingSettings == null) {
             return baseScore;
         }

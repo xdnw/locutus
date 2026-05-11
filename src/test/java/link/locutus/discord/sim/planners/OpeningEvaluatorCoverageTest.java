@@ -1078,8 +1078,16 @@ class OpeningEvaluatorCoverageTest {
         }
 
         @Override
-        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-            return metrics.targetPressure() + (0.0001d * metrics.immediateHarm());
+                public double scoreOpening(
+                                double immediateHarm,
+                                double selfExposure,
+                                double resourceSwing,
+                                double controlLeverage,
+                                double futureWarLeverage,
+                                double targetPressure,
+                                int teamId
+                ) {
+                        return targetPressure + (0.0001d * immediateHarm);
         }
 
         @Override
@@ -1106,11 +1114,19 @@ class OpeningEvaluatorCoverageTest {
         }
 
         @Override
-        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-            return metrics.immediateHarm()
-                    + (2.0d * metrics.controlLeverage())
-                    + (0.01d * metrics.futureWarLeverage())
-                    - (0.05d * metrics.selfExposure());
+        public double scoreOpening(
+                double immediateHarm,
+                double selfExposure,
+                double resourceSwing,
+                double controlLeverage,
+                double futureWarLeverage,
+                double targetPressure,
+                int teamId
+        ) {
+            return immediateHarm
+                    + (2.0d * controlLeverage)
+                    + (0.01d * futureWarLeverage)
+                    - (0.05d * selfExposure);
         }
 
         @Override

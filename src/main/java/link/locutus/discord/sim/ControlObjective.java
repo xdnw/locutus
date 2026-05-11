@@ -18,12 +18,20 @@ final class ControlObjective implements StrategicObjective {
     }
 
     @Override
-    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return (4.0d * metrics.controlLeverage())
-                + (3.0d * metrics.futureWarLeverage())
-                + (4.0d * metrics.targetPressure())
-                + (0.10d * metrics.immediateHarm())
-                - (0.35d * metrics.selfExposure());
+        public double scoreOpening(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure,
+            int teamId
+        ) {
+        return (4.0d * controlLeverage)
+            + (3.0d * futureWarLeverage)
+            + (4.0d * targetPressure)
+            + (0.10d * immediateHarm)
+            - (0.35d * selfExposure);
     }
 
     @Override

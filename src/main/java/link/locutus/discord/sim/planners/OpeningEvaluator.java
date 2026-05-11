@@ -774,7 +774,15 @@ final class OpeningEvaluator {
             return false;
         }
         metrics.set(0d, 0d, 0d, 0d, 0d, targetPressure);
-        float score = (float) objective.scoreOpening(metrics, attacker.teamId());
+        float score = (float) objective.scoreOpening(
+            metrics.immediateHarm(),
+            metrics.selfExposure(),
+            metrics.resourceSwing(),
+            metrics.controlLeverage(),
+            metrics.futureWarLeverage(),
+            metrics.targetPressure(),
+            attacker.teamId()
+        );
         if (openingSettings != null) {
             score *= (float) (openingSettings.warTypeWeight(WarType.ORD)
                     * openingSettings.attackTypeWeight(AttackType.values[firstAttackTypeId]));

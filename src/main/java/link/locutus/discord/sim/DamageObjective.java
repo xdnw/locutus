@@ -22,8 +22,16 @@ public class DamageObjective implements StrategicObjective {
     }
 
     @Override
-    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return metrics.immediateHarm() - metrics.selfExposure();
+    public double scoreOpening(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure,
+            int teamId
+    ) {
+        return immediateHarm - selfExposure;
     }
 
     @Override

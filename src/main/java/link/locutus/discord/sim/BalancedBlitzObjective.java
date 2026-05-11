@@ -18,13 +18,21 @@ final class BalancedBlitzObjective implements StrategicObjective {
     }
 
     @Override
-    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return metrics.immediateHarm()
-                - (0.75d * metrics.selfExposure())
-                + (1.50d * metrics.controlLeverage())
-                + (1.00d * metrics.futureWarLeverage())
-                + (1.00d * metrics.targetPressure())
-                + (0.000001d * metrics.resourceSwing());
+        public double scoreOpening(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure,
+            int teamId
+        ) {
+        return immediateHarm
+            - (0.75d * selfExposure)
+            + (1.50d * controlLeverage)
+            + futureWarLeverage
+            + targetPressure
+            + (0.000001d * resourceSwing);
     }
 
     @Override
