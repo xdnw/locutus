@@ -916,6 +916,9 @@ final class OpeningEvaluator {
     static final class TopKEdgeCollector {
         private final CandidateEdgeStorage edges;
         private final int[] sortedIndexes;
+        private final float[] orderingScores;
+        private final int[] orderingAttackers;
+        private final int[] orderingDefenders;
         private final boolean attackerIndexStable;
         private int activeLimit;
         private int size;
@@ -925,6 +928,9 @@ final class OpeningEvaluator {
             int capacity = Math.max(0, k);
             this.edges = new CandidateEdgeStorage(capacity, componentPolicy);
             this.sortedIndexes = new int[capacity];
+            this.orderingScores = new float[capacity];
+            this.orderingAttackers = attackerIndexStable ? null : new int[capacity];
+            this.orderingDefenders = new int[capacity];
             this.attackerIndexStable = attackerIndexStable;
             this.activeLimit = capacity;
             this.size = 0;
@@ -1013,6 +1019,7 @@ final class OpeningEvaluator {
                 return;
             }
             if (size < activeLimit) {
+                writeOrderingFields(size, score, attackerIndex, defenderIndex);
                 edges.write(
                         size,
                         attackerIndex,
@@ -1036,12 +1043,13 @@ final class OpeningEvaluator {
                     score,
                     attackerIndex,
                     defenderIndex,
-                    edges.scoreAt(0),
-                    edges.attackerIndexAt(0),
-                    edges.defenderIndexAt(0)
+                    orderingScores[0],
+                    attackerIndexStable ? 0 : orderingAttackers[0],
+                    orderingDefenders[0]
             )) {
                 return;
             }
+            writeOrderingFields(0, score, attackerIndex, defenderIndex);
             edges.write(
                     0,
                     attackerIndex,
@@ -1101,12 +1109,12 @@ final class OpeningEvaluator {
 
         private boolean isSortedIndexBefore(int lhsIndex, int rhsIndex) {
             return isBetterForOrdering(
-                    edges.scoreAt(lhsIndex),
-                    edges.attackerIndexAt(lhsIndex),
-                    edges.defenderIndexAt(lhsIndex),
-                    edges.scoreAt(rhsIndex),
-                    edges.attackerIndexAt(rhsIndex),
-                    edges.defenderIndexAt(rhsIndex)
+                    orderingScores[lhsIndex],
+                    attackerIndexStable ? 0 : orderingAttackers[lhsIndex],
+                    orderingDefenders[lhsIndex],
+                    orderingScores[rhsIndex],
+                    attackerIndexStable ? 0 : orderingAttackers[rhsIndex],
+                    orderingDefenders[rhsIndex]
             );
         }
 
@@ -1150,13 +1158,21 @@ final class OpeningEvaluator {
 
         private boolean isWorse(int lhsIndex, int rhsIndex) {
             return isBetterForOrdering(
-                edges.scoreAt(rhsIndex),
-                    edges.attackerIndexAt(rhsIndex),
-                    edges.defenderIndexAt(rhsIndex),
-                edges.scoreAt(lhsIndex),
-                    edges.attackerIndexAt(lhsIndex),
-                    edges.defenderIndexAt(lhsIndex)
+                    orderingScores[rhsIndex],
+                    attackerIndexStable ? 0 : orderingAttackers[rhsIndex],
+                    orderingDefenders[rhsIndex],
+                    orderingScores[lhsIndex],
+                    attackerIndexStable ? 0 : orderingAttackers[lhsIndex],
+                    orderingDefenders[lhsIndex]
             );
+        }
+
+        private void writeOrderingFields(int index, float score, int attackerIndex, int defenderIndex) {
+            orderingScores[index] = score;
+            if (!attackerIndexStable) {
+                orderingAttackers[index] = attackerIndex;
+            }
+            orderingDefenders[index] = defenderIndex;
         }
 
         private boolean isBetterForOrdering(
@@ -1212,6 +1228,17 @@ final class OpeningEvaluator {
         }
 
         private void swap(int lhs, int rhs) {
+            float scoreSwap = orderingScores[lhs];
+            orderingScores[lhs] = orderingScores[rhs];
+            orderingScores[rhs] = scoreSwap;
+            if (!attackerIndexStable) {
+                int attackerSwap = orderingAttackers[lhs];
+                orderingAttackers[lhs] = orderingAttackers[rhs];
+                orderingAttackers[rhs] = attackerSwap;
+            }
+            int defenderSwap = orderingDefenders[lhs];
+            orderingDefenders[lhs] = orderingDefenders[rhs];
+            orderingDefenders[rhs] = defenderSwap;
             if (attackerIndexStable) {
                 edges.swapIgnoringAttacker(lhs, rhs);
                 return;

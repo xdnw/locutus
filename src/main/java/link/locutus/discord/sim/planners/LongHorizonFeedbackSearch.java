@@ -397,12 +397,7 @@ final class LongHorizonFeedbackSearch {
     ) {
         double rawFactor = snapshot.attackerEdgeFactor(attackerIndex);
         float factor = (float) Math.max(OVERCOUNTER_PROJECTED_FLOOR, Math.min(1d, rawFactor));
-        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
-            if (edges.attackerIndex(edgeIndex) != attackerIndex) {
-                continue;
-            }
-            edges.rescaleEdgeFromProjectedState(edgeIndex, factor);
-        }
+        edges.rescaleAttackerEdgesFromProjectedState(attackerIndex, factor);
     }
 
     private static boolean realizedChanged(int[] previous, int[] next) {

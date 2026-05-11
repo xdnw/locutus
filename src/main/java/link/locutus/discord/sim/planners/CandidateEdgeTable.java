@@ -3,6 +3,8 @@ package link.locutus.discord.sim.planners;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 
+import java.util.Arrays;
+
 /**
  * Dense primitive-backed storage for scored (attacker, defender) candidate edges.
  *
@@ -39,6 +41,8 @@ final class CandidateEdgeTable {
     private int[] cachedPairKeyAttackerNationIds;
     private int[] cachedPairKeyDefenderNationIds;
     private Long2IntOpenHashMap cachedEdgeIndexByPair;
+    private int[] cachedAttackerEdgeOffsets;
+    private int[] cachedAttackerEdgeIndexes;
 
     CandidateEdgeTable() {
         this(INITIAL_CAPACITY);
@@ -212,6 +216,18 @@ final class CandidateEdgeTable {
         edges.rescaleFromProjectedState(edge, factor);
     }
 
+    void rescaleAttackerEdgesFromProjectedState(int attackerIndex, float factor) {
+        ensureAttackerEdgeIndex();
+        if (attackerIndex < 0 || attackerIndex + 1 >= cachedAttackerEdgeOffsets.length) {
+            return;
+        }
+        int start = cachedAttackerEdgeOffsets[attackerIndex];
+        int end = cachedAttackerEdgeOffsets[attackerIndex + 1];
+        for (int offset = start; offset < end; offset++) {
+            edges.rescaleFromProjectedState(cachedAttackerEdgeIndexes[offset], factor);
+        }
+    }
+
     float counterRisk(int edge) {
         return edges.counterRiskAt(edge);
     }
@@ -256,6 +272,31 @@ final class CandidateEdgeTable {
         cachedPairKeyAttackerNationIds = null;
         cachedPairKeyDefenderNationIds = null;
         cachedEdgeIndexByPair = null;
+        cachedAttackerEdgeOffsets = null;
+        cachedAttackerEdgeIndexes = null;
+    }
+
+    private void ensureAttackerEdgeIndex() {
+        if (cachedAttackerEdgeOffsets != null && cachedAttackerEdgeIndexes != null) {
+            return;
+        }
+        int maxAttackerIndex = -1;
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            maxAttackerIndex = Math.max(maxAttackerIndex, attackerIndex(edgeIndex));
+        }
+        cachedAttackerEdgeOffsets = new int[maxAttackerIndex + 2];
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            cachedAttackerEdgeOffsets[attackerIndex(edgeIndex) + 1]++;
+        }
+        for (int attackerIndex = 0; attackerIndex < maxAttackerIndex + 1; attackerIndex++) {
+            cachedAttackerEdgeOffsets[attackerIndex + 1] += cachedAttackerEdgeOffsets[attackerIndex];
+        }
+        cachedAttackerEdgeIndexes = new int[edgeCount];
+        int[] writeOffsets = Arrays.copyOf(cachedAttackerEdgeOffsets, cachedAttackerEdgeOffsets.length);
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            int attackerIndex = attackerIndex(edgeIndex);
+            cachedAttackerEdgeIndexes[writeOffsets[attackerIndex]++] = edgeIndex;
+        }
     }
 
     private static long pairKey(int attackerNationId, int defenderNationId) {
