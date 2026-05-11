@@ -489,4 +489,5 @@ final class LongHorizonMarginalFlowSolver {
             int[] defenderCounts
     ) {
     }
+
 }

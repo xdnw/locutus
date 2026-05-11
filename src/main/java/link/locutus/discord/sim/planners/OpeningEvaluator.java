@@ -19,7 +19,6 @@ import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.IntConsumer;
 
 /**
  * Evaluates candidate (attacker, defender) pairs and populates a {@link CandidateEdgeTable}.
@@ -388,7 +387,7 @@ final class OpeningEvaluator {
         }
     }
 
-    private static final class DefenderAdmissionCollector implements IntConsumer {
+    private static final class DefenderAdmissionCollector implements CompiledScenario.DefenderIndexVisitor {
         private final CompiledScenario scenario;
         private final StrategicObjective objective;
         private final SideOpeningSettings openingSettings;

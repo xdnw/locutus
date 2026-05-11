@@ -8,7 +8,6 @@ import link.locutus.discord.util.PW;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.IntConsumer;
 
 /**
  * Dense compiled planner input for legality and range filtering.
@@ -17,6 +16,11 @@ import java.util.function.IntConsumer;
  * indexes while exact combat evaluation still runs through the existing sim path.</p>
  */
 public final class CompiledScenario {
+    @FunctionalInterface
+    public interface DefenderIndexVisitor {
+        void accept(int defenderIndex);
+    }
+
     private final List<DBNationSnapshot> attackers;
     private final List<DBNationSnapshot> defenders;
     private final List<CompiledActiveWar> activeWars;
@@ -233,7 +237,7 @@ public final class CompiledScenario {
                 && (words[wordIndex] & (1L << (defenderIndex & 63))) != 0L;
     }
 
-    public void forEachDefenderIndexInRange(int attackerIndex, IntConsumer consumer) {
+    public void forEachDefenderIndexInRange(int attackerIndex, DefenderIndexVisitor visitor) {
         double attackerScore = attackerScores[attackerIndex];
         double minScore = attackerScore * PW.WAR_RANGE_MIN_MODIFIER;
         double maxScore = attackerScore * PW.WAR_RANGE_MAX_MODIFIER;
@@ -248,7 +252,7 @@ public final class CompiledScenario {
             for (int defenderIndex : defenderIndexes) {
                 double defenderScore = defenderScores[defenderIndex];
                 if (defenderScore >= minScore && defenderScore <= maxScore) {
-                    consumer.accept(defenderIndex);
+                    visitor.accept(defenderIndex);
                 }
             }
         }
