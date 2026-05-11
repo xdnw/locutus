@@ -1,8 +1,11 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -85,9 +88,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private final Map<Integer, Double> externalStrategicValueByTeam;
     private final List<ExternalWarControl> externalWarControls;
     private final LocalNationBuffers nationBuffers;
+    private final LocalNationScalarRecorder nationScalarRecorder;
     private final LocalWarBuffers warBuffers;
     private final int[] activeOffensiveWarCounts;
     private final int[] activeDefensiveWarCounts;
+    private final LocalNation[] nationsByIndex;
     private final int[] replayNationIdsAscending;
     private final ActiveWarContextScratch strategicValueWarContextScratch;
     private final Deque<Mark> markStack;
@@ -113,6 +118,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Map<Integer, Double> externalStrategicValueByTeam,
             List<ExternalWarControl> externalWarControls,
             LocalNationBuffers nationBuffers,
+            LocalNationScalarRecorder nationScalarRecorder,
             int currentTurn,
             PlannerTransitionSemantics transitionSemantics,
             RandomSource randomSource
@@ -128,13 +134,18 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.externalStrategicValueByTeam = externalStrategicValueByTeam;
         this.externalWarControls = externalWarControls;
         this.nationBuffers = nationBuffers;
+        this.nationScalarRecorder = nationScalarRecorder;
         this.warsById = new Int2ObjectLinkedOpenHashMap<>();
         this.warsByPair = new Long2ObjectLinkedOpenHashMap<>();
         this.warBuffers = new LocalWarBuffers();
         this.activeOffensiveWarCounts = new int[nationsById.size()];
         this.activeDefensiveWarCounts = new int[nationsById.size()];
+        this.nationsByIndex = new LocalNation[nationsById.size()];
         this.replayNationIdsAscending = new int[nationsById.size()];
         int replayNationIndex = 0;
+        for (LocalNation nation : nationsById.values()) {
+            nationsByIndex[nation.nationIndex()] = nation;
+        }
         for (Integer nationId : nationsById.keySet()) {
             replayNationIdsAscending[replayNationIndex++] = nationId;
         }
@@ -340,10 +351,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
         OverrideSet effectiveOverrides = overrides == null ? OverrideSet.EMPTY : overrides;
         List<DBNationSnapshot> effectiveSnapshots = applyOverridesToSnapshots(orderedSnapshots, effectiveOverrides);
         LocalNationBuffers nationBuffers = LocalNationBuffers.fromSnapshots(effectiveSnapshots);
+        LocalNationScalarRecorder nationScalarRecorder = new LocalNationScalarRecorder();
         Map<Integer, LocalNation> localNations = new Int2ObjectLinkedOpenHashMap<>();
         for (int index = 0; index < effectiveSnapshots.size(); index++) {
             DBNationSnapshot snapshot = effectiveSnapshots.get(index);
-            localNations.put(snapshot.nationId(), LocalNation.of(snapshot, nationBuffers, index, currentTurn));
+            localNations.put(snapshot.nationId(), LocalNation.of(snapshot, nationBuffers, nationScalarRecorder, index, currentTurn));
         }
         RandomSource randomSource = tuning.stateResolutionMode() == ResolutionMode.STOCHASTIC
                 ? RandomSource.splittable(tuning.stochasticSeed())
@@ -355,6 +367,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             externalStrategicValueByTeam == null ? Map.of() : Map.copyOf(externalStrategicValueByTeam),
             externalWarControls == null ? List.of() : List.copyOf(externalWarControls),
             nationBuffers,
+            nationScalarRecorder,
             currentTurn,
                 effectiveTransitionSemantics,
                 randomSource
@@ -407,6 +420,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
     void apply(Mark mark) {
         requireTopMark(mark);
         markStack.pop();
+        nationBuffers.apply(mark.snapshot().nationBufferSnapshot());
+        nationScalarRecorder.apply(mark.snapshot().nationScalarSnapshot());
+        warBuffers.apply(mark.snapshot().warBufferSnapshot());
+        Mark parent = markStack.peek();
+        if (parent != null) {
+            mark.snapshot().conflictMutationMark().mergeInto(parent.snapshot().conflictMutationMark());
+        }
     }
 
     void rollback(Mark mark) {
@@ -429,53 +449,26 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private ConflictSnapshot captureSnapshot() {
-        Map<Integer, LocalNationScalarSnapshot> nationScalars = new Int2ObjectLinkedOpenHashMap<>(nationsById.size());
-        for (LocalNation nation : nationsById.values()) {
-            nationScalars.put(nation.nationId(), nation.scalarSnapshot());
-        }
-
-        List<LocalWarRecord> warRecords = new ArrayList<>(warsById.size());
-        for (LocalWar war : warsById.values()) {
-            warRecords.add(new LocalWarRecord(
-                    war.warId(),
-                    war.warIndex(),
-                    war.attacker.nationId(),
-                    war.defender.nationId()
-            ));
-        }
-
         return new ConflictSnapshot(
-                nextWarId,
-            currentTurn,
                 nationBuffers.snapshot(),
-                nationScalars,
+                nationScalarRecorder.snapshot(),
                 warBuffers.snapshot(),
-                warRecords
+                new ConflictMutationMark(
+                        nextWarId,
+                        currentTurn,
+                        new LocalNationBuffers.IntArrayChangeLog(),
+                        new LocalNationBuffers.IntArrayChangeLog(),
+                        new IntArrayList()
+                )
         );
     }
 
     private void restoreSnapshot(ConflictSnapshot snapshot) {
-        nextWarId = snapshot.nextWarId();
-        currentTurn = snapshot.currentTurn();
         nationBuffers.restore(snapshot.nationBufferSnapshot());
-        for (Map.Entry<Integer, LocalNationScalarSnapshot> entry : snapshot.nationScalarsById().entrySet()) {
-            LocalNation nation = nationsById.get(entry.getKey());
-            if (nation != null) {
-                nation.restoreScalarSnapshot(entry.getValue());
-            }
-        }
+        nationScalarRecorder.restore(snapshot.nationScalarSnapshot(), nationsByIndex);
 
         warBuffers.restore(snapshot.warBufferSnapshot());
-        warsById.clear();
-        warsByPair.clear();
-        for (LocalWarRecord warRecord : snapshot.warRecords()) {
-            LocalNation attacker = requireNation(warRecord.attackerNationId());
-            LocalNation defender = requireNation(warRecord.defenderNationId());
-            LocalWar war = new LocalWar(warRecord.warId(), warRecord.warIndex(), attacker, defender, warBuffers);
-            warsById.put(warRecord.warId(), war);
-            warsByPair.put(pairKey(warRecord.attackerNationId(), warRecord.defenderNationId()), war);
-        }
-        rebuildActiveWarCounts();
+        snapshot.conflictMutationMark().restore(this);
     }
 
     void applyAssignmentHorizon(Map<Integer, List<Integer>> assignment, int horizonTurns) {
@@ -1743,8 +1736,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (!war.isActive()) {
             return;
         }
-        activeOffensiveWarCounts[war.attacker.nationIndex()]++;
-        activeDefensiveWarCounts[war.defender.nationIndex()]++;
+        int attackerIndex = war.attacker.nationIndex();
+        int defenderIndex = war.defender.nationIndex();
+        recordActiveOffensiveWarCountChange(attackerIndex);
+        recordActiveDefensiveWarCountChange(defenderIndex);
+        activeOffensiveWarCounts[attackerIndex]++;
+        activeDefensiveWarCounts[defenderIndex]++;
     }
 
     private void unregisterActiveWar(LocalWar war) {
@@ -1756,8 +1753,30 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (activeOffensiveWarCounts[attackerIndex] <= 0 || activeDefensiveWarCounts[defenderIndex] <= 0) {
             throw new IllegalStateException("Active war counts out of sync for war " + war.warId());
         }
+        recordActiveOffensiveWarCountChange(attackerIndex);
+        recordActiveDefensiveWarCountChange(defenderIndex);
         activeOffensiveWarCounts[attackerIndex]--;
         activeDefensiveWarCounts[defenderIndex]--;
+    }
+
+    private void recordActiveOffensiveWarCountChange(int nationIndex) {
+        Mark activeMark = markStack.peek();
+        if (activeMark != null) {
+            activeMark.snapshot().conflictMutationMark().activeOffensiveWarCountChanges().record(
+                    nationIndex,
+                    activeOffensiveWarCounts[nationIndex]
+            );
+        }
+    }
+
+    private void recordActiveDefensiveWarCountChange(int nationIndex) {
+        Mark activeMark = markStack.peek();
+        if (activeMark != null) {
+            activeMark.snapshot().conflictMutationMark().activeDefensiveWarCountChanges().record(
+                    nationIndex,
+                    activeDefensiveWarCounts[nationIndex]
+            );
+        }
     }
 
     private void setWarStatus(LocalWar war, WarStatus status) {
@@ -1912,6 +1931,10 @@ final class PlannerLocalConflict implements TeamWarControlView {
         LocalWar war = new LocalWar(warId, warIndex, attacker, defender, warBuffers);
         warsById.put(warId, war);
         warsByPair.put(pairKey, war);
+        Mark activeMark = markStack.peek();
+        if (activeMark != null) {
+            activeMark.snapshot().conflictMutationMark().recordAddedWar(warId);
+        }
         registerActiveWar(war);
         recordReplayDeclaration(war);
         return war;
@@ -2231,7 +2254,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             setWarStatus(war, status);
             recordReplayConclusion(war, status);
             applyVictoryInfraDamage(war, winnerSide, winner, loser);
-            loser.beigeTurns = Math.max(loser.beigeTurns, tuning.beigeTurnsOnDefeat());
+            loser.setMinimumBeigeTurns(tuning.beigeTurnsOnDefeat());
             applyVictoryNationLoot(war, winnerSide, winner, loser);
         }
     }
@@ -2521,39 +2544,54 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    private record ConflictSnapshot(
-            int nextWarId,
-            int currentTurn,
+        private record ConflictSnapshot(
             LocalNationBufferSnapshot nationBufferSnapshot,
-            Map<Integer, LocalNationScalarSnapshot> nationScalarsById,
+                LocalNationScalarSnapshot nationScalarSnapshot,
             LocalWarBufferSnapshot warBufferSnapshot,
-            List<LocalWarRecord> warRecords
+            ConflictMutationMark conflictMutationMark
+        ) {
+    }
+
+            private record LocalNationScalarSnapshot(
+                LocalNationScalarRecorder.LocalNationScalarMutationMark mark
     ) {
     }
 
-    private record LocalNationScalarSnapshot(
-            int policyCooldownTurnsRemaining,
-            int beigeTurns,
-            int dayPhaseTurn,
-            double score
+    private record ConflictMutationMark(
+            int nextWarIdAtMark,
+            int currentTurnAtMark,
+            LocalNationBuffers.IntArrayChangeLog activeOffensiveWarCountChanges,
+            LocalNationBuffers.IntArrayChangeLog activeDefensiveWarCountChanges,
+            IntArrayList addedWarIds
     ) {
+        void restore(PlannerLocalConflict conflict) {
+            conflict.nextWarId = nextWarIdAtMark;
+            conflict.currentTurn = currentTurnAtMark;
+            activeOffensiveWarCountChanges.restore(conflict.activeOffensiveWarCounts);
+            activeDefensiveWarCountChanges.restore(conflict.activeDefensiveWarCounts);
+            for (int i = addedWarIds.size() - 1; i >= 0; i--) {
+                int warId = addedWarIds.getInt(i);
+                LocalWar war = conflict.warsById.remove(warId);
+                if (war == null) {
+                    continue;
+                }
+                conflict.warsByPair.remove(pairKey(war.attacker.nationId(), war.defender.nationId()));
+            }
+        }
+
+        void mergeInto(ConflictMutationMark parent) {
+            activeOffensiveWarCountChanges.mergeInto(parent.activeOffensiveWarCountChanges);
+            activeDefensiveWarCountChanges.mergeInto(parent.activeDefensiveWarCountChanges);
+            parent.addedWarIds.addAll(addedWarIds);
+        }
+
+        void recordAddedWar(int warId) {
+            addedWarIds.add(warId);
+        }
     }
 
-    private record LocalWarRecord(
-            int warId,
-            int warIndex,
-            int attackerNationId,
-            int defenderNationId
-    ) {
-    }
-
-    private record LocalNationBufferSnapshot(
-            int[] unitsFlat,
-            int[] unitBuysTodayFlat,
-            int[] pendingBuysFlat,
-            double[] resourcesFlat,
-            double[] cityInfraFlat,
-            TouchedCityInfraSnapshot touchedCityInfra
+        private record LocalNationBufferSnapshot(
+                LocalNationBuffers.LocalNationMutationMark mark
     ) {
     }
 
@@ -2564,19 +2602,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private record LocalWarBufferSnapshot(
-            WarType[] warTypes,
-            int[] startTurn,
-            WarStatus[] status,
-            int[] attackerMaps,
-            int[] defenderMaps,
-            int[] attackerResistance,
-            int[] defenderResistance,
-            boolean[] attackerFortified,
-            boolean[] defenderFortified,
-            int[] groundSuperiorityOwner,
-            int[] airSuperiorityOwner,
-            int[] blockadeOwner,
-            int size
+            LocalWarBuffers.LocalWarMutationMark mark
     ) {
     }
 
@@ -2642,6 +2668,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final int[] cityInfraBaseOffsets;
         private final int[] cityCounts;
         private final TouchedCityInfraLog touchedCityInfra;
+        private final Deque<LocalNationMutationMark> activeMarks;
 
         private LocalNationBuffers(
                 int[] unitsFlat,
@@ -2667,6 +2694,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             this.cityInfraBaseOffsets = cityInfraBaseOffsets;
             this.cityCounts = cityCounts;
             this.touchedCityInfra = touchedCityInfra;
+            this.activeMarks = new ArrayDeque<>();
         }
 
         static LocalNationBuffers fromSnapshots(List<DBNationSnapshot> snapshots) {
@@ -2751,30 +2779,24 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         LocalNationBufferSnapshot snapshot() {
-            return new LocalNationBufferSnapshot(
-                    java.util.Arrays.copyOf(unitsFlat, unitsFlat.length),
-                    java.util.Arrays.copyOf(unitBuysTodayFlat, unitBuysTodayFlat.length),
-                    java.util.Arrays.copyOf(pendingBuysFlat, pendingBuysFlat.length),
-                    java.util.Arrays.copyOf(resourcesFlat, resourcesFlat.length),
-                    java.util.Arrays.copyOf(cityInfraFlat, cityInfraFlat.length),
-                    touchedCityInfra.snapshot()
-            );
+            LocalNationMutationMark mark = new LocalNationMutationMark();
+            activeMarks.push(mark);
+            return new LocalNationBufferSnapshot(mark);
         }
 
         void restore(LocalNationBufferSnapshot snapshot) {
-            if (snapshot.unitsFlat().length != unitsFlat.length
-                    || snapshot.unitBuysTodayFlat().length != unitBuysTodayFlat.length
-                    || snapshot.pendingBuysFlat().length != pendingBuysFlat.length
-                    || snapshot.resourcesFlat().length != resourcesFlat.length
-                    || snapshot.cityInfraFlat().length != cityInfraFlat.length) {
-                throw new IllegalStateException("Local nation buffer snapshot shape mismatch");
+            LocalNationMutationMark mark = requireTopMark(snapshot);
+            activeMarks.pop();
+            mark.restore(this);
+        }
+
+        void apply(LocalNationBufferSnapshot snapshot) {
+            LocalNationMutationMark mark = requireTopMark(snapshot);
+            activeMarks.pop();
+            LocalNationMutationMark parent = activeMarks.peek();
+            if (parent != null) {
+                mark.mergeInto(parent);
             }
-            System.arraycopy(snapshot.unitsFlat(), 0, unitsFlat, 0, unitsFlat.length);
-            System.arraycopy(snapshot.unitBuysTodayFlat(), 0, unitBuysTodayFlat, 0, unitBuysTodayFlat.length);
-            System.arraycopy(snapshot.pendingBuysFlat(), 0, pendingBuysFlat, 0, pendingBuysFlat.length);
-            System.arraycopy(snapshot.resourcesFlat(), 0, resourcesFlat, 0, resourcesFlat.length);
-            System.arraycopy(snapshot.cityInfraFlat(), 0, cityInfraFlat, 0, cityInfraFlat.length);
-            touchedCityInfra.restore(snapshot.touchedCityInfra());
         }
 
         void recordCityInfraOverlay(int nationIndex, int cityIndex, double absoluteInfra) {
@@ -2790,21 +2812,44 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         void setUnitsBoughtToday(int nationIndex, MilitaryUnit unit, int value) {
-            unitBuysTodayFlat[unitBaseOffsets[nationIndex] + unit.ordinal()] = Math.max(0, value);
+            int index = unitBaseOffsets[nationIndex] + unit.ordinal();
+            int next = Math.max(0, value);
+            if (unitBuysTodayFlat[index] == next) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.unitBuysTodayChanges(), index, unitBuysTodayFlat[index]);
+            unitBuysTodayFlat[index] = next;
         }
 
         void setPendingBuys(int nationIndex, MilitaryUnit unit, int value) {
-            pendingBuysFlat[unitBaseOffsets[nationIndex] + unit.ordinal()] = Math.max(0, value);
+            int index = unitBaseOffsets[nationIndex] + unit.ordinal();
+            int next = Math.max(0, value);
+            if (pendingBuysFlat[index] == next) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.pendingBuysChanges(), index, pendingBuysFlat[index]);
+            pendingBuysFlat[index] = next;
         }
 
         void resetUnitBuysToday(int nationIndex) {
             int base = unitBaseOffsets[nationIndex];
-            java.util.Arrays.fill(unitBuysTodayFlat, base, base + UNIT_STRIDE, 0);
+            for (int offset = 0; offset < UNIT_STRIDE; offset++) {
+                int index = base + offset;
+                if (unitBuysTodayFlat[index] == 0) {
+                    continue;
+                }
+                recordIntChange(activeMark -> activeMark.unitBuysTodayChanges(), index, unitBuysTodayFlat[index]);
+                unitBuysTodayFlat[index] = 0;
+            }
         }
 
         double subtractResource(int nationIndex, ResourceType type, double amount) {
             int index = resourceBaseOffsets[nationIndex] + type.ordinal();
             double removed = Math.min(amount, resourcesFlat[index]);
+            if (!(removed > 0d)) {
+                return 0d;
+            }
+            recordDoubleChange(activeMark -> activeMark.resourceChanges(), index, resourcesFlat[index]);
             resourcesFlat[index] -= removed;
             return removed;
         }
@@ -2824,7 +2869,47 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         void addResource(int nationIndex, ResourceType type, double amount) {
-            resourcesFlat[resourceBaseOffsets[nationIndex] + type.ordinal()] += amount;
+            if (!(amount > 0d)) {
+                return;
+            }
+            int index = resourceBaseOffsets[nationIndex] + type.ordinal();
+            recordDoubleChange(activeMark -> activeMark.resourceChanges(), index, resourcesFlat[index]);
+            resourcesFlat[index] += amount;
+        }
+
+        void addUnits(int nationIndex, MilitaryUnit unit, int amount) {
+            if (amount <= 0) {
+                return;
+            }
+            int index = unitBaseOffsets[nationIndex] + unit.ordinal();
+            recordIntChange(activeMark -> activeMark.unitChanges(), index, unitsFlat[index]);
+            unitsFlat[index] += amount;
+        }
+
+        void removeUnits(int nationIndex, MilitaryUnit unit, int requested) {
+            if (requested <= 0) {
+                return;
+            }
+            int index = unitBaseOffsets[nationIndex] + unit.ordinal();
+            int current = unitsFlat[index];
+            int next = Math.max(0, current - requested);
+            if (next == current) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.unitChanges(), index, current);
+            unitsFlat[index] = next;
+        }
+
+        void setCityInfra(int nationIndex, int cityIndex, double absoluteInfra) {
+            int globalCityIndex = cityInfraBaseOffsets[nationIndex] + cityIndex;
+            double current = cityInfraFlat[globalCityIndex];
+            if (current == absoluteInfra) {
+                return;
+            }
+            recordDoubleChange(activeMark -> activeMark.cityInfraChanges(), globalCityIndex, current);
+            recordTouchedCityInfraChange(globalCityIndex);
+            cityInfraFlat[globalCityIndex] = absoluteInfra;
+            touchedCityInfra.record(globalCityIndex, absoluteInfra);
         }
 
         double[] copyResources(int nationIndex) {
@@ -2844,6 +2929,49 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         SpecialistCityProfile citySpecialistProfile(int nationIndex, int cityIndex) {
             return citySpecialistProfilesFlat[cityInfraBaseOffsets[nationIndex] + cityIndex];
+        }
+
+        private LocalNationMutationMark requireTopMark(LocalNationBufferSnapshot snapshot) {
+            if (snapshot == null || snapshot.mark() == null) {
+                throw new IllegalArgumentException("Local nation buffer snapshot cannot be null");
+            }
+            LocalNationMutationMark current = activeMarks.peek();
+            if (current == null) {
+                throw new IllegalStateException("No active local nation mark to apply/rollback");
+            }
+            if (current != snapshot.mark()) {
+                throw new IllegalStateException("Local nation marks must be applied/rolled back in LIFO order");
+            }
+            return current;
+        }
+
+        private void recordIntChange(
+                java.util.function.Function<LocalNationMutationMark, IntArrayChangeLog> selector,
+                int index,
+                int currentValue
+        ) {
+            LocalNationMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                selector.apply(activeMark).record(index, currentValue);
+            }
+        }
+
+        private void recordDoubleChange(
+                java.util.function.Function<LocalNationMutationMark, DoubleArrayChangeLog> selector,
+                int index,
+                double currentValue
+        ) {
+            LocalNationMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                selector.apply(activeMark).record(index, currentValue);
+            }
+        }
+
+        private void recordTouchedCityInfraChange(int globalCityIndex) {
+            LocalNationMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                activeMark.touchedCityInfraChanges().record(touchedCityInfra, globalCityIndex);
+            }
         }
 
         @Override
@@ -2875,44 +3003,20 @@ final class PlannerLocalConflict implements TeamWarControlView {
             private final boolean[] touched;
             private final double[] infraValues;
             private final int[] touchedGlobalCityIndexes;
+            private final int[] touchedPositions;
             private int touchedCount;
 
             private TouchedCityInfraLog(int totalCities) {
                 this.touched = new boolean[totalCities];
                 this.infraValues = new double[totalCities];
                 this.touchedGlobalCityIndexes = new int[totalCities];
+                this.touchedPositions = new int[totalCities];
+                java.util.Arrays.fill(this.touchedPositions, -1);
             }
 
             void record(int globalCityIndex, double absoluteInfra) {
-                if (!touched[globalCityIndex]) {
-                    touched[globalCityIndex] = true;
-                    touchedGlobalCityIndexes[touchedCount++] = globalCityIndex;
-                }
+                ensureTouched(globalCityIndex);
                 infraValues[globalCityIndex] = absoluteInfra;
-            }
-
-            TouchedCityInfraSnapshot snapshot() {
-                int[] indexes = java.util.Arrays.copyOf(touchedGlobalCityIndexes, touchedCount);
-                double[] values = new double[touchedCount];
-                for (int i = 0; i < touchedCount; i++) {
-                    values[i] = infraValues[indexes[i]];
-                }
-                return new TouchedCityInfraSnapshot(indexes, values);
-            }
-
-            void restore(TouchedCityInfraSnapshot snapshot) {
-                clear();
-                int[] indexes = snapshot.touchedGlobalCityIndexes();
-                double[] values = snapshot.touchedInfraValues();
-                if (indexes.length != values.length) {
-                    throw new IllegalStateException("Touched city infra snapshot shape mismatch");
-                }
-                for (int i = 0; i < indexes.length; i++) {
-                    int globalCityIndex = indexes[i];
-                    touched[globalCityIndex] = true;
-                    infraValues[globalCityIndex] = values[i];
-                    touchedGlobalCityIndexes[touchedCount++] = globalCityIndex;
-                }
             }
 
             PlannerCityInfraOverlay exportOverlay(int nationId, int cityBase, int cityCount) {
@@ -2942,9 +3046,251 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
             private void clear() {
                 for (int i = 0; i < touchedCount; i++) {
-                    touched[touchedGlobalCityIndexes[i]] = false;
+                    int globalCityIndex = touchedGlobalCityIndexes[i];
+                    touched[globalCityIndex] = false;
+                    touchedPositions[globalCityIndex] = -1;
                 }
                 touchedCount = 0;
+            }
+
+            private void ensureTouched(int globalCityIndex) {
+                if (touched[globalCityIndex]) {
+                    return;
+                }
+                touched[globalCityIndex] = true;
+                touchedPositions[globalCityIndex] = touchedCount;
+                touchedGlobalCityIndexes[touchedCount++] = globalCityIndex;
+            }
+
+            private void restoreEntry(int globalCityIndex, boolean wasTouched, double previousValue) {
+                if (wasTouched) {
+                    ensureTouched(globalCityIndex);
+                    infraValues[globalCityIndex] = previousValue;
+                    return;
+                }
+                removeTouched(globalCityIndex);
+                infraValues[globalCityIndex] = previousValue;
+            }
+
+            private void removeTouched(int globalCityIndex) {
+                if (!touched[globalCityIndex]) {
+                    return;
+                }
+                int position = touchedPositions[globalCityIndex];
+                int lastPosition = touchedCount - 1;
+                int lastIndex = touchedGlobalCityIndexes[lastPosition];
+                touchedCount = lastPosition;
+                if (position != lastPosition) {
+                    touchedGlobalCityIndexes[position] = lastIndex;
+                    touchedPositions[lastIndex] = position;
+                }
+                touched[globalCityIndex] = false;
+                touchedPositions[globalCityIndex] = -1;
+            }
+        }
+
+        private static final class LocalNationMutationMark {
+            private TouchedCityInfraChangeLog touchedCityInfraChanges;
+            private IntArrayChangeLog unitChanges;
+            private IntArrayChangeLog unitBuysTodayChanges;
+            private IntArrayChangeLog pendingBuysChanges;
+            private DoubleArrayChangeLog resourceChanges;
+            private DoubleArrayChangeLog cityInfraChanges;
+
+            void restore(LocalNationBuffers buffers) {
+                if (unitChanges != null) {
+                    unitChanges.restore(buffers.unitsFlat);
+                }
+                if (unitBuysTodayChanges != null) {
+                    unitBuysTodayChanges.restore(buffers.unitBuysTodayFlat);
+                }
+                if (pendingBuysChanges != null) {
+                    pendingBuysChanges.restore(buffers.pendingBuysFlat);
+                }
+                if (resourceChanges != null) {
+                    resourceChanges.restore(buffers.resourcesFlat);
+                }
+                if (cityInfraChanges != null) {
+                    cityInfraChanges.restore(buffers.cityInfraFlat);
+                }
+                if (touchedCityInfraChanges != null) {
+                    touchedCityInfraChanges.restore(buffers.touchedCityInfra);
+                }
+            }
+
+            void mergeInto(LocalNationMutationMark parent) {
+                if (touchedCityInfraChanges != null) {
+                    touchedCityInfraChanges.mergeInto(parent.touchedCityInfraChanges());
+                }
+                if (unitChanges != null) {
+                    unitChanges.mergeInto(parent.unitChanges());
+                }
+                if (unitBuysTodayChanges != null) {
+                    unitBuysTodayChanges.mergeInto(parent.unitBuysTodayChanges());
+                }
+                if (pendingBuysChanges != null) {
+                    pendingBuysChanges.mergeInto(parent.pendingBuysChanges());
+                }
+                if (resourceChanges != null) {
+                    resourceChanges.mergeInto(parent.resourceChanges());
+                }
+                if (cityInfraChanges != null) {
+                    cityInfraChanges.mergeInto(parent.cityInfraChanges());
+                }
+            }
+
+            TouchedCityInfraChangeLog touchedCityInfraChanges() {
+                if (touchedCityInfraChanges == null) {
+                    touchedCityInfraChanges = new TouchedCityInfraChangeLog();
+                }
+                return touchedCityInfraChanges;
+            }
+
+            IntArrayChangeLog unitChanges() {
+                if (unitChanges == null) {
+                    unitChanges = new IntArrayChangeLog();
+                }
+                return unitChanges;
+            }
+
+            IntArrayChangeLog unitBuysTodayChanges() {
+                if (unitBuysTodayChanges == null) {
+                    unitBuysTodayChanges = new IntArrayChangeLog();
+                }
+                return unitBuysTodayChanges;
+            }
+
+            IntArrayChangeLog pendingBuysChanges() {
+                if (pendingBuysChanges == null) {
+                    pendingBuysChanges = new IntArrayChangeLog();
+                }
+                return pendingBuysChanges;
+            }
+
+            DoubleArrayChangeLog resourceChanges() {
+                if (resourceChanges == null) {
+                    resourceChanges = new DoubleArrayChangeLog();
+                }
+                return resourceChanges;
+            }
+
+            DoubleArrayChangeLog cityInfraChanges() {
+                if (cityInfraChanges == null) {
+                    cityInfraChanges = new DoubleArrayChangeLog();
+                }
+                return cityInfraChanges;
+            }
+        }
+
+        private static final class TouchedCityInfraChangeLog {
+            private final Int2IntOpenHashMap positionByIndex = new Int2IntOpenHashMap();
+            private final IntArrayList indexes = new IntArrayList();
+            private final IntArrayList touchedStates = new IntArrayList();
+            private final DoubleArrayList values = new DoubleArrayList();
+
+            private TouchedCityInfraChangeLog() {
+                positionByIndex.defaultReturnValue(-1);
+            }
+
+            void record(TouchedCityInfraLog target, int globalCityIndex) {
+                if (positionByIndex.putIfAbsent(globalCityIndex, indexes.size()) != -1) {
+                    return;
+                }
+                indexes.add(globalCityIndex);
+                touchedStates.add(target.touched[globalCityIndex] ? 1 : 0);
+                values.add(target.infraValues[globalCityIndex]);
+            }
+
+            void restore(TouchedCityInfraLog target) {
+                for (int i = indexes.size() - 1; i >= 0; i--) {
+                    target.restoreEntry(
+                            indexes.getInt(i),
+                            touchedStates.getInt(i) != 0,
+                            values.getDouble(i)
+                    );
+                }
+            }
+
+            void mergeInto(TouchedCityInfraChangeLog parent) {
+                for (int i = 0; i < indexes.size(); i++) {
+                    int index = indexes.getInt(i);
+                    if (parent.positionByIndex.putIfAbsent(index, parent.indexes.size()) != -1) {
+                        continue;
+                    }
+                    parent.indexes.add(index);
+                    parent.touchedStates.add(touchedStates.getInt(i));
+                    parent.values.add(values.getDouble(i));
+                }
+            }
+        }
+
+        private static final class IntArrayChangeLog {
+            private final Int2IntOpenHashMap positionByIndex = new Int2IntOpenHashMap();
+            private final IntArrayList indexes = new IntArrayList();
+            private final IntArrayList values = new IntArrayList();
+
+            private IntArrayChangeLog() {
+                positionByIndex.defaultReturnValue(-1);
+            }
+
+            void record(int index, int value) {
+                if (positionByIndex.putIfAbsent(index, indexes.size()) != -1) {
+                    return;
+                }
+                indexes.add(index);
+                values.add(value);
+            }
+
+            void restore(int[] target) {
+                for (int i = indexes.size() - 1; i >= 0; i--) {
+                    target[indexes.getInt(i)] = values.getInt(i);
+                }
+            }
+
+            void mergeInto(IntArrayChangeLog parent) {
+                for (int i = 0; i < indexes.size(); i++) {
+                    int index = indexes.getInt(i);
+                    if (parent.positionByIndex.putIfAbsent(index, parent.indexes.size()) != -1) {
+                        continue;
+                    }
+                    parent.indexes.add(index);
+                    parent.values.add(values.getInt(i));
+                }
+            }
+        }
+
+        private static final class DoubleArrayChangeLog {
+            private final Int2IntOpenHashMap positionByIndex = new Int2IntOpenHashMap();
+            private final IntArrayList indexes = new IntArrayList();
+            private final DoubleArrayList values = new DoubleArrayList();
+
+            private DoubleArrayChangeLog() {
+                positionByIndex.defaultReturnValue(-1);
+            }
+
+            void record(int index, double value) {
+                if (positionByIndex.putIfAbsent(index, indexes.size()) != -1) {
+                    return;
+                }
+                indexes.add(index);
+                values.add(value);
+            }
+
+            void restore(double[] target) {
+                for (int i = indexes.size() - 1; i >= 0; i--) {
+                    target[indexes.getInt(i)] = values.getDouble(i);
+                }
+            }
+
+            void mergeInto(DoubleArrayChangeLog parent) {
+                for (int i = 0; i < indexes.size(); i++) {
+                    int index = indexes.getInt(i);
+                    if (parent.positionByIndex.putIfAbsent(index, parent.indexes.size()) != -1) {
+                        continue;
+                    }
+                    parent.indexes.add(index);
+                    parent.values.add(values.getDouble(i));
+                }
             }
         }
     }
@@ -2955,6 +3301,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final int nationId;
         private final int nationIndex;
         private final LocalNationBuffers buffers;
+        private final LocalNationScalarRecorder scalarRecorder;
         private final int allianceId;
         private final int teamId;
         private final WarPolicy warPolicy;
@@ -2991,6 +3338,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 int nationId,
                 int nationIndex,
                 LocalNationBuffers buffers,
+                LocalNationScalarRecorder scalarRecorder,
                 int allianceId,
                 int teamId,
                 WarPolicy warPolicy,
@@ -3019,6 +3367,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             this.nationId = nationId;
             this.nationIndex = nationIndex;
             this.buffers = buffers;
+            this.scalarRecorder = scalarRecorder;
             this.allianceId = allianceId;
             this.teamId = teamId;
             this.warPolicy = warPolicy;
@@ -3054,6 +3403,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         static LocalNation of(
                 DBNationSnapshot snapshot,
                 LocalNationBuffers buffers,
+            LocalNationScalarRecorder scalarRecorder,
                 int nationIndex,
                 int currentTurn
         ) {
@@ -3061,6 +3411,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     snapshot.nationId(),
                     nationIndex,
                     buffers,
+                scalarRecorder,
                     snapshot.allianceId(),
                     snapshot.teamId(),
                     snapshot.warPolicy(),
@@ -3151,32 +3502,16 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return total;
         }
 
-        LocalNationScalarSnapshot scalarSnapshot() {
-            return new LocalNationScalarSnapshot(
-                    policyCooldownTurnsRemaining,
-                    beigeTurns,
-                    dayPhaseTurn,
-                    score
-            );
-        }
-
-        void restoreScalarSnapshot(LocalNationScalarSnapshot snapshot) {
-            this.policyCooldownTurnsRemaining = snapshot.policyCooldownTurnsRemaining();
-            this.beigeTurns = snapshot.beigeTurns();
-            this.dayPhaseTurn = snapshot.dayPhaseTurn();
-            this.score = snapshot.score();
-        }
-
         void advanceTurn(boolean materializePendingBuys, boolean decrementPolicyCooldown) {
-            dayPhaseTurn = (dayPhaseTurn + 1) % 12;
+            setDayPhaseTurn((dayPhaseTurn + 1) % 12);
             if (dayPhaseTurn == 0) {
                 buffers.resetUnitBuysToday(nationIndex);
             }
             if (beigeTurns > 0) {
-                beigeTurns--;
+                setBeigeTurns(beigeTurns - 1);
             }
             if (decrementPolicyCooldown && policyCooldownTurnsRemaining > 0) {
-                policyCooldownTurnsRemaining--;
+                setPolicyCooldownTurnsRemaining(policyCooldownTurnsRemaining - 1);
             }
             if (materializePendingBuys) {
                 materializePendingBuys();
@@ -3273,9 +3608,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 if (pending <= 0) {
                     continue;
                 }
-                int index = buffers.unitBaseOffset(nationIndex) + unit.ordinal();
-                int[] unitsFlat = buffers.unitsFlat();
-                unitsFlat[index] += pending;
+                buffers.addUnits(nationIndex, unit, pending);
                 buffers.setPendingBuys(nationIndex, unit, 0);
                 changed = true;
             }
@@ -3285,9 +3618,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         void removeUnits(MilitaryUnit unit, int requested) {
-            int index = buffers.unitBaseOffset(nationIndex) + unit.ordinal();
-            int[] unitsFlat = buffers.unitsFlat();
-            unitsFlat[index] = Math.max(0, unitsFlat[index] - requested);
+            buffers.removeUnits(nationIndex, unit, requested);
             recalculateScore();
         }
 
@@ -3310,8 +3641,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 return;
             }
             double removed = Math.min(current, totalInfraDestroyed);
-            cityInfraFlat[cityIndex] = current - removed;
-            buffers.recordCityInfraOverlay(nationIndex, maxIdx, cityInfraFlat[cityIndex]);
+            buffers.setCityInfra(nationIndex, maxIdx, current - removed);
             recalculateScore();
         }
 
@@ -3330,8 +3660,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 int afterCents = WarOutcomeMath.victoryInfraAfterCents(beforeCents, infraPercentMilli);
                 double afterInfra = afterCents * 0.01d;
                 if (cityInfraFlat[cityIndex] != afterInfra) {
-                    cityInfraFlat[cityIndex] = afterInfra;
-                    buffers.recordCityInfraOverlay(nationIndex, i, afterInfra);
+                    buffers.setCityInfra(nationIndex, i, afterInfra);
                     changed = true;
                 }
             }
@@ -3488,7 +3817,42 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     total += unit.getScore(count);
                 }
             }
-            score = total;
+            if (score != total) {
+                scalarRecorder.recordScoreChange(nationIndex, score);
+                score = total;
+            }
+        }
+
+        private void setPolicyCooldownTurnsRemaining(int value) {
+            if (policyCooldownTurnsRemaining == value) {
+                return;
+            }
+            scalarRecorder.recordPolicyCooldownChange(nationIndex, policyCooldownTurnsRemaining);
+            policyCooldownTurnsRemaining = value;
+        }
+
+        private void setBeigeTurns(int value) {
+            if (beigeTurns == value) {
+                return;
+            }
+            scalarRecorder.recordBeigeTurnsChange(nationIndex, beigeTurns);
+            beigeTurns = value;
+        }
+
+        private void setMinimumBeigeTurns(int value) {
+            if (beigeTurns >= value) {
+                return;
+            }
+            scalarRecorder.recordBeigeTurnsChange(nationIndex, beigeTurns);
+            beigeTurns = value;
+        }
+
+        private void setDayPhaseTurn(int value) {
+            if (dayPhaseTurn == value) {
+                return;
+            }
+            scalarRecorder.recordDayPhaseTurnChange(nationIndex, dayPhaseTurn);
+            dayPhaseTurn = value;
         }
 
         @Override
@@ -3600,6 +3964,150 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
+    private static final class LocalNationScalarRecorder {
+        private final Deque<LocalNationScalarMutationMark> activeMarks = new ArrayDeque<>();
+
+        LocalNationScalarSnapshot snapshot() {
+            LocalNationScalarMutationMark mark = new LocalNationScalarMutationMark();
+            activeMarks.push(mark);
+            return new LocalNationScalarSnapshot(mark);
+        }
+
+        void restore(LocalNationScalarSnapshot snapshot, LocalNation[] nationsByIndex) {
+            LocalNationScalarMutationMark mark = requireTopMark(snapshot);
+            activeMarks.pop();
+            mark.restore(nationsByIndex);
+        }
+
+        void apply(LocalNationScalarSnapshot snapshot) {
+            LocalNationScalarMutationMark mark = requireTopMark(snapshot);
+            activeMarks.pop();
+            LocalNationScalarMutationMark parent = activeMarks.peek();
+            if (parent != null) {
+                mark.mergeInto(parent);
+            }
+        }
+
+        void recordPolicyCooldownChange(int nationIndex, int currentValue) {
+            LocalNationScalarMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                activeMark.policyCooldownChanges().record(nationIndex, currentValue);
+            }
+        }
+
+        void recordBeigeTurnsChange(int nationIndex, int currentValue) {
+            LocalNationScalarMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                activeMark.beigeTurnsChanges().record(nationIndex, currentValue);
+            }
+        }
+
+        void recordDayPhaseTurnChange(int nationIndex, int currentValue) {
+            LocalNationScalarMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                activeMark.dayPhaseTurnChanges().record(nationIndex, currentValue);
+            }
+        }
+
+        void recordScoreChange(int nationIndex, double currentValue) {
+            LocalNationScalarMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                activeMark.scoreChanges().record(nationIndex, currentValue);
+            }
+        }
+
+        private LocalNationScalarMutationMark requireTopMark(LocalNationScalarSnapshot snapshot) {
+            if (snapshot == null || snapshot.mark() == null) {
+                throw new IllegalArgumentException("Local nation scalar snapshot cannot be null");
+            }
+            LocalNationScalarMutationMark current = activeMarks.peek();
+            if (current == null) {
+                throw new IllegalStateException("No active local nation scalar mark to apply/rollback");
+            }
+            if (current != snapshot.mark()) {
+                throw new IllegalStateException("Local nation scalar marks must be applied/rolled back in LIFO order");
+            }
+            return current;
+        }
+
+        private static final class LocalNationScalarMutationMark {
+            private LocalNationBuffers.IntArrayChangeLog policyCooldownChanges;
+            private LocalNationBuffers.IntArrayChangeLog beigeTurnsChanges;
+            private LocalNationBuffers.IntArrayChangeLog dayPhaseTurnChanges;
+            private LocalNationBuffers.DoubleArrayChangeLog scoreChanges;
+
+            void restore(LocalNation[] nationsByIndex) {
+                if (policyCooldownChanges != null) {
+                    for (int i = policyCooldownChanges.indexes.size() - 1; i >= 0; i--) {
+                        LocalNation nation = nationsByIndex[policyCooldownChanges.indexes.getInt(i)];
+                        nation.policyCooldownTurnsRemaining = policyCooldownChanges.values.getInt(i);
+                    }
+                }
+                if (beigeTurnsChanges != null) {
+                    for (int i = beigeTurnsChanges.indexes.size() - 1; i >= 0; i--) {
+                        LocalNation nation = nationsByIndex[beigeTurnsChanges.indexes.getInt(i)];
+                        nation.beigeTurns = beigeTurnsChanges.values.getInt(i);
+                    }
+                }
+                if (dayPhaseTurnChanges != null) {
+                    for (int i = dayPhaseTurnChanges.indexes.size() - 1; i >= 0; i--) {
+                        LocalNation nation = nationsByIndex[dayPhaseTurnChanges.indexes.getInt(i)];
+                        nation.dayPhaseTurn = dayPhaseTurnChanges.values.getInt(i);
+                    }
+                }
+                if (scoreChanges != null) {
+                    for (int i = scoreChanges.indexes.size() - 1; i >= 0; i--) {
+                        LocalNation nation = nationsByIndex[scoreChanges.indexes.getInt(i)];
+                        nation.score = scoreChanges.values.getDouble(i);
+                    }
+                }
+            }
+
+            void mergeInto(LocalNationScalarMutationMark parent) {
+                if (policyCooldownChanges != null) {
+                    policyCooldownChanges.mergeInto(parent.policyCooldownChanges());
+                }
+                if (beigeTurnsChanges != null) {
+                    beigeTurnsChanges.mergeInto(parent.beigeTurnsChanges());
+                }
+                if (dayPhaseTurnChanges != null) {
+                    dayPhaseTurnChanges.mergeInto(parent.dayPhaseTurnChanges());
+                }
+                if (scoreChanges != null) {
+                    scoreChanges.mergeInto(parent.scoreChanges());
+                }
+            }
+
+            LocalNationBuffers.IntArrayChangeLog policyCooldownChanges() {
+                if (policyCooldownChanges == null) {
+                    policyCooldownChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return policyCooldownChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog beigeTurnsChanges() {
+                if (beigeTurnsChanges == null) {
+                    beigeTurnsChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return beigeTurnsChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog dayPhaseTurnChanges() {
+                if (dayPhaseTurnChanges == null) {
+                    dayPhaseTurnChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return dayPhaseTurnChanges;
+            }
+
+            LocalNationBuffers.DoubleArrayChangeLog scoreChanges() {
+                if (scoreChanges == null) {
+                    scoreChanges = new LocalNationBuffers.DoubleArrayChangeLog();
+                }
+                return scoreChanges;
+            }
+        }
+    }
+
     private static final class LocalWarBuffers implements CombatKernel.PrimitiveWarBuffer {
         private static final int OWNER_NONE = 0;
         private static final int OWNER_ATTACKER = 1;
@@ -3618,6 +4126,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private int[] groundSuperiorityOwner = new int[INITIAL_CAPACITY];
         private int[] airSuperiorityOwner = new int[INITIAL_CAPACITY];
         private int[] blockadeOwner = new int[INITIAL_CAPACITY];
+        private final Deque<LocalWarMutationMark> activeMarks = new ArrayDeque<>();
         private int size;
 
         int allocate(WarType warType, int warStartTurn, int initialMaps, int initialResistance) {
@@ -3665,7 +4174,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         void setStatus(int warIndex, WarStatus value) {
             requireWarIndex(warIndex);
-            status[warIndex] = value == null ? WarStatus.ACTIVE : value;
+            WarStatus next = value == null ? WarStatus.ACTIVE : value;
+            if (status[warIndex] == next) {
+                return;
+            }
+            recordObjectChange(activeMark -> activeMark.statusChanges(), warIndex, status[warIndex]);
+            status[warIndex] = next;
         }
 
         int startTurnValue(int warIndex) {
@@ -3685,6 +4199,10 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         void setAttackerMaps(int warIndex, int value) {
             requireWarIndex(warIndex);
+            if (attackerMaps[warIndex] == value) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.attackerMapsChanges(), warIndex, attackerMaps[warIndex]);
             attackerMaps[warIndex] = value;
         }
 
@@ -3695,6 +4213,10 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         void setDefenderMaps(int warIndex, int value) {
             requireWarIndex(warIndex);
+            if (defenderMaps[warIndex] == value) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.defenderMapsChanges(), warIndex, defenderMaps[warIndex]);
             defenderMaps[warIndex] = value;
         }
 
@@ -3705,6 +4227,10 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         void setAttackerResistance(int warIndex, int value) {
             requireWarIndex(warIndex);
+            if (attackerResistance[warIndex] == value) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.attackerResistanceChanges(), warIndex, attackerResistance[warIndex]);
             attackerResistance[warIndex] = value;
         }
 
@@ -3715,36 +4241,64 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         void setDefenderResistance(int warIndex, int value) {
             requireWarIndex(warIndex);
+            if (defenderResistance[warIndex] == value) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.defenderResistanceChanges(), warIndex, defenderResistance[warIndex]);
             defenderResistance[warIndex] = value;
         }
 
         void setgroundSuperiorityOwner(int warIndex, int owner) {
             requireWarIndex(warIndex);
+            if (groundSuperiorityOwner[warIndex] == owner) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.groundSuperiorityOwnerChanges(), warIndex, groundSuperiorityOwner[warIndex]);
             groundSuperiorityOwner[warIndex] = owner;
         }
 
         void setAirSuperiorityOwner(int warIndex, int owner) {
             requireWarIndex(warIndex);
+            if (airSuperiorityOwner[warIndex] == owner) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.airSuperiorityOwnerChanges(), warIndex, airSuperiorityOwner[warIndex]);
             airSuperiorityOwner[warIndex] = owner;
         }
 
         void setBlockadeOwner(int warIndex, int owner) {
             requireWarIndex(warIndex);
+            if (blockadeOwner[warIndex] == owner) {
+                return;
+            }
+            recordIntChange(activeMark -> activeMark.blockadeOwnerChanges(), warIndex, blockadeOwner[warIndex]);
             blockadeOwner[warIndex] = owner;
         }
 
         void setAttackerFortified(int warIndex, boolean value) {
             requireWarIndex(warIndex);
+            if (attackerFortified[warIndex] == value) {
+                return;
+            }
+            recordBooleanChange(activeMark -> activeMark.attackerFortifiedChanges(), warIndex, attackerFortified[warIndex]);
             attackerFortified[warIndex] = value;
         }
 
         void setDefenderFortified(int warIndex, boolean value) {
             requireWarIndex(warIndex);
+            if (defenderFortified[warIndex] == value) {
+                return;
+            }
+            recordBooleanChange(activeMark -> activeMark.defenderFortifiedChanges(), warIndex, defenderFortified[warIndex]);
             defenderFortified[warIndex] = value;
         }
 
         void clearAttackerFortified(int warIndex) {
             requireWarIndex(warIndex);
+            if (!attackerFortified[warIndex]) {
+                return;
+            }
+            recordBooleanChange(activeMark -> activeMark.attackerFortifiedChanges(), warIndex, true);
             attackerFortified[warIndex] = false;
         }
 
@@ -3782,38 +4336,24 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         LocalWarBufferSnapshot snapshot() {
-            return new LocalWarBufferSnapshot(
-                    java.util.Arrays.copyOf(warTypes, size),
-                    java.util.Arrays.copyOf(startTurn, size),
-                    java.util.Arrays.copyOf(status, size),
-                    java.util.Arrays.copyOf(attackerMaps, size),
-                    java.util.Arrays.copyOf(defenderMaps, size),
-                    java.util.Arrays.copyOf(attackerResistance, size),
-                    java.util.Arrays.copyOf(defenderResistance, size),
-                    java.util.Arrays.copyOf(attackerFortified, size),
-                    java.util.Arrays.copyOf(defenderFortified, size),
-                    java.util.Arrays.copyOf(groundSuperiorityOwner, size),
-                    java.util.Arrays.copyOf(airSuperiorityOwner, size),
-                    java.util.Arrays.copyOf(blockadeOwner, size),
-                    size
-            );
+            LocalWarMutationMark mark = new LocalWarMutationMark(size);
+            activeMarks.push(mark);
+            return new LocalWarBufferSnapshot(mark);
         }
 
         void restore(LocalWarBufferSnapshot snapshot) {
-            int restoredCapacity = Math.max(INITIAL_CAPACITY, snapshot.size());
-            this.warTypes = java.util.Arrays.copyOf(snapshot.warTypes(), restoredCapacity);
-            this.startTurn = java.util.Arrays.copyOf(snapshot.startTurn(), restoredCapacity);
-            this.status = java.util.Arrays.copyOf(snapshot.status(), restoredCapacity);
-            this.attackerMaps = java.util.Arrays.copyOf(snapshot.attackerMaps(), restoredCapacity);
-            this.defenderMaps = java.util.Arrays.copyOf(snapshot.defenderMaps(), restoredCapacity);
-            this.attackerResistance = java.util.Arrays.copyOf(snapshot.attackerResistance(), restoredCapacity);
-            this.defenderResistance = java.util.Arrays.copyOf(snapshot.defenderResistance(), restoredCapacity);
-            this.attackerFortified = java.util.Arrays.copyOf(snapshot.attackerFortified(), restoredCapacity);
-            this.defenderFortified = java.util.Arrays.copyOf(snapshot.defenderFortified(), restoredCapacity);
-            this.groundSuperiorityOwner = java.util.Arrays.copyOf(snapshot.groundSuperiorityOwner(), restoredCapacity);
-            this.airSuperiorityOwner = java.util.Arrays.copyOf(snapshot.airSuperiorityOwner(), restoredCapacity);
-            this.blockadeOwner = java.util.Arrays.copyOf(snapshot.blockadeOwner(), restoredCapacity);
-            this.size = snapshot.size();
+            LocalWarMutationMark mark = requireTopMark(snapshot);
+            activeMarks.pop();
+            mark.restore(this);
+        }
+
+        void apply(LocalWarBufferSnapshot snapshot) {
+            LocalWarMutationMark mark = requireTopMark(snapshot);
+            activeMarks.pop();
+            LocalWarMutationMark parent = activeMarks.peek();
+            if (parent != null) {
+                mark.mergeInto(parent);
+            }
         }
 
         private static ControlOwner controlOwner(int ownerCode) {
@@ -3822,6 +4362,306 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 case OWNER_DEFENDER -> ControlOwner.DEFENDER;
                 default -> ControlOwner.NONE;
             };
+        }
+
+        private LocalWarMutationMark requireTopMark(LocalWarBufferSnapshot snapshot) {
+            if (snapshot == null || snapshot.mark() == null) {
+                throw new IllegalArgumentException("Local war buffer snapshot cannot be null");
+            }
+            LocalWarMutationMark current = activeMarks.peek();
+            if (current == null) {
+                throw new IllegalStateException("No active local war mark to apply/rollback");
+            }
+            if (current != snapshot.mark()) {
+                throw new IllegalStateException("Local war marks must be applied/rolled back in LIFO order");
+            }
+            return current;
+        }
+
+        private void recordIntChange(
+            java.util.function.Function<LocalWarMutationMark, LocalNationBuffers.IntArrayChangeLog> selector,
+                int index,
+                int currentValue
+        ) {
+            LocalWarMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                selector.apply(activeMark).record(index, currentValue);
+            }
+        }
+
+        private void recordBooleanChange(
+                java.util.function.Function<LocalWarMutationMark, BooleanArrayChangeLog> selector,
+                int index,
+                boolean currentValue
+        ) {
+            LocalWarMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                selector.apply(activeMark).record(index, currentValue);
+            }
+        }
+
+        private <T> void recordObjectChange(
+                java.util.function.Function<LocalWarMutationMark, ObjectArrayChangeLog<T>> selector,
+                int index,
+                T currentValue
+        ) {
+            LocalWarMutationMark activeMark = activeMarks.peek();
+            if (activeMark != null) {
+                selector.apply(activeMark).record(index, currentValue);
+            }
+        }
+
+        private static final class LocalWarMutationMark {
+            private final int sizeAtMark;
+            private ObjectArrayChangeLog<WarType> warTypeChanges;
+            private LocalNationBuffers.IntArrayChangeLog startTurnChanges;
+            private ObjectArrayChangeLog<WarStatus> statusChanges;
+            private LocalNationBuffers.IntArrayChangeLog attackerMapsChanges;
+            private LocalNationBuffers.IntArrayChangeLog defenderMapsChanges;
+            private LocalNationBuffers.IntArrayChangeLog attackerResistanceChanges;
+            private LocalNationBuffers.IntArrayChangeLog defenderResistanceChanges;
+            private BooleanArrayChangeLog attackerFortifiedChanges;
+            private BooleanArrayChangeLog defenderFortifiedChanges;
+            private LocalNationBuffers.IntArrayChangeLog groundSuperiorityOwnerChanges;
+            private LocalNationBuffers.IntArrayChangeLog airSuperiorityOwnerChanges;
+            private LocalNationBuffers.IntArrayChangeLog blockadeOwnerChanges;
+
+            private LocalWarMutationMark(int sizeAtMark) {
+                this.sizeAtMark = sizeAtMark;
+            }
+
+            void restore(LocalWarBuffers buffers) {
+                if (warTypeChanges != null) {
+                    warTypeChanges.restore(buffers.warTypes);
+                }
+                if (startTurnChanges != null) {
+                    startTurnChanges.restore(buffers.startTurn);
+                }
+                if (statusChanges != null) {
+                    statusChanges.restore(buffers.status);
+                }
+                if (attackerMapsChanges != null) {
+                    attackerMapsChanges.restore(buffers.attackerMaps);
+                }
+                if (defenderMapsChanges != null) {
+                    defenderMapsChanges.restore(buffers.defenderMaps);
+                }
+                if (attackerResistanceChanges != null) {
+                    attackerResistanceChanges.restore(buffers.attackerResistance);
+                }
+                if (defenderResistanceChanges != null) {
+                    defenderResistanceChanges.restore(buffers.defenderResistance);
+                }
+                if (attackerFortifiedChanges != null) {
+                    attackerFortifiedChanges.restore(buffers.attackerFortified);
+                }
+                if (defenderFortifiedChanges != null) {
+                    defenderFortifiedChanges.restore(buffers.defenderFortified);
+                }
+                if (groundSuperiorityOwnerChanges != null) {
+                    groundSuperiorityOwnerChanges.restore(buffers.groundSuperiorityOwner);
+                }
+                if (airSuperiorityOwnerChanges != null) {
+                    airSuperiorityOwnerChanges.restore(buffers.airSuperiorityOwner);
+                }
+                if (blockadeOwnerChanges != null) {
+                    blockadeOwnerChanges.restore(buffers.blockadeOwner);
+                }
+                buffers.size = sizeAtMark;
+            }
+
+            void mergeInto(LocalWarMutationMark parent) {
+                if (warTypeChanges != null) {
+                    warTypeChanges.mergeInto(parent.warTypeChanges());
+                }
+                if (startTurnChanges != null) {
+                    startTurnChanges.mergeInto(parent.startTurnChanges());
+                }
+                if (statusChanges != null) {
+                    statusChanges.mergeInto(parent.statusChanges());
+                }
+                if (attackerMapsChanges != null) {
+                    attackerMapsChanges.mergeInto(parent.attackerMapsChanges());
+                }
+                if (defenderMapsChanges != null) {
+                    defenderMapsChanges.mergeInto(parent.defenderMapsChanges());
+                }
+                if (attackerResistanceChanges != null) {
+                    attackerResistanceChanges.mergeInto(parent.attackerResistanceChanges());
+                }
+                if (defenderResistanceChanges != null) {
+                    defenderResistanceChanges.mergeInto(parent.defenderResistanceChanges());
+                }
+                if (attackerFortifiedChanges != null) {
+                    attackerFortifiedChanges.mergeInto(parent.attackerFortifiedChanges());
+                }
+                if (defenderFortifiedChanges != null) {
+                    defenderFortifiedChanges.mergeInto(parent.defenderFortifiedChanges());
+                }
+                if (groundSuperiorityOwnerChanges != null) {
+                    groundSuperiorityOwnerChanges.mergeInto(parent.groundSuperiorityOwnerChanges());
+                }
+                if (airSuperiorityOwnerChanges != null) {
+                    airSuperiorityOwnerChanges.mergeInto(parent.airSuperiorityOwnerChanges());
+                }
+                if (blockadeOwnerChanges != null) {
+                    blockadeOwnerChanges.mergeInto(parent.blockadeOwnerChanges());
+                }
+            }
+
+            ObjectArrayChangeLog<WarType> warTypeChanges() {
+                if (warTypeChanges == null) {
+                    warTypeChanges = new ObjectArrayChangeLog<>();
+                }
+                return warTypeChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog startTurnChanges() {
+                if (startTurnChanges == null) {
+                    startTurnChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return startTurnChanges;
+            }
+
+            ObjectArrayChangeLog<WarStatus> statusChanges() {
+                if (statusChanges == null) {
+                    statusChanges = new ObjectArrayChangeLog<>();
+                }
+                return statusChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog attackerMapsChanges() {
+                if (attackerMapsChanges == null) {
+                    attackerMapsChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return attackerMapsChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog defenderMapsChanges() {
+                if (defenderMapsChanges == null) {
+                    defenderMapsChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return defenderMapsChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog attackerResistanceChanges() {
+                if (attackerResistanceChanges == null) {
+                    attackerResistanceChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return attackerResistanceChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog defenderResistanceChanges() {
+                if (defenderResistanceChanges == null) {
+                    defenderResistanceChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return defenderResistanceChanges;
+            }
+
+            BooleanArrayChangeLog attackerFortifiedChanges() {
+                if (attackerFortifiedChanges == null) {
+                    attackerFortifiedChanges = new BooleanArrayChangeLog();
+                }
+                return attackerFortifiedChanges;
+            }
+
+            BooleanArrayChangeLog defenderFortifiedChanges() {
+                if (defenderFortifiedChanges == null) {
+                    defenderFortifiedChanges = new BooleanArrayChangeLog();
+                }
+                return defenderFortifiedChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog groundSuperiorityOwnerChanges() {
+                if (groundSuperiorityOwnerChanges == null) {
+                    groundSuperiorityOwnerChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return groundSuperiorityOwnerChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog airSuperiorityOwnerChanges() {
+                if (airSuperiorityOwnerChanges == null) {
+                    airSuperiorityOwnerChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return airSuperiorityOwnerChanges;
+            }
+
+            LocalNationBuffers.IntArrayChangeLog blockadeOwnerChanges() {
+                if (blockadeOwnerChanges == null) {
+                    blockadeOwnerChanges = new LocalNationBuffers.IntArrayChangeLog();
+                }
+                return blockadeOwnerChanges;
+            }
+        }
+
+        private static final class BooleanArrayChangeLog {
+            private final Int2IntOpenHashMap positionByIndex = new Int2IntOpenHashMap();
+            private final IntArrayList indexes = new IntArrayList();
+            private final IntArrayList values = new IntArrayList();
+
+            private BooleanArrayChangeLog() {
+                positionByIndex.defaultReturnValue(-1);
+            }
+
+            void record(int index, boolean value) {
+                if (positionByIndex.putIfAbsent(index, indexes.size()) != -1) {
+                    return;
+                }
+                indexes.add(index);
+                values.add(value ? 1 : 0);
+            }
+
+            void restore(boolean[] target) {
+                for (int i = indexes.size() - 1; i >= 0; i--) {
+                    target[indexes.getInt(i)] = values.getInt(i) != 0;
+                }
+            }
+
+            void mergeInto(BooleanArrayChangeLog parent) {
+                for (int i = 0; i < indexes.size(); i++) {
+                    int index = indexes.getInt(i);
+                    if (parent.positionByIndex.putIfAbsent(index, parent.indexes.size()) != -1) {
+                        continue;
+                    }
+                    parent.indexes.add(index);
+                    parent.values.add(values.getInt(i));
+                }
+            }
+        }
+
+        private static final class ObjectArrayChangeLog<T> {
+            private final Int2IntOpenHashMap positionByIndex = new Int2IntOpenHashMap();
+            private final IntArrayList indexes = new IntArrayList();
+            private final ArrayList<T> values = new ArrayList<>();
+
+            private ObjectArrayChangeLog() {
+                positionByIndex.defaultReturnValue(-1);
+            }
+
+            void record(int index, T value) {
+                if (positionByIndex.putIfAbsent(index, indexes.size()) != -1) {
+                    return;
+                }
+                indexes.add(index);
+                values.add(value);
+            }
+
+            void restore(T[] target) {
+                for (int i = indexes.size() - 1; i >= 0; i--) {
+                    target[indexes.getInt(i)] = values.get(i);
+                }
+            }
+
+            void mergeInto(ObjectArrayChangeLog<T> parent) {
+                for (int i = 0; i < indexes.size(); i++) {
+                    int index = indexes.getInt(i);
+                    if (parent.positionByIndex.putIfAbsent(index, parent.indexes.size()) != -1) {
+                        continue;
+                    }
+                    parent.indexes.add(index);
+                    parent.values.add(values.get(i));
+                }
+            }
         }
 
         @Override

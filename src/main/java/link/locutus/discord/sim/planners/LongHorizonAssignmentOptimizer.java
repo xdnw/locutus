@@ -1,6 +1,5 @@
 package link.locutus.discord.sim.planners;
 
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
@@ -703,31 +702,14 @@ final class LongHorizonAssignmentOptimizer {
         boolean[] edgeAssigned = new boolean[baseEdges.edgeCount()];
         int[] attackerCounts = new int[scenario.attackerCount()];
         int[] defenderCounts = new int[scenario.defenderCount()];
-        Int2IntOpenHashMap attackerIndexByNationId = new Int2IntOpenHashMap(Math.max(16, attackerNationIds.length * 2));
-        Int2IntOpenHashMap defenderIndexByNationId = new Int2IntOpenHashMap(Math.max(16, defenderNationIds.length * 2));
-        Long2IntOpenHashMap edgeIndexByPair = new Long2IntOpenHashMap(Math.max(16, baseEdges.edgeCount() * 2));
-        attackerIndexByNationId.defaultReturnValue(-1);
-        defenderIndexByNationId.defaultReturnValue(-1);
-        edgeIndexByPair.defaultReturnValue(-1);
-        for (int attackerIndex = 0; attackerIndex < attackerNationIds.length; attackerIndex++) {
-            attackerIndexByNationId.put(attackerNationIds[attackerIndex], attackerIndex);
-        }
-        for (int defenderIndex = 0; defenderIndex < defenderNationIds.length; defenderIndex++) {
-            defenderIndexByNationId.put(defenderNationIds[defenderIndex], defenderIndex);
-        }
-        for (int edgeIndex = 0; edgeIndex < baseEdges.edgeCount(); edgeIndex++) {
-            edgeIndexByPair.put(pairKey(
-                    attackerNationIds[baseEdges.attackerIndex(edgeIndex)],
-                    defenderNationIds[baseEdges.defenderIndex(edgeIndex)]
-            ), edgeIndex);
-        }
+        Long2IntOpenHashMap edgeIndexByPair = baseEdges.edgeIndexByPair(attackerNationIds, defenderNationIds);
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
-            int attackerIndex = attackerIndexByNationId.get(entry.getKey());
+            int attackerIndex = scenario.attackerIndexOrMinusOne(entry.getKey());
             if (attackerIndex < 0) {
                 continue;
             }
             for (int defenderNationId : entry.getValue()) {
-                int defenderIndex = defenderIndexByNationId.get(defenderNationId);
+                int defenderIndex = scenario.defenderIndexOrMinusOne(defenderNationId);
                 if (defenderIndex < 0) {
                     continue;
                 }

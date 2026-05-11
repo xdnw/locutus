@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 
 /**
@@ -35,6 +36,9 @@ final class CandidateEdgeTable {
 
     private int edgeCount;
     private CandidateEdgeStorage edges;
+    private int[] cachedPairKeyAttackerNationIds;
+    private int[] cachedPairKeyDefenderNationIds;
+    private Long2IntOpenHashMap cachedEdgeIndexByPair;
 
     CandidateEdgeTable() {
         this(INITIAL_CAPACITY);
@@ -101,6 +105,7 @@ final class CandidateEdgeTable {
     ) {
         edges.ensureCapacity(edgeCount + 1);
         int i = edgeCount++;
+        invalidateLookupCaches();
         edges.write(
                 i,
                 attackerIndex,
@@ -122,6 +127,9 @@ final class CandidateEdgeTable {
      * Removes all edges, resetting the count to 0 without releasing backing arrays.
      */
     void clear() {
+        if (edgeCount != 0) {
+            invalidateLookupCaches();
+        }
         edgeCount = 0;
     }
 
@@ -150,6 +158,29 @@ final class CandidateEdgeTable {
 
     int defenderIndex(int edge) {
         return edges.defenderIndexAt(edge);
+    }
+
+    Long2IntOpenHashMap edgeIndexByPair(int[] attackerNationIds, int[] defenderNationIds) {
+        if (cachedEdgeIndexByPair != null
+                && cachedPairKeyAttackerNationIds == attackerNationIds
+                && cachedPairKeyDefenderNationIds == defenderNationIds) {
+            return cachedEdgeIndexByPair;
+        }
+        Long2IntOpenHashMap edgeIndexByPair = new Long2IntOpenHashMap(Math.max(16, edgeCount * 2));
+        edgeIndexByPair.defaultReturnValue(-1);
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            edgeIndexByPair.put(
+                    pairKey(
+                            attackerNationIds[attackerIndex(edgeIndex)],
+                            defenderNationIds[defenderIndex(edgeIndex)]
+                    ),
+                    edgeIndex
+            );
+        }
+        cachedPairKeyAttackerNationIds = attackerNationIds;
+        cachedPairKeyDefenderNationIds = defenderNationIds;
+        cachedEdgeIndexByPair = edgeIndexByPair;
+        return edgeIndexByPair;
     }
 
     byte preferredWarTypeId(int edge) {
@@ -219,6 +250,16 @@ final class CandidateEdgeTable {
 
     float controlLeverage(int edge) {
         return edges.controlLeverageAt(edge);
+    }
+
+    private void invalidateLookupCaches() {
+        cachedPairKeyAttackerNationIds = null;
+        cachedPairKeyDefenderNationIds = null;
+        cachedEdgeIndexByPair = null;
+    }
+
+    private static long pairKey(int attackerNationId, int defenderNationId) {
+        return ((long) attackerNationId << 32) ^ (defenderNationId & 0xffffffffL);
     }
 
     float futureWarLeverage(int edge) {

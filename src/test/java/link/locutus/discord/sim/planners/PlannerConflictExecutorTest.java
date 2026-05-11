@@ -116,6 +116,101 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
+    void plannerLocalConflictRollbackRestoresOuterStateAfterInnerApply() {
+        DBNationSnapshot attacker = nation(223, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .unit(MilitaryUnit.SHIP, 6)
+                .build();
+        DBNationSnapshot defender = nation(224, 2)
+                .unit(MilitaryUnit.SOLDIER, 9_000)
+                .unit(MilitaryUnit.TANK, 300)
+                .unit(MilitaryUnit.AIRCRAFT, 600)
+                .unit(MilitaryUnit.SHIP, 4)
+                .build();
+
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker),
+                List.of(defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
+        );
+
+        PlannerProjectionResult before = conflict.project();
+        PlannerLocalConflict.Mark outer = conflict.mark();
+        conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
+
+        PlannerProjectionResult afterOuterMutation = conflict.project();
+        assertFalse(afterOuterMutation.activeWars().isEmpty());
+        assertNotNull(afterOuterMutation.cityInfraOverlaysByNation().get(defender.nationId()));
+
+        PlannerLocalConflict.Mark inner = conflict.mark();
+        conflict.applyReplayTurn(Map.of(attacker.nationId(), List.of(defender.nationId())), false);
+        conflict.apply(inner);
+
+        PlannerProjectionResult afterInnerApply = conflict.project();
+        assertFalse(afterInnerApply.activeWars().isEmpty());
+
+        conflict.rollback(outer);
+
+        PlannerProjectionResult restored = conflict.project();
+        assertTrue(restored.activeWars().isEmpty());
+        assertEquals(
+                before.snapshotsById().get(attacker.nationId()).unit(MilitaryUnit.SOLDIER),
+                restored.snapshotsById().get(attacker.nationId()).unit(MilitaryUnit.SOLDIER)
+        );
+        assertEquals(
+                before.snapshotsById().get(defender.nationId()).cityInfra()[0],
+                restored.snapshotsById().get(defender.nationId()).cityInfra()[0],
+                1e-9
+        );
+        assertNull(restored.cityInfraOverlaysByNation().get(defender.nationId()));
+    }
+
+    @Test
+    void plannerLocalConflictRollbackRestoresInnerTouchedInfraToOuterOverlay() {
+        DBNationSnapshot attacker = nation(225, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .unit(MilitaryUnit.SHIP, 6)
+                .build();
+        DBNationSnapshot defender = nation(226, 2)
+                .unit(MilitaryUnit.SOLDIER, 9_000)
+                .unit(MilitaryUnit.TANK, 300)
+                .unit(MilitaryUnit.AIRCRAFT, 600)
+                .unit(MilitaryUnit.SHIP, 4)
+                .build();
+
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker),
+                List.of(defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
+        );
+
+        conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
+        PlannerProjectionResult outerState = conflict.project();
+        PlannerCityInfraOverlay outerOverlay = outerState.cityInfraOverlaysByNation().get(defender.nationId());
+        assertNotNull(outerOverlay);
+
+        PlannerLocalConflict.Mark inner = conflict.mark();
+        conflict.applyReplayTurn(Map.of(attacker.nationId(), List.of(defender.nationId())), false);
+
+        PlannerProjectionResult innerState = conflict.project();
+        PlannerCityInfraOverlay innerOverlay = innerState.cityInfraOverlaysByNation().get(defender.nationId());
+        assertNotNull(innerOverlay);
+
+        conflict.rollback(inner);
+
+        PlannerProjectionResult restored = conflict.project();
+        assertEquals(outerOverlay, restored.cityInfraOverlaysByNation().get(defender.nationId()));
+    }
+
+    @Test
     void plannerAssignmentViewPreservesWarTypeDuringExactOpenings() {
         DBNationSnapshot attacker = nation(207, 1)
                 .unit(MilitaryUnit.SOLDIER, 12_000)

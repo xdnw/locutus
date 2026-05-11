@@ -287,6 +287,14 @@ public final class CompiledScenario {
         return defenderIndex >= 0 ? defenderIndex : null;
     }
 
+    public int attackerIndexOrMinusOne(int nationId) {
+        return attackerIndexByNationId.get(nationId);
+    }
+
+    public int defenderIndexOrMinusOne(int nationId) {
+        return defenderIndexByNationId.get(nationId);
+    }
+
     static int scoreBucket(double score) {
         return (int) Math.floor(score / 25.0d);
     }
