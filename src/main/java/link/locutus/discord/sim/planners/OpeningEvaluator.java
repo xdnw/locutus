@@ -16,6 +16,7 @@ import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.IntConsumer;
@@ -298,7 +299,13 @@ final class OpeningEvaluator {
             for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
                 defenderCoveragePriorities[defenderIndex] = (float) OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
             }
+            int defenderSourceDiversityTarget = defenderSourceDiversityCapacity(maxCandidatesPerAttacker);
+            float defenderSourceDiversityPriorityFloor = defenderSourceDiversityPriorityFloor(
+                    defenderCoveragePriorities,
+                    defenderCaps
+            );
             int[] defenderCoverageCounts = new int[scenario.defenderCount()];
+            int[] defenderSourceDiversityCounts = new int[scenario.defenderCount()];
             long[][] emittedPairWordsByAttacker = new long[scenario.attackerCount()][(scenario.defenderCount() + Long.SIZE - 1) / Long.SIZE];
             TopKEdgeCollector[] defenderCoverageCollectors = new TopKEdgeCollector[scenario.defenderCount()];
             for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
@@ -317,11 +324,14 @@ final class OpeningEvaluator {
                     candidatesPerAttacker,
                     maxCandidatesPerAttacker,
                     defenderCoverageTarget,
-                        defenderCoveragePriorities,
+                    defenderSourceDiversityTarget,
+                    defenderSourceDiversityPriorityFloor,
+                    defenderCoveragePriorities,
                     defenderCoverageCollectors,
                     out,
                     emittedPairWordsByAttacker,
-                    defenderCoverageCounts
+                    defenderCoverageCounts,
+                    defenderSourceDiversityCounts
             );
 
             for (int ai = 0; ai < scenario.attackerCount(); ai++) {
@@ -352,6 +362,8 @@ final class OpeningEvaluator {
         private final CandidateEdgeComponentPolicy componentPolicy;
         private final CandidateEdgeAdmissionPolicy admissionPolicy;
         private final int[] defenderCaps;
+        private final int defenderSourceDiversityTarget;
+        private final float defenderSourceDiversityPriorityFloor;
         private final float[] defenderCoveragePriorities;
         private final TopKEdgeCollector topK;
         private final CoveragePriorityCollector coverageSpillovers;
@@ -376,11 +388,14 @@ final class OpeningEvaluator {
                 int candidatesPerAttacker,
                 int maxCandidatesPerAttacker,
                 int defenderCoverageTarget,
+                int defenderSourceDiversityTarget,
+                float defenderSourceDiversityPriorityFloor,
                 float[] defenderCoveragePriorities,
                 TopKEdgeCollector[] defenderCoverageCollectors,
                 CandidateEdgeTable out,
                 long[][] emittedPairWordsByAttacker,
-                int[] defenderCoverageCounts
+                int[] defenderCoverageCounts,
+                int[] defenderSourceDiversityCounts
         ) {
             this.scenario = scenario;
             this.objective = objective;
@@ -389,6 +404,8 @@ final class OpeningEvaluator {
             this.admissionPolicy = admissionPolicy;
             this.defenderCaps = defenderCaps;
             this.defenderCoverageTarget = defenderCoverageTarget;
+            this.defenderSourceDiversityTarget = defenderSourceDiversityTarget;
+            this.defenderSourceDiversityPriorityFloor = defenderSourceDiversityPriorityFloor;
             this.defenderCoveragePriorities = defenderCoveragePriorities;
             this.topK = new TopKEdgeCollector(maxCandidatesPerAttacker, this.componentPolicy);
             this.coverageSpillovers = new CoveragePriorityCollector(coverageSpilloverCapacity(maxCandidatesPerAttacker), this.componentPolicy);
@@ -396,6 +413,7 @@ final class OpeningEvaluator {
             this.out = out;
             this.emittedPairWordsByAttacker = emittedPairWordsByAttacker;
             this.defenderCoverageCounts = defenderCoverageCounts;
+            this.defenderSourceDiversityCounts = defenderSourceDiversityCounts;
             this.candidateAdmission = new OpeningCandidateAdmission(admissionPolicy);
             this.rolloutEdgeEvaluator = new OpeningRolloutSearch(DEFAULT_ACTION_BUDGET);
             this.edgeEvaluation = new EdgeEvaluation();
@@ -406,6 +424,7 @@ final class OpeningEvaluator {
         private final int[] attackerCaps;
         private final int candidatesPerAttacker;
         private final int defenderCoverageTarget;
+        private final int[] defenderSourceDiversityCounts;
 
         private void beginAttacker(int attackerIndex) {
             this.attackerIndex = attackerIndex;
@@ -533,9 +552,10 @@ final class OpeningEvaluator {
             for (int order = 0; order < coverageSpillovers.size(); order++) {
                 int candidateIndex = coverageSpillovers.sortedIndexAt(order);
                 int defenderIndex = coverageSpillovers.defenderIndexAt(candidateIndex);
-                if (defenderCoverageCounts[defenderIndex] >= defenderCoverageTarget) {
+                if (!canEmitSpillover(defenderIndex)) {
                     continue;
                 }
+                boolean sourceDiversityEmission = defenderCoverageCounts[defenderIndex] >= defenderCoverageTarget;
                 if (OpeningDefenderCoverageRescue.emitSelectedEdge(
                         coverageSpillovers,
                         candidateIndex,
@@ -543,9 +563,20 @@ final class OpeningEvaluator {
                         emittedPairWordsByAttacker,
                         defenderCoverageCounts
                 )) {
+                    if (sourceDiversityEmission) {
+                        defenderSourceDiversityCounts[defenderIndex]++;
+                    }
                     return;
                 }
             }
+        }
+
+        private boolean canEmitSpillover(int defenderIndex) {
+            if (defenderCoverageCounts[defenderIndex] < defenderCoverageTarget) {
+                return true;
+            }
+            return defenderSourceDiversityCounts[defenderIndex] < defenderSourceDiversityTarget
+                    && defenderCoveragePriorities[defenderIndex] >= defenderSourceDiversityPriorityFloor;
         }
     }
 
@@ -567,6 +598,32 @@ final class OpeningEvaluator {
 
     private static int coverageSpilloverCapacity(int maxCandidatesPerAttacker) {
         return Math.max(1, Math.min(4, maxCandidatesPerAttacker));
+    }
+
+    private static int defenderSourceDiversityCapacity(int maxCandidatesPerAttacker) {
+        return Math.max(1, Math.min(2, maxCandidatesPerAttacker / 8));
+    }
+
+    private static float defenderSourceDiversityPriorityFloor(float[] priorities, int[] defenderCaps) {
+        int positiveCount = 0;
+        for (int index = 0; index < priorities.length; index++) {
+            if (defenderCaps[index] > 0 && priorities[index] > 0f && Float.isFinite(priorities[index])) {
+                positiveCount++;
+            }
+        }
+        if (positiveCount == 0) {
+            return Float.POSITIVE_INFINITY;
+        }
+        float[] positivePriorities = new float[positiveCount];
+        int cursor = 0;
+        for (int index = 0; index < priorities.length; index++) {
+            if (defenderCaps[index] > 0 && priorities[index] > 0f && Float.isFinite(priorities[index])) {
+                positivePriorities[cursor++] = priorities[index];
+            }
+        }
+        Arrays.sort(positivePriorities);
+        int quartileIndex = Math.max(0, (int) Math.floor(positivePriorities.length * 0.75d));
+        return positivePriorities[Math.min(positivePriorities.length - 1, quartileIndex)];
     }
 
     private static boolean evaluatePositiveBaselineOpening(
