@@ -12,11 +12,15 @@ import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicValueView;
+import link.locutus.discord.sim.combat.AttackScratch;
+import link.locutus.discord.sim.combat.CombatKernel;
+import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
 
@@ -518,6 +522,155 @@ class OpeningEvaluatorCoverageTest {
         assertEquals(direct.preferredWarTypeId(), out.preferredWarTypeId(0));
         assertEquals(direct.firstAttackTypeId(), out.bestAttackTypeId(0));
     }
+
+        @Test
+        void viabilityProbeWarTypeResetMatchesFreshReadOnlyBind() throws Exception {
+                DBNationSnapshot attacker = buildNation(31, ATTACKER_TEAM, 1_720.0, 18, 21_000, 1_600, 850, 40);
+                DBNationSnapshot defender = buildNation(131, DEFENDER_TEAM, 1_680.0, 17, 18_500, 1_050, 620, 18);
+
+                assertEquals(
+                                conventionalProbeWithFreshBind(attacker, defender),
+                                conventionalProbeWithHoistedReadOnlyBind(attacker, defender),
+                                1.0e-9,
+                                "Conventional probe should match when nation binding is hoisted and only war-state resets per war type"
+                );
+        }
+
+        @Test
+        void specialistProbeWarTypeResetMatchesFreshReadOnlyBind() throws Exception {
+                DBNationSnapshot attacker = buildNation(32, ATTACKER_TEAM, 1_720.0, 18, 21_000, 1_600, 850, 40)
+                                .toBuilder()
+                                .unit(MilitaryUnit.MISSILE, 1)
+                                .projectBits(1L << link.locutus.discord.apiv1.enums.city.project.Projects.MISSILE_LAUNCH_PAD.ordinal())
+                                .build();
+                DBNationSnapshot defender = buildNation(132, DEFENDER_TEAM, 1_680.0, 17, 18_500, 1_050, 620, 18);
+
+                assertEquals(
+                                specialistProbeWithFreshBind(attacker, defender),
+                                specialistProbeWithHoistedReadOnlyBind(attacker, defender),
+                                1.0e-9,
+                                "Specialist probe should match when nation binding is hoisted and only war-state resets per war type"
+                );
+        }
+
+        private static double conventionalProbeWithFreshBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnly = context.getClass().getDeclaredMethod(
+                                "bindReadOnly",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class,
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnly.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        bindReadOnly.invoke(context, attacker, defender, warType);
+                        for (AttackType type : OpeningEvaluator.CONVENTIONAL_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.admissionSignal(attackContext, type, scratch));
+                        }
+                }
+                return best;
+        }
+
+        private static double conventionalProbeWithHoistedReadOnlyBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnlyNations = context.getClass().getDeclaredMethod(
+                                "bindReadOnlyNations",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class
+                );
+                java.lang.reflect.Method resetWarState = context.getClass().getDeclaredMethod(
+                                "resetWarState",
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnlyNations.setAccessible(true);
+                resetWarState.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                bindReadOnlyNations.invoke(context, attacker, defender);
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        resetWarState.invoke(context, warType);
+                        for (AttackType type : OpeningEvaluator.CONVENTIONAL_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.admissionSignal(attackContext, type, scratch));
+                        }
+                }
+                return best;
+        }
+
+        private static double specialistProbeWithFreshBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnly = context.getClass().getDeclaredMethod(
+                                "bindReadOnly",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class,
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnly.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                MutableAttackResult result = new MutableAttackResult();
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        bindReadOnly.invoke(context, attacker, defender, warType);
+                        for (AttackType type : OpeningEvaluator.SPECIALIST_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.specialistAdmissionSignal(attackContext, type, scratch, result));
+                        }
+                }
+                return best;
+        }
+
+        private static double specialistProbeWithHoistedReadOnlyBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnlyNations = context.getClass().getDeclaredMethod(
+                                "bindReadOnlyNations",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class
+                );
+                java.lang.reflect.Method resetWarState = context.getClass().getDeclaredMethod(
+                                "resetWarState",
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnlyNations.setAccessible(true);
+                resetWarState.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                MutableAttackResult result = new MutableAttackResult();
+                bindReadOnlyNations.invoke(context, attacker, defender);
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        resetWarState.invoke(context, warType);
+                        for (AttackType type : OpeningEvaluator.SPECIALIST_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.specialistAdmissionSignal(attackContext, type, scratch, result));
+                        }
+                }
+                return best;
+        }
+
+        private static Object newPairAttackContext() throws Exception {
+                Class<?> contextClass = Class.forName("link.locutus.discord.sim.planners.OpeningEvaluator$PairAttackContext");
+                Constructor<?> constructor = contextClass.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+        }
 
     @Test
     void singlePairCollectorRetainsOnlyRequestedComponents() {

@@ -3,28 +3,51 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 
 final class OpeningEdgeEvaluationWriter {
+    static final int RETAIN_IMMEDIATE_HARM = 1;
+    static final int RETAIN_SELF_EXPOSURE = 1 << 1;
+    static final int RETAIN_RESOURCE_SWING = 1 << 2;
+    static final int RETAIN_CONTROL_LEVERAGE = 1 << 3;
+    static final int RETAIN_FUTURE_WAR_LEVERAGE = 1 << 4;
+
     private OpeningEdgeEvaluationWriter() {
     }
 
-    static void retainComponents(
-            OpeningEvaluator.EdgeEvaluation evaluation,
-            CandidateEdgeComponentPolicy componentPolicy
-    ) {
-        if (!Float.isFinite(evaluation.score())) {
+    static int componentMask(CandidateEdgeComponentPolicy componentPolicy) {
+        if (componentPolicy == null) {
+            return 0;
+        }
+        int mask = 0;
+        if (componentPolicy.retainImmediateHarm()) {
+            mask |= RETAIN_IMMEDIATE_HARM;
+        }
+        if (componentPolicy.retainSelfExposure()) {
+            mask |= RETAIN_SELF_EXPOSURE;
+        }
+        if (componentPolicy.retainResourceSwing()) {
+            mask |= RETAIN_RESOURCE_SWING;
+        }
+        if (componentPolicy.retainControlLeverage()) {
+            mask |= RETAIN_CONTROL_LEVERAGE;
+        }
+        if (componentPolicy.retainFutureWarLeverage()) {
+            mask |= RETAIN_FUTURE_WAR_LEVERAGE;
+        }
+        return mask;
+    }
+
+    static void retainComponents(OpeningEvaluator.EdgeEvaluation evaluation, int componentMask) {
+        if (!Float.isFinite(evaluation.score()) || componentMask == 0) {
             return;
         }
-        CandidateEdgeComponentPolicy policy = componentPolicy == null
-                ? CandidateEdgeComponentPolicy.none()
-                : componentPolicy;
         evaluation.set(
                 evaluation.score(),
                 evaluation.preferredWarTypeId(),
                 evaluation.firstAttackTypeId(),
-                policy.retainImmediateHarm() ? evaluation.immediateHarm() : 0f,
-                policy.retainSelfExposure() ? evaluation.selfExposure() : 0f,
-                policy.retainResourceSwing() ? evaluation.resourceSwing() : 0f,
-                policy.retainControlLeverage() ? evaluation.controlLeverage() : 0f,
-                policy.retainFutureWarLeverage() ? evaluation.futureWarLeverage() : 0f
+                (componentMask & RETAIN_IMMEDIATE_HARM) != 0 ? evaluation.immediateHarm() : 0f,
+                (componentMask & RETAIN_SELF_EXPOSURE) != 0 ? evaluation.selfExposure() : 0f,
+                (componentMask & RETAIN_RESOURCE_SWING) != 0 ? evaluation.resourceSwing() : 0f,
+                (componentMask & RETAIN_CONTROL_LEVERAGE) != 0 ? evaluation.controlLeverage() : 0f,
+                (componentMask & RETAIN_FUTURE_WAR_LEVERAGE) != 0 ? evaluation.futureWarLeverage() : 0f
         );
     }
 }
