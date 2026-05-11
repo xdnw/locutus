@@ -111,7 +111,7 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonControlProjection projection
     ) {
-        if (candidate.assignment().isEmpty()) {
+        if (candidate.isEmpty()) {
             return 0d;
         }
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
@@ -123,7 +123,7 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonControlProjection projection
     ) {
-        if (candidate.assignment().isEmpty()) {
+        if (candidate.isEmpty()) {
             return ObjectiveValueSummary.identical(0d);
         }
         if (projectionScoringContext == null || !canScoreProjection) {

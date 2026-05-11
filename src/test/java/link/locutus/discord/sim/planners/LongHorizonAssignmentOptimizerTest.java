@@ -1384,6 +1384,64 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void marginalFlowResultLazilyMaterializesAssignmentAndPreservesOffTableFixedEdges() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900),
+                nation(2, 1, 880)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900),
+                nation(102, 2, 880)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        int[] attackerCaps = {1, 1};
+        int[] defenderCaps = {1, 1};
+        int[] attackerStrengthRanks = {0, 1};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102};
+        List<BlitzFixedEdge> fixedEdges = List.of(new BlitzFixedEdge(2, 102));
+
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy()
+        );
+
+        LongHorizonMarginalFlowSolver.Result result = LongHorizonMarginalFlowSolver.solve(
+                edges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges
+        );
+
+        assertEquals(2, result.assignmentPairCount(),
+                "Dense long-horizon results should count both fixed and solved assignment pairs before map materialization");
+        Map<Integer, List<Integer>> firstMaterialized = result.assignment();
+        Map<Integer, List<Integer>> secondMaterialized = result.assignment();
+
+        assertSame(firstMaterialized, secondMaterialized,
+                "Long-horizon solver results should cache the materialized assignment map once it is requested");
+        assertEquals(List.of(102), firstMaterialized.get(2),
+                "Fixed pairs that never existed in the edge table must still survive lazy assignment materialization");
+        assertEquals(List.of(101), firstMaterialized.get(1),
+                "Solved non-fixed edges should still materialize in deterministic edge order");
+    }
+
+    @Test
     void capLimitWarmStartMatchesFreshRelaxedSolve() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900),

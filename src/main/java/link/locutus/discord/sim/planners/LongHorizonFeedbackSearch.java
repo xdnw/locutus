@@ -88,13 +88,7 @@ final class LongHorizonFeedbackSearch {
                     reliefResult.attackerCounts(),
                     reliefResult.defenderCounts()
                 );
-                candidates.add(new LongHorizonAssignmentOptimizer.Candidate(
-                    reliefResult.assignment(),
-                    reliefResult.edgeAssigned(),
-                    reliefResult.attackerCounts(),
-                    reliefResult.defenderCounts(),
-                    reliefScore
-                ));
+                candidates.add(new LongHorizonAssignmentOptimizer.Candidate(reliefResult, reliefScore));
             }
             if (candidates.size() >= variantLimit) {
                 continue;
@@ -207,13 +201,8 @@ final class LongHorizonFeedbackSearch {
                     iterationResult.attackerCounts(),
                     iterationResult.defenderCounts()
             );
-            LongHorizonAssignmentOptimizer.Candidate iterationCandidate = new LongHorizonAssignmentOptimizer.Candidate(
-                    iterationResult.assignment(),
-                    iterationResult.edgeAssigned(),
-                    iterationResult.attackerCounts(),
-                    iterationResult.defenderCounts(),
-                    iterationScore
-            );
+            LongHorizonAssignmentOptimizer.Candidate iterationCandidate =
+                    new LongHorizonAssignmentOptimizer.Candidate(iterationResult, iterationScore);
                 LongHorizonForwardProjection.ProjectedFeedbackEvaluation iterationFeedback = evaluator.feedbackEvaluation(
                     iterationCandidate,
                     iterationProjection

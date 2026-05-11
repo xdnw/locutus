@@ -225,18 +225,12 @@ final class LongHorizonAssignmentOptimizer {
                     initialDefenderCounts,
                     initialScore
                 );
-                Candidate marginalCandidate = new Candidate(
-                    marginalResult.assignment(),
-                    marginalResult.edgeAssigned(),
-                    marginalResult.attackerCounts(),
-                    marginalResult.defenderCounts(),
-                    marginalScore
-                );
+                Candidate marginalCandidate = new Candidate(marginalResult, marginalScore);
                 LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(scenario, projectionScoringContext);
                 best = evaluator.betterCandidate(best, marginalCandidate, terminalProjection);
 
                 if (evaluator.canScoreObjectiveProjection()) {
-                    if (shouldRunFixedPointFeedback(edgeCount, assignmentPairCount(marginalCandidate.assignment()))) {
+                    if (shouldRunFixedPointFeedback(edgeCount, marginalCandidate.assignmentPairCount())) {
                         best = evaluator.betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
                             baseEdges,
                             scenario,
@@ -283,7 +277,7 @@ final class LongHorizonAssignmentOptimizer {
                     best,
                     terminalProjection
                 );
-                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "assignmentPairs", assignmentPairCount(best.assignment()));
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "assignmentPairs", best.assignmentPairCount());
                 return new Result(cloneAssignment(best.assignment()), projectedObjectiveSummary);
             }
     }
@@ -717,7 +711,7 @@ final class LongHorizonAssignmentOptimizer {
                 result.attackerCounts(),
                 result.defenderCounts()
         );
-        return new Candidate(result.assignment(), result.edgeAssigned(), result.attackerCounts(), result.defenderCounts(), projectionScore);
+        return new Candidate(result, projectionScore);
     }
 
     private static boolean respectsAttackerCapLimit(Candidate candidate, int attackerCapLimit) {
@@ -960,13 +954,71 @@ final class LongHorizonAssignmentOptimizer {
     ) {
     }
 
-        record Candidate(
-            Map<Integer, List<Integer>> assignment,
-            boolean[] edgeAssigned,
-            int[] attackerCounts,
-            int[] defenderCounts,
-            double projectionScore
-    ) {
+    static final class Candidate {
+        private Map<Integer, List<Integer>> assignment;
+        private final LongHorizonMarginalFlowSolver.Result lazyAssignmentSource;
+        private final boolean[] edgeAssigned;
+        private final int[] attackerCounts;
+        private final int[] defenderCounts;
+        private final double projectionScore;
+        private final int assignmentPairCount;
+
+        Candidate(
+                Map<Integer, List<Integer>> assignment,
+                boolean[] edgeAssigned,
+                int[] attackerCounts,
+                int[] defenderCounts,
+                double projectionScore
+        ) {
+            this.assignment = assignment;
+            this.lazyAssignmentSource = null;
+            this.edgeAssigned = edgeAssigned;
+            this.attackerCounts = attackerCounts;
+            this.defenderCounts = defenderCounts;
+            this.projectionScore = projectionScore;
+            this.assignmentPairCount = LongHorizonAssignmentOptimizer.assignmentPairCount(assignment);
+        }
+
+        Candidate(LongHorizonMarginalFlowSolver.Result solveResult, double projectionScore) {
+            this.assignment = null;
+            this.lazyAssignmentSource = solveResult;
+            this.edgeAssigned = solveResult.edgeAssigned();
+            this.attackerCounts = solveResult.attackerCounts();
+            this.defenderCounts = solveResult.defenderCounts();
+            this.projectionScore = projectionScore;
+            this.assignmentPairCount = solveResult.assignmentPairCount();
+        }
+
+        Map<Integer, List<Integer>> assignment() {
+            if (assignment == null) {
+                assignment = lazyAssignmentSource == null ? Map.of() : lazyAssignmentSource.assignment();
+            }
+            return assignment;
+        }
+
+        boolean[] edgeAssigned() {
+            return edgeAssigned;
+        }
+
+        int[] attackerCounts() {
+            return attackerCounts;
+        }
+
+        int[] defenderCounts() {
+            return defenderCounts;
+        }
+
+        double projectionScore() {
+            return projectionScore;
+        }
+
+        int assignmentPairCount() {
+            return assignmentPairCount;
+        }
+
+        boolean isEmpty() {
+            return assignmentPairCount == 0;
+        }
     }
 
     private record DenseAssignment(

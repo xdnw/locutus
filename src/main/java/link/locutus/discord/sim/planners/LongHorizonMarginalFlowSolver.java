@@ -131,12 +131,11 @@ final class LongHorizonMarginalFlowSolver {
                 boolean[] seededEdgeAssigned
             ) {
         boolean[] edgeAssigned = new boolean[edges.edgeCount()];
-                boolean[] warmStartedEdgeAssigned = seededEdgeAssigned == null ? null : new boolean[edges.edgeCount()];
+            boolean[] warmStartedEdgeAssigned = seededEdgeAssigned == null ? null : new boolean[edges.edgeCount()];
         int[] attackerCounts = new int[attackerCount];
         int[] defenderCounts = new int[defenderCount];
         int[] residualAttackerCaps = Arrays.copyOf(attackerCaps, attackerCaps.length);
         int[] residualDefenderCaps = Arrays.copyOf(defenderCaps, defenderCaps.length);
-        Map<Integer, List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
         Int2IntOpenHashMap attackerSlotByNationId = staticSolveInputs.attackerSlotByNationId();
         Int2IntOpenHashMap defenderSlotByNationId = staticSolveInputs.defenderSlotByNationId();
         long[] edgePairKeys = edges.edgePairKeys(attackerNationIds, defenderNationIds);
@@ -156,7 +155,6 @@ final class LongHorizonMarginalFlowSolver {
             if (attackerSlot < 0 || defenderSlot < 0) {
                 continue;
             }
-            appendAssignment(assignment, fixedEdge.attackerNationId(), fixedEdge.defenderNationId());
             residualAttackerCaps[attackerSlot] = Math.max(0, residualAttackerCaps[attackerSlot] - 1);
             residualDefenderCaps[defenderSlot] = Math.max(0, residualDefenderCaps[defenderSlot] - 1);
             attackerCounts[attackerSlot]++;
@@ -187,7 +185,16 @@ final class LongHorizonMarginalFlowSolver {
         int attackerSlotCount = attackerSlotOffsets[attackerSlotOffsets.length - 1];
         int defenderSlotCount = defenderSlotOffsets[defenderSlotOffsets.length - 1];
         if (attackerSlotCount == 0 || defenderSlotCount == 0 || edges.edgeCount() == 0) {
-            return new Result(assignment, edgeAssigned, attackerCounts, defenderCounts);
+            return new Result(
+                    edges,
+                    attackerNationIds,
+                    defenderNationIds,
+                    fixedEdges,
+                    fixedPairKeys,
+                    edgeAssigned,
+                    attackerCounts,
+                    defenderCounts
+            );
         }
 
         int source = 0;
@@ -256,9 +263,6 @@ final class LongHorizonMarginalFlowSolver {
 
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
             if (warmStartedEdgeAssigned != null && warmStartedEdgeAssigned[edgeIndex]) {
-                int attackerNationId = attackerNationIds[edges.attackerIndex(edgeIndex)];
-                int defenderNationId = defenderNationIds[edges.defenderIndex(edgeIndex)];
-                appendAssignment(assignment, attackerNationId, defenderNationId);
                 continue;
             }
             int forwardSlot = originalEdgeForwardSlot[edgeIndex];
@@ -267,15 +271,21 @@ final class LongHorizonMarginalFlowSolver {
             }
             int attackerIndex = edges.attackerIndex(edgeIndex);
             int defenderIndex = edges.defenderIndex(edgeIndex);
-            int attackerNationId = attackerNationIds[attackerIndex];
-            int defenderNationId = defenderNationIds[defenderIndex];
-            assignment.computeIfAbsent(attackerNationId, ignored -> new IntArrayList()).add(defenderNationId);
             edgeAssigned[edgeIndex] = true;
             attackerCounts[attackerIndex]++;
             defenderCounts[defenderIndex]++;
         }
 
-        return new Result(assignment, edgeAssigned, attackerCounts, defenderCounts);
+        return new Result(
+                edges,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges,
+                fixedPairKeys,
+                edgeAssigned,
+                attackerCounts,
+                defenderCounts
+        );
     }
 
     private static boolean canApplySeededEdges(
@@ -334,6 +344,43 @@ final class LongHorizonMarginalFlowSolver {
     ) {
         assignment.computeIfAbsent(attackerNationId, ignored -> new IntArrayList())
                 .add(defenderNationId);
+    }
+
+    private static Map<Integer, List<Integer>> materializeAssignment(
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            List<BlitzFixedEdge> fixedEdges,
+            LongOpenHashSet fixedPairKeys,
+            boolean[] edgeAssigned
+    ) {
+        if (fixedEdges.isEmpty() && edgeAssigned.length == 0) {
+            return Map.of();
+        }
+        Map<Integer, List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
+        for (BlitzFixedEdge fixedEdge : fixedEdges) {
+            appendAssignment(assignment, fixedEdge.attackerNationId(), fixedEdge.defenderNationId());
+        }
+        for (int edgeIndex = 0; edgeIndex < edgeAssigned.length; edgeIndex++) {
+            if (!edgeAssigned[edgeIndex]) {
+                continue;
+            }
+            int attackerNationId = attackerNationIds[edges.attackerIndex(edgeIndex)];
+            int defenderNationId = defenderNationIds[edges.defenderIndex(edgeIndex)];
+            if (fixedPairKeys.contains(pairKey(attackerNationId, defenderNationId))) {
+                continue;
+            }
+            appendAssignment(assignment, attackerNationId, defenderNationId);
+        }
+        return assignment.isEmpty() ? Map.of() : assignment;
+    }
+
+    private static int assignmentPairCount(int[] attackerCounts) {
+        int pairCount = 0;
+        for (int attackerCount : attackerCounts) {
+            pairCount += attackerCount;
+        }
+        return pairCount;
     }
 
     static StaticSolveInputs staticSolveInputs(
@@ -657,12 +704,68 @@ final class LongHorizonMarginalFlowSolver {
         return pointer;
     }
 
-    record Result(
-            Map<Integer, List<Integer>> assignment,
-            boolean[] edgeAssigned,
-            int[] attackerCounts,
-            int[] defenderCounts
-    ) {
+    static final class Result {
+        private final CandidateEdgeTable edges;
+        private final int[] attackerNationIds;
+        private final int[] defenderNationIds;
+        private final List<BlitzFixedEdge> fixedEdges;
+        private final LongOpenHashSet fixedPairKeys;
+        private final boolean[] edgeAssigned;
+        private final int[] attackerCounts;
+        private final int[] defenderCounts;
+        private final int assignmentPairCount;
+        private Map<Integer, List<Integer>> assignment;
+
+        private Result(
+                CandidateEdgeTable edges,
+                int[] attackerNationIds,
+                int[] defenderNationIds,
+                List<BlitzFixedEdge> fixedEdges,
+                LongOpenHashSet fixedPairKeys,
+                boolean[] edgeAssigned,
+                int[] attackerCounts,
+                int[] defenderCounts
+        ) {
+            this.edges = edges;
+            this.attackerNationIds = attackerNationIds;
+            this.defenderNationIds = defenderNationIds;
+            this.fixedEdges = fixedEdges;
+            this.fixedPairKeys = fixedPairKeys;
+            this.edgeAssigned = edgeAssigned;
+            this.attackerCounts = attackerCounts;
+            this.defenderCounts = defenderCounts;
+            this.assignmentPairCount = LongHorizonMarginalFlowSolver.assignmentPairCount(attackerCounts);
+        }
+
+        Map<Integer, List<Integer>> assignment() {
+            if (assignment == null) {
+                assignment = materializeAssignment(
+                        edges,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        fixedPairKeys,
+                        edgeAssigned
+                );
+            }
+            return assignment;
+        }
+
+        boolean[] edgeAssigned() {
+            return edgeAssigned;
+        }
+
+        int[] attackerCounts() {
+            return attackerCounts;
+        }
+
+        int[] defenderCounts() {
+            return defenderCounts;
+        }
+
+        int assignmentPairCount() {
+            return assignmentPairCount;
+        }
     }
 
     static final class GraphBuildBuffers {
