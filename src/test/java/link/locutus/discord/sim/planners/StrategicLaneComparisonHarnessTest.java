@@ -1,11 +1,15 @@
 package link.locutus.discord.sim.planners;
 
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.WarType;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StrategicLaneComparisonHarnessTest {
@@ -93,6 +97,27 @@ class StrategicLaneComparisonHarnessTest {
         assertEquals(lane.get("countersDeclared"), headToHead.get("countersDeclared"));
         assertEquals(lane.get("redeclaresDeclared"), headToHead.get("redeclaresDeclared"));
         assertEquals(lane.get("countersThrottled"), headToHead.get("countersThrottled"));
+    }
+
+    @Test
+    void headToHeadPolicyFlagsConfigureOpeningWeightsAndAdmission() {
+        HeadToHeadComparisonHarness.PolicySpec spec = HeadToHeadComparisonHarness.PolicySpec.parse(
+                "weighted:projectedObjective:CONTROL:audit=3;war=RAID:1.5,ORD:0.7;attack=MISSILE:2.0,NUKE:2.5;minProbe=0.05;specialists=true;positiveBaseline=false",
+                "A"
+        );
+
+        SidePolicy policy = spec.actingPolicy();
+
+        assertEquals(3, policy.planner().projectedAuditLimit());
+        assertEquals(1.5d, policy.opening().warTypeWeight(WarType.RAID), 1e-9);
+        assertEquals(0.7d, policy.opening().warTypeWeight(WarType.ORD), 1e-9);
+        assertEquals(1.0d, policy.opening().warTypeWeight(WarType.ATT), 1e-9);
+        assertEquals(2.0d, policy.opening().attackTypeWeight(AttackType.MISSILE), 1e-9);
+        assertEquals(2.5d, policy.opening().attackTypeWeight(AttackType.NUKE), 1e-9);
+        assertEquals(1.0d, policy.opening().attackTypeWeight(AttackType.GROUND), 1e-9);
+        assertEquals(0.05d, policy.opening().minimumViabilityProbe(), 1e-9);
+        assertTrue(policy.opening().admissionPolicy().allowLegalSpecialistFallback());
+        assertFalse(policy.opening().admissionPolicy().admitPositiveOpeningBaseline());
     }
 
     private static String normalizeDeterministicColumns(String csv) {

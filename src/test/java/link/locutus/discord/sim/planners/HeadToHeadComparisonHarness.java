@@ -1,9 +1,13 @@
 package link.locutus.discord.sim.planners;
 
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.BlitzObjective;
+import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -164,22 +168,42 @@ public final class HeadToHeadComparisonHarness {
             String name,
             StrategicLaneComparisonHarness.Lane lane,
             BlitzObjective objective,
-            int projectedAuditLimit
+            int projectedAuditLimit,
+            double[] warTypeWeights,
+            double[] attackTypeWeights,
+            Double minimumViabilityProbe,
+            Boolean allowLegalSpecialistFallback,
+            Boolean admitPositiveOpeningBaseline
     ) {
         static PolicySpec parse(String value, String fallbackName) {
             String effective = value == null || value.isBlank()
                     ? fallbackName + ":projectedObjective:NET_DAMAGE"
                     : value;
-            String[] parts = effective.split(":");
+            String[] parts = effective.split(":", 4);
             if (parts.length < 3 || parts.length > 4) {
                 throw new IllegalArgumentException("Policy must be NAME:lane:objective[:flags], got: " + effective);
             }
             int projectedAuditLimit = SidePlannerSettings.DEFAULT_PROJECTED_AUDIT_LIMIT;
+            double[] warTypeWeights = neutralWarTypeWeights();
+            double[] attackTypeWeights = neutralAttackTypeWeights();
+            Double minimumViabilityProbe = null;
+            Boolean allowLegalSpecialistFallback = null;
+            Boolean admitPositiveOpeningBaseline = null;
             if (parts.length == 4 && !parts[3].isBlank()) {
                 for (String flag : parts[3].split(";")) {
                     String[] kv = flag.split("=", 2);
                     if (kv.length == 2 && kv[0].equalsIgnoreCase("audit")) {
                         projectedAuditLimit = Integer.parseInt(kv[1]);
+                    } else if (kv.length == 2 && kv[0].equalsIgnoreCase("war")) {
+                        parseWeights(kv[1], WarType.values, warTypeWeights, "war");
+                    } else if (kv.length == 2 && kv[0].equalsIgnoreCase("attack")) {
+                        parseWeights(kv[1], AttackType.values, attackTypeWeights, "attack");
+                    } else if (kv.length == 2 && kv[0].equalsIgnoreCase("minProbe")) {
+                        minimumViabilityProbe = Double.parseDouble(kv[1]);
+                    } else if (kv.length == 2 && kv[0].equalsIgnoreCase("specialists")) {
+                        allowLegalSpecialistFallback = Boolean.parseBoolean(kv[1]);
+                    } else if (kv.length == 2 && kv[0].equalsIgnoreCase("positiveBaseline")) {
+                        admitPositiveOpeningBaseline = Boolean.parseBoolean(kv[1]);
                     } else {
                         throw new IllegalArgumentException("Unknown policy flag: " + flag);
                     }
@@ -189,7 +213,12 @@ public final class HeadToHeadComparisonHarness {
                     parts[0],
                     StrategicLaneComparisonHarness.Lane.parse(parts[1]),
                     BlitzObjective.valueOf(parts[2].toUpperCase(Locale.ROOT)),
-                    projectedAuditLimit
+                    projectedAuditLimit,
+                    warTypeWeights,
+                    attackTypeWeights,
+                    minimumViabilityProbe,
+                    allowLegalSpecialistFallback,
+                    admitPositiveOpeningBaseline
             );
         }
 
@@ -200,7 +229,7 @@ public final class HeadToHeadComparisonHarness {
                     legacy.name(),
                     legacy.objective(),
                     legacy.planner().withProjectedAuditLimit(projectedAuditLimit),
-                    legacy.opening(),
+                    openingSettings(strategicObjective),
                     legacy.projection(),
                     legacy.turnActor(),
                     true
@@ -214,11 +243,68 @@ public final class HeadToHeadComparisonHarness {
                     legacy.name(),
                     legacy.objective(),
                     legacy.planner().withProjectedAuditLimit(projectedAuditLimit),
-                    legacy.opening(),
+                    openingSettings(strategicObjective),
                     legacy.projection(),
                     legacy.turnActor(),
                     false
             );
+        }
+
+        private SideOpeningSettings openingSettings(StrategicObjective strategicObjective) {
+            CandidateEdgeAdmissionPolicy baseAdmission = strategicObjective.candidateEdgeAdmissionPolicy();
+            if (baseAdmission == null) {
+                baseAdmission = CandidateEdgeAdmissionPolicy.defaultPolicy();
+            }
+            CandidateEdgeAdmissionPolicy admissionPolicy = new CandidateEdgeAdmissionPolicy(
+                    minimumViabilityProbe == null ? baseAdmission.minimumViabilityProbe() : minimumViabilityProbe,
+                    allowLegalSpecialistFallback == null
+                            ? baseAdmission.allowLegalSpecialistFallback()
+                            : allowLegalSpecialistFallback,
+                    admitPositiveOpeningBaseline == null
+                            ? baseAdmission.admitPositiveOpeningBaseline()
+                            : admitPositiveOpeningBaseline
+            );
+            return new SideOpeningSettings(warTypeWeights, attackTypeWeights, admissionPolicy);
+        }
+
+        private static double[] neutralWarTypeWeights() {
+            double[] weights = new double[WarType.values.length];
+            Arrays.fill(weights, 1d);
+            return weights;
+        }
+
+        private static double[] neutralAttackTypeWeights() {
+            double[] weights = new double[AttackType.values.length];
+            Arrays.fill(weights, 1d);
+            return weights;
+        }
+
+        private static <E extends Enum<E>> void parseWeights(
+                String value,
+                E[] values,
+                double[] weights,
+                String flagName
+        ) {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException(flagName + " weights must not be blank");
+            }
+            for (String entry : value.split(",")) {
+                String[] kv = entry.split(":", 2);
+                if (kv.length != 2) {
+                    throw new IllegalArgumentException("Expected " + flagName + " weight NAME:VALUE, got: " + entry);
+                }
+                E enumValue = enumValue(values, kv[0].trim(), flagName);
+                weights[enumValue.ordinal()] = Double.parseDouble(kv[1].trim());
+            }
+        }
+
+        private static <E extends Enum<E>> E enumValue(E[] values, String name, String flagName) {
+            for (E value : values) {
+                if (value.name().equalsIgnoreCase(name)) {
+                    return value;
+                }
+            }
+            throw new IllegalArgumentException("Unknown " + flagName + " value: " + name);
         }
     }
 
