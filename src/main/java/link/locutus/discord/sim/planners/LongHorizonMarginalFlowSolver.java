@@ -50,7 +50,8 @@ final class LongHorizonMarginalFlowSolver {
                 attackerNationIds,
                 defenderNationIds,
                 fixedEdges,
-                staticSolveInputs(attackerNationIds, defenderNationIds, fixedEdges)
+                staticSolveInputs(attackerNationIds, defenderNationIds, fixedEdges),
+                new GraphBuildBuffers()
         );
     }
 
@@ -66,6 +67,36 @@ final class LongHorizonMarginalFlowSolver {
             int[] defenderNationIds,
             List<BlitzFixedEdge> fixedEdges,
             StaticSolveInputs staticSolveInputs
+    ) {
+        return solve(
+                edges,
+                scorer,
+                attackerCount,
+                defenderCount,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges,
+                staticSolveInputs,
+                new GraphBuildBuffers()
+        );
+    }
+
+    static Result solve(
+            CandidateEdgeTable edges,
+            LongHorizonMarginalScorer scorer,
+            int attackerCount,
+            int defenderCount,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int[] attackerStrengthRanks,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            List<BlitzFixedEdge> fixedEdges,
+            StaticSolveInputs staticSolveInputs,
+            GraphBuildBuffers graphBuildBuffers
     ) {
         boolean[] edgeAssigned = new boolean[edges.edgeCount()];
         int[] attackerCounts = new int[attackerCount];
@@ -119,14 +150,13 @@ final class LongHorizonMarginalFlowSolver {
         int sink = edgeOutStart + edges.edgeCount();
         int vertexCount = sink + 1;
         int edgePairCapacity = expandedEdgePairCapacity(edges, residualAttackerCaps, residualDefenderCaps, fixedPairKeys, edgePairKeys);
-        int[] to = new int[edgePairCapacity * 2 + 4];
-        int[] capacity = new int[to.length];
-        double[] cost = new double[to.length];
-        int[] next = new int[to.length];
-        int[] head = new int[vertexCount];
-        Arrays.fill(head, -1);
-        int[] originalEdgeForwardSlot = new int[edges.edgeCount()];
-        Arrays.fill(originalEdgeForwardSlot, -1);
+        graphBuildBuffers.prepare(vertexCount, edgePairCapacity * 2 + 4, edges.edgeCount());
+        int[] to = graphBuildBuffers.to();
+        int[] capacity = graphBuildBuffers.capacity();
+        double[] cost = graphBuildBuffers.cost();
+        int[] next = graphBuildBuffers.next();
+        int[] head = graphBuildBuffers.head();
+        int[] originalEdgeForwardSlot = graphBuildBuffers.originalEdgeForwardSlot();
         int pointer = 0;
 
         for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
@@ -520,6 +550,56 @@ final class LongHorizonMarginalFlowSolver {
             int[] attackerCounts,
             int[] defenderCounts
     ) {
+    }
+
+    static final class GraphBuildBuffers {
+        private int[] to = new int[0];
+        private int[] capacity = new int[0];
+        private double[] cost = new double[0];
+        private int[] next = new int[0];
+        private int[] head = new int[0];
+        private int[] originalEdgeForwardSlot = new int[0];
+
+        void prepare(int vertexCount, int edgeArrayLength, int edgeCount) {
+            if (to.length < edgeArrayLength) {
+                to = new int[edgeArrayLength];
+                capacity = new int[edgeArrayLength];
+                cost = new double[edgeArrayLength];
+                next = new int[edgeArrayLength];
+            }
+            if (head.length < vertexCount) {
+                head = new int[vertexCount];
+            }
+            if (originalEdgeForwardSlot.length < edgeCount) {
+                originalEdgeForwardSlot = new int[edgeCount];
+            }
+            Arrays.fill(head, 0, vertexCount, -1);
+            Arrays.fill(originalEdgeForwardSlot, 0, edgeCount, -1);
+        }
+
+        int[] to() {
+            return to;
+        }
+
+        int[] capacity() {
+            return capacity;
+        }
+
+        double[] cost() {
+            return cost;
+        }
+
+        int[] next() {
+            return next;
+        }
+
+        int[] head() {
+            return head;
+        }
+
+        int[] originalEdgeForwardSlot() {
+            return originalEdgeForwardSlot;
+        }
     }
 
         record StaticSolveInputs(

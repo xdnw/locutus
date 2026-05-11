@@ -808,6 +808,8 @@ class LongHorizonAssignmentOptimizerTest {
                                 defenderNationIds,
                                 List.of()
                 );
+                LongHorizonMarginalFlowSolver.GraphBuildBuffers graphBuffers =
+                                new LongHorizonMarginalFlowSolver.GraphBuildBuffers();
 
                 List<LongHorizonAssignmentOptimizer.Candidate> reliefCandidates = LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
                                 edges,
@@ -823,7 +825,8 @@ class LongHorizonAssignmentOptimizerTest {
                                 projection,
                                 new int[]{5, 5, 0},
                                 SidePlannerSettings.legacyActing(),
-                                staticSolveInputs
+                                staticSolveInputs,
+                                graphBuffers
                 );
 
                 assertTrue(
@@ -1289,6 +1292,95 @@ class LongHorizonAssignmentOptimizerTest {
         assertArrayEquals(freshInputs.edgeAssigned(), withStaticInputs.edgeAssigned());
         assertArrayEquals(freshInputs.attackerCounts(), withStaticInputs.attackerCounts());
         assertArrayEquals(freshInputs.defenderCounts(), withStaticInputs.defenderCounts());
+    }
+
+    @Test
+    void marginalFlowGraphBuffersReuseAcrossRepeatedSolveBatch() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900),
+                nation(2, 1, 880)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900),
+                nation(102, 2, 880)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = commitmentScenarioEdges();
+        CandidateEdgeTable copiedEdges = CandidateEdgeTable.copyOf(edges);
+        int[] attackerCaps = {2, 1};
+        int[] defenderCaps = {1, 1};
+        int[] attackerStrengthRanks = {0, 1};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102};
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                copiedEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy()
+        );
+
+        LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+        LongHorizonMarginalFlowSolver.GraphBuildBuffers graphBuffers =
+                new LongHorizonMarginalFlowSolver.GraphBuildBuffers();
+        LongHorizonMarginalFlowSolver.Result firstBuffered = LongHorizonMarginalFlowSolver.solve(
+                copiedEdges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                graphBuffers
+        );
+        LongHorizonMarginalFlowSolver.Result secondBuffered = LongHorizonMarginalFlowSolver.solve(
+                copiedEdges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                graphBuffers
+        );
+        LongHorizonMarginalFlowSolver.Result freshSolve = LongHorizonMarginalFlowSolver.solve(
+                copiedEdges,
+                projection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs
+        );
+
+        assertEquals(freshSolve.assignment(), firstBuffered.assignment());
+        assertArrayEquals(freshSolve.edgeAssigned(), firstBuffered.edgeAssigned());
+        assertArrayEquals(freshSolve.attackerCounts(), firstBuffered.attackerCounts());
+        assertArrayEquals(freshSolve.defenderCounts(), firstBuffered.defenderCounts());
+        assertEquals(freshSolve.assignment(), secondBuffered.assignment());
+        assertArrayEquals(freshSolve.edgeAssigned(), secondBuffered.edgeAssigned());
+        assertArrayEquals(freshSolve.attackerCounts(), secondBuffered.attackerCounts());
+        assertArrayEquals(freshSolve.defenderCounts(), secondBuffered.defenderCounts());
     }
 
     @Test

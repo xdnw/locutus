@@ -36,7 +36,8 @@ final class LongHorizonFeedbackSearch {
             LongHorizonControlProjection terminalProjection,
             int[] realizedCounters,
             SidePlannerSettings attackerPlannerSettings,
-            LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs
+                LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
+                LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
     ) {
         int[] fixedCounts = fixedAttackerCounts(fixedEdges, attackerNationIds);
         IntArrayList reliefOrder = reliefOrder(seed.attackerCounts(), fixedCounts, terminalProjection, realizedCounters);
@@ -79,7 +80,8 @@ final class LongHorizonFeedbackSearch {
                         attackerNationIds,
                         defenderNationIds,
                         fixedEdges,
-                        marginalFlowStaticInputs
+                        marginalFlowStaticInputs,
+                        marginalFlowGraphBuffers
                 );
                 double reliefScore = reliefProjection.assignmentScoreDense(
                     reliefResult.edgeAssigned(),
@@ -139,7 +141,8 @@ final class LongHorizonFeedbackSearch {
             LongHorizonControlProjection seedProjection,
             LongHorizonCandidateEvaluator evaluator,
             SidePlannerSettings attackerPlannerSettings,
-            LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs
+                LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
+                LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
     ) {
         LongHorizonForwardProjection.ProjectedFeedbackEvaluation currentFeedback = evaluator.feedbackEvaluation(seed, seedProjection);
         int[] currentRealized = currentFeedback.projectedEvaluation().realizedCounterIncidence().clone();
@@ -196,7 +199,8 @@ final class LongHorizonFeedbackSearch {
                     attackerNationIds,
                     defenderNationIds,
                         fixedEdges,
-                        marginalFlowStaticInputs
+                        marginalFlowStaticInputs,
+                    marginalFlowGraphBuffers
             );
                 double iterationScore = iterationProjection.assignmentScoreDense(
                     iterationResult.edgeAssigned(),
