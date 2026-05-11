@@ -85,6 +85,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private final List<ExternalWarControl> externalWarControls;
     private final LocalNationBuffers nationBuffers;
     private final LocalWarBuffers warBuffers;
+    private final int[] activeOffensiveWarCounts;
+    private final int[] activeDefensiveWarCounts;
+    private final ActiveWarContextScratch strategicValueWarContextScratch;
     private final Deque<Mark> markStack;
     private final List<PlannerExecutionLog.Turn> executionLogTurns;
     private PlannerReplayTurnMetrics replayTurnMetrics;
@@ -126,6 +129,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.warsById = new Int2ObjectLinkedOpenHashMap<>();
         this.warsByPair = new Long2ObjectLinkedOpenHashMap<>();
         this.warBuffers = new LocalWarBuffers();
+        this.activeOffensiveWarCounts = new int[nationsById.size()];
+        this.activeDefensiveWarCounts = new int[nationsById.size()];
+        this.strategicValueWarContextScratch = new ActiveWarContextScratch(nationsById.size());
         this.markStack = new ArrayDeque<>();
         this.executionLogTurns = new ArrayList<>();
         this.currentExecutionPhase = ReplayExecutionPhase.NONE;
@@ -461,6 +467,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             warsById.put(warRecord.warId(), war);
             warsByPair.put(pairKey(warRecord.attackerNationId(), warRecord.defenderNationId()), war);
         }
+        rebuildActiveWarCounts();
     }
 
     void applyAssignmentHorizon(Map<Integer, List<Integer>> assignment, int horizonTurns) {
@@ -926,11 +933,32 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
     @Override
     public void forEachNationStrategicValue(NationValueConsumer consumer) {
+        strategicValueWarContextScratch.clear();
+        for (LocalWar war : warsById.values()) {
+            if (war.isActive()) {
+                strategicValueWarContextScratch.accumulate(war);
+            }
+        }
         for (LocalNation nation : nationsById.values()) {
+            int nationIndex = nation.nationIndex();
             consumer.accept(
                     nation.nationId(),
                     nation.teamId(),
-                    nation.strategicValue(strategicRelevance(nation), activeWarContext(nation))
+                    nation.strategicValue(
+                            strategicRelevance(nation),
+                            buildActiveWarContext(
+                                    nation,
+                                    strategicValueWarContextScratch.activeWarCount[nationIndex],
+                                    strategicValueWarContextScratch.activeOffensiveWars[nationIndex],
+                                    strategicValueWarContextScratch.activeDefensiveWars[nationIndex],
+                                    strategicValueWarContextScratch.ownMaps[nationIndex],
+                                    strategicValueWarContextScratch.enemyMaps[nationIndex],
+                                    strategicValueWarContextScratch.ownResistance[nationIndex],
+                                    strategicValueWarContextScratch.enemyResistance[nationIndex],
+                                    strategicValueWarContextScratch.ownControls[nationIndex],
+                                    strategicValueWarContextScratch.enemyControls[nationIndex]
+                            )
+                    )
             );
         }
     }
@@ -1056,6 +1084,32 @@ final class PlannerLocalConflict implements TeamWarControlView {
             enemyControls += PlannerControlStateReducer.controlCountForOwnerCode(enemyOwnerCode, groundOwner, airOwner, blockadeOwner);
         }
 
+            return buildActiveWarContext(
+                nation,
+                activeWarCount,
+                activeOffensiveWars,
+                activeDefensiveWars,
+                ownMaps,
+                enemyMaps,
+                ownResistance,
+                enemyResistance,
+                ownControls,
+                enemyControls
+            );
+            }
+
+            private StrategicAssetValue.ActiveWarContext buildActiveWarContext(
+                LocalNation nation,
+                int activeWarCount,
+                int activeOffensiveWars,
+                int activeDefensiveWars,
+                int ownMaps,
+                int enemyMaps,
+                int ownResistance,
+                int enemyResistance,
+                int ownControls,
+                int enemyControls
+            ) {
         int offensiveWars = Math.max(activeOffensiveWars, nation.baseCurrentOffensiveWars);
         int defensiveWars = Math.max(activeDefensiveWars, nation.baseCurrentDefensiveWars);
         int activeOpponents = Math.max(
@@ -1082,6 +1136,82 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 ownControls,
                 enemyControls
         );
+    }
+
+    private static final class ActiveWarContextScratch {
+        private final int[] activeWarCount;
+        private final int[] activeOffensiveWars;
+        private final int[] activeDefensiveWars;
+        private final int[] ownMaps;
+        private final int[] enemyMaps;
+        private final int[] ownResistance;
+        private final int[] enemyResistance;
+        private final int[] ownControls;
+        private final int[] enemyControls;
+
+        private ActiveWarContextScratch(int nationCount) {
+            this.activeWarCount = new int[nationCount];
+            this.activeOffensiveWars = new int[nationCount];
+            this.activeDefensiveWars = new int[nationCount];
+            this.ownMaps = new int[nationCount];
+            this.enemyMaps = new int[nationCount];
+            this.ownResistance = new int[nationCount];
+            this.enemyResistance = new int[nationCount];
+            this.ownControls = new int[nationCount];
+            this.enemyControls = new int[nationCount];
+        }
+
+        private void clear() {
+            java.util.Arrays.fill(activeWarCount, 0);
+            java.util.Arrays.fill(activeOffensiveWars, 0);
+            java.util.Arrays.fill(activeDefensiveWars, 0);
+            java.util.Arrays.fill(ownMaps, 0);
+            java.util.Arrays.fill(enemyMaps, 0);
+            java.util.Arrays.fill(ownResistance, 0);
+            java.util.Arrays.fill(enemyResistance, 0);
+            java.util.Arrays.fill(ownControls, 0);
+            java.util.Arrays.fill(enemyControls, 0);
+        }
+
+        private void accumulate(LocalWar war) {
+            accumulate(war.attacker, war, true);
+            accumulate(war.defender, war, false);
+        }
+
+        private void accumulate(LocalNation nation, LocalWar war, boolean attacker) {
+            int nationIndex = nation.nationIndex();
+            activeWarCount[nationIndex]++;
+            if (attacker) {
+                activeOffensiveWars[nationIndex]++;
+                ownMaps[nationIndex] += war.attackerMapsValue();
+                enemyMaps[nationIndex] += war.defenderMapsValue();
+                ownResistance[nationIndex] += war.attackerResistanceValue();
+                enemyResistance[nationIndex] += war.defenderResistanceValue();
+            } else {
+                activeDefensiveWars[nationIndex]++;
+                ownMaps[nationIndex] += war.defenderMapsValue();
+                enemyMaps[nationIndex] += war.attackerMapsValue();
+                ownResistance[nationIndex] += war.defenderResistanceValue();
+                enemyResistance[nationIndex] += war.attackerResistanceValue();
+            }
+            int ownOwnerCode = attacker ? LocalWarBuffers.OWNER_ATTACKER : LocalWarBuffers.OWNER_DEFENDER;
+            int enemyOwnerCode = attacker ? LocalWarBuffers.OWNER_DEFENDER : LocalWarBuffers.OWNER_ATTACKER;
+            int groundOwner = war.warBuffers.groundSuperiorityOwner[war.warIndex];
+            int airOwner = war.warBuffers.airSuperiorityOwner[war.warIndex];
+            int blockadeOwner = war.warBuffers.blockadeOwner[war.warIndex];
+            ownControls[nationIndex] += PlannerControlStateReducer.controlCountForOwnerCode(
+                    ownOwnerCode,
+                    groundOwner,
+                    airOwner,
+                    blockadeOwner
+            );
+            enemyControls[nationIndex] += PlannerControlStateReducer.controlCountForOwnerCode(
+                    enemyOwnerCode,
+                    groundOwner,
+                    airOwner,
+                    blockadeOwner
+            );
+        }
     }
 
     @Override
@@ -1206,6 +1336,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             LocalWar war = new LocalWar(warId, warIndex, attacker, defender, warBuffers);
             warsById.put(warId, war);
             warsByPair.put(pairKey, war);
+            registerActiveWar(war);
         }
     }
 
@@ -1270,7 +1401,14 @@ final class PlannerLocalConflict implements TeamWarControlView {
             redeclareTargetNationIds,
             secondaryRedeclareDeclarerNationIds,
             secondaryRedeclareTargetNationIds
-        ) ? project().snapshotsById() : Map.of();
+        ) ? autonomousPlannerSnapshotsById(
+                counterDeclarerNationIds,
+                counterTargetNationIds,
+                redeclareDeclarerNationIds,
+                redeclareTargetNationIds,
+                secondaryRedeclareDeclarerNationIds,
+                secondaryRedeclareTargetNationIds
+        ) : Map.of();
         List<AutonomousDeclaration> declarations = new ArrayList<>();
         declarations.addAll(plannedAutonomousDeclarations(
                 counterDeclarerNationIds,
@@ -1532,6 +1670,40 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 || (!secondaryRedeclareDeclarerNationIds.isEmpty() && !secondaryRedeclareTargetNationIds.isEmpty());
     }
 
+    private Map<Integer, DBNationSnapshot> autonomousPlannerSnapshotsById(
+            Collection<Integer> counterDeclarerNationIds,
+            Collection<Integer> counterTargetNationIds,
+            Collection<Integer> redeclareDeclarerNationIds,
+            Collection<Integer> redeclareTargetNationIds,
+            Collection<Integer> secondaryRedeclareDeclarerNationIds,
+            Collection<Integer> secondaryRedeclareTargetNationIds
+    ) {
+        IntLinkedOpenHashSet requestedNationIds = new IntLinkedOpenHashSet();
+        addAllNationIds(requestedNationIds, counterDeclarerNationIds);
+        addAllNationIds(requestedNationIds, counterTargetNationIds);
+        addAllNationIds(requestedNationIds, redeclareDeclarerNationIds);
+        addAllNationIds(requestedNationIds, redeclareTargetNationIds);
+        addAllNationIds(requestedNationIds, secondaryRedeclareDeclarerNationIds);
+        addAllNationIds(requestedNationIds, secondaryRedeclareTargetNationIds);
+        if (requestedNationIds.isEmpty()) {
+            return Map.of();
+        }
+        List<DBNationSnapshot> snapshots = snapshotsFor(requestedNationIds);
+        Map<Integer, DBNationSnapshot> snapshotsById = new Int2ObjectLinkedOpenHashMap<>(snapshots.size());
+        for (DBNationSnapshot snapshot : snapshots) {
+            snapshotsById.put(snapshot.nationId(), snapshot);
+        }
+        return snapshotsById;
+    }
+
+    private static void addAllNationIds(IntLinkedOpenHashSet destination, Collection<Integer> nationIds) {
+        for (Integer nationId : nationIds) {
+            if (nationId != null) {
+                destination.add(nationId);
+            }
+        }
+    }
+
     private enum LaterDeclarationMode {
         COUNTER,
         REDECLARE
@@ -1545,6 +1717,46 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return declarerSide
                 ? SidePolicy.legacy(name, effectiveObjective)
                 : SidePolicy.legacyPassive(name, effectiveObjective);
+    }
+
+    private void rebuildActiveWarCounts() {
+        java.util.Arrays.fill(activeOffensiveWarCounts, 0);
+        java.util.Arrays.fill(activeDefensiveWarCounts, 0);
+        for (LocalWar war : warsById.values()) {
+            registerActiveWar(war);
+        }
+    }
+
+    private void registerActiveWar(LocalWar war) {
+        if (!war.isActive()) {
+            return;
+        }
+        activeOffensiveWarCounts[war.attacker.nationIndex()]++;
+        activeDefensiveWarCounts[war.defender.nationIndex()]++;
+    }
+
+    private void unregisterActiveWar(LocalWar war) {
+        if (!war.isActive()) {
+            return;
+        }
+        int attackerIndex = war.attacker.nationIndex();
+        int defenderIndex = war.defender.nationIndex();
+        if (activeOffensiveWarCounts[attackerIndex] <= 0 || activeDefensiveWarCounts[defenderIndex] <= 0) {
+            throw new IllegalStateException("Active war counts out of sync for war " + war.warId());
+        }
+        activeOffensiveWarCounts[attackerIndex]--;
+        activeDefensiveWarCounts[defenderIndex]--;
+    }
+
+    private void setWarStatus(LocalWar war, WarStatus status) {
+        boolean wasActive = war.isActive();
+        if (wasActive) {
+            unregisterActiveWar(war);
+        }
+        war.setStatus(status);
+        if (war.isActive()) {
+            registerActiveWar(war);
+        }
     }
 
     private List<LocalNation> eligibleLaterDeclarers(Collection<Integer> declarerNationIds, boolean initialTurnCounterRules) {
@@ -1659,23 +1871,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private int activeOffensiveWarCount(int nationId) {
-        int count = 0;
-        for (LocalWar war : warsById.values()) {
-            if (war.isActive() && war.attackerNationId() == nationId) {
-                count++;
-            }
-        }
-        return count;
+        return activeOffensiveWarCounts[requireNation(nationId).nationIndex()];
     }
 
     private int activeDefensiveWarCount(int nationId) {
-        int count = 0;
-        for (LocalWar war : warsById.values()) {
-            if (war.isActive() && war.defenderNationId() == nationId) {
-                count++;
-            }
-        }
-        return count;
+        return activeDefensiveWarCounts[requireNation(nationId).nationIndex()];
     }
 
     private LocalWar declareWar(int attackerNationId, int defenderNationId) {
@@ -1700,6 +1900,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         LocalWar war = new LocalWar(warId, warIndex, attacker, defender, warBuffers);
         warsById.put(warId, war);
         warsByPair.put(pairKey, war);
+        registerActiveWar(war);
         recordReplayDeclaration(war);
         return war;
     }
@@ -2015,7 +2216,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             LocalNation winner = attackerLost ? war.defender : war.attacker;
             LocalNation loser = attackerLost ? war.attacker : war.defender;
             WarStatus status = attackerLost ? WarStatus.DEFENDER_VICTORY : WarStatus.ATTACKER_VICTORY;
-            war.setStatus(status);
+            setWarStatus(war, status);
             recordReplayConclusion(war, status);
             applyVictoryInfraDamage(war, winnerSide, winner, loser);
             loser.beigeTurns = Math.max(loser.beigeTurns, tuning.beigeTurnsOnDefeat());
@@ -2061,7 +2262,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             war.setAttackerMaps(Math.min(LocalWar.MAP_CAP, war.attackerMapsValue() + 1));
             war.setDefenderMaps(Math.min(LocalWar.MAP_CAP, war.defenderMapsValue() + 1));
             if (war.hasExpiredAtTurnStart(currentTurn)) {
-                war.setStatus(WarStatus.EXPIRED);
+                setWarStatus(war, WarStatus.EXPIRED);
                 recordReplayConclusion(war, WarStatus.EXPIRED);
             }
             resolveDefeatIfNeeded(war);
@@ -3537,35 +3738,36 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         LocalWarBufferSnapshot snapshot() {
             return new LocalWarBufferSnapshot(
-                    java.util.Arrays.copyOf(warTypes, warTypes.length),
-                    java.util.Arrays.copyOf(startTurn, startTurn.length),
-                    java.util.Arrays.copyOf(status, status.length),
-                    java.util.Arrays.copyOf(attackerMaps, attackerMaps.length),
-                    java.util.Arrays.copyOf(defenderMaps, defenderMaps.length),
-                    java.util.Arrays.copyOf(attackerResistance, attackerResistance.length),
-                    java.util.Arrays.copyOf(defenderResistance, defenderResistance.length),
-                    java.util.Arrays.copyOf(attackerFortified, attackerFortified.length),
-                    java.util.Arrays.copyOf(defenderFortified, defenderFortified.length),
-                    java.util.Arrays.copyOf(groundSuperiorityOwner, groundSuperiorityOwner.length),
-                    java.util.Arrays.copyOf(airSuperiorityOwner, airSuperiorityOwner.length),
-                    java.util.Arrays.copyOf(blockadeOwner, blockadeOwner.length),
+                    java.util.Arrays.copyOf(warTypes, size),
+                    java.util.Arrays.copyOf(startTurn, size),
+                    java.util.Arrays.copyOf(status, size),
+                    java.util.Arrays.copyOf(attackerMaps, size),
+                    java.util.Arrays.copyOf(defenderMaps, size),
+                    java.util.Arrays.copyOf(attackerResistance, size),
+                    java.util.Arrays.copyOf(defenderResistance, size),
+                    java.util.Arrays.copyOf(attackerFortified, size),
+                    java.util.Arrays.copyOf(defenderFortified, size),
+                    java.util.Arrays.copyOf(groundSuperiorityOwner, size),
+                    java.util.Arrays.copyOf(airSuperiorityOwner, size),
+                    java.util.Arrays.copyOf(blockadeOwner, size),
                     size
             );
         }
 
         void restore(LocalWarBufferSnapshot snapshot) {
-            this.warTypes = java.util.Arrays.copyOf(snapshot.warTypes(), snapshot.warTypes().length);
-            this.startTurn = java.util.Arrays.copyOf(snapshot.startTurn(), snapshot.startTurn().length);
-            this.status = java.util.Arrays.copyOf(snapshot.status(), snapshot.status().length);
-            this.attackerMaps = java.util.Arrays.copyOf(snapshot.attackerMaps(), snapshot.attackerMaps().length);
-            this.defenderMaps = java.util.Arrays.copyOf(snapshot.defenderMaps(), snapshot.defenderMaps().length);
-            this.attackerResistance = java.util.Arrays.copyOf(snapshot.attackerResistance(), snapshot.attackerResistance().length);
-            this.defenderResistance = java.util.Arrays.copyOf(snapshot.defenderResistance(), snapshot.defenderResistance().length);
-            this.attackerFortified = java.util.Arrays.copyOf(snapshot.attackerFortified(), snapshot.attackerFortified().length);
-            this.defenderFortified = java.util.Arrays.copyOf(snapshot.defenderFortified(), snapshot.defenderFortified().length);
-            this.groundSuperiorityOwner = java.util.Arrays.copyOf(snapshot.groundSuperiorityOwner(), snapshot.groundSuperiorityOwner().length);
-            this.airSuperiorityOwner = java.util.Arrays.copyOf(snapshot.airSuperiorityOwner(), snapshot.airSuperiorityOwner().length);
-            this.blockadeOwner = java.util.Arrays.copyOf(snapshot.blockadeOwner(), snapshot.blockadeOwner().length);
+            int restoredCapacity = Math.max(INITIAL_CAPACITY, snapshot.size());
+            this.warTypes = java.util.Arrays.copyOf(snapshot.warTypes(), restoredCapacity);
+            this.startTurn = java.util.Arrays.copyOf(snapshot.startTurn(), restoredCapacity);
+            this.status = java.util.Arrays.copyOf(snapshot.status(), restoredCapacity);
+            this.attackerMaps = java.util.Arrays.copyOf(snapshot.attackerMaps(), restoredCapacity);
+            this.defenderMaps = java.util.Arrays.copyOf(snapshot.defenderMaps(), restoredCapacity);
+            this.attackerResistance = java.util.Arrays.copyOf(snapshot.attackerResistance(), restoredCapacity);
+            this.defenderResistance = java.util.Arrays.copyOf(snapshot.defenderResistance(), restoredCapacity);
+            this.attackerFortified = java.util.Arrays.copyOf(snapshot.attackerFortified(), restoredCapacity);
+            this.defenderFortified = java.util.Arrays.copyOf(snapshot.defenderFortified(), restoredCapacity);
+            this.groundSuperiorityOwner = java.util.Arrays.copyOf(snapshot.groundSuperiorityOwner(), restoredCapacity);
+            this.airSuperiorityOwner = java.util.Arrays.copyOf(snapshot.airSuperiorityOwner(), restoredCapacity);
+            this.blockadeOwner = java.util.Arrays.copyOf(snapshot.blockadeOwner(), restoredCapacity);
             this.size = snapshot.size();
         }
 

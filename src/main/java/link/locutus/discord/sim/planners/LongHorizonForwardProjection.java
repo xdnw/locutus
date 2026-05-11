@@ -1,5 +1,7 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -106,9 +108,11 @@ final class LongHorizonForwardProjection {
     private final int[] scratchCounterDefSlots;
     private final int[] scratchRedeclareAttSlots;
     private final int[] scratchRedeclareDefSlots;
+    private final int[] scratchCounterIncidence;
     private final ProjectionAttackEvaluator projectionAttackEvaluator;
     private final HeuristicAttackChoicePolicy.MutableAttackCandidate heuristicAttackCandidate;
     private final MutableAttackResult heuristicAttackSelectionResult;
+    private final DenseWarContext projectionWarContext;
     private long profiledProjectionTurns;
     private long profiledCounterTurns;
     private long profiledCounterTurnsNoSlots;
@@ -181,9 +185,11 @@ final class LongHorizonForwardProjection {
         this.scratchCounterDefSlots = new int[attackerCountVal];
         this.scratchRedeclareAttSlots = new int[attackerCountVal];
         this.scratchRedeclareDefSlots = new int[defenderCountVal];
+        this.scratchCounterIncidence = new int[attackerCountVal];
         this.projectionAttackEvaluator = new ProjectionAttackEvaluator();
         this.heuristicAttackCandidate = new HeuristicAttackChoicePolicy.MutableAttackCandidate();
         this.heuristicAttackSelectionResult = new MutableAttackResult();
+        this.projectionWarContext = new DenseWarContext();
     }
 
     static LongHorizonForwardProjection create(
@@ -335,9 +341,9 @@ final class LongHorizonForwardProjection {
             int[] attackerCounts,
             int[] defenderCounts
     ) {
-        int[] counterIncidence = new int[scenario.attackerCount()];
+        int[] counterIncidence = resetCounterIncidenceScratch();
         ProjectionView view = project(edgeAssigned, attackerCounts, defenderCounts, counterIncidence);
-        return new ProjectedEvaluation(objective.scoreTerminal(view, teamId), counterIncidence);
+        return new ProjectedEvaluation(objective.scoreTerminal(view, teamId), counterIncidence.clone());
     }
 
     ProjectedFeedbackEvaluation projectedFeedbackEvaluation(
@@ -349,7 +355,7 @@ final class LongHorizonForwardProjection {
             int midHorizonTurns
     ) {
         int turns = Math.max(1, Math.min(horizonTurns, midHorizonTurns));
-        int[] counterIncidence = new int[scenario.attackerCount()];
+        int[] counterIncidence = resetCounterIncidenceScratch();
         resetProjectedEvaluationProfile();
         ProjectionState state = prepareProjectionState(attackerCounts, defenderCounts, false);
         DenseWarState warState = prepareWarState(edgeAssigned);
@@ -361,7 +367,7 @@ final class LongHorizonForwardProjection {
         flushProjectedEvaluationProfile();
         ProjectionView view = new ProjectionView(state, warState, edgeAssigned);
         return new ProjectedFeedbackEvaluation(
-            new ProjectedEvaluation(objective.scoreTerminal(view, teamId), counterIncidence),
+            new ProjectedEvaluation(objective.scoreTerminal(view, teamId), counterIncidence.clone()),
             midHorizonSnapshot
         );
         }
@@ -409,11 +415,11 @@ final class LongHorizonForwardProjection {
      * and the war state used to advance combat.
      */
     int[] realizedCounterIncidence(boolean[] edgeAssigned, int[] attackerCounts, int[] defenderCounts) {
-        int[] counterIncidence = new int[scenario.attackerCount()];
+        int[] counterIncidence = resetCounterIncidenceScratch();
         ProjectionState state = prepareProjectionState(attackerCounts, defenderCounts, false);
         DenseWarState warState = prepareWarState(edgeAssigned);
         simulateProjectedWars(state, warState, attackerCounts, defenderCounts, counterIncidence);
-        return counterIncidence;
+        return counterIncidence.clone();
     }
 
     /**
@@ -433,13 +439,18 @@ final class LongHorizonForwardProjection {
             int midHorizonTurns
     ) {
         int turns = Math.max(1, Math.min(horizonTurns, midHorizonTurns));
-        int[] counterIncidence = new int[scenario.attackerCount()];
+        int[] counterIncidence = resetCounterIncidenceScratch();
         ProjectionState state = prepareProjectionState(attackerCounts, defenderCounts, false);
         DenseWarState warState = prepareWarState(edgeAssigned);
         warState.fillActiveWarsByNation(scratchActiveWarsByNation);
         MidHorizonBaseline baseline = captureMidHorizonBaseline(state);
         runProjectionTurns(state, warState, scratchActiveWarsByNation, attackerCounts, defenderCounts, counterIncidence, 0, turns);
         return captureMidHorizonSnapshot(state, baseline, counterIncidence);
+    }
+
+    private int[] resetCounterIncidenceScratch() {
+        Arrays.fill(scratchCounterIncidence, 0);
+        return scratchCounterIncidence;
     }
 
     /**
@@ -535,7 +546,7 @@ final class LongHorizonForwardProjection {
             int startTurn,
             int endTurnExclusive
     ) {
-        DenseWarContext context = new DenseWarContext(state, warState);
+        DenseWarContext context = projectionWarContext.bind(state, warState);
         int start = Math.max(0, Math.min(horizonTurns, startTurn));
         int bound = Math.max(start, Math.min(horizonTurns, endTurnExclusive));
         for (int turn = start; turn < bound; turn++) {
@@ -1902,6 +1913,7 @@ final class LongHorizonForwardProjection {
         private final int attackerCount;
         private final int defenderCount;
         private final int[] nationIds;
+        private final Int2IntOpenHashMap nationIndexById;
         private final int[] teamIds;
         private final int[] cityCounts;
         private final int[] unitBaseOffsets;
@@ -1951,6 +1963,7 @@ final class LongHorizonForwardProjection {
                 int attackerCount,
                 int defenderCount,
                 int[] nationIds,
+            Int2IntOpenHashMap nationIndexById,
                 int[] teamIds,
                 int[] cityCounts,
                 int[] unitBaseOffsets,
@@ -1987,6 +2000,7 @@ final class LongHorizonForwardProjection {
             this.attackerCount = attackerCount;
             this.defenderCount = defenderCount;
             this.nationIds = nationIds;
+            this.nationIndexById = nationIndexById;
             this.teamIds = teamIds;
             this.cityCounts = cityCounts;
             this.unitBaseOffsets = unitBaseOffsets;
@@ -2029,6 +2043,8 @@ final class LongHorizonForwardProjection {
             int resourceStride = ResourceType.values.length;
             int attackStride = AttackType.values.length;
             int[] nationIds = new int[nationCount];
+            Int2IntOpenHashMap nationIndexById = new Int2IntOpenHashMap(nationCount);
+            nationIndexById.defaultReturnValue(-1);
             int[] teamIds = new int[nationCount];
             int[] cityCounts = new int[nationCount];
             int[] unitBaseOffsets = new int[nationCount];
@@ -2079,6 +2095,7 @@ final class LongHorizonForwardProjection {
             for (int nationIndex = 0; nationIndex < nationCount; nationIndex++) {
                 DBNationSnapshot snapshot = snapshotAt(scenario, attackerCount, nationIndex);
                 nationIds[nationIndex] = snapshot.nationId();
+                nationIndexById.put(snapshot.nationId(), nationIndex);
                 teamIds[nationIndex] = snapshot.teamId();
                 staticScoreComponent[nationIndex] = snapshot.staticScoreComponent();
                 researchBits[nationIndex] = snapshot.researchBits();
@@ -2121,6 +2138,7 @@ final class LongHorizonForwardProjection {
                     attackerCount,
                     defenderCount,
                     nationIds,
+                    nationIndexById,
                     teamIds,
                     cityCounts,
                     unitBaseOffsets,
@@ -2180,12 +2198,7 @@ final class LongHorizonForwardProjection {
         }
 
         int nationIndexById(int nationId) {
-            for (int nationIndex = 0; nationIndex < nationIds.length; nationIndex++) {
-                if (nationIds[nationIndex] == nationId) {
-                    return nationIndex;
-                }
-            }
-            return -1;
+            return nationIndexById.get(nationId);
         }
 
         private void captureInitialMutableState() {
@@ -2587,9 +2600,10 @@ final class LongHorizonForwardProjection {
         }
 
         double marginalActionSpaceValue(int nationIndex, DenseWarState warState) {
-            boolean hasActiveWars = baseHasActiveWars[nationIndex] || activeWarContext(nationIndex, warState).hasActiveWars();
+            StrategicAssetValue.ActiveWarContext activeWarContext = activeWarContext(nationIndex, warState);
+            boolean hasActiveWars = baseHasActiveWars[nationIndex] || activeWarContext.hasActiveWars();
             return strategicMilitaryValue(nationIndex, strategicRelevance(nationIndex), hasActiveWars)
-                    * StrategicAssetValue.marginalActionSpaceMultiplier(activeWarContext(nationIndex, warState));
+                * StrategicAssetValue.marginalActionSpaceMultiplier(activeWarContext);
         }
 
         private StrategicAssetValue.StrategicRelevance strategicRelevance(int nationIndex) {
@@ -3421,13 +3435,17 @@ final class LongHorizonForwardProjection {
     }
 
     private static final class DenseWarContext implements CombatKernel.BufferBackedAttackContext, WarControlRules.MutableWarControlState {
-        private final ProjectionState state;
-        private final DenseWarState warState;
+        private ProjectionState state;
+        private DenseWarState warState;
         private int warIndex;
 
-        private DenseWarContext(ProjectionState state, DenseWarState warState) {
+        private DenseWarContext() {
+        }
+
+        private DenseWarContext bind(ProjectionState state, DenseWarState warState) {
             this.state = state;
             this.warState = warState;
+            return this;
         }
 
         void setWarIndex(int warIndex) {
@@ -3598,16 +3616,47 @@ final class LongHorizonForwardProjection {
 
         @Override
         public void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
+            int[] activeOpponentsByNation = new int[state.nationIds.length];
+            int[] seededOffensiveWarsByNation = new int[state.nationIds.length];
+            int[] projectedOffensiveWarsByNation = new int[state.nationIds.length];
+            int[] seededDefensiveWarsByNation = new int[state.nationIds.length];
+            int[] projectedDefensiveWarsByNation = new int[state.nationIds.length];
             for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
                 if (!warState.active[warIndex]) {
                     continue;
                 }
                 int attackerNationIndex = warState.attackerNationIndex[warIndex];
                 int defenderNationIndex = warState.defenderNationIndex[warIndex];
-                double attackerSlotPressure = offensiveSlotPressure(attackerNationIndex);
-                double defenderSlotPressure = defensiveSlotPressure(defenderNationIndex);
-                int attackerOpponents = activeOpponentCount(attackerNationIndex);
-                int defenderOpponents = activeOpponentCount(defenderNationIndex);
+                activeOpponentsByNation[attackerNationIndex]++;
+                activeOpponentsByNation[defenderNationIndex]++;
+                if (warState.seededCurrentWar[warIndex]) {
+                    seededOffensiveWarsByNation[attackerNationIndex]++;
+                    seededDefensiveWarsByNation[defenderNationIndex]++;
+                } else {
+                    projectedOffensiveWarsByNation[attackerNationIndex]++;
+                    projectedDefensiveWarsByNation[defenderNationIndex]++;
+                }
+            }
+            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
+                if (!warState.active[warIndex]) {
+                    continue;
+                }
+                int attackerNationIndex = warState.attackerNationIndex[warIndex];
+                int defenderNationIndex = warState.defenderNationIndex[warIndex];
+                DBNationSnapshot attackerSnapshot = snapshot(attackerNationIndex);
+                DBNationSnapshot defenderSnapshot = snapshot(defenderNationIndex);
+                double attackerSlotPressure = offensiveSlotPressure(
+                        attackerSnapshot,
+                        seededOffensiveWarsByNation[attackerNationIndex],
+                        projectedOffensiveWarsByNation[attackerNationIndex]
+                );
+                double defenderSlotPressure = defensiveSlotPressure(
+                        defenderSnapshot,
+                        seededDefensiveWarsByNation[defenderNationIndex],
+                        projectedDefensiveWarsByNation[defenderNationIndex]
+                );
+                int attackerOpponents = activeOpponentCount(attackerSnapshot, activeOpponentsByNation[attackerNationIndex]);
+                int defenderOpponents = activeOpponentCount(defenderSnapshot, activeOpponentsByNation[defenderNationIndex]);
                 double attackerPressure = state.targetPressure(defenderNationIndex, attackerNationIndex);
                 double defenderPressure = state.targetPressure(attackerNationIndex, defenderNationIndex);
                 consumer.accept(
@@ -3650,65 +3699,26 @@ final class LongHorizonForwardProjection {
         }
 
         private int stateTeamId(int nationIndex) {
-            return nationIndex < scenario.attackerCount()
-                    ? scenario.attacker(nationIndex).teamId()
-                    : scenario.defender(nationIndex - scenario.attackerCount()).teamId();
+            return state.teamIds[nationIndex];
         }
 
-        private double offensiveSlotPressure(int nationIndex) {
-            DBNationSnapshot snapshot = snapshot(nationIndex);
+        private double offensiveSlotPressure(DBNationSnapshot snapshot, int seededOffensiveWars, int projectedOffensiveWars) {
             int maxOffensiveSlots = Math.max(1, snapshot.maxOff());
-            return effectiveOffensiveWars(nationIndex, snapshot.currentOffensiveWars()) / (double) maxOffensiveSlots;
+            return effectiveWarCount(snapshot.currentOffensiveWars(), seededOffensiveWars, projectedOffensiveWars)
+                    / (double) maxOffensiveSlots;
         }
 
-        private double defensiveSlotPressure(int nationIndex) {
-            DBNationSnapshot snapshot = snapshot(nationIndex);
-            return effectiveDefensiveWars(nationIndex, snapshot.currentDefensiveWars()) / (double) WarSlotRules.defensiveSlotCap();
+        private double defensiveSlotPressure(DBNationSnapshot snapshot, int seededDefensiveWars, int projectedDefensiveWars) {
+            return effectiveWarCount(snapshot.currentDefensiveWars(), seededDefensiveWars, projectedDefensiveWars)
+                    / (double) WarSlotRules.defensiveSlotCap();
         }
 
-        private int activeOpponentCount(int nationIndex) {
-            int count = 0;
-            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
-                if (!warState.active[warIndex]) {
-                    continue;
-                }
-                if (warState.attackerNationIndex[warIndex] == nationIndex || warState.defenderNationIndex[warIndex] == nationIndex) {
-                    count++;
-                }
-            }
-            return Math.max(count, snapshot(nationIndex).activeOpponentNationIds().size());
+        private int activeOpponentCount(DBNationSnapshot snapshot, int activeOpponents) {
+            return Math.max(activeOpponents, snapshot.activeOpponentNationIds().size());
         }
 
-        private int effectiveOffensiveWars(int nationIndex, int baselineOffensiveWars) {
-            int seeded = 0;
-            int projected = 0;
-            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
-                if (!warState.active[warIndex] || warState.attackerNationIndex[warIndex] != nationIndex) {
-                    continue;
-                }
-                if (warState.seededCurrentWar[warIndex]) {
-                    seeded++;
-                } else {
-                    projected++;
-                }
-            }
-            return Math.max(Math.max(0, baselineOffensiveWars), seeded) + projected;
-        }
-
-        private int effectiveDefensiveWars(int nationIndex, int baselineDefensiveWars) {
-            int seeded = 0;
-            int projected = 0;
-            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
-                if (!warState.active[warIndex] || warState.defenderNationIndex[warIndex] != nationIndex) {
-                    continue;
-                }
-                if (warState.seededCurrentWar[warIndex]) {
-                    seeded++;
-                } else {
-                    projected++;
-                }
-            }
-            return Math.max(Math.max(0, baselineDefensiveWars), seeded) + projected;
+        private int effectiveWarCount(int baselineWars, int seededWars, int projectedWars) {
+            return Math.max(Math.max(0, baselineWars), seededWars) + projectedWars;
         }
 
         private DBNationSnapshot snapshot(int nationIndex) {
