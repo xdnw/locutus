@@ -785,7 +785,7 @@ final class OpeningEvaluator {
 
     private static byte firstLegalOpeningAttack(DBNationSnapshot attacker) {
         MutableNationState attackerState = new MutableNationState();
-        attackerState.bind(attacker);
+        attackerState.bindReadOnly(attacker);
         for (AttackType type : OPENING_ATTACK_TYPES) {
             if (isLegalOpeningAttack(attackerState, SimWar.INITIAL_MAPS, type)) {
                 return (byte) type.ordinal();
@@ -1639,7 +1639,7 @@ final class OpeningEvaluator {
             byte bestWarTypeId = (byte) -1;
             byte bestAttackTypeId = (byte) -1;
             for (WarType warType : OPENING_WAR_TYPES) {
-                context.bind(attacker, defender, warType);
+                context.bindReadOnly(attacker, defender, warType);
                 for (AttackType type : CONVENTIONAL_OPENING_ATTACK_TYPES) {
                     if (!isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
                         continue;
@@ -1666,7 +1666,7 @@ final class OpeningEvaluator {
             byte bestWarTypeId = (byte) -1;
             byte bestAttackTypeId = (byte) -1;
             for (WarType warType : OPENING_WAR_TYPES) {
-                context.bind(attacker, defender, warType);
+                context.bindReadOnly(attacker, defender, warType);
                 for (AttackType type : SPECIALIST_OPENING_ATTACK_TYPES) {
                     if (!isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
                         continue;
@@ -1700,8 +1700,18 @@ final class OpeningEvaluator {
         private int blockadeOwner = CombatKernel.AttackContext.BLOCKADE_NONE;
 
         void bind(DBNationSnapshot attackerSnapshot, DBNationSnapshot defenderSnapshot, WarType warType) {
-            attacker.bind(attackerSnapshot);
-            defender.bind(defenderSnapshot);
+            attacker.bindMutable(attackerSnapshot);
+            defender.bindMutable(defenderSnapshot);
+            bindWarState(warType);
+        }
+
+        void bindReadOnly(DBNationSnapshot attackerSnapshot, DBNationSnapshot defenderSnapshot, WarType warType) {
+            attacker.bindReadOnly(attackerSnapshot);
+            defender.bindReadOnly(defenderSnapshot);
+            bindWarState(warType);
+        }
+
+        private void bindWarState(WarType warType) {
             this.warType = warType;
             attackerMaps = SimWar.INITIAL_MAPS;
             defenderMaps = SimWar.INITIAL_MAPS;
@@ -1864,17 +1874,30 @@ final class OpeningEvaluator {
         private link.locutus.discord.sim.combat.SpecialistCityProfile[] cityProfiles = new link.locutus.discord.sim.combat.SpecialistCityProfile[0];
         private double totalInfra;
 
-        void bind(DBNationSnapshot snapshot) {
+        void bindMutable(DBNationSnapshot snapshot) {
+            bind(snapshot, true);
+        }
+
+        void bindReadOnly(DBNationSnapshot snapshot) {
+            bind(snapshot, false);
+        }
+
+        private void bind(DBNationSnapshot snapshot, boolean copyCityInfra) {
             this.snapshot = snapshot;
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 unitCounts[unit.ordinal()] = snapshot.unit(unit);
             }
             double[] snapshotCityInfra = snapshot.cityInfraRaw();
-            int cityCount = snapshotCityInfra.length;
-            if (cityInfra.length < cityCount) {
-                cityInfra = new double[cityCount];
+            if (copyCityInfra) {
+                int cityCount = snapshotCityInfra.length;
+                if (cityInfra.length < cityCount) {
+                    cityInfra = new double[cityCount];
+                }
+                System.arraycopy(snapshotCityInfra, 0, cityInfra, 0, cityCount);
+            } else {
+                // Probe admission reads city infra through CombatKernel without mutating it.
+                cityInfra = snapshotCityInfra;
             }
-            System.arraycopy(snapshotCityInfra, 0, cityInfra, 0, cityCount);
             cityProfiles = snapshot.citySpecialistProfilesRaw();
             totalInfra = snapshot.totalInfraRaw();
         }

@@ -8,10 +8,8 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 
 /**
  * Direct min-cost-flow solve for the long-horizon projection objective.
@@ -25,7 +23,6 @@ import java.util.PriorityQueue;
 final class LongHorizonMarginalFlowSolver {
     private static final double EPS1 = 1e-3;
     private static final double EPS2 = 1e-6;
-    private static final Comparator<QueueNode> QUEUE_NODE_DISTANCE_ORDER = Comparator.comparingDouble(QueueNode::distance);
 
     private LongHorizonMarginalFlowSolver() {
     }
@@ -178,17 +175,17 @@ final class LongHorizonMarginalFlowSolver {
         double[] potential = initialPotentials(to, capacity, cost, next, head, source, vertexCount);
         double[] reducedDistance = new double[vertexCount];
         int[] previousEdge = new int[vertexCount];
-        PriorityQueue<QueueNode> queue = new PriorityQueue<>(QUEUE_NODE_DISTANCE_ORDER);
+        DistanceHeap queue = new DistanceHeap(vertexCount);
         while (true) {
             Arrays.fill(reducedDistance, Double.POSITIVE_INFINITY);
             Arrays.fill(previousEdge, -1);
             reducedDistance[source] = 0d;
             queue.clear();
-            queue.add(new QueueNode(source, 0d));
+            queue.add(source, 0d);
             while (!queue.isEmpty()) {
-                QueueNode node = queue.poll();
-                int current = node.vertex();
-                if (node.distance() > reducedDistance[current] + 1e-12) {
+                int current = queue.removeMinVertex();
+                double currentDistance = queue.lastDistance();
+                if (currentDistance > reducedDistance[current] + 1e-12) {
                     continue;
                 }
                 for (int edge = head[current]; edge != -1; edge = next[edge]) {
@@ -204,7 +201,7 @@ final class LongHorizonMarginalFlowSolver {
                     if (nextDistance < reducedDistance[nextVertex] - 1e-12) {
                         reducedDistance[nextVertex] = nextDistance;
                         previousEdge[nextVertex] = edge;
-                        queue.add(new QueueNode(nextVertex, nextDistance));
+                        queue.add(nextVertex, nextDistance);
                     }
                 }
             }
@@ -296,7 +293,99 @@ final class LongHorizonMarginalFlowSolver {
         return total;
     }
 
-    private record QueueNode(int vertex, double distance) {
+    private static final class DistanceHeap {
+        private int[] vertices;
+        private double[] distances;
+        private int size;
+        private double lastDistance;
+
+        private DistanceHeap(int initialCapacity) {
+            int capacity = Math.max(16, initialCapacity);
+            vertices = new int[capacity];
+            distances = new double[capacity];
+        }
+
+        private void clear() {
+            size = 0;
+            lastDistance = 0d;
+        }
+
+        private boolean isEmpty() {
+            return size == 0;
+        }
+
+        private void add(int vertex, double distance) {
+            ensureCapacity(size + 1);
+            vertices[size] = vertex;
+            distances[size] = distance;
+            siftUp(size++);
+        }
+
+        private int removeMinVertex() {
+            int result = vertices[0];
+            lastDistance = distances[0];
+            int lastIndex = --size;
+            if (lastIndex > 0) {
+                vertices[0] = vertices[lastIndex];
+                distances[0] = distances[lastIndex];
+                siftDown(0);
+            }
+            return result;
+        }
+
+        private double lastDistance() {
+            return lastDistance;
+        }
+
+        private void ensureCapacity(int required) {
+            if (required <= vertices.length) {
+                return;
+            }
+            int nextCapacity = Math.max(required, vertices.length * 2);
+            vertices = Arrays.copyOf(vertices, nextCapacity);
+            distances = Arrays.copyOf(distances, nextCapacity);
+        }
+
+        private void siftUp(int index) {
+            int child = index;
+            while (child > 0) {
+                int parent = (child - 1) >>> 1;
+                if (distances[parent] <= distances[child]) {
+                    return;
+                }
+                swap(parent, child);
+                child = parent;
+            }
+        }
+
+        private void siftDown(int index) {
+            int parent = index;
+            while (true) {
+                int left = (parent << 1) + 1;
+                if (left >= size) {
+                    return;
+                }
+                int smallest = left;
+                int right = left + 1;
+                if (right < size && distances[right] < distances[left]) {
+                    smallest = right;
+                }
+                if (distances[parent] <= distances[smallest]) {
+                    return;
+                }
+                swap(parent, smallest);
+                parent = smallest;
+            }
+        }
+
+        private void swap(int left, int right) {
+            int vertexSwap = vertices[left];
+            vertices[left] = vertices[right];
+            vertices[right] = vertexSwap;
+            double distanceSwap = distances[left];
+            distances[left] = distances[right];
+            distances[right] = distanceSwap;
+        }
     }
 
     private static int expandedEdgePairCapacity(
