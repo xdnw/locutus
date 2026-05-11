@@ -204,7 +204,7 @@ final class LongHorizonMarginalFlowSolver {
             }
         }
 
-        solveNegativePaths(to, capacity, cost, next, head, source, sink, vertexCount);
+        solveNegativePaths(to, capacity, cost, next, head, source, sink, vertexCount, graphBuildBuffers.shortestPathScratch());
 
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
             int forwardSlot = originalEdgeForwardSlot[edgeIndex];
@@ -244,22 +244,20 @@ final class LongHorizonMarginalFlowSolver {
             int[] head,
             int source,
             int sink,
-            int vertexCount
+            int vertexCount,
+            ShortestPathScratch scratch
     ) {
-        double[] potential = initialPotentials(to, capacity, cost, next, head, source, vertexCount);
-        double[] reducedDistance = new double[vertexCount];
-        int[] previousEdge = new int[vertexCount];
-        DistanceHeap queue = new DistanceHeap(vertexCount);
+        double[] potential = initialPotentials(to, capacity, cost, next, head, source, vertexCount, scratch);
+        DistanceHeap queue = scratch.distanceHeap();
         while (true) {
-            Arrays.fill(reducedDistance, Double.POSITIVE_INFINITY);
-            Arrays.fill(previousEdge, -1);
-            reducedDistance[source] = 0d;
-            queue.clear();
+            int searchVersion = scratch.beginSearch();
+            scratch.setReducedDistance(source, searchVersion, 0d);
             queue.add(source, 0d);
             while (!queue.isEmpty()) {
                 int current = queue.removeMinVertex();
                 double currentDistance = queue.lastDistance();
-                if (currentDistance > reducedDistance[current] + 1e-12) {
+                double bestCurrentDistance = scratch.reducedDistance(current, searchVersion);
+                if (currentDistance > bestCurrentDistance + 1e-12) {
                     continue;
                 }
                 for (int edge = head[current]; edge != -1; edge = next[edge]) {
@@ -271,25 +269,25 @@ final class LongHorizonMarginalFlowSolver {
                     if (reducedCost < 0d && reducedCost > -1e-9) {
                         reducedCost = 0d;
                     }
-                    double nextDistance = reducedDistance[current] + reducedCost;
-                    if (nextDistance < reducedDistance[nextVertex] - 1e-12) {
-                        reducedDistance[nextVertex] = nextDistance;
-                        previousEdge[nextVertex] = edge;
+                    double nextDistance = bestCurrentDistance + reducedCost;
+                    if (nextDistance < scratch.reducedDistance(nextVertex, searchVersion) - 1e-12) {
+                        scratch.setReducedDistance(nextVertex, searchVersion, nextDistance);
+                        scratch.setPreviousEdge(nextVertex, edge);
                         queue.add(nextVertex, nextDistance);
                     }
                 }
             }
-            if (previousEdge[sink] < 0) {
+            if (!scratch.wasReached(sink, searchVersion) || scratch.previousEdge(sink) < 0) {
                 return;
             }
+            int[] previousEdge = scratch.previousEdgeArray();
             double originalPathCost = pathCost(previousEdge, to, cost, source, sink);
             if (originalPathCost >= -1e-12) {
                 return;
             }
-            for (int vertex = 0; vertex < vertexCount; vertex++) {
-                if (reducedDistance[vertex] < Double.POSITIVE_INFINITY) {
-                    potential[vertex] += reducedDistance[vertex];
-                }
+            for (int index = 0; index < scratch.touchedVertexCount(); index++) {
+                int vertex = scratch.touchedVertex(index);
+                potential[vertex] += scratch.reducedDistance(vertex, searchVersion);
             }
             int vertex = sink;
             int amount = Integer.MAX_VALUE;
@@ -315,12 +313,15 @@ final class LongHorizonMarginalFlowSolver {
             int[] next,
             int[] head,
             int source,
-            int vertexCount
+            int vertexCount,
+            ShortestPathScratch scratch
     ) {
-        double[] distance = new double[vertexCount];
-        boolean[] inQueue = new boolean[vertexCount];
-        IntArrayFIFOQueue queue = new IntArrayFIFOQueue(vertexCount);
+        double[] distance = scratch.initialDistance();
+        boolean[] inQueue = scratch.initialInQueue();
+        IntArrayFIFOQueue queue = scratch.initialQueue();
         Arrays.fill(distance, Double.POSITIVE_INFINITY);
+        Arrays.fill(inQueue, false);
+        queue.clear();
         distance[source] = 0d;
         queue.enqueue(source);
         inQueue[source] = true;
@@ -559,6 +560,7 @@ final class LongHorizonMarginalFlowSolver {
         private int[] next = new int[0];
         private int[] head = new int[0];
         private int[] originalEdgeForwardSlot = new int[0];
+        private final ShortestPathScratch shortestPathScratch = new ShortestPathScratch();
 
         void prepare(int vertexCount, int edgeArrayLength, int edgeCount) {
             if (to.length < edgeArrayLength) {
@@ -575,6 +577,7 @@ final class LongHorizonMarginalFlowSolver {
             }
             Arrays.fill(head, 0, vertexCount, -1);
             Arrays.fill(originalEdgeForwardSlot, 0, edgeCount, -1);
+            shortestPathScratch.prepare(vertexCount);
         }
 
         int[] to() {
@@ -600,13 +603,109 @@ final class LongHorizonMarginalFlowSolver {
         int[] originalEdgeForwardSlot() {
             return originalEdgeForwardSlot;
         }
+
+        ShortestPathScratch shortestPathScratch() {
+            return shortestPathScratch;
+        }
     }
 
-        record StaticSolveInputs(
+    private static final class ShortestPathScratch {
+        private double[] reducedDistance = new double[0];
+        private int[] reducedDistanceVersion = new int[0];
+        private int[] previousEdge = new int[0];
+        private int[] touchedVertices = new int[0];
+        private double[] initialDistance = new double[0];
+        private boolean[] initialInQueue = new boolean[0];
+        private IntArrayFIFOQueue initialQueue = new IntArrayFIFOQueue();
+        private DistanceHeap distanceHeap = new DistanceHeap(16);
+        private int searchVersion;
+        private int touchedVertexCount;
+
+        void prepare(int vertexCount) {
+            if (reducedDistance.length < vertexCount) {
+                reducedDistance = new double[vertexCount];
+                reducedDistanceVersion = new int[vertexCount];
+                previousEdge = new int[vertexCount];
+                touchedVertices = new int[vertexCount];
+                initialDistance = new double[vertexCount];
+                initialInQueue = new boolean[vertexCount];
+                initialQueue = new IntArrayFIFOQueue(vertexCount);
+                distanceHeap = new DistanceHeap(vertexCount);
+                searchVersion = 0;
+            }
+        }
+
+        int beginSearch() {
+            searchVersion++;
+            if (searchVersion == 0) {
+                Arrays.fill(reducedDistanceVersion, 0);
+                searchVersion = 1;
+            }
+            touchedVertexCount = 0;
+            distanceHeap.clear();
+            return searchVersion;
+        }
+
+        double reducedDistance(int vertex, int version) {
+            return reducedDistanceVersion[vertex] == version
+                    ? reducedDistance[vertex]
+                    : Double.POSITIVE_INFINITY;
+        }
+
+        void setReducedDistance(int vertex, int version, double value) {
+            if (reducedDistanceVersion[vertex] != version) {
+                reducedDistanceVersion[vertex] = version;
+                touchedVertices[touchedVertexCount++] = vertex;
+            }
+            reducedDistance[vertex] = value;
+        }
+
+        boolean wasReached(int vertex, int version) {
+            return reducedDistanceVersion[vertex] == version;
+        }
+
+        void setPreviousEdge(int vertex, int edge) {
+            previousEdge[vertex] = edge;
+        }
+
+        int previousEdge(int vertex) {
+            return previousEdge[vertex];
+        }
+
+        int[] previousEdgeArray() {
+            return previousEdge;
+        }
+
+        int touchedVertexCount() {
+            return touchedVertexCount;
+        }
+
+        int touchedVertex(int index) {
+            return touchedVertices[index];
+        }
+
+        double[] initialDistance() {
+            return initialDistance;
+        }
+
+        boolean[] initialInQueue() {
+            return initialInQueue;
+        }
+
+        IntArrayFIFOQueue initialQueue() {
+            return initialQueue;
+        }
+
+        DistanceHeap distanceHeap() {
+            return distanceHeap;
+        }
+    }
+
+    record StaticSolveInputs(
             Int2IntOpenHashMap attackerSlotByNationId,
             Int2IntOpenHashMap defenderSlotByNationId,
             LongOpenHashSet fixedPairKeys
-        ) {
-        }
+    ) {
+    }
 
 }
