@@ -4,6 +4,9 @@ import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that prioritizes control flags and follow-up war leverage. */
 final class ControlObjective implements StrategicObjective {
+    private static final StrategicControlReducer.ControlWeights TERMINAL_CONTROL_WEIGHTS =
+            new StrategicControlReducer.ControlWeights(1.0d, 4.0d, 0.0d, 3.0d, 1.5d, 1.5d);
+
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
         return new CandidateEdgeComponentPolicy(true, true, false, true, true);
@@ -28,10 +31,7 @@ final class ControlObjective implements StrategicObjective {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = (0.20d * (totals.ownValue() - totals.enemyValue()));
         if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlCompositeScoreForTeam(
-                    teamId,
-                    new TeamWarControlView.ControlComponentWeights(1.0d, 4.0d, 0.0d, 3.0d, 1.5d, 1.5d)
-            );
+            score += StrategicControlReducer.score(controlView, teamId, TERMINAL_CONTROL_WEIGHTS);
         }
         return score;
     }

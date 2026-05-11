@@ -12,6 +12,7 @@ import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.StrategicControlReducer;
 import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
@@ -171,8 +172,10 @@ class PlannerConflictExecutorTest {
         );
         conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
 
-        double attackerStrategicScore = conflict.activeWarStrategicScoreForTeam(attacker.teamId(), 1.0, 1.0, 1.0);
-        double defenderStrategicScore = conflict.activeWarStrategicScoreForTeam(defender.teamId(), 1.0, 1.0, 1.0);
+        double attackerStrategicScore = StrategicControlReducer.reduce(conflict, attacker.teamId())
+                .activeWarStrategicScore(1.0, 1.0, 1.0);
+        double defenderStrategicScore = StrategicControlReducer.reduce(conflict, defender.teamId())
+                .activeWarStrategicScore(1.0, 1.0, 1.0);
 
         assertTrue(attackerStrategicScore > 0.0);
         assertEquals(-attackerStrategicScore, defenderStrategicScore, 1e-9);

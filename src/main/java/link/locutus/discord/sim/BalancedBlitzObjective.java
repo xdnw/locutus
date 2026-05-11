@@ -4,6 +4,9 @@ import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that blends damage, exposure, control, resources, and follow-up leverage. */
 final class BalancedBlitzObjective implements StrategicObjective {
+    private static final StrategicControlReducer.ControlWeights TERMINAL_CONTROL_WEIGHTS =
+            new StrategicControlReducer.ControlWeights(1.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d);
+
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
         return new CandidateEdgeComponentPolicy(true, true, true, true, true);
@@ -29,10 +32,7 @@ final class BalancedBlitzObjective implements StrategicObjective {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = totals.ownValue() - totals.enemyValue();
         if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlCompositeScoreForTeam(
-                    teamId,
-                    new TeamWarControlView.ControlComponentWeights(1.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d)
-            );
+            score += StrategicControlReducer.score(controlView, teamId, TERMINAL_CONTROL_WEIGHTS);
         }
         return score;
     }

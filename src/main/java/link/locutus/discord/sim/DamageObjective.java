@@ -13,6 +13,8 @@ import link.locutus.discord.sim.actions.SimAction;
  * SimMetrics is added in a later milestone.
  */
 public class DamageObjective implements StrategicObjective {
+    private static final StrategicControlReducer.ControlWeights TERMINAL_CONTROL_WEIGHTS =
+            new StrategicControlReducer.ControlWeights(1.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d);
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
@@ -29,10 +31,7 @@ public class DamageObjective implements StrategicObjective {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         double score = totals.ownValue() - totals.enemyValue();
         if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlCompositeScoreForTeam(
-                    teamId,
-                    new TeamWarControlView.ControlComponentWeights(1.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d)
-            );
+            score += StrategicControlReducer.score(controlView, teamId, TERMINAL_CONTROL_WEIGHTS);
         }
         return score;
     }

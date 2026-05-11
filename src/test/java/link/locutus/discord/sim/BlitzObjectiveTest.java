@@ -124,8 +124,16 @@ class BlitzObjectiveTest {
             }
         };
 
-        assertEquals(slowerDrain.controlScoreForTeam(1), fasterDrain.controlScoreForTeam(1), 1e-9);
-        assertEquals(slowerDrain.controlScoreForTeam(2), fasterDrain.controlScoreForTeam(2), 1e-9);
+        assertEquals(
+            StrategicControlReducer.reduce(slowerDrain, 1).controlOwnership(),
+            StrategicControlReducer.reduce(fasterDrain, 1).controlOwnership(),
+            1e-9
+        );
+        assertEquals(
+            StrategicControlReducer.reduce(slowerDrain, 2).controlOwnership(),
+            StrategicControlReducer.reduce(fasterDrain, 2).controlOwnership(),
+            1e-9
+        );
     }
 
     @Test
@@ -249,8 +257,8 @@ class BlitzObjectiveTest {
             }
         };
 
-        assertEquals(110.0, view.activeWarSlotDenialScoreForTeam(1), 1e-9);
-        assertEquals(-110.0, view.activeWarSlotDenialScoreForTeam(2), 1e-9);
+        assertEquals(110.0, StrategicControlReducer.reduce(view, 1).slotDenial(), 1e-9);
+        assertEquals(-110.0, StrategicControlReducer.reduce(view, 2).slotDenial(), 1e-9);
         assertEquals(110.0, BlitzObjective.NET_DAMAGE.objective().scoreTerminal(view, 1), 1e-9);
         assertEquals(-110.0, BlitzObjective.NET_DAMAGE.objective().scoreTerminal(view, 2), 1e-9);
         assertEquals(165.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 1), 1e-9);
@@ -296,10 +304,10 @@ class BlitzObjectiveTest {
             }
         };
 
-        assertTrue(favorable.controlRegimeScoreForTeam(1) > 0.0);
-        assertTrue(favorable.controlRegimeScoreForTeam(2) < 0.0);
-        assertTrue(lost.controlRegimeScoreForTeam(1) < 0.0);
-        assertTrue(lost.controlRegimeScoreForTeam(2) > 0.0);
+        assertTrue(StrategicControlReducer.reduce(favorable, 1).durableControl() > 0.0);
+        assertTrue(StrategicControlReducer.reduce(favorable, 2).durableControl() < 0.0);
+        assertTrue(StrategicControlReducer.reduce(lost, 1).durableControl() < 0.0);
+        assertTrue(StrategicControlReducer.reduce(lost, 2).durableControl() > 0.0);
         assertTrue(
                 BlitzObjective.CONTROL.objective().scoreTerminal(favorable, 1)
                         > BlitzObjective.CONTROL.objective().scoreTerminal(lost, 1),
@@ -353,13 +361,13 @@ class BlitzObjectiveTest {
         };
 
         assertEquals(
-                lowerGlobalEdge.controlRegimeScoreForTeam(1),
-                higherGlobalEdge.controlRegimeScoreForTeam(1),
+                StrategicControlReducer.reduce(lowerGlobalEdge, 1).durableControl(),
+                StrategicControlReducer.reduce(higherGlobalEdge, 1).durableControl(),
                 1e-9
         );
         assertEquals(
-                lowerGlobalEdge.controlRegimeScoreForTeam(2),
-                higherGlobalEdge.controlRegimeScoreForTeam(2),
+                StrategicControlReducer.reduce(lowerGlobalEdge, 2).durableControl(),
+                StrategicControlReducer.reduce(higherGlobalEdge, 2).durableControl(),
                 1e-9
         );
     }
