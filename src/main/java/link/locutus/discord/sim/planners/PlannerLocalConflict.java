@@ -38,6 +38,7 @@ import link.locutus.discord.util.PW;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
@@ -87,6 +88,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private final LocalWarBuffers warBuffers;
     private final int[] activeOffensiveWarCounts;
     private final int[] activeDefensiveWarCounts;
+    private final int[] replayNationIdsAscending;
     private final ActiveWarContextScratch strategicValueWarContextScratch;
     private final Deque<Mark> markStack;
     private final List<PlannerExecutionLog.Turn> executionLogTurns;
@@ -131,6 +133,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.warBuffers = new LocalWarBuffers();
         this.activeOffensiveWarCounts = new int[nationsById.size()];
         this.activeDefensiveWarCounts = new int[nationsById.size()];
+        this.replayNationIdsAscending = new int[nationsById.size()];
+        int replayNationIndex = 0;
+        for (Integer nationId : nationsById.keySet()) {
+            replayNationIdsAscending[replayNationIndex++] = nationId;
+        }
+        Arrays.sort(replayNationIdsAscending);
         this.strategicValueWarContextScratch = new ActiveWarContextScratch(nationsById.size());
         this.markStack = new ArrayDeque<>();
         this.executionLogTurns = new ArrayList<>();
@@ -475,19 +483,19 @@ final class PlannerLocalConflict implements TeamWarControlView {
             advanceTurns(horizonTurns);
             return;
         }
-        Map<Long, LocalWar> declaredWars = new Long2ObjectLinkedOpenHashMap<>();
+        LocalWar[] declaredWars = new LocalWar[assignmentEdgeCount(assignment)];
+        int declaredWarIndex = 0;
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             int attackerId = entry.getKey();
             for (int defenderId : entry.getValue()) {
-                LocalWar war = declareWar(attackerId, defenderId);
-                declaredWars.put(pairKey(attackerId, defenderId), war);
+                declaredWars[declaredWarIndex++] = declareWar(attackerId, defenderId);
             }
         }
         int turns = Math.max(1, horizonTurns);
-        simulateDeclaredWarOpenings(assignment, declaredWars);
+        simulateDeclaredWarOpenings(declaredWars);
         for (int turn = 1; turn < turns; turn++) {
             advanceTurn();
-            simulateDeclaredWarOpenings(assignment, declaredWars);
+            simulateDeclaredWarOpenings(declaredWars);
         }
     }
 
@@ -1353,16 +1361,20 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return activeWars;
     }
 
-    private void simulateDeclaredWarOpenings(Map<Integer, List<Integer>> assignment, Map<Long, LocalWar> declaredWars) {
-        for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
-            int attackerId = entry.getKey();
-            for (int defenderId : entry.getValue()) {
-                LocalWar war = declaredWars.get(pairKey(attackerId, defenderId));
-                if (war != null && war.isActive()) {
-                    simulateOpeningAttacks(war);
-                }
+    private void simulateDeclaredWarOpenings(LocalWar[] declaredWars) {
+        for (LocalWar war : declaredWars) {
+            if (war != null && war.isActive()) {
+                simulateOpeningAttacks(war);
             }
         }
+    }
+
+    private static int assignmentEdgeCount(Map<Integer, List<Integer>> assignment) {
+        int count = 0;
+        for (List<Integer> defenders : assignment.values()) {
+            count += defenders.size();
+        }
+        return count;
     }
 
     private void simulateActiveWarOpenings() {
@@ -1513,15 +1525,15 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (assignment.isEmpty()) {
             return;
         }
-        Map<Long, LocalWar> declaredWars = new Long2ObjectLinkedOpenHashMap<>();
+        LocalWar[] declaredWars = new LocalWar[assignmentEdgeCount(assignment)];
+        int declaredWarIndex = 0;
         for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
             int attackerId = entry.getKey();
             for (int defenderId : entry.getValue()) {
-                LocalWar war = declareWar(attackerId, defenderId);
-                declaredWars.put(pairKey(attackerId, defenderId), war);
+                declaredWars[declaredWarIndex++] = declareWar(attackerId, defenderId);
             }
         }
-        simulateDeclaredWarOpenings(assignment, declaredWars);
+        simulateDeclaredWarOpenings(declaredWars);
     }
 
     void evaluateAssignmentOpenings(PlannerConflictBundle.PlannerAssignmentView assignment) {
@@ -2325,10 +2337,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     int[] replayNationIdsAscending() {
-        return nationsById.keySet().stream()
-                .mapToInt(Integer::intValue)
-                .sorted()
-                .toArray();
+        return replayNationIdsAscending.clone();
     }
 
     int replayNationAvgInfraCents(int nationId) {
