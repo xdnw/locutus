@@ -333,7 +333,9 @@ final class LongHorizonAssignmentOptimizer {
                         marginalFlowStaticInputs,
                         marginalFlowGraphBuffers
                     ));
-                    Candidate capLimitOne = solveWithAttackerCapLimit(
+                        Candidate capLimitOne = respectsAttackerCapLimit(marginalCandidate, 1)
+                            ? marginalCandidate
+                            : solveWithAttackerCapLimit(
                         baseEdges,
                         scenario,
                         attackerCaps,
@@ -346,10 +348,13 @@ final class LongHorizonAssignmentOptimizer {
                         includeSlotDenialScoring,
                         attackerPlannerSettings,
                         1,
+                        null,
                         marginalFlowStaticInputs,
                         marginalFlowGraphBuffers
                     );
-                    Candidate capLimitTwo = solveWithAttackerCapLimit(
+                    Candidate capLimitTwo = respectsAttackerCapLimit(marginalCandidate, 2)
+                            ? marginalCandidate
+                            : solveWithAttackerCapLimit(
                         baseEdges,
                         scenario,
                         attackerCaps,
@@ -362,9 +367,10 @@ final class LongHorizonAssignmentOptimizer {
                         includeSlotDenialScoring,
                         attackerPlannerSettings,
                         2,
+                        capLimitOne.edgeAssigned(),
                         marginalFlowStaticInputs,
                         marginalFlowGraphBuffers
-                );
+                    );
                 reliefCandidates.removeIf(candidate -> candidate == null || candidate == marginalCandidate);
                 sortReliefCandidatesByCheapScore(reliefCandidates, cheapEvaluator, terminalProjection);
                 Candidate bestCapLimit = betterCapLimitCandidate(
@@ -551,8 +557,9 @@ final class LongHorizonAssignmentOptimizer {
             boolean includeSlotDenialScoring,
             SidePlannerSettings attackerPlannerSettings,
             int attackerCapLimit,
-                LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
-                LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
+            boolean[] warmStartEdgeAssigned,
+            LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
+            LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
     ) {
         int[] limitedCaps = new int[attackerCaps.length];
         for (int index = 0; index < attackerCaps.length; index++) {
@@ -570,6 +577,7 @@ final class LongHorizonAssignmentOptimizer {
                 horizonTurns,
                 includeSlotDenialScoring,
                 attackerPlannerSettings,
+                warmStartEdgeAssigned,
                 marginalFlowStaticInputs,
                 marginalFlowGraphBuffers
         );
@@ -652,6 +660,7 @@ final class LongHorizonAssignmentOptimizer {
                     horizonTurns,
                     includeSlotDenialScoring,
                     attackerPlannerSettings,
+                    null,
                     LongHorizonMarginalFlowSolver.staticSolveInputs(
                             attackerNationIds,
                             defenderNationIds,
@@ -673,6 +682,7 @@ final class LongHorizonAssignmentOptimizer {
                 int horizonTurns,
                 boolean includeSlotDenialScoring,
                 SidePlannerSettings attackerPlannerSettings,
+                boolean[] warmStartEdgeAssigned,
                 LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
                 LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
             ) {
@@ -699,7 +709,8 @@ final class LongHorizonAssignmentOptimizer {
                 defenderNationIds,
                 fixedEdges,
                 marginalFlowStaticInputs,
-                marginalFlowGraphBuffers
+                marginalFlowGraphBuffers,
+                warmStartEdgeAssigned
         );
         double projectionScore = projection.assignmentScoreDense(
                 result.edgeAssigned(),
@@ -707,6 +718,15 @@ final class LongHorizonAssignmentOptimizer {
                 result.defenderCounts()
         );
         return new Candidate(result.assignment(), result.edgeAssigned(), result.attackerCounts(), result.defenderCounts(), projectionScore);
+    }
+
+    private static boolean respectsAttackerCapLimit(Candidate candidate, int attackerCapLimit) {
+        for (int attackerCount : candidate.attackerCounts()) {
+            if (attackerCount > attackerCapLimit) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static ObjectiveValueSummary projectedObjectiveSummary(

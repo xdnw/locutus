@@ -1384,6 +1384,108 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void capLimitWarmStartMatchesFreshRelaxedSolve() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900),
+                nation(2, 1, 880)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900),
+                nation(102, 2, 880)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 0, 99.5f, 0.0f);
+        edges.add(0, 1, 94.0f, 0.0f);
+        edges.add(1, 0, 93.0f, 0.0f);
+        edges.add(1, 1, 92.0f, 0.0f);
+        int[] capLimitOne = {1, 1};
+        int[] capLimitTwo = {2, 2};
+        int[] defenderCaps = {2, 2};
+        int[] attackerStrengthRanks = {0, 1};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102};
+
+        LongHorizonControlProjection capOneProjection = LongHorizonControlProjection.createScorerOnly(
+                edges,
+                scenario,
+                capLimitOne,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy()
+        );
+        LongHorizonControlProjection capTwoProjection = LongHorizonControlProjection.createScorerOnly(
+                edges,
+                scenario,
+                capLimitTwo,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy()
+        );
+        LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+
+        LongHorizonMarginalFlowSolver.Result capOneResult = LongHorizonMarginalFlowSolver.solve(
+                edges,
+                capOneProjection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                capLimitOne,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                new LongHorizonMarginalFlowSolver.GraphBuildBuffers()
+        );
+        LongHorizonMarginalFlowSolver.Result freshCapTwo = LongHorizonMarginalFlowSolver.solve(
+                edges,
+                capTwoProjection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                capLimitTwo,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                new LongHorizonMarginalFlowSolver.GraphBuildBuffers()
+        );
+        LongHorizonMarginalFlowSolver.Result warmStartedCapTwo = LongHorizonMarginalFlowSolver.solve(
+                edges,
+                capTwoProjection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                capLimitTwo,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                new LongHorizonMarginalFlowSolver.GraphBuildBuffers(),
+                capOneResult.edgeAssigned()
+        );
+
+        assertEquals(freshCapTwo.assignment(), warmStartedCapTwo.assignment());
+        assertArrayEquals(freshCapTwo.edgeAssigned(), warmStartedCapTwo.edgeAssigned());
+        assertArrayEquals(freshCapTwo.attackerCounts(), warmStartedCapTwo.attackerCounts());
+        assertArrayEquals(freshCapTwo.defenderCounts(), warmStartedCapTwo.defenderCounts());
+    }
+
+    @Test
     void forwardProjectionReusesPreparedStateAcrossVariantsWithSameActiveProfile() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900).toBuilder().maxOff(1).build(),

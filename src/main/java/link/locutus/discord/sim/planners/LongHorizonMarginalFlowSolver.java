@@ -98,7 +98,40 @@ final class LongHorizonMarginalFlowSolver {
             StaticSolveInputs staticSolveInputs,
             GraphBuildBuffers graphBuildBuffers
     ) {
+            return solve(
+                edges,
+                scorer,
+                attackerCount,
+                defenderCount,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges,
+                staticSolveInputs,
+                graphBuildBuffers,
+                null
+            );
+            }
+
+            static Result solve(
+                CandidateEdgeTable edges,
+                LongHorizonMarginalScorer scorer,
+                int attackerCount,
+                int defenderCount,
+                int[] attackerCaps,
+                int[] defenderCaps,
+                int[] attackerStrengthRanks,
+                int[] attackerNationIds,
+                int[] defenderNationIds,
+                List<BlitzFixedEdge> fixedEdges,
+                StaticSolveInputs staticSolveInputs,
+                GraphBuildBuffers graphBuildBuffers,
+                boolean[] seededEdgeAssigned
+            ) {
         boolean[] edgeAssigned = new boolean[edges.edgeCount()];
+                boolean[] warmStartedEdgeAssigned = seededEdgeAssigned == null ? null : new boolean[edges.edgeCount()];
         int[] attackerCounts = new int[attackerCount];
         int[] defenderCounts = new int[defenderCount];
         int[] residualAttackerCaps = Arrays.copyOf(attackerCaps, attackerCaps.length);
@@ -113,6 +146,9 @@ final class LongHorizonMarginalFlowSolver {
         if (edgePairKeys.length != edges.edgeCount()) {
             throw new IllegalArgumentException("Prepared marginal-flow topology does not match edge table");
         }
+        if (seededEdgeAssigned != null && seededEdgeAssigned.length != edges.edgeCount()) {
+            throw new IllegalArgumentException("Warm-start assignment does not match edge table");
+        }
 
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
             int attackerSlot = attackerSlotByNationId.get(fixedEdge.attackerNationId());
@@ -120,18 +156,30 @@ final class LongHorizonMarginalFlowSolver {
             if (attackerSlot < 0 || defenderSlot < 0) {
                 continue;
             }
-            assignment.computeIfAbsent(fixedEdge.attackerNationId(), ignored -> new IntArrayList())
-                    .add(fixedEdge.defenderNationId());
+            appendAssignment(assignment, fixedEdge.attackerNationId(), fixedEdge.defenderNationId());
             residualAttackerCaps[attackerSlot] = Math.max(0, residualAttackerCaps[attackerSlot] - 1);
             residualDefenderCaps[defenderSlot] = Math.max(0, residualDefenderCaps[defenderSlot] - 1);
             attackerCounts[attackerSlot]++;
             defenderCounts[defenderSlot]++;
             long pairKey = pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId());
-            fixedPairKeys.add(pairKey);
             int edgeIndex = edgeIndexByPair.get(pairKey);
             if (edgeIndex >= 0) {
                 edgeAssigned[edgeIndex] = true;
             }
+        }
+
+        if (seededEdgeAssigned != null
+                && canApplySeededEdges(seededEdgeAssigned, edgeAssigned, residualAttackerCaps, residualDefenderCaps, edges)) {
+            applySeededEdges(
+                    edgeAssigned,
+                    warmStartedEdgeAssigned,
+                    residualAttackerCaps,
+                    residualDefenderCaps,
+                    attackerCounts,
+                    defenderCounts,
+                    edges,
+                    seededEdgeAssigned
+            );
         }
 
         int[] attackerSlotOffsets = offsets(residualAttackerCaps);
@@ -185,7 +233,7 @@ final class LongHorizonMarginalFlowSolver {
             if (residualAttackerCaps[attackerIndex] <= 0 || residualDefenderCaps[defenderIndex] <= 0) {
                 continue;
             }
-            if (fixedPairKeys.contains(edgePairKeys[edgeIndex])) {
+            if (edgeAssigned[edgeIndex] || fixedPairKeys.contains(edgePairKeys[edgeIndex])) {
                 continue;
             }
             int rank = attackerStrengthRanks != null && attackerIndex < attackerStrengthRanks.length
@@ -207,6 +255,12 @@ final class LongHorizonMarginalFlowSolver {
         solveNegativePaths(to, capacity, cost, next, head, source, sink, vertexCount, graphBuildBuffers.shortestPathScratch());
 
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            if (warmStartedEdgeAssigned != null && warmStartedEdgeAssigned[edgeIndex]) {
+                int attackerNationId = attackerNationIds[edges.attackerIndex(edgeIndex)];
+                int defenderNationId = defenderNationIds[edges.defenderIndex(edgeIndex)];
+                appendAssignment(assignment, attackerNationId, defenderNationId);
+                continue;
+            }
             int forwardSlot = originalEdgeForwardSlot[edgeIndex];
             if (forwardSlot < 0 || capacity[forwardSlot] != 0) {
                 continue;
@@ -222,6 +276,64 @@ final class LongHorizonMarginalFlowSolver {
         }
 
         return new Result(assignment, edgeAssigned, attackerCounts, defenderCounts);
+    }
+
+    private static boolean canApplySeededEdges(
+            boolean[] seededEdgeAssigned,
+            boolean[] alreadyAssigned,
+            int[] residualAttackerCaps,
+            int[] residualDefenderCaps,
+            CandidateEdgeTable edges
+    ) {
+        int[] remainingAttackerCaps = Arrays.copyOf(residualAttackerCaps, residualAttackerCaps.length);
+        int[] remainingDefenderCaps = Arrays.copyOf(residualDefenderCaps, residualDefenderCaps.length);
+        for (int edgeIndex = 0; edgeIndex < seededEdgeAssigned.length; edgeIndex++) {
+            if (!seededEdgeAssigned[edgeIndex] || alreadyAssigned[edgeIndex]) {
+                continue;
+            }
+            int attackerIndex = edges.attackerIndex(edgeIndex);
+            int defenderIndex = edges.defenderIndex(edgeIndex);
+            if (remainingAttackerCaps[attackerIndex] <= 0 || remainingDefenderCaps[defenderIndex] <= 0) {
+                return false;
+            }
+            remainingAttackerCaps[attackerIndex]--;
+            remainingDefenderCaps[defenderIndex]--;
+        }
+        return true;
+    }
+
+    private static void applySeededEdges(
+            boolean[] edgeAssigned,
+            boolean[] warmStartedEdgeAssigned,
+            int[] residualAttackerCaps,
+            int[] residualDefenderCaps,
+            int[] attackerCounts,
+            int[] defenderCounts,
+            CandidateEdgeTable edges,
+            boolean[] seededEdgeAssigned
+    ) {
+        for (int edgeIndex = 0; edgeIndex < seededEdgeAssigned.length; edgeIndex++) {
+            if (!seededEdgeAssigned[edgeIndex] || edgeAssigned[edgeIndex]) {
+                continue;
+            }
+            int attackerIndex = edges.attackerIndex(edgeIndex);
+            int defenderIndex = edges.defenderIndex(edgeIndex);
+            edgeAssigned[edgeIndex] = true;
+            warmStartedEdgeAssigned[edgeIndex] = true;
+            residualAttackerCaps[attackerIndex]--;
+            residualDefenderCaps[defenderIndex]--;
+            attackerCounts[attackerIndex]++;
+            defenderCounts[defenderIndex]++;
+        }
+    }
+
+    private static void appendAssignment(
+            Map<Integer, List<Integer>> assignment,
+            int attackerNationId,
+            int defenderNationId
+    ) {
+        assignment.computeIfAbsent(attackerNationId, ignored -> new IntArrayList())
+                .add(defenderNationId);
     }
 
     static StaticSolveInputs staticSolveInputs(
