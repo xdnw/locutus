@@ -619,23 +619,22 @@ public final class PlannerReplayProjector {
             metrics = new PlannerReplayTurnMetrics(isAttackerNationId);
         }
 
-        NationDelta nationDelta = nationTracker.captureTurn(conflict);
-        WarDelta warDelta = warTracker.captureTurn(conflict, metrics);
-
-        changedNationIndexes.addAll(nationDelta.changedNationIndexes());
-        changedNationMasks.addAll(nationDelta.changedNationMasks());
-        changedNationLanes.addAll(nationDelta.changedNationLanes());
-        changedWarIndexes.addAll(warDelta.changedWarIndexes());
-        changedWarMasks.addAll(warDelta.changedWarMasks());
-        changedWarLanes.addAll(warDelta.changedWarLanes());
-        declaredWarPairs.addAll(warDelta.declaredWarPairs());
-        declaredWarLanes.addAll(warDelta.declaredWarLanes());
-        concludedWarLanes.addAll(warDelta.concludedWarLanes());
-        summaryScalarLanes.addAll(metrics.summaryScalarLanes());
-        summaryWarTypeCounts.addAll(metrics.summaryWarTypeCounts());
-        summaryAttackOutcomeCounts.addAll(metrics.summaryAttackOutcomeCounts());
-        summaryUnitLossCounts.addAll(metrics.summaryUnitLossCounts());
-        summaryInfraLossCents.addAll(metrics.summaryInfraLossCents());
+        nationTracker.captureTurn(conflict, changedNationIndexes, changedNationMasks, changedNationLanes);
+        warTracker.captureTurn(
+            conflict,
+            metrics,
+            changedWarIndexes,
+            changedWarMasks,
+            changedWarLanes,
+            declaredWarPairs,
+            declaredWarLanes,
+            concludedWarLanes
+        );
+        metrics.appendSummaryScalarLanes(summaryScalarLanes);
+        metrics.appendSummaryWarTypeCounts(summaryWarTypeCounts);
+        metrics.appendSummaryAttackOutcomeCounts(summaryAttackOutcomeCounts);
+        metrics.appendSummaryUnitLossCounts(summaryUnitLossCounts);
+        metrics.appendSummaryInfraLossCents(summaryInfraLossCents);
         }
 
         return new BlitzReplayTrace(
@@ -745,41 +744,10 @@ public final class PlannerReplayProjector {
         return WarStatus.values[statusOrdinal].isActive();
     }
 
-    private record NationDelta(
-            int[] changedNationIndexes,
-            int[] changedNationMasks,
-            int[] changedNationLanes
-    ) {
-        private static final NationDelta EMPTY = new NationDelta(new int[0], new int[0], new int[0]);
-
-        private boolean isEmpty() {
-            return changedNationIndexes.length == 0;
-        }
-    }
-
-    private record WarDelta(
-            int[] changedWarIndexes,
-            int[] changedWarMasks,
-            int[] changedWarLanes,
-            int[] declaredWarPairs,
-            int[] declaredWarLanes,
-            int[] concludedWarLanes
-    ) {
-        private static final WarDelta EMPTY = new WarDelta(new int[0], new int[0], new int[0], new int[0], new int[0], new int[0]);
-
-        private boolean isEmpty() {
-            return changedWarIndexes.length == 0
-                    && declaredWarPairs.length == 0
-                    && declaredWarLanes.length == 0
-                    && concludedWarLanes.length == 0;
-        }
-    }
-
     private static final class NationDeltaTracker {
         private final int[] nationIdsAscending;
         private final int[] previousAvgInfraCents;
         private final int[][] previousUnitsByNationIndex;
-        private final int[] unitScratch = new int[MilitaryUnit.values.length];
 
         private NationDeltaTracker(PlannerLocalConflict conflict, int[] nationIdsAscending) {
             this.nationIdsAscending = nationIdsAscending;
@@ -796,41 +764,45 @@ public final class PlannerReplayProjector {
             return nationIdsAscending.length;
         }
 
-        private NationDelta captureTurn(PlannerLocalConflict conflict) {
-            IntArrayBuilder indexes = new IntArrayBuilder();
-            IntArrayBuilder masks = new IntArrayBuilder();
-            IntArrayBuilder lanes = new IntArrayBuilder();
+        private void captureTurn(
+            PlannerLocalConflict conflict,
+            IntArrayBuilder changedNationIndexes,
+            IntArrayBuilder changedNationMasks,
+            IntArrayBuilder changedNationLanes
+        ) {
             for (int nationIndex = 0; nationIndex < nationIdsAscending.length; nationIndex++) {
                 int nationId = nationIdsAscending[nationIndex];
                 int currentAvgInfraCents = conflict.replayNationAvgInfraCents(nationId);
-                conflict.copyReplayNationUnitCounts(nationId, unitScratch);
+                boolean unitCountsChanged = !conflict.replayNationUnitCountsMatch(
+                        nationId,
+                        previousUnitsByNationIndex[nationIndex]
+                );
 
                 int mask = 0;
                 if (currentAvgInfraCents != previousAvgInfraCents[nationIndex]) {
                     mask |= NATION_MASK_AVG_INFRA_CENTS;
                 }
-                if (!Arrays.equals(previousUnitsByNationIndex[nationIndex], unitScratch)) {
+                if (unitCountsChanged) {
                     mask |= NATION_MASK_UNIT_COUNTS;
                 }
                 if (mask == 0) {
                     continue;
                 }
 
-                indexes.add(nationIndex);
-                masks.add(mask);
+                changedNationIndexes.add(nationIndex);
+                changedNationMasks.add(mask);
                 if ((mask & NATION_MASK_AVG_INFRA_CENTS) != 0) {
-                    lanes.add(currentAvgInfraCents);
+                    changedNationLanes.add(currentAvgInfraCents);
                     previousAvgInfraCents[nationIndex] = currentAvgInfraCents;
                 }
-                if ((mask & NATION_MASK_UNIT_COUNTS) != 0) {
-                    lanes.addAll(unitScratch);
-                    System.arraycopy(unitScratch, 0, previousUnitsByNationIndex[nationIndex], 0, unitScratch.length);
+                if (unitCountsChanged) {
+                    conflict.appendReplayNationUnitCounts(
+                            nationId,
+                            previousUnitsByNationIndex[nationIndex],
+                            changedNationLanes
+                    );
                 }
             }
-            if (indexes.isEmpty()) {
-                return NationDelta.EMPTY;
-            }
-            return new NationDelta(indexes.toArray(), masks.toArray(), lanes.toArray());
         }
     }
 
@@ -949,7 +921,16 @@ public final class PlannerReplayProjector {
             return initialWarCount;
         }
 
-        private WarDelta captureTurn(PlannerLocalConflict conflict, PlannerReplayTurnMetrics metrics) {
+        private void captureTurn(
+            PlannerLocalConflict conflict,
+            PlannerReplayTurnMetrics metrics,
+            IntArrayBuilder changedWarIndexes,
+            IntArrayBuilder changedWarMasks,
+            IntArrayBuilder changedWarLanes,
+            IntArrayBuilder declaredWarPairs,
+            IntArrayBuilder declaredWarLanes,
+            IntArrayBuilder concludedWarLanes
+        ) {
             changedScratch.clear();
             declaredScratch.clear();
             concludedScratch.clear();
@@ -1005,29 +986,24 @@ public final class PlannerReplayProjector {
             });
 
             if (changedScratch.isEmpty() && declaredScratch.isEmpty() && concludedScratch.isEmpty()) {
-                return WarDelta.EMPTY;
+                return;
             }
 
             changedScratch.sort(CHANGED_WAR_ORDER);
             declaredScratch.sort(DECLARED_WAR_ORDER);
             concludedScratch.sort(CONCLUDED_WAR_ORDER);
 
-            IntArrayBuilder changedIndexes = new IntArrayBuilder(changedScratch.size());
-            IntArrayBuilder changedMasks = new IntArrayBuilder(changedScratch.size());
-            IntArrayBuilder changedLanes = new IntArrayBuilder(changedScratch.size() * 2);
             for (ChangedWarLane lane : changedScratch) {
-                changedIndexes.add(lane.warIndex());
-                changedMasks.add(lane.mask());
+                changedWarIndexes.add(lane.warIndex());
+                changedWarMasks.add(lane.mask());
                 if ((lane.mask() & WAR_MASK_COMBAT_STATE) != 0) {
-                    changedLanes.add(lane.packedCombatState());
+                    changedWarLanes.add(lane.packedCombatState());
                 }
                 if ((lane.mask() & WAR_MASK_FLAGS) != 0) {
-                    changedLanes.add(lane.packedFlags());
+                    changedWarLanes.add(lane.packedFlags());
                 }
             }
 
-            IntArrayBuilder declaredPairs = new IntArrayBuilder(declaredScratch.size() * 2);
-            IntArrayBuilder declaredLanes = new IntArrayBuilder(declaredScratch.size() * 3);
             for (DeclaredWarLane lane : declaredScratch) {
                 activeWarIndexByPair.put(lane.pairKey(), nextWarIndex++);
                 int declarerIndex = participantIndexByNationId.get(lane.declarerNationId());
@@ -1035,27 +1011,17 @@ public final class PlannerReplayProjector {
                 if (declarerIndex < 0 || targetIndex < 0) {
                     continue;
                 }
-                declaredPairs.add(declarerIndex);
-                declaredPairs.add(targetIndex);
-                declaredLanes.add(lane.startTurn());
-                declaredLanes.add(lane.packedCombatState());
-                declaredLanes.add(lane.packedFlags());
+                declaredWarPairs.add(declarerIndex);
+                declaredWarPairs.add(targetIndex);
+                declaredWarLanes.add(lane.startTurn());
+                declaredWarLanes.add(lane.packedCombatState());
+                declaredWarLanes.add(lane.packedFlags());
             }
 
-            IntArrayBuilder concludedLanes = new IntArrayBuilder(concludedScratch.size() * 2);
             for (ConcludedWarLane lane : concludedScratch) {
-                concludedLanes.add(lane.warIndex());
-                concludedLanes.add(lane.endStatusOrdinal());
+                concludedWarLanes.add(lane.warIndex());
+                concludedWarLanes.add(lane.endStatusOrdinal());
             }
-
-            return new WarDelta(
-                    changedIndexes.toArray(),
-                    changedMasks.toArray(),
-                    changedLanes.toArray(),
-                    declaredPairs.toArray(),
-                    declaredLanes.toArray(),
-                    concludedLanes.toArray()
-            );
         }
 
         private static int diffMask(int previousCombatState, int previousFlags, int currentCombatState, int currentFlags) {
@@ -1191,7 +1157,7 @@ public final class PlannerReplayProjector {
     private record ConcludedWarLane(int warIndex, int endStatusOrdinal) {
     }
 
-    private static final class IntArrayBuilder {
+    static final class IntArrayBuilder {
         private int[] values;
         private int size;
 
@@ -1209,9 +1175,20 @@ public final class PlannerReplayProjector {
         }
 
         private void addAll(int[] source) {
-            ensureCapacity(size + source.length);
-            System.arraycopy(source, 0, values, size, source.length);
-            size += source.length;
+            addAll(source, source.length);
+        }
+
+        void addAll(int[] source, int length) {
+            addAll(source, 0, length);
+        }
+
+        void addAll(int[] source, int offset, int length) {
+            if (length <= 0) {
+                return;
+            }
+            ensureCapacity(size + length);
+            System.arraycopy(source, offset, values, size, length);
+            size += length;
         }
 
         private boolean isEmpty() {

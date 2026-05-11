@@ -2344,8 +2344,20 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return ReplayStateExtractor.avgInfraCents(requireNation(nationId));
     }
 
+    boolean replayNationUnitCountsMatch(int nationId, int[] expected) {
+        return ReplayStateExtractor.unitCountsMatch(requireNation(nationId), expected);
+    }
+
     void copyReplayNationUnitCounts(int nationId, int[] target) {
         ReplayStateExtractor.copyUnitCounts(requireNation(nationId), target);
+    }
+
+    void appendReplayNationUnitCounts(
+            int nationId,
+            int[] target,
+            PlannerReplayProjector.IntArrayBuilder lanes
+    ) {
+        ReplayStateExtractor.appendUnitCounts(requireNation(nationId), target, lanes);
     }
 
     void forEachReplayWar(ReplayWarConsumer consumer) {
@@ -2463,11 +2475,35 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private ReplayStateExtractor() {
         }
 
+        private static boolean unitCountsMatch(LocalNation nation, int[] expected) {
+            int len = Math.min(expected.length, MilitaryUnit.values.length);
+            int[] unitsFlat = nation.buffers.unitsFlat();
+            int base = nation.buffers.unitBaseOffset(nation.nationIndex);
+            for (int i = 0; i < len; i++) {
+                if (unitsFlat[base + i] != expected[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private static void copyUnitCounts(LocalNation nation, int[] target) {
             int len = Math.min(target.length, MilitaryUnit.values.length);
-            for (int i = 0; i < len; i++) {
-                target[i] = nation.getUnits(MilitaryUnit.values[i]);
-            }
+            int[] unitsFlat = nation.buffers.unitsFlat();
+            int base = nation.buffers.unitBaseOffset(nation.nationIndex);
+            System.arraycopy(unitsFlat, base, target, 0, len);
+        }
+
+        private static void appendUnitCounts(
+                LocalNation nation,
+                int[] target,
+                PlannerReplayProjector.IntArrayBuilder lanes
+        ) {
+            int len = Math.min(target.length, MilitaryUnit.values.length);
+            int[] unitsFlat = nation.buffers.unitsFlat();
+            int base = nation.buffers.unitBaseOffset(nation.nationIndex);
+            lanes.addAll(unitsFlat, base, len);
+            System.arraycopy(unitsFlat, base, target, 0, len);
         }
 
         private static int avgInfraCents(LocalNation nation) {

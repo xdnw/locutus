@@ -80,24 +80,24 @@ final class PlannerReplayTurnMetrics {
         return !touched;
     }
 
-    int[] summaryScalarLanes() {
-        return summaryScalarLanes.clone();
+    void appendSummaryScalarLanes(PlannerReplayProjector.IntArrayBuilder target) {
+        target.addAll(summaryScalarLanes, summaryScalarLanes.length);
     }
 
-    int[] summaryWarTypeCounts() {
-        return summaryWarTypeCounts.clone();
+    void appendSummaryWarTypeCounts(PlannerReplayProjector.IntArrayBuilder target) {
+        target.addAll(summaryWarTypeCounts, summaryWarTypeCounts.length);
     }
 
-    int[] summaryAttackOutcomeCounts() {
-        return summaryAttackOutcomeCounts.clone();
+    void appendSummaryAttackOutcomeCounts(PlannerReplayProjector.IntArrayBuilder target) {
+        target.addAll(summaryAttackOutcomeCounts, summaryAttackOutcomeCounts.length);
     }
 
-    int[] summaryUnitLossCounts() {
-        return summaryUnitLossCounts.clone();
+    void appendSummaryUnitLossCounts(PlannerReplayProjector.IntArrayBuilder target) {
+        target.addAll(summaryUnitLossCounts, summaryUnitLossCounts.length);
     }
 
-    int[] summaryInfraLossCents() {
-        return summaryInfraLossCents.clone();
+    void appendSummaryInfraLossCents(PlannerReplayProjector.IntArrayBuilder target) {
+        target.addAll(summaryInfraLossCents, summaryInfraLossCents.length);
     }
 
     private int sideIndex(int nationId) {
