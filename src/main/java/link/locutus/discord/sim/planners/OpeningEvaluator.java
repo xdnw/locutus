@@ -69,6 +69,23 @@ final class OpeningEvaluator {
         AttackType.MISSILE,
         AttackType.NUKE
     };
+    static final AttackType[] CONVENTIONAL_OPENING_ATTACK_TYPES = {
+        AttackType.GROUND,
+        AttackType.AIRSTRIKE_INFRA,
+        AttackType.AIRSTRIKE_SOLDIER,
+        AttackType.AIRSTRIKE_TANK,
+        AttackType.AIRSTRIKE_MONEY,
+        AttackType.AIRSTRIKE_SHIP,
+        AttackType.AIRSTRIKE_AIRCRAFT,
+        AttackType.NAVAL,
+        AttackType.NAVAL_INFRA,
+        AttackType.NAVAL_AIR,
+        AttackType.NAVAL_GROUND
+    };
+    static final AttackType[] SPECIALIST_OPENING_ATTACK_TYPES = {
+        AttackType.MISSILE,
+        AttackType.NUKE
+    };
     static final WarType[] OPENING_WAR_TYPES = {
         WarType.ATT,
         WarType.ORD,
@@ -87,6 +104,10 @@ final class OpeningEvaluator {
             double targetPressure
     ) {
         static OpeningBaseline from(DBNationSnapshot attacker, DBNationSnapshot defender) {
+            return from(attacker, defender, OpeningMetricSummary.defenderControlPressure(defender));
+        }
+
+        static OpeningBaseline from(DBNationSnapshot attacker, DBNationSnapshot defender, double targetPressure) {
             double attackerGround = OpeningMetricSummary.groundStrength(
                     attacker.unit(MilitaryUnit.SOLDIER),
                     attacker.unit(MilitaryUnit.TANK),
@@ -110,7 +131,7 @@ final class OpeningEvaluator {
                     defenderAir,
                     attackerNaval,
                     defenderNaval,
-                    OpeningMetricSummary.defenderControlPressure(defender)
+                    targetPressure
             );
         }
     }
@@ -299,6 +320,12 @@ final class OpeningEvaluator {
             for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
                 defenderCoveragePriorities[defenderIndex] = (float) OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
             }
+                out.ensureCapacity(estimatedRetainedEdgeCapacity(
+                    scenario,
+                    candidatesPerAttacker,
+                    defenderCoverageTarget,
+                    defenderCaps
+                ));
             int defenderSourceDiversityTarget = defenderSourceDiversityCapacity(maxCandidatesPerAttacker);
             float defenderSourceDiversityPriorityFloor = defenderSourceDiversityPriorityFloor(
                     defenderCoveragePriorities,
@@ -510,20 +537,20 @@ final class OpeningEvaluator {
                         futureWarLeverage
                     );
                     }
-                    coverageSpillovers.consider(
-                        defenderCoveragePriorities[defenderIndex],
-                        attackerIndex,
-                        defenderIndex,
-                        edgeEvaluation.preferredWarTypeId(),
-                        edgeEvaluation.firstAttackTypeId(),
-                        edgeEvaluation.score(),
-                        counterRisk,
-                        immediateHarm,
-                        selfExposure,
-                        resourceSwing,
-                        controlLeverage,
-                        futureWarLeverage
-                    );
+                coverageSpillovers.consider(
+                    defenderCoveragePriorities[defenderIndex],
+                    attackerIndex,
+                    defenderIndex,
+                    edgeEvaluation.preferredWarTypeId(),
+                    edgeEvaluation.firstAttackTypeId(),
+                    edgeEvaluation.score(),
+                    counterRisk,
+                    immediateHarm,
+                    selfExposure,
+                    resourceSwing,
+                    controlLeverage,
+                    futureWarLeverage
+                );
         }
 
         private void emit() {
@@ -598,6 +625,23 @@ final class OpeningEvaluator {
 
     private static int coverageSpilloverCapacity(int maxCandidatesPerAttacker) {
         return Math.max(1, Math.min(4, maxCandidatesPerAttacker));
+    }
+
+    private static int estimatedRetainedEdgeCapacity(
+            CompiledScenario scenario,
+            int candidatesPerAttacker,
+            int defenderCoverageTarget,
+            int[] defenderCaps
+    ) {
+        int activeDefenderCount = 0;
+        for (int defenderCap : defenderCaps) {
+            if (defenderCap > 0) {
+                activeDefenderCount++;
+            }
+        }
+        long estimated = (long) scenario.attackerCount() * (Math.max(1, candidatesPerAttacker) + 1L)
+                + (long) activeDefenderCount * Math.max(1, defenderCoverageTarget);
+        return (int) Math.min(Integer.MAX_VALUE, estimated);
     }
 
     private static int defenderSourceDiversityCapacity(int maxCandidatesPerAttacker) {
@@ -1130,16 +1174,16 @@ final class OpeningEvaluator {
                 sortedDirty = true;
                 return;
             }
-            if (!isHigherPriority(
-                    priority,
-                    score,
-                    defenderIndex,
-                    priorities[0],
-                    edges.scoreAt(0),
-                    edges.defenderIndexAt(0)
-            )) {
-                return;
-            }
+                if (!isHigherPriority(
+                        priority,
+                        score,
+                        defenderIndex,
+                        priorities[0],
+                        edges.scoreAt(0),
+                        edges.defenderIndexAt(0)
+                )) {
+                    return;
+                }
             write(
                     0,
                     priority,
@@ -1416,8 +1460,8 @@ final class OpeningEvaluator {
             byte bestAttackTypeId = (byte) -1;
             for (WarType warType : OPENING_WAR_TYPES) {
                 context.bind(attacker, defender, warType);
-                for (AttackType type : OPENING_ATTACK_TYPES) {
-                    if (isSpecialist(type) || !isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
+                for (AttackType type : CONVENTIONAL_OPENING_ATTACK_TYPES) {
+                    if (!isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
                         continue;
                     }
                     double candidate = CombatKernel.admissionSignal(context, type, scratch);
@@ -1443,8 +1487,8 @@ final class OpeningEvaluator {
             byte bestAttackTypeId = (byte) -1;
             for (WarType warType : OPENING_WAR_TYPES) {
                 context.bind(attacker, defender, warType);
-                for (AttackType type : OPENING_ATTACK_TYPES) {
-                    if (!isSpecialist(type) || !isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
+                for (AttackType type : SPECIALIST_OPENING_ATTACK_TYPES) {
+                    if (!isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
                         continue;
                     }
                     double candidate = CombatKernel.specialistAdmissionSignal(context, type, scratch, result);

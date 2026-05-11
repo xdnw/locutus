@@ -220,7 +220,7 @@ class OpeningEvaluatorCoverageTest {
         DBNationSnapshot attackerOne = buildNation(1, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220);
         DBNationSnapshot attackerTwo = buildNation(2, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220);
         DBNationSnapshot contestedHighThreat = buildNation(101, DEFENDER_TEAM, 1_850.0, 12, 6_000, 950, 1_050, 210);
-        DBNationSnapshot viableSecondary = buildNation(102, DEFENDER_TEAM, 1_200.0, 11, 1_200, 160, 120, 24);
+                DBNationSnapshot viableSecondary = buildNation(102, DEFENDER_TEAM, 1_400.0, 11, 1_200, 160, 120, 24);
 
         OpeningEvaluator.EvaluatedEdge firstDefender = OpeningEvaluator.evaluateOpening(
                 attackerOne,
@@ -320,7 +320,7 @@ class OpeningEvaluatorCoverageTest {
         DBNationSnapshot strongAttacker = buildNation(13, ATTACKER_TEAM, 2_050.0, 27, 450_000, 36_000, 2_900, 420);
         DBNationSnapshot flexibleAttacker = buildNation(14, ATTACKER_TEAM, 820.0, 18, 37_500, 3_000, 240, 37);
         DBNationSnapshot highPriorityDefender = buildNation(112, DEFENDER_TEAM, 1_990.0, 25, 387_500, 31_000, 2_480, 387);
-        DBNationSnapshot softerDefender = buildNation(113, DEFENDER_TEAM, 1_200.0, 11, 1_200, 160, 120, 24);
+                DBNationSnapshot softerDefender = buildNation(113, DEFENDER_TEAM, 1_500.0, 11, 1_200, 160, 120, 24);
 
         OpeningEvaluator.EvaluatedEdge strongAttackerHighPriority = OpeningEvaluator.evaluateOpening(
                 strongAttacker,
@@ -411,7 +411,7 @@ class OpeningEvaluatorCoverageTest {
         DBNationSnapshot strongAttackerTwo = buildNation(16, ATTACKER_TEAM, 2_030.0, 27, 440_000, 35_200, 2_850, 410);
         DBNationSnapshot flexibleAttacker = buildNation(17, ATTACKER_TEAM, 820.0, 18, 37_500, 3_000, 240, 37);
         DBNationSnapshot highPriorityDefender = buildNation(114, DEFENDER_TEAM, 1_990.0, 25, 387_500, 31_000, 2_480, 387);
-        DBNationSnapshot softerDefender = buildNation(115, DEFENDER_TEAM, 1_200.0, 11, 1_200, 160, 120, 24);
+        DBNationSnapshot softerDefender = buildNation(115, DEFENDER_TEAM, 1_500.0, 11, 1_200, 160, 120, 24);
 
         OpeningEvaluator.EvaluatedEdge flexibleHighPriority = OpeningEvaluator.evaluateOpening(
                 flexibleAttacker,
@@ -850,11 +850,17 @@ class OpeningEvaluatorCoverageTest {
             int aircraft,
             int ships
     ) {
+        double staticScore = link.locutus.discord.util.PW.computeStaticScoreComponent(cities, 0, 0);
+        double unitScore = MilitaryUnit.SOLDIER.getScore(soldiers)
+                + MilitaryUnit.TANK.getScore(tanks)
+                + MilitaryUnit.AIRCRAFT.getScore(aircraft)
+                + MilitaryUnit.SHIP.getScore(ships);
+        double infraPerCity = Math.max(0d, ((score - staticScore - unitScore) * 40.0d) / Math.max(1, cities));
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
                 .cities(cities)
-                .cityInfra(uniformInfra(cities, 1_200.0))
+                .cityInfra(uniformInfra(cities, infraPerCity))
                 .maxOff(5)
                 .currentOffensiveWars(0)
                 .currentDefensiveWars(0)

@@ -18,8 +18,17 @@ final class OpeningRolloutMetricProjector {
             MutableAttackResult result,
             OpeningMetricVector.Mutable out
     ) {
+        CombatKernel.NationState attacker = context.attacker();
+        CombatKernel.NationState defender = context.defender();
         SuperiorityFlagDelta controlDelta = result.controlDelta();
-        boolean attackerHasGroundSuperiority = projectedattackerHasGroundSuperiority(context, controlDelta);
+        boolean attackerHadAirControl = context.attackerHasAirControl();
+        boolean defenderHadAirControl = context.defenderHasAirControl();
+        boolean attackerHadGroundSuperiority = context.attackerHasGroundSuperiority();
+        boolean defenderHadGroundSuperiority = context.defenderHasGroundSuperiority();
+        int blockadeOwner = context.blockadeOwner();
+        double[] attackerLosses = result.attackerLossesEv();
+        double[] defenderLosses = result.defenderLossesEv();
+        boolean attackerHasGroundSuperiority = projectedAttackerHasGroundSuperiority(context, controlDelta);
         boolean attackerHasAirControl = projectedAttackerHasAirControl(context, controlDelta);
         boolean attackerHasBlockade = projectedAttackerHasBlockade(context, controlDelta);
         boolean defenderHasAirControl = projectedDefenderHasAirControl(context, controlDelta);
@@ -27,21 +36,21 @@ final class OpeningRolloutMetricProjector {
             + OpeningMetricSummary.immediateHarm(
                     baseline.defenderSnapshot(),
                     result,
-                    context.attackerHasAirControl(),
+                attackerHadAirControl,
                     attackerHasAirControl,
-                    context.defenderHasGroundSuperiority(),
-                    context.defenderHasAirControl(),
-                    context.blockadeOwner() == CombatKernel.AttackContext.BLOCKADE_DEFENDER
+                defenderHadGroundSuperiority,
+                defenderHadAirControl,
+                blockadeOwner == CombatKernel.AttackContext.BLOCKADE_DEFENDER
             );
         double selfExposure = currentMetrics.selfExposure()
             + OpeningMetricSummary.selfExposure(
                     baseline.attackerSnapshot(),
                     result,
-                    context.defenderHasAirControl(),
+                defenderHadAirControl,
                     defenderHasAirControl,
-                    context.attackerHasGroundSuperiority(),
-                    context.attackerHasAirControl(),
-                    context.blockadeOwner() == CombatKernel.AttackContext.BLOCKADE_ATTACKER
+                attackerHadGroundSuperiority,
+                attackerHadAirControl,
+                blockadeOwner == CombatKernel.AttackContext.BLOCKADE_ATTACKER
             );
         double resourceSwing = currentMetrics.resourceSwing() + result.loot();
         double controlLeverage = OpeningMetricSummary.controlLeverage(
@@ -55,24 +64,24 @@ final class OpeningRolloutMetricProjector {
         double forceWindowAdvantage = OpeningMetricSummary.forceWindowScore(
                 baseline.attackerGround(),
                 OpeningMetricSummary.groundStrength(
-                        remainingUnits(context.attacker(), result.attackerLossesEv(), MilitaryUnit.SOLDIER),
-                        remainingUnits(context.attacker(), result.attackerLossesEv(), MilitaryUnit.TANK),
+                remainingUnits(attacker, attackerLosses, MilitaryUnit.SOLDIER),
+                remainingUnits(attacker, attackerLosses, MilitaryUnit.TANK),
                         defenderHasAirControl
                 ),
                 baseline.defenderGround(),
                 OpeningMetricSummary.groundStrength(
-                        remainingUnits(context.defender(), result.defenderLossesEv(), MilitaryUnit.SOLDIER),
-                        remainingUnits(context.defender(), result.defenderLossesEv(), MilitaryUnit.TANK),
+                remainingUnits(defender, defenderLosses, MilitaryUnit.SOLDIER),
+                remainingUnits(defender, defenderLosses, MilitaryUnit.TANK),
                         attackerHasAirControl
                 ),
                 baseline.attackerAir(),
-                remainingUnits(context.attacker(), result.attackerLossesEv(), MilitaryUnit.AIRCRAFT),
+            remainingUnits(attacker, attackerLosses, MilitaryUnit.AIRCRAFT),
                 baseline.defenderAir(),
-                remainingUnits(context.defender(), result.defenderLossesEv(), MilitaryUnit.AIRCRAFT),
+            remainingUnits(defender, defenderLosses, MilitaryUnit.AIRCRAFT),
                 baseline.attackerNaval(),
-                remainingUnits(context.attacker(), result.attackerLossesEv(), MilitaryUnit.SHIP),
+            remainingUnits(attacker, attackerLosses, MilitaryUnit.SHIP),
                 baseline.defenderNaval(),
-                remainingUnits(context.defender(), result.defenderLossesEv(), MilitaryUnit.SHIP)
+            remainingUnits(defender, defenderLosses, MilitaryUnit.SHIP)
         );
         out.set(
                 immediateHarm,
@@ -85,7 +94,7 @@ final class OpeningRolloutMetricProjector {
         );
     }
 
-    private static boolean projectedattackerHasGroundSuperiority(
+        private static boolean projectedAttackerHasGroundSuperiority(
             CombatKernel.AttackContext context,
             SuperiorityFlagDelta controlDelta
     ) {

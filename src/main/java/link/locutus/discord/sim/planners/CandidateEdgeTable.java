@@ -50,6 +50,10 @@ final class CandidateEdgeTable {
         edges.reconfigureComponentRetention(policy);
     }
 
+    void ensureCapacity(int capacity) {
+        edges.ensureCapacity(capacity);
+    }
+
     // ---- Mutation -----------------------------------------------------------
 
     /**

@@ -24,6 +24,16 @@ final class OpeningMetricSummary {
     private static final double MISSILE_REFERENCE = 18d;
     private static final double NUKE_REFERENCE = 12d;
     private static final double SPY_REFERENCE = 60d;
+    private static final double DEFENDER_CONTROL_PRESSURE_REFERENCE = 250_000d;
+    private static final double STRATEGIC_PRESSURE_REFERENCE = 3_600d;
+    private static final double LOG1P_GROUND_REFERENCE = Math.log1p(GROUND_REFERENCE);
+    private static final double LOG1P_AIR_REFERENCE = Math.log1p(AIR_REFERENCE);
+    private static final double LOG1P_NAVAL_REFERENCE = Math.log1p(NAVAL_REFERENCE);
+    private static final double LOG1P_MISSILE_REFERENCE = Math.log1p(MISSILE_REFERENCE);
+    private static final double LOG1P_NUKE_REFERENCE = Math.log1p(NUKE_REFERENCE);
+    private static final double LOG1P_SPY_REFERENCE = Math.log1p(SPY_REFERENCE);
+    private static final double LOG1P_DEFENDER_CONTROL_PRESSURE_REFERENCE = Math.log1p(DEFENDER_CONTROL_PRESSURE_REFERENCE);
+    private static final double LOG1P_STRATEGIC_PRESSURE_REFERENCE = Math.log1p(STRATEGIC_PRESSURE_REFERENCE);
 
     private OpeningMetricSummary() {
     }
@@ -183,7 +193,7 @@ final class OpeningMetricSummary {
         if (!(defenderMilitary > 0d)) {
             return 0d;
         }
-        double absoluteThreat = Math.min(2.5d, Math.log1p(defenderMilitary) / Math.log1p(250_000d));
+        double absoluteThreat = Math.min(2.5d, Math.log1p(defenderMilitary) / LOG1P_DEFENDER_CONTROL_PRESSURE_REFERENCE);
         return 12d * absoluteThreat;
     }
 
@@ -247,12 +257,12 @@ final class OpeningMetricSummary {
         double initialSpies = nation.unit(MilitaryUnit.SPIES);
         double currentSpies = remainingSpies;
 
-        double total = capabilityDomainDamage(initialGround, currentGround, GROUND_CAPABILITY_WEIGHT, GROUND_REFERENCE)
-            + capabilityDomainDamage(initialAir, currentAir, AIR_CAPABILITY_WEIGHT, AIR_REFERENCE)
-            + capabilityDomainDamage(initialNaval, currentNaval, NAVAL_CAPABILITY_WEIGHT, NAVAL_REFERENCE)
-            + capabilityDomainDamage(initialMissiles, currentMissiles, MISSILE_CAPABILITY_WEIGHT, MISSILE_REFERENCE)
-            + capabilityDomainDamage(initialNukes, currentNukes, NUKE_CAPABILITY_WEIGHT, NUKE_REFERENCE)
-            + capabilityDomainDamage(initialSpies, currentSpies, SPY_CAPABILITY_WEIGHT, SPY_REFERENCE);
+        double total = capabilityDomainDamage(initialGround, currentGround, GROUND_CAPABILITY_WEIGHT, LOG1P_GROUND_REFERENCE)
+            + capabilityDomainDamage(initialAir, currentAir, AIR_CAPABILITY_WEIGHT, LOG1P_AIR_REFERENCE)
+            + capabilityDomainDamage(initialNaval, currentNaval, NAVAL_CAPABILITY_WEIGHT, LOG1P_NAVAL_REFERENCE)
+            + capabilityDomainDamage(initialMissiles, currentMissiles, MISSILE_CAPABILITY_WEIGHT, LOG1P_MISSILE_REFERENCE)
+            + capabilityDomainDamage(initialNukes, currentNukes, NUKE_CAPABILITY_WEIGHT, LOG1P_NUKE_REFERENCE)
+            + capabilityDomainDamage(initialSpies, currentSpies, SPY_CAPABILITY_WEIGHT, LOG1P_SPY_REFERENCE);
 
         double groundLossFraction = lossFraction(initialGround, currentGround);
         double airLossFraction = lossFraction(initialAir, currentAir);
@@ -264,7 +274,7 @@ final class OpeningMetricSummary {
             groundLossFraction,
             GROUND_CAPABILITY_WEIGHT,
             initialGround,
-            GROUND_REFERENCE
+            LOG1P_GROUND_REFERENCE
         );
         total += rebuildDelayScore(
             remainingCapacity(nation, MilitaryUnit.TANK),
@@ -272,7 +282,7 @@ final class OpeningMetricSummary {
             groundLossFraction,
             GROUND_CAPABILITY_WEIGHT,
             initialGround,
-            GROUND_REFERENCE
+            LOG1P_GROUND_REFERENCE
         );
         total += rebuildDelayScore(
             remainingCapacity(nation, MilitaryUnit.AIRCRAFT),
@@ -280,7 +290,7 @@ final class OpeningMetricSummary {
             airLossFraction,
             AIR_CAPABILITY_WEIGHT,
             initialAir,
-            AIR_REFERENCE
+            LOG1P_AIR_REFERENCE
         );
         total += rebuildDelayScore(
             remainingCapacity(nation, MilitaryUnit.SHIP),
@@ -288,28 +298,28 @@ final class OpeningMetricSummary {
             navalLossFraction,
             NAVAL_CAPABILITY_WEIGHT,
             initialNaval,
-            NAVAL_REFERENCE
+            LOG1P_NAVAL_REFERENCE
         );
 
         total += holdabilityLossScore(
             hadGroundSuperiority,
             canHoldGround(remainingSoldiers, remainingTanks),
             initialGround,
-            GROUND_REFERENCE,
+            LOG1P_GROUND_REFERENCE,
             GROUND_CONTROL_IMPACT_WEIGHT
         );
         total += holdabilityLossScore(
             hadAirControl,
             remainingAircraft > 0d,
             initialAir,
-            AIR_REFERENCE,
+            LOG1P_AIR_REFERENCE,
             AIR_CONTROL_IMPACT_WEIGHT
         );
         total += holdabilityLossScore(
             hadBlockade,
             remainingShips > 0d,
             initialNaval,
-            NAVAL_REFERENCE,
+            LOG1P_NAVAL_REFERENCE,
             BLOCKADE_IMPACT_WEIGHT
         );
 
@@ -334,7 +344,7 @@ final class OpeningMetricSummary {
                     remainingUnits(defender, losses, MilitaryUnit.TANK)
                 )),
             groundStrength(defender.unit(MilitaryUnit.SOLDIER), defender.unit(MilitaryUnit.TANK), false),
-            GROUND_REFERENCE,
+            LOG1P_GROUND_REFERENCE,
             GROUND_CONTROL_IMPACT_WEIGHT
         );
         score += controlImpactScore(
@@ -342,7 +352,7 @@ final class OpeningMetricSummary {
                 || delta.clearAirSuperiority()
                 || (defenderHadAirControl && !(remainingUnits(defender, losses, MilitaryUnit.AIRCRAFT) > 0d)),
             defender.unit(MilitaryUnit.AIRCRAFT),
-            AIR_REFERENCE,
+            LOG1P_AIR_REFERENCE,
             AIR_CONTROL_IMPACT_WEIGHT
         );
         score += controlImpactScore(
@@ -350,7 +360,7 @@ final class OpeningMetricSummary {
                 || delta.clearBlockade()
                 || (defenderHadBlockade && !(remainingUnits(defender, losses, MilitaryUnit.SHIP) > 0d)),
             defender.unit(MilitaryUnit.SHIP),
-            NAVAL_REFERENCE,
+            LOG1P_NAVAL_REFERENCE,
             BLOCKADE_IMPACT_WEIGHT
         );
         return score;
@@ -376,25 +386,25 @@ final class OpeningMetricSummary {
 
     private static double strategicPressureBonus(DBNationSnapshot defender) {
         double eliteCityBonus = 2.5d * clamp01((defender.cities() - 35d) / 15d);
-        double strategicValueBonus = 1.5d * normalizedLog(
+        double strategicValueBonus = 1.5d * normalizedLogWithReferenceLog(
                 StrategicCapabilityReducer.slotCapabilityValue(PlannerStrategicValue.capabilityVector(defender)),
-            3_600d
+                LOG1P_STRATEGIC_PRESSURE_REFERENCE
         );
         return eliteCityBonus + strategicValueBonus;
     }
 
-    private static double normalizedLog(double value, double reference) {
-        if (!(value > 0d) || !(reference > 0d)) {
+    private static double normalizedLogWithReferenceLog(double value, double referenceLog) {
+        if (!(value > 0d) || !(referenceLog > 0d)) {
             return 0d;
         }
-        return clamp01(Math.log1p(value) / Math.log1p(reference));
+        return clamp01(Math.log1p(value) / referenceLog);
     }
 
     private static double capabilityDomainDamage(
             double initialCapability,
             double currentCapability,
             double weight,
-            double reference
+            double referenceLog
     ) {
         double lossFraction = lossFraction(initialCapability, currentCapability);
         if (!(lossFraction > 0d)) {
@@ -403,7 +413,7 @@ final class OpeningMetricSummary {
         return DOMAIN_DAMAGE_SCALE
                 * weight
                 * lossFraction
-                * (0.50d + normalizedLog(initialCapability, reference));
+                * (0.50d + normalizedLogWithReferenceLog(initialCapability, referenceLog));
     }
 
     private static double rebuildDelayScore(
@@ -412,7 +422,7 @@ final class OpeningMetricSummary {
             double domainLossFraction,
             double weight,
             double initialCapability,
-            double reference
+            double referenceLog
     ) {
         if (!(losses > 0d) || !(domainLossFraction > 0d)) {
             return 0d;
@@ -422,32 +432,32 @@ final class OpeningMetricSummary {
                 * weight
                 * domainLossFraction
                 * cappedRecoveryPressure
-                * (0.35d + normalizedLog(initialCapability, reference));
+                * (0.35d + normalizedLogWithReferenceLog(initialCapability, referenceLog));
     }
 
     private static double holdabilityLossScore(
             boolean heldBefore,
             boolean canHoldAfter,
             double initialCapability,
-            double reference,
+            double referenceLog,
             double weight
     ) {
         if (!heldBefore || canHoldAfter) {
             return 0d;
         }
-        return controlImpactScore(true, initialCapability, reference, weight);
+        return controlImpactScore(true, initialCapability, referenceLog, weight);
     }
 
     private static double controlImpactScore(
             boolean lostControl,
             double initialCapability,
-            double reference,
+            double referenceLog,
             double weight
     ) {
         if (!lostControl) {
             return 0d;
         }
-        return weight * (0.75d + normalizedLog(initialCapability, reference));
+        return weight * (0.75d + normalizedLogWithReferenceLog(initialCapability, referenceLog));
     }
 
     private static int remainingCapacity(DBNationSnapshot nation, MilitaryUnit unit) {

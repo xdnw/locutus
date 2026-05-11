@@ -33,19 +33,47 @@ final class OpeningRolloutSearch {
             int actionBudget,
             OpeningEvaluator.EdgeEvaluation out
     ) {
-        evaluate(attacker, defender, objective, null, actionBudget, out);
+        evaluate(
+            attacker,
+            defender,
+            objective,
+            null,
+            OpeningMetricSummary.defenderControlPressure(defender),
+            actionBudget,
+            out
+        );
         }
 
-        void evaluate(
+    void evaluate(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             StrategicObjective objective,
             SideOpeningSettings openingSettings,
             int actionBudget,
             OpeningEvaluator.EdgeEvaluation out
+    ) {
+        evaluate(
+                attacker,
+                defender,
+                objective,
+                openingSettings,
+                OpeningMetricSummary.defenderControlPressure(defender),
+                actionBudget,
+                out
+        );
+    }
+
+        void evaluate(
+            DBNationSnapshot attacker,
+            DBNationSnapshot defender,
+            StrategicObjective objective,
+            SideOpeningSettings openingSettings,
+            double targetPressure,
+            int actionBudget,
+            OpeningEvaluator.EdgeEvaluation out
         ) {
         out.clear();
-        OpeningEvaluator.OpeningBaseline baseline = OpeningEvaluator.OpeningBaseline.from(attacker, defender);
+        OpeningEvaluator.OpeningBaseline baseline = OpeningEvaluator.OpeningBaseline.from(attacker, defender, targetPressure);
         int effectiveActionBudget = Math.max(1, Math.min(maxActionBudget, actionBudget));
 
         for (WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
@@ -66,6 +94,7 @@ final class OpeningRolloutSearch {
         context.bind(attacker, defender, warType);
 
         byte firstAttackTypeId = (byte) -1;
+        byte fallbackAttackTypeId = (byte) -1;
         currentMetrics.set(0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
         float currentScore = scoreObjective(objective, attacker.teamId(), currentMetrics, warType, null, openingSettings);
 
@@ -77,6 +106,9 @@ final class OpeningRolloutSearch {
             for (AttackType type : OpeningEvaluator.OPENING_ATTACK_TYPES) {
                 if (!OpeningEvaluator.isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
                     continue;
+                }
+                if (fallbackAttackTypeId < 0) {
+                    fallbackAttackTypeId = (byte) type.ordinal();
                 }
                 CombatKernel.resolveInto(context, type, ResolutionMode.DETERMINISTIC_EV, scratch, result);
                 OpeningRolloutMetricProjector.project(
@@ -121,13 +153,7 @@ final class OpeningRolloutSearch {
         // OpeningEvaluator, outside the full rollout path.
         if (firstAttackTypeId < 0) {
             // Zero-action baseline is positive but no improving attack was found.
-            // Find the first legal attack to recommend as the opening move.
-            for (AttackType type : OpeningEvaluator.OPENING_ATTACK_TYPES) {
-                if (OpeningEvaluator.isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
-                    firstAttackTypeId = (byte) type.ordinal();
-                    break;
-                }
-            }
+            firstAttackTypeId = fallbackAttackTypeId;
             if (firstAttackTypeId < 0) {
                 return; // no legal attacks at all — cannot declare
             }
