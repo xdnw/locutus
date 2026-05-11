@@ -13,10 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-final class PlannerAutonomousCounterPlanner {
+final class PlannerAutonomousDeclarationPlanner {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
 
-    private PlannerAutonomousCounterPlanner() {
+    private PlannerAutonomousDeclarationPlanner() {
     }
 
     static Plan plan(

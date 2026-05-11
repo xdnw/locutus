@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicTimingValue;
@@ -48,6 +49,9 @@ final class LongHorizonForwardProjection {
     private static final int MAP_CAP = 12;
     private static final int WAR_EXPIRATION_TURN = 60;
     private static final int PROJECTED_COUNTER_START_TURN = 1;
+    private static final double MIN_PROJECTED_DECLARATION_TARGET_VALUE = 50d;
+    private static final double PROJECTED_DECLARATION_TARGET_VALUE_MULTIPLIER = 0.10d;
+    private static final double MAX_PROJECTED_DECLARATION_STRENGTH_RATIO = 2.0d;
     private static final double WIPE_RISK_COMBAT_STRENGTH_RATIO = 0.25d;
     private static final int DAY_TURNS = 12;
     private static final MilitaryUnit[] PROJECTED_BUY_UNITS = {
@@ -100,18 +104,10 @@ final class LongHorizonForwardProjection {
     private final int[] scratchActiveDefWarsByNation;
     private final int[] scratchCounterOffSlots;
     private final int[] scratchCounterDefSlots;
-    private final double[] scratchCounterDeclarerStrengths;
-    private final double[] scratchCounterDeclarerActivityWeights;
-    private final double[] scratchCounterTargetStrengths;
-    private final double[] scratchCounterTargetActionValues;
     private final int[] scratchRedeclareAttSlots;
     private final int[] scratchRedeclareDefSlots;
-    private final double[] scratchRedeclareAttackerStrengths;
-    private final double[] scratchRedeclareDefenderStrengths;
     private final ProjectionAttackEvaluator projectionAttackEvaluator;
     private final HeuristicAttackChoicePolicy.MutableAttackCandidate heuristicAttackCandidate;
-    private final ProjectionCounterEvaluator projectionCounterEvaluator;
-    private final ProjectionRedeclareEvaluator projectionRedeclareEvaluator;
     private long profiledProjectionTurns;
     private long profiledCounterTurns;
     private long profiledCounterTurnsNoSlots;
@@ -182,18 +178,10 @@ final class LongHorizonForwardProjection {
         this.scratchActiveDefWarsByNation = new int[nationCount];
         this.scratchCounterOffSlots = new int[defenderCountVal];
         this.scratchCounterDefSlots = new int[attackerCountVal];
-        this.scratchCounterDeclarerStrengths = new double[defenderCountVal];
-        this.scratchCounterDeclarerActivityWeights = new double[defenderCountVal];
-        this.scratchCounterTargetStrengths = new double[attackerCountVal];
-        this.scratchCounterTargetActionValues = new double[attackerCountVal];
         this.scratchRedeclareAttSlots = new int[attackerCountVal];
         this.scratchRedeclareDefSlots = new int[defenderCountVal];
-        this.scratchRedeclareAttackerStrengths = new double[attackerCountVal];
-        this.scratchRedeclareDefenderStrengths = new double[defenderCountVal];
         this.projectionAttackEvaluator = new ProjectionAttackEvaluator();
         this.heuristicAttackCandidate = new HeuristicAttackChoicePolicy.MutableAttackCandidate();
-        this.projectionCounterEvaluator = new ProjectionCounterEvaluator();
-        this.projectionRedeclareEvaluator = new ProjectionRedeclareEvaluator();
     }
 
     static LongHorizonForwardProjection create(
@@ -861,83 +849,18 @@ final class LongHorizonForwardProjection {
             int[] remainingTargetDefensiveSlots,
             SidePlannerSettings counterPlannerSettings
     ) {
-        List<DBNationSnapshot> declarerSnapshots = new ArrayList<>();
-        List<DBNationSnapshot> targetSnapshots = new ArrayList<>();
-        int[] declarerOverallIndexes = new int[scenario.defenderCount()];
-        int[] targetOverallIndexes = new int[scenario.attackerCount()];
-        Arrays.fill(declarerOverallIndexes, -1);
-        Arrays.fill(targetOverallIndexes, -1);
-
-        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
-            if (remainingCounterOffensiveSlots[defenderIndex] <= 0) {
-                continue;
-            }
-            int counterNationIndex = state.attackerCount + defenderIndex;
-            if (state.beigeTurns[counterNationIndex] > 0 || state.combatStrength(counterNationIndex) <= 0d) {
-                continue;
-            }
-            declarerOverallIndexes[declarerSnapshots.size()] = counterNationIndex;
-            declarerSnapshots.add(projectedSnapshot(state, warState, counterNationIndex));
-        }
-        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            if (remainingTargetDefensiveSlots[attackerIndex] <= 0) {
-                continue;
-            }
-            if (state.beigeTurns[attackerIndex] > 0 || state.combatStrength(attackerIndex) <= 0d) {
-                continue;
-            }
-            targetOverallIndexes[targetSnapshots.size()] = attackerIndex;
-            targetSnapshots.add(projectedSnapshot(state, warState, attackerIndex));
-        }
-        if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
-            return null;
-        }
-
-        CompiledScenario projectedScenario = PROJECTED_DECLARATION_SCENARIO_COMPILER.compile(
-                declarerSnapshots,
-                targetSnapshots,
-                OverrideSet.EMPTY,
-                TreatyProvider.NONE,
-                Map.of()
+        return buildProjectedDeclarationInputs(
+                state,
+                warState,
+                remainingCounterOffensiveSlots,
+                remainingTargetDefensiveSlots,
+                false,
+                defenderOpeningSettings,
+                counterPlannerSettings,
+                counterPlannerSettings.counterScoreThreshold(),
+                0,
+                false
         );
-        CandidateEdgeTable projectedEdges = new CandidateEdgeTable();
-        for (int declarerCompiledIndex = 0; declarerCompiledIndex < declarerSnapshots.size(); declarerCompiledIndex++) {
-            int declarerNationIndex = declarerOverallIndexes[declarerCompiledIndex];
-            int originalDefenderIndex = declarerNationIndex - state.attackerCount;
-            double activityWeight = scenario.defenderActivityWeight(originalDefenderIndex);
-            double counterStrength = state.combatStrength(declarerNationIndex);
-            for (int targetCompiledIndex = 0; targetCompiledIndex < targetSnapshots.size(); targetCompiledIndex++) {
-                int targetNationIndex = targetOverallIndexes[targetCompiledIndex];
-                profiledCounterCandidateEvaluations++;
-                double targetActionValue = state.marginalActionSpaceValue(targetNationIndex, warState);
-                double score = HeuristicCounterDeclarationPolicy.projectedCounterScore(
-                        !warState.hasActivePair(declarerNationIndex, targetNationIndex)
-                                && state.beigeTurns[declarerNationIndex] <= 0
-                                && state.beigeTurns[targetNationIndex] <= 0
-                                && canCounterProjected(state, declarerNationIndex, targetNationIndex),
-                        activityWeight,
-                        counterStrength,
-                        state.combatStrength(targetNationIndex),
-                        targetActionValue,
-                        remainingTargetDefensiveSlots[targetNationIndex]
-                );
-                if (score <= counterPlannerSettings.counterScoreThreshold()) {
-                    continue;
-                }
-                projectedEdges.add(
-                        declarerCompiledIndex,
-                        targetCompiledIndex,
-                        (byte) WarType.ORD.ordinal(),
-                        (byte) 0,
-                        (float) score,
-                        0f
-                );
-            }
-        }
-        if (projectedEdges.edgeCount() == 0) {
-            return null;
-        }
-        return projectedLaterDeclarationInputs(projectedScenario, projectedEdges, declarerOverallIndexes, targetOverallIndexes);
     }
 
     private ProjectedLaterDeclarationInputs buildProjectedRedeclareDeclarationInputs(
@@ -948,39 +871,68 @@ final class LongHorizonForwardProjection {
             SidePlannerSettings redeclarePlannerSettings,
             int turn
     ) {
+        return buildProjectedDeclarationInputs(
+                state,
+                warState,
+                remainingAttackerSlots,
+                remainingDefenderSlots,
+                true,
+                attackerOpeningSettings,
+                redeclarePlannerSettings,
+                redeclarePlannerSettings.redeclareScoreThreshold(),
+                turn,
+                true
+        );
+    }
+
+    private ProjectedLaterDeclarationInputs buildProjectedDeclarationInputs(
+            ProjectionState state,
+            DenseWarState warState,
+            int[] remainingDeclarerSlots,
+            int[] remainingTargetSlots,
+            boolean declarersAreScenarioAttackers,
+            SideOpeningSettings openingSettings,
+            SidePlannerSettings plannerSettings,
+            double scoreThreshold,
+            int turn,
+            boolean applyRedeclareTiming
+    ) {
         List<DBNationSnapshot> declarerSnapshots = new ArrayList<>();
         List<DBNationSnapshot> targetSnapshots = new ArrayList<>();
-        Map<Integer, Integer> declarerCompiledIndexByOverall = new HashMap<>();
-        Map<Integer, Integer> targetCompiledIndexByOverall = new HashMap<>();
-        int[] declarerOverallIndexes = new int[scenario.attackerCount()];
-        int[] targetOverallIndexes = new int[scenario.defenderCount()];
+        int declarerSourceCount = declarersAreScenarioAttackers ? scenario.attackerCount() : scenario.defenderCount();
+        int targetSourceCount = declarersAreScenarioAttackers ? scenario.defenderCount() : scenario.attackerCount();
+        int[] declarerOverallIndexes = new int[declarerSourceCount];
+        int[] targetOverallIndexes = new int[targetSourceCount];
+        int[] declarerCaps = new int[declarerSourceCount];
+        int[] targetCaps = new int[targetSourceCount];
         Arrays.fill(declarerOverallIndexes, -1);
         Arrays.fill(targetOverallIndexes, -1);
 
-        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            if (remainingAttackerSlots[attackerIndex] <= 0) {
+        for (int sourceIndex = 0; sourceIndex < declarerSourceCount; sourceIndex++) {
+            if (remainingDeclarerSlots[sourceIndex] <= 0) {
                 continue;
             }
-            if (state.beigeTurns[attackerIndex] > 0 || state.combatStrength(attackerIndex) <= 0d) {
+            int overallIndex = declarersAreScenarioAttackers ? sourceIndex : state.attackerCount + sourceIndex;
+            if (state.beigeTurns[overallIndex] > 0 || state.combatStrength(overallIndex) <= 0d) {
                 continue;
             }
             int compiledIndex = declarerSnapshots.size();
-            declarerOverallIndexes[compiledIndex] = attackerIndex;
-            declarerCompiledIndexByOverall.put(attackerIndex, compiledIndex);
-            declarerSnapshots.add(projectedSnapshot(state, warState, attackerIndex));
+            declarerOverallIndexes[compiledIndex] = overallIndex;
+            declarerCaps[compiledIndex] = remainingDeclarerSlots[sourceIndex];
+            declarerSnapshots.add(projectedSnapshot(state, warState, overallIndex));
         }
-        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
-            if (remainingDefenderSlots[defenderIndex] <= 0) {
+        for (int sourceIndex = 0; sourceIndex < targetSourceCount; sourceIndex++) {
+            if (remainingTargetSlots[sourceIndex] <= 0) {
                 continue;
             }
-            int defenderNationIndex = state.attackerCount + defenderIndex;
-            if (state.beigeTurns[defenderNationIndex] > 0 || state.combatStrength(defenderNationIndex) <= 0d) {
+            int overallIndex = declarersAreScenarioAttackers ? state.attackerCount + sourceIndex : sourceIndex;
+            if (state.beigeTurns[overallIndex] > 0 || state.combatStrength(overallIndex) <= 0d) {
                 continue;
             }
             int compiledIndex = targetSnapshots.size();
-            targetOverallIndexes[compiledIndex] = defenderNationIndex;
-            targetCompiledIndexByOverall.put(defenderNationIndex, compiledIndex);
-            targetSnapshots.add(projectedSnapshot(state, warState, defenderNationIndex));
+            targetOverallIndexes[compiledIndex] = overallIndex;
+            targetCaps[compiledIndex] = remainingTargetSlots[sourceIndex];
+            targetSnapshots.add(projectedSnapshot(state, warState, overallIndex));
         }
         if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
             return null;
@@ -993,101 +945,159 @@ final class LongHorizonForwardProjection {
                 TreatyProvider.NONE,
                 Map.of()
         );
+        CandidateEdgeTable rawEdges = new CandidateEdgeTable();
+        StrategicObjective declarationObjective = projectionObjective == null ? new DamageObjective() : projectionObjective;
+        OpeningEvaluator.evaluate(
+                projectedScenario,
+                PlannerAutonomousDeclarationPlanner.tuningForPlannerSettings(SimTuning.defaults(), plannerSettings),
+                OverrideSet.EMPTY,
+                declarationObjective,
+                openingSettings == null ? SideOpeningSettings.legacy(declarationObjective) : openingSettings,
+                Arrays.copyOf(declarerCaps, projectedScenario.attackerCount()),
+                Arrays.copyOf(targetCaps, projectedScenario.defenderCount()),
+                rawEdges
+        );
+        // Legal later declarations must remain visible even when no attack type clears
+        // opening admission; lost-control and counter-pressure regimes can still value
+        // the declaration itself.
+
         CandidateEdgeTable projectedEdges = new CandidateEdgeTable();
-        double[] deferredBestByAttacker = new double[declarerSnapshots.size()];
+        int[][] rawEdgeByPair = new int[declarerSnapshots.size()][targetSnapshots.size()];
+        for (int[] row : rawEdgeByPair) {
+            Arrays.fill(row, -1);
+        }
+        for (int edgeIndex = 0; edgeIndex < rawEdges.edgeCount(); edgeIndex++) {
+            rawEdgeByPair[rawEdges.attackerIndex(edgeIndex)][rawEdges.defenderIndex(edgeIndex)] = edgeIndex;
+        }
+        double[] deferredBestByDeclarer = new double[declarerSnapshots.size()];
         int horizonRemainingTurns = Math.max(0, horizonTurns - turn);
-
-        CandidateEdgeTable redeclareSourceEdges = edges;
-
-        for (int edgeIndex = 0; edgeIndex < redeclareSourceEdges.edgeCount(); edgeIndex++) {
-            int attackerNationIndex;
-            Integer declarerCompiledIndex;
-            int defenderNationIndex;
-            Integer targetCompiledIndex;
-            attackerNationIndex = edges.attackerIndex(edgeIndex);
-            declarerCompiledIndex = declarerCompiledIndexByOverall.get(attackerNationIndex);
-            if (declarerCompiledIndex == null) {
-                continue;
+        if (applyRedeclareTiming) {
+            for (int declarerCompiledIndex = 0; declarerCompiledIndex < declarerSnapshots.size(); declarerCompiledIndex++) {
+                for (int targetCompiledIndex = 0; targetCompiledIndex < targetSnapshots.size(); targetCompiledIndex++) {
+                    int declarerOverallIndex = declarerOverallIndexes[declarerCompiledIndex];
+                    int targetOverallIndex = targetOverallIndexes[targetCompiledIndex];
+                    profiledRedeclareCandidateEvaluations++;
+                    if (warState.hasActivePair(declarerOverallIndex, targetOverallIndex)) {
+                        continue;
+                    }
+                    int blockedTurns = redeclareBlockedTurnsProjected(state, warState, declarerOverallIndex, targetOverallIndex, turn);
+                    if (blockedTurns <= 0) {
+                        continue;
+                    }
+                    double deferredScore = projectedDeclarationScore(
+                            state,
+                            warState,
+                            rawEdges,
+                            rawEdgeByPair[declarerCompiledIndex][targetCompiledIndex],
+                            declarerOverallIndex,
+                            targetOverallIndex,
+                            remainingDeclarerSlots[declarersAreScenarioAttackers
+                                    ? declarerOverallIndex
+                                    : declarerOverallIndex - state.attackerCount],
+                            remainingTargetSlots[declarersAreScenarioAttackers
+                                    ? targetOverallIndex - state.attackerCount
+                                    : targetOverallIndex],
+                            activityWeightForOverallIndex(declarerOverallIndex)
+                    )
+                            * StrategicTimingValue.redeclareWaitDiscount(blockedTurns, horizonRemainingTurns);
+                    deferredBestByDeclarer[declarerCompiledIndex] = Math.max(
+                            deferredBestByDeclarer[declarerCompiledIndex],
+                            deferredScore
+                    );
+                }
             }
-            defenderNationIndex = state.attackerCount + edges.defenderIndex(edgeIndex);
-            targetCompiledIndex = targetCompiledIndexByOverall.get(defenderNationIndex);
-            if (targetCompiledIndex == null) {
-                continue;
-            }
-            profiledRedeclareCandidateEvaluations++;
-            if (warState.hasActivePair(attackerNationIndex, defenderNationIndex)) {
-                continue;
-            }
-            int blockedTurns = redeclareBlockedTurnsProjected(state, warState, attackerNationIndex, defenderNationIndex, turn);
-            if (blockedTurns <= 0) {
-                continue;
-            }
-            double deferredScore = HeuristicRedeclarationPolicy.projectedDeferredRedeclareScore(
-                    new RedeclarationPolicy.RedeclareCandidate(
-                            attackerNationIndex,
-                            defenderNationIndex,
-                            false,
-                            false,
-                            state.combatStrength(attackerNationIndex),
-                            state.combatStrength(defenderNationIndex),
-                            scenario.attackerActivityWeight(attackerNationIndex),
-                                redeclareSourceEdges.scalarScore(edgeIndex),
-                            blockedTurns
-                    ),
-                    remainingAttackerSlots[attackerNationIndex],
-                    horizonRemainingTurns
-            );
-            deferredBestByAttacker[declarerCompiledIndex] = Math.max(
-                    deferredBestByAttacker[declarerCompiledIndex],
-                    deferredScore
-            );
         }
 
-        for (int edgeIndex = 0; edgeIndex < redeclareSourceEdges.edgeCount(); edgeIndex++) {
-            int attackerNationIndex;
-            Integer declarerCompiledIndex;
-            int defenderNationIndex;
-            Integer targetCompiledIndex;
-            attackerNationIndex = edges.attackerIndex(edgeIndex);
-            declarerCompiledIndex = declarerCompiledIndexByOverall.get(attackerNationIndex);
-            if (declarerCompiledIndex == null) {
-                continue;
+        for (int declarerCompiledIndex = 0; declarerCompiledIndex < declarerSnapshots.size(); declarerCompiledIndex++) {
+            for (int targetCompiledIndex = 0; targetCompiledIndex < targetSnapshots.size(); targetCompiledIndex++) {
+                int declarerOverallIndex = declarerOverallIndexes[declarerCompiledIndex];
+                int targetOverallIndex = targetOverallIndexes[targetCompiledIndex];
+                if (applyRedeclareTiming) {
+                    profiledRedeclareCandidateEvaluations++;
+                } else {
+                    profiledCounterCandidateEvaluations++;
+                }
+                if (warState.hasActivePair(declarerOverallIndex, targetOverallIndex)
+                        || !canCounterProjected(state, declarerOverallIndex, targetOverallIndex)) {
+                    continue;
+                }
+                int blockedTurns = applyRedeclareTiming
+                        ? redeclareBlockedTurnsProjected(state, warState, declarerOverallIndex, targetOverallIndex, turn)
+                        : 0;
+                int declarerSourceIndex = declarersAreScenarioAttackers
+                        ? declarerOverallIndex
+                        : declarerOverallIndex - state.attackerCount;
+                int targetSourceIndex = declarersAreScenarioAttackers
+                        ? targetOverallIndex - state.attackerCount
+                        : targetOverallIndex;
+                int rawEdgeIndex = rawEdgeByPair[declarerCompiledIndex][targetCompiledIndex];
+                double score = projectedDeclarationScore(
+                        state,
+                        warState,
+                        rawEdges,
+                        rawEdgeIndex,
+                        declarerOverallIndex,
+                        targetOverallIndex,
+                        remainingDeclarerSlots[declarerSourceIndex],
+                        remainingTargetSlots[targetSourceIndex],
+                        activityWeightForOverallIndex(declarerOverallIndex)
+                );
+                if (blockedTurns > 0
+                        || score <= scoreThreshold
+                        || score <= deferredBestByDeclarer[declarerCompiledIndex]) {
+                    continue;
+                }
+                projectedEdges.add(
+                        declarerCompiledIndex,
+                        targetCompiledIndex,
+                        rawEdgeIndex >= 0 ? rawEdges.preferredWarTypeId(rawEdgeIndex) : (byte) WarType.ORD.ordinal(),
+                        rawEdgeIndex >= 0 ? rawEdges.bestAttackTypeId(rawEdgeIndex) : (byte) 0,
+                        (float) score,
+                        rawEdgeIndex >= 0 ? rawEdges.counterRisk(rawEdgeIndex) : 0f
+                );
             }
-            defenderNationIndex = state.attackerCount + edges.defenderIndex(edgeIndex);
-            targetCompiledIndex = targetCompiledIndexByOverall.get(defenderNationIndex);
-            if (targetCompiledIndex == null) {
-                continue;
-            }
-            profiledRedeclareCandidateEvaluations++;
-            if (warState.hasActivePair(attackerNationIndex, defenderNationIndex)) {
-                continue;
-            }
-            int blockedTurns = redeclareBlockedTurnsProjected(state, warState, attackerNationIndex, defenderNationIndex, turn);
-            double score = HeuristicRedeclarationPolicy.projectedRedeclareScore(
-                    state.combatStrength(attackerNationIndex),
-                    state.combatStrength(defenderNationIndex),
-                    scenario.attackerActivityWeight(attackerNationIndex),
-                    redeclareSourceEdges.scalarScore(edgeIndex),
-                    remainingAttackerSlots[attackerNationIndex]
-            );
-            if (blockedTurns > 0
-                    || score <= redeclarePlannerSettings.redeclareScoreThreshold()
-                    || score <= deferredBestByAttacker[declarerCompiledIndex]) {
-                continue;
-            }
-            projectedEdges.add(
-                    declarerCompiledIndex,
-                    targetCompiledIndex,
-                    redeclareSourceEdges.preferredWarTypeId(edgeIndex),
-                    redeclareSourceEdges.bestAttackTypeId(edgeIndex),
-                    (float) score,
-                    redeclareSourceEdges.counterRisk(edgeIndex)
-            );
         }
         if (projectedEdges.edgeCount() == 0) {
             return null;
         }
         return projectedLaterDeclarationInputs(projectedScenario, projectedEdges, declarerOverallIndexes, targetOverallIndexes);
+    }
+
+    private double projectedDeclarationScore(
+            ProjectionState state,
+            DenseWarState warState,
+            CandidateEdgeTable rawEdges,
+            int rawEdgeIndex,
+            int declarerOverallIndex,
+            int targetOverallIndex,
+            int remainingDeclarerSlots,
+            int remainingTargetSlots,
+            double activityWeight
+    ) {
+        double openingScore = rawEdgeIndex >= 0 ? Math.max(0d, rawEdges.scalarScore(rawEdgeIndex)) : 0d;
+        double declarerStrength = state.combatStrength(declarerOverallIndex);
+        double targetStrength = state.combatStrength(targetOverallIndex);
+        if (!(declarerStrength > 0d) || !(targetStrength > 0d)) {
+            return openingScore;
+        }
+        double activity = Math.max(0d, Math.min(1d, activityWeight));
+        double strengthRatio = declarerStrength / Math.max(1d, targetStrength);
+        double targetValue = Math.max(
+                MIN_PROJECTED_DECLARATION_TARGET_VALUE,
+                state.marginalActionSpaceValue(targetOverallIndex, warState)
+                        * PROJECTED_DECLARATION_TARGET_VALUE_MULTIPLIER
+        );
+        double declarationScore = activity
+                * targetValue
+                * Math.min(MAX_PROJECTED_DECLARATION_STRENGTH_RATIO, strengthRatio)
+                / Math.max(1, Math.min(Math.max(1, remainingDeclarerSlots), Math.max(1, remainingTargetSlots)));
+        return Math.max(openingScore, declarationScore);
+    }
+
+    private double activityWeightForOverallIndex(int nationIndex) {
+        return nationIndex < scenario.attackerCount()
+                ? scenario.attackerActivityWeight(nationIndex)
+                : scenario.defenderActivityWeight(nationIndex - scenario.attackerCount());
     }
 
 
@@ -1098,7 +1108,7 @@ final class LongHorizonForwardProjection {
             int turn,
             int[] counterIncidenceOut
     ) {
-        PlannerAutonomousCounterPlanner.Plan plan = PlannerAutonomousCounterPlanner.planScorerOnly(
+        PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
                 inputs.scenario(),
                 inputs.edges(),
                 plannerSettings,
@@ -1139,7 +1149,7 @@ final class LongHorizonForwardProjection {
             int maxDeclarations,
             boolean countThrottledDeclarations
     ) {
-        PlannerAutonomousCounterPlanner.Plan plan = PlannerAutonomousCounterPlanner.planScorerOnly(
+        PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
             inputs.scenario(),
             inputs.edges(),
             plannerSettings,
@@ -1557,84 +1567,6 @@ final class LongHorizonForwardProjection {
                     attackerUnitDamage,
                     result.defenderResistanceDelta(),
                     result.controlDelta()
-            );
-        }
-    }
-
-    private final class ProjectionCounterEvaluator implements HeuristicCounterDeclarationPolicy.CounterCandidateEvaluator {
-        private ProjectionState state;
-        private DenseWarState warState;
-        private double[] counterStrengths;
-        private double[] counterActivities;
-        private double[] targetStrengths;
-        private double[] targetActionValues;
-
-        void bind(
-                ProjectionState state,
-                DenseWarState warState,
-                double[] counterStrengths,
-                double[] counterActivities,
-                double[] targetStrengths,
-                double[] targetActionValues
-        ) {
-            this.state = state;
-            this.warState = warState;
-            this.counterStrengths = counterStrengths;
-            this.counterActivities = counterActivities;
-            this.targetStrengths = targetStrengths;
-            this.targetActionValues = targetActionValues;
-        }
-
-        @Override
-        public void evaluate(int defenderIndex, int attackerIndex, HeuristicCounterDeclarationPolicy.MutableCounterCandidate out) {
-            profiledCounterCandidateEvaluations++;
-            int counterNationIndex = state.attackerCount + defenderIndex;
-            int targetNationIndex = attackerIndex;
-            out.set(
-                    state.beigeTurns[counterNationIndex] <= 0
-                            && state.beigeTurns[targetNationIndex] <= 0
-                            && canCounterProjected(state, counterNationIndex, targetNationIndex),
-                    warState.hasActivePair(counterNationIndex, targetNationIndex),
-                    counterActivities[defenderIndex],
-                    counterStrengths[defenderIndex],
-                    targetStrengths[attackerIndex],
-                    targetActionValues[attackerIndex]
-            );
-        }
-    }
-
-    private final class ProjectionRedeclareEvaluator implements HeuristicRedeclarationPolicy.RedeclareCandidateEvaluator {
-        private ProjectionState state;
-        private DenseWarState warState;
-        private double[] attackerStrengths;
-        private double[] defenderStrengths;
-        private int turn;
-
-        void bind(ProjectionState state, DenseWarState warState, double[] attackerStrengths, double[] defenderStrengths, int turn) {
-            this.state = state;
-            this.warState = warState;
-            this.attackerStrengths = attackerStrengths;
-            this.defenderStrengths = defenderStrengths;
-            this.turn = turn;
-        }
-
-        @Override
-        public void evaluate(int edgeIndex, HeuristicRedeclarationPolicy.MutableRedeclareCandidate out) {
-            profiledRedeclareCandidateEvaluations++;
-            int attackerIndex = edges.attackerIndex(edgeIndex);
-            int defenderIndex = edges.defenderIndex(edgeIndex);
-            int defenderNationIndex = state.attackerCount + defenderIndex;
-            int blockedTurns = redeclareBlockedTurnsProjected(state, warState, attackerIndex, defenderNationIndex, turn);
-            out.set(
-                    attackerIndex,
-                    defenderIndex,
-                    blockedTurns == 0,
-                    warState.hasActivePair(attackerIndex, defenderNationIndex),
-                    attackerStrengths[attackerIndex],
-                    defenderStrengths[defenderIndex],
-                    scenario.attackerActivityWeight(attackerIndex),
-                    edges.scalarScore(edgeIndex),
-                    blockedTurns
             );
         }
     }

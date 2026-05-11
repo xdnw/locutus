@@ -1343,7 +1343,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (declarerNationIds.isEmpty() || targetNationIds.isEmpty()) {
             return List.of();
         }
-        PlannerAutonomousCounterPlanner.Plan plan = planAutonomousLaterDeclarations(
+        PlannerAutonomousDeclarationPlanner.Plan plan = planAutonomousLaterDeclarations(
                 declarerNationIds,
                 targetNationIds,
                 initialTurn,
@@ -1478,7 +1478,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    private PlannerAutonomousCounterPlanner.Plan planAutonomousLaterDeclarations(
+    private PlannerAutonomousDeclarationPlanner.Plan planAutonomousLaterDeclarations(
             Collection<Integer> declarerNationIds,
             Collection<Integer> targetNationIds,
             boolean initialTurn,
@@ -1489,38 +1489,28 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Set<Integer> preferredDeclarerNationIds,
             Map<Integer, DBNationSnapshot> projectedSnapshotsById
     ) {
-        List<LocalNation> declarers = mode == LaterDeclarationMode.COUNTER
-                ? eligibleCounterDeclarers(declarerNationIds, initialTurn)
-                : eligibleRedeclareDeclarers(declarerNationIds);
+        List<LocalNation> declarers = eligibleLaterDeclarers(
+                declarerNationIds,
+                mode == LaterDeclarationMode.COUNTER && initialTurn
+        );
         if (mode == LaterDeclarationMode.REDECLARE && !preferredDeclarerNationIds.isEmpty()) {
             declarers.removeIf(declarer -> !preferredDeclarerNationIds.contains(declarer.nationId()));
         }
-        List<LocalNation> targets = mode == LaterDeclarationMode.COUNTER
-                ? eligibleCounterTargets(targetNationIds)
-                : eligibleRedeclareTargets(targetNationIds);
+        List<LocalNation> targets = eligibleLaterTargets(targetNationIds);
         if (declarers.isEmpty() || targets.isEmpty()) {
-            return PlannerAutonomousCounterPlanner.Plan.empty();
+            return PlannerAutonomousDeclarationPlanner.Plan.empty();
         }
 
         List<DBNationSnapshot> declarerSnapshots = snapshotsFor(declarers, projectedSnapshotsById);
         List<DBNationSnapshot> targetSnapshots = snapshotsFor(targets, projectedSnapshotsById);
-        return mode == LaterDeclarationMode.COUNTER
-                ? PlannerAutonomousCounterPlanner.plan(
-                        declarerSnapshots,
-                        targetSnapshots,
-                        tuning,
-                        declarerPolicy,
-                        targetPolicy,
-                        remainingTurns
-                )
-                : PlannerAutonomousCounterPlanner.planWithProjectionContext(
-                        declarerSnapshots,
-                        targetSnapshots,
-                        tuning,
-                        declarerPolicy,
-                        targetPolicy,
-                        remainingTurns
-                );
+        return PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
+                declarerSnapshots,
+                targetSnapshots,
+                tuning,
+                declarerPolicy,
+                targetPolicy,
+                remainingTurns
+        );
     }
 
     private static boolean shouldPlanAutonomousLaterDeclarations(
@@ -1557,58 +1547,25 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 : SidePolicy.legacyPassive(name, effectiveObjective);
     }
 
-    private List<LocalNation> eligibleCounterDeclarers(Collection<Integer> declarerNationIds, boolean initialTurn) {
+    private List<LocalNation> eligibleLaterDeclarers(Collection<Integer> declarerNationIds, boolean initialTurnCounterRules) {
         List<LocalNation> ordered = orderedCounterDeclarers(declarerNationIds);
-        ordered.removeIf(declarer -> initialCounterBlocked(declarer, initialTurn) || freeOffensiveSlots(declarer) <= 0);
+        ordered.removeIf(declarer -> declarer.vmTurns > 0
+                || declarer.beigeTurns > 0
+                || initialCounterBlocked(declarer, initialTurnCounterRules)
+                || freeOffensiveSlots(declarer) <= 0);
         return ordered;
     }
 
-    private List<LocalNation> eligibleCounterTargets(Collection<Integer> targetNationIds) {
+    private List<LocalNation> eligibleLaterTargets(Collection<Integer> targetNationIds) {
         List<LocalNation> targets = new ArrayList<>(targetNationIds.size());
         for (int targetNationId : targetNationIds) {
             LocalNation target = nationsById.get(targetNationId);
-            if (target != null && freeDefensiveSlots(target) > 0) {
+            if (target != null
+                    && target.vmTurns <= 0
+                    && target.beigeTurns <= 0
+                    && freeDefensiveSlots(target) > 0) {
                 targets.add(target);
             }
-        }
-        targets.sort((left, right) -> Integer.compare(left.nationId(), right.nationId()));
-        return targets;
-    }
-
-    private List<LocalNation> eligibleRedeclareDeclarers(Collection<Integer> declarerNationIds) {
-        List<LocalNation> declarers = new ArrayList<>(declarerNationIds.size());
-        for (int declarerNationId : declarerNationIds) {
-            LocalNation declarer = nationsById.get(declarerNationId);
-            if (declarer == null) {
-                continue;
-            }
-            if (declarer.vmTurns > 0 || declarer.beigeTurns > 0 || freeOffensiveSlots(declarer) <= 0) {
-                continue;
-            }
-            declarers.add(declarer);
-        }
-        declarers.sort((left, right) -> {
-            int leftOffensive = left.activeBaseCurrentOffensiveWars(currentTurn) + activeOffensiveWarCount(left.nationId());
-            int rightOffensive = right.activeBaseCurrentOffensiveWars(currentTurn) + activeOffensiveWarCount(right.nationId());
-            if (leftOffensive != rightOffensive) {
-                return Integer.compare(leftOffensive, rightOffensive);
-            }
-            return Integer.compare(left.nationId(), right.nationId());
-        });
-        return declarers;
-    }
-
-    private List<LocalNation> eligibleRedeclareTargets(Collection<Integer> targetNationIds) {
-        List<LocalNation> targets = new ArrayList<>(targetNationIds.size());
-        for (int targetNationId : targetNationIds) {
-            LocalNation target = nationsById.get(targetNationId);
-            if (target == null) {
-                continue;
-            }
-            if (target.vmTurns > 0 || target.beigeTurns > 0 || freeDefensiveSlots(target) <= 0) {
-                continue;
-            }
-            targets.add(target);
         }
         targets.sort((left, right) -> Integer.compare(left.nationId(), right.nationId()));
         return targets;

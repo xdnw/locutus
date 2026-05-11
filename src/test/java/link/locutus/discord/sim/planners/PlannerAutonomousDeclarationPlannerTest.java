@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class PlannerAutonomousCounterPlannerTest {
+class PlannerAutonomousDeclarationPlannerTest {
 
     @Test
     void autonomousPlannerUsesSideOpeningAdmissionPolicy() {
@@ -49,7 +49,7 @@ class PlannerAutonomousCounterPlannerTest {
                 permissivePolicy.allowInitialDeclarations()
         );
 
-        PlannerAutonomousCounterPlanner.Plan permissivePlan = PlannerAutonomousCounterPlanner.plan(
+        PlannerAutonomousDeclarationPlanner.Plan permissivePlan = PlannerAutonomousDeclarationPlanner.plan(
                 List.of(declarer),
                 List.of(target),
                 SimTuning.defaults(),
@@ -57,7 +57,7 @@ class PlannerAutonomousCounterPlannerTest {
                 targetPolicy,
                 24
         );
-        PlannerAutonomousCounterPlanner.Plan restrictivePlan = PlannerAutonomousCounterPlanner.plan(
+        PlannerAutonomousDeclarationPlanner.Plan restrictivePlan = PlannerAutonomousDeclarationPlanner.plan(
                 List.of(declarer),
                 List.of(target),
                 SimTuning.defaults(),
@@ -87,7 +87,7 @@ class PlannerAutonomousCounterPlannerTest {
                 .build();
 
         StrategicObjective objective = BlitzObjective.NET_DAMAGE.objective();
-        PlannerAutonomousCounterPlanner.Plan plan = PlannerAutonomousCounterPlanner.plan(
+        PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.plan(
                 List.of(declarer),
                 List.of(target),
                 SimTuning.defaults(),
@@ -102,7 +102,7 @@ class PlannerAutonomousCounterPlannerTest {
     }
 
     @Test
-        void autonomousRedeclarePlannerUsesActingProjectionContextForAssignmentShape() {
+        void autonomousPlannerProjectionContextCanRejectScorerOnlyDeclarations() {
         DBNationSnapshot slotRichDeclarer = nation(101, 1)
                 .maxOff(2)
                 .unit(MilitaryUnit.SOLDIER, 24_000)
@@ -126,7 +126,7 @@ class PlannerAutonomousCounterPlannerTest {
                 .unit(MilitaryUnit.AIRCRAFT, 800)
                 .build();
 
-        StrategicObjective objective = BlitzObjective.CONTROL.objective();
+        StrategicObjective objective = BlitzObjective.NET_DAMAGE.objective();
         SidePolicy actingPolicy = SidePolicy.legacy("acting", objective);
         SidePolicy fallbackLikePolicy = new SidePolicy(
                 "fallbackLike",
@@ -139,7 +139,7 @@ class PlannerAutonomousCounterPlannerTest {
         );
         SidePolicy passiveTarget = SidePolicy.legacyPassive("target", objective);
 
-        PlannerAutonomousCounterPlanner.Plan fallbackLikePlan = PlannerAutonomousCounterPlanner.plan(
+        PlannerAutonomousDeclarationPlanner.Plan fallbackLikePlan = PlannerAutonomousDeclarationPlanner.plan(
                 List.of(slotRichDeclarer, peerDeclarer),
                 List.of(targetOne, targetTwo),
                 SimTuning.defaults(),
@@ -147,7 +147,7 @@ class PlannerAutonomousCounterPlannerTest {
                 passiveTarget,
                 72
         );
-        PlannerAutonomousCounterPlanner.Plan actingPlan = PlannerAutonomousCounterPlanner.planWithProjectionContext(
+        PlannerAutonomousDeclarationPlanner.Plan actingPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
                 List.of(slotRichDeclarer, peerDeclarer),
                 List.of(targetOne, targetTwo),
                 SimTuning.defaults(),
@@ -158,10 +158,8 @@ class PlannerAutonomousCounterPlannerTest {
 
         assertEquals(2, fallbackLikePlan.assignment().getOrDefault(slotRichDeclarer.nationId(), List.of()).size(),
                 "The fallback-like no-idle-pressure planner should still allow the stronger slot-rich declarer to monopolize both comparable targets in this fixture");
-        assertEquals(List.of(targetOne.nationId()), actingPlan.assignment().get(slotRichDeclarer.nationId()),
-                "Acting-side projection settings should now shape autonomous assignment instead of silently falling back to legacy defaults");
-        assertEquals(List.of(targetTwo.nationId()), actingPlan.assignment().get(peerDeclarer.nationId()),
-                "Autonomous planning should spread comparable targets once the acting-side projection context is actually used");
+        assertTrue(actingPlan.assignment().isEmpty(),
+                "Acting-side projection context should be able to reject declarations instead of forcing the scorer-only fallback shape");
     }
 
     private static DBNationSnapshot.Builder nation(int nationId, int teamId) {
