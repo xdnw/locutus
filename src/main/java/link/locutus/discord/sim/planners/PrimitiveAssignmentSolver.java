@@ -2,10 +2,10 @@ package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -254,18 +254,18 @@ final class PrimitiveAssignmentSolver {
         double[] dist = new double[nV];
         int[] prevEdge = new int[nV];
         boolean[] inQueue = new boolean[nV];
-        ArrayDeque<Integer> q = new ArrayDeque<>(nV);
+        IntArrayFIFOQueue q = new IntArrayFIFOQueue(Math.max(1, nV));
 
         while (true) {
             Arrays.fill(dist, Double.POSITIVE_INFINITY);
             Arrays.fill(prevEdge, -1);
             dist[SOURCE] = 0.0;
             q.clear();
-            q.add(SOURCE);
+            q.enqueue(SOURCE);
             inQueue[SOURCE] = true;
 
             while (!q.isEmpty()) {
-                int u = q.poll();
+                int u = q.dequeueInt();
                 inQueue[u] = false;
                 for (int eid = head[u]; eid != -1; eid = eNext[eid]) {
                     if (eCap[eid] > 0) {
@@ -275,7 +275,7 @@ final class PrimitiveAssignmentSolver {
                             dist[v] = nd;
                             prevEdge[v] = eid;
                             if (!inQueue[v]) {
-                                q.add(v);
+                                q.enqueue(v);
                                 inQueue[v] = true;
                             }
                         }

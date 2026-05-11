@@ -4007,32 +4007,32 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
 
         @Override
-        public Integer groundSuperiorityNationId() {
+        public int groundSuperiorityNationId() {
             return controlNationId(warBuffers.groundSuperiorityOwner[warIndex]);
         }
 
         @Override
-        public Integer airSuperiorityNationId() {
+        public int airSuperiorityNationId() {
             return controlNationId(warBuffers.airSuperiorityOwner[warIndex]);
         }
 
         @Override
-        public Integer blockadeNationId() {
+        public int blockadeNationId() {
             return controlNationId(warBuffers.blockadeOwner[warIndex]);
         }
 
         @Override
-        public void setgroundSuperiorityNationId(Integer nationId) {
+        public void setgroundSuperiorityNationId(int nationId) {
             warBuffers.setgroundSuperiorityOwner(warIndex, ownerCode(nationId));
         }
 
         @Override
-        public void setAirSuperiorityNationId(Integer nationId) {
+        public void setAirSuperiorityNationId(int nationId) {
             warBuffers.setAirSuperiorityOwner(warIndex, ownerCode(nationId));
         }
 
         @Override
-        public void setBlockadeNationId(Integer nationId) {
+        public void setBlockadeNationId(int nationId) {
             warBuffers.setBlockadeOwner(warIndex, ownerCode(nationId));
         }
 
@@ -4063,16 +4063,16 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return side == Side.ATTACKER ? LocalWarBuffers.OWNER_ATTACKER : LocalWarBuffers.OWNER_DEFENDER;
         }
 
-        private Integer controlNationId(int ownerCode) {
+        private int controlNationId(int ownerCode) {
             return switch (ownerCode) {
                 case LocalWarBuffers.OWNER_ATTACKER -> attacker.nationId();
                 case LocalWarBuffers.OWNER_DEFENDER -> defender.nationId();
-                default -> null;
+                default -> WarControlRules.MutableWarControlState.NO_NATION_ID;
             };
         }
 
-        private int ownerCode(Integer nationId) {
-            if (nationId == null) {
+        private int ownerCode(int nationId) {
+            if (nationId == WarControlRules.MutableWarControlState.NO_NATION_ID) {
                 return LocalWarBuffers.OWNER_NONE;
             }
             if (nationId == attacker.nationId()) {

@@ -73,7 +73,7 @@ class WarControlRulesTest {
         );
 
         assertEquals(1, currentWar.blockadeNationId);
-        assertNull(otherWar.blockadeNationId);
+        assertEquals(WarControlRules.MutableWarControlState.NO_NATION_ID, otherWar.blockadeNationId);
         assertEquals(List.of(1001, 1002), blockadeChangedWars);
     }
 
@@ -101,7 +101,7 @@ class WarControlRulesTest {
                 ignored -> { }
         );
 
-        assertNull(otherWar.airSuperiorityNationId);
+        assertEquals(WarControlRules.MutableWarControlState.NO_NATION_ID, otherWar.airSuperiorityNationId);
     }
 
     @Test
@@ -191,9 +191,9 @@ class WarControlRulesTest {
         private final int warId;
         private final int attackerNationId;
         private final int defenderNationId;
-        private Integer groundSuperiorityNationId;
-        private Integer airSuperiorityNationId;
-        private Integer blockadeNationId;
+        private int groundSuperiorityNationId = NO_NATION_ID;
+        private int airSuperiorityNationId = NO_NATION_ID;
+        private int blockadeNationId = NO_NATION_ID;
 
         private TestWar(int warId, int attackerNationId, int defenderNationId) {
             this.warId = warId;
@@ -215,32 +215,32 @@ class WarControlRulesTest {
         }
 
         @Override
-        public Integer groundSuperiorityNationId() {
+        public int groundSuperiorityNationId() {
             return groundSuperiorityNationId;
         }
 
         @Override
-        public Integer airSuperiorityNationId() {
+        public int airSuperiorityNationId() {
             return airSuperiorityNationId;
         }
 
         @Override
-        public Integer blockadeNationId() {
+        public int blockadeNationId() {
             return blockadeNationId;
         }
 
         @Override
-        public void setgroundSuperiorityNationId(Integer nationId) {
+        public void setgroundSuperiorityNationId(int nationId) {
             groundSuperiorityNationId = nationId;
         }
 
         @Override
-        public void setAirSuperiorityNationId(Integer nationId) {
+        public void setAirSuperiorityNationId(int nationId) {
             airSuperiorityNationId = nationId;
         }
 
         @Override
-        public void setBlockadeNationId(Integer nationId) {
+        public void setBlockadeNationId(int nationId) {
             blockadeNationId = nationId;
         }
     }

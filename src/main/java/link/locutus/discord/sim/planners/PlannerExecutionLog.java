@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners;
 
+import java.util.Collections;
 import java.util.List;
 
 record PlannerExecutionLog(List<Turn> turns) {
@@ -20,7 +21,7 @@ record PlannerExecutionLog(List<Turn> turns) {
         }
 
         private static <T> List<T> immutable(List<T> values) {
-            return values == null || values.isEmpty() ? List.of() : List.copyOf(values);
+            return values == null || values.isEmpty() ? List.of() : Collections.unmodifiableList(values);
         }
     }
 

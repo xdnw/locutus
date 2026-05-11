@@ -22,29 +22,31 @@ public final class WarControlRules {
     }
 
     public interface MutableWarControlState {
+        int NO_NATION_ID = -1;
+
         boolean isActive();
 
-        Integer groundSuperiorityNationId();
+        int groundSuperiorityNationId();
 
-        Integer airSuperiorityNationId();
+        int airSuperiorityNationId();
 
-        Integer blockadeNationId();
+        int blockadeNationId();
 
-        void setgroundSuperiorityNationId(Integer nationId);
+        void setgroundSuperiorityNationId(int nationId);
 
-        void setAirSuperiorityNationId(Integer nationId);
+        void setAirSuperiorityNationId(int nationId);
 
-        void setBlockadeNationId(Integer nationId);
+        void setBlockadeNationId(int nationId);
     }
     private enum ControlKind {
         GROUND {
             @Override
-            Integer owner(MutableWarControlState war) {
+            int owner(MutableWarControlState war) {
                 return war.groundSuperiorityNationId();
             }
 
             @Override
-            void setOwner(MutableWarControlState war, Integer nationId) {
+            void setOwner(MutableWarControlState war, int nationId) {
                 war.setgroundSuperiorityNationId(nationId);
             }
 
@@ -70,12 +72,12 @@ public final class WarControlRules {
         },
         AIR {
             @Override
-            Integer owner(MutableWarControlState war) {
+            int owner(MutableWarControlState war) {
                 return war.airSuperiorityNationId();
             }
 
             @Override
-            void setOwner(MutableWarControlState war, Integer nationId) {
+            void setOwner(MutableWarControlState war, int nationId) {
                 war.setAirSuperiorityNationId(nationId);
             }
 
@@ -101,12 +103,12 @@ public final class WarControlRules {
         },
         BLOCKADE {
             @Override
-            Integer owner(MutableWarControlState war) {
+            int owner(MutableWarControlState war) {
                 return war.blockadeNationId();
             }
 
             @Override
-            void setOwner(MutableWarControlState war, Integer nationId) {
+            void setOwner(MutableWarControlState war, int nationId) {
                 war.setBlockadeNationId(nationId);
             }
 
@@ -131,9 +133,9 @@ public final class WarControlRules {
             }
         };
 
-        abstract Integer owner(MutableWarControlState war);
+        abstract int owner(MutableWarControlState war);
 
-        abstract void setOwner(MutableWarControlState war, Integer nationId);
+        abstract void setOwner(MutableWarControlState war, int nationId);
 
         abstract boolean canHold(CombatKernel.NationState nation);
 
@@ -253,14 +255,14 @@ public final class WarControlRules {
             SuperiorityFlagDelta delta,
             Consumer<? super W> onBlockadeChanged
     ) {
-        Integer newOwner = kind.owner(war);
+        int newOwner = kind.owner(war);
         int controlDelta = kind.delta(delta);
         if (controlDelta > 0) {
             newOwner = actorNationId;
         } else if (controlDelta < 0) {
             newOwner = defenderNationId;
-        } else if (kind.clearDefender(delta) && Objects.equals(newOwner, defenderNationId)) {
-            newOwner = null;
+        } else if (kind.clearDefender(delta) && newOwner == defenderNationId) {
+            newOwner = MutableWarControlState.NO_NATION_ID;
         }
         setOwner(war, kind, newOwner, onBlockadeChanged);
     }
@@ -299,8 +301,8 @@ public final class WarControlRules {
             if (!war.isActive()) {
                 continue;
             }
-            Integer owner = kind.owner(war);
-            if (owner != null && owner != nationId) {
+            int owner = kind.owner(war);
+            if (owner != MutableWarControlState.NO_NATION_ID && owner != nationId) {
                 return true;
             }
         }
@@ -317,8 +319,8 @@ public final class WarControlRules {
             if (!war.isActive()) {
                 continue;
             }
-            if (Objects.equals(kind.owner(war), nationId)) {
-                setOwner(war, kind, null, onBlockadeChanged);
+            if (kind.owner(war) == nationId) {
+                setOwner(war, kind, MutableWarControlState.NO_NATION_ID, onBlockadeChanged);
             }
         }
     }
@@ -326,11 +328,11 @@ public final class WarControlRules {
     private static <W extends MutableWarControlState> void setOwner(
             W war,
             ControlKind kind,
-            Integer nationId,
+            int nationId,
             Consumer<? super W> onBlockadeChanged
     ) {
-        Integer oldOwner = kind.owner(war);
-        if (Objects.equals(oldOwner, nationId)) {
+        int oldOwner = kind.owner(war);
+        if (oldOwner == nationId) {
             return;
         }
         kind.setOwner(war, nationId);

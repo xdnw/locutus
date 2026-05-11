@@ -1758,8 +1758,8 @@ final class LongHorizonForwardProjection {
                 state.nationIds[warState.defenderNationIndex[edgeIndex]],
                 result.controlDelta()
         );
-        state.recalculateScore(warState.attackerNationIndex[edgeIndex]);
-        state.recalculateScore(warState.defenderNationIndex[edgeIndex]);
+        state.invalidateScore(warState.attackerNationIndex[edgeIndex]);
+        state.invalidateScore(warState.defenderNationIndex[edgeIndex]);
         clearInvalidControls(
             state,
             warState,
@@ -1802,8 +1802,8 @@ final class LongHorizonForwardProjection {
             double debited = state.subtractResource(loserIndex, ResourceType.MONEY, transferred);
             state.addResource(winnerIndex, ResourceType.MONEY, debited);
         }
-        state.recalculateScore(winnerIndex);
-        state.recalculateScore(loserIndex);
+        state.invalidateScore(winnerIndex);
+        state.invalidateScore(loserIndex);
     }
 
     private static void clearInvalidControls(
@@ -1980,6 +1980,7 @@ final class LongHorizonForwardProjection {
         private final double[] resourcesFlat;
         private final double[] cityInfraFlat;
         private final double[] scores;
+        private final boolean[] scoreDirty;
         private final double[] staticScoreComponent;
         private final int[] researchBits;
         private final long[] projectBits;
@@ -2034,6 +2035,7 @@ final class LongHorizonForwardProjection {
                 double[] resourcesFlat,
                 double[] cityInfraFlat,
                 double[] scores,
+                boolean[] scoreDirty,
                 double[] staticScoreComponent,
                 int[] researchBits,
                 long[] projectBits,
@@ -2073,6 +2075,7 @@ final class LongHorizonForwardProjection {
             this.resourcesFlat = resourcesFlat;
             this.cityInfraFlat = cityInfraFlat;
             this.scores = scores;
+            this.scoreDirty = scoreDirty;
             this.staticScoreComponent = staticScoreComponent;
             this.researchBits = researchBits;
             this.projectBits = projectBits;
@@ -2133,6 +2136,7 @@ final class LongHorizonForwardProjection {
             double[] resourcesFlat = new double[nationCount * resourceStride];
             double[] cityInfraFlat = new double[totalCities];
             double[] scores = new double[nationCount];
+            boolean[] scoreDirty = new boolean[nationCount];
             double[] staticScoreComponent = new double[nationCount];
             int[] researchBits = new int[nationCount];
             long[] projectBits = new long[nationCount];
@@ -2217,6 +2221,7 @@ final class LongHorizonForwardProjection {
                     resourcesFlat,
                     cityInfraFlat,
                     scores,
+                    scoreDirty,
                     staticScoreComponent,
                     researchBits,
                     projectBits,
@@ -2245,7 +2250,7 @@ final class LongHorizonForwardProjection {
                 state.refreshInfraLeaders(nationIndex);
                 baselineInfra[nationIndex] = state.totalInfra(nationIndex);
                 state.recalculateScore(nationIndex);
-                baselineScores[nationIndex] = state.scores[nationIndex];
+                baselineScores[nationIndex] = state.score(nationIndex);
             }
             state.captureInitialMutableState();
             return state;
@@ -2294,6 +2299,7 @@ final class LongHorizonForwardProjection {
                     resourcesFlat.clone(),
                     cityInfraFlat.clone(),
                     scores.clone(),
+                    scoreDirty.clone(),
                     beigeTurns.clone(),
                     maxInfraCityIndexByNation.clone(),
                     runnerUpInfraCityIndexByNation.clone()
@@ -2313,6 +2319,7 @@ final class LongHorizonForwardProjection {
             System.arraycopy(initialResourcesFlat, 0, resourcesFlat, 0, resourcesFlat.length);
             System.arraycopy(initialCityInfraFlat, 0, cityInfraFlat, 0, cityInfraFlat.length);
             System.arraycopy(initialScores, 0, scores, 0, scores.length);
+            Arrays.fill(scoreDirty, false);
             System.arraycopy(initialBeigeTurns, 0, beigeTurns, 0, beigeTurns.length);
             System.arraycopy(initialMaxInfraCityIndexByNation, 0, maxInfraCityIndexByNation, 0, maxInfraCityIndexByNation.length);
             System.arraycopy(initialRunnerUpInfraCityIndexByNation, 0, runnerUpInfraCityIndexByNation, 0, runnerUpInfraCityIndexByNation.length);
@@ -2331,6 +2338,7 @@ final class LongHorizonForwardProjection {
             System.arraycopy(checkpoint.resourcesFlat(), 0, resourcesFlat, 0, resourcesFlat.length);
             System.arraycopy(checkpoint.cityInfraFlat(), 0, cityInfraFlat, 0, cityInfraFlat.length);
             System.arraycopy(checkpoint.scores(), 0, scores, 0, scores.length);
+            System.arraycopy(checkpoint.scoreDirty(), 0, scoreDirty, 0, scoreDirty.length);
             System.arraycopy(checkpoint.beigeTurns(), 0, beigeTurns, 0, beigeTurns.length);
             System.arraycopy(checkpoint.maxInfraCityIndexByNation(), 0, maxInfraCityIndexByNation, 0, maxInfraCityIndexByNation.length);
             System.arraycopy(checkpoint.runnerUpInfraCityIndexByNation(), 0, runnerUpInfraCityIndexByNation, 0, runnerUpInfraCityIndexByNation.length);
@@ -2351,7 +2359,7 @@ final class LongHorizonForwardProjection {
                     changed = true;
                 }
                 if (changed) {
-                    recalculateScore(nationIndex);
+                    invalidateScore(nationIndex);
                 }
             }
         }
@@ -2388,7 +2396,7 @@ final class LongHorizonForwardProjection {
                     changed = true;
                 }
                 if (changed) {
-                    recalculateScore(nationIndex);
+                    invalidateScore(nationIndex);
                 }
             }
         }
@@ -2450,7 +2458,7 @@ final class LongHorizonForwardProjection {
                 }
             }
             if (changed) {
-                recalculateScore(nationIndex);
+                invalidateScore(nationIndex);
             }
         }
 
@@ -2471,7 +2479,7 @@ final class LongHorizonForwardProjection {
             double removed = Math.min(current, amount);
             cityInfraFlat[globalCityIndex] = current - removed;
             refreshInfraLeadersAfterDamage(nationIndex, maxCityIndex);
-            recalculateScore(nationIndex);
+            invalidateScore(nationIndex);
         }
 
         void applyVictoryInfraPercent(int nationIndex, double percent) {
@@ -2486,7 +2494,7 @@ final class LongHorizonForwardProjection {
                 cityInfraFlat[globalCityIndex] = WarOutcomeMath.victoryInfraAfterCents(beforeCents, percentMilli) * 0.01d;
             }
             refreshInfraLeaders(nationIndex);
-            recalculateScore(nationIndex);
+            invalidateScore(nationIndex);
         }
 
         private int maxInfraCityIndex(int nationIndex) {
@@ -2582,6 +2590,11 @@ final class LongHorizonForwardProjection {
                 }
             }
             scores[nationIndex] = score;
+            scoreDirty[nationIndex] = false;
+        }
+
+        void invalidateScore(int nationIndex) {
+            scoreDirty[nationIndex] = true;
         }
 
         double targetPressure(int attackerNationIndex, int defenderNationIndex) {
@@ -2737,12 +2750,12 @@ final class LongHorizonForwardProjection {
             int opponentCount = attackerSide ? defenderCount : attackerCount;
             return StrategicAssetValue.relevanceForWarRange(
                     cityCounts[nationIndex],
-                    scores[nationIndex],
+                score(nationIndex),
                     baseHasActiveWars[nationIndex] ? 1 : 0,
                     opponentCount,
                     opponentIndex -> attackerSide
-                            ? scores[attackerCount + opponentIndex]
-                            : scores[opponentIndex]
+                    ? score(attackerCount + opponentIndex)
+                    : score(opponentIndex)
             );
         }
 
@@ -2836,6 +2849,9 @@ final class LongHorizonForwardProjection {
         }
 
         double score(int nationIndex) {
+            if (scoreDirty[nationIndex]) {
+                recalculateScore(nationIndex);
+            }
             return scores[nationIndex];
         }
 
@@ -3584,45 +3600,45 @@ final class LongHorizonForwardProjection {
         }
 
         @Override
-        public Integer groundSuperiorityNationId() {
+        public int groundSuperiorityNationId() {
             return controlNationId(warState.groundSuperiorityOwner[warIndex]);
         }
 
         @Override
-        public Integer airSuperiorityNationId() {
+        public int airSuperiorityNationId() {
             return controlNationId(warState.airSuperiorityOwner[warIndex]);
         }
 
         @Override
-        public Integer blockadeNationId() {
+        public int blockadeNationId() {
             return controlNationId(warState.blockadeOwner[warIndex]);
         }
 
         @Override
-        public void setgroundSuperiorityNationId(Integer nationId) {
+        public void setgroundSuperiorityNationId(int nationId) {
             warState.groundSuperiorityOwner[warIndex] = ownerCode(nationId);
         }
 
         @Override
-        public void setAirSuperiorityNationId(Integer nationId) {
+        public void setAirSuperiorityNationId(int nationId) {
             warState.airSuperiorityOwner[warIndex] = ownerCode(nationId);
         }
 
         @Override
-        public void setBlockadeNationId(Integer nationId) {
+        public void setBlockadeNationId(int nationId) {
             warState.blockadeOwner[warIndex] = ownerCode(nationId);
         }
 
-        private Integer controlNationId(int ownerCode) {
+        private int controlNationId(int ownerCode) {
             return switch (ownerCode) {
                 case DenseWarState.OWNER_ATTACKER -> state.nationIds[warState.attackerNationIndex[warIndex]];
                 case DenseWarState.OWNER_DEFENDER -> state.nationIds[warState.defenderNationIndex[warIndex]];
-                default -> null;
+                default -> WarControlRules.MutableWarControlState.NO_NATION_ID;
             };
         }
 
-        private int ownerCode(Integer nationId) {
-            if (nationId == null) {
+        private int ownerCode(int nationId) {
+            if (nationId == WarControlRules.MutableWarControlState.NO_NATION_ID) {
                 return DenseWarState.OWNER_NONE;
             }
             if (nationId == state.nationIds[warState.attackerNationIndex[warIndex]]) {
@@ -4160,6 +4176,7 @@ final class LongHorizonForwardProjection {
             double[] resourcesFlat,
             double[] cityInfraFlat,
             double[] scores,
+            boolean[] scoreDirty,
             int[] beigeTurns,
             int[] maxInfraCityIndexByNation,
             int[] runnerUpInfraCityIndexByNation

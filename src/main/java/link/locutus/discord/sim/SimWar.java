@@ -137,32 +137,32 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
     }
 
     @Override
-    public Integer groundSuperiorityNationId() {
+    public int groundSuperiorityNationId() {
         return controlNationId(groundSuperiorityOwner);
     }
 
     @Override
-    public Integer airSuperiorityNationId() {
+    public int airSuperiorityNationId() {
         return controlNationId(airSuperiorityOwner);
     }
 
     @Override
-    public Integer blockadeNationId() {
+    public int blockadeNationId() {
         return controlNationId(blockadeOwner);
     }
 
     @Override
-    public void setgroundSuperiorityNationId(Integer nationId) {
+    public void setgroundSuperiorityNationId(int nationId) {
         groundSuperiorityOwner = controlSide(nationId);
     }
 
     @Override
-    public void setAirSuperiorityNationId(Integer nationId) {
+    public void setAirSuperiorityNationId(int nationId) {
         airSuperiorityOwner = controlSide(nationId);
     }
 
     @Override
-    public void setBlockadeNationId(Integer nationId) {
+    public void setBlockadeNationId(int nationId) {
         blockadeOwner = controlSide(nationId);
     }
 
@@ -400,15 +400,15 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
         return side == SimSide.ATTACKER ? SimSide.DEFENDER : SimSide.ATTACKER;
     }
 
-    private Integer controlNationId(SimSide owner) {
+    private int controlNationId(SimSide owner) {
         if (owner == null) {
-            return null;
+            return WarControlRules.MutableWarControlState.NO_NATION_ID;
         }
         return owner == SimSide.ATTACKER ? attackerNationId : defenderNationId;
     }
 
-    private SimSide controlSide(Integer nationId) {
-        if (nationId == null) {
+    private SimSide controlSide(int nationId) {
+        if (nationId == WarControlRules.MutableWarControlState.NO_NATION_ID) {
             return null;
         }
         return sideForNation(nationId);
