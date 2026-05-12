@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
@@ -1906,6 +1907,83 @@ class LongHorizonAssignmentOptimizerTest {
                 reused.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts, counterOpportunityModel, attackerCaps),
                 1e-9,
                 "Same-topology scorer-model reuse must preserve assignment scoring"
+        );
+        for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
+            assertEquals(fresh.attackerCommitmentMarginalScore(attackerIndex, 0), reused.attackerCommitmentMarginalScore(attackerIndex, 0), 1e-9);
+            assertEquals(fresh.attackerIdlePressureMarginalScore(attackerIndex), reused.attackerIdlePressureMarginalScore(attackerIndex), 1e-9);
+        }
+        for (int defenderIndex = 0; defenderIndex < defenderCounts.length; defenderIndex++) {
+            assertEquals(fresh.defenderPressureMarginalScore(defenderIndex, 0), reused.defenderPressureMarginalScore(defenderIndex, 0), 1e-9);
+        }
+    }
+
+    @Test
+    void sameTopologyRescaledAttackerVariantMatchesFreshScoringModel() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(3).build(),
+                nation(2, 1, 880).toBuilder().maxOff(2).build(),
+                nation(3, 1, 860).toBuilder().maxOff(1).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 880).toBuilder().maxOff(1).build(),
+                nation(103, 2, 860).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = commitmentScenarioEdges();
+        edges.add(0, 2, (byte) 0, (byte) 0, 6f, 0f, 4f, 0f, 0f, 2f, 1f);
+        edges.add(1, 2, (byte) 0, (byte) 0, 7f, 0f, 5f, 0f, 0f, 3f, 2f);
+        CandidateEdgeTable variantEdges = CandidateEdgeTable.copyOf(edges);
+        variantEdges.rescaleAttackerEdgesFromProjectedState(0, 0.4f);
+        variantEdges.rescaleAttackerEdgesFromProjectedState(1, 0.6f);
+        int[] attackerCaps = {2, 1, 1};
+        int[] defenderCaps = {1, 1, 1};
+        int[] attackerStrengthRanks = {0, 1, 2};
+
+        LongHorizonAssignmentScoringModel fresh = LongHorizonAssignmentScoringModel.create(
+                variantEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                true,
+                SidePlannerSettings.legacy()
+        );
+        LongHorizonAssignmentScoringModel reused = LongHorizonAssignmentScoringModel.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                true,
+                SidePlannerSettings.legacy()
+        ).sameTopologyRescaledAttackerVariant(
+                variantEdges,
+                attackerCaps,
+                attackerStrengthRanks,
+                72,
+                SidePlannerSettings.legacy(),
+                new IntArrayList(new int[]{0, 1})
+        );
+
+        boolean[] edgeAssigned = {true, false, true, true, false};
+        int[] attackerCounts = {1, 1, 1};
+        int[] defenderCounts = {2, 1, 0};
+        LongHorizonCounterOpportunityModel counterOpportunityModel = LongHorizonForwardProjection.counterOpportunityModel(
+                scenario,
+                72,
+                1.0d
+        );
+
+        assertEquals(
+                fresh.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts, counterOpportunityModel, attackerCaps),
+                reused.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts, counterOpportunityModel, attackerCaps),
+                1e-9,
+                "Rescaled-attacker scorer-model reuse must preserve assignment scoring"
         );
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
             assertEquals(fresh.attackerCommitmentMarginalScore(attackerIndex, 0), reused.attackerCommitmentMarginalScore(attackerIndex, 0), 1e-9);

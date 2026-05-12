@@ -186,11 +186,12 @@ final class LongHorizonFeedbackSearch {
             }
             variantsRemaining--;
 
-                LongHorizonControlProjection iterationSolveProjection = seedProjection.sameSettingsScorerOnlyVariant(
+                LongHorizonControlProjection iterationSolveProjection = seedProjection.sameSettingsScorerOnlyRescaledAttackerVariant(
                     currentEdges,
                     adjustedCaps,
                     defenderCaps,
-                    attackerStrengthRanks
+                    attackerStrengthRanks,
+                    overCountered
             );
             LongHorizonMarginalFlowSolver.Result iterationResult = LongHorizonMarginalFlowSolver.solve(
                     currentEdges,

@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 /**
@@ -589,6 +590,55 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                     variantAttackerCaps
                 );
                 }
+
+    LongHorizonControlProjection sameSettingsScorerOnlyRescaledAttackerVariant(
+            CandidateEdgeTable variantEdges,
+            int[] variantAttackerCaps,
+            int[] variantDefenderCaps,
+            int[] variantAttackerStrengthRanks,
+            IntArrayList touchedAttackers
+    ) {
+        return new LongHorizonControlProjection(
+                null,
+                null,
+                null,
+                variantEdges,
+                scenario,
+                variantDefenderCaps,
+                variantAttackerStrengthRanks,
+                horizonTurns,
+                horizonFactor,
+                includeSlotDenial,
+                attackerPlannerSettings,
+                defenderPlannerSettings,
+                attackerProjectionPolicies,
+                defenderProjectionPolicies,
+                variantEdges.sameProjectionTopology(edges)
+                        ? assignmentScoringModel.sameTopologyRescaledAttackerVariant(
+                            variantEdges,
+                            variantAttackerCaps,
+                            variantAttackerStrengthRanks,
+                            horizonTurns,
+                            attackerPlannerSettings,
+                            touchedAttackers
+                        )
+                        : LongHorizonAssignmentScoringModel.create(
+                            variantEdges,
+                            scenario,
+                            variantAttackerCaps,
+                            variantDefenderCaps,
+                            variantAttackerStrengthRanks,
+                            horizonTurns,
+                            horizonFactor,
+                            includeSlotDenial,
+                            attackerPlannerSettings
+                        ),
+                forwardProjectionScenarioBoundInputs.counterOpportunityModel(),
+                null,
+                forwardProjectionScenarioBoundInputs,
+                variantAttackerCaps
+        );
+    }
 
     /**
      * Computes the long-horizon objective scalar from a dense edge-assignment buffer
