@@ -343,6 +343,16 @@ class PlannerConflictExecutorTest {
         );
         List<Integer> counterDeclarerIds = List.of(defenderOne.nationId(), defenderTwo.nationId());
         List<Integer> counterTargetIds = List.of(attackerOne.nationId(), attackerTwo.nationId());
+        List<LaterDeclarationScope> laterDeclarationScopes = List.of(
+                new LaterDeclarationScope(
+                        counterDeclarerIds,
+                        counterTargetIds,
+                        true,
+                        false,
+                        SidePolicy.legacy("laterDeclarerOpposingSide", new DamageObjective()),
+                        SidePolicy.legacyPassive("laterTargetOpposingSide", new DamageObjective())
+                )
+        );
 
         PlannerLocalConflict original = PlannerLocalConflict.create(
                 OverrideSet.EMPTY,
@@ -356,9 +366,7 @@ class PlannerConflictExecutorTest {
                     assignment,
                     Map.of(),
                     turn == 0,
-                    counterDeclarerIds,
-                    counterTargetIds,
-                    new DamageObjective(),
+                    laterDeclarationScopes,
                     3 - turn
             );
         }

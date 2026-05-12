@@ -200,6 +200,11 @@ final class LongHorizonForwardProjection {
         AttackType.NAVAL_INFRA
     };
 
+    private enum ProjectedLaterDeclarationLane {
+        OPENING_SIDE,
+        RESPONDING_SIDE
+    }
+
     private final CandidateEdgeTable edges;
     private final CompiledScenario scenario;
     private final int horizonTurns;
@@ -786,12 +791,24 @@ final class LongHorizonForwardProjection {
             if (turn > 0) {
                 advanceTurn(state, warState, turn, activeWarsByNation);
             }
-            if (shouldDeclareProjectedCounters(turn, attackerCounts, defenderCounts)) {
-                declareProjectedCounters(state, warState, attackerCounts, turn, counterIncidenceOut);
+            if (shouldDeclareProjectedLaterDeclarations(ProjectedLaterDeclarationLane.RESPONDING_SIDE, turn, warState, attackerCounts, defenderCounts)) {
+                declareProjectedLaterDeclarations(
+                        state,
+                        warState,
+                        ProjectedLaterDeclarationLane.RESPONDING_SIDE,
+                        turn,
+                        counterIncidenceOut
+                );
                 warState.fillActiveWarsByNation(activeWarsByNation);
             }
-            if (shouldDeclareProjectedRedeclares(warState)) {
-                declareProjectedAttackerRedeclares(state, warState, turn);
+            if (shouldDeclareProjectedLaterDeclarations(ProjectedLaterDeclarationLane.OPENING_SIDE, turn, warState, attackerCounts, defenderCounts)) {
+                declareProjectedLaterDeclarations(
+                        state,
+                        warState,
+                        ProjectedLaterDeclarationLane.OPENING_SIDE,
+                        turn,
+                        null
+                );
                 warState.fillActiveWarsByNation(activeWarsByNation);
             }
             for (int warIndex = warState.firstActiveWar(); warIndex >= 0; ) {
@@ -934,7 +951,16 @@ final class LongHorizonForwardProjection {
         );
     }
 
-    private boolean shouldDeclareProjectedCounters(int turn, int[] attackerCounts, int[] defenderCounts) {
+    private boolean shouldDeclareProjectedLaterDeclarations(
+            ProjectedLaterDeclarationLane lane,
+            int turn,
+            DenseWarState warState,
+            int[] attackerCounts,
+            int[] defenderCounts
+    ) {
+        if (lane == ProjectedLaterDeclarationLane.OPENING_SIDE) {
+            return edges.edgeCount() > 0 && warState.warCount > 0;
+        }
         if (horizonTurns <= PROJECTED_COUNTER_START_TURN || turn < PROJECTED_COUNTER_START_TURN) {
             return false;
         }
@@ -955,93 +981,126 @@ final class LongHorizonForwardProjection {
         return false;
     }
 
-    private void declareProjectedCounters(
+    private void declareProjectedLaterDeclarations(
             ProjectionState state,
             DenseWarState warState,
-            int[] attackerCounts,
+            ProjectedLaterDeclarationLane lane,
             int turn,
             int[] counterIncidenceOut
     ) {
-        profiledCounterTurns++;
-        SidePlannerSettings counterPlannerSettings = defenderPlannerSettings;
+        if (lane == ProjectedLaterDeclarationLane.OPENING_SIDE) {
+            profiledRedeclareTurns++;
+        } else {
+            profiledCounterTurns++;
+        }
+        SidePlannerSettings plannerSettings = lane == ProjectedLaterDeclarationLane.OPENING_SIDE
+                ? attackerPlannerSettings
+                : defenderPlannerSettings;
         warState.fillActiveWarCounts(scratchActiveOffWarsByNation, scratchActiveDefWarsByNation);
-        fillProjectedCounterOffensiveSlots(
-            state,
-            scratchActiveOffWarsByNation,
-            scratchCounterOffSlots,
-            counterPlannerSettings.activityActThreshold()
+        int[] remainingDeclarerSlots = lane == ProjectedLaterDeclarationLane.OPENING_SIDE
+                ? scratchRedeclareAttSlots
+                : scratchCounterOffSlots;
+        int[] remainingTargetSlots = lane == ProjectedLaterDeclarationLane.OPENING_SIDE
+                ? scratchRedeclareDefSlots
+                : scratchCounterDefSlots;
+        fillProjectedLaterDeclarationOffensiveSlots(
+                state,
+                lane,
+                scratchActiveOffWarsByNation,
+                remainingDeclarerSlots,
+                plannerSettings.activityActThreshold()
         );
-        fillProjectedCounterTargetDefensiveSlots(state, scratchActiveDefWarsByNation, scratchCounterDefSlots);
-        int[] remainingCounterOffensiveSlots = scratchCounterOffSlots;
-        int[] remainingTargetDefensiveSlots = scratchCounterDefSlots;
-        if (!hasAnyAvailable(remainingCounterOffensiveSlots) || !hasAnyAvailable(remainingTargetDefensiveSlots)) {
-            profiledCounterTurnsNoSlots++;
+        fillProjectedLaterDeclarationTargetDefensiveSlots(
+                state,
+                lane,
+                scratchActiveDefWarsByNation,
+                remainingTargetSlots
+        );
+        if (!hasAnyAvailable(remainingDeclarerSlots) || !hasAnyAvailable(remainingTargetSlots)) {
+            if (lane == ProjectedLaterDeclarationLane.OPENING_SIDE) {
+                profiledRedeclareTurnsNoSlots++;
+            } else {
+                profiledCounterTurnsNoSlots++;
+            }
             return;
         }
-        ProjectedLaterDeclarationInputs inputs = buildProjectedCounterDeclarationInputs(
+        ProjectedLaterDeclarationInputs inputs = buildProjectedLaterDeclarationInputs(
+                lane,
                 state,
                 warState,
-                remainingCounterOffensiveSlots,
-                remainingTargetDefensiveSlots,
-                counterPlannerSettings
+                remainingDeclarerSlots,
+                remainingTargetSlots,
+                plannerSettings,
+                turn
         );
         if (inputs == null) {
-            profiledCounterTurnsNoSlots++;
+            if (lane == ProjectedLaterDeclarationLane.OPENING_SIDE) {
+                profiledRedeclareTurnsNoSlots++;
+            } else {
+                profiledCounterTurnsNoSlots++;
+            }
             return;
         }
-        profiledCounterDeclarations += applyProjectedLaterDeclarationPlan(
+        int declarations = applyProjectedLaterDeclarationPlan(
                 warState,
                 inputs,
-                counterPlannerSettings,
+                plannerSettings,
                 turn,
-                counterIncidenceOut,
-                counterPlannerSettings.maxCountersPerTurn(),
-                true
+                lane == ProjectedLaterDeclarationLane.RESPONDING_SIDE ? counterIncidenceOut : null,
+                lane == ProjectedLaterDeclarationLane.RESPONDING_SIDE
+                        ? plannerSettings.maxLaterDeclarationsPerTurn()
+                        : Integer.MAX_VALUE,
+                lane == ProjectedLaterDeclarationLane.RESPONDING_SIDE
         );
+        if (lane == ProjectedLaterDeclarationLane.OPENING_SIDE) {
+            profiledRedeclarations += declarations;
+        } else {
+            profiledCounterDeclarations += declarations;
+        }
     }
 
     private int projectedExtraDeclareCapacity(int[] attackerCounts) {
-        int counterTargetCapacity = 0;
+        int opposingSideTargetCapacity = 0;
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
             if (attackerCounts[attackerIndex] > 0) {
-                counterTargetCapacity += scenario.attacker(attackerIndex).rawFreeDef();
+                opposingSideTargetCapacity += scenario.attacker(attackerIndex).rawFreeDef();
             }
         }
-        int counterDeclarerCapacity = 0;
-        int redeclareTargetCapacity = 0;
+        int opposingSideDeclarerCapacity = 0;
+        int openingSideTargetCapacity = 0;
         for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
-            counterDeclarerCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeOff());
-            redeclareTargetCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeDef());
+            opposingSideDeclarerCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeOff());
+            openingSideTargetCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeDef());
         }
-        int redeclareDeclarerCapacity = 0;
+        int openingSideDeclarerCapacity = 0;
         for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            redeclareDeclarerCapacity += Math.max(0, scenario.attacker(attackerIndex).rawFreeOff());
+            openingSideDeclarerCapacity += Math.max(0, scenario.attacker(attackerIndex).rawFreeOff());
         }
-        int counterSimultaneous = Math.min(counterTargetCapacity, counterDeclarerCapacity);
-        int redeclareSimultaneous = Math.min(redeclareDeclarerCapacity, redeclareTargetCapacity);
+        int opposingSideSimultaneous = Math.min(opposingSideTargetCapacity, opposingSideDeclarerCapacity);
+        int openingSideSimultaneous = Math.min(openingSideDeclarerCapacity, openingSideTargetCapacity);
         int slotReuseCycles = Math.max(1, 1 + (horizonTurns / WAR_EXPIRATION_TURN));
-        return (counterSimultaneous + redeclareSimultaneous) * slotReuseCycles;
+        return (opposingSideSimultaneous + openingSideSimultaneous) * slotReuseCycles;
     }
 
     private int maxProjectedExtraDeclareCapacity() {
-        int counterTargetCapacity = 0;
+        int opposingSideTargetCapacity = 0;
         for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            counterTargetCapacity += Math.max(0, scenario.attacker(attackerIndex).rawFreeDef());
+            opposingSideTargetCapacity += Math.max(0, scenario.attacker(attackerIndex).rawFreeDef());
         }
-        int counterDeclarerCapacity = 0;
-        int redeclareTargetCapacity = 0;
+        int opposingSideDeclarerCapacity = 0;
+        int openingSideTargetCapacity = 0;
         for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
-            counterDeclarerCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeOff());
-            redeclareTargetCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeDef());
+            opposingSideDeclarerCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeOff());
+            openingSideTargetCapacity += Math.max(0, scenario.defender(defenderIndex).rawFreeDef());
         }
-        int redeclareDeclarerCapacity = 0;
+        int openingSideDeclarerCapacity = 0;
         for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            redeclareDeclarerCapacity += Math.max(0, scenario.attacker(attackerIndex).rawFreeOff());
+            openingSideDeclarerCapacity += Math.max(0, scenario.attacker(attackerIndex).rawFreeOff());
         }
-        int counterSimultaneous = Math.min(counterTargetCapacity, counterDeclarerCapacity);
-        int redeclareSimultaneous = Math.min(redeclareDeclarerCapacity, redeclareTargetCapacity);
+        int opposingSideSimultaneous = Math.min(opposingSideTargetCapacity, opposingSideDeclarerCapacity);
+        int openingSideSimultaneous = Math.min(openingSideDeclarerCapacity, openingSideTargetCapacity);
         int slotReuseCycles = Math.max(1, 1 + (horizonTurns / WAR_EXPIRATION_TURN));
-        return (counterSimultaneous + redeclareSimultaneous) * slotReuseCycles;
+        return (opposingSideSimultaneous + openingSideSimultaneous) * slotReuseCycles;
     }
 
     private static boolean hasAnyAvailable(int[] slots) {
@@ -1055,110 +1114,93 @@ final class LongHorizonForwardProjection {
 
 
 
-    private boolean shouldDeclareProjectedRedeclares(DenseWarState warState) {
-        return edges.edgeCount() > 0 && warState.warCount > 0;
+    private void fillProjectedLaterDeclarationOffensiveSlots(
+            ProjectionState state,
+            ProjectedLaterDeclarationLane lane,
+            int[] activeOffensiveWarsByNation,
+            int[] slots,
+            double activityThreshold
+    ) {
+        Arrays.fill(slots, 0);
+        if (lane == ProjectedLaterDeclarationLane.OPENING_SIDE) {
+            for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
+                if (state.beigeTurns[attackerIndex] > 0 || state.combatStrength(attackerIndex) <= 0d) {
+                    continue;
+                }
+                int rawFreeOff = scenario.attacker(attackerIndex).rawFreeOff();
+                slots[attackerIndex] = Math.max(
+                        0,
+                        Math.min(attackerCaps[attackerIndex], rawFreeOff) - activeOffensiveWarsByNation[attackerIndex]
+                );
+            }
+            return;
+        }
+        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
+            int nationIndex = state.attackerCount + defenderIndex;
+            if (state.beigeTurns[nationIndex] > 0
+                    || state.combatStrength(nationIndex) <= 0d
+                    || scenario.defenderActivityWeight(defenderIndex) < activityThreshold) {
+                continue;
+            }
+            slots[defenderIndex] = Math.max(
+                    0,
+                    scenario.defender(defenderIndex).rawFreeOff() - activeOffensiveWarsByNation[nationIndex]
+            );
+        }
     }
 
-    private void declareProjectedAttackerRedeclares(
+    private void fillProjectedLaterDeclarationTargetDefensiveSlots(
             ProjectionState state,
-            DenseWarState warState,
-            int turn
+            ProjectedLaterDeclarationLane lane,
+            int[] activeDefensiveWarsByNation,
+            int[] slots
     ) {
-        profiledRedeclareTurns++;
-        SidePlannerSettings redeclarePlannerSettings = attackerPlannerSettings;
-        int attackerCount = scenario.attackerCount();
-        int defenderCount = scenario.defenderCount();
-        warState.fillActiveWarCounts(scratchActiveOffWarsByNation, scratchActiveDefWarsByNation);
-        int[] activeOff = scratchActiveOffWarsByNation;
-        int[] activeDef = scratchActiveDefWarsByNation;
-
-        Arrays.fill(scratchRedeclareAttSlots, 0);
-        int[] remainingAttackerSlots = scratchRedeclareAttSlots;
-        for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
+        Arrays.fill(slots, 0);
+        if (lane == ProjectedLaterDeclarationLane.OPENING_SIDE) {
+            for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
+                int defenderNationIndex = state.attackerCount + defenderIndex;
+                if (state.beigeTurns[defenderNationIndex] > 0 || state.combatStrength(defenderNationIndex) <= 0d) {
+                    continue;
+                }
+                slots[defenderIndex] = Math.max(
+                        0,
+                        scenario.defender(defenderIndex).rawFreeDef() - activeDefensiveWarsByNation[defenderNationIndex]
+                );
+            }
+            return;
+        }
+        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
             if (state.beigeTurns[attackerIndex] > 0 || state.combatStrength(attackerIndex) <= 0d) {
                 continue;
             }
-            int rawFreeOff = scenario.attacker(attackerIndex).rawFreeOff();
-            remainingAttackerSlots[attackerIndex] = Math.max(0,
-                    Math.min(attackerCaps[attackerIndex], rawFreeOff) - activeOff[attackerIndex]);
+            slots[attackerIndex] = Math.max(
+                    0,
+                    scenario.attacker(attackerIndex).rawFreeDef() - activeDefensiveWarsByNation[attackerIndex]
+            );
         }
-        Arrays.fill(scratchRedeclareDefSlots, 0);
-        int[] remainingDefenderSlots = scratchRedeclareDefSlots;
-        for (int defenderIndex = 0; defenderIndex < defenderCount; defenderIndex++) {
-            int defenderNationIndex = state.attackerCount + defenderIndex;
-            if (state.beigeTurns[defenderNationIndex] > 0 || state.combatStrength(defenderNationIndex) <= 0d) {
-                continue;
-            }
-            remainingDefenderSlots[defenderIndex] = Math.max(0,
-                    scenario.defender(defenderIndex).rawFreeDef() - activeDef[defenderNationIndex]);
-        }
-        if (!hasAnyAvailable(remainingAttackerSlots) || !hasAnyAvailable(remainingDefenderSlots)) {
-            profiledRedeclareTurnsNoSlots++;
-            return;
-        }
-        ProjectedLaterDeclarationInputs inputs = buildProjectedRedeclareDeclarationInputs(
-                state,
-                warState,
-                remainingAttackerSlots,
-                remainingDefenderSlots,
-                redeclarePlannerSettings,
-                turn
-        );
-        if (inputs == null) {
-            profiledRedeclareTurnsNoSlots++;
-            return;
-        }
-        profiledRedeclarations += applyProjectedLaterDeclarationPlan(
-            warState,
-            inputs,
-            redeclarePlannerSettings,
-            turn,
-            null,
-            Integer.MAX_VALUE,
-            false
-        );
     }
 
-    private ProjectedLaterDeclarationInputs buildProjectedCounterDeclarationInputs(
+    private ProjectedLaterDeclarationInputs buildProjectedLaterDeclarationInputs(
+            ProjectedLaterDeclarationLane lane,
             ProjectionState state,
             DenseWarState warState,
-            int[] remainingCounterOffensiveSlots,
-            int[] remainingTargetDefensiveSlots,
-            SidePlannerSettings counterPlannerSettings
-    ) {
-        return buildProjectedDeclarationInputs(
-                state,
-                warState,
-                remainingCounterOffensiveSlots,
-                remainingTargetDefensiveSlots,
-                false,
-                defenderOpeningSettings,
-                counterPlannerSettings,
-                counterPlannerSettings.counterScoreThreshold(),
-                0,
-                false
-        );
-    }
-
-    private ProjectedLaterDeclarationInputs buildProjectedRedeclareDeclarationInputs(
-            ProjectionState state,
-            DenseWarState warState,
-            int[] remainingAttackerSlots,
-            int[] remainingDefenderSlots,
-            SidePlannerSettings redeclarePlannerSettings,
+            int[] remainingDeclarerSlots,
+            int[] remainingTargetSlots,
+            SidePlannerSettings plannerSettings,
             int turn
     ) {
+        boolean declarersAreScenarioAttackers = lane == ProjectedLaterDeclarationLane.OPENING_SIDE;
         return buildProjectedDeclarationInputs(
                 state,
                 warState,
-                remainingAttackerSlots,
-                remainingDefenderSlots,
-                true,
-                attackerOpeningSettings,
-                redeclarePlannerSettings,
-                redeclarePlannerSettings.redeclareScoreThreshold(),
+                remainingDeclarerSlots,
+                remainingTargetSlots,
+                declarersAreScenarioAttackers,
+                declarersAreScenarioAttackers ? attackerOpeningSettings : defenderOpeningSettings,
+                plannerSettings,
+                plannerSettings.laterDeclarationScoreThreshold(),
                 turn,
-                true
+                declarersAreScenarioAttackers
         );
     }
 
@@ -1172,7 +1214,7 @@ final class LongHorizonForwardProjection {
             SidePlannerSettings plannerSettings,
             double scoreThreshold,
             int turn,
-            boolean applyRedeclareTiming
+            boolean applyPairLockoutTiming
     ) {
         ProjectedDeclarationSnapshotState snapshotState = buildProjectedDeclarationSnapshotState(state, warState);
         int declarerSourceCount = declarersAreScenarioAttackers ? scenario.attackerCount() : scenario.defenderCount();
@@ -1220,7 +1262,7 @@ final class LongHorizonForwardProjection {
             for (int targetIndex = 0; targetIndex < eligibleTargetCount; targetIndex++) {
                 int targetOverallIndex = eligibleTargetOverallIndexes[targetIndex];
                 if (warState.hasActivePair(declarerOverallIndex, targetOverallIndex)
-                        || !canCounterProjected(state, declarerOverallIndex, targetOverallIndex)) {
+                        || !canProjectedDeclare(state, declarerOverallIndex, targetOverallIndex)) {
                     continue;
                 }
                 if (!retainedDeclarers[declarerIndex]) {
@@ -1297,7 +1339,7 @@ final class LongHorizonForwardProjection {
         }
         double[] deferredBestByDeclarer = new double[declarerSnapshots.size()];
         int horizonRemainingTurns = Math.max(0, horizonTurns - turn);
-        if (applyRedeclareTiming) {
+        if (applyPairLockoutTiming) {
             for (int declarerCompiledIndex = 0; declarerCompiledIndex < declarerSnapshots.size(); declarerCompiledIndex++) {
                 for (int targetCompiledIndex = 0; targetCompiledIndex < targetSnapshots.size(); targetCompiledIndex++) {
                     int declarerOverallIndex = declarerOverallIndexes[declarerCompiledIndex];
@@ -1306,7 +1348,7 @@ final class LongHorizonForwardProjection {
                     if (warState.hasActivePair(declarerOverallIndex, targetOverallIndex)) {
                         continue;
                     }
-                    int blockedTurns = redeclareBlockedTurnsProjected(state, warState, declarerOverallIndex, targetOverallIndex, turn);
+                    int blockedTurns = projectedDeclarationBlockedTurns(state, warState, declarerOverallIndex, targetOverallIndex, turn);
                     if (blockedTurns <= 0) {
                         continue;
                     }
@@ -1338,17 +1380,17 @@ final class LongHorizonForwardProjection {
             for (int targetCompiledIndex = 0; targetCompiledIndex < targetSnapshots.size(); targetCompiledIndex++) {
                 int declarerOverallIndex = declarerOverallIndexes[declarerCompiledIndex];
                 int targetOverallIndex = targetOverallIndexes[targetCompiledIndex];
-                if (applyRedeclareTiming) {
+                if (applyPairLockoutTiming) {
                     profiledRedeclareCandidateEvaluations++;
                 } else {
                     profiledCounterCandidateEvaluations++;
                 }
                 if (warState.hasActivePair(declarerOverallIndex, targetOverallIndex)
-                        || !canCounterProjected(state, declarerOverallIndex, targetOverallIndex)) {
+                    || !canProjectedDeclare(state, declarerOverallIndex, targetOverallIndex)) {
                     continue;
                 }
-                int blockedTurns = applyRedeclareTiming
-                        ? redeclareBlockedTurnsProjected(state, warState, declarerOverallIndex, targetOverallIndex, turn)
+                int blockedTurns = applyPairLockoutTiming
+                    ? projectedDeclarationBlockedTurns(state, warState, declarerOverallIndex, targetOverallIndex, turn)
                         : 0;
                 int declarerSourceIndex = declarersAreScenarioAttackers
                         ? declarerOverallIndex
@@ -1866,7 +1908,7 @@ final class LongHorizonForwardProjection {
         return values[ordinal];
     }
 
-    private static int redeclareBlockedTurnsProjected(
+    private static int projectedDeclarationBlockedTurns(
             ProjectionState state,
             DenseWarState warState,
             int attackerNationIndex,
@@ -1890,44 +1932,14 @@ final class LongHorizonForwardProjection {
         );
     }
 
-    private void fillProjectedCounterOffensiveSlots(
-            ProjectionState state,
-            int[] activeOffensiveWarsByNation,
-            int[] slots,
-            double activityThreshold
-    ) {
-        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
-            int nationIndex = state.attackerCount + defenderIndex;
-            if (state.beigeTurns[nationIndex] > 0
-                    || state.combatStrength(nationIndex) <= 0d
-                    || scenario.defenderActivityWeight(defenderIndex) < activityThreshold) {
-                slots[defenderIndex] = 0;
-                continue;
-            }
-            slots[defenderIndex] = Math.max(0,
-                    scenario.defender(defenderIndex).rawFreeOff() - activeOffensiveWarsByNation[nationIndex]);
-        }
-    }
-
-    private void fillProjectedCounterTargetDefensiveSlots(ProjectionState state, int[] activeDefensiveWarsByNation, int[] slots) {
-        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
-            if (state.beigeTurns[attackerIndex] > 0 || state.combatStrength(attackerIndex) <= 0d) {
-                slots[attackerIndex] = 0;
-                continue;
-            }
-            slots[attackerIndex] = Math.max(0,
-                    scenario.attacker(attackerIndex).rawFreeDef() - activeDefensiveWarsByNation[attackerIndex]);
-        }
-    }
-
-    private static boolean canCounterProjected(ProjectionState state, int counterNationIndex, int targetNationIndex) {
-        if (state.nationIds[counterNationIndex] == state.nationIds[targetNationIndex]) {
+    private static boolean canProjectedDeclare(ProjectionState state, int declarerNationIndex, int targetNationIndex) {
+        if (state.nationIds[declarerNationIndex] == state.nationIds[targetNationIndex]) {
             return false;
         }
-        double counterScore = state.score(counterNationIndex);
+        double declarerScore = state.score(declarerNationIndex);
         double targetScore = state.score(targetNationIndex);
-        double minScore = counterScore * PW.WAR_RANGE_MIN_MODIFIER;
-        double maxScore = counterScore * PW.WAR_RANGE_MAX_MODIFIER;
+        double minScore = declarerScore * PW.WAR_RANGE_MIN_MODIFIER;
+        double maxScore = declarerScore * PW.WAR_RANGE_MAX_MODIFIER;
         return targetScore >= minScore && targetScore <= maxScore;
     }
 

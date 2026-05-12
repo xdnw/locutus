@@ -83,35 +83,35 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private final MutableAttackResult attackResult;
     private final Map<Integer, LocalNation> nationsById;
     private final Map<Integer, LocalWar> warsById;
-    private final Map<Long, LocalWar> warsByPair;
+        private final Map<Long, LocalWar> warsByPair;
     private final Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId;
     private final Map<Integer, Double> externalStrategicValueByTeam;
-    private final List<ExternalWarControl> externalWarControls;
-    private final LocalNationBuffers nationBuffers;
-    private final LocalNationScalarRecorder nationScalarRecorder;
-    private final LocalWarBuffers warBuffers;
-    private final int[] activeOffensiveWarCounts;
-    private final int[] activeDefensiveWarCounts;
-    private final LocalNation[] nationsByIndex;
-    private final int[] replayNationIdsAscending;
-    private final ActiveWarContextScratch strategicValueWarContextScratch;
-    private final Deque<Mark> markStack;
-    private final List<PlannerExecutionLog.Turn> executionLogTurns;
-    private PlannerReplayTurnMetrics replayTurnMetrics;
-    private ReplayExecutionTurnBuilder currentExecutionTurn;
-    private ReplayExecutionPhase currentExecutionPhase;
-    private int replayMetricSuppressionDepth;
-    private int projectionExportCount;
-    private int currentTurn;
-    private int nextWarId = 1_000_000;
+        private final List<ExternalWarControl> externalWarControls;
+        private final LocalNationBuffers nationBuffers;
+        private final LocalNationScalarRecorder nationScalarRecorder;
+        private final LocalWarBuffers warBuffers;
+        private final int[] activeOffensiveWarCounts;
+        private final int[] activeDefensiveWarCounts;
+        private final LocalNation[] nationsByIndex;
+        private final int[] replayNationIdsAscending;
+        private final ActiveWarContextScratch strategicValueWarContextScratch;
+        private final Deque<Mark> markStack;
+        private final List<PlannerExecutionLog.Turn> executionLogTurns;
+        private PlannerReplayTurnMetrics replayTurnMetrics;
+        private ReplayExecutionTurnBuilder currentExecutionTurn;
+        private ReplayExecutionPhase currentExecutionPhase;
+        private int replayMetricSuppressionDepth;
+        private int projectionExportCount;
+        private int currentTurn;
+        private int nextWarId = 1_000_000;
 
-    enum ControlOwner {
+        enum ControlOwner {
         NONE,
         ATTACKER,
         DEFENDER
-    }
+        }
 
-    private PlannerLocalConflict(
+        private PlannerLocalConflict(
             SimTuning tuning,
             Map<Integer, LocalNation> nationsById,
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
@@ -122,7 +122,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             int currentTurn,
             PlannerTransitionSemantics transitionSemantics,
             RandomSource randomSource
-    ) {
+        ) {
         this.tuning = tuning;
         this.randomSource = randomSource;
         this.resolutionMode = requireStateResolutionMode(tuning);
@@ -155,9 +155,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.executionLogTurns = new ArrayList<>();
         this.currentExecutionPhase = ReplayExecutionPhase.NONE;
         this.currentTurn = currentTurn;
-    }
+        }
 
-    record ExternalWarControl(
+        record ExternalWarControl(
             int attackerTeamId,
             int defenderTeamId,
             int groundSuperiorityTeamId,
@@ -165,47 +165,47 @@ final class PlannerLocalConflict implements TeamWarControlView {
             int blockadeTeamId,
             int attackerResistance,
             int defenderResistance
-    ) {
-    }
+        ) {
+        }
 
-    static PlannerLocalConflict create(
+        static PlannerLocalConflict create(
             OverrideSet overrides,
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
             SimTuning tuning,
             PlannerTransitionSemantics transitionSemantics
-    ) {
+        ) {
         return create(
-                overrides,
-                attackers,
-                defenders,
-                tuning,
-                transitionSemantics,
-                PlannerStrategicValue.relevanceByNationId(attackers, defenders)
+            overrides,
+            attackers,
+            defenders,
+            tuning,
+            transitionSemantics,
+            PlannerStrategicValue.relevanceByNationId(attackers, defenders)
         );
-    }
+        }
 
-    static PlannerLocalConflict create(
+        static PlannerLocalConflict create(
             OverrideSet overrides,
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
             SimTuning tuning,
             PlannerTransitionSemantics transitionSemantics,
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId
-    ) {
+        ) {
         return create(
-                overrides,
-                attackers,
-                defenders,
-                tuning,
-                transitionSemantics,
-                strategicRelevanceByNationId,
-                Map.of(),
-                List.of()
+            overrides,
+            attackers,
+            defenders,
+            tuning,
+            transitionSemantics,
+            strategicRelevanceByNationId,
+            Map.of(),
+            List.of()
         );
-    }
+        }
 
-    static PlannerLocalConflict create(
+        static PlannerLocalConflict create(
             OverrideSet overrides,
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
@@ -213,20 +213,20 @@ final class PlannerLocalConflict implements TeamWarControlView {
             PlannerTransitionSemantics transitionSemantics,
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
             Map<Integer, Double> externalStrategicValueByTeam
-    ) {
+        ) {
         return create(
-                overrides,
-                attackers,
-                defenders,
-                tuning,
-                transitionSemantics,
-                strategicRelevanceByNationId,
-                externalStrategicValueByTeam,
-                List.of()
+            overrides,
+            attackers,
+            defenders,
+            tuning,
+            transitionSemantics,
+            strategicRelevanceByNationId,
+            externalStrategicValueByTeam,
+            List.of()
         );
-    }
+        }
 
-    static PlannerLocalConflict create(
+        static PlannerLocalConflict create(
             OverrideSet overrides,
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
@@ -235,38 +235,38 @@ final class PlannerLocalConflict implements TeamWarControlView {
             Map<Integer, StrategicAssetValue.StrategicRelevance> strategicRelevanceByNationId,
             Map<Integer, Double> externalStrategicValueByTeam,
             List<ExternalWarControl> externalWarControls
-    ) {
+        ) {
         return createFromOrderedSnapshots(
-                overrides,
-                orderedUniqueNations(attackers, defenders),
-                List.of(),
-                0,
-                tuning,
-                transitionSemantics,
-                strategicRelevanceByNationId,
-                externalStrategicValueByTeam,
-                externalWarControls
+            overrides,
+            orderedUniqueNations(attackers, defenders),
+            List.of(),
+            0,
+            tuning,
+            transitionSemantics,
+            strategicRelevanceByNationId,
+            externalStrategicValueByTeam,
+            externalWarControls
         );
-    }
+        }
 
-    static PlannerLocalConflict create(
+        static PlannerLocalConflict create(
             OverrideSet overrides,
             Collection<DBNationSnapshot> nations,
             SimTuning tuning,
             PlannerTransitionSemantics transitionSemantics
-    ) {
+        ) {
         return createFromOrderedSnapshots(
-                overrides,
-                orderedUniqueNations(nations, List.of()),
-                List.of(),
-                0,
-                tuning,
-                transitionSemantics,
-                PlannerStrategicValue.relevanceByNationId(nations),
-                Map.of(),
-                List.of()
+            overrides,
+            orderedUniqueNations(nations, List.of()),
+            List.of(),
+            0,
+            tuning,
+            transitionSemantics,
+            PlannerStrategicValue.relevanceByNationId(nations),
+            Map.of(),
+            List.of()
         );
-    }
+        }
 
     static PlannerLocalConflict createWithActiveWars(
             OverrideSet overrides,
@@ -493,7 +493,16 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     void applyReplayTurn(Map<Integer, List<Integer>> assignment, boolean initialTurn) {
-        applyReplayTurn(assignment, initialTurn, List.of(), List.of(), List.of(), List.of());
+        applyReplayTurn(assignment, Map.of(), initialTurn, List.of(), 1);
+    }
+
+    void applyReplayTurn(
+            Map<Integer, List<Integer>> assignment,
+            boolean initialTurn,
+            List<LaterDeclarationScope> laterDeclarationScopes,
+            int remainingTurns
+    ) {
+        applyReplayTurn(assignment, Map.of(), initialTurn, laterDeclarationScopes, remainingTurns);
     }
 
     void beginReplayTurnMetrics(IntPredicate isAttackerNationId) {
@@ -510,156 +519,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return new PlannerExecutionLog(executionLogTurns);
     }
 
-    void applyReplayTurn(
-            Map<Integer, List<Integer>> assignment,
-            boolean initialTurn,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds
-    ) {
-        applyReplayTurn(
-            assignment,
-            initialTurn,
-            counterDeclarerNationIds,
-            counterTargetNationIds,
-            List.of(),
-            List.of()
-        );
-        }
-
-        void applyReplayTurn(
-            Map<Integer, List<Integer>> assignment,
-            boolean initialTurn,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            Collection<Integer> redeclareDeclarerNationIds,
-            Collection<Integer> redeclareTargetNationIds
-        ) {
-        applyReplayTurn(
-                assignment,
-                initialTurn,
-                counterDeclarerNationIds,
-                counterTargetNationIds,
-            redeclareDeclarerNationIds,
-            redeclareTargetNationIds,
-                null,
-                1
-        );
-    }
-
-    void applyReplayTurn(
-            Map<Integer, List<Integer>> assignment,
-            boolean initialTurn,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            StrategicObjective counterObjective,
-            int remainingTurns
-        ) {
-        applyReplayTurn(
-            assignment,
-            initialTurn,
-            counterDeclarerNationIds,
-            counterTargetNationIds,
-            List.of(),
-            List.of(),
-            counterObjective,
-            remainingTurns
-        );
-        }
-
-        void applyReplayTurn(
-            Map<Integer, List<Integer>> assignment,
-            boolean initialTurn,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            Collection<Integer> redeclareDeclarerNationIds,
-            Collection<Integer> redeclareTargetNationIds,
-            StrategicObjective counterObjective,
-            int remainingTurns
-    ) {
-        applyReplayTurn(
-                assignment,
-                Map.of(),
-                initialTurn,
-                counterDeclarerNationIds,
-                counterTargetNationIds,
-            redeclareDeclarerNationIds,
-            redeclareTargetNationIds,
-                counterObjective,
-                remainingTurns
-        );
-    }
-
-    void applyReplayTurn(
-            Map<Integer, List<Integer>> assignment,
-            Map<Long, Integer> warTypeOrdinalsByPair,
-            boolean initialTurn,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            StrategicObjective counterObjective,
-            int remainingTurns
-        ) {
-        applyReplayTurn(
-            assignment,
-            warTypeOrdinalsByPair,
-            initialTurn,
-            counterDeclarerNationIds,
-            counterTargetNationIds,
-            List.of(),
-            List.of(),
-            counterObjective,
-            remainingTurns
-        );
-        }
-
         void applyReplayTurn(
             Map<Integer, List<Integer>> assignment,
             Map<Long, Integer> warTypeOrdinalsByPair,
             boolean initialTurn,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            Collection<Integer> redeclareDeclarerNationIds,
-            Collection<Integer> redeclareTargetNationIds,
-            StrategicObjective counterObjective,
+            List<LaterDeclarationScope> laterDeclarationScopes,
             int remainingTurns
-    ) {
-            applyReplayTurn(
-                assignment,
-                warTypeOrdinalsByPair,
-                initialTurn,
-                counterDeclarerNationIds,
-                counterTargetNationIds,
-                redeclareDeclarerNationIds,
-                redeclareTargetNationIds,
-                List.of(),
-                List.of(),
-                legacyAutonomousPolicy("autonomousCounterDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("autonomousCounterTarget", counterObjective, false),
-                legacyAutonomousPolicy("autonomousRedeclarer", counterObjective, true),
-                legacyAutonomousPolicy("autonomousRedeclareTarget", counterObjective, false),
-                null,
-                null,
-                remainingTurns
-            );
-            }
-
-            void applyReplayTurn(
-                Map<Integer, List<Integer>> assignment,
-                Map<Long, Integer> warTypeOrdinalsByPair,
-                boolean initialTurn,
-                Collection<Integer> counterDeclarerNationIds,
-                Collection<Integer> counterTargetNationIds,
-                Collection<Integer> redeclareDeclarerNationIds,
-                Collection<Integer> redeclareTargetNationIds,
-                Collection<Integer> secondaryRedeclareDeclarerNationIds,
-                Collection<Integer> secondaryRedeclareTargetNationIds,
-                SidePolicy counterDeclarerPolicy,
-                SidePolicy counterTargetPolicy,
-                SidePolicy redeclareDeclarerPolicy,
-                SidePolicy redeclareTargetPolicy,
-                SidePolicy secondaryRedeclareDeclarerPolicy,
-                SidePolicy secondaryRedeclareTargetPolicy,
-                int remainingTurns
-            ) {
+        ) {
         boolean advanceBeforeTurn = !initialTurn || assignment.isEmpty();
         beginReplayExecutionTurn(advanceBeforeTurn ? currentTurn + 1 : currentTurn);
         try {
@@ -675,19 +541,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
             currentExecutionPhase = ReplayExecutionPhase.AUTONOMOUS;
             applyAutonomousLaterDeclarations(
                     assignment,
-                    counterDeclarerNationIds,
-                    counterTargetNationIds,
-                    redeclareDeclarerNationIds,
-                    redeclareTargetNationIds,
-                    secondaryRedeclareDeclarerNationIds,
-                    secondaryRedeclareTargetNationIds,
+                    laterDeclarationScopes,
                     initialTurn,
-                    counterDeclarerPolicy,
-                    counterTargetPolicy,
-                    redeclareDeclarerPolicy,
-                    redeclareTargetPolicy,
-                    secondaryRedeclareDeclarerPolicy,
-                    secondaryRedeclareTargetPolicy,
                     remainingTurns
             );
             currentExecutionPhase = ReplayExecutionPhase.NONE;
@@ -1380,73 +1235,26 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
     private void applyAutonomousLaterDeclarations(
             Map<Integer, List<Integer>> assignment,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            Collection<Integer> redeclareDeclarerNationIds,
-            Collection<Integer> redeclareTargetNationIds,
-            Collection<Integer> secondaryRedeclareDeclarerNationIds,
-            Collection<Integer> secondaryRedeclareTargetNationIds,
+            List<LaterDeclarationScope> laterDeclarationScopes,
             boolean initialTurn,
-            SidePolicy counterDeclarerPolicy,
-            SidePolicy counterTargetPolicy,
-            SidePolicy redeclareDeclarerPolicy,
-            SidePolicy redeclareTargetPolicy,
-            SidePolicy secondaryRedeclareDeclarerPolicy,
-            SidePolicy secondaryRedeclareTargetPolicy,
             int remainingTurns
     ) {
+        if (laterDeclarationScopes == null || laterDeclarationScopes.isEmpty()) {
+            return;
+        }
         Set<Integer> initialAssignmentDeclarerIds = assignment == null || assignment.isEmpty()
             ? Set.of()
             : Set.copyOf(assignment.keySet());
-        Map<Integer, DBNationSnapshot> projectedSnapshotsById = shouldPlanAutonomousLaterDeclarations(
-            assignment,
-            counterDeclarerNationIds,
-            counterTargetNationIds,
-            redeclareDeclarerNationIds,
-            redeclareTargetNationIds,
-            secondaryRedeclareDeclarerNationIds,
-            secondaryRedeclareTargetNationIds
-        ) ? autonomousPlannerSnapshotsById(
-                counterDeclarerNationIds,
-                counterTargetNationIds,
-                redeclareDeclarerNationIds,
-                redeclareTargetNationIds,
-                secondaryRedeclareDeclarerNationIds,
-                secondaryRedeclareTargetNationIds
-        ) : Map.of();
+        Map<Integer, DBNationSnapshot> projectedSnapshotsById = shouldPlanAutonomousLaterDeclarations(assignment, laterDeclarationScopes)
+                ? autonomousPlannerSnapshotsById(laterDeclarationScopes)
+                : Map.of();
         List<AutonomousDeclaration> declarations = new ArrayList<>();
-        declarations.addAll(plannedAutonomousDeclarations(
-                counterDeclarerNationIds,
-                counterTargetNationIds,
-                initialTurn,
-                counterDeclarerPolicy,
-                counterTargetPolicy,
-                remainingTurns,
-                LaterDeclarationMode.COUNTER,
-                Set.of(),
-                projectedSnapshotsById
-        ));
-        if (assignment != null && !assignment.isEmpty()) {
+        for (LaterDeclarationScope scope : laterDeclarationScopes) {
             declarations.addAll(plannedAutonomousDeclarations(
-                    redeclareDeclarerNationIds,
-                    redeclareTargetNationIds,
-                    false,
-                    redeclareDeclarerPolicy,
-                    redeclareTargetPolicy,
-                    remainingTurns,
-                    LaterDeclarationMode.REDECLARE,
-                        initialAssignmentDeclarerIds,
-                        projectedSnapshotsById
-            ));
-            declarations.addAll(plannedAutonomousDeclarations(
-                    secondaryRedeclareDeclarerNationIds,
-                    secondaryRedeclareTargetNationIds,
-                    false,
-                    secondaryRedeclareDeclarerPolicy,
-                    secondaryRedeclareTargetPolicy,
-                    remainingTurns,
-                    LaterDeclarationMode.REDECLARE,
+                    scope,
+                    initialTurn,
                     initialAssignmentDeclarerIds,
+                    remainingTurns,
                     projectedSnapshotsById
             ));
         }
@@ -1473,28 +1281,20 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private List<AutonomousDeclaration> plannedAutonomousDeclarations(
-            Collection<Integer> declarerNationIds,
-            Collection<Integer> targetNationIds,
+            LaterDeclarationScope scope,
             boolean initialTurn,
-            SidePolicy declarerPolicy,
-            SidePolicy targetPolicy,
+            Set<Integer> initialAssignmentDeclarerIds,
             int remainingTurns,
-            LaterDeclarationMode mode,
-            Set<Integer> preferredDeclarerNationIds,
             Map<Integer, DBNationSnapshot> projectedSnapshotsById
     ) {
-        if (declarerNationIds.isEmpty() || targetNationIds.isEmpty()) {
+        if (scope == null || scope.isEmpty()) {
             return List.of();
         }
         PlannerAutonomousDeclarationPlanner.Plan plan = planAutonomousLaterDeclarations(
-                declarerNationIds,
-                targetNationIds,
+                scope,
                 initialTurn,
-                declarerPolicy,
-                targetPolicy,
+                initialAssignmentDeclarerIds,
                 remainingTurns,
-                mode,
-                preferredDeclarerNationIds,
                 projectedSnapshotsById
         );
         if (plan.assignment().isEmpty()) {
@@ -1622,24 +1422,20 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private PlannerAutonomousDeclarationPlanner.Plan planAutonomousLaterDeclarations(
-            Collection<Integer> declarerNationIds,
-            Collection<Integer> targetNationIds,
+            LaterDeclarationScope scope,
             boolean initialTurn,
-            SidePolicy declarerPolicy,
-            SidePolicy targetPolicy,
+            Set<Integer> initialAssignmentDeclarerIds,
             int remainingTurns,
-            LaterDeclarationMode mode,
-            Set<Integer> preferredDeclarerNationIds,
             Map<Integer, DBNationSnapshot> projectedSnapshotsById
     ) {
         List<LocalNation> declarers = eligibleLaterDeclarers(
-                declarerNationIds,
-                mode == LaterDeclarationMode.COUNTER && initialTurn
+                scope.declarerNationIds(),
+                scope.enforceInitialTurnDefensiveGate() && initialTurn
         );
-        if (mode == LaterDeclarationMode.REDECLARE && !preferredDeclarerNationIds.isEmpty()) {
-            declarers.removeIf(declarer -> !preferredDeclarerNationIds.contains(declarer.nationId()));
+        if (scope.restrictToOpeningDeclarers() && !initialAssignmentDeclarerIds.isEmpty()) {
+            declarers.removeIf(declarer -> !initialAssignmentDeclarerIds.contains(declarer.nationId()));
         }
-        List<LocalNation> targets = eligibleLaterTargets(targetNationIds);
+        List<LocalNation> targets = eligibleLaterTargets(scope.targetNationIds());
         if (declarers.isEmpty() || targets.isEmpty()) {
             return PlannerAutonomousDeclarationPlanner.Plan.empty();
         }
@@ -1650,46 +1446,39 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 declarerSnapshots,
                 targetSnapshots,
                 tuning,
-                declarerPolicy,
-                targetPolicy,
+                scope.declarerPolicy(),
+                scope.targetPolicy(),
                 remainingTurns
         );
     }
 
     private static boolean shouldPlanAutonomousLaterDeclarations(
             Map<Integer, List<Integer>> assignment,
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            Collection<Integer> redeclareDeclarerNationIds,
-            Collection<Integer> redeclareTargetNationIds,
-            Collection<Integer> secondaryRedeclareDeclarerNationIds,
-            Collection<Integer> secondaryRedeclareTargetNationIds
+            List<LaterDeclarationScope> laterDeclarationScopes
     ) {
-        if (!counterDeclarerNationIds.isEmpty() && !counterTargetNationIds.isEmpty()) {
-            return true;
-        }
-        if (assignment == null || assignment.isEmpty()) {
+        if (laterDeclarationScopes == null || laterDeclarationScopes.isEmpty()) {
             return false;
         }
-        return (!redeclareDeclarerNationIds.isEmpty() && !redeclareTargetNationIds.isEmpty())
-                || (!secondaryRedeclareDeclarerNationIds.isEmpty() && !secondaryRedeclareTargetNationIds.isEmpty());
+        for (LaterDeclarationScope scope : laterDeclarationScopes) {
+            if (scope == null || scope.isEmpty()) {
+                continue;
+            }
+            if (!scope.restrictToOpeningDeclarers() || (assignment != null && !assignment.isEmpty())) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private Map<Integer, DBNationSnapshot> autonomousPlannerSnapshotsById(
-            Collection<Integer> counterDeclarerNationIds,
-            Collection<Integer> counterTargetNationIds,
-            Collection<Integer> redeclareDeclarerNationIds,
-            Collection<Integer> redeclareTargetNationIds,
-            Collection<Integer> secondaryRedeclareDeclarerNationIds,
-            Collection<Integer> secondaryRedeclareTargetNationIds
-    ) {
+    private Map<Integer, DBNationSnapshot> autonomousPlannerSnapshotsById(List<LaterDeclarationScope> laterDeclarationScopes) {
         IntLinkedOpenHashSet requestedNationIds = new IntLinkedOpenHashSet();
-        addAllNationIds(requestedNationIds, counterDeclarerNationIds);
-        addAllNationIds(requestedNationIds, counterTargetNationIds);
-        addAllNationIds(requestedNationIds, redeclareDeclarerNationIds);
-        addAllNationIds(requestedNationIds, redeclareTargetNationIds);
-        addAllNationIds(requestedNationIds, secondaryRedeclareDeclarerNationIds);
-        addAllNationIds(requestedNationIds, secondaryRedeclareTargetNationIds);
+        for (LaterDeclarationScope scope : laterDeclarationScopes) {
+            if (scope == null || scope.isEmpty()) {
+                continue;
+            }
+            addAllNationIds(requestedNationIds, scope.declarerNationIds());
+            addAllNationIds(requestedNationIds, scope.targetNationIds());
+        }
         if (requestedNationIds.isEmpty()) {
             return Map.of();
         }
@@ -1709,19 +1498,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    private enum LaterDeclarationMode {
-        COUNTER,
-        REDECLARE
-    }
-
     private record AutonomousDeclaration(int declarerNationId, int targetNationId, int warTypeOrdinal) {
-    }
-
-    private static SidePolicy legacyAutonomousPolicy(String name, StrategicObjective objective, boolean declarerSide) {
-        StrategicObjective effectiveObjective = objective == null ? new DamageObjective() : objective;
-        return declarerSide
-                ? SidePolicy.legacy(name, effectiveObjective)
-                : SidePolicy.legacyPassive(name, effectiveObjective);
     }
 
     private void rebuildActiveWarCounts() {
@@ -1790,11 +1567,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    private List<LocalNation> eligibleLaterDeclarers(Collection<Integer> declarerNationIds, boolean initialTurnCounterRules) {
-        List<LocalNation> ordered = orderedCounterDeclarers(declarerNationIds);
+    private List<LocalNation> eligibleLaterDeclarers(Collection<Integer> declarerNationIds, boolean enforceInitialTurnDefensiveGate) {
+        List<LocalNation> ordered = orderedLaterDeclarers(declarerNationIds);
         ordered.removeIf(declarer -> declarer.vmTurns > 0
                 || declarer.beigeTurns > 0
-                || initialCounterBlocked(declarer, initialTurnCounterRules)
+                || initialLaterDeclarationBlocked(declarer, enforceInitialTurnDefensiveGate)
                 || freeOffensiveSlots(declarer) <= 0);
         return ordered;
     }
@@ -1825,7 +1602,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return result;
     }
 
-    private List<LocalNation> orderedCounterDeclarers(Collection<Integer> declarerNationIds) {
+    private List<LocalNation> orderedLaterDeclarers(Collection<Integer> declarerNationIds) {
         List<LocalNation> ordered = new ArrayList<>(declarerNationIds.size());
         for (int declarerNationId : declarerNationIds) {
             LocalNation declarer = nationsById.get(declarerNationId);
@@ -1849,7 +1626,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return ordered;
     }
 
-    private boolean initialCounterBlocked(LocalNation declarer, boolean initialTurn) {
+    private boolean initialLaterDeclarationBlocked(LocalNation declarer, boolean initialTurn) {
         if (!initialTurn || tuning.turn1DeclarePolicy() == Turn1DeclarePolicy.BOTH_FREE) {
             return false;
         }

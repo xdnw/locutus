@@ -2255,7 +2255,7 @@ class LongHorizonAssignmentOptimizerTest {
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new ReverseCounterWarCountObjective(),
                         SidePlannerSettings.legacy(),
-                        SidePlannerSettings.legacy().withCounterScoreThreshold(1_000_000d),
+                        SidePlannerSettings.legacy().withLaterDeclarationScoreThreshold(1_000_000d),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -2408,7 +2408,7 @@ class LongHorizonAssignmentOptimizerTest {
                 61 + Math.max(WarSlotRules.sameOpponentLockoutTurns(), SimTuning.DEFAULT_BEIGE_TURNS_ON_DEFEAT),
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new WarCountAvoidanceObjective(),
-                        SidePlannerSettings.legacy().withRedeclareScoreThreshold(1_000_000d),
+                        SidePlannerSettings.legacy().withLaterDeclarationScoreThreshold(1_000_000d),
                         SidePlannerSettings.legacy(),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
@@ -2455,7 +2455,7 @@ class LongHorizonAssignmentOptimizerTest {
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new ReverseCounterWarCountObjective(),
                         SidePlannerSettings.legacy(),
-                        SidePlannerSettings.legacy().withMaxCountersPerTurn(1),
+                        SidePlannerSettings.legacy().withMaxLaterDeclarationsPerTurn(1),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -2500,7 +2500,7 @@ class LongHorizonAssignmentOptimizerTest {
                         SidePlannerSettings.legacy(),
                         SidePlannerSettings.legacy()
                                 .withActivityActThreshold(0.0d)
-                                .withCounterScoreThreshold(0.0d),
+                                .withLaterDeclarationScoreThreshold(0.0d),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -2517,7 +2517,7 @@ class LongHorizonAssignmentOptimizerTest {
                         SidePlannerSettings.legacy(),
                         SidePlannerSettings.legacy()
                                 .withActivityActThreshold(0.5d)
-                                .withCounterScoreThreshold(0.0d),
+                                .withLaterDeclarationScoreThreshold(0.0d),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )

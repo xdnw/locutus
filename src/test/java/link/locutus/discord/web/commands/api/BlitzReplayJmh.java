@@ -15,6 +15,7 @@ import link.locutus.discord.sim.Turn1DeclarePolicy;
 import link.locutus.discord.sim.planners.BlitzAssignment;
 import link.locutus.discord.sim.planners.BlitzPlanner;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
+import link.locutus.discord.sim.planners.LaterDeclarationScope;
 import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.PlannerReplayProjector;
 import link.locutus.discord.sim.planners.SidePlannerSettings;
@@ -106,17 +107,6 @@ public class BlitzReplayJmh {
                 state.assignment.assignment(),
                 state.assignment.initialWarTypeOrdinalsByPair(),
                 List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                state.counterDeclarerPolicy,
-                state.counterTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
                 state.participantIds,
                 state.existingWarPairs,
                 state.currentTurn,
@@ -126,7 +116,7 @@ public class BlitzReplayJmh {
     }
 
     @Benchmark
-    public void replayCaptureCounterOnly(LiveReplayState state, Blackhole bh) {
+    public void replayCaptureOpposingSideOnly(LiveReplayState state, Blackhole bh) {
         BlitzReplayTrace trace = PlannerReplayProjector.capture(
                 state.tuning,
                 state.overrides,
@@ -135,18 +125,7 @@ public class BlitzReplayJmh {
                 state.defenderNationIds,
                 state.assignment.assignment(),
                 state.assignment.initialWarTypeOrdinalsByPair(),
-                state.counterDeclarers,
-                state.counterTargets,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                state.counterDeclarerPolicy,
-                state.counterTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
+                List.of(opposingSideLaterDeclarationScope(state)),
                 state.participantIds,
                 state.existingWarPairs,
                 state.currentTurn,
@@ -156,7 +135,7 @@ public class BlitzReplayJmh {
     }
 
     @Benchmark
-    public void replayCaptureRedeclareOnly(LiveReplayState state, Blackhole bh) {
+    public void replayCaptureOpeningSideOnly(LiveReplayState state, Blackhole bh) {
         BlitzReplayTrace trace = PlannerReplayProjector.capture(
                 state.tuning,
                 state.overrides,
@@ -165,18 +144,7 @@ public class BlitzReplayJmh {
                 state.defenderNationIds,
                 state.assignment.assignment(),
                 state.assignment.initialWarTypeOrdinalsByPair(),
-                List.of(),
-                List.of(),
-                state.redeclareDeclarers,
-                state.redeclareTargets,
-                List.of(),
-                List.of(),
-                state.counterDeclarerPolicy,
-                state.counterTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
+                List.of(openingSideLaterDeclarationScope(state)),
                 state.participantIds,
                 state.existingWarPairs,
                 state.currentTurn,
@@ -195,18 +163,7 @@ public class BlitzReplayJmh {
                 state.defenderNationIds,
                 state.assignment.assignment(),
                 state.assignment.initialWarTypeOrdinalsByPair(),
-                state.counterDeclarers,
-                state.counterTargets,
-                state.redeclareDeclarers,
-                state.redeclareTargets,
-                List.of(),
-                List.of(),
-                state.counterDeclarerPolicy,
-                state.counterTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
-                state.redeclareDeclarerPolicy,
-                state.redeclareTargetPolicy,
+                List.of(opposingSideLaterDeclarationScope(state), openingSideLaterDeclarationScope(state)),
                 state.participantIds,
                 state.existingWarPairs,
                 state.currentTurn,
@@ -260,15 +217,15 @@ public class BlitzReplayJmh {
         private List<DBNationSnapshot> attackerSnapshots;
         private List<DBNationSnapshot> defenderSnapshots;
         private List<DBNationSnapshot> combinedSnapshots;
-        private List<DBNationSnapshot> counterDeclarers;
-        private List<DBNationSnapshot> counterTargets;
-        private List<DBNationSnapshot> redeclareDeclarers;
-        private List<DBNationSnapshot> redeclareTargets;
+        private List<DBNationSnapshot> opposingSideDeclarers;
+        private List<DBNationSnapshot> opposingSideTargets;
+        private List<DBNationSnapshot> openingSideDeclarers;
+        private List<DBNationSnapshot> openingSideTargets;
         private BlitzAssignment assignment;
-        private SidePolicy counterDeclarerPolicy;
-        private SidePolicy counterTargetPolicy;
-        private SidePolicy redeclareDeclarerPolicy;
-        private SidePolicy redeclareTargetPolicy;
+        private SidePolicy opposingSideDeclarerPolicy;
+        private SidePolicy opposingSideTargetPolicy;
+        private SidePolicy openingSideDeclarerPolicy;
+        private SidePolicy openingSideTargetPolicy;
 
         @Setup(Level.Trial)
         public void setUp() throws Exception {
@@ -316,14 +273,14 @@ public class BlitzReplayJmh {
             combinedSnapshots.addAll(attackerSnapshots);
             combinedSnapshots.addAll(defenderSnapshots);
             combinedSnapshots = List.copyOf(combinedSnapshots);
-            counterDeclarers = List.copyOf(defenderSnapshots);
-            counterTargets = List.copyOf(attackerSnapshots);
-            redeclareDeclarers = List.copyOf(attackerSnapshots);
-            redeclareTargets = List.copyOf(defenderSnapshots);
-            counterDeclarerPolicy = SidePolicy.legacy("counterDeclarer", objective);
-            counterTargetPolicy = SidePolicy.legacyPassive("counterTarget", objective);
-            redeclareDeclarerPolicy = SidePolicy.legacy("redeclareDeclarer", objective);
-            redeclareTargetPolicy = SidePolicy.legacyPassive("redeclareTarget", objective);
+            opposingSideDeclarers = List.copyOf(defenderSnapshots);
+            opposingSideTargets = List.copyOf(attackerSnapshots);
+            openingSideDeclarers = List.copyOf(attackerSnapshots);
+            openingSideTargets = List.copyOf(defenderSnapshots);
+            opposingSideDeclarerPolicy = SidePolicy.legacy("laterDeclarerOpposingSide", objective);
+            opposingSideTargetPolicy = SidePolicy.legacyPassive("laterTargetOpposingSide", objective);
+            openingSideDeclarerPolicy = SidePolicy.legacy("laterDeclarerOpeningSide", objective);
+            openingSideTargetPolicy = SidePolicy.legacyPassive("laterTargetOpeningSide", objective);
         }
 
         @TearDown(Level.Trial)
@@ -337,6 +294,36 @@ public class BlitzReplayJmh {
     @SuppressWarnings("unchecked")
     private static List<DBNationSnapshot> castList(Object value) {
         return (List<DBNationSnapshot>) value;
+    }
+
+    private static LaterDeclarationScope opposingSideLaterDeclarationScope(LiveReplayState state) {
+        return new LaterDeclarationScope(
+                ids(state.opposingSideDeclarers),
+                ids(state.opposingSideTargets),
+                true,
+                false,
+                state.opposingSideDeclarerPolicy,
+                state.opposingSideTargetPolicy
+        );
+    }
+
+    private static LaterDeclarationScope openingSideLaterDeclarationScope(LiveReplayState state) {
+        return new LaterDeclarationScope(
+                ids(state.openingSideDeclarers),
+                ids(state.openingSideTargets),
+                false,
+                true,
+                state.openingSideDeclarerPolicy,
+                state.openingSideTargetPolicy
+        );
+    }
+
+    private static List<Integer> ids(List<DBNationSnapshot> snapshots) {
+        return snapshots.stream()
+                .mapToInt(DBNationSnapshot::nationId)
+                .sorted()
+                .boxed()
+                .toList();
     }
 
     private static BlitzPlanRequest buildRequest(Collection<DBNation> attackers, Collection<DBNation> defenders, boolean captureTrace) {

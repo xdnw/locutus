@@ -185,17 +185,13 @@ class PlannerReplayProjectorTest {
                 .unit(MilitaryUnit.AIRCRAFT, 600)
                 .build();
 
-        BlitzReplayTrace trace = capture(
+        BlitzReplayTrace trace = captureOpposingSideOnly(
                 List.of(attacker, otherAttacker),
                 List.of(hitDefender),
                 Map.of(attacker.nationId(), List.of(hitDefender.nationId())),
                 Map.of(),
                 List.of(hitDefender),
                 List.of(attacker, otherAttacker),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
                 BlitzObjective.DAMAGE.objective(),
                 SimTuning.defaults(),
                 2
@@ -285,18 +281,14 @@ class PlannerReplayProjectorTest {
                 ids(List.of(counterDeclarer)),
                 Map.of(),
                 Map.of(),
-                List.of(counterDeclarer),
-                List.of(target),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                permissivePolicy,
-                passiveTargetPolicy,
-                permissivePolicy,
-                passiveTargetPolicy,
-                permissivePolicy,
-                passiveTargetPolicy,
+                List.of(laterDeclarationScope(
+                        List.of(counterDeclarer),
+                        List.of(target),
+                        true,
+                        false,
+                        permissivePolicy,
+                        passiveTargetPolicy
+                )),
                 ids(nations),
                 new int[0],
                 0,
@@ -310,18 +302,14 @@ class PlannerReplayProjectorTest {
                 ids(List.of(counterDeclarer)),
                 Map.of(),
                 Map.of(),
-                List.of(counterDeclarer),
-                List.of(target),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                restrictivePolicy,
-                passiveTargetPolicy,
-                restrictivePolicy,
-                passiveTargetPolicy,
-                restrictivePolicy,
-                passiveTargetPolicy,
+                List.of(laterDeclarationScope(
+                        List.of(counterDeclarer),
+                        List.of(target),
+                        true,
+                        false,
+                        restrictivePolicy,
+                        passiveTargetPolicy
+                )),
                 ids(nations),
                 new int[0],
                 0,
@@ -414,7 +402,7 @@ class PlannerReplayProjectorTest {
         DBNationSnapshot targetTwo = scarceTarget(102);
         DBNationSnapshot targetThree = scarceTarget(103);
 
-        BlitzReplayTrace trace = capture(
+        BlitzReplayTrace trace = captureOpposingSideOnly(
                 List.of(targetOne, targetTwo, targetThree),
                 List.of(slotRichDeclarer, peerDeclarerOne, peerDeclarerTwo),
                 Map.of(),
@@ -448,7 +436,7 @@ class PlannerReplayProjectorTest {
         DBNationSnapshot targetTwo = scarceTarget(102);
         DBNationSnapshot targetThree = scarceTarget(103);
 
-        BlitzReplayTrace trace = capture(
+        BlitzReplayTrace trace = captureOpposingSideOnly(
                 List.of(targetOne, targetTwo, targetThree),
                 List.of(viableDeclarer, unviableDeclarer),
                 Map.of(),
@@ -515,15 +503,11 @@ class PlannerReplayProjectorTest {
         BlitzReplayTrace trace = PlannerReplayProjector.capture(
                 conflict,
                 new int[]{attacker.nationId()},
+                conflict.replayNationIdsAscending(),
+                new int[0],
                 Map.of(attacker.nationId(), List.of(defender.nationId())),
                 Map.of(),
                 List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                BlitzObjective.DAMAGE.objective(),
                 2
         );
 
@@ -767,13 +751,14 @@ class PlannerReplayProjectorTest {
                 List.of(defenderDeclarer),
                 Map.of(defenderDeclarer.nationId(), List.of(initialTarget.nationId())),
                 Map.of(),
-                List.of(),
-                List.of(),
-                List.of(defenderDeclarer),
-                List.of(initialTarget, reserveTarget),
-                List.of(),
-                List.of(),
-                BlitzObjective.DAMAGE.objective(),
+                List.of(laterDeclarationScope(
+                        List.of(defenderDeclarer),
+                        List.of(initialTarget, reserveTarget),
+                        false,
+                        true,
+                        SidePolicy.legacy("laterDeclarerOpeningSide", BlitzObjective.DAMAGE.objective()),
+                        SidePolicy.legacyPassive("laterTargetOpeningSide", BlitzObjective.DAMAGE.objective())
+                )),
                 SimTuning.defaults(),
                 72
         );
@@ -825,13 +810,24 @@ class PlannerReplayProjectorTest {
                         defenderDeclarer.nationId(), List.of(attackerInitialTarget.nationId())
                 ),
                 Map.of(),
-                List.of(),
-                List.of(),
-                List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
-                List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
-                List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
-                List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
-                BlitzObjective.DAMAGE.objective(),
+                List.of(
+                        laterDeclarationScope(
+                                List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
+                                List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
+                                false,
+                                true,
+                                SidePolicy.legacy("laterDeclarerOpeningSideA", BlitzObjective.DAMAGE.objective()),
+                                SidePolicy.legacyPassive("laterTargetOpeningSideA", BlitzObjective.DAMAGE.objective())
+                        ),
+                        laterDeclarationScope(
+                                List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
+                                List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
+                                false,
+                                true,
+                                SidePolicy.legacy("laterDeclarerOpeningSideB", BlitzObjective.DAMAGE.objective()),
+                                SidePolicy.legacyPassive("laterTargetOpeningSideB", BlitzObjective.DAMAGE.objective())
+                        )
+                ),
                 SimTuning.defaults(),
                 72
         );
@@ -885,9 +881,9 @@ class PlannerReplayProjectorTest {
             List<DBNationSnapshot> defenders,
             Map<Integer, List<Integer>> assignment,
             Map<Long, Integer> warTypeOrdinalsByPair,
-            List<DBNationSnapshot> counterDeclarers,
-            List<DBNationSnapshot> counterTargets,
-            link.locutus.discord.sim.StrategicObjective counterObjective,
+            List<DBNationSnapshot> opposingSideDeclarers,
+            List<DBNationSnapshot> opposingSideTargets,
+            link.locutus.discord.sim.StrategicObjective objective,
             SimTuning tuning,
             int horizonTurns
     ) {
@@ -896,13 +892,36 @@ class PlannerReplayProjectorTest {
                 defenders,
                 assignment,
                 warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
+                defaultLaterDeclarationScopes(attackers, defenders, opposingSideDeclarers, opposingSideTargets, objective),
+                tuning,
+                horizonTurns
+        );
+    }
+
+    private static BlitzReplayTrace captureOpposingSideOnly(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            Map<Integer, List<Integer>> assignment,
+            Map<Long, Integer> warTypeOrdinalsByPair,
+            List<DBNationSnapshot> opposingSideDeclarers,
+            List<DBNationSnapshot> opposingSideTargets,
+            link.locutus.discord.sim.StrategicObjective objective,
+            SimTuning tuning,
+            int horizonTurns
+    ) {
+        return capture(
                 attackers,
                 defenders,
-                List.of(),
-                List.of(),
-                counterObjective,
+                assignment,
+                warTypeOrdinalsByPair,
+                List.of(laterDeclarationScope(
+                        opposingSideDeclarers,
+                        opposingSideTargets,
+                        true,
+                        false,
+                        SidePolicy.legacy("laterDeclarerOpposingSide", objective),
+                        SidePolicy.legacyPassive("laterTargetOpposingSide", objective)
+                )),
                 tuning,
                 horizonTurns
         );
@@ -913,13 +932,7 @@ class PlannerReplayProjectorTest {
             List<DBNationSnapshot> defenders,
             Map<Integer, List<Integer>> assignment,
             Map<Long, Integer> warTypeOrdinalsByPair,
-            List<DBNationSnapshot> counterDeclarers,
-            List<DBNationSnapshot> counterTargets,
-            List<DBNationSnapshot> redeclareDeclarers,
-            List<DBNationSnapshot> redeclareTargets,
-            List<DBNationSnapshot> secondaryRedeclareDeclarers,
-            List<DBNationSnapshot> secondaryRedeclareTargets,
-            link.locutus.discord.sim.StrategicObjective counterObjective,
+            List<LaterDeclarationScope> laterDeclarationScopes,
             SimTuning tuning,
             int horizonTurns
     ) {
@@ -934,19 +947,92 @@ class PlannerReplayProjectorTest {
                 ids(defenders),
                 assignment,
                 warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                redeclareDeclarers,
-                redeclareTargets,
-                secondaryRedeclareDeclarers,
-                secondaryRedeclareTargets,
-                counterObjective,
+                laterDeclarationScopes,
+                ids(nations),
+                new int[0],
                 0,
                 horizonTurns
         );
         PARTICIPANT_IDS_BY_TRACE.put(trace, ids(nations));
         return trace;
     }
+
+    private static List<LaterDeclarationScope> defaultLaterDeclarationScopes(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            List<DBNationSnapshot> opposingSideDeclarers,
+            List<DBNationSnapshot> opposingSideTargets,
+            link.locutus.discord.sim.StrategicObjective objective
+    ) {
+        List<LaterDeclarationScope> scopes = new ArrayList<>(2);
+        addLaterDeclarationScope(
+                scopes,
+                opposingSideDeclarers,
+                opposingSideTargets,
+                true,
+                false,
+                SidePolicy.legacy("laterDeclarerOpposingSide", objective),
+                SidePolicy.legacyPassive("laterTargetOpposingSide", objective)
+        );
+        addLaterDeclarationScope(
+                scopes,
+                attackers,
+                defenders,
+                false,
+                true,
+                SidePolicy.legacy("laterDeclarerOpeningSide", objective),
+                SidePolicy.legacyPassive("laterTargetOpeningSide", objective)
+        );
+        return List.copyOf(scopes);
+    }
+
+    private static void addLaterDeclarationScope(
+            List<LaterDeclarationScope> scopes,
+            List<DBNationSnapshot> declarers,
+            List<DBNationSnapshot> targets,
+            boolean enforceInitialTurnDefensiveGate,
+            boolean restrictToOpeningDeclarers,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy
+    ) {
+        if (declarers.isEmpty() || targets.isEmpty()) {
+            return;
+        }
+        scopes.add(laterDeclarationScope(
+                declarers,
+                targets,
+                enforceInitialTurnDefensiveGate,
+                restrictToOpeningDeclarers,
+                declarerPolicy,
+                targetPolicy
+        ));
+    }
+
+    private static LaterDeclarationScope laterDeclarationScope(
+            List<DBNationSnapshot> declarers,
+            List<DBNationSnapshot> targets,
+            boolean enforceInitialTurnDefensiveGate,
+            boolean restrictToOpeningDeclarers,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy
+    ) {
+        return new LaterDeclarationScope(
+                                nationIdList(declarers),
+                                nationIdList(targets),
+                enforceInitialTurnDefensiveGate,
+                restrictToOpeningDeclarers,
+                declarerPolicy,
+                targetPolicy
+        );
+    }
+
+        private static List<Integer> nationIdList(List<DBNationSnapshot> snapshots) {
+                return snapshots.stream()
+                                .mapToInt(DBNationSnapshot::nationId)
+                                .sorted()
+                                .boxed()
+                                .toList();
+        }
 
     private static int[] ids(List<DBNationSnapshot> snapshots) {
         return snapshots.stream().mapToInt(DBNationSnapshot::nationId).sorted().toArray();
