@@ -517,6 +517,63 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void attackerOnlyFeedbackMatchesFullFeedbackForFixedPointInputs() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 1_200),
+                nation(2, 1, 1_050)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 980),
+                nation(102, 2, 900)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 90.0f, 0.0f);
+        edges.add(1, 0, 95.0f, 0.0f);
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                new int[]{1, 1},
+                new int[]{1, 1},
+                72,
+                1.0d
+        );
+
+        LongHorizonForwardProjection.ProjectedFeedbackEvaluation fullFeedback = projection.projectedFeedbackEvaluation(
+                BlitzObjective.NET_DAMAGE.objective(),
+                1,
+                new boolean[]{true, false, true},
+                new int[]{1, 1},
+                new int[]{2, 0}
+        );
+        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation attackerFeedback = projection.projectedAttackerFeedbackEvaluation(
+                BlitzObjective.NET_DAMAGE.objective(),
+                1,
+                new boolean[]{true, false, true},
+                new int[]{1, 1},
+                new int[]{2, 0}
+        );
+
+        assertEquals(
+                fullFeedback.projectedEvaluation().objectiveScore(),
+                attackerFeedback.projectedEvaluation().objectiveScore(),
+                1e-9
+        );
+        assertArrayEquals(
+                fullFeedback.projectedEvaluation().realizedCounterIncidence(),
+                attackerFeedback.projectedEvaluation().realizedCounterIncidence()
+        );
+        for (int attackerIndex = 0; attackerIndex < 2; attackerIndex++) {
+            assertEquals(
+                    fullFeedback.midHorizonSnapshot().attackerEdgeFactor(attackerIndex),
+                    attackerFeedback.attackerMidHorizonSnapshot().attackerEdgeFactor(attackerIndex),
+                    1e-9
+            );
+        }
+    }
+
+    @Test
     void forwardProjectionLimitsProjectedBuysWhenResourcesAreKnownAndInsufficient() {
         DBNationSnapshot unknownResourceAttacker = noCurrentBuysNationWithTotalScore(1, 1, 100.0);
         DBNationSnapshot constrainedAttacker = noCurrentBuysNationWithTotalScore(1, 1, 100.0)
@@ -1544,6 +1601,106 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void rescaledVariantWarmStartMatchesFreshSolve() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(2).build(),
+                nation(2, 1, 880).toBuilder().maxOff(1).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900),
+                nation(102, 2, 880)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable baseEdges = commitmentScenarioEdges();
+        int[] baseAttackerCaps = {2, 1};
+        int[] variantAttackerCaps = {1, 1};
+        int[] defenderCaps = {1, 1};
+        int[] attackerStrengthRanks = {0, 1};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102};
+
+        LongHorizonControlProjection baseProjection = LongHorizonControlProjection.createScorerOnly(
+                baseEdges,
+                scenario,
+                baseAttackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy()
+        );
+        LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+        LongHorizonMarginalFlowSolver.Result baseResult = LongHorizonMarginalFlowSolver.solve(
+                baseEdges,
+                baseProjection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                baseAttackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                new LongHorizonMarginalFlowSolver.GraphBuildBuffers()
+        );
+
+        CandidateEdgeTable variantEdges = CandidateEdgeTable.copyOf(baseEdges);
+        variantEdges.rescaleAttackerEdgesFromProjectedState(0, 0.55f);
+        LongHorizonControlProjection variantProjection = LongHorizonControlProjection.createScorerOnly(
+                variantEdges,
+                scenario,
+                variantAttackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy()
+        );
+
+        LongHorizonMarginalFlowSolver.Result freshVariant = LongHorizonMarginalFlowSolver.solve(
+                variantEdges,
+                variantProjection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                variantAttackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                new LongHorizonMarginalFlowSolver.GraphBuildBuffers()
+        );
+        LongHorizonMarginalFlowSolver.Result warmStartedVariant = LongHorizonMarginalFlowSolver.solve(
+                variantEdges,
+                variantProjection,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                variantAttackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                staticInputs,
+                new LongHorizonMarginalFlowSolver.GraphBuildBuffers(),
+                baseResult.edgeAssigned()
+        );
+
+        assertEquals(freshVariant.assignment(), warmStartedVariant.assignment());
+        assertArrayEquals(freshVariant.edgeAssigned(), warmStartedVariant.edgeAssigned());
+        assertArrayEquals(freshVariant.attackerCounts(), warmStartedVariant.attackerCounts());
+        assertArrayEquals(freshVariant.defenderCounts(), warmStartedVariant.defenderCounts());
+    }
+
+    @Test
     void forwardProjectionReusesPreparedStateAcrossVariantsWithSameActiveProfile() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900).toBuilder().maxOff(1).build(),
@@ -1599,6 +1756,90 @@ class LongHorizonAssignmentOptimizerTest {
                 "A second variant with the same active profile should restore prepared projection state instead of rebuilding it");
         assertTrue(projectedStats.counters().getOrDefault("preparedWarRestores", 0L) >= 1L,
                 "A second variant should restore the prepared opening-war template before applying its own openings");
+    }
+
+    @Test
+    void scorerOnlyVariantMatchesFullVariantForSolveTimeReliefScoring() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(2).build(),
+                nation(2, 1, 880).toBuilder().maxOff(1).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 880).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = commitmentScenarioEdges();
+        CandidateEdgeTable copiedEdges = CandidateEdgeTable.copyOf(edges);
+        int[] attackerCaps = {2, 1};
+        int[] defenderCaps = {1, 1};
+        int[] attackerStrengthRanks = {0, 1};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102};
+
+        LongHorizonControlProjection seedProjection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                true,
+                SidePlannerSettings.legacy(),
+                SidePlannerSettings.legacy(),
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+        LongHorizonControlProjection fullVariant = seedProjection.sameSettingsFullVariant(
+                copiedEdges,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks
+        );
+        LongHorizonControlProjection scorerOnlyVariant = seedProjection.sameSettingsScorerOnlyVariant(
+                copiedEdges,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks
+        );
+
+        LongHorizonMarginalFlowSolver.Result fullResult = LongHorizonMarginalFlowSolver.solve(
+                copiedEdges,
+                fullVariant,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+        LongHorizonMarginalFlowSolver.Result scorerOnlyResult = LongHorizonMarginalFlowSolver.solve(
+                copiedEdges,
+                scorerOnlyVariant,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+
+        assertEquals(fullResult.assignment(), scorerOnlyResult.assignment(),
+                "Selective relief variants should not rebuild a full forward projection when solve-time scorer inputs are unchanged");
+        assertArrayEquals(fullResult.edgeAssigned(), scorerOnlyResult.edgeAssigned());
+        assertArrayEquals(fullResult.attackerCounts(), scorerOnlyResult.attackerCounts());
+        assertArrayEquals(fullResult.defenderCounts(), scorerOnlyResult.defenderCounts());
+        assertEquals(
+                fullVariant.assignmentScoreDense(fullResult.edgeAssigned(), fullResult.attackerCounts(), fullResult.defenderCounts()),
+                scorerOnlyVariant.assignmentScoreDense(scorerOnlyResult.edgeAssigned(), scorerOnlyResult.attackerCounts(), scorerOnlyResult.defenderCounts()),
+                1e-9,
+                "Scorer-only relief variants must preserve solve-time assignment scoring"
+        );
     }
 
     @Test

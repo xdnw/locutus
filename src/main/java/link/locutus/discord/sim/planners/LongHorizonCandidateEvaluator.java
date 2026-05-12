@@ -28,6 +28,8 @@ final class LongHorizonCandidateEvaluator {
             new HashMap<>();
         private final Map<CandidateStateKey, LongHorizonForwardProjection.ProjectedFeedbackEvaluation> projectedFeedbackEvaluations =
             new HashMap<>();
+        private final Map<CandidateStateKey, LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation> projectedAttackerFeedbackEvaluations =
+            new HashMap<>();
         private final Map<CandidateStateKey, int[]> realizedCounters = new HashMap<>();
 
     private LongHorizonCandidateEvaluator(
@@ -178,6 +180,34 @@ final class LongHorizonCandidateEvaluator {
         }
         PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "projectedEvaluations", 1);
         projectedFeedbackEvaluations.put(key, evaluation);
+        cacheProjectedEvaluation(key, evaluation.projectedEvaluation());
+        return evaluation;
+    }
+
+    LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation attackerFeedbackEvaluation(
+            LongHorizonAssignmentOptimizer.Candidate candidate,
+            LongHorizonControlProjection projection
+    ) {
+        CandidateStateKey key = candidateStateKey(candidate);
+        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation cached = projectedAttackerFeedbackEvaluations.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        if (projectionScoringContext == null || !canScoreProjection) {
+            throw new IllegalStateException("Feedback projection requires objective projection scoring");
+        }
+        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation evaluation;
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)) {
+            evaluation = projection.projectedAttackerFeedbackEvaluation(
+                    projectionScoringContext.objective(),
+                    attackerTeamId,
+                    candidate.edgeAssigned(),
+                    candidate.attackerCounts(),
+                    candidate.defenderCounts()
+            );
+        }
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "projectedEvaluations", 1);
+        projectedAttackerFeedbackEvaluations.put(key, evaluation);
         cacheProjectedEvaluation(key, evaluation.projectedEvaluation());
         return evaluation;
     }

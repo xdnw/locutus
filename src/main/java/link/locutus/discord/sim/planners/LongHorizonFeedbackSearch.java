@@ -53,6 +53,7 @@ final class LongHorizonFeedbackSearch {
         int[] adjustedCaps = attackerCaps.clone();
         List<LongHorizonAssignmentOptimizer.Candidate> candidates =
                 new ArrayList<>(variantLimit);
+        boolean[] warmStartEdgeAssigned = seed.edgeAssigned();
         for (int attackerIndex : reliefOrder) {
             int lowerBound = fixedCounts[attackerIndex];
             int remainingBudget = reliefBudgets[attackerIndex];
@@ -63,7 +64,7 @@ final class LongHorizonFeedbackSearch {
                 adjustedCaps[attackerIndex]--;
                 remainingBudget--;
                 reliefBudgets[attackerIndex] = remainingBudget;
-                LongHorizonControlProjection reliefProjection = terminalProjection.sameSettingsFullVariant(
+                LongHorizonControlProjection reliefProjection = terminalProjection.sameSettingsScorerOnlyVariant(
                         baseEdges,
                         adjustedCaps,
                         defenderCaps,
@@ -81,7 +82,8 @@ final class LongHorizonFeedbackSearch {
                         defenderNationIds,
                         fixedEdges,
                         marginalFlowStaticInputs,
-                        marginalFlowGraphBuffers
+                        marginalFlowGraphBuffers,
+                        warmStartEdgeAssigned
                 );
                 double reliefScore = reliefProjection.assignmentScoreDense(
                     reliefResult.edgeAssigned(),
@@ -89,6 +91,7 @@ final class LongHorizonFeedbackSearch {
                     reliefResult.defenderCounts()
                 );
                 candidates.add(new LongHorizonAssignmentOptimizer.Candidate(reliefResult, reliefScore));
+                warmStartEdgeAssigned = reliefResult.edgeAssigned();
             }
             if (candidates.size() >= variantLimit) {
                 continue;
@@ -138,7 +141,8 @@ final class LongHorizonFeedbackSearch {
                 LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
                 LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
     ) {
-        LongHorizonForwardProjection.ProjectedFeedbackEvaluation currentFeedback = evaluator.feedbackEvaluation(seed, seedProjection);
+        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation currentFeedback =
+                evaluator.attackerFeedbackEvaluation(seed, seedProjection);
         int[] currentRealized = currentFeedback.projectedEvaluation().realizedCounterIncidence().clone();
         if (currentRealized.length == 0) {
             return seed;
@@ -151,6 +155,7 @@ final class LongHorizonFeedbackSearch {
         double bestObjective = evaluator.score(best, currentFeedback.projectedEvaluation());
         int bestOverCountered = overCounteredAttackers(currentRealized, best.attackerCounts(), fixedCounts).size();
         int variantsRemaining = MAX_FEEDBACK_VARIANTS;
+        boolean[] warmStartEdgeAssigned = seed.edgeAssigned();
         for (int iteration = 0; iteration < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0; iteration++) {
             IntArrayList overCountered = overCounteredAttackers(
                 currentRealized,
@@ -160,7 +165,7 @@ final class LongHorizonFeedbackSearch {
             if (overCountered.isEmpty()) {
                 break;
             }
-            LongHorizonForwardProjection.MidHorizonSnapshot snapshot = currentFeedback.midHorizonSnapshot();
+            LongHorizonForwardProjection.AttackerMidHorizonSnapshot snapshot = currentFeedback.attackerMidHorizonSnapshot();
             boolean adjusted = false;
             for (int attackerIndex : overCountered) {
                 int lowerBound = fixedCounts[attackerIndex];
@@ -176,7 +181,7 @@ final class LongHorizonFeedbackSearch {
             }
             variantsRemaining--;
 
-            LongHorizonControlProjection iterationProjection = seedProjection.sameSettingsFullVariant(
+                LongHorizonControlProjection iterationSolveProjection = seedProjection.sameSettingsScorerOnlyVariant(
                     currentEdges,
                     adjustedCaps,
                     defenderCaps,
@@ -184,7 +189,7 @@ final class LongHorizonFeedbackSearch {
             );
             LongHorizonMarginalFlowSolver.Result iterationResult = LongHorizonMarginalFlowSolver.solve(
                     currentEdges,
-                    iterationProjection,
+                    iterationSolveProjection,
                     scenario.attackerCount(),
                     scenario.defenderCount(),
                     adjustedCaps,
@@ -194,16 +199,20 @@ final class LongHorizonFeedbackSearch {
                     defenderNationIds,
                         fixedEdges,
                         marginalFlowStaticInputs,
-                    marginalFlowGraphBuffers
+                    marginalFlowGraphBuffers,
+                    warmStartEdgeAssigned
             );
-                double iterationScore = iterationProjection.assignmentScoreDense(
+                double iterationScore = iterationSolveProjection.assignmentScoreDense(
                     iterationResult.edgeAssigned(),
                     iterationResult.attackerCounts(),
                     iterationResult.defenderCounts()
             );
             LongHorizonAssignmentOptimizer.Candidate iterationCandidate =
                     new LongHorizonAssignmentOptimizer.Candidate(iterationResult, iterationScore);
-                LongHorizonForwardProjection.ProjectedFeedbackEvaluation iterationFeedback = evaluator.feedbackEvaluation(
+                warmStartEdgeAssigned = iterationResult.edgeAssigned();
+                LongHorizonControlProjection iterationProjection =
+                        seedProjection.sameSettingsFullVariantReusingScorer(iterationSolveProjection);
+                LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation iterationFeedback = evaluator.attackerFeedbackEvaluation(
                     iterationCandidate,
                     iterationProjection
                 );
@@ -390,7 +399,7 @@ final class LongHorizonFeedbackSearch {
     private static void rebuildAttackerEdgesFromMidHorizon(
             CandidateEdgeTable edges,
             int attackerIndex,
-            LongHorizonForwardProjection.MidHorizonSnapshot snapshot
+            LongHorizonForwardProjection.AttackerMidHorizonSnapshot snapshot
     ) {
         double rawFactor = snapshot.attackerEdgeFactor(attackerIndex);
         float factor = (float) Math.max(OVERCOUNTER_PROJECTED_FLOOR, Math.min(1d, rawFactor));

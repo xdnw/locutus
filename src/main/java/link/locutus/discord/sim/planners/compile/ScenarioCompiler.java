@@ -17,6 +17,8 @@ import java.util.Map;
 
 /** Compiles immutable planner snapshots into dense legality and range indexes. */
 public final class ScenarioCompiler {
+    private static final int[] NO_RELEVANT_DEFENDERS = new int[0];
+
     public CompiledScenario compile(
             Collection<DBNationSnapshot> attackers,
             Collection<DBNationSnapshot> defenders,
@@ -24,7 +26,17 @@ public final class ScenarioCompiler {
             TreatyProvider treatyProvider,
             Map<Integer, Float> activityWeightsByNationId
     ) {
-        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of());
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of(), true);
+    }
+
+    public CompiledScenario compileForOpeningEvaluation(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            OverrideSet overrides,
+            TreatyProvider treatyProvider,
+            Map<Integer, Float> activityWeightsByNationId
+    ) {
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of(), false);
     }
 
     public CompiledScenario compile(
@@ -34,6 +46,18 @@ public final class ScenarioCompiler {
             TreatyProvider treatyProvider,
             Map<Integer, Float> activityWeightsByNationId,
             Collection<CompiledActiveWar> activeWars
+    ) {
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, activeWars, true);
+    }
+
+    private CompiledScenario compile(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            OverrideSet overrides,
+            TreatyProvider treatyProvider,
+            Map<Integer, Float> activityWeightsByNationId,
+            Collection<CompiledActiveWar> activeWars,
+            boolean includeRelevantDefenderIndexes
     ) {
         List<DBNationSnapshot> attackerList = List.copyOf(attackers);
         List<DBNationSnapshot> defenderList = List.copyOf(defenders);
@@ -102,12 +126,14 @@ public final class ScenarioCompiler {
                 activeWarList
             );
             CompiledAllianceGroups defenderAllianceGroups = compileDefenderAllianceGroups(defenderList);
-        int[][] relevantDefenderIndexesByAttacker = compileRelevantDefenderIndexes(
-                attackerList,
-                defenderIndexByNationId,
-                attackerIndexByNationId,
-                activeWarList
-        );
+        int[][] relevantDefenderIndexesByAttacker = includeRelevantDefenderIndexes
+                ? compileRelevantDefenderIndexes(
+                    attackerList,
+                    defenderIndexByNationId,
+                    attackerIndexByNationId,
+                    activeWarList
+                )
+                : emptyRelevantDefenderIndexes(attackerList.size());
 
         return new CompiledScenario(
                 attackerList,
@@ -144,6 +170,12 @@ public final class ScenarioCompiler {
                 defenderAllianceGroups.flatDefenderIndexes,
                 relevantDefenderIndexesByAttacker
         );
+    }
+
+    private static int[][] emptyRelevantDefenderIndexes(int attackerCount) {
+        int[][] relevant = new int[attackerCount][];
+        Arrays.fill(relevant, NO_RELEVANT_DEFENDERS);
+        return relevant;
     }
 
     private static Int2IntOpenHashMap newNationIndex(int size) {

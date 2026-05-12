@@ -231,6 +231,11 @@ final class LongHorizonForwardProjection {
     private final int[] scratchRedeclareAttSlots;
     private final int[] scratchRedeclareDefSlots;
     private final int[] scratchCounterIncidence;
+    private final int[] scratchProjectedDeclarationSeededOffWars;
+    private final int[] scratchProjectedDeclarationProjectedOffWars;
+    private final int[] scratchProjectedDeclarationSeededDefWars;
+    private final int[] scratchProjectedDeclarationProjectedDefWars;
+    private final IntOpenHashSet[] scratchProjectedDeclarationActiveOpponentsByNation;
     private final ProjectionAttackEvaluator projectionAttackEvaluator;
     private final HeuristicAttackChoicePolicy.MutableAttackCandidate heuristicAttackCandidate;
     private final MutableAttackResult heuristicAttackSelectionResult;
@@ -308,6 +313,11 @@ final class LongHorizonForwardProjection {
         this.scratchRedeclareAttSlots = new int[attackerCountVal];
         this.scratchRedeclareDefSlots = new int[defenderCountVal];
         this.scratchCounterIncidence = new int[attackerCountVal];
+        this.scratchProjectedDeclarationSeededOffWars = new int[nationCount];
+        this.scratchProjectedDeclarationProjectedOffWars = new int[nationCount];
+        this.scratchProjectedDeclarationSeededDefWars = new int[nationCount];
+        this.scratchProjectedDeclarationProjectedDefWars = new int[nationCount];
+        this.scratchProjectedDeclarationActiveOpponentsByNation = new IntOpenHashSet[nationCount];
         this.projectionAttackEvaluator = new ProjectionAttackEvaluator();
         this.heuristicAttackCandidate = new HeuristicAttackChoicePolicy.MutableAttackCandidate();
         this.heuristicAttackSelectionResult = new MutableAttackResult();
@@ -474,6 +484,24 @@ final class LongHorizonForwardProjection {
         return counterOpportunityModel;
     }
 
+    void importPreparedCachesFrom(LongHorizonForwardProjection source) {
+        if (source == null
+                || source == this
+                || source.scenario != scenario
+                || source.horizonTurns != horizonTurns
+                || Double.compare(source.horizonFactor, horizonFactor) != 0) {
+            return;
+        }
+        if (!source.preparedStateCheckpoints.isEmpty()) {
+            preparedStateCheckpoints.putAll(source.preparedStateCheckpoints);
+        }
+        if (preparedWarTemplateCheckpoint == null
+                && source.preparedWarTemplateCheckpoint != null
+                && edges.sameProjectionTopology(source.edges)) {
+            preparedWarTemplateCheckpoint = source.preparedWarTemplateCheckpoint;
+        }
+    }
+
     double projectedObjectiveScore(
             StrategicObjective objective,
             int teamId,
@@ -525,6 +553,32 @@ final class LongHorizonForwardProjection {
             midHorizonSnapshot
         );
         }
+
+    ProjectedAttackerFeedbackEvaluation projectedAttackerFeedbackEvaluation(
+            StrategicObjective objective,
+            int teamId,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts,
+            int midHorizonTurns
+    ) {
+        int turns = Math.max(1, Math.min(horizonTurns, midHorizonTurns));
+        int[] counterIncidence = resetCounterIncidenceScratch();
+        resetProjectedEvaluationProfile();
+        ProjectionState state = prepareProjectionState(attackerCounts, defenderCounts, false);
+        DenseWarState warState = prepareWarState(edgeAssigned);
+        warState.fillActiveWarsByNation(scratchActiveWarsByNation);
+        AttackerMidHorizonBaseline baseline = captureAttackerMidHorizonBaseline(state);
+        runProjectionTurns(state, warState, scratchActiveWarsByNation, attackerCounts, defenderCounts, counterIncidence, 0, turns);
+        AttackerMidHorizonSnapshot midHorizonSnapshot = captureAttackerMidHorizonSnapshot(state, baseline);
+        runProjectionTurns(state, warState, scratchActiveWarsByNation, attackerCounts, defenderCounts, counterIncidence, turns, horizonTurns);
+        flushProjectedEvaluationProfile();
+        ProjectionView view = new ProjectionView(state, warState, edgeAssigned);
+        return new ProjectedAttackerFeedbackEvaluation(
+            new ProjectedEvaluation(objective.scoreTerminal(view, teamId), counterIncidence.clone()),
+            midHorizonSnapshot
+        );
+    }
 
     ProjectionDiagnostics projectionDiagnostics(
             boolean[] edgeAssigned,
@@ -795,6 +849,17 @@ final class LongHorizonForwardProjection {
         );
     }
 
+    private AttackerMidHorizonBaseline captureAttackerMidHorizonBaseline(ProjectionState state) {
+        int attackerCount = scenario.attackerCount();
+        double[] attackerBaselineStrengths = new double[attackerCount];
+        double[] attackerBaselineScores = new double[attackerCount];
+        for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
+            attackerBaselineStrengths[attackerIndex] = state.combatStrength(attackerIndex);
+            attackerBaselineScores[attackerIndex] = state.score(attackerIndex);
+        }
+        return new AttackerMidHorizonBaseline(attackerBaselineStrengths, attackerBaselineScores);
+    }
+
     private MidHorizonSnapshot captureMidHorizonSnapshot(
             ProjectionState state,
             MidHorizonBaseline baseline,
@@ -825,6 +890,25 @@ final class LongHorizonForwardProjection {
                 baseline.defenderScoresBaseline(),
                 defenderScores,
                 counterIncidence.clone()
+        );
+    }
+
+    private AttackerMidHorizonSnapshot captureAttackerMidHorizonSnapshot(
+            ProjectionState state,
+            AttackerMidHorizonBaseline baseline
+    ) {
+        int attackerCount = scenario.attackerCount();
+        double[] attackerStrengths = new double[attackerCount];
+        double[] attackerScores = new double[attackerCount];
+        for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
+            attackerStrengths[attackerIndex] = state.combatStrength(attackerIndex);
+            attackerScores[attackerIndex] = state.score(attackerIndex);
+        }
+        return new AttackerMidHorizonSnapshot(
+                baseline.attackerStrengthsBaseline(),
+                attackerStrengths,
+                baseline.attackerScoresBaseline(),
+                attackerScores
         );
     }
 
@@ -1069,17 +1153,11 @@ final class LongHorizonForwardProjection {
             boolean applyRedeclareTiming
     ) {
         ProjectedDeclarationSnapshotState snapshotState = buildProjectedDeclarationSnapshotState(state, warState);
-        List<DBNationSnapshot> declarerSnapshots = new ArrayList<>();
-        List<DBNationSnapshot> targetSnapshots = new ArrayList<>();
         int declarerSourceCount = declarersAreScenarioAttackers ? scenario.attackerCount() : scenario.defenderCount();
         int targetSourceCount = declarersAreScenarioAttackers ? scenario.defenderCount() : scenario.attackerCount();
-        int[] declarerOverallIndexes = new int[declarerSourceCount];
-        int[] targetOverallIndexes = new int[targetSourceCount];
-        int[] declarerCaps = new int[declarerSourceCount];
-        int[] targetCaps = new int[targetSourceCount];
-        Arrays.fill(declarerOverallIndexes, -1);
-        Arrays.fill(targetOverallIndexes, -1);
-
+        int[] eligibleDeclarerOverallIndexes = new int[declarerSourceCount];
+        int[] eligibleDeclarerCaps = new int[declarerSourceCount];
+        int eligibleDeclarerCount = 0;
         for (int sourceIndex = 0; sourceIndex < declarerSourceCount; sourceIndex++) {
             if (remainingDeclarerSlots[sourceIndex] <= 0) {
                 continue;
@@ -1088,11 +1166,13 @@ final class LongHorizonForwardProjection {
             if (state.beigeTurns[overallIndex] > 0 || state.combatStrength(overallIndex) <= 0d) {
                 continue;
             }
-            int compiledIndex = declarerSnapshots.size();
-            declarerOverallIndexes[compiledIndex] = overallIndex;
-            declarerCaps[compiledIndex] = remainingDeclarerSlots[sourceIndex];
-            declarerSnapshots.add(projectedSnapshot(state, overallIndex, snapshotState));
+            eligibleDeclarerOverallIndexes[eligibleDeclarerCount] = overallIndex;
+            eligibleDeclarerCaps[eligibleDeclarerCount] = remainingDeclarerSlots[sourceIndex];
+            eligibleDeclarerCount++;
         }
+        int[] eligibleTargetOverallIndexes = new int[targetSourceCount];
+        int[] eligibleTargetCaps = new int[targetSourceCount];
+        int eligibleTargetCount = 0;
         for (int sourceIndex = 0; sourceIndex < targetSourceCount; sourceIndex++) {
             if (remainingTargetSlots[sourceIndex] <= 0) {
                 continue;
@@ -1101,16 +1181,70 @@ final class LongHorizonForwardProjection {
             if (state.beigeTurns[overallIndex] > 0 || state.combatStrength(overallIndex) <= 0d) {
                 continue;
             }
-            int compiledIndex = targetSnapshots.size();
-            targetOverallIndexes[compiledIndex] = overallIndex;
-            targetCaps[compiledIndex] = remainingTargetSlots[sourceIndex];
-            targetSnapshots.add(projectedSnapshot(state, overallIndex, snapshotState));
+            eligibleTargetOverallIndexes[eligibleTargetCount] = overallIndex;
+            eligibleTargetCaps[eligibleTargetCount] = remainingTargetSlots[sourceIndex];
+            eligibleTargetCount++;
         }
-        if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
+        if (eligibleDeclarerCount == 0 || eligibleTargetCount == 0) {
             return null;
         }
 
-        CompiledScenario projectedScenario = PROJECTED_DECLARATION_SCENARIO_COMPILER.compile(
+        boolean[] retainedDeclarers = new boolean[eligibleDeclarerCount];
+        boolean[] retainedTargets = new boolean[eligibleTargetCount];
+        int retainedDeclarerCount = 0;
+        int retainedTargetCount = 0;
+        for (int declarerIndex = 0; declarerIndex < eligibleDeclarerCount; declarerIndex++) {
+            int declarerOverallIndex = eligibleDeclarerOverallIndexes[declarerIndex];
+            for (int targetIndex = 0; targetIndex < eligibleTargetCount; targetIndex++) {
+                int targetOverallIndex = eligibleTargetOverallIndexes[targetIndex];
+                if (warState.hasActivePair(declarerOverallIndex, targetOverallIndex)
+                        || !canCounterProjected(state, declarerOverallIndex, targetOverallIndex)) {
+                    continue;
+                }
+                if (!retainedDeclarers[declarerIndex]) {
+                    retainedDeclarers[declarerIndex] = true;
+                    retainedDeclarerCount++;
+                }
+                if (!retainedTargets[targetIndex]) {
+                    retainedTargets[targetIndex] = true;
+                    retainedTargetCount++;
+                }
+            }
+        }
+        if (retainedDeclarerCount == 0 || retainedTargetCount == 0) {
+            return null;
+        }
+
+        List<DBNationSnapshot> declarerSnapshots = new ArrayList<>(retainedDeclarerCount);
+        List<DBNationSnapshot> targetSnapshots = new ArrayList<>(retainedTargetCount);
+        int[] declarerOverallIndexes = new int[retainedDeclarerCount];
+        int[] targetOverallIndexes = new int[retainedTargetCount];
+        int[] declarerCaps = new int[retainedDeclarerCount];
+        int[] targetCaps = new int[retainedTargetCount];
+        int declarerWriteIndex = 0;
+        for (int eligibleIndex = 0; eligibleIndex < eligibleDeclarerCount; eligibleIndex++) {
+            if (!retainedDeclarers[eligibleIndex]) {
+                continue;
+            }
+            int overallIndex = eligibleDeclarerOverallIndexes[eligibleIndex];
+            declarerOverallIndexes[declarerWriteIndex] = overallIndex;
+            declarerCaps[declarerWriteIndex] = eligibleDeclarerCaps[eligibleIndex];
+            declarerSnapshots.add(projectedSnapshot(state, overallIndex, snapshotState));
+            declarerWriteIndex++;
+        }
+        int targetWriteIndex = 0;
+        for (int eligibleIndex = 0; eligibleIndex < eligibleTargetCount; eligibleIndex++) {
+            if (!retainedTargets[eligibleIndex]) {
+                continue;
+            }
+            int overallIndex = eligibleTargetOverallIndexes[eligibleIndex];
+            targetOverallIndexes[targetWriteIndex] = overallIndex;
+            targetCaps[targetWriteIndex] = eligibleTargetCaps[eligibleIndex];
+            targetSnapshots.add(projectedSnapshot(state, overallIndex, snapshotState));
+            targetWriteIndex++;
+        }
+
+        CompiledScenario projectedScenario = PROJECTED_DECLARATION_SCENARIO_COMPILER.compileForOpeningEvaluation(
                 declarerSnapshots,
                 targetSnapshots,
                 OverrideSet.EMPTY,
@@ -1125,8 +1259,8 @@ final class LongHorizonForwardProjection {
                 OverrideSet.EMPTY,
                 declarationObjective,
                 openingSettings == null ? SideOpeningSettings.legacy(declarationObjective) : openingSettings,
-                Arrays.copyOf(declarerCaps, projectedScenario.attackerCount()),
-                Arrays.copyOf(targetCaps, projectedScenario.defenderCount()),
+            declarerCaps,
+            targetCaps,
                 rawEdges
         );
         // Legal later declarations must remain visible even when no attack type clears
@@ -1134,12 +1268,13 @@ final class LongHorizonForwardProjection {
         // the declaration itself.
 
         CandidateEdgeTable projectedEdges = new CandidateEdgeTable();
-        int[][] rawEdgeByPair = new int[declarerSnapshots.size()][targetSnapshots.size()];
-        for (int[] row : rawEdgeByPair) {
-            Arrays.fill(row, -1);
-        }
+        Long2IntOpenHashMap rawEdgeByPair = new Long2IntOpenHashMap(Math.max(16, rawEdges.edgeCount() * 2));
+        rawEdgeByPair.defaultReturnValue(-1);
         for (int edgeIndex = 0; edgeIndex < rawEdges.edgeCount(); edgeIndex++) {
-            rawEdgeByPair[rawEdges.attackerIndex(edgeIndex)][rawEdges.defenderIndex(edgeIndex)] = edgeIndex;
+            rawEdgeByPair.put(
+                    projectedIndexPairKey(rawEdges.attackerIndex(edgeIndex), rawEdges.defenderIndex(edgeIndex)),
+                    edgeIndex
+            );
         }
         double[] deferredBestByDeclarer = new double[declarerSnapshots.size()];
         int horizonRemainingTurns = Math.max(0, horizonTurns - turn);
@@ -1160,7 +1295,7 @@ final class LongHorizonForwardProjection {
                             state,
                             warState,
                             rawEdges,
-                            rawEdgeByPair[declarerCompiledIndex][targetCompiledIndex],
+                            rawEdgeByPair.get(projectedIndexPairKey(declarerCompiledIndex, targetCompiledIndex)),
                             declarerOverallIndex,
                             targetOverallIndex,
                             remainingDeclarerSlots[declarersAreScenarioAttackers
@@ -1202,7 +1337,7 @@ final class LongHorizonForwardProjection {
                 int targetSourceIndex = declarersAreScenarioAttackers
                         ? targetOverallIndex - state.attackerCount
                         : targetOverallIndex;
-                int rawEdgeIndex = rawEdgeByPair[declarerCompiledIndex][targetCompiledIndex];
+                int rawEdgeIndex = rawEdgeByPair.get(projectedIndexPairKey(declarerCompiledIndex, targetCompiledIndex));
                 double score = projectedDeclarationScore(
                         state,
                         warState,
@@ -1435,6 +1570,10 @@ final class LongHorizonForwardProjection {
         return ((long) declarerNationId << 32) ^ (targetNationId & 0xffffffffL);
     }
 
+    private long projectedIndexPairKey(int declarerCompiledIndex, int targetCompiledIndex) {
+        return ((long) declarerCompiledIndex << 32) ^ (targetCompiledIndex & 0xffffffffL);
+    }
+
     private ProjectedLaterDeclarationInputs projectedLaterDeclarationInputs(
             CompiledScenario projectedScenario,
             CandidateEdgeTable projectedEdges,
@@ -1482,17 +1621,27 @@ final class LongHorizonForwardProjection {
             DenseWarState warState
     ) {
         int nationCount = state.attackerCount + state.defenderCount;
-        int[] seededOffensiveWars = new int[nationCount];
-        int[] projectedOffensiveWars = new int[nationCount];
-        int[] seededDefensiveWars = new int[nationCount];
-        int[] projectedDefensiveWars = new int[nationCount];
-        @SuppressWarnings("unchecked")
-        IntOpenHashSet[] activeOpponentsByNation = new IntOpenHashSet[nationCount];
+        int[] seededOffensiveWars = scratchProjectedDeclarationSeededOffWars;
+        int[] projectedOffensiveWars = scratchProjectedDeclarationProjectedOffWars;
+        int[] seededDefensiveWars = scratchProjectedDeclarationSeededDefWars;
+        int[] projectedDefensiveWars = scratchProjectedDeclarationProjectedDefWars;
+        IntOpenHashSet[] activeOpponentsByNation = scratchProjectedDeclarationActiveOpponentsByNation;
+        Arrays.fill(seededOffensiveWars, 0, nationCount, 0);
+        Arrays.fill(projectedOffensiveWars, 0, nationCount, 0);
+        Arrays.fill(seededDefensiveWars, 0, nationCount, 0);
+        Arrays.fill(projectedDefensiveWars, 0, nationCount, 0);
         for (int nationIndex = 0; nationIndex < nationCount; nationIndex++) {
             DBNationSnapshot baselineSnapshot = nationIndex < scenario.attackerCount()
                     ? scenario.attacker(nationIndex)
                     : scenario.defender(nationIndex - scenario.attackerCount());
-            activeOpponentsByNation[nationIndex] = new IntOpenHashSet(baselineSnapshot.activeOpponentNationIds());
+            IntOpenHashSet activeOpponents = activeOpponentsByNation[nationIndex];
+            if (activeOpponents == null) {
+                activeOpponents = new IntOpenHashSet(Math.max(4, baselineSnapshot.activeOpponentNationIds().size() * 2));
+                activeOpponentsByNation[nationIndex] = activeOpponents;
+            } else {
+                activeOpponents.clear();
+            }
+            activeOpponents.addAll(baselineSnapshot.activeOpponentNationIds());
         }
         for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
             if (!warState.active[warIndex]) {
@@ -1527,30 +1676,137 @@ final class LongHorizonForwardProjection {
         DBNationSnapshot baselineSnapshot = nationIndex < scenario.attackerCount()
                 ? scenario.attacker(nationIndex)
                 : scenario.defender(nationIndex - scenario.attackerCount());
-        DBNationSnapshot.Builder builder = baselineSnapshot.toBuilder()
-                .currentOffensiveWars(snapshotState.effectiveOffensiveWars(nationIndex, baselineSnapshot.currentOffensiveWars()))
-                .currentDefensiveWars(snapshotState.effectiveDefensiveWars(nationIndex, baselineSnapshot.currentDefensiveWars()))
-                .activeOpponentNationIds(snapshotState.activeOpponentNationIds(nationIndex))
-                .beigeTurns(Math.max(0, state.beigeTurns[nationIndex]))
-                .cityInfra(projectedCityInfra(state, nationIndex));
-        double[] resources = new double[ResourceType.values.length];
-        System.arraycopy(state.resourcesFlat, state.resourceBaseOffsets[nationIndex], resources, 0, resources.length);
-        builder.resources(resources);
+        int currentOffensiveWars = snapshotState.effectiveOffensiveWars(nationIndex, baselineSnapshot.currentOffensiveWars());
+        int currentDefensiveWars = snapshotState.effectiveDefensiveWars(nationIndex, baselineSnapshot.currentDefensiveWars());
         int unitBase = state.unitBaseOffsets[nationIndex];
-        for (MilitaryUnit unit : MilitaryUnit.values) {
-            int unitIndex = unitBase + unit.ordinal();
-            builder.unit(unit, Math.max(0, state.unitsFlat[unitIndex]));
-            builder.unitBoughtToday(unit, Math.max(0, state.unitsBoughtTodayFlat[unitIndex]));
-            builder.pendingBuyNextTurn(unit, Math.max(0, state.pendingBuysFlat[unitIndex]));
+        Set<Integer> activeOpponentNationIds = snapshotState.activeOpponentNationIds(nationIndex);
+        int beigeTurns = Math.max(0, state.beigeTurns[nationIndex]);
+        if (projectedSnapshotMatchesBaseline(
+                state,
+                nationIndex,
+                baselineSnapshot,
+                currentOffensiveWars,
+                currentDefensiveWars,
+                activeOpponentNationIds,
+                beigeTurns,
+                unitBase
+        )) {
+            return baselineSnapshot;
         }
-        return builder.build();
+        double[] cityInfra = projectedCityInfra(state, nationIndex, baselineSnapshot);
+        double[] resources = projectedResources(state, nationIndex, baselineSnapshot);
+        return DBNationSnapshot.projectedFrom(
+            baselineSnapshot,
+            currentOffensiveWars,
+            currentDefensiveWars,
+            activeOpponentNationIds,
+            beigeTurns,
+            cityInfra,
+            resources,
+            state.unitsFlat,
+            unitBase,
+            state.unitsBoughtTodayFlat,
+            state.pendingBuysFlat
+        );
     }
 
-    private double[] projectedCityInfra(ProjectionState state, int nationIndex) {
+    private boolean projectedSnapshotMatchesBaseline(
+            ProjectionState state,
+            int nationIndex,
+            DBNationSnapshot baselineSnapshot,
+            int currentOffensiveWars,
+            int currentDefensiveWars,
+            Set<Integer> activeOpponentNationIds,
+            int beigeTurns,
+            int unitBase
+    ) {
+        return baselineSnapshot.currentOffensiveWars() == currentOffensiveWars
+                && baselineSnapshot.currentDefensiveWars() == currentDefensiveWars
+                && baselineSnapshot.beigeTurns() == beigeTurns
+                && baselineSnapshot.activeOpponentNationIds().equals(activeOpponentNationIds)
+                && projectedResourcesMatchBaseline(state, nationIndex, baselineSnapshot)
+                && projectedCityInfraMatchesBaseline(state, nationIndex, baselineSnapshot)
+                && projectedUnitsMatchBaseline(state, unitBase, baselineSnapshot);
+    }
+
+    private double[] projectedResources(
+            ProjectionState state,
+            int nationIndex,
+            DBNationSnapshot baselineSnapshot
+    ) {
+        if (projectedResourcesMatchBaseline(state, nationIndex, baselineSnapshot)) {
+            return baselineSnapshot.resourcesRaw();
+        }
+        double[] resources = new double[ResourceType.values.length];
+        System.arraycopy(state.resourcesFlat, state.resourceBaseOffsets[nationIndex], resources, 0, resources.length);
+        return resources;
+    }
+
+    private boolean projectedResourcesMatchBaseline(
+            ProjectionState state,
+            int nationIndex,
+            DBNationSnapshot baselineSnapshot
+    ) {
+        int resourceBase = state.resourceBaseOffsets[nationIndex];
+        for (ResourceType type : ResourceType.values) {
+            if (Double.compare(state.resourcesFlat[resourceBase + type.ordinal()], baselineSnapshot.resource(type)) != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private double[] projectedCityInfra(
+            ProjectionState state,
+            int nationIndex,
+            DBNationSnapshot baselineSnapshot
+    ) {
+        if (projectedCityInfraMatchesBaseline(state, nationIndex, baselineSnapshot)) {
+            return baselineSnapshot.cityInfraRaw();
+        }
         int cityCount = state.cityCounts[nationIndex];
         double[] cityInfra = new double[cityCount];
         System.arraycopy(state.cityInfraFlat, state.cityInfraBaseOffsets[nationIndex], cityInfra, 0, cityCount);
         return cityInfra;
+    }
+
+    private boolean projectedCityInfraMatchesBaseline(
+            ProjectionState state,
+            int nationIndex,
+            DBNationSnapshot baselineSnapshot
+    ) {
+        double[] baselineCityInfra = baselineSnapshot.cityInfraRaw();
+        int cityCount = state.cityCounts[nationIndex];
+        if (baselineCityInfra.length != cityCount) {
+            return false;
+        }
+        int cityBase = state.cityInfraBaseOffsets[nationIndex];
+        for (int cityIndex = 0; cityIndex < cityCount; cityIndex++) {
+            if (Double.compare(state.cityInfraFlat[cityBase + cityIndex], baselineCityInfra[cityIndex]) != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean projectedUnitsMatchBaseline(
+            ProjectionState state,
+            int unitBase,
+            DBNationSnapshot baselineSnapshot
+    ) {
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            int ordinal = unit.ordinal();
+            if (baselineSnapshot.unit(unit) != Math.max(0, state.unitsFlat[unitBase + ordinal])) {
+                return false;
+            }
+            if (baselineSnapshot.unitsBoughtToday(unit) != Math.max(0, state.unitsBoughtTodayFlat[unitBase + ordinal])) {
+                return false;
+            }
+            if (baselineSnapshot.pendingBuysNextTurn(unit) != Math.max(0, state.pendingBuysFlat[unitBase + ordinal])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private int nationIdForIndex(int nationIndex) {
@@ -4261,11 +4517,34 @@ final class LongHorizonForwardProjection {
         }
     }
 
+    record AttackerMidHorizonSnapshot(
+            double[] attackerStrengthsBaseline,
+            double[] attackerStrengthsMid,
+            double[] attackerScoresBaseline,
+            double[] attackerScoresMid
+    ) {
+        double attackerEdgeFactor(int attackerIndex) {
+            return MidHorizonSnapshot.clampedRatio(
+                    attackerStrengthsBaseline,
+                    attackerStrengthsMid,
+                    attackerIndex,
+                    attackerScoresBaseline,
+                    attackerScoresMid
+            );
+        }
+    }
+
             private record MidHorizonBaseline(
                 double[] attackerStrengthsBaseline,
                 double[] defenderStrengthsBaseline,
                 double[] attackerScoresBaseline,
                 double[] defenderScoresBaseline
+            ) {
+            }
+
+            private record AttackerMidHorizonBaseline(
+                double[] attackerStrengthsBaseline,
+                double[] attackerScoresBaseline
             ) {
             }
 
@@ -4280,6 +4559,12 @@ final class LongHorizonForwardProjection {
             MidHorizonSnapshot midHorizonSnapshot
     ) {
     }
+
+        record ProjectedAttackerFeedbackEvaluation(
+            ProjectedEvaluation projectedEvaluation,
+            AttackerMidHorizonSnapshot attackerMidHorizonSnapshot
+        ) {
+        }
 
     private record ProjectedDeclarationSnapshotState(
             int[] seededOffensiveWars,

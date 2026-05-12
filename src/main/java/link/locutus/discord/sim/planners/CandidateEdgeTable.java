@@ -216,6 +216,24 @@ final class CandidateEdgeTable {
         return edges.bestAttackTypeIdAt(edge);
     }
 
+    boolean sameProjectionTopology(CandidateEdgeTable other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || edgeCount != other.edgeCount) {
+            return false;
+        }
+        for (int edge = 0; edge < edgeCount; edge++) {
+            if (attackerIndex(edge) != other.attackerIndex(edge)
+                    || defenderIndex(edge) != other.defenderIndex(edge)
+                    || preferredWarTypeId(edge) != other.preferredWarTypeId(edge)
+                    || bestAttackTypeId(edge) != other.bestAttackTypeId(edge)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     float scalarScore(int edge) {
         return edges.scoreAt(edge);
     }

@@ -71,6 +71,7 @@ public final class DBNationSnapshot {
     private final long projectBits;
     private final boolean blitzkriegActive;
     private final double[] infraAttackModifiers;
+    double[] resourcesRaw() { return resources; }
     private final double[] infraDefendModifiers;
     private final double groundLooterModifier;
     private final double nonGroundLooterModifier;
@@ -148,6 +149,86 @@ public final class DBNationSnapshot {
         this.blitzkriegActive = source.blitzkriegActive;
         this.infraAttackModifiers = source.infraAttackModifiers.clone();
         this.infraDefendModifiers = source.infraDefendModifiers.clone();
+        this.groundLooterModifier = source.groundLooterModifier;
+        this.nonGroundLooterModifier = source.nonGroundLooterModifier;
+        this.lootModifier = source.lootModifier;
+        this.score = derivedScore(this.staticScoreComponent, this.cityInfra, this.units);
+    }
+
+    private DBNationSnapshot(
+            DBNationSnapshot source,
+            int currentOffensiveWars,
+            int currentDefensiveWars,
+            Set<Integer> activeOpponentNationIds,
+            int beigeTurns,
+            double[] cityInfra,
+            double[] resources,
+            int[] unitsFlat,
+            int unitBase,
+            int[] unitBuysTodayFlat,
+            int[] pendingBuysFlat
+    ) {
+        this.nationId = source.nationId;
+        this.allianceId = source.allianceId;
+        this.teamId = source.teamId;
+        this.cities = source.cities;
+        this.currentOffensiveWars = currentOffensiveWars;
+        this.currentDefensiveWars = currentDefensiveWars;
+        this.slotOnlyOffensiveWarReleaseTurns = source.slotOnlyOffensiveWarReleaseTurns;
+        this.slotOnlyDefensiveWarReleaseTurns = source.slotOnlyDefensiveWarReleaseTurns;
+        this.maxOff = source.maxOff;
+        this.warPolicy = source.warPolicy;
+        EnumMap<MilitaryUnit, Integer> projectedUnits = new EnumMap<>(MilitaryUnit.class);
+        EnumMap<MilitaryUnit, Integer> projectedUnitBuysToday = new EnumMap<>(MilitaryUnit.class);
+        EnumMap<MilitaryUnit, Integer> projectedPendingBuysNextTurn = new EnumMap<>(MilitaryUnit.class);
+        boolean unitsMatchSource = true;
+        boolean unitBuysMatchSource = true;
+        boolean pendingBuysMatchSource = true;
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            int amount = Math.max(0, unitsFlat[unitBase + unit.ordinal()]);
+            if (amount != source.unit(unit)) {
+                unitsMatchSource = false;
+            }
+            if (amount > 0) {
+                projectedUnits.put(unit, amount);
+            }
+            int ordinal = unit.ordinal();
+            int boughtToday = Math.max(0, unitBuysTodayFlat[unitBase + ordinal]);
+            if (boughtToday != source.unitsBoughtToday(unit)) {
+                unitBuysMatchSource = false;
+            }
+            if (boughtToday > 0) {
+                projectedUnitBuysToday.put(unit, boughtToday);
+            }
+            int pendingBuy = Math.max(0, pendingBuysFlat[unitBase + ordinal]);
+            if (pendingBuy != source.pendingBuysNextTurn(unit)) {
+                pendingBuysMatchSource = false;
+            }
+            if (pendingBuy > 0) {
+                projectedPendingBuysNextTurn.put(unit, pendingBuy);
+            }
+        }
+        this.units = unitsMatchSource ? source.units : projectedUnits;
+        this.resources = resources;
+        this.staticScoreComponent = source.staticScoreComponent;
+        this.cityInfra = cityInfra;
+        this.citySpecialistProfiles = source.citySpecialistProfiles;
+        this.totalInfra = totalInfra(this.cityInfra);
+        this.resetHourUtc = source.resetHourUtc;
+        this.resetHourUtcFallback = source.resetHourUtcFallback;
+        this.activeOpponentNationIds = activeOpponentNationIds.equals(source.activeOpponentNationIds)
+                ? source.activeOpponentNationIds
+                : Set.copyOf(activeOpponentNationIds);
+        this.policyCooldownTurnsRemaining = source.policyCooldownTurnsRemaining;
+        this.beigeTurns = beigeTurns;
+        this.vmTurns = source.vmTurns;
+        this.unitBuysToday = unitBuysMatchSource ? source.unitBuysToday : projectedUnitBuysToday;
+        this.pendingBuysNextTurn = pendingBuysMatchSource ? source.pendingBuysNextTurn : projectedPendingBuysNextTurn;
+        this.researchBits = source.researchBits;
+        this.projectBits = source.projectBits;
+        this.blitzkriegActive = source.blitzkriegActive;
+        this.infraAttackModifiers = source.infraAttackModifiers;
+        this.infraDefendModifiers = source.infraDefendModifiers;
         this.groundLooterModifier = source.groundLooterModifier;
         this.nonGroundLooterModifier = source.nonGroundLooterModifier;
         this.lootModifier = source.lootModifier;
@@ -379,6 +460,34 @@ public final class DBNationSnapshot {
     ) {
         return new DBNationSnapshot(this, cityInfra, currentOffensiveWars, currentDefensiveWars, activeOpponentNationIds);
     }
+
+        static DBNationSnapshot projectedFrom(
+            DBNationSnapshot source,
+            int currentOffensiveWars,
+            int currentDefensiveWars,
+            Set<Integer> activeOpponentNationIds,
+            int beigeTurns,
+            double[] cityInfra,
+            double[] resources,
+            int[] unitsFlat,
+            int unitBase,
+            int[] unitBuysTodayFlat,
+            int[] pendingBuysFlat
+        ) {
+        return new DBNationSnapshot(
+            source,
+            currentOffensiveWars,
+            currentDefensiveWars,
+            activeOpponentNationIds,
+            beigeTurns,
+            cityInfra,
+            resources,
+            unitsFlat,
+            unitBase,
+            unitBuysTodayFlat,
+            pendingBuysFlat
+        );
+        }
 
     public Builder toBuilder() {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.DBNATION_TO_BUILDER)) {
