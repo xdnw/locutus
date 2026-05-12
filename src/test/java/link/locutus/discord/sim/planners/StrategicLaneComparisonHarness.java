@@ -37,7 +37,7 @@ public final class StrategicLaneComparisonHarness {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final int DEFAULT_HORIZON_TURNS = 72;
     private static final int DEFAULT_POPULATION = 0;
-    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,countersDeclared,redeclaresDeclared,countersThrottled,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
+    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
 
     private StrategicLaneComparisonHarness() {
     }
@@ -137,9 +137,9 @@ public final class StrategicLaneComparisonHarness {
                             Integer.toString(best.turnsNoControl()),
                             Integer.toString(best.currentWarOutcomeFlips()),
                             Integer.toString(best.concludedWars()),
-                            Integer.toString(best.countersDeclared()),
-                            Integer.toString(best.redeclaresDeclared()),
-                            Integer.toString(best.countersThrottled()),
+                            Integer.toString(best.respondingSideLaterDeclarations()),
+                            Integer.toString(best.openingSideLaterDeclarations()),
+                            Integer.toString(best.respondingSideLaterDeclarationsThrottled()),
                             tierCountSummary(best.concludedWarsByDefenderTier()),
                             enumCountSummary(WarType.values, best.assignedWarTypeCounts()),
                             enumCountSummary(AttackType.values, best.assignedAttackTypeCounts()),
@@ -902,9 +902,9 @@ public final class StrategicLaneComparisonHarness {
                     diagnostics.turnsNoControl(),
                     diagnostics.currentWarOutcomeFlips(),
                     diagnostics.concludedWars(),
-                    diagnostics.countersDeclared(),
-                    diagnostics.redeclaresDeclared(),
-                    diagnostics.countersThrottled(),
+                    diagnostics.respondingSideLaterDeclarations(),
+                    diagnostics.openingSideLaterDeclarations(),
+                    diagnostics.respondingSideLaterDeclarationsThrottled(),
                     diagnostics.concludedWarsByDefenderTier(),
                     warTypeCounts,
                     attackTypeCounts,
@@ -1139,9 +1139,9 @@ public final class StrategicLaneComparisonHarness {
             int turnsNoControl,
             int currentWarOutcomeFlips,
             int concludedWars,
-            int countersDeclared,
-            int redeclaresDeclared,
-            int countersThrottled,
+            int respondingSideLaterDeclarations,
+            int openingSideLaterDeclarations,
+            int respondingSideLaterDeclarationsThrottled,
             int[] concludedWarsByDefenderTier,
             int[] assignedWarTypeCounts,
             int[] assignedAttackTypeCounts,
@@ -1190,9 +1190,9 @@ public final class StrategicLaneComparisonHarness {
                     turnsNoControl,
                     currentWarOutcomeFlips,
                     concludedWars,
-                    countersDeclared,
-                    redeclaresDeclared,
-                    countersThrottled,
+                    respondingSideLaterDeclarations,
+                    openingSideLaterDeclarations,
+                    respondingSideLaterDeclarationsThrottled,
                     concludedWarsByDefenderTier,
                     assignedWarTypeCounts,
                     assignedAttackTypeCounts,

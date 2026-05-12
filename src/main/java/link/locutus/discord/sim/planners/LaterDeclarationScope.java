@@ -5,8 +5,6 @@ import java.util.List;
 public record LaterDeclarationScope(
         List<Integer> declarerNationIds,
         List<Integer> targetNationIds,
-        boolean enforceInitialTurnDefensiveGate,
-        boolean restrictToOpeningDeclarers,
         SidePolicy declarerPolicy,
         SidePolicy targetPolicy
 ) {

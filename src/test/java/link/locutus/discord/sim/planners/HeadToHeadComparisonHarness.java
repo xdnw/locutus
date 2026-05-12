@@ -32,7 +32,7 @@ public final class HeadToHeadComparisonHarness {
             + "attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,"
             + "attackerWipeRisk,defenderWipeRisk,activeWars,attackerWinningWars,defenderWinningWars,"
             + "turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,"
-            + "concludedWars,countersDeclared,redeclaresDeclared,countersThrottled,"
+            + "concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,"
             + "assignedWarTypes,assignedAttackTypes,bestMs,avgMs";
 
     private HeadToHeadComparisonHarness() {
@@ -137,9 +137,9 @@ public final class HeadToHeadComparisonHarness {
                 Integer.toString(best.turnsNoControl()),
                 Integer.toString(best.currentWarOutcomeFlips()),
                 Integer.toString(best.concludedWars()),
-                Integer.toString(best.countersDeclared()),
-                Integer.toString(best.redeclaresDeclared()),
-                Integer.toString(best.countersThrottled()),
+                Integer.toString(best.respondingSideLaterDeclarations()),
+                Integer.toString(best.openingSideLaterDeclarations()),
+                Integer.toString(best.respondingSideLaterDeclarationsThrottled()),
                 enumCountSummary(link.locutus.discord.apiv1.enums.WarType.values, best.assignedWarTypeCounts()),
                 enumCountSummary(link.locutus.discord.apiv1.enums.AttackType.values, best.assignedAttackTypeCounts()),
                 formatDouble(bestMs, 3),

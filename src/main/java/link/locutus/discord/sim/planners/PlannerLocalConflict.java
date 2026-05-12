@@ -1242,18 +1242,15 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (laterDeclarationScopes == null || laterDeclarationScopes.isEmpty()) {
             return;
         }
-        Set<Integer> initialAssignmentDeclarerIds = assignment == null || assignment.isEmpty()
-            ? Set.of()
-            : Set.copyOf(assignment.keySet());
-        Map<Integer, DBNationSnapshot> projectedSnapshotsById = shouldPlanAutonomousLaterDeclarations(assignment, laterDeclarationScopes)
-                ? autonomousPlannerSnapshotsById(laterDeclarationScopes)
-                : Map.of();
+        List<EligibleLaterDeclarationScope> eligibleScopes = eligibleLaterDeclarationScopes(laterDeclarationScopes);
+        if (eligibleScopes.isEmpty()) {
+            return;
+        }
+        Map<Integer, DBNationSnapshot> projectedSnapshotsById = autonomousPlannerSnapshotsById(eligibleScopes);
         List<AutonomousDeclaration> declarations = new ArrayList<>();
-        for (LaterDeclarationScope scope : laterDeclarationScopes) {
+        for (EligibleLaterDeclarationScope scope : eligibleScopes) {
             declarations.addAll(plannedAutonomousDeclarations(
                     scope,
-                    initialTurn,
-                    initialAssignmentDeclarerIds,
                     remainingTurns,
                     projectedSnapshotsById
             ));
@@ -1280,20 +1277,79 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
+    private List<EligibleLaterDeclarationScope> eligibleLaterDeclarationScopes(List<LaterDeclarationScope> laterDeclarationScopes) {
+        List<EligibleLaterDeclarationScope> eligibleScopes = new ArrayList<>(laterDeclarationScopes.size());
+        for (LaterDeclarationScope scope : laterDeclarationScopes) {
+            if (scope == null || scope.isEmpty()) {
+                continue;
+            }
+            List<LocalNation> declarers = eligibleLaterDeclarers(scope.declarerNationIds());
+            List<LocalNation> targets = eligibleLaterTargets(scope.targetNationIds());
+            pruneLaterDeclarationScopePairs(declarers, targets);
+            if (declarers.isEmpty() || targets.isEmpty()) {
+                continue;
+            }
+            eligibleScopes.add(new EligibleLaterDeclarationScope(scope, declarers, targets));
+        }
+        return eligibleScopes;
+    }
+
+    private void pruneLaterDeclarationScopePairs(List<LocalNation> declarers, List<LocalNation> targets) {
+        if (declarers.isEmpty() || targets.isEmpty()) {
+            return;
+        }
+        boolean[] retainedDeclarers = new boolean[declarers.size()];
+        boolean[] retainedTargets = new boolean[targets.size()];
+        int retainedDeclarerCount = 0;
+        int retainedTargetCount = 0;
+        for (int declarerIndex = 0; declarerIndex < declarers.size(); declarerIndex++) {
+            LocalNation declarer = declarers.get(declarerIndex);
+            for (int targetIndex = 0; targetIndex < targets.size(); targetIndex++) {
+                if (!canDeclareWar(declarer, targets.get(targetIndex))) {
+                    continue;
+                }
+                if (!retainedDeclarers[declarerIndex]) {
+                    retainedDeclarers[declarerIndex] = true;
+                    retainedDeclarerCount++;
+                }
+                if (!retainedTargets[targetIndex]) {
+                    retainedTargets[targetIndex] = true;
+                    retainedTargetCount++;
+                }
+            }
+        }
+        if (retainedDeclarerCount == declarers.size() && retainedTargetCount == targets.size()) {
+            return;
+        }
+        List<LocalNation> filteredDeclarers = new ArrayList<>(retainedDeclarerCount);
+        for (int declarerIndex = 0; declarerIndex < declarers.size(); declarerIndex++) {
+            if (retainedDeclarers[declarerIndex]) {
+                filteredDeclarers.add(declarers.get(declarerIndex));
+            }
+        }
+        declarers.clear();
+        declarers.addAll(filteredDeclarers);
+
+        List<LocalNation> filteredTargets = new ArrayList<>(retainedTargetCount);
+        for (int targetIndex = 0; targetIndex < targets.size(); targetIndex++) {
+            if (retainedTargets[targetIndex]) {
+                filteredTargets.add(targets.get(targetIndex));
+            }
+        }
+        targets.clear();
+        targets.addAll(filteredTargets);
+    }
+
     private List<AutonomousDeclaration> plannedAutonomousDeclarations(
-            LaterDeclarationScope scope,
-            boolean initialTurn,
-            Set<Integer> initialAssignmentDeclarerIds,
+            EligibleLaterDeclarationScope scope,
             int remainingTurns,
             Map<Integer, DBNationSnapshot> projectedSnapshotsById
     ) {
-        if (scope == null || scope.isEmpty()) {
+        if (scope == null) {
             return List.of();
         }
         PlannerAutonomousDeclarationPlanner.Plan plan = planAutonomousLaterDeclarations(
                 scope,
-                initialTurn,
-                initialAssignmentDeclarerIds,
                 remainingTurns,
                 projectedSnapshotsById
         );
@@ -1422,62 +1478,27 @@ final class PlannerLocalConflict implements TeamWarControlView {
     }
 
     private PlannerAutonomousDeclarationPlanner.Plan planAutonomousLaterDeclarations(
-            LaterDeclarationScope scope,
-            boolean initialTurn,
-            Set<Integer> initialAssignmentDeclarerIds,
+            EligibleLaterDeclarationScope scope,
             int remainingTurns,
             Map<Integer, DBNationSnapshot> projectedSnapshotsById
     ) {
-        List<LocalNation> declarers = eligibleLaterDeclarers(
-                scope.declarerNationIds(),
-                scope.enforceInitialTurnDefensiveGate() && initialTurn
-        );
-        if (scope.restrictToOpeningDeclarers() && !initialAssignmentDeclarerIds.isEmpty()) {
-            declarers.removeIf(declarer -> !initialAssignmentDeclarerIds.contains(declarer.nationId()));
-        }
-        List<LocalNation> targets = eligibleLaterTargets(scope.targetNationIds());
-        if (declarers.isEmpty() || targets.isEmpty()) {
-            return PlannerAutonomousDeclarationPlanner.Plan.empty();
-        }
-
-        List<DBNationSnapshot> declarerSnapshots = snapshotsFor(declarers, projectedSnapshotsById);
-        List<DBNationSnapshot> targetSnapshots = snapshotsFor(targets, projectedSnapshotsById);
+        List<DBNationSnapshot> declarerSnapshots = snapshotsFor(scope.declarers(), projectedSnapshotsById);
+        List<DBNationSnapshot> targetSnapshots = snapshotsFor(scope.targets(), projectedSnapshotsById);
         return PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
                 declarerSnapshots,
                 targetSnapshots,
                 tuning,
-                scope.declarerPolicy(),
-                scope.targetPolicy(),
+                scope.scope().declarerPolicy(),
+                scope.scope().targetPolicy(),
                 remainingTurns
         );
     }
 
-    private static boolean shouldPlanAutonomousLaterDeclarations(
-            Map<Integer, List<Integer>> assignment,
-            List<LaterDeclarationScope> laterDeclarationScopes
-    ) {
-        if (laterDeclarationScopes == null || laterDeclarationScopes.isEmpty()) {
-            return false;
-        }
-        for (LaterDeclarationScope scope : laterDeclarationScopes) {
-            if (scope == null || scope.isEmpty()) {
-                continue;
-            }
-            if (!scope.restrictToOpeningDeclarers() || (assignment != null && !assignment.isEmpty())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Map<Integer, DBNationSnapshot> autonomousPlannerSnapshotsById(List<LaterDeclarationScope> laterDeclarationScopes) {
+    private Map<Integer, DBNationSnapshot> autonomousPlannerSnapshotsById(List<EligibleLaterDeclarationScope> laterDeclarationScopes) {
         IntLinkedOpenHashSet requestedNationIds = new IntLinkedOpenHashSet();
-        for (LaterDeclarationScope scope : laterDeclarationScopes) {
-            if (scope == null || scope.isEmpty()) {
-                continue;
-            }
-            addAllNationIds(requestedNationIds, scope.declarerNationIds());
-            addAllNationIds(requestedNationIds, scope.targetNationIds());
+        for (EligibleLaterDeclarationScope scope : laterDeclarationScopes) {
+            addAllNationIds(requestedNationIds, scope.declarers());
+            addAllNationIds(requestedNationIds, scope.targets());
         }
         if (requestedNationIds.isEmpty()) {
             return Map.of();
@@ -1490,15 +1511,22 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return snapshotsById;
     }
 
-    private static void addAllNationIds(IntLinkedOpenHashSet destination, Collection<Integer> nationIds) {
-        for (Integer nationId : nationIds) {
-            if (nationId != null) {
-                destination.add(nationId);
+    private static void addAllNationIds(IntLinkedOpenHashSet destination, Collection<LocalNation> nations) {
+        for (LocalNation nation : nations) {
+            if (nation != null) {
+                destination.add(nation.nationId());
             }
         }
     }
 
     private record AutonomousDeclaration(int declarerNationId, int targetNationId, int warTypeOrdinal) {
+    }
+
+    private record EligibleLaterDeclarationScope(
+            LaterDeclarationScope scope,
+            List<LocalNation> declarers,
+            List<LocalNation> targets
+    ) {
     }
 
     private void rebuildActiveWarCounts() {
@@ -1567,11 +1595,10 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    private List<LocalNation> eligibleLaterDeclarers(Collection<Integer> declarerNationIds, boolean enforceInitialTurnDefensiveGate) {
+    private List<LocalNation> eligibleLaterDeclarers(Collection<Integer> declarerNationIds) {
         List<LocalNation> ordered = orderedLaterDeclarers(declarerNationIds);
         ordered.removeIf(declarer -> declarer.vmTurns > 0
                 || declarer.beigeTurns > 0
-                || initialLaterDeclarationBlocked(declarer, enforceInitialTurnDefensiveGate)
                 || freeOffensiveSlots(declarer) <= 0);
         return ordered;
     }
@@ -1624,13 +1651,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return Integer.compare(left.nationId(), right.nationId());
         });
         return ordered;
-    }
-
-    private boolean initialLaterDeclarationBlocked(LocalNation declarer, boolean initialTurn) {
-        if (!initialTurn || tuning.turn1DeclarePolicy() == Turn1DeclarePolicy.BOTH_FREE) {
-            return false;
-        }
-        return declarer.activeBaseCurrentDefensiveWars(currentTurn) + activeDefensiveWarCount(declarer.nationId()) > 0;
     }
 
     private boolean canDeclareWar(LocalNation declarer, LocalNation target) {

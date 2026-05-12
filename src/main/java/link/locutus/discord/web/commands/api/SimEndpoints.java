@@ -430,8 +430,6 @@ public class SimEndpoints {
                 scopes,
                 context.defenderSnapshots(),
                 context.attackerSnapshots(),
-                true,
-                false,
                 autonomousDeclarerPolicy(context, "laterDeclarerOpposingSide"),
                 autonomousTargetPolicy(context, "laterTargetOpposingSide")
             );
@@ -439,8 +437,6 @@ public class SimEndpoints {
                 scopes,
                 context.attackerSnapshots(),
                 context.defenderSnapshots(),
-                false,
-                true,
                 autonomousDeclarerPolicy(context, "laterDeclarerOpeningSide"),
                 autonomousTargetPolicy(context, "laterTargetOpeningSide")
             );
@@ -450,8 +446,6 @@ public class SimEndpoints {
                 scopes,
                 context.attackerSnapshots(),
                 context.defenderSnapshots(),
-                true,
-                false,
                 autonomousDeclarerPolicy(context, "laterDeclarerOpposingSide"),
                 autonomousTargetPolicy(context, "laterTargetOpposingSide")
             );
@@ -459,8 +453,6 @@ public class SimEndpoints {
                 scopes,
                 context.defenderSnapshots(),
                 context.attackerSnapshots(),
-                false,
-                true,
                 autonomousDeclarerPolicy(context, "laterDeclarerOpeningSide"),
                 autonomousTargetPolicy(context, "laterTargetOpeningSide")
             );
@@ -470,8 +462,6 @@ public class SimEndpoints {
                 scopes,
                 context.attackerSnapshots(),
                 context.defenderSnapshots(),
-                false,
-                true,
                 autonomousDeclarerPolicy(context, "laterDeclarerAttackerSide"),
                 autonomousTargetPolicy(context, "laterTargetAttackerSide")
             );
@@ -479,8 +469,6 @@ public class SimEndpoints {
                 scopes,
                 context.defenderSnapshots(),
                 context.attackerSnapshots(),
-                false,
-                true,
                 autonomousDeclarerPolicy(context, "laterDeclarerDefenderSide"),
                 autonomousTargetPolicy(context, "laterTargetDefenderSide")
             );
@@ -493,8 +481,6 @@ public class SimEndpoints {
             List<LaterDeclarationScope> scopes,
             List<DBNationSnapshot> declarers,
             List<DBNationSnapshot> targets,
-            boolean enforceInitialTurnDefensiveGate,
-            boolean restrictToOpeningDeclarers,
             SidePolicy declarerPolicy,
             SidePolicy targetPolicy
         ) {
@@ -504,8 +490,6 @@ public class SimEndpoints {
         scopes.add(new LaterDeclarationScope(
             declarers.stream().map(DBNationSnapshot::nationId).toList(),
             targets.stream().map(DBNationSnapshot::nationId).toList(),
-            enforceInitialTurnDefensiveGate,
-            restrictToOpeningDeclarers,
             declarerPolicy,
             targetPolicy
         ));

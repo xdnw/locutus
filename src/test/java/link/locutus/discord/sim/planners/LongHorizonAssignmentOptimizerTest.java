@@ -2262,10 +2262,10 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long defaultCounterDeclarations = defaultProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("counterDeclarations", 0L);
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
         long thresholdSuppressedCounterDeclarations = thresholdSuppressedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("counterDeclarations", 0L);
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
 
         assertTrue(defaultCounterDeclarations > 0L,
                 "Default defender counter threshold should still allow this projected counter scenario");
@@ -2297,7 +2297,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long counterDeclarations = profile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("counterDeclarations", 0L);
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
 
         assertTrue(counterDeclarations > 0L,
                 "Projected defender later declarations should consider legal attacker-side targets with free defensive slots, not only attackers assigned in the opening");
@@ -2327,7 +2327,7 @@ class LongHorizonAssignmentOptimizerTest {
 
                 long blockedRedeclarations = blockedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                         .counters()
-                        .getOrDefault("redeclareDeclarations", 0L);
+                        .getOrDefault("openingSideLaterDeclarations", 0L);
 
                 assertEquals(0L, blockedRedeclarations,
                         "Projected post-victory delay should block same-pair redeclarations before the reopen window");
@@ -2376,7 +2376,7 @@ class LongHorizonAssignmentOptimizerTest {
         long redeclareDeclarations = session.snapshot()
                 .stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("redeclareDeclarations", 0L);
+                .getOrDefault("openingSideLaterDeclarations", 0L);
         assertTrue(
                 redeclareDeclarations > 0L,
                 "projected later declarations should be able to use a free offensive slot before turn 60 instead of waiting for an arbitrary expiration gate"
@@ -2416,10 +2416,10 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long defaultRedeclarations = defaultProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("redeclareDeclarations", 0L);
+                .getOrDefault("openingSideLaterDeclarations", 0L);
         long thresholdSuppressedRedeclarations = thresholdSuppressedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("redeclareDeclarations", 0L);
+                .getOrDefault("openingSideLaterDeclarations", 0L);
 
         assertTrue(defaultRedeclarations > 0L,
                 "Default attacker-side redeclare threshold should still allow projected redeclarations after the post-victory delay");
@@ -2462,10 +2462,10 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long uncappedCounterDeclarations = uncappedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("counterDeclarations", 0L);
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
         long cappedCounterDeclarations = cappedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("counterDeclarations", 0L);
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
 
         assertTrue(uncappedCounterDeclarations > cappedCounterDeclarations,
                 "A defender-side per-turn counter cap should spread counter declarations over time instead of emptying the pool immediately");
@@ -2524,10 +2524,10 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long unrestrictedCounterDeclarations = unrestrictedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("counterDeclarations", 0L);
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
         long thresholdedCounterDeclarations = thresholdedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("counterDeclarations", 0L);
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
 
         assertEquals(2L, unrestrictedCounterDeclarations,
                 "Without an activity threshold, both defenders should be eligible to counter on the single counter turn");

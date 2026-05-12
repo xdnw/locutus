@@ -131,11 +131,11 @@ final class LongHorizonForwardProjection {
     );
     private static final PlannerProfiler.CounterToken PROFILED_COUNTER_DECLARATIONS = PlannerProfiler.counterToken(
         PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
-        "counterDeclarations"
+        "respondingSideLaterDeclarations"
     );
     private static final PlannerProfiler.CounterToken PROFILED_COUNTER_DECLARATIONS_THROTTLED = PlannerProfiler.counterToken(
         PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
-        "counterDeclarationsThrottled"
+        "respondingSideLaterDeclarationsThrottled"
     );
     private static final PlannerProfiler.CounterToken PROFILED_REDECLARE_TURNS = PlannerProfiler.counterToken(
         PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
@@ -151,7 +151,7 @@ final class LongHorizonForwardProjection {
     );
     private static final PlannerProfiler.CounterToken PROFILED_REDECLARE_DECLARATIONS = PlannerProfiler.counterToken(
         PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
-        "redeclareDeclarations"
+        "openingSideLaterDeclarations"
     );
     private static final PlannerProfiler.CounterToken PROFILED_WAR_ITERATIONS = PlannerProfiler.counterToken(
         PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION,
@@ -5085,9 +5085,9 @@ final class LongHorizonForwardProjection {
             int turnsAttackerHeldNetControl,
             int turnsDefenderHeldNetControl,
             int turnsNoControl,
-            int countersDeclared,
-            int redeclaresDeclared,
-            int countersThrottled
+                int respondingSideLaterDeclarations,
+                int openingSideLaterDeclarations,
+                int respondingSideLaterDeclarationsThrottled
     ) {
     }
 

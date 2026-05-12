@@ -347,8 +347,6 @@ class PlannerConflictExecutorTest {
                 new LaterDeclarationScope(
                         counterDeclarerIds,
                         counterTargetIds,
-                        true,
-                        false,
                         SidePolicy.legacy("laterDeclarerOpposingSide", new DamageObjective()),
                         SidePolicy.legacyPassive("laterTargetOpposingSide", new DamageObjective())
                 )

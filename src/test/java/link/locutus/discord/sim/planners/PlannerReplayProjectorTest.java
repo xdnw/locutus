@@ -284,8 +284,6 @@ class PlannerReplayProjectorTest {
                 List.of(laterDeclarationScope(
                         List.of(counterDeclarer),
                         List.of(target),
-                        true,
-                        false,
                         permissivePolicy,
                         passiveTargetPolicy
                 )),
@@ -305,8 +303,6 @@ class PlannerReplayProjectorTest {
                 List.of(laterDeclarationScope(
                         List.of(counterDeclarer),
                         List.of(target),
-                        true,
-                        false,
                         restrictivePolicy,
                         passiveTargetPolicy
                 )),
@@ -754,8 +750,6 @@ class PlannerReplayProjectorTest {
                 List.of(laterDeclarationScope(
                         List.of(defenderDeclarer),
                         List.of(initialTarget, reserveTarget),
-                        false,
-                        true,
                         SidePolicy.legacy("laterDeclarerOpeningSide", BlitzObjective.DAMAGE.objective()),
                         SidePolicy.legacyPassive("laterTargetOpeningSide", BlitzObjective.DAMAGE.objective())
                 )),
@@ -814,16 +808,12 @@ class PlannerReplayProjectorTest {
                         laterDeclarationScope(
                                 List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
                                 List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
-                                false,
-                                true,
                                 SidePolicy.legacy("laterDeclarerOpeningSideA", BlitzObjective.DAMAGE.objective()),
                                 SidePolicy.legacyPassive("laterTargetOpeningSideA", BlitzObjective.DAMAGE.objective())
                         ),
                         laterDeclarationScope(
                                 List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
                                 List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
-                                false,
-                                true,
                                 SidePolicy.legacy("laterDeclarerOpeningSideB", BlitzObjective.DAMAGE.objective()),
                                 SidePolicy.legacyPassive("laterTargetOpeningSideB", BlitzObjective.DAMAGE.objective())
                         )
@@ -917,8 +907,6 @@ class PlannerReplayProjectorTest {
                 List.of(laterDeclarationScope(
                         opposingSideDeclarers,
                         opposingSideTargets,
-                        true,
-                        false,
                         SidePolicy.legacy("laterDeclarerOpposingSide", objective),
                         SidePolicy.legacyPassive("laterTargetOpposingSide", objective)
                 )),
@@ -969,8 +957,6 @@ class PlannerReplayProjectorTest {
                 scopes,
                 opposingSideDeclarers,
                 opposingSideTargets,
-                true,
-                false,
                 SidePolicy.legacy("laterDeclarerOpposingSide", objective),
                 SidePolicy.legacyPassive("laterTargetOpposingSide", objective)
         );
@@ -978,8 +964,6 @@ class PlannerReplayProjectorTest {
                 scopes,
                 attackers,
                 defenders,
-                false,
-                true,
                 SidePolicy.legacy("laterDeclarerOpeningSide", objective),
                 SidePolicy.legacyPassive("laterTargetOpeningSide", objective)
         );
@@ -990,8 +974,6 @@ class PlannerReplayProjectorTest {
             List<LaterDeclarationScope> scopes,
             List<DBNationSnapshot> declarers,
             List<DBNationSnapshot> targets,
-            boolean enforceInitialTurnDefensiveGate,
-            boolean restrictToOpeningDeclarers,
             SidePolicy declarerPolicy,
             SidePolicy targetPolicy
     ) {
@@ -1001,8 +983,6 @@ class PlannerReplayProjectorTest {
         scopes.add(laterDeclarationScope(
                 declarers,
                 targets,
-                enforceInitialTurnDefensiveGate,
-                restrictToOpeningDeclarers,
                 declarerPolicy,
                 targetPolicy
         ));
@@ -1011,16 +991,12 @@ class PlannerReplayProjectorTest {
     private static LaterDeclarationScope laterDeclarationScope(
             List<DBNationSnapshot> declarers,
             List<DBNationSnapshot> targets,
-            boolean enforceInitialTurnDefensiveGate,
-            boolean restrictToOpeningDeclarers,
             SidePolicy declarerPolicy,
             SidePolicy targetPolicy
     ) {
         return new LaterDeclarationScope(
                                 nationIdList(declarers),
                                 nationIdList(targets),
-                enforceInitialTurnDefensiveGate,
-                restrictToOpeningDeclarers,
                 declarerPolicy,
                 targetPolicy
         );

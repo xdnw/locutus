@@ -94,9 +94,9 @@ class StrategicLaneComparisonHarnessTest {
         assertEquals(lane.get("idleAttackersFreeSlot"), headToHead.get("attackerIdleViable"));
         assertEquals(lane.get("strongDefenderCoveragePct"), headToHead.get("attackerStrongDefenderCoveragePct"));
         assertEquals(lane.get("terminalObjective"), headToHead.get("attackerTerminalObjective"));
-        assertEquals(lane.get("countersDeclared"), headToHead.get("countersDeclared"));
-        assertEquals(lane.get("redeclaresDeclared"), headToHead.get("redeclaresDeclared"));
-        assertEquals(lane.get("countersThrottled"), headToHead.get("countersThrottled"));
+        assertEquals(lane.get("respondingSideLaterDeclarations"), headToHead.get("respondingSideLaterDeclarations"));
+        assertEquals(lane.get("openingSideLaterDeclarations"), headToHead.get("openingSideLaterDeclarations"));
+        assertEquals(lane.get("respondingSideLaterDeclarationsThrottled"), headToHead.get("respondingSideLaterDeclarationsThrottled"));
     }
 
     @Test

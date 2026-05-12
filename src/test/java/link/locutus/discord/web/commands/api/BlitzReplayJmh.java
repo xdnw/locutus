@@ -300,8 +300,6 @@ public class BlitzReplayJmh {
         return new LaterDeclarationScope(
                 ids(state.opposingSideDeclarers),
                 ids(state.opposingSideTargets),
-                true,
-                false,
                 state.opposingSideDeclarerPolicy,
                 state.opposingSideTargetPolicy
         );
@@ -311,8 +309,6 @@ public class BlitzReplayJmh {
         return new LaterDeclarationScope(
                 ids(state.openingSideDeclarers),
                 ids(state.openingSideTargets),
-                false,
-                true,
                 state.openingSideDeclarerPolicy,
                 state.openingSideTargetPolicy
         );
