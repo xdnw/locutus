@@ -156,8 +156,10 @@ final class LongHorizonFeedbackSearch {
         int bestOverCountered = countOverCounteredAttackers(currentRealized, best.attackerCounts(), fixedCounts);
         int variantsRemaining = MAX_FEEDBACK_VARIANTS;
         boolean[] warmStartEdgeAssigned = seed.edgeAssigned();
+        IntArrayList overCounteredScratch = new IntArrayList(Math.max(4, currentRealized.length));
         for (int iteration = 0; iteration < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0; iteration++) {
             IntArrayList overCountered = overCounteredAttackers(
+                overCounteredScratch,
                 currentRealized,
                 currentSeed.attackerCounts(),
                 fixedCounts
@@ -312,8 +314,13 @@ final class LongHorizonFeedbackSearch {
         return Math.max(0d, counterPenalty) + realized;
     }
 
-    private static IntArrayList overCounteredAttackers(int[] realizedCounters, int[] attackerCounts, int[] fixedCounts) {
-        IntArrayList overCountered = new IntArrayList();
+    private static IntArrayList overCounteredAttackers(
+            IntArrayList overCountered,
+            int[] realizedCounters,
+            int[] attackerCounts,
+            int[] fixedCounts
+    ) {
+        overCountered.clear();
         for (int attackerIndex = 0; attackerIndex < realizedCounters.length; attackerIndex++) {
             if (realizedCounters[attackerIndex] < OVERCOUNTER_THRESHOLD) {
                 continue;
