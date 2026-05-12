@@ -449,22 +449,34 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 int[] variantDefenderCaps,
                 int[] variantAttackerStrengthRanks
             ) {
+                LongHorizonAssignmentScoringModel variantAssignmentScoringModel =
+                        variantEdges.sameProjectionTopology(edges)
+                                ? assignmentScoringModel.sameTopologyVariant(
+                                    variantEdges,
+                                    scenario,
+                                    variantAttackerCaps,
+                                    variantDefenderCaps,
+                                    variantAttackerStrengthRanks,
+                                    horizonTurns,
+                                    attackerPlannerSettings
+                                )
+                                : LongHorizonAssignmentScoringModel.create(
+                                    variantEdges,
+                                    scenario,
+                                    variantAttackerCaps,
+                                    variantDefenderCaps,
+                                    variantAttackerStrengthRanks,
+                                    horizonTurns,
+                                    horizonFactor,
+                                    includeSlotDenial,
+                                    attackerPlannerSettings
+                                );
                 return fullVariant(
                     variantEdges,
                     variantAttackerCaps,
                     variantDefenderCaps,
                     variantAttackerStrengthRanks,
-                    LongHorizonAssignmentScoringModel.create(
-                        variantEdges,
-                        scenario,
-                        variantAttackerCaps,
-                        variantDefenderCaps,
-                        variantAttackerStrengthRanks,
-                        horizonTurns,
-                        horizonFactor,
-                        includeSlotDenial,
-                        attackerPlannerSettings
-                    ),
+                    variantAssignmentScoringModel,
                     forwardProjectionScenarioBoundInputs.counterOpportunityModel()
                 );
                 }
@@ -550,17 +562,27 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                     defenderPlannerSettings,
                     attackerProjectionPolicies,
                     defenderProjectionPolicies,
-                    LongHorizonAssignmentScoringModel.create(
-                        variantEdges,
-                        scenario,
-                        variantAttackerCaps,
-                        variantDefenderCaps,
-                        variantAttackerStrengthRanks,
-                        horizonTurns,
-                        horizonFactor,
-                        includeSlotDenial,
-                        attackerPlannerSettings
-                    ),
+                    variantEdges.sameProjectionTopology(edges)
+                            ? assignmentScoringModel.sameTopologyVariant(
+                                variantEdges,
+                                scenario,
+                                variantAttackerCaps,
+                                variantDefenderCaps,
+                                variantAttackerStrengthRanks,
+                                horizonTurns,
+                                attackerPlannerSettings
+                            )
+                            : LongHorizonAssignmentScoringModel.create(
+                                variantEdges,
+                                scenario,
+                                variantAttackerCaps,
+                                variantDefenderCaps,
+                                variantAttackerStrengthRanks,
+                                horizonTurns,
+                                horizonFactor,
+                                includeSlotDenial,
+                                attackerPlannerSettings
+                            ),
                     forwardProjectionScenarioBoundInputs.counterOpportunityModel(),
                     null,
                     forwardProjectionScenarioBoundInputs,

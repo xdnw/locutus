@@ -59,6 +59,7 @@ public final class ScenarioCompiler {
             Collection<CompiledActiveWar> activeWars,
             boolean includeRelevantDefenderIndexes
     ) {
+        boolean openingEvaluationOnly = !includeRelevantDefenderIndexes;
         List<DBNationSnapshot> attackerList = List.copyOf(attackers);
         List<DBNationSnapshot> defenderList = List.copyOf(defenders);
         List<CompiledActiveWar> activeWarList = List.copyOf(activeWars == null ? List.of() : activeWars);
@@ -77,12 +78,12 @@ public final class ScenarioCompiler {
         double[] defenderCityInfraFlat = compileCityInfraFlat(defenderList, defenderCityInfraOffsets);
         byte[] attackerFreeOffSlots = new byte[attackerList.size()];
         byte[] defenderFreeDefSlots = new byte[defenderList.size()];
-        float[] attackerActivityWeights = new float[attackerList.size()];
+        float[] attackerActivityWeights = openingEvaluationOnly ? null : new float[attackerList.size()];
         float[] defenderActivityWeights = new float[defenderList.size()];
-        int[] attackerResearchBits = new int[attackerList.size()];
-        int[] defenderResearchBits = new int[defenderList.size()];
-        long[] attackerProjectBits = new long[attackerList.size()];
-        long[] defenderProjectBits = new long[defenderList.size()];
+        int[] attackerResearchBits = openingEvaluationOnly ? null : new int[attackerList.size()];
+        int[] defenderResearchBits = openingEvaluationOnly ? null : new int[defenderList.size()];
+        long[] attackerProjectBits = openingEvaluationOnly ? null : new long[attackerList.size()];
+        long[] defenderProjectBits = openingEvaluationOnly ? null : new long[defenderList.size()];
         Int2IntOpenHashMap attackerIndexByNationId = newNationIndex(attackerList.size());
         Int2IntOpenHashMap defenderIndexByNationId = newNationIndex(defenderList.size());
 
@@ -91,9 +92,11 @@ public final class ScenarioCompiler {
             attackerNationIds[attackerIndex] = attacker.nationId();
             attackerScores[attackerIndex] = attacker.score();
             attackerFreeOffSlots[attackerIndex] = (byte) overrides.effectiveFreeOff(attacker);
-            attackerActivityWeights[attackerIndex] = activityWeightsByNationId.getOrDefault(attacker.nationId(), 1.0f);
-            attackerResearchBits[attackerIndex] = attacker.researchBits();
-            attackerProjectBits[attackerIndex] = attacker.projectBits();
+            if (!openingEvaluationOnly) {
+                attackerActivityWeights[attackerIndex] = activityWeightsByNationId.getOrDefault(attacker.nationId(), 1.0f);
+                attackerResearchBits[attackerIndex] = attacker.researchBits();
+                attackerProjectBits[attackerIndex] = attacker.projectBits();
+            }
             attackerIndexByNationId.put(attacker.nationId(), attackerIndex);
         }
         for (int defenderIndex = 0; defenderIndex < defenderList.size(); defenderIndex++) {
@@ -102,8 +105,10 @@ public final class ScenarioCompiler {
             defenderScores[defenderIndex] = defender.score();
             defenderFreeDefSlots[defenderIndex] = (byte) overrides.effectiveFreeDef(defender);
             defenderActivityWeights[defenderIndex] = activityWeightsByNationId.getOrDefault(defender.nationId(), 1.0f);
-            defenderResearchBits[defenderIndex] = defender.researchBits();
-            defenderProjectBits[defenderIndex] = defender.projectBits();
+            if (!openingEvaluationOnly) {
+                defenderResearchBits[defenderIndex] = defender.researchBits();
+                defenderProjectBits[defenderIndex] = defender.projectBits();
+            }
             defenderIndexByNationId.put(defender.nationId(), defenderIndex);
         }
 

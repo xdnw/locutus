@@ -1843,6 +1843,79 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void sameTopologyScoringVariantMatchesFreshScoringModel() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(2).build(),
+                nation(2, 1, 880).toBuilder().maxOff(1).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 880).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = commitmentScenarioEdges();
+        CandidateEdgeTable variantEdges = CandidateEdgeTable.copyOf(edges);
+        variantEdges.rescaleAttackerEdgesFromProjectedState(0, 0.5f);
+        int[] attackerCaps = {2, 1};
+        int[] defenderCaps = {1, 1};
+        int[] attackerStrengthRanks = {0, 1};
+
+        LongHorizonAssignmentScoringModel fresh = LongHorizonAssignmentScoringModel.create(
+                variantEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                true,
+                SidePlannerSettings.legacy()
+        );
+        LongHorizonAssignmentScoringModel reused = LongHorizonAssignmentScoringModel.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                true,
+                SidePlannerSettings.legacy()
+        ).sameTopologyVariant(
+                variantEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                SidePlannerSettings.legacy()
+        );
+
+        boolean[] edgeAssigned = {true, false, true};
+        int[] attackerCounts = {1, 1};
+        int[] defenderCounts = {2, 0};
+        LongHorizonCounterOpportunityModel counterOpportunityModel = LongHorizonForwardProjection.counterOpportunityModel(
+                scenario,
+                72,
+                1.0d
+        );
+
+        assertEquals(
+                fresh.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts, counterOpportunityModel, attackerCaps),
+                reused.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts, counterOpportunityModel, attackerCaps),
+                1e-9,
+                "Same-topology scorer-model reuse must preserve assignment scoring"
+        );
+        for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
+            assertEquals(fresh.attackerCommitmentMarginalScore(attackerIndex, 0), reused.attackerCommitmentMarginalScore(attackerIndex, 0), 1e-9);
+            assertEquals(fresh.attackerIdlePressureMarginalScore(attackerIndex), reused.attackerIdlePressureMarginalScore(attackerIndex), 1e-9);
+        }
+        for (int defenderIndex = 0; defenderIndex < defenderCounts.length; defenderIndex++) {
+            assertEquals(fresh.defenderPressureMarginalScore(defenderIndex, 0), reused.defenderPressureMarginalScore(defenderIndex, 0), 1e-9);
+        }
+    }
+
+    @Test
     void recedingFeedbackProducesDeterministicOutputAcrossRepeatedRuns() {
         // The fixed-point iteration must remain deterministic: same inputs must produce the same
         // assignment regardless of how many cap-reduction iterations actually fire.

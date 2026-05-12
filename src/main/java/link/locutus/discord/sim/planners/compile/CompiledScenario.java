@@ -196,7 +196,7 @@ public final class CompiledScenario {
     }
 
     public float attackerActivityWeight(int attackerIndex) {
-        return attackerActivityWeights[attackerIndex];
+        return attackerActivityWeights == null ? 1.0f : attackerActivityWeights[attackerIndex];
     }
 
     public float defenderActivityWeight(int defenderIndex) {
@@ -204,19 +204,19 @@ public final class CompiledScenario {
     }
 
     public int attackerResearchBits(int attackerIndex) {
-        return attackerResearchBits[attackerIndex];
+        return attackerResearchBits == null ? attackers.get(attackerIndex).researchBits() : attackerResearchBits[attackerIndex];
     }
 
     public int defenderResearchBits(int defenderIndex) {
-        return defenderResearchBits[defenderIndex];
+        return defenderResearchBits == null ? defenders.get(defenderIndex).researchBits() : defenderResearchBits[defenderIndex];
     }
 
     public long attackerProjectBits(int attackerIndex) {
-        return attackerProjectBits[attackerIndex];
+        return attackerProjectBits == null ? attackers.get(attackerIndex).projectBits() : attackerProjectBits[attackerIndex];
     }
 
     public long defenderProjectBits(int defenderIndex) {
-        return defenderProjectBits[defenderIndex];
+        return defenderProjectBits == null ? defenders.get(defenderIndex).projectBits() : defenderProjectBits[defenderIndex];
     }
 
     public int[] relevantDefenderIndexes(int attackerIndex) {

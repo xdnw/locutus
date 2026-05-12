@@ -77,6 +77,39 @@ final class LongHorizonAssignmentScoringModel {
         );
     }
 
+            LongHorizonAssignmentScoringModel sameTopologyVariant(
+                CandidateEdgeTable edges,
+                CompiledScenario scenario,
+                int[] attackerCaps,
+                int[] defenderCaps,
+                int[] attackerStrengthRanks,
+                int horizonTurns,
+                SidePlannerSettings attackerPlannerSettings
+            ) {
+            float[] baseScores = baseScores(edges);
+            double[] attackerValues = attackerValues(edges, baseScores, slotDenialScores, scenario.attackerCount());
+            int[] attackerCommitmentNeeds = attackerCommitmentNeeds(edges, baseScores, slotDenialScores, attackerCaps, horizonTurns);
+            int[] attackerBaselineOffensiveWars = this.attackerBaselineOffensiveWars;
+            return new LongHorizonAssignmentScoringModel(
+                baseScores,
+                slotDenialScores,
+                defenderValues(edges, baseScores, slotDenialScores, scenario.defenderCount()),
+                defenderPressureNeeds(scenario, edges, defenderCaps),
+                attackerValues,
+                attackerBaselineOffensiveWars,
+                attackerCommitmentNeeds,
+                attackerIdlePressureScores(
+                    attackerValues,
+                    attackerBaselineOffensiveWars,
+                    attackerCommitmentNeeds,
+                    attackerStrengthRanks,
+                    attackerPlannerSettings,
+                    horizonFactor
+                ),
+                horizonFactor
+            );
+            }
+
     double assignmentScoreDense(
             boolean[] edgeAssigned,
             int[] attackerCounts,
