@@ -18,6 +18,7 @@ import java.util.Map;
 /** Compiles immutable planner snapshots into dense legality and range indexes. */
 public final class ScenarioCompiler {
     private static final int[] NO_RELEVANT_DEFENDERS = new int[0];
+    private static final long[] NO_TREATED_DEFENDER_WORDS = new long[0];
 
     public CompiledScenario compile(
             Collection<DBNationSnapshot> attackers,
@@ -60,6 +61,8 @@ public final class ScenarioCompiler {
             boolean includeRelevantDefenderIndexes
     ) {
         boolean openingEvaluationOnly = !includeRelevantDefenderIndexes;
+        boolean defaultActivityWeights = openingEvaluationOnly && activityWeightsByNationId.isEmpty();
+        boolean noTreaties = openingEvaluationOnly && treatyProvider == TreatyProvider.NONE;
         List<DBNationSnapshot> attackerList = List.copyOf(attackers);
         List<DBNationSnapshot> defenderList = List.copyOf(defenders);
         List<CompiledActiveWar> activeWarList = List.copyOf(activeWars == null ? List.of() : activeWars);
@@ -68,18 +71,18 @@ public final class ScenarioCompiler {
         int[] defenderNationIds = new int[defenderList.size()];
         double[] attackerScores = new double[attackerList.size()];
         double[] defenderScores = new double[defenderList.size()];
-        int[] attackerUnitOffsets = compileUnitOffsets(attackerList);
-        int[] defenderUnitOffsets = compileUnitOffsets(defenderList);
-        int[] attackerUnitsFlat = compileUnitsFlat(attackerList, attackerUnitOffsets);
-        int[] defenderUnitsFlat = compileUnitsFlat(defenderList, defenderUnitOffsets);
-        int[] attackerCityInfraOffsets = compileCityInfraOffsets(attackerList);
-        int[] defenderCityInfraOffsets = compileCityInfraOffsets(defenderList);
-        double[] attackerCityInfraFlat = compileCityInfraFlat(attackerList, attackerCityInfraOffsets);
-        double[] defenderCityInfraFlat = compileCityInfraFlat(defenderList, defenderCityInfraOffsets);
+        int[] attackerUnitOffsets = openingEvaluationOnly ? null : compileUnitOffsets(attackerList);
+        int[] defenderUnitOffsets = openingEvaluationOnly ? null : compileUnitOffsets(defenderList);
+        int[] attackerUnitsFlat = openingEvaluationOnly ? null : compileUnitsFlat(attackerList, attackerUnitOffsets);
+        int[] defenderUnitsFlat = openingEvaluationOnly ? null : compileUnitsFlat(defenderList, defenderUnitOffsets);
+        int[] attackerCityInfraOffsets = openingEvaluationOnly ? null : compileCityInfraOffsets(attackerList);
+        int[] defenderCityInfraOffsets = openingEvaluationOnly ? null : compileCityInfraOffsets(defenderList);
+        double[] attackerCityInfraFlat = openingEvaluationOnly ? null : compileCityInfraFlat(attackerList, attackerCityInfraOffsets);
+        double[] defenderCityInfraFlat = openingEvaluationOnly ? null : compileCityInfraFlat(defenderList, defenderCityInfraOffsets);
         byte[] attackerFreeOffSlots = new byte[attackerList.size()];
         byte[] defenderFreeDefSlots = new byte[defenderList.size()];
         float[] attackerActivityWeights = openingEvaluationOnly ? null : new float[attackerList.size()];
-        float[] defenderActivityWeights = new float[defenderList.size()];
+        float[] defenderActivityWeights = defaultActivityWeights ? null : new float[defenderList.size()];
         int[] attackerResearchBits = openingEvaluationOnly ? null : new int[attackerList.size()];
         int[] defenderResearchBits = openingEvaluationOnly ? null : new int[defenderList.size()];
         long[] attackerProjectBits = openingEvaluationOnly ? null : new long[attackerList.size()];
@@ -104,7 +107,9 @@ public final class ScenarioCompiler {
             defenderNationIds[defenderIndex] = defender.nationId();
             defenderScores[defenderIndex] = defender.score();
             defenderFreeDefSlots[defenderIndex] = (byte) overrides.effectiveFreeDef(defender);
-            defenderActivityWeights[defenderIndex] = activityWeightsByNationId.getOrDefault(defender.nationId(), 1.0f);
+            if (!defaultActivityWeights) {
+                defenderActivityWeights[defenderIndex] = activityWeightsByNationId.getOrDefault(defender.nationId(), 1.0f);
+            }
             if (!openingEvaluationOnly) {
                 defenderResearchBits[defenderIndex] = defender.researchBits();
                 defenderProjectBits[defenderIndex] = defender.projectBits();
@@ -114,7 +119,9 @@ public final class ScenarioCompiler {
 
         int minDefenderBucket = minDefenderBucket(defenderScores);
         int[][] defenderIndexesByScoreBucket = compileDefenderScoreBuckets(defenderScores, minDefenderBucket);
-        long[][] treatedDefenderWordsByAttacker = compileTreatedDefenderWordsByAttacker(
+        long[][] treatedDefenderWordsByAttacker = noTreaties
+            ? emptyDefenderWords(attackerList.size(), defenderList.size())
+            : compileTreatedDefenderWordsByAttacker(
                 attackerList,
                 defenderList,
                 attackerScores,
@@ -122,7 +129,7 @@ public final class ScenarioCompiler {
                 defenderIndexesByScoreBucket,
                 minDefenderBucket,
                 treatyProvider
-        );
+            );
             long[][] activePairConflictWordsByAttacker = compileActivePairConflicts(
                 attackerList,
                 defenderList,
@@ -181,6 +188,12 @@ public final class ScenarioCompiler {
         int[][] relevant = new int[attackerCount][];
         Arrays.fill(relevant, NO_RELEVANT_DEFENDERS);
         return relevant;
+    }
+
+    private static long[][] emptyDefenderWords(int attackerCount, int defenderCount) {
+        long[][] words = new long[attackerCount][];
+        Arrays.fill(words, NO_TREATED_DEFENDER_WORDS);
+        return words;
     }
 
     private static Int2IntOpenHashMap newNationIndex(int size) {

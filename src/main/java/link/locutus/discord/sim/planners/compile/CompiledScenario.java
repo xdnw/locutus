@@ -154,6 +154,9 @@ public final class CompiledScenario {
     }
 
     public int attackerUnitCount(int attackerIndex, MilitaryUnit unit) {
+        if (attackerUnitsFlat == null || attackerUnitOffsets == null) {
+            return attackers.get(attackerIndex).unit(unit);
+        }
         int unitOffset = SimUnits.purchasableIndex(unit);
         if (unitOffset < 0) {
             return 0;
@@ -162,6 +165,9 @@ public final class CompiledScenario {
     }
 
     public int defenderUnitCount(int defenderIndex, MilitaryUnit unit) {
+        if (defenderUnitsFlat == null || defenderUnitOffsets == null) {
+            return defenders.get(defenderIndex).unit(unit);
+        }
         int unitOffset = SimUnits.purchasableIndex(unit);
         if (unitOffset < 0) {
             return 0;
@@ -170,19 +176,31 @@ public final class CompiledScenario {
     }
 
     public int attackerCityCount(int attackerIndex) {
+        if (attackerCityInfraOffsets == null) {
+            return attackers.get(attackerIndex).cityInfraCount();
+        }
         return attackerCityInfraOffsets[attackerIndex + 1] - attackerCityInfraOffsets[attackerIndex];
     }
 
     public int defenderCityCount(int defenderIndex) {
+        if (defenderCityInfraOffsets == null) {
+            return defenders.get(defenderIndex).cityInfraCount();
+        }
         return defenderCityInfraOffsets[defenderIndex + 1] - defenderCityInfraOffsets[defenderIndex];
     }
 
     public double attackerCityInfraAt(int attackerIndex, int cityOrdinal) {
+        if (attackerCityInfraOffsets == null || attackerCityInfraFlat == null) {
+            return attackers.get(attackerIndex).cityInfra()[cityOrdinal];
+        }
         int base = attackerCityInfraOffsets[attackerIndex];
         return attackerCityInfraFlat[base + cityOrdinal];
     }
 
     public double defenderCityInfraAt(int defenderIndex, int cityOrdinal) {
+        if (defenderCityInfraOffsets == null || defenderCityInfraFlat == null) {
+            return defenders.get(defenderIndex).cityInfra()[cityOrdinal];
+        }
         int base = defenderCityInfraOffsets[defenderIndex];
         return defenderCityInfraFlat[base + cityOrdinal];
     }
@@ -200,7 +218,7 @@ public final class CompiledScenario {
     }
 
     public float defenderActivityWeight(int defenderIndex) {
-        return defenderActivityWeights[defenderIndex];
+        return defenderActivityWeights == null ? 1.0f : defenderActivityWeights[defenderIndex];
     }
 
     public int attackerResearchBits(int attackerIndex) {
@@ -271,7 +289,7 @@ public final class CompiledScenario {
         double inRangeWeight = 0.0;
         for (int i = 0; i < sameAllianceCount; i++) {
             int sameAllianceDefenderIndex = defenderAllianceFlatIndexes[sameAllianceOffset + i];
-            double weight = defenderActivityWeights[sameAllianceDefenderIndex];
+            double weight = defenderActivityWeights == null ? 1.0d : defenderActivityWeights[sameAllianceDefenderIndex];
             totalWeight += weight;
             double candidateScore = defenderScores[sameAllianceDefenderIndex];
             if (candidateScore >= minScore && candidateScore <= maxScore) {
