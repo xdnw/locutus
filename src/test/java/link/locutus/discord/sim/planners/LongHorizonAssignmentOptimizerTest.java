@@ -1995,6 +1995,103 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void feedbackCapableRescaledVariantMatchesEagerFullVariantFeedbackProjection() {
+        List<DBNationSnapshot> attackers = List.of(
+                exhaustedCurrentBuys(nation(1, 1, 60).toBuilder().maxOff(3).build()),
+                nation(2, 1, 10_000).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder().maxOff(1).build(),
+                nation(102, 2, 900).toBuilder().maxOff(1).build(),
+                nation(103, 2, 900).toBuilder().maxOff(1).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 99.0f, 0.0f);
+        edges.add(1, 0, 80.0f, 0.0f);
+        edges.add(1, 2, 79.0f, 0.0f);
+        CandidateEdgeTable variantEdges = CandidateEdgeTable.copyOf(edges);
+        variantEdges.rescaleAttackerEdgesFromProjectedState(0, 0.4f);
+        int[] attackerCaps = {3, 2};
+        int[] defenderCaps = {1, 1, 1};
+        int[] attackerStrengthRanks = {1, 0};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102, 103};
+        CounterAdjustedForwardWarObjective objective = new CounterAdjustedForwardWarObjective();
+
+        LongHorizonControlProjection seedProjection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                true,
+                objective,
+                SideOpeningSettings.legacy(objective),
+                SideOpeningSettings.legacy(objective),
+                SidePlannerSettings.legacy(),
+                SidePlannerSettings.legacy(),
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+        LongHorizonControlProjection eagerFullVariant = seedProjection.sameSettingsFullVariant(
+                variantEdges,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks
+        );
+        LongHorizonControlProjection feedbackCapableVariant = seedProjection.sameSettingsFeedbackCapableRescaledAttackerVariant(
+                variantEdges,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                new IntArrayList(new int[]{0})
+        );
+
+        LongHorizonMarginalFlowSolver.Result solveResult = LongHorizonMarginalFlowSolver.solve(
+                variantEdges,
+                feedbackCapableVariant,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of()
+        );
+
+        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation eagerFeedback = eagerFullVariant.projectedAttackerFeedbackEvaluation(
+                objective,
+                attackers.get(0).teamId(),
+                solveResult.edgeAssigned(),
+                solveResult.attackerCounts(),
+                solveResult.defenderCounts()
+        );
+        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation lazyFeedback = feedbackCapableVariant.projectedAttackerFeedbackEvaluation(
+                objective,
+                attackers.get(0).teamId(),
+                solveResult.edgeAssigned(),
+                solveResult.attackerCounts(),
+                solveResult.defenderCounts()
+        );
+
+        assertEquals(
+                eagerFullVariant.assignmentScoreDense(solveResult.edgeAssigned(), solveResult.attackerCounts(), solveResult.defenderCounts()),
+                feedbackCapableVariant.assignmentScoreDense(solveResult.edgeAssigned(), solveResult.attackerCounts(), solveResult.defenderCounts()),
+                1e-9,
+                "Unified feedback-capable variants must preserve solve-time assignment scoring"
+        );
+        assertEquals(eagerFeedback.projectedEvaluation().objectiveScore(), lazyFeedback.projectedEvaluation().objectiveScore(), 1e-6);
+        assertArrayEquals(eagerFeedback.projectedEvaluation().realizedCounterIncidence(), lazyFeedback.projectedEvaluation().realizedCounterIncidence());
+        assertEquals(eagerFeedback.attackerMidHorizonSnapshot().attackerEdgeFactor(0), lazyFeedback.attackerMidHorizonSnapshot().attackerEdgeFactor(0), 1e-9);
+        assertEquals(eagerFeedback.attackerMidHorizonSnapshot().attackerEdgeFactor(1), lazyFeedback.attackerMidHorizonSnapshot().attackerEdgeFactor(1), 1e-9);
+    }
+
+    @Test
     void recedingFeedbackProducesDeterministicOutputAcrossRepeatedRuns() {
         // The fixed-point iteration must remain deterministic: same inputs must produce the same
         // assignment regardless of how many cap-reduction iterations actually fire.

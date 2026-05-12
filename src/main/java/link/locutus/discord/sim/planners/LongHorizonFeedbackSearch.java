@@ -186,7 +186,7 @@ final class LongHorizonFeedbackSearch {
             }
             variantsRemaining--;
 
-                LongHorizonControlProjection iterationSolveProjection = seedProjection.sameSettingsScorerOnlyRescaledAttackerVariant(
+                LongHorizonControlProjection iterationProjection = seedProjection.sameSettingsFeedbackCapableRescaledAttackerVariant(
                     currentEdges,
                     adjustedCaps,
                     defenderCaps,
@@ -195,7 +195,7 @@ final class LongHorizonFeedbackSearch {
             );
             LongHorizonMarginalFlowSolver.Result iterationResult = LongHorizonMarginalFlowSolver.solve(
                     currentEdges,
-                    iterationSolveProjection,
+                    iterationProjection,
                     scenario.attackerCount(),
                     scenario.defenderCount(),
                     adjustedCaps,
@@ -208,16 +208,14 @@ final class LongHorizonFeedbackSearch {
                     marginalFlowGraphBuffers,
                     warmStartEdgeAssigned
             );
-                double iterationScore = iterationSolveProjection.assignmentScoreDense(
+                double iterationScore = iterationProjection.assignmentScoreDense(
                     iterationResult.edgeAssigned(),
                     iterationResult.attackerCounts(),
                     iterationResult.defenderCounts()
             );
             LongHorizonAssignmentOptimizer.Candidate iterationCandidate =
                     new LongHorizonAssignmentOptimizer.Candidate(iterationResult, iterationScore);
-                warmStartEdgeAssigned = iterationResult.edgeAssigned();
-                LongHorizonControlProjection iterationProjection =
-                        seedProjection.sameSettingsFullVariantReusingScorer(iterationSolveProjection);
+            warmStartEdgeAssigned = iterationResult.edgeAssigned();
             boolean canContinueFeedback = iteration + 1 < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0;
             LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation iterationFeedback = null;
             double iterationObjective;
