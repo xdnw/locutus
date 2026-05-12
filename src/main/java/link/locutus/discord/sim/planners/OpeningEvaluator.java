@@ -15,6 +15,7 @@ import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
+import link.locutus.discord.sim.planners.compile.OpeningEvaluationScenario;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -288,7 +289,7 @@ final class OpeningEvaluator {
          * truncation.
      */
     static void evaluate(
-            CompiledScenario scenario,
+            OpeningEvaluationScenario scenario,
             SimTuning tuning,
             OverrideSet overrides,
             StrategicObjective objective,
@@ -300,7 +301,7 @@ final class OpeningEvaluator {
         }
 
         static void evaluate(
-            CompiledScenario scenario,
+            OpeningEvaluationScenario scenario,
             SimTuning tuning,
             OverrideSet overrides,
             StrategicObjective objective,
@@ -387,8 +388,8 @@ final class OpeningEvaluator {
         }
     }
 
-    private static final class DefenderAdmissionCollector implements CompiledScenario.DefenderIndexVisitor {
-        private final CompiledScenario scenario;
+    private static final class DefenderAdmissionCollector implements OpeningEvaluationScenario.DefenderIndexVisitor {
+        private final OpeningEvaluationScenario scenario;
         private final StrategicObjective objective;
         private final SideOpeningSettings openingSettings;
         private final CandidateEdgeComponentPolicy componentPolicy;
@@ -413,7 +414,7 @@ final class OpeningEvaluator {
         private final int retainedComponentMask;
 
         private DefenderAdmissionCollector(
-                CompiledScenario scenario,
+                OpeningEvaluationScenario scenario,
                 StrategicObjective objective,
             SideOpeningSettings openingSettings,
                 CandidateEdgeAdmissionPolicy admissionPolicy,
@@ -659,7 +660,7 @@ final class OpeningEvaluator {
     }
 
     private static int estimatedRetainedEdgeCapacity(
-            CompiledScenario scenario,
+            OpeningEvaluationScenario scenario,
             int candidatesPerAttacker,
             int defenderCoverageTarget,
             int[] defenderCaps

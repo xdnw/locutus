@@ -230,6 +230,7 @@ final class LongHorizonAssignmentOptimizer {
                 best = evaluator.betterCandidate(best, marginalCandidate, terminalProjection);
 
                 if (evaluator.canScoreObjectiveProjection()) {
+                    int[] fixedAttackerCounts = LongHorizonFeedbackSearch.fixedAttackerCounts(fixedEdges, attackerNationIds);
                     if (shouldRunFixedPointFeedback(edgeCount, marginalCandidate.assignmentPairCount())) {
                         best = evaluator.betterCandidate(best, LongHorizonFeedbackSearch.recedingFixedPointFeedback(
                             baseEdges,
@@ -240,6 +241,7 @@ final class LongHorizonAssignmentOptimizer {
                             attackerNationIds,
                             defenderNationIds,
                             fixedEdges,
+                            fixedAttackerCounts,
                             horizonTurns,
                             best,
                             terminalProjection,
@@ -261,6 +263,7 @@ final class LongHorizonAssignmentOptimizer {
                             attackerNationIds,
                             defenderNationIds,
                             fixedEdges,
+                            fixedAttackerCounts,
                             horizonTurns,
                             includeSlotDenialScoring,
                             marginalCandidate,
@@ -297,6 +300,7 @@ final class LongHorizonAssignmentOptimizer {
                     int[] attackerNationIds,
                     int[] defenderNationIds,
                     List<BlitzFixedEdge> fixedEdges,
+                    int[] fixedAttackerCounts,
                     int horizonTurns,
                     boolean includeSlotDenialScoring,
                     Candidate marginalCandidate,
@@ -319,6 +323,7 @@ final class LongHorizonAssignmentOptimizer {
                         attackerNationIds,
                         defenderNationIds,
                         fixedEdges,
+                        fixedAttackerCounts,
                         horizonTurns,
                         marginalCandidate,
                         terminalProjection,

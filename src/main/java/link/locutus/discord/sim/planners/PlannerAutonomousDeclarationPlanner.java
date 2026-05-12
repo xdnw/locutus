@@ -68,23 +68,45 @@ final class PlannerAutonomousDeclarationPlanner {
             SidePlannerSettings declarerPlannerSettings,
             int remainingTurns
         ) {
+            return planScorerOnly(
+                scenario,
+                edges,
+                attackerCaps(scenario),
+                defenderCaps(scenario),
+                attackerNationIds(scenario),
+                defenderNationIds(scenario),
+                declarerPlannerSettings,
+                remainingTurns
+            );
+            }
+
+            static Plan planScorerOnly(
+                CompiledScenario scenario,
+                CandidateEdgeTable edges,
+                int[] attackerCaps,
+                int[] defenderCaps,
+                int[] attackerNationIds,
+                int[] defenderNationIds,
+                SidePlannerSettings declarerPlannerSettings,
+                int remainingTurns
+            ) {
         if (scenario.attackerCount() == 0 || scenario.defenderCount() == 0 || edges.edgeCount() == 0) {
             return Plan.empty();
         }
             LongHorizonAssignmentOptimizer.Candidate candidate = LongHorizonAssignmentOptimizer.solveWithAttackerCaps(
                     edges,
                     scenario,
-                    attackerCaps(scenario),
-                    defenderCaps(scenario),
+                    attackerCaps,
+                    defenderCaps,
                     attackerStrengthRanks(scenario),
-                    attackerNationIds(scenario),
-                    defenderNationIds(scenario),
+                    attackerNationIds,
+                    defenderNationIds,
                     List.of(),
                     Math.max(1, remainingTurns),
                     false,
                     declarerPlannerSettings
             );
-            return new Plan(candidate.assignment(), assignmentWarTypeOrdinals(candidate.assignment(), edges, scenario));
+                return new Plan(candidate.assignment(), assignmentWarTypeOrdinals(candidate.assignment(), edges, attackerNationIds, defenderNationIds));
         }
 
         private static Plan planInternal(
@@ -295,6 +317,20 @@ final class PlannerAutonomousDeclarationPlanner {
             CandidateEdgeTable edges,
             CompiledScenario scenario
     ) {
+        return assignmentWarTypeOrdinals(
+            assignment,
+            edges,
+            attackerNationIds(scenario),
+            defenderNationIds(scenario)
+        );
+        }
+
+        private static Map<Long, Integer> assignmentWarTypeOrdinals(
+            Map<Integer, List<Integer>> assignment,
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds
+        ) {
         if (assignment.isEmpty() || edges.edgeCount() == 0) {
             return Map.of();
         }
@@ -308,8 +344,8 @@ final class PlannerAutonomousDeclarationPlanner {
         }
         Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, assignmentPairCount * 2));
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
-            int attackerNationId = scenario.attackerNationId(edges.attackerIndex(edgeIndex));
-            int defenderNationId = scenario.defenderNationId(edges.defenderIndex(edgeIndex));
+            int attackerNationId = attackerNationIds[edges.attackerIndex(edgeIndex)];
+            int defenderNationId = defenderNationIds[edges.defenderIndex(edgeIndex)];
             long pairKey = PlannerLocalConflict.pairKey(attackerNationId, defenderNationId);
             if (!assignedPairs.contains(pairKey)) {
                 continue;

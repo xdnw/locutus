@@ -31,6 +31,7 @@ final class LongHorizonFeedbackSearch {
             int[] attackerNationIds,
             int[] defenderNationIds,
             List<BlitzFixedEdge> fixedEdges,
+            int[] fixedCounts,
             int horizonTurns,
             LongHorizonAssignmentOptimizer.Candidate seed,
             LongHorizonControlProjection terminalProjection,
@@ -39,7 +40,6 @@ final class LongHorizonFeedbackSearch {
                 LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
                 LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
     ) {
-        int[] fixedCounts = fixedAttackerCounts(fixedEdges, attackerNationIds);
         IntArrayList reliefOrder = reliefOrder(seed.attackerCounts(), fixedCounts, terminalProjection, realizedCounters);
         if (reliefOrder.isEmpty()) {
             return List.of();
@@ -133,6 +133,7 @@ final class LongHorizonFeedbackSearch {
             int[] attackerNationIds,
             int[] defenderNationIds,
             List<BlitzFixedEdge> fixedEdges,
+            int[] fixedCounts,
             int horizonTurns,
             LongHorizonAssignmentOptimizer.Candidate seed,
             LongHorizonControlProjection seedProjection,
@@ -141,19 +142,18 @@ final class LongHorizonFeedbackSearch {
                 LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs,
                 LongHorizonMarginalFlowSolver.GraphBuildBuffers marginalFlowGraphBuffers
     ) {
-        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation currentFeedback =
-                evaluator.attackerFeedbackEvaluation(seed, seedProjection);
-        int[] currentRealized = currentFeedback.projectedEvaluation().realizedCounterIncidence().clone();
+        LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation currentFeedback = null;
+        LongHorizonControlProjection currentProjection = seedProjection;
+        int[] currentRealized = evaluator.realizedCounters(seed, seedProjection);
         if (currentRealized.length == 0) {
             return seed;
         }
-        int[] fixedCounts = fixedAttackerCounts(fixedEdges, attackerNationIds);
         int[] adjustedCaps = attackerCaps.clone();
         CandidateEdgeTable currentEdges = CandidateEdgeTable.copyOf(baseEdges);
         LongHorizonAssignmentOptimizer.Candidate best = seed;
         LongHorizonAssignmentOptimizer.Candidate currentSeed = seed;
-        double bestObjective = evaluator.score(best, currentFeedback.projectedEvaluation());
-        int bestOverCountered = overCounteredAttackers(currentRealized, best.attackerCounts(), fixedCounts).size();
+        double bestObjective = evaluator.score(best, seedProjection);
+        int bestOverCountered = countOverCounteredAttackers(currentRealized, best.attackerCounts(), fixedCounts);
         int variantsRemaining = MAX_FEEDBACK_VARIANTS;
         boolean[] warmStartEdgeAssigned = seed.edgeAssigned();
         for (int iteration = 0; iteration < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0; iteration++) {
@@ -164,6 +164,9 @@ final class LongHorizonFeedbackSearch {
             );
             if (overCountered.isEmpty()) {
                 break;
+            }
+            if (currentFeedback == null) {
+                currentFeedback = evaluator.attackerFeedbackEvaluation(currentSeed, currentProjection);
             }
             LongHorizonForwardProjection.AttackerMidHorizonSnapshot snapshot = currentFeedback.attackerMidHorizonSnapshot();
             boolean adjusted = false;
@@ -212,16 +215,25 @@ final class LongHorizonFeedbackSearch {
                 warmStartEdgeAssigned = iterationResult.edgeAssigned();
                 LongHorizonControlProjection iterationProjection =
                         seedProjection.sameSettingsFullVariantReusingScorer(iterationSolveProjection);
-                LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation iterationFeedback = evaluator.attackerFeedbackEvaluation(
+            boolean canContinueFeedback = iteration + 1 < MAX_FIXED_POINT_ITERATIONS && variantsRemaining > 0;
+            LongHorizonForwardProjection.ProjectedAttackerFeedbackEvaluation iterationFeedback = null;
+            double iterationObjective;
+            int[] nextRealized;
+            if (canContinueFeedback) {
+                iterationFeedback = evaluator.attackerFeedbackEvaluation(
                     iterationCandidate,
                     iterationProjection
                 );
-                double iterationObjective = evaluator.score(
+                iterationObjective = evaluator.score(
                     iterationCandidate,
                     iterationFeedback.projectedEvaluation()
                 );
-                int[] nextRealized = iterationFeedback.projectedEvaluation().realizedCounterIncidence();
-            int nextOverCountered = overCounteredAttackers(nextRealized, iterationCandidate.attackerCounts(), fixedCounts).size();
+                nextRealized = iterationFeedback.projectedEvaluation().realizedCounterIncidence();
+            } else {
+                iterationObjective = evaluator.score(iterationCandidate, iterationProjection);
+                nextRealized = evaluator.realizedCounters(iterationCandidate, iterationProjection);
+            }
+            int nextOverCountered = countOverCounteredAttackers(nextRealized, iterationCandidate.attackerCounts(), fixedCounts);
             boolean improvement = iterationObjective > bestObjective + LongHorizonAssignmentOptimizer.EPSILON;
             boolean counterPressureTieBreak = !improvement
                     && iterationObjective >= bestObjective - LongHorizonAssignmentOptimizer.EPSILON
@@ -236,17 +248,21 @@ final class LongHorizonFeedbackSearch {
                 bestOverCountered = nextOverCountered;
                 improvement = true;
             }
+            if (!canContinueFeedback) {
+                break;
+            }
             if (!realizedChanged(currentRealized, nextRealized) && !improvement) {
                 break;
             }
             currentRealized = nextRealized;
             currentSeed = iterationCandidate;
-                currentFeedback = iterationFeedback;
+            currentProjection = iterationProjection;
+            currentFeedback = iterationFeedback;
         }
         return best;
     }
 
-    private static int[] fixedAttackerCounts(List<BlitzFixedEdge> fixedEdges, int[] attackerNationIds) {
+    static int[] fixedAttackerCounts(List<BlitzFixedEdge> fixedEdges, int[] attackerNationIds) {
         int[] counts = new int[attackerNationIds.length];
         if (fixedEdges.isEmpty()) {
             return counts;
@@ -310,6 +326,20 @@ final class LongHorizonFeedbackSearch {
         }
         sortOverCounteredAttackers(overCountered, realizedCounters, attackerCounts);
         return overCountered;
+    }
+
+    private static int countOverCounteredAttackers(int[] realizedCounters, int[] attackerCounts, int[] fixedCounts) {
+        int count = 0;
+        for (int attackerIndex = 0; attackerIndex < realizedCounters.length; attackerIndex++) {
+            if (realizedCounters[attackerIndex] < OVERCOUNTER_THRESHOLD) {
+                continue;
+            }
+            if (attackerCounts[attackerIndex] <= fixedCounts[attackerIndex]) {
+                continue;
+            }
+            count++;
+        }
+        return count;
     }
 
     private static void sortReliefOrder(

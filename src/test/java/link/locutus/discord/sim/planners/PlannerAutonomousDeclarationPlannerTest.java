@@ -7,6 +7,8 @@ import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
+import link.locutus.discord.sim.planners.compile.CompiledScenario;
+import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -160,6 +162,96 @@ class PlannerAutonomousDeclarationPlannerTest {
                 "The fallback-like no-idle-pressure planner should still allow the stronger slot-rich declarer to monopolize both comparable targets in this fixture");
         assertTrue(actingPlan.assignment().isEmpty(),
                 "Acting-side projection context should be able to reject declarations instead of forcing the scorer-only fallback shape");
+    }
+
+    @Test
+    void scorerOnlyPlannerViewMatchesCompiledScenarioPlan() {
+        DBNationSnapshot declarerA = nation(101, 1)
+                .maxOff(2)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_100)
+                .build();
+        DBNationSnapshot declarerB = nation(102, 1)
+                .maxOff(1)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_900)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+        DBNationSnapshot targetA = nation(201, 2)
+                .maxOff(1)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_200)
+                .unit(MilitaryUnit.AIRCRAFT, 800)
+                .build();
+        DBNationSnapshot targetB = nation(202, 2)
+                .maxOff(1)
+                .unit(MilitaryUnit.SOLDIER, 17_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .build();
+
+        List<DBNationSnapshot> declarers = List.of(declarerA, declarerB);
+        List<DBNationSnapshot> targets = List.of(targetA, targetB);
+        ScenarioCompiler compiler = new ScenarioCompiler();
+        CompiledScenario compiledScenario = compiler.compileForOpeningEvaluation(
+                declarers,
+                targets,
+                OverrideSet.EMPTY,
+                TreatyProvider.NONE,
+                java.util.Map.of()
+        );
+        int[] attackerCaps = new int[compiledScenario.attackerCount()];
+        for (int attackerIndex = 0; attackerIndex < attackerCaps.length; attackerIndex++) {
+            attackerCaps[attackerIndex] = compiledScenario.attackerFreeOffSlots(attackerIndex);
+        }
+        int[] defenderCaps = new int[compiledScenario.defenderCount()];
+        for (int defenderIndex = 0; defenderIndex < defenderCaps.length; defenderIndex++) {
+            defenderCaps[defenderIndex] = compiledScenario.defenderFreeDefSlots(defenderIndex);
+        }
+
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        StrategicObjective objective = BlitzObjective.NET_DAMAGE.objective();
+        OpeningEvaluator.evaluate(
+                compiledScenario,
+                SimTuning.defaults(),
+                OverrideSet.EMPTY,
+                objective,
+                SideOpeningSettings.legacy(objective),
+                attackerCaps,
+                defenderCaps,
+                edges
+        );
+
+        CompiledScenario plannerView = CompiledScenario.scorerOnlyPlannerView(
+                declarers,
+                targets,
+                attackerCaps,
+                defenderCaps
+        );
+
+        PlannerAutonomousDeclarationPlanner.Plan compiledPlan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
+                compiledScenario,
+                edges,
+                SidePlannerSettings.legacy(),
+                72
+        );
+        PlannerAutonomousDeclarationPlanner.Plan plannerViewPlan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
+                plannerView,
+                edges,
+                SidePlannerSettings.legacy(),
+                72
+        );
+
+        assertEquals(compiledPlan.assignment(), plannerViewPlan.assignment());
+        for (var entry : compiledPlan.assignment().entrySet()) {
+            for (int targetNationId : entry.getValue()) {
+                assertEquals(
+                        compiledPlan.warTypeOrdinal(entry.getKey(), targetNationId),
+                        plannerViewPlan.warTypeOrdinal(entry.getKey(), targetNationId)
+                );
+            }
+        }
     }
 
     private static DBNationSnapshot.Builder nation(int nationId, int teamId) {

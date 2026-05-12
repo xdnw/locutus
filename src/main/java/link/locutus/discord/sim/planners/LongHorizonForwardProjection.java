@@ -28,6 +28,8 @@ import link.locutus.discord.sim.combat.WarControlRules;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.planners.compile.CompiledActiveWar;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
+import link.locutus.discord.sim.planners.compile.OpeningEvaluationScenario;
+import link.locutus.discord.sim.planners.compile.ProjectedOpeningEvaluationScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import link.locutus.discord.util.PW;
 
@@ -219,8 +221,7 @@ final class LongHorizonForwardProjection {
     private final SideProjectionPolicies defenderProjectionPolicies;
     private ProjectionState projectionState;
     private DenseWarState warState;
-    private final Map<ActiveWarProfileKey, ProjectionStateCheckpoint> preparedStateCheckpoints;
-    private DenseWarStateCheckpoint preparedWarTemplateCheckpoint;
+    private final PreparedProjectionCaches preparedCaches;
     private final AttackScratch projectionScratch;
     private final MutableAttackResult projectionResult;
     private final boolean[] scratchActiveWarsByNation;
@@ -277,8 +278,9 @@ final class LongHorizonForwardProjection {
             SideOpeningSettings defenderOpeningSettings,
             SidePlannerSettings attackerPlannerSettings,
             SidePlannerSettings defenderPlannerSettings,
-            SideProjectionPolicies attackerProjectionPolicies,
-            SideProjectionPolicies defenderProjectionPolicies
+                SideProjectionPolicies attackerProjectionPolicies,
+                SideProjectionPolicies defenderProjectionPolicies,
+                PreparedProjectionCaches preparedCaches
     ) {
         this.edges = edges;
         this.scenario = scenario;
@@ -299,7 +301,7 @@ final class LongHorizonForwardProjection {
         this.defenderPlannerSettings = defenderPlannerSettings;
         this.attackerProjectionPolicies = attackerProjectionPolicies;
         this.defenderProjectionPolicies = defenderProjectionPolicies;
-        this.preparedStateCheckpoints = new HashMap<>();
+        this.preparedCaches = preparedCaches == null ? new PreparedProjectionCaches() : preparedCaches;
         this.projectionScratch = new AttackScratch();
         this.projectionResult = new MutableAttackResult();
         int nationCount = scenario.attackerCount() + scenario.defenderCount();
@@ -392,6 +394,40 @@ final class LongHorizonForwardProjection {
                 SideProjectionPolicies attackerProjectionPolicies,
                 SideProjectionPolicies defenderProjectionPolicies,
                 ScenarioBoundInputs scenarioBoundInputs
+                ) {
+                return create(
+                    edges,
+                    scenario,
+                    attackerCaps,
+                    horizonTurns,
+                    horizonFactor,
+                    projectionObjective,
+                    attackerOpeningSettings,
+                    defenderOpeningSettings,
+                    attackerPlannerSettings,
+                    defenderPlannerSettings,
+                    attackerProjectionPolicies,
+                    defenderProjectionPolicies,
+                    scenarioBoundInputs,
+                    null
+                );
+                }
+
+                static LongHorizonForwardProjection create(
+                    CandidateEdgeTable edges,
+                    CompiledScenario scenario,
+                    int[] attackerCaps,
+                    int horizonTurns,
+                    double horizonFactor,
+                    StrategicObjective projectionObjective,
+                    SideOpeningSettings attackerOpeningSettings,
+                    SideOpeningSettings defenderOpeningSettings,
+                    SidePlannerSettings attackerPlannerSettings,
+                    SidePlannerSettings defenderPlannerSettings,
+                    SideProjectionPolicies attackerProjectionPolicies,
+                    SideProjectionPolicies defenderProjectionPolicies,
+                    ScenarioBoundInputs scenarioBoundInputs,
+                    PreparedProjectionCaches preparedCaches
             ) {
             scenarioBoundInputs.requireCompatible(scenario, horizonTurns, horizonFactor);
         return new LongHorizonForwardProjection(
@@ -413,7 +449,8 @@ final class LongHorizonForwardProjection {
                 attackerPlannerSettings,
                 defenderPlannerSettings,
                 attackerProjectionPolicies,
-                defenderProjectionPolicies
+                defenderProjectionPolicies,
+                preparedCaches
         );
     }
 
@@ -484,22 +521,8 @@ final class LongHorizonForwardProjection {
         return counterOpportunityModel;
     }
 
-    void importPreparedCachesFrom(LongHorizonForwardProjection source) {
-        if (source == null
-                || source == this
-                || source.scenario != scenario
-                || source.horizonTurns != horizonTurns
-                || Double.compare(source.horizonFactor, horizonFactor) != 0) {
-            return;
-        }
-        if (!source.preparedStateCheckpoints.isEmpty()) {
-            preparedStateCheckpoints.putAll(source.preparedStateCheckpoints);
-        }
-        if (preparedWarTemplateCheckpoint == null
-                && source.preparedWarTemplateCheckpoint != null
-                && edges.sameProjectionTopology(source.edges)) {
-            preparedWarTemplateCheckpoint = source.preparedWarTemplateCheckpoint;
-        }
+    PreparedProjectionCaches sharedPreparedCaches() {
+        return preparedCaches;
     }
 
     double projectedObjectiveScore(
@@ -701,14 +724,14 @@ final class LongHorizonForwardProjection {
     private ProjectionState prepareProjectionState(int[] attackerCounts, int[] defenderCounts, boolean collectDiagnostics) {
         ProjectionState state = ensureProjectionState(collectDiagnostics);
         ActiveWarProfileKey key = activeWarProfileKey(attackerCounts, defenderCounts);
-        ProjectionStateCheckpoint checkpoint = preparedStateCheckpoints.get(key);
+        ProjectionStateCheckpoint checkpoint = preparedCaches.stateCheckpoints.get(key);
         if (checkpoint == null) {
             state.resetMutableState();
             fillActiveWarsByNationProfile(attackerCounts, defenderCounts, scratchActiveWarsByNation);
             state.materializePendingBuys();
             state.applyDailyBuys(false, scratchActiveWarsByNation);
             checkpoint = state.captureCheckpoint();
-            preparedStateCheckpoints.put(key, checkpoint);
+            preparedCaches.stateCheckpoints.put(key, checkpoint);
             profiledPreparedStateProfiles++;
         } else {
             state.restoreCheckpoint(checkpoint);
@@ -719,9 +742,10 @@ final class LongHorizonForwardProjection {
 
     private DenseWarState prepareWarState(boolean[] edgeAssigned) {
         DenseWarState state = ensureWarState();
+        DenseWarStateCheckpoint preparedWarTemplateCheckpoint = preparedCaches.warTemplateCheckpointFor(edges);
         if (preparedWarTemplateCheckpoint == null) {
             state.initializeOpeningTemplate(edges, projectionState, maxProjectedExtraDeclareCapacity());
-            preparedWarTemplateCheckpoint = state.captureCheckpoint();
+            preparedCaches.rememberWarTemplate(edges, state.captureCheckpoint());
             profiledPreparedWarTemplateBuilds++;
         } else {
             state.restoreCheckpoint(preparedWarTemplateCheckpoint);
@@ -1244,17 +1268,14 @@ final class LongHorizonForwardProjection {
             targetWriteIndex++;
         }
 
-        CompiledScenario projectedScenario = PROJECTED_DECLARATION_SCENARIO_COMPILER.compileForOpeningEvaluation(
-                declarerSnapshots,
-                targetSnapshots,
-                OverrideSet.EMPTY,
-                TreatyProvider.NONE,
-                Map.of()
+        OpeningEvaluationScenario projectedOpeningScenario = ProjectedOpeningEvaluationScenario.create(
+            declarerSnapshots,
+            targetSnapshots
         );
         CandidateEdgeTable rawEdges = new CandidateEdgeTable();
         StrategicObjective declarationObjective = projectionObjective == null ? new DamageObjective() : projectionObjective;
         OpeningEvaluator.evaluate(
-                projectedScenario,
+            projectedOpeningScenario,
                 PlannerAutonomousDeclarationPlanner.tuningForPlannerSettings(SimTuning.defaults(), plannerSettings),
                 OverrideSet.EMPTY,
                 declarationObjective,
@@ -1367,7 +1388,13 @@ final class LongHorizonForwardProjection {
         if (projectedEdges.edgeCount() == 0) {
             return null;
         }
-        return projectedLaterDeclarationInputs(projectedScenario, projectedEdges, declarerOverallIndexes, targetOverallIndexes);
+        CompiledScenario projectedScenario = CompiledScenario.scorerOnlyPlannerView(
+            declarerSnapshots,
+            targetSnapshots,
+            declarerCaps,
+            targetCaps
+        );
+        return projectedLaterDeclarationInputs(projectedScenario, projectedEdges, declarerCaps, targetCaps, declarerOverallIndexes, targetOverallIndexes);
     }
 
     private double projectedDeclarationScore(
@@ -1418,6 +1445,10 @@ final class LongHorizonForwardProjection {
         PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
                 inputs.scenario(),
                 inputs.edges(),
+            inputs.declarerCaps(),
+            inputs.targetCaps(),
+            inputs.declarerNationIds(),
+            inputs.targetNationIds(),
                 plannerSettings,
                 Math.max(1, horizonTurns - turn)
         );
@@ -1459,6 +1490,10 @@ final class LongHorizonForwardProjection {
         PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
             inputs.scenario(),
             inputs.edges(),
+            inputs.declarerCaps(),
+            inputs.targetCaps(),
+            inputs.declarerNationIds(),
+            inputs.targetNationIds(),
             plannerSettings,
             Math.max(1, horizonTurns - turn)
         );
@@ -1577,22 +1612,28 @@ final class LongHorizonForwardProjection {
     private ProjectedLaterDeclarationInputs projectedLaterDeclarationInputs(
             CompiledScenario projectedScenario,
             CandidateEdgeTable projectedEdges,
+            int[] declarerCaps,
+            int[] targetCaps,
             int[] declarerOverallIndexes,
             int[] targetOverallIndexes
     ) {
+        int[] declarerNationIds = new int[projectedScenario.attackerCount()];
         Int2IntOpenHashMap declarerOverallIndexesByNationId = new Int2IntOpenHashMap(Math.max(16, projectedScenario.attackerCount() * 2));
         declarerOverallIndexesByNationId.defaultReturnValue(-1);
         for (int attackerIndex = 0; attackerIndex < projectedScenario.attackerCount(); attackerIndex++) {
+            declarerNationIds[attackerIndex] = projectedScenario.attackerNationId(attackerIndex);
             declarerOverallIndexesByNationId.put(
-                    projectedScenario.attackerNationId(attackerIndex),
+                declarerNationIds[attackerIndex],
                     declarerOverallIndexes[attackerIndex]
             );
         }
+        int[] targetNationIds = new int[projectedScenario.defenderCount()];
         Int2IntOpenHashMap targetOverallIndexesByNationId = new Int2IntOpenHashMap(Math.max(16, projectedScenario.defenderCount() * 2));
         targetOverallIndexesByNationId.defaultReturnValue(-1);
         for (int defenderIndex = 0; defenderIndex < projectedScenario.defenderCount(); defenderIndex++) {
+            targetNationIds[defenderIndex] = projectedScenario.defenderNationId(defenderIndex);
             targetOverallIndexesByNationId.put(
-                    projectedScenario.defenderNationId(defenderIndex),
+                targetNationIds[defenderIndex],
                     targetOverallIndexes[defenderIndex]
             );
         }
@@ -1601,8 +1642,8 @@ final class LongHorizonForwardProjection {
         for (int edgeIndex = 0; edgeIndex < projectedEdges.edgeCount(); edgeIndex++) {
             edgeIndexByPair.put(
                     projectedPairKey(
-                            projectedScenario.attackerNationId(projectedEdges.attackerIndex(edgeIndex)),
-                            projectedScenario.defenderNationId(projectedEdges.defenderIndex(edgeIndex))
+                    declarerNationIds[projectedEdges.attackerIndex(edgeIndex)],
+                    targetNationIds[projectedEdges.defenderIndex(edgeIndex)]
                     ),
                     edgeIndex
             );
@@ -1610,6 +1651,10 @@ final class LongHorizonForwardProjection {
         return new ProjectedLaterDeclarationInputs(
                 projectedScenario,
                 projectedEdges,
+            declarerCaps,
+            targetCaps,
+            declarerNationIds,
+            targetNationIds,
                 declarerOverallIndexesByNationId,
                 targetOverallIndexesByNationId,
                 edgeIndexByPair
@@ -4609,6 +4654,24 @@ final class LongHorizonForwardProjection {
         }
     }
 
+    static final class PreparedProjectionCaches {
+        private final Map<ActiveWarProfileKey, ProjectionStateCheckpoint> stateCheckpoints = new HashMap<>();
+        private CandidateEdgeTable warTemplateEdges;
+        private DenseWarStateCheckpoint warTemplateCheckpoint;
+
+        private DenseWarStateCheckpoint warTemplateCheckpointFor(CandidateEdgeTable edges) {
+            if (warTemplateEdges == null || warTemplateCheckpoint == null) {
+                return null;
+            }
+            return edges.sameProjectionTopology(warTemplateEdges) ? warTemplateCheckpoint : null;
+        }
+
+        private void rememberWarTemplate(CandidateEdgeTable edges, DenseWarStateCheckpoint checkpoint) {
+            this.warTemplateEdges = edges;
+            this.warTemplateCheckpoint = checkpoint;
+        }
+    }
+
     private record ProjectionStateCheckpoint(
             int[] unitsFlat,
             int[] unitsBoughtTodayFlat,
@@ -4688,6 +4751,10 @@ final class LongHorizonForwardProjection {
             private record ProjectedLaterDeclarationInputs(
                 CompiledScenario scenario,
                 CandidateEdgeTable edges,
+                int[] declarerCaps,
+                int[] targetCaps,
+                int[] declarerNationIds,
+                int[] targetNationIds,
                 Int2IntOpenHashMap declarerOverallIndexesByNationId,
                     Int2IntOpenHashMap targetOverallIndexesByNationId,
                     Long2IntOpenHashMap edgeIndexByPair

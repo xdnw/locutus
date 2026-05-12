@@ -515,9 +515,9 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                     defenderPlannerSettings,
                     attackerProjectionPolicies,
                     defenderProjectionPolicies,
-                    forwardProjectionScenarioBoundInputs
+                    forwardProjectionScenarioBoundInputs,
+                    this.forwardProjection == null ? null : this.forwardProjection.sharedPreparedCaches()
                 );
-                forwardProjection.importPreparedCachesFrom(this.forwardProjection);
                 return new LongHorizonControlProjection(
                     projectionObjective,
                     attackerOpeningSettings,

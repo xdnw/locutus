@@ -877,6 +877,7 @@ class LongHorizonAssignmentOptimizerTest {
                                 attackerNationIds,
                                 defenderNationIds,
                                 List.of(),
+                                LongHorizonFeedbackSearch.fixedAttackerCounts(List.of(), attackerNationIds),
                                 72,
                                 seed,
                                 projection,
