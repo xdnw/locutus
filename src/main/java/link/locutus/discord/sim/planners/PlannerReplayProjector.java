@@ -167,11 +167,13 @@ public final class PlannerReplayProjector {
             declaredWarLanes,
             concludedWarLanes
         );
-        metrics.appendSummaryScalarLanes(summaryScalarLanes);
-        metrics.appendSummaryWarTypeCounts(summaryWarTypeCounts);
-        metrics.appendSummaryAttackOutcomeCounts(summaryAttackOutcomeCounts);
-        metrics.appendSummaryUnitLossCounts(summaryUnitLossCounts);
-        metrics.appendSummaryInfraLossCents(summaryInfraLossCents);
+        if (!metrics.isEmpty()) {
+            metrics.appendSummaryScalarLanes(summaryScalarLanes);
+            metrics.appendSummaryWarTypeCounts(summaryWarTypeCounts);
+            metrics.appendSummaryAttackOutcomeCounts(summaryAttackOutcomeCounts);
+            metrics.appendSummaryUnitLossCounts(summaryUnitLossCounts);
+            metrics.appendSummaryInfraLossCents(summaryInfraLossCents);
+        }
         }
 
         return new BlitzReplayTrace(

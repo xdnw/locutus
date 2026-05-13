@@ -58,6 +58,33 @@ class PlannerReplayProjectorTest {
     }
 
     @Test
+    void quietReplayTurnsDoNotAppendZeroSummaryLanes() {
+        DBNationSnapshot attacker = nation(101, 1)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .build();
+        DBNationSnapshot defender = nation(202, 2)
+                .unit(MilitaryUnit.AIRCRAFT, 250)
+                .build();
+
+        BlitzReplayTrace trace = capture(
+                List.of(attacker),
+                List.of(defender),
+                Map.of(),
+                Map.of(),
+                List.<LaterDeclarationScope>of(),
+                SimTuning.defaults(),
+                3
+        );
+
+        assertEquals(3, turnCount(trace));
+        assertEquals(0, trace.summaryScalarLanes().length);
+        assertEquals(0, trace.summaryWarTypeCounts().length);
+        assertEquals(0, trace.summaryAttackOutcomeCounts().length);
+        assertEquals(0, trace.summaryUnitLossCounts().length);
+        assertEquals(0, trace.summaryInfraLossCents().length);
+    }
+
+    @Test
     void defaultPolicyAllowsFreeDefenderCounterAfterInitialOpen() {
         DBNationSnapshot attacker = nation(101, 1)
                 .unit(MilitaryUnit.AIRCRAFT, 700)
@@ -69,22 +96,92 @@ class PlannerReplayProjectorTest {
                 .unit(MilitaryUnit.AIRCRAFT, 600)
                 .build();
 
-        BlitzReplayTrace trace = capture(
-                List.of(attacker),
-                List.of(hitDefender, unhitDefender),
-                Map.of(attacker.nationId(), List.of(hitDefender.nationId())),
-                Map.of(),
-                List.of(unhitDefender),
-                List.of(attacker),
-                BlitzObjective.DAMAGE.objective(),
-                SimTuning.defaults(),
-                1
+        PlannerProfiler.Session profiler = new PlannerProfiler.Session();
+        BlitzReplayTrace trace = PlannerProfiler.withSession(
+                profiler,
+                () -> capture(
+                        List.of(attacker),
+                        List.of(hitDefender, unhitDefender),
+                        Map.of(attacker.nationId(), List.of(hitDefender.nationId())),
+                        Map.of(),
+                        List.of(unhitDefender),
+                        List.of(attacker),
+                        BlitzObjective.DAMAGE.objective(),
+                        SimTuning.defaults(),
+                        1
+                )
         );
 
         assertTrue(
                 hasDeclaredWar(trace, unhitDefender.nationId(), attacker.nationId()),
                 "The default policy should let defender-side nations that remain free after the opening counter on turn 1"
         );
+        Map<String, Long> replayCounters = profiler.snapshot().stats(PlannerProfiler.Scope.REPLAY_CAPTURE).counters();
+        assertTrue(replayCounters.getOrDefault("heuristicLaterDeclarationPlans", 0L) > 0L);
+        assertEquals(0L, replayCounters.getOrDefault("projectedLaterDeclarationPlans", 0L));
+    }
+
+    @Test
+        void replayHeuristicLaterDeclarationsAvoidLongHorizonSolve() {
+        DBNationSnapshot target = nation(101, 1)
+                .unit(MilitaryUnit.SOLDIER, 50_000)
+                .unit(MilitaryUnit.TANK, 5_000)
+                .unit(MilitaryUnit.AIRCRAFT, 2_500)
+                .unit(MilitaryUnit.SHIP, 500)
+                .build();
+        DBNationSnapshot declarer = nation(202, 2)
+                .unit(MilitaryUnit.SOLDIER, 50_000)
+                .unit(MilitaryUnit.TANK, 5_000)
+                .unit(MilitaryUnit.AIRCRAFT, 2_500)
+                .unit(MilitaryUnit.SHIP, 500)
+                .build();
+
+        SidePolicy basePolicy = SidePolicy.legacy("cacheDeclarer", BlitzObjective.DAMAGE.objective());
+        SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
+                Arrays.copyOf(basePolicy.opening().warTypeWeights(), basePolicy.opening().warTypeWeights().length),
+                Arrays.copyOf(basePolicy.opening().attackTypeWeights(), basePolicy.opening().attackTypeWeights().length),
+                new CandidateEdgeAdmissionPolicy(1.0d, false, false)
+        );
+        SidePolicy restrictivePolicy = new SidePolicy(
+                "cacheDeclarerRestrictive",
+                basePolicy.objective(),
+                basePolicy.planner(),
+                restrictiveOpening,
+                basePolicy.projection(),
+                basePolicy.turnActor(),
+                basePolicy.allowInitialDeclarations()
+        );
+        SidePolicy passiveTargetPolicy = SidePolicy.legacyPassive("cacheTarget", BlitzObjective.DAMAGE.objective());
+
+        PlannerProfiler.Session profiler = new PlannerProfiler.Session();
+        BlitzReplayTrace trace = PlannerProfiler.withSession(
+                profiler,
+                () -> PlannerReplayProjector.capture(
+                        SimTuning.defaults().withTurn1DeclarePolicy(Turn1DeclarePolicy.BOTH_FREE),
+                        OverrideSet.EMPTY,
+                        List.of(target, declarer),
+                        ids(List.of(target)),
+                        ids(List.of(declarer)),
+                        Map.of(),
+                        Map.of(),
+                        List.of(laterDeclarationScope(
+                                List.of(declarer),
+                                List.of(target),
+                                restrictivePolicy,
+                                passiveTargetPolicy
+                        )),
+                        ids(List.of(target, declarer)),
+                        new int[0],
+                        0,
+                        3
+                )
+        );
+        PARTICIPANT_IDS_BY_TRACE.put(trace, ids(List.of(target, declarer)));
+
+        assertFalse(hasDeclaredWar(trace, declarer.nationId(), target.nationId()));
+        Map<String, Long> replayCounters = profiler.snapshot().stats(PlannerProfiler.Scope.REPLAY_CAPTURE).counters();
+                assertTrue(replayCounters.getOrDefault("heuristicLaterDeclarationPlans", 0L) > 0L);
+                assertEquals(0L, profiler.snapshot().stats(PlannerProfiler.Scope.LONG_HORIZON_SOLVE).calls());
     }
 
     @Test

@@ -2045,8 +2045,7 @@ final class LongHorizonForwardProjection {
                 edgeIndex = nextEdgeIndex;
                 continue;
             }
-            warState.attackerMaps[edgeIndex] = Math.min(MAP_CAP, warState.attackerMaps[edgeIndex] + 1);
-            warState.defenderMaps[edgeIndex] = Math.min(MAP_CAP, warState.defenderMaps[edgeIndex] + 1);
+                warState.incrementMaps(edgeIndex, MAP_CAP);
             edgeIndex = nextEdgeIndex;
         }
         warState.fillActiveWarsByNation(activeWarsByNation);
@@ -2514,6 +2513,10 @@ final class LongHorizonForwardProjection {
         ) {
         profiledResolvedAttacks++;
         int edgeIndex = context.warIndex();
+            int previousAttackerMaps = warState.attackerMaps[edgeIndex];
+            int previousDefenderMaps = warState.defenderMaps[edgeIndex];
+            int previousAttackerResistance = warState.attackerResistance[edgeIndex];
+            int previousDefenderResistance = warState.defenderResistance[edgeIndex];
         warState.attackerMaps[edgeIndex] = Math.max(0, warState.attackerMaps[edgeIndex] - result.mapCost());
         state.applyLosses(warState.attackerNationIndex[edgeIndex], result.attackerLosses());
         state.applyLosses(warState.defenderNationIndex[edgeIndex], result.defenderLosses());
@@ -2539,6 +2542,13 @@ final class LongHorizonForwardProjection {
                 state.nationIds[warState.attackerNationIndex[edgeIndex]],
                 state.nationIds[warState.defenderNationIndex[edgeIndex]],
                 result.controlDelta()
+        );
+        warState.refreshCombatTotals(
+            edgeIndex,
+            previousAttackerMaps,
+            previousDefenderMaps,
+            previousAttackerResistance,
+            previousDefenderResistance
         );
         state.invalidateScore(warState.attackerNationIndex[edgeIndex]);
         state.invalidateScore(warState.defenderNationIndex[edgeIndex]);
@@ -2717,7 +2727,7 @@ final class LongHorizonForwardProjection {
         if (state.unit(nationIndex, primaryUnit) > 0 || (secondaryUnit != null && state.unit(nationIndex, secondaryUnit) > 0)) {
             return;
         }
-        ownerByWar[edgeIndex] = DenseWarState.OWNER_NONE;
+        warState.clearControlOwner(ownerByWar, edgeIndex);
     }
 
     private double positiveControlLeverage(int edgeIndex) {
@@ -3829,75 +3839,11 @@ final class LongHorizonForwardProjection {
             if (warState == null) {
                 return StrategicAssetValue.ActiveWarContext.basic(baseHasActiveWars[nationIndex]);
             }
-            int offensiveWars = warState.activeOffensiveWarCount(nationIndex);
-            int defensiveWars = warState.activeDefensiveWarCount(nationIndex);
-            int activeOpponents = offensiveWars + defensiveWars;
-            if (activeOpponents == 0) {
+            StrategicAssetValue.ActiveWarContext activeWarContext = warState.activeWarContext(nationIndex);
+            if (!activeWarContext.hasActiveWars()) {
                 return StrategicAssetValue.ActiveWarContext.basic(baseHasActiveWars[nationIndex]);
             }
-            int ownMaps = 0;
-            int enemyMaps = 0;
-            int ownResistance = 0;
-            int enemyResistance = 0;
-            int ownControls = 0;
-            int enemyControls = 0;
-            for (int warIndex = warState.firstOffensiveWarForNation(nationIndex);
-                 warIndex >= 0;
-                 warIndex = warState.nextOffensiveWarForNation(warIndex)) {
-                if (!warState.active[warIndex]) {
-                    continue;
-                }
-                ownMaps += warState.attackerMaps[warIndex];
-                enemyMaps += warState.defenderMaps[warIndex];
-                ownResistance += warState.attackerResistance[warIndex];
-                enemyResistance += warState.defenderResistance[warIndex];
-                ownControls += PlannerControlStateReducer.controlCountForOwnerCode(
-                        DenseWarState.OWNER_ATTACKER,
-                        warState.groundSuperiorityOwner[warIndex],
-                        warState.airSuperiorityOwner[warIndex],
-                        warState.blockadeOwner[warIndex]
-                );
-                enemyControls += PlannerControlStateReducer.controlCountForOwnerCode(
-                        DenseWarState.OWNER_DEFENDER,
-                        warState.groundSuperiorityOwner[warIndex],
-                        warState.airSuperiorityOwner[warIndex],
-                        warState.blockadeOwner[warIndex]
-                );
-            }
-            for (int warIndex = warState.firstDefensiveWarForNation(nationIndex);
-                 warIndex >= 0;
-                 warIndex = warState.nextDefensiveWarForNation(warIndex)) {
-                if (!warState.active[warIndex]) {
-                    continue;
-                }
-                ownMaps += warState.defenderMaps[warIndex];
-                enemyMaps += warState.attackerMaps[warIndex];
-                ownResistance += warState.defenderResistance[warIndex];
-                enemyResistance += warState.attackerResistance[warIndex];
-                ownControls += PlannerControlStateReducer.controlCountForOwnerCode(
-                        DenseWarState.OWNER_DEFENDER,
-                        warState.groundSuperiorityOwner[warIndex],
-                        warState.airSuperiorityOwner[warIndex],
-                        warState.blockadeOwner[warIndex]
-                );
-                enemyControls += PlannerControlStateReducer.controlCountForOwnerCode(
-                        DenseWarState.OWNER_ATTACKER,
-                        warState.groundSuperiorityOwner[warIndex],
-                        warState.airSuperiorityOwner[warIndex],
-                        warState.blockadeOwner[warIndex]
-                );
-            }
-            double slotPressure = Math.max(offensiveWars / 3.0d, defensiveWars / 3.0d);
-            return PlannerControlStateReducer.activeWarContextFromRelativeState(
-                    activeOpponents,
-                    slotPressure,
-                    ownMaps,
-                    enemyMaps,
-                    ownResistance,
-                    enemyResistance,
-                    ownControls,
-                    enemyControls
-            );
+            return activeWarContext;
         }
 
         double forceWindowScore(
@@ -4178,6 +4124,12 @@ final class LongHorizonForwardProjection {
         private final int[] firstDefensiveWarByNation;
         private final int[] activeOffensiveWarsByNation;
         private final int[] activeDefensiveWarsByNation;
+        private final int[] ownMapsByNation;
+        private final int[] enemyMapsByNation;
+        private final int[] ownResistanceByNation;
+        private final int[] enemyResistanceByNation;
+        private final int[] ownControlsByNation;
+        private final int[] enemyControlsByNation;
         private int[] previousActiveWar;
         private int[] nextActiveWar;
         private int firstActiveWar;
@@ -4209,6 +4161,12 @@ final class LongHorizonForwardProjection {
                 int[] firstDefensiveWarByNation,
                 int[] activeOffensiveWarsByNation,
                 int[] activeDefensiveWarsByNation,
+                int[] ownMapsByNation,
+                int[] enemyMapsByNation,
+                int[] ownResistanceByNation,
+                int[] enemyResistanceByNation,
+                int[] ownControlsByNation,
+                int[] enemyControlsByNation,
                 int[] previousActiveWar,
                 int[] nextActiveWar,
                 int firstActiveWar,
@@ -4238,6 +4196,12 @@ final class LongHorizonForwardProjection {
             this.firstDefensiveWarByNation = firstDefensiveWarByNation;
             this.activeOffensiveWarsByNation = activeOffensiveWarsByNation;
             this.activeDefensiveWarsByNation = activeDefensiveWarsByNation;
+            this.ownMapsByNation = ownMapsByNation;
+            this.enemyMapsByNation = enemyMapsByNation;
+            this.ownResistanceByNation = ownResistanceByNation;
+            this.enemyResistanceByNation = enemyResistanceByNation;
+            this.ownControlsByNation = ownControlsByNation;
+            this.enemyControlsByNation = enemyControlsByNation;
             this.previousActiveWar = previousActiveWar;
             this.nextActiveWar = nextActiveWar;
             this.firstActiveWar = firstActiveWar;
@@ -4270,6 +4234,12 @@ final class LongHorizonForwardProjection {
                 int[] firstDefensiveWarByNation = new int[nationCount];
                 int[] activeOffensiveWarsByNation = new int[nationCount];
                 int[] activeDefensiveWarsByNation = new int[nationCount];
+                int[] ownMapsByNation = new int[nationCount];
+                int[] enemyMapsByNation = new int[nationCount];
+                int[] ownResistanceByNation = new int[nationCount];
+                int[] enemyResistanceByNation = new int[nationCount];
+                int[] ownControlsByNation = new int[nationCount];
+                int[] enemyControlsByNation = new int[nationCount];
                 int[] previousActiveWar = new int[capacity];
                 int[] nextActiveWar = new int[capacity];
                 int[] nextOffensiveWarByNation = new int[capacity];
@@ -4303,6 +4273,12 @@ final class LongHorizonForwardProjection {
                     firstDefensiveWarByNation,
                     activeOffensiveWarsByNation,
                     activeDefensiveWarsByNation,
+                    ownMapsByNation,
+                    enemyMapsByNation,
+                    ownResistanceByNation,
+                    enemyResistanceByNation,
+                    ownControlsByNation,
+                    enemyControlsByNation,
                     previousActiveWar,
                     nextActiveWar,
                     -1,
@@ -4326,6 +4302,7 @@ final class LongHorizonForwardProjection {
             clearWarIncidenceIndex();
             Arrays.fill(activeOffensiveWarsByNation, 0);
             Arrays.fill(activeDefensiveWarsByNation, 0);
+            clearActiveWarContextTotals();
             Arrays.fill(previousActiveWar, -1);
             Arrays.fill(nextActiveWar, -1);
             firstActiveWar = -1;
@@ -4407,6 +4384,7 @@ final class LongHorizonForwardProjection {
             openingEdgeCount = checkpoint.openingEdgeCount();
             warCount = checkpoint.warCount();
             rebuildWarIncidenceIndex();
+            rebuildActiveWarContextTotals();
         }
 
         void applyOpeningAssignment(boolean[] edgeAssigned) {
@@ -4439,6 +4417,7 @@ final class LongHorizonForwardProjection {
             clearWarIncidenceIndex();
             Arrays.fill(activeOffensiveWarsByNation, 0);
             Arrays.fill(activeDefensiveWarsByNation, 0);
+            clearActiveWarContextTotals();
             Arrays.fill(previousActiveWar, -1);
             Arrays.fill(nextActiveWar, -1);
             firstActiveWar = -1;
@@ -4447,13 +4426,9 @@ final class LongHorizonForwardProjection {
                 attackerNationIndex[edgeIndex] = edges.attackerIndex(edgeIndex);
                 defenderNationIndex[edgeIndex] = state.attackerCount + edges.defenderIndex(edgeIndex);
                 linkWarToNationIndexes(edgeIndex);
-                active[edgeIndex] = edgeAssigned[edgeIndex];
-                if (edgeAssigned[edgeIndex]) {
-                    activePairs[pairIndex(attackerNationIndex[edgeIndex], defenderNationIndex[edgeIndex], nationCount)] = true;
-                    incrementActiveWarCounts(edgeIndex);
-                }
                 attackerMaps[edgeIndex] = INITIAL_WAR_MAPS;
                 defenderMaps[edgeIndex] = INITIAL_WAR_MAPS;
+                startTurn[edgeIndex] = 0;
                 attackerResistance[edgeIndex] = INITIAL_RESISTANCE;
                 defenderResistance[edgeIndex] = INITIAL_RESISTANCE;
                 warTypes[edgeIndex] = warTypeFromEdge(edges, edgeIndex);
@@ -4463,6 +4438,11 @@ final class LongHorizonForwardProjection {
                 seededCurrentWar[edgeIndex] = false;
                 initialOutcomeOwner[edgeIndex] = OWNER_NONE;
                 outcomeOwner[edgeIndex] = OWNER_NONE;
+                active[edgeIndex] = edgeAssigned[edgeIndex];
+                if (edgeAssigned[edgeIndex]) {
+                    activePairs[pairIndex(attackerNationIndex[edgeIndex], defenderNationIndex[edgeIndex], nationCount)] = true;
+                    incrementActiveWarCounts(edgeIndex);
+                }
             }
             warCount = edgeCount;
             for (CompiledActiveWar seed : activeWarSeeds) {
@@ -4482,10 +4462,6 @@ final class LongHorizonForwardProjection {
             attackerNationIndex[index] = attackerIndex;
             defenderNationIndex[index] = defenderIndex;
             linkWarToNationIndexes(index);
-            active[index] = true;
-            incrementActiveWarCounts(index);
-            activePairs[pairIndex(attackerIndex, defenderIndex, nationCount)] = true;
-            pairUnlockTurn[lockoutPairIndex(attackerIndex, defenderIndex, nationCount)] = 0;
             attackerMaps[index] = INITIAL_WAR_MAPS;
             defenderMaps[index] = INITIAL_WAR_MAPS;
             startTurn[index] = turn;
@@ -4498,6 +4474,10 @@ final class LongHorizonForwardProjection {
             seededCurrentWar[index] = false;
             initialOutcomeOwner[index] = OWNER_NONE;
             outcomeOwner[index] = OWNER_NONE;
+            active[index] = true;
+            activePairs[pairIndex(attackerIndex, defenderIndex, nationCount)] = true;
+            pairUnlockTurn[lockoutPairIndex(attackerIndex, defenderIndex, nationCount)] = 0;
+            incrementActiveWarCounts(index);
             return index;
         }
 
@@ -4515,9 +4495,16 @@ final class LongHorizonForwardProjection {
             defenderMaps[warIndex] = seed.defenderMaps();
             attackerResistance[warIndex] = seed.attackerResistance();
             defenderResistance[warIndex] = seed.defenderResistance();
-            groundSuperiorityOwner[warIndex] = ownerCode(seed.groundSuperiorityOwner());
-            airSuperiorityOwner[warIndex] = ownerCode(seed.airSuperiorityOwner());
-            blockadeOwner[warIndex] = ownerCode(seed.blockadeOwner());
+                setGroundSuperiorityOwner(warIndex, ownerCode(seed.groundSuperiorityOwner()));
+                setAirSuperiorityOwner(warIndex, ownerCode(seed.airSuperiorityOwner()));
+                setBlockadeOwner(warIndex, ownerCode(seed.blockadeOwner()));
+                refreshCombatTotals(
+                    warIndex,
+                    INITIAL_WAR_MAPS,
+                    INITIAL_WAR_MAPS,
+                    INITIAL_RESISTANCE,
+                    INITIAL_RESISTANCE
+                );
             seededCurrentWar[warIndex] = true;
             initialOutcomeOwner[warIndex] = winningOwner(warIndex);
             outcomeOwner[warIndex] = OWNER_NONE;
@@ -4571,11 +4558,235 @@ final class LongHorizonForwardProjection {
             activeOffensiveWarsByNation[attackerNationIndex[warIndex]]++;
             activeDefensiveWarsByNation[defenderNationIndex[warIndex]]++;
             linkActiveWar(warIndex);
+            addWarStateContribution(warIndex);
         }
 
         private void decrementActiveWarCounts(int warIndex) {
+            removeWarStateContribution(warIndex);
             activeOffensiveWarsByNation[attackerNationIndex[warIndex]]--;
             activeDefensiveWarsByNation[defenderNationIndex[warIndex]]--;
+        }
+
+        void incrementMaps(int warIndex, int mapCap) {
+            int previousAttackerMaps = attackerMaps[warIndex];
+            int previousDefenderMaps = defenderMaps[warIndex];
+            attackerMaps[warIndex] = Math.min(mapCap, attackerMaps[warIndex] + 1);
+            defenderMaps[warIndex] = Math.min(mapCap, defenderMaps[warIndex] + 1);
+            refreshCombatTotals(
+                    warIndex,
+                    previousAttackerMaps,
+                    previousDefenderMaps,
+                    attackerResistance[warIndex],
+                    defenderResistance[warIndex]
+            );
+        }
+
+        void refreshCombatTotals(
+                int warIndex,
+                int previousAttackerMaps,
+                int previousDefenderMaps,
+                int previousAttackerResistance,
+                int previousDefenderResistance
+        ) {
+            if (!active[warIndex]) {
+                return;
+            }
+            int attackerIndex = attackerNationIndex[warIndex];
+            int defenderIndex = defenderNationIndex[warIndex];
+            ownMapsByNation[attackerIndex] += attackerMaps[warIndex] - previousAttackerMaps;
+            enemyMapsByNation[attackerIndex] += defenderMaps[warIndex] - previousDefenderMaps;
+            ownResistanceByNation[attackerIndex] += attackerResistance[warIndex] - previousAttackerResistance;
+            enemyResistanceByNation[attackerIndex] += defenderResistance[warIndex] - previousDefenderResistance;
+            ownMapsByNation[defenderIndex] += defenderMaps[warIndex] - previousDefenderMaps;
+            enemyMapsByNation[defenderIndex] += attackerMaps[warIndex] - previousAttackerMaps;
+            ownResistanceByNation[defenderIndex] += defenderResistance[warIndex] - previousDefenderResistance;
+            enemyResistanceByNation[defenderIndex] += attackerResistance[warIndex] - previousAttackerResistance;
+        }
+
+        void clearControlOwner(int[] ownerByWar, int warIndex) {
+            if (ownerByWar == groundSuperiorityOwner) {
+                setGroundSuperiorityOwner(warIndex, OWNER_NONE);
+                return;
+            }
+            if (ownerByWar == airSuperiorityOwner) {
+                setAirSuperiorityOwner(warIndex, OWNER_NONE);
+                return;
+            }
+            if (ownerByWar == blockadeOwner) {
+                setBlockadeOwner(warIndex, OWNER_NONE);
+            }
+        }
+
+        StrategicAssetValue.ActiveWarContext activeWarContext(int nationIndex) {
+            int activeOpponents = activeOffensiveWarCount(nationIndex) + activeDefensiveWarCount(nationIndex);
+            if (activeOpponents <= 0) {
+                return StrategicAssetValue.ActiveWarContext.NONE;
+            }
+            double slotPressure = Math.max(
+                    activeOffensiveWarCount(nationIndex) / 3.0d,
+                    activeDefensiveWarCount(nationIndex) / 3.0d
+            );
+            return PlannerControlStateReducer.activeWarContextFromRelativeState(
+                    activeOpponents,
+                    slotPressure,
+                    ownMapsByNation[nationIndex],
+                    enemyMapsByNation[nationIndex],
+                    ownResistanceByNation[nationIndex],
+                    enemyResistanceByNation[nationIndex],
+                    ownControlsByNation[nationIndex],
+                    enemyControlsByNation[nationIndex]
+            );
+        }
+
+        void setGroundSuperiorityOwner(int warIndex, int owner) {
+            setControlOwner(warIndex, owner, 0);
+        }
+
+        void setAirSuperiorityOwner(int warIndex, int owner) {
+            setControlOwner(warIndex, owner, 1);
+        }
+
+        void setBlockadeOwner(int warIndex, int owner) {
+            setControlOwner(warIndex, owner, 2);
+        }
+
+        private void addWarStateContribution(int warIndex) {
+            applyWarStateContribution(
+                    warIndex,
+                    1,
+                    attackerMaps[warIndex],
+                    defenderMaps[warIndex],
+                    attackerResistance[warIndex],
+                    defenderResistance[warIndex],
+                    groundSuperiorityOwner[warIndex],
+                    airSuperiorityOwner[warIndex],
+                    blockadeOwner[warIndex]
+            );
+        }
+
+        private void removeWarStateContribution(int warIndex) {
+            applyWarStateContribution(
+                    warIndex,
+                    -1,
+                    attackerMaps[warIndex],
+                    defenderMaps[warIndex],
+                    attackerResistance[warIndex],
+                    defenderResistance[warIndex],
+                    groundSuperiorityOwner[warIndex],
+                    airSuperiorityOwner[warIndex],
+                    blockadeOwner[warIndex]
+            );
+        }
+
+        private void applyWarStateContribution(
+                int warIndex,
+                int direction,
+                int attackerMapsValue,
+                int defenderMapsValue,
+                int attackerResistanceValue,
+                int defenderResistanceValue,
+                int groundOwner,
+                int airOwner,
+                int blockadeOwnerValue
+        ) {
+            int attackerIndex = attackerNationIndex[warIndex];
+            int defenderIndex = defenderNationIndex[warIndex];
+            int attackerControls = attackerControlCount(groundOwner, airOwner, blockadeOwnerValue);
+            int defenderControls = defenderControlCount(groundOwner, airOwner, blockadeOwnerValue);
+            ownMapsByNation[attackerIndex] += direction * attackerMapsValue;
+            enemyMapsByNation[attackerIndex] += direction * defenderMapsValue;
+            ownResistanceByNation[attackerIndex] += direction * attackerResistanceValue;
+            enemyResistanceByNation[attackerIndex] += direction * defenderResistanceValue;
+            ownControlsByNation[attackerIndex] += direction * attackerControls;
+            enemyControlsByNation[attackerIndex] += direction * defenderControls;
+            ownMapsByNation[defenderIndex] += direction * defenderMapsValue;
+            enemyMapsByNation[defenderIndex] += direction * attackerMapsValue;
+            ownResistanceByNation[defenderIndex] += direction * defenderResistanceValue;
+            enemyResistanceByNation[defenderIndex] += direction * attackerResistanceValue;
+            ownControlsByNation[defenderIndex] += direction * defenderControls;
+            enemyControlsByNation[defenderIndex] += direction * attackerControls;
+        }
+
+        private void clearActiveWarContextTotals() {
+            Arrays.fill(ownMapsByNation, 0);
+            Arrays.fill(enemyMapsByNation, 0);
+            Arrays.fill(ownResistanceByNation, 0);
+            Arrays.fill(enemyResistanceByNation, 0);
+            Arrays.fill(ownControlsByNation, 0);
+            Arrays.fill(enemyControlsByNation, 0);
+        }
+
+        private void rebuildActiveWarContextTotals() {
+            clearActiveWarContextTotals();
+            for (int warIndex = firstActiveWar; warIndex >= 0; warIndex = nextActiveWar[warIndex]) {
+                addWarStateContribution(warIndex);
+            }
+        }
+
+        private void setControlOwner(int warIndex, int owner, int lane) {
+            int currentOwner = switch (lane) {
+                case 0 -> groundSuperiorityOwner[warIndex];
+                case 1 -> airSuperiorityOwner[warIndex];
+                default -> blockadeOwner[warIndex];
+            };
+            if (currentOwner == owner) {
+                return;
+            }
+            int oldGroundOwner = groundSuperiorityOwner[warIndex];
+            int oldAirOwner = airSuperiorityOwner[warIndex];
+            int oldBlockadeOwner = blockadeOwner[warIndex];
+            int oldAttackerControls = attackerControlCount(oldGroundOwner, oldAirOwner, oldBlockadeOwner);
+            int oldDefenderControls = defenderControlCount(oldGroundOwner, oldAirOwner, oldBlockadeOwner);
+            if (lane == 0) {
+                groundSuperiorityOwner[warIndex] = owner;
+            } else if (lane == 1) {
+                airSuperiorityOwner[warIndex] = owner;
+            } else {
+                blockadeOwner[warIndex] = owner;
+            }
+            if (!active[warIndex]) {
+                return;
+            }
+            int newAttackerControls = attackerControlCount(warIndex);
+            int newDefenderControls = defenderControlCount(
+                    groundSuperiorityOwner[warIndex],
+                    airSuperiorityOwner[warIndex],
+                    blockadeOwner[warIndex]
+            );
+            int attackerIndex = attackerNationIndex[warIndex];
+            int defenderIndex = defenderNationIndex[warIndex];
+            int attackerControlDelta = newAttackerControls - oldAttackerControls;
+            int defenderControlDelta = newDefenderControls - oldDefenderControls;
+            ownControlsByNation[attackerIndex] += attackerControlDelta;
+            enemyControlsByNation[attackerIndex] += defenderControlDelta;
+            ownControlsByNation[defenderIndex] += defenderControlDelta;
+            enemyControlsByNation[defenderIndex] += attackerControlDelta;
+        }
+
+        private int attackerControlCount(int warIndex) {
+            return attackerControlCount(
+                    groundSuperiorityOwner[warIndex],
+                    airSuperiorityOwner[warIndex],
+                    blockadeOwner[warIndex]
+            );
+        }
+
+        private static int attackerControlCount(int groundOwner, int airOwner, int blockadeOwner) {
+            return PlannerControlStateReducer.controlCountForOwnerCode(
+                    OWNER_ATTACKER,
+                    groundOwner,
+                    airOwner,
+                    blockadeOwner
+            );
+        }
+
+        private static int defenderControlCount(int groundOwner, int airOwner, int blockadeOwner) {
+            return PlannerControlStateReducer.controlCountForOwnerCode(
+                    OWNER_DEFENDER,
+                    groundOwner,
+                    airOwner,
+                    blockadeOwner
+            );
         }
 
         private void linkActiveWar(int warIndex) {
@@ -4827,17 +5038,17 @@ final class LongHorizonForwardProjection {
 
         @Override
         public void setgroundSuperiorityNationId(int nationId) {
-            warState.groundSuperiorityOwner[warIndex] = ownerCode(nationId);
+            warState.setGroundSuperiorityOwner(warIndex, ownerCode(nationId));
         }
 
         @Override
         public void setAirSuperiorityNationId(int nationId) {
-            warState.airSuperiorityOwner[warIndex] = ownerCode(nationId);
+            warState.setAirSuperiorityOwner(warIndex, ownerCode(nationId));
         }
 
         @Override
         public void setBlockadeNationId(int nationId) {
-            warState.blockadeOwner[warIndex] = ownerCode(nationId);
+            warState.setBlockadeOwner(warIndex, ownerCode(nationId));
         }
 
         private int controlNationId(int ownerCode) {

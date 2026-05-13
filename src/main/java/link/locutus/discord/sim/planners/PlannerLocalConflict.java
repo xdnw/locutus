@@ -100,6 +100,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final ActiveWarContextScratch strategicValueWarContextScratch;
         private final Deque<Mark> markStack;
         private final List<PlannerExecutionLog.Turn> executionLogTurns;
+        private final Map<LaterDeclarationPlanCacheKey, PlannerAutonomousDeclarationPlanner.Plan> replayLaterDeclarationPlanCache;
         private PlannerReplayTurnMetrics replayTurnMetrics;
         private ReplayExecutionTurnBuilder currentExecutionTurn;
         private ReplayExecutionPhase currentExecutionPhase;
@@ -158,6 +159,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.strategicValueWarContextScratch = new ActiveWarContextScratch(nationsById.size());
         this.markStack = new ArrayDeque<>();
         this.executionLogTurns = new ArrayList<>();
+        this.replayLaterDeclarationPlanCache = new java.util.HashMap<>();
         this.currentExecutionPhase = ReplayExecutionPhase.NONE;
         this.currentTurn = currentTurn;
         }
@@ -1356,10 +1358,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (scope == null) {
             return List.of();
         }
+        List<DBNationSnapshot> declarerSnapshots = snapshotsFor(scope.declarers(), projectedSnapshotsById);
+        List<DBNationSnapshot> targetSnapshots = snapshotsFor(scope.targets(), projectedSnapshotsById);
         PlannerAutonomousDeclarationPlanner.Plan plan = planAutonomousLaterDeclarations(
-                scope,
-                remainingTurns,
-                projectedSnapshotsById
+            scope,
+            remainingTurns,
+            declarerSnapshots,
+            targetSnapshots
         );
         if (plan.assignment().isEmpty()) {
             return List.of();
@@ -1494,18 +1499,110 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private PlannerAutonomousDeclarationPlanner.Plan planAutonomousLaterDeclarations(
             EligibleLaterDeclarationScope scope,
             int remainingTurns,
-            Map<Integer, DBNationSnapshot> projectedSnapshotsById
+            List<DBNationSnapshot> declarerSnapshots,
+            List<DBNationSnapshot> targetSnapshots
     ) {
-        List<DBNationSnapshot> declarerSnapshots = snapshotsFor(scope.declarers(), projectedSnapshotsById);
-        List<DBNationSnapshot> targetSnapshots = snapshotsFor(scope.targets(), projectedSnapshotsById);
-        return PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
-                declarerSnapshots,
-                targetSnapshots,
-                tuning,
-                scope.scope().declarerPolicy(),
-                scope.scope().targetPolicy(),
-                remainingTurns
+        if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
+            return PlannerAutonomousDeclarationPlanner.Plan.empty();
+        }
+        LaterDeclarationPlanCacheKey cacheKey = new LaterDeclarationPlanCacheKey(
+                scope.scope(),
+                Math.max(1, remainingTurns),
+                snapshotFingerprints(declarerSnapshots),
+                snapshotFingerprints(targetSnapshots)
         );
+        PlannerAutonomousDeclarationPlanner.Plan cached = replayLaterDeclarationPlanCache.get(cacheKey);
+        if (cached != null) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "laterDeclarationPlanCacheHits", 1);
+            return cached;
+        }
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "laterDeclarationPlanCacheMisses", 1);
+        PlannerAutonomousDeclarationPlanner.Plan plan;
+        if (usesHeuristicLaterDeclarationPlanning(scope.scope())) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "heuristicLaterDeclarationPlans", 1);
+            plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
+                    declarerSnapshots,
+                    targetSnapshots,
+                    tuning,
+                    scope.scope().declarerPolicy(),
+                    scope.scope().targetPolicy(),
+                    remainingTurns
+            );
+        } else {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "projectedLaterDeclarationPlans", 1);
+            plan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
+                    declarerSnapshots,
+                    targetSnapshots,
+                    tuning,
+                    scope.scope().declarerPolicy(),
+                    scope.scope().targetPolicy(),
+                    remainingTurns
+            );
+        }
+        replayLaterDeclarationPlanCache.put(cacheKey, plan);
+        return plan;
+    }
+
+    private static long[] snapshotFingerprints(List<DBNationSnapshot> snapshots) {
+        long[] fingerprints = new long[snapshots.size()];
+        for (int index = 0; index < snapshots.size(); index++) {
+            fingerprints[index] = snapshotFingerprint(snapshots.get(index));
+        }
+        return fingerprints;
+    }
+
+    private static long snapshotFingerprint(DBNationSnapshot snapshot) {
+        long hash = 0xcbf29ce484222325L;
+        hash = mixFingerprint(hash, snapshot.nationId());
+        hash = mixFingerprint(hash, snapshot.allianceId());
+        hash = mixFingerprint(hash, snapshot.teamId());
+        hash = mixFingerprint(hash, snapshot.cities());
+        hash = mixFingerprint(hash, snapshot.currentOffensiveWars());
+        hash = mixFingerprint(hash, snapshot.currentDefensiveWars());
+        hash = mixFingerprint(hash, snapshot.maxOff());
+        hash = mixFingerprint(hash, snapshot.warPolicy().ordinal());
+        hash = mixFingerprint(hash, snapshot.resetHourUtc());
+        hash = mixFingerprint(hash, snapshot.resetHourUtcFallback() ? 1 : 0);
+        hash = mixFingerprint(hash, snapshot.policyCooldownTurnsRemaining());
+        hash = mixFingerprint(hash, snapshot.beigeTurns());
+        hash = mixFingerprint(hash, snapshot.vmTurns());
+        hash = mixFingerprint(hash, snapshot.researchBits());
+        hash = mixFingerprint(hash, snapshot.projectBits());
+        hash = mixFingerprint(hash, snapshot.blitzkriegActive() ? 1 : 0);
+        hash = mixFingerprint(hash, snapshot.activeOpponentNationIds().hashCode());
+        hash = mixFingerprint(hash, Arrays.hashCode(snapshot.slotOnlyOffensiveWarReleaseTurns()));
+        hash = mixFingerprint(hash, Arrays.hashCode(snapshot.slotOnlyDefensiveWarReleaseTurns()));
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            hash = mixFingerprint(hash, snapshot.unit(unit));
+            hash = mixFingerprint(hash, snapshot.unitsBoughtToday(unit));
+            hash = mixFingerprint(hash, snapshot.pendingBuysNextTurn(unit));
+        }
+        for (double resource : snapshot.resourcesRaw()) {
+            hash = mixFingerprint(hash, Double.doubleToLongBits(resource));
+        }
+        for (double infra : snapshot.cityInfraRaw()) {
+            hash = mixFingerprint(hash, Double.doubleToLongBits(infra));
+        }
+        for (SpecialistCityProfile profile : snapshot.citySpecialistProfilesRaw()) {
+            hash = mixFingerprint(hash, profile == null ? 0 : profile.hashCode());
+        }
+        for (AttackType type : AttackType.values) {
+            hash = mixFingerprint(hash, Double.doubleToLongBits(snapshot.infraAttackModifier(type)));
+            hash = mixFingerprint(hash, Double.doubleToLongBits(snapshot.infraDefendModifier(type)));
+        }
+        hash = mixFingerprint(hash, Double.doubleToLongBits(snapshot.looterModifier(true)));
+        hash = mixFingerprint(hash, Double.doubleToLongBits(snapshot.looterModifier(false)));
+        hash = mixFingerprint(hash, Double.doubleToLongBits(snapshot.lootModifier()));
+        return hash;
+    }
+
+    private static long mixFingerprint(long hash, long value) {
+        return (hash ^ value) * 0x100000001b3L;
+    }
+
+    private static boolean usesHeuristicLaterDeclarationPlanning(LaterDeclarationScope scope) {
+        return scope.declarerPolicy().projection().laterDeclarationScoringPolicy() == HeuristicLaterDeclarationScoringPolicy.INSTANCE
+                && scope.targetPolicy().projection().laterDeclarationScoringPolicy() == HeuristicLaterDeclarationScoringPolicy.INSTANCE;
     }
 
     private Map<Integer, DBNationSnapshot> autonomousPlannerSnapshotsById(List<EligibleLaterDeclarationScope> laterDeclarationScopes) {
@@ -2526,6 +2623,36 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         private PlannerExecutionLog.Turn toTurn() {
             return new PlannerExecutionLog.Turn(turn, preOpeningDeclarations, autonomousDeclarations, concludedWars);
+        }
+    }
+
+    private record LaterDeclarationPlanCacheKey(
+            LaterDeclarationScope scope,
+            int remainingTurns,
+            long[] declarerFingerprints,
+            long[] targetFingerprints
+    ) {
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof LaterDeclarationPlanCacheKey other)) {
+                return false;
+            }
+            return remainingTurns == other.remainingTurns
+                    && scope.equals(other.scope)
+                    && Arrays.equals(declarerFingerprints, other.declarerFingerprints)
+                    && Arrays.equals(targetFingerprints, other.targetFingerprints);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = scope.hashCode();
+            result = 31 * result + remainingTurns;
+            result = 31 * result + Arrays.hashCode(declarerFingerprints);
+            result = 31 * result + Arrays.hashCode(targetFingerprints);
+            return result;
         }
     }
 

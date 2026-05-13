@@ -38,7 +38,28 @@ final class PlannerAutonomousDeclarationPlanner {
             declarerPolicy,
             targetPolicy,
             remainingTurns,
-            null
+            null,
+            false
+        );
+        }
+
+        static Plan planScorerOnly(
+            List<DBNationSnapshot> declarerSnapshots,
+            List<DBNationSnapshot> targetSnapshots,
+            SimTuning tuning,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy,
+            int remainingTurns
+        ) {
+        return planInternal(
+            declarerSnapshots,
+            targetSnapshots,
+            tuning,
+            declarerPolicy,
+            targetPolicy,
+            remainingTurns,
+            null,
+            true
         );
         }
 
@@ -61,7 +82,8 @@ final class PlannerAutonomousDeclarationPlanner {
                 declarerPolicy.objective(),
                 declarerPolicy,
                 targetPolicy
-            )
+            ),
+            false
         );
         }
 
@@ -119,7 +141,8 @@ final class PlannerAutonomousDeclarationPlanner {
             SidePolicy declarerPolicy,
             SidePolicy targetPolicy,
             int remainingTurns,
-            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext,
+                boolean scorerOnly
         ) {
         if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
             return Plan.empty();
@@ -163,6 +186,18 @@ final class PlannerAutonomousDeclarationPlanner {
         );
         if (edges.edgeCount() == 0) {
             return Plan.empty();
+        }
+        if (scorerOnly) {
+            return planScorerOnly(
+                    scenario,
+                    edges,
+                    attackerCaps,
+                    defenderCaps,
+                    attackerNationIds(scenario),
+                    defenderNationIds(scenario),
+                    declarerPolicy.planner(),
+                    remainingTurns
+            );
         }
         Map<Integer, List<Integer>> assignment = projectionContext == null
             ? LongHorizonAssignmentOptimizer.solve(
