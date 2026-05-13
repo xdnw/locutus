@@ -430,15 +430,15 @@ public class SimEndpoints {
                 scopes,
                 context.defenderSnapshots(),
                 context.attackerSnapshots(),
-                autonomousDeclarerPolicy(context, "laterDeclarerOpposingSide"),
-                autonomousTargetPolicy(context, "laterTargetOpposingSide")
+                autonomousPassivePolicy(context, "laterDeclarerOpposingSide"),
+                autonomousActingPolicy(context, "laterTargetOpposingSide")
             );
             addLaterDeclarationScope(
                 scopes,
                 context.attackerSnapshots(),
                 context.defenderSnapshots(),
-                autonomousDeclarerPolicy(context, "laterDeclarerOpeningSide"),
-                autonomousTargetPolicy(context, "laterTargetOpeningSide")
+                autonomousActingPolicy(context, "laterDeclarerOpeningSide"),
+                autonomousPassivePolicy(context, "laterTargetOpeningSide")
             );
             }
             case DEFENDERS_ONLY -> {
@@ -446,15 +446,15 @@ public class SimEndpoints {
                 scopes,
                 context.attackerSnapshots(),
                 context.defenderSnapshots(),
-                autonomousDeclarerPolicy(context, "laterDeclarerOpposingSide"),
-                autonomousTargetPolicy(context, "laterTargetOpposingSide")
+                autonomousPassivePolicy(context, "laterDeclarerOpposingSide"),
+                autonomousActingPolicy(context, "laterTargetOpposingSide")
             );
             addLaterDeclarationScope(
                 scopes,
                 context.defenderSnapshots(),
                 context.attackerSnapshots(),
-                autonomousDeclarerPolicy(context, "laterDeclarerOpeningSide"),
-                autonomousTargetPolicy(context, "laterTargetOpeningSide")
+                autonomousActingPolicy(context, "laterDeclarerOpeningSide"),
+                autonomousPassivePolicy(context, "laterTargetOpeningSide")
             );
             }
             case BOTH -> {
@@ -462,15 +462,15 @@ public class SimEndpoints {
                 scopes,
                 context.attackerSnapshots(),
                 context.defenderSnapshots(),
-                autonomousDeclarerPolicy(context, "laterDeclarerAttackerSide"),
-                autonomousTargetPolicy(context, "laterTargetAttackerSide")
+                autonomousActingPolicy(context, "laterDeclarerAttackerSide"),
+                autonomousActingPolicy(context, "laterTargetAttackerSide")
             );
             addLaterDeclarationScope(
                 scopes,
                 context.defenderSnapshots(),
                 context.attackerSnapshots(),
-                autonomousDeclarerPolicy(context, "laterDeclarerDefenderSide"),
-                autonomousTargetPolicy(context, "laterTargetDefenderSide")
+                autonomousActingPolicy(context, "laterDeclarerDefenderSide"),
+                autonomousActingPolicy(context, "laterTargetDefenderSide")
             );
             }
         }
@@ -495,11 +495,11 @@ public class SimEndpoints {
         ));
         }
 
-    private static SidePolicy autonomousDeclarerPolicy(BlitzPlanContext context, String name) {
+    private static SidePolicy autonomousActingPolicy(BlitzPlanContext context, String name) {
         return SidePolicy.objectiveDrivenProjection(name, objectiveForRequest(context.request()));
     }
 
-    private static SidePolicy autonomousTargetPolicy(BlitzPlanContext context, String name) {
+    private static SidePolicy autonomousPassivePolicy(BlitzPlanContext context, String name) {
         return SidePolicy.objectiveDrivenProjectionPassive(name, objectiveForRequest(context.request()));
     }
 

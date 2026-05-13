@@ -1249,6 +1249,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
             boolean initialTurn,
             int remainingTurns
     ) {
+        if (initialTurn && tuning.turn1DeclarePolicy() != Turn1DeclarePolicy.BOTH_FREE) {
+            return;
+        }
         if (laterDeclarationScopes == null || laterDeclarationScopes.isEmpty()) {
             return;
         }

@@ -242,6 +242,10 @@ class PlannerReplayProjectorTest {
                 hasDeclaredWar(trace, unhitDefender.nationId(), attacker.nationId()),
                 "An unhit defender-side nation should be able to declare after the initial blitz turn"
         );
+        assertTrue(
+                declaredTurn(trace, unhitDefender.nationId(), attacker.nationId()) > trace.startTurn(),
+                "Default replay timing should not spend autonomous later declarations on the initial blitz turn"
+        );
     }
 
     @Test
