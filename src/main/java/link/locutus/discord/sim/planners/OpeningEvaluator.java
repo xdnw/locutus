@@ -168,7 +168,24 @@ final class OpeningEvaluator {
             }
             return REJECTED_EDGE;
         }
-        return evaluateAdmittedOpening(
+        if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
+            if (evaluateDelayedSpecialistOpening(
+                    attacker,
+                    defender,
+                    objective,
+                    null,
+                    candidateAdmission.preferredWarTypeId(),
+                    candidateAdmission.bestAttackTypeId(),
+                    evaluation
+            )) {
+                if (retainedComponentMask != 0) {
+                    OpeningEdgeEvaluationWriter.retainComponents(evaluation, retainedComponentMask);
+                }
+                return toEvaluatedEdge(evaluation);
+            }
+            return REJECTED_EDGE;
+        }
+        EvaluatedEdge admitted = evaluateAdmittedOpening(
             attacker,
             defender,
             objective,
@@ -177,6 +194,7 @@ final class OpeningEvaluator {
             evaluation,
             actionBudgetForProbe(candidateAdmission.probe(), evaluator.maxActionBudget())
         );
+        return admitted;
     }
 
     static EvaluatedEdge evaluateOpening(
@@ -267,7 +285,25 @@ final class OpeningEvaluator {
             if (!candidateAdmission.admit(attacker, defender)) {
                 return REJECTED_EDGE;
             }
-            return evaluateAdmittedOpening(
+            if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
+                if (evaluateDelayedSpecialistOpening(
+                        attacker,
+                        defender,
+                        objective,
+                        null,
+                        candidateAdmission.preferredWarTypeId(),
+                        candidateAdmission.bestAttackTypeId(),
+                        edgeEvaluation
+                )) {
+                    int retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
+                    if (retainedComponentMask != 0) {
+                        OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
+                    }
+                    return toEvaluatedEdge(edgeEvaluation);
+                }
+                return REJECTED_EDGE;
+            }
+            EvaluatedEdge admitted = evaluateAdmittedOpening(
                     attacker,
                     defender,
                     objective,
@@ -276,6 +312,7 @@ final class OpeningEvaluator {
                     edgeEvaluation,
                     actionBudgetForProbe(candidateAdmission.probe(), rolloutEdgeEvaluator.maxActionBudget())
             );
+            return admitted;
         }
     }
 
@@ -502,6 +539,24 @@ final class OpeningEvaluator {
                                 positiveBaselineMetrics,
                                 edgeEvaluation
                         )) {
+                    return;
+                }
+                if (retainEdgeComponents) {
+                    OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
+                }
+                retainEvaluatedEdge(defenderIndex, edgeEvaluation);
+                return;
+            }
+            if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
+                if (!evaluateDelayedSpecialistOpening(
+                        attacker,
+                        defender,
+                        objective,
+                        openingSettings,
+                        candidateAdmission.preferredWarTypeId(),
+                        candidateAdmission.bestAttackTypeId(),
+                        edgeEvaluation
+                )) {
                     return;
                 }
                 if (retainEdgeComponents) {
@@ -773,7 +828,7 @@ final class OpeningEvaluator {
         if (firstAttackTypeId < 0) {
             return false;
         }
-        metrics.set(0d, 0d, 0d, 0d, 0d, targetPressure);
+        metrics.set(0d, 0d, 0d, 0d, 0d, 0d, targetPressure);
         float score = (float) objective.scoreOpening(
             metrics.immediateHarm(),
             metrics.selfExposure(),
@@ -826,7 +881,7 @@ final class OpeningEvaluator {
             return false;
         }
         specialistProbeEvaluator.evaluate(attacker, defender, specialistProbeResult);
-        if (specialistProbeResult.probe() < minimumViabilityProbe) {
+        if (specialistProbeResult.probe() <= 0f) {
             return false;
         }
         conventionalProbeResult.set(
@@ -872,6 +927,68 @@ final class OpeningEvaluator {
                 edgeEvaluation.controlLeverage(),
                 edgeEvaluation.futureWarLeverage()
         );
+    }
+
+    private static boolean evaluateDelayedSpecialistOpening(
+            DBNationSnapshot attacker,
+            DBNationSnapshot defender,
+            StrategicObjective objective,
+            SideOpeningSettings openingSettings,
+            byte preferredWarTypeId,
+            byte firstAttackTypeId,
+            EdgeEvaluation out
+    ) {
+        if (preferredWarTypeId < 0 || preferredWarTypeId >= WarType.values.length
+                || !isSpecialistAttackId(firstAttackTypeId)) {
+            return false;
+        }
+        AttackType attackType = AttackType.values[firstAttackTypeId];
+        MutableNationState attackerState = new MutableNationState();
+        attackerState.bindReadOnly(attacker);
+        if (!isReachableSpecialistOpeningAttack(attackerState, attackType)) {
+            return false;
+        }
+        WarType warType = WarType.values[preferredWarTypeId];
+        OpeningBaseline baseline = OpeningBaseline.from(attacker, defender);
+        PairAttackContext context = new PairAttackContext();
+        AttackScratch scratch = new AttackScratch();
+        MutableAttackResult result = new MutableAttackResult();
+        OpeningMetricVector.Mutable currentMetrics = new OpeningMetricVector.Mutable();
+        OpeningMetricVector.Mutable projectedMetrics = new OpeningMetricVector.Mutable();
+        context.bind(attacker, defender, warType);
+        context.setAttackerMaps(SimWar.MAP_CAP);
+        currentMetrics.set(0d, 0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
+        CombatKernel.resolveInto(context, attackType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
+        OpeningRolloutMetricProjector.project(baseline, context, currentMetrics, result, projectedMetrics);
+        if (projectedMetrics.immediateHarm() <= 0d && result.infraDestroyed() > 0d) {
+            projectedMetrics.set(
+                    result.infraDestroyed(),
+                    projectedMetrics.selfExposure(),
+                    projectedMetrics.resourceSwing(),
+                    projectedMetrics.controlLeverage(),
+                    projectedMetrics.tacticalMomentum(),
+                    projectedMetrics.forceWindowAdvantage(),
+                    projectedMetrics.targetPressure()
+            );
+        }
+        double score = objective.scoreOpening(projectedMetrics, attacker.teamId());
+        if (openingSettings != null) {
+            score *= openingSettings.warTypeWeight(warType) * openingSettings.attackTypeWeight(attackType);
+        }
+        if (!Double.isFinite(score) || score <= 0d) {
+            return false;
+        }
+        out.set(
+                (float) score,
+                preferredWarTypeId,
+                firstAttackTypeId,
+                (float) projectedMetrics.immediateHarm(),
+                (float) projectedMetrics.selfExposure(),
+                (float) projectedMetrics.resourceSwing(),
+                (float) projectedMetrics.controlLeverage(),
+                (float) projectedMetrics.futureWarLeverage()
+        );
+        return true;
     }
 
     private static CandidateEdgeComponentPolicy resolveComponentPolicy(StrategicObjective objective) {
@@ -1708,8 +1825,9 @@ final class OpeningEvaluator {
             context.bindReadOnlyNations(attacker, defender);
             for (WarType warType : OPENING_WAR_TYPES) {
                 context.resetWarState(warType);
+                context.setAttackerMaps(SimWar.MAP_CAP);
                 for (AttackType type : SPECIALIST_OPENING_ATTACK_TYPES) {
-                    if (!isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
+                    if (!isReachableSpecialistOpeningAttack(context.attacker(), type)) {
                         continue;
                     }
                     double candidate = CombatKernel.specialistAdmissionSignal(context, type, scratch, result);
@@ -1858,6 +1976,10 @@ final class OpeningEvaluator {
             applyControlDelta(result.controlDelta());
         }
 
+        void setAttackerMaps(int attackerMaps) {
+            this.attackerMaps = Math.max(0, Math.min(SimWar.MAP_CAP, attackerMaps));
+        }
+
         boolean attackerHasBlockade() {
             return blockadeOwner == CombatKernel.AttackContext.BLOCKADE_ATTACKER;
         }
@@ -1910,6 +2032,16 @@ final class OpeningEvaluator {
 
     private static boolean isSpecialist(AttackType type) {
         return type == AttackType.MISSILE || type == AttackType.NUKE;
+    }
+
+    private static boolean isSpecialistAttackId(byte attackTypeId) {
+        return attackTypeId >= 0
+                && attackTypeId < AttackType.values.length
+                && isSpecialist(AttackType.values[attackTypeId]);
+    }
+
+    private static boolean isReachableSpecialistOpeningAttack(CombatKernel.NationState attacker, AttackType type) {
+        return type.getMapUsed() <= SimWar.MAP_CAP && CombatKernel.canUseAttackType(attacker, type);
     }
 
     private static final class MutableNationState implements CombatKernel.PrimitiveCityAccess {

@@ -14,7 +14,11 @@ final class ControlObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
-        return CandidateEdgeAdmissionPolicy.positiveOpeningBaseline();
+        return new CandidateEdgeAdmissionPolicy(
+                CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
+                true,
+                true
+        );
     }
 
     @Override
@@ -27,11 +31,24 @@ final class ControlObjective implements StrategicObjective {
             double targetPressure,
             int teamId
         ) {
+        double effectiveTargetPressure = hasActionableLeverage(immediateHarm, controlLeverage, futureWarLeverage)
+                ? targetPressure
+                : 0.0d;
         return (4.0d * controlLeverage)
             + (3.0d * futureWarLeverage)
-            + (4.0d * targetPressure)
+            + (4.0d * effectiveTargetPressure)
             + (0.10d * immediateHarm)
             - (0.35d * selfExposure);
+    }
+
+    private static boolean hasActionableLeverage(
+            double immediateHarm,
+            double controlLeverage,
+            double futureWarLeverage
+    ) {
+        return immediateHarm > 0.0d
+                || controlLeverage > 0.0d
+                || futureWarLeverage > 0.0d;
     }
 
     @Override

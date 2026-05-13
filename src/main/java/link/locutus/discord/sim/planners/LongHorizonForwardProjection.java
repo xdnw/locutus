@@ -2061,6 +2061,11 @@ final class LongHorizonForwardProjection {
                             defenderBaselineCapability,
                             defenderBaselineMilitaryValue
                     );
+                    if (defenderUnitDamage <= 0d
+                            && (attackType == AttackType.MISSILE || attackType == AttackType.NUKE)
+                            && result.infraDestroyed() > 0d) {
+                        defenderUnitDamage = result.infraDestroyed();
+                    }
                     double attackerUnitDamage = state.unitLossValue(
                             attackerNationIndex,
                             result.attackerLosses(),

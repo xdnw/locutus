@@ -60,6 +60,16 @@ class BlitzObjectiveTest {
     }
 
     @Test
+    void controlOpeningDoesNotRewardPressureWithoutActionableLeverage() {
+        OpeningMetricVector pressureOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0);
+        OpeningMetricVector pressureWithControl = new OpeningMetricVector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 12.0);
+
+        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreOpening(pressureOnly, 1), 1e-9);
+        assertTrue(BlitzObjective.CONTROL.objective().scoreOpening(pressureWithControl, 1)
+                > BlitzObjective.CONTROL.objective().scoreOpening(pressureOnly, 1));
+    }
+
+    @Test
     void controlTerminalScoringReadsPlannerWarControlViewWhenAvailable() {
         TeamWarControlView view = new TeamWarControlView() {
             @Override

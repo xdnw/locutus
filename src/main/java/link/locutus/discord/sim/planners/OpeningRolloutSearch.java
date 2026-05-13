@@ -96,7 +96,7 @@ final class OpeningRolloutSearch {
 
         byte firstAttackTypeId = (byte) -1;
         byte fallbackAttackTypeId = (byte) -1;
-        currentMetrics.set(0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
+        currentMetrics.set(0d, 0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
         float currentScore = scoreObjective(objective, attacker.teamId(), currentMetrics, warType, null, openingSettings);
 
         for (int action = 0; action < actionBudget; action++) {

@@ -752,7 +752,7 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void outmatchedAttackerGetsEdgeUnderControlObjectiveDueToPositiveBaseline() {
+    void outmatchedAttackerDoesNotGetControlEdgeFromPressureOnlyBaseline() {
         // Outmatched attacker: ~15% of normal military — probe < 0.15 against the strong defender.
         DBNationSnapshot outmatchedAttacker = buildNation(51, ATTACKER_TEAM, 820.0, 18,
                 37_500, 3_000, 240, 37);
@@ -780,17 +780,17 @@ class OpeningEvaluatorCoverageTest {
                 "NET_DAMAGE baseline is 0 for outmatched attacker — no edge expected"
         );
 
-        // CONTROL baseline is 4.0 * targetPressure > 0 → edge should be produced via rollout
-        // even though no single attack improves the score above that baseline.
+        // CONTROL target pressure is not standalone strategic progress. A pressure-only
+        // fallback must not create an empty declaration when no action changes the outcome.
         OpeningEvaluator.EvaluatedEdge controlEdge = OpeningEvaluator.evaluateOpening(
                 outmatchedAttacker,
                 strongDefender,
                 BlitzObjective.CONTROL.objective(),
                 CandidateEdgeComponentPolicy.none()
         );
-        assertTrue(
-                Float.isFinite(controlEdge.score()) && controlEdge.score() > 0f,
-                "CONTROL baseline is 4.0*targetPressure > 0 — outmatched attacker should receive an edge"
+        assertFalse(
+                Float.isFinite(controlEdge.score()),
+                "CONTROL should not admit pressure-only fallback declarations with no actionable leverage"
         );
 
         // MINIMUM_DAMAGE_RECEIVED baseline is 0.35*harm − exposure = 0 → no edge.
@@ -807,8 +807,58 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void controlRolloutFallbackEdgeScoreIsBelowParityAttackersFullRolloutScore() {
-        // Outmatched attacker: probe < 0.15, gets edge only via positive-baseline fallback.
+    void controlObjectiveKeepsSpecialistFallbackWhenConventionalControlIsOutmatched() {
+        DBNationSnapshot specialistAttacker = buildNation(54, ATTACKER_TEAM, 820.0, 18,
+                37_500, 3_000, 240, 37)
+                .toBuilder()
+                .unit(MilitaryUnit.MISSILE, 2)
+                .unit(MilitaryUnit.NUKE, 1)
+                .projectBits(
+                        (1L << link.locutus.discord.apiv1.enums.city.project.Projects.MISSILE_LAUNCH_PAD.ordinal())
+                                | (1L << link.locutus.discord.apiv1.enums.city.project.Projects.NUCLEAR_RESEARCH_FACILITY.ordinal())
+                )
+                .build();
+        DBNationSnapshot strongDefender = buildNation(154, DEFENDER_TEAM, 1_990.0, 25,
+                387_500, 31_000, 2_480, 387)
+                .toBuilder()
+                .cityInfra(uniformInfra(25, 2_000.0))
+                .build();
+
+        OpeningEvaluator.ProbeResult probeResult = new OpeningEvaluator.ProbeResult();
+        OpeningEvaluator.viabilityProbe(specialistAttacker, strongDefender, probeResult);
+        assertTrue(
+                probeResult.probe() < CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
+                "Test setup must remain conventionally outmatched"
+        );
+        OpeningEvaluator.SpecialistProbeResult specialistProbe = new OpeningEvaluator.SpecialistProbeResult();
+        new OpeningEvaluator.SpecialistProbeEvaluator().evaluate(specialistAttacker, strongDefender, specialistProbe);
+        assertTrue(
+                specialistProbe.probe() > 0f,
+                "Test setup must expose positive delayed specialist pressure, got " + specialistProbe.probe()
+                        + " attackType=" + specialistProbe.bestAttackTypeId()
+        );
+
+        OpeningEvaluator.EvaluatedEdge controlEdge = OpeningEvaluator.evaluateOpening(
+                specialistAttacker,
+                strongDefender,
+                BlitzObjective.CONTROL.objective(),
+                CandidateEdgeComponentPolicy.none()
+        );
+
+        assertTrue(
+                Float.isFinite(controlEdge.score()) && controlEdge.score() > 0f,
+                "Expected delayed specialist edge, got score=" + controlEdge.score()
+                        + " attackType=" + controlEdge.firstAttackTypeId()
+        );
+        assertTrue(
+                controlEdge.firstAttackTypeId() == AttackType.MISSILE.ordinal()
+                        || controlEdge.firstAttackTypeId() == AttackType.NUKE.ordinal()
+        );
+    }
+
+    @Test
+    void controlOpeningRetainsParityRolloutButRejectsPressureOnlyFallback() {
+        // Outmatched attacker: probe < 0.15, should not get a pressure-only fallback edge.
         DBNationSnapshot outmatchedAttacker = buildNation(52, ATTACKER_TEAM, 820.0, 18,
                 37_500, 3_000, 240, 37);
         // Parity attacker: probe >= 0.15, gets full improving rollout under CONTROL.
@@ -860,14 +910,10 @@ class OpeningEvaluatorCoverageTest {
             }
         }
 
-        assertTrue(Float.isFinite(fallbackScore),
-                "Outmatched attacker should receive a positive-baseline CONTROL edge");
+        assertFalse(Float.isFinite(fallbackScore),
+                "Outmatched attacker should not receive a pressure-only CONTROL fallback edge");
         assertTrue(Float.isFinite(primaryScore),
                 "Parity attacker should receive a full-rollout CONTROL edge");
-        assertTrue(
-                fallbackScore < primaryScore,
-                "Positive-baseline fallback score should be below the full-rollout primary score"
-        );
     }
 
     @Test
@@ -1145,4 +1191,3 @@ class OpeningEvaluatorCoverageTest {
         }
     }
 }
-
