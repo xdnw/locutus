@@ -218,6 +218,7 @@ final class PlannerAutonomousDeclarationPlanner {
                     OpeningMetricSummary.defenderControlPressure(target),
                     counterStrength(declarer),
                     counterStrength(target),
+                    0d,
                     Math.max(1, scenario.attackerFreeOffSlots(attackerIndex)),
                     Math.max(1, scenario.defenderFreeDefSlots(defenderIndex)),
                     1d

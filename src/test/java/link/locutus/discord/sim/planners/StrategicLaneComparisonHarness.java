@@ -294,8 +294,10 @@ public final class StrategicLaneComparisonHarness {
         UNWINNABLE_CONVENTIONAL("unwinnableConventional", 8),
         TIER_SPREAD_PARITY("tierSpreadParity", 10),
         DEMILITARIZED_BREAKOUT("demilitarizedBreakout", 8),
+        BEIGE_REBUILD_BREAKOUT("beigeRebuildBreakout", 8),
         CONTROL_UNATTAINABLE("controlUnattainable", 6),
         LOST_CONTROL_SPECIALISTS("lostControlSpecialists", 8),
+        CONVENTIONAL_THEN_SPECIALISTS("conventionalThenSpecialists", 8),
         ALLY_SLOT_CONFLICT("allySlotConflict", 8);
 
         private final String cliName;
@@ -329,8 +331,10 @@ public final class StrategicLaneComparisonHarness {
                 case UNWINNABLE_CONVENTIONAL -> Fixture.create(cliName, population, this::unwinnableConventionalAttacker, this::severeDefender);
                 case TIER_SPREAD_PARITY -> Fixture.create(cliName, population, this::tierSpreadAttacker, this::tierSpreadDefender);
                 case DEMILITARIZED_BREAKOUT -> Fixture.create(cliName, population, this::demilitarizedBreakoutAttacker, this::parityDefender);
+                case BEIGE_REBUILD_BREAKOUT -> Fixture.create(cliName, population, this::beigeRebuildBreakoutAttacker, this::beigeRebuildBreakoutDefender);
                 case CONTROL_UNATTAINABLE -> Fixture.create(cliName, population, this::controlUnattainableAttacker, this::controlUnattainableDefender);
                 case LOST_CONTROL_SPECIALISTS -> Fixture.create(cliName, population, this::lostControlSpecialistAttacker, this::lostControlSpecialistDefender);
+                case CONVENTIONAL_THEN_SPECIALISTS -> Fixture.create(cliName, population, this::conventionalThenSpecialistAttacker, this::conventionalThenSpecialistDefender);
                 case ALLY_SLOT_CONFLICT -> Fixture.create(cliName, population, this::allySlotConflictAttacker, this::allySlotConflictDefender);
             };
         }
@@ -543,6 +547,29 @@ public final class StrategicLaneComparisonHarness {
         }
 
         /**
+         * Demilitarized attackers have enough beige time and queued buys to become viable soon.
+         * Correct behavior is to preserve the rebuild window instead of declaring immediately
+         * while current conventional control is still weak.
+         */
+        private DBNationSnapshot beigeRebuildBreakoutAttacker(int index) {
+            DBNationSnapshot snapshot = nation(10_000 + index, 1, index, 21 + index % 4, 0.10d, 3)
+                    .toBuilder()
+                    .beigeTurns(6)
+                    .resetHourUtc((byte) 0)
+                    .build();
+            DBNationSnapshot.Builder builder = snapshot.toBuilder();
+            builder.pendingBuyNextTurn(MilitaryUnit.SOLDIER, Math.max(1, snapshot.dailyBuyCap(MilitaryUnit.SOLDIER)))
+                    .pendingBuyNextTurn(MilitaryUnit.TANK, Math.max(1, snapshot.dailyBuyCap(MilitaryUnit.TANK)))
+                    .pendingBuyNextTurn(MilitaryUnit.AIRCRAFT, Math.max(1, snapshot.dailyBuyCap(MilitaryUnit.AIRCRAFT)))
+                    .pendingBuyNextTurn(MilitaryUnit.SHIP, Math.max(1, snapshot.dailyBuyCap(MilitaryUnit.SHIP)));
+            return builder.build();
+        }
+
+        private DBNationSnapshot beigeRebuildBreakoutDefender(int index) {
+            return nation(20_000 + index, 2, index, 20 + index % 4, 0.85d, 1);
+        }
+
+        /**
          * Weak attackers (c17-c19, 0.45x) vs strong high-city defenders (c28-c31, 1.60x).
          * Control is unattainable at the group level. Tests that the planner suppresses
          * control-value chasing and avoids committing to pointlessly costly declarations.
@@ -573,6 +600,25 @@ public final class StrategicLaneComparisonHarness {
 
         private DBNationSnapshot lostControlSpecialistDefender(int index) {
             return nation(20_000 + index, 2, index, 29 + index % 5, 1.55d, 1);
+        }
+
+        /**
+         * Attackers have a short-lived conventional force plus missiles against a stronger front.
+         * The useful sequence is conventional damage while those units still exist, then specialist
+         * pressure after conventional follow-through no longer has positive value.
+         */
+        private DBNationSnapshot conventionalThenSpecialistAttacker(int index) {
+            long specialistProjects = projectMask(Projects.MISSILE_LAUNCH_PAD, Projects.NUCLEAR_RESEARCH_FACILITY);
+            return nation(10_000 + index, 1, index, 23 + index % 4, 0.70d, 3)
+                    .toBuilder()
+                    .projectBits(specialistProjects)
+                    .unit(MilitaryUnit.MISSILE, 5 + index % 2)
+                    .unit(MilitaryUnit.NUKE, 1)
+                    .build();
+        }
+
+        private DBNationSnapshot conventionalThenSpecialistDefender(int index) {
+            return nation(20_000 + index, 2, index, 27 + index % 5, 1.20d, 1);
         }
 
         /**

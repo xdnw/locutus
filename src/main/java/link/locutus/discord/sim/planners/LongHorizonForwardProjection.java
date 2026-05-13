@@ -1412,6 +1412,9 @@ final class LongHorizonForwardProjection {
                     || !canProjectedDeclare(state, declarerOverallIndex, targetOverallIndex)) {
                     continue;
                 }
+                if (state.shouldPreserveDeclarerBeigeRebuild(declarerOverallIndex, targetOverallIndex)) {
+                    continue;
+                }
                 int blockedTurns = applyPairLockoutTiming
                     ? projectedDeclarationBlockedTurns(state, warState, declarerOverallIndex, targetOverallIndex, turn)
                         : 0;
@@ -1513,6 +1516,7 @@ final class LongHorizonForwardProjection {
                 state.marginalActionSpaceValue(targetOverallIndex, warState),
                 declarerStrength,
                 targetStrength,
+                state.pendingConventionalStrengthGain(declarerOverallIndex),
                 remainingDeclarerSlots,
                 remainingTargetSlots,
                 Math.max(0d, Math.min(1d, activityWeight))
@@ -2142,7 +2146,7 @@ final class LongHorizonForwardProjection {
                 attackType -> {
                     int mapCost = attackType.getMapUsed();
                     if (mapCost <= 0 || mapCost > mapsAvailable || !CombatKernel.canUseAttackType(attacker, attackType)) {
-                        return new AttackChoicePolicy.AttackCandidate(false, mapCost, 0d, 0d, 0d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
+                        return new AttackChoicePolicy.AttackCandidate(false, mapCost, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
                     }
                     CombatKernel.resolveInto(context, attackType, ResolutionMode.MOST_LIKELY, scratch, result);
                     double defenderUnitDamage = state.unitLossValue(
@@ -2178,6 +2182,7 @@ final class LongHorizonForwardProjection {
                             forceWindowAdvantage,
                             timingWindowAdvantage,
                             0d,
+                            attackerBaselineMilitaryValue,
                             result.controlDelta()
                     );
                 }
@@ -3823,6 +3828,34 @@ final class LongHorizonForwardProjection {
                     + (2d * unit(nationIndex, MilitaryUnit.SHIP));
             combatStrengthCache[nationIndex] = value;
             return value;
+        }
+
+        double pendingConventionalStrengthGain(int nationIndex) {
+            int unitBase = unitBaseOffsets[nationIndex];
+            return UnitEconomy.groundStrengthRaw(
+                    pendingBuysFlat[unitBase + MilitaryUnit.SOLDIER.ordinal()],
+                    pendingBuysFlat[unitBase + MilitaryUnit.TANK.ordinal()],
+                    false,
+                    false
+            )
+                    + (3d * pendingBuysFlat[unitBase + MilitaryUnit.AIRCRAFT.ordinal()])
+                    + (2d * pendingBuysFlat[unitBase + MilitaryUnit.SHIP.ordinal()]);
+        }
+
+        boolean shouldPreserveDeclarerBeigeRebuild(int declarerNationIndex, int targetNationIndex) {
+            if (beigeTurns[declarerNationIndex] <= 1) {
+                return false;
+            }
+            double pendingGain = pendingConventionalStrengthGain(declarerNationIndex);
+            if (!(pendingGain > 0d)) {
+                return false;
+            }
+            double currentStrength = combatStrength(declarerNationIndex);
+            double rebuiltStrength = currentStrength + pendingGain;
+            double targetStrength = combatStrength(targetNationIndex);
+            return currentStrength < targetStrength * 0.85d
+                    && rebuiltStrength > currentStrength * 1.35d
+                    && rebuiltStrength >= targetStrength * 0.70d;
         }
 
         double baselineCombatStrength(int nationIndex) {

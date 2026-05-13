@@ -37,7 +37,11 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
         if (!(objectiveScore > 0d)) {
             return 0d;
         }
-        return context.activityWeight() * objectiveScore * actionability(context) / slotContention(context);
+        return context.activityWeight()
+            * objectiveScore
+            * actionability(context)
+            * rebuildReadiness(context)
+            / slotContention(context);
     }
 
     private static double actionability(LaterDeclarationScoreContext context) {
@@ -56,5 +60,20 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
                 Math.max(1, context.remainingDeclarerSlots()),
                 Math.max(1, context.remainingTargetSlots())
         ));
+    }
+
+    private static double rebuildReadiness(LaterDeclarationScoreContext context) {
+        if (!(context.declarerRebuildStrengthGain() > 0d)
+                || !(context.declarerStrength() > 0d)
+                || !(context.targetStrength() > 0d)
+                || context.declarerStrength() >= context.targetStrength()) {
+            return 1d;
+        }
+        double rebuiltStrength = context.declarerStrength() + context.declarerRebuildStrengthGain();
+        if (rebuiltStrength <= context.declarerStrength()) {
+            return 1d;
+        }
+        double readiness = context.declarerStrength() / rebuiltStrength;
+        return Math.max(0.20d, Math.min(1d, readiness));
     }
 }

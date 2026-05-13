@@ -13,6 +13,7 @@ interface LaterDeclarationScoringPolicy {
             double targetPressure,
             double declarerStrength,
             double targetStrength,
+                double declarerRebuildStrengthGain,
             int remainingDeclarerSlots,
             int remainingTargetSlots,
             double activityWeight

@@ -68,7 +68,15 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
             Math.max(0d, candidate.timingWindowAdvantage()),
             Math.max(0d, candidate.targetPressure())
         );
-        return objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
+        double score = objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
+        if (isSpecialist(attackType) && candidate.conventionalFollowThroughValue() > 0d) {
+            score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue() * 0.20d);
+        }
+        return score;
+    }
+
+    private static boolean isSpecialist(AttackType attackType) {
+        return attackType == AttackType.MISSILE || attackType == AttackType.NUKE;
     }
 
     private static double controlLeverage(SuperiorityFlagDelta controlDelta) {

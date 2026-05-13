@@ -142,6 +142,24 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 assertEquals(AttackType.GROUND, choice);
         }
 
+        @Test
+        void specialistStockpileWaitsForUsefulConventionalFollowThrough() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                new LinearOpeningObjective(0.10d, 0d, 0d, 0d),
+                                null
+                );
+
+                AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                                new AttackType[]{AttackType.GROUND, AttackType.MISSILE},
+                                8,
+                                attackType -> attackType == AttackType.GROUND
+                                                ? candidate(50d, 0d, -10d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                                                : candidate(90d, 0d, -10d, 0d, 0d, 0d, 100d, SuperiorityFlagDelta.NONE)
+                ));
+
+                assertEquals(AttackType.GROUND, choice);
+        }
+
     private static AttackChoicePolicy.AttackCandidate candidate(
             double defenderDamage,
             double attackerDamage,
@@ -157,6 +175,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 defenderResistanceDelta,
                 0d,
                 0d,
+                                0d,
                                 0d,
                 controlDelta
         );
@@ -188,6 +207,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
             double resourceSwing,
             double forceWindowAdvantage,
             double timingWindowAdvantage,
+                        double conventionalFollowThroughValue,
             SuperiorityFlagDelta controlDelta
     ) {
         return new AttackChoicePolicy.AttackCandidate(
@@ -199,6 +219,28 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 defenderResistanceDelta,
                 forceWindowAdvantage,
                                 timingWindowAdvantage,
+                0d,
+                conventionalFollowThroughValue,
+                controlDelta
+        );
+    }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            double resourceSwing,
+            double forceWindowAdvantage,
+            double timingWindowAdvantage,
+            SuperiorityFlagDelta controlDelta
+    ) {
+        return candidate(
+                defenderDamage,
+                attackerDamage,
+                defenderResistanceDelta,
+                resourceSwing,
+                forceWindowAdvantage,
+                timingWindowAdvantage,
                 0d,
                 controlDelta
         );

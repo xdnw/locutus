@@ -14,6 +14,7 @@ import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.ResolutionMode;
+import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.OpeningEvaluationScenario;
 
@@ -822,7 +823,10 @@ final class OpeningEvaluator {
             EdgeEvaluation out
     ) {
         out.clear();
-        if (attacker.vmTurns() > 0 || defender.vmTurns() > 0 || defender.beigeTurns() > 0) {
+        if (attacker.vmTurns() > 0
+            || defender.vmTurns() > 0
+            || defender.beigeTurns() > 0
+            || shouldPreserveAttackerBeigeRebuild(attacker, defender)) {
             return false;
         }
         if (firstAttackTypeId < 0) {
@@ -860,6 +864,44 @@ final class OpeningEvaluator {
         return (byte) -1;
     }
 
+    private static boolean shouldPreserveAttackerBeigeRebuild(DBNationSnapshot attacker, DBNationSnapshot defender) {
+        if (attacker.beigeTurns() <= 1) {
+            return false;
+        }
+        double pendingGain = pendingConventionalStrengthGain(attacker);
+        if (!(pendingGain > 0d)) {
+            return false;
+        }
+        double currentStrength = combatStrength(attacker);
+        double rebuiltStrength = currentStrength + pendingGain;
+        double defenderStrength = combatStrength(defender);
+        return currentStrength < defenderStrength * 0.85d
+                && rebuiltStrength > currentStrength * 1.35d
+                && rebuiltStrength >= defenderStrength * 0.70d;
+    }
+
+    private static double pendingConventionalStrengthGain(DBNationSnapshot nation) {
+        return UnitEconomy.groundStrengthRaw(
+                nation.pendingBuysNextTurn(MilitaryUnit.SOLDIER),
+                nation.pendingBuysNextTurn(MilitaryUnit.TANK),
+                false,
+                false
+        )
+                + (3d * nation.pendingBuysNextTurn(MilitaryUnit.AIRCRAFT))
+                + (2d * nation.pendingBuysNextTurn(MilitaryUnit.SHIP));
+    }
+
+    private static double combatStrength(DBNationSnapshot nation) {
+        return UnitEconomy.groundStrengthRaw(
+                nation.unit(MilitaryUnit.SOLDIER),
+                nation.unit(MilitaryUnit.TANK),
+                false,
+                false
+        )
+                + (3d * nation.unit(MilitaryUnit.AIRCRAFT))
+                + (2d * nation.unit(MilitaryUnit.SHIP));
+    }
+
     static boolean admitCandidate(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
@@ -869,7 +911,10 @@ final class OpeningEvaluator {
             ViabilityProbeEvaluator viabilityProbeEvaluator,
             SpecialistProbeEvaluator specialistProbeEvaluator
     ) {
-        if (attacker.vmTurns() > 0 || defender.vmTurns() > 0 || defender.beigeTurns() > 0) {
+        if (attacker.vmTurns() > 0
+            || defender.vmTurns() > 0
+            || defender.beigeTurns() > 0
+            || shouldPreserveAttackerBeigeRebuild(attacker, defender)) {
             return false;
         }
         double minimumViabilityProbe = admissionPolicy.minimumViabilityProbe();
@@ -943,9 +988,15 @@ final class OpeningEvaluator {
             return false;
         }
         AttackType attackType = AttackType.values[firstAttackTypeId];
+        byte resolvedAttackTypeId = firstAttackTypeId;
+        AttackType conventionalFirst = conventionalOpeningBeforeSpecialist(attacker, defender);
+        if (conventionalFirst != null) {
+            attackType = conventionalFirst;
+            resolvedAttackTypeId = (byte) conventionalFirst.ordinal();
+        }
         MutableNationState attackerState = new MutableNationState();
         attackerState.bindReadOnly(attacker);
-        if (!isReachableSpecialistOpeningAttack(attackerState, attackType)) {
+        if (isSpecialist(attackType) && !isReachableSpecialistOpeningAttack(attackerState, attackType)) {
             return false;
         }
         WarType warType = WarType.values[preferredWarTypeId];
@@ -981,7 +1032,7 @@ final class OpeningEvaluator {
         out.set(
                 (float) score,
                 preferredWarTypeId,
-                firstAttackTypeId,
+                resolvedAttackTypeId,
                 (float) projectedMetrics.immediateHarm(),
                 (float) projectedMetrics.selfExposure(),
                 (float) projectedMetrics.resourceSwing(),
@@ -989,6 +1040,20 @@ final class OpeningEvaluator {
                 (float) projectedMetrics.futureWarLeverage()
         );
         return true;
+    }
+
+    private static AttackType conventionalOpeningBeforeSpecialist(DBNationSnapshot attacker, DBNationSnapshot defender) {
+        if (combatStrength(attacker) <= 0d || combatStrength(attacker) < combatStrength(defender) * 0.35d) {
+            return null;
+        }
+        MutableNationState attackerState = new MutableNationState();
+        attackerState.bindReadOnly(attacker);
+        for (AttackType type : OPENING_ATTACK_TYPES) {
+            if (!isSpecialist(type) && isLegalOpeningAttack(attackerState, SimWar.INITIAL_MAPS, type)) {
+                return type;
+            }
+        }
+        return null;
     }
 
     private static CandidateEdgeComponentPolicy resolveComponentPolicy(StrategicObjective objective) {

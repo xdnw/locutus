@@ -39,6 +39,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 100d,
                 declarerStrength,
                 targetStrength,
+                0d,
                 1,
                 1,
                 1d

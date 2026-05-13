@@ -132,6 +132,42 @@ class StrategicLaneComparisonHarnessTest {
         assertFalse(policy.opening().admissionPolicy().admitPositiveOpeningBaseline());
     }
 
+    @Test
+    void beigeRebuildBreakoutPreservesOpeningRebuildWindowForControl() {
+        String csv = StrategicLaneComparisonHarness.renderCsv(
+                72,
+                1,
+                8,
+                StrategicLaneComparisonHarness.ProjectionPolicyPath.DEFAULT,
+                "beigeRebuildBreakout",
+                "projectedObjective"
+        );
+
+        Map<String, String> control = rowByObjective(csv, "CONTROL");
+
+        assertEquals("0", control.get("assignments"));
+        assertEquals("8", control.get("idleAttackersFreeSlot"));
+        assertEquals("none", control.get("assignedAttackTypes"));
+    }
+
+    @Test
+    void conventionalThenSpecialistsUsesConventionalOpeningBeforeMissilesForControl() {
+        String csv = StrategicLaneComparisonHarness.renderCsv(
+                72,
+                1,
+                8,
+                StrategicLaneComparisonHarness.ProjectionPolicyPath.DEFAULT,
+                "conventionalThenSpecialists",
+                "projectedObjective"
+        );
+
+        Map<String, String> control = rowByObjective(csv, "CONTROL");
+
+        assertTrue(Integer.parseInt(control.get("assignments")) > 0);
+        assertTrue(control.get("assignedAttackTypes").contains("GROUND"));
+        assertFalse(control.get("assignedAttackTypes").contains("MISSILE"));
+    }
+
     private static String normalizeDeterministicColumns(String csv) {
         String[] lines = csv.split("\\R");
         StringBuilder normalized = new StringBuilder();
@@ -156,5 +192,24 @@ class StrategicLaneComparisonHarnessTest {
             row.put(headers[index], index < values.length ? values[index] : "");
         }
         return row;
+    }
+
+    private static Map<String, String> rowByObjective(String csv, String objective) {
+        String[] lines = csv.split("\\R");
+        String[] headers = lines[0].split(",", -1);
+        for (int lineIndex = 1; lineIndex < lines.length; lineIndex++) {
+            if (lines[lineIndex].isBlank()) {
+                continue;
+            }
+            String[] values = lines[lineIndex].split(",", -1);
+            Map<String, String> row = new HashMap<>();
+            for (int index = 0; index < headers.length; index++) {
+                row.put(headers[index], index < values.length ? values[index] : "");
+            }
+            if (objective.equals(row.get("objective"))) {
+                return row;
+            }
+        }
+        throw new AssertionError("Missing objective row: " + objective);
     }
 }

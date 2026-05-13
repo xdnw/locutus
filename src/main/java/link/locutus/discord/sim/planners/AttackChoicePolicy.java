@@ -21,6 +21,7 @@ public interface AttackChoicePolicy {
             double forceWindowAdvantage,
             double timingWindowAdvantage,
             double targetPressure,
+                double conventionalFollowThroughValue,
             SuperiorityFlagDelta controlDelta
     ) {
         public AttackCandidate {
