@@ -1,10 +1,13 @@
 package link.locutus.discord.sim.planners;
 
+import link.locutus.discord.sim.planners.compile.OpeningEvaluationScenario;
+
 final class OpeningDefenderCoverageRescue {
     private OpeningDefenderCoverageRescue() {
     }
 
     static void emit(
+            OpeningEvaluationScenario scenario,
             OpeningEvaluator.TopKEdgeCollector[] defenderCoverageCollectors,
             int[] defenderCaps,
             int coverageTarget,
@@ -29,6 +32,7 @@ final class OpeningDefenderCoverageRescue {
                 collector.sortSelectedDescending();
                 for (int order = 0; order < collector.size() && defenderCoverageCounts[defenderIndex] < coverageTarget; order++) {
                     emitSelectedEdge(
+                            scenario,
                             collector,
                             collector.sortedIndexAt(order),
                             out,
@@ -43,6 +47,7 @@ final class OpeningDefenderCoverageRescue {
     }
 
     static boolean emitSelectedEdge(
+            OpeningEvaluationScenario scenario,
             OpeningEvaluator.TopKEdgeCollector collector,
             int selectedIndex,
             CandidateEdgeTable out,
@@ -51,12 +56,12 @@ final class OpeningDefenderCoverageRescue {
             int[] defenderCoverageCounts
     ) {
         return emitEdge(
+            scenario,
             collector.attackerIndexAt(selectedIndex),
             collector.defenderIndexAt(selectedIndex),
             collector.preferredWarTypeIdAt(selectedIndex),
             collector.bestAttackTypeIdAt(selectedIndex),
             collector.scoreAt(selectedIndex),
-            collector.counterRiskAt(selectedIndex),
             collector.immediateHarmAt(selectedIndex),
             collector.selfExposureAt(selectedIndex),
             collector.resourceSwingAt(selectedIndex),
@@ -73,17 +78,44 @@ final class OpeningDefenderCoverageRescue {
             OpeningEvaluator.CoveragePriorityCollector collector,
             int selectedIndex,
             CandidateEdgeTable out,
+            long[][] emittedPairWordsByAttacker,
+            int[] defenderCoverageCounts
+        ) {
+        return emitEdge(
+            collector.attackerIndexAt(selectedIndex),
+            collector.defenderIndexAt(selectedIndex),
+            collector.preferredWarTypeIdAt(selectedIndex),
+            collector.bestAttackTypeIdAt(selectedIndex),
+            collector.scoreAt(selectedIndex),
+            collector.counterRiskAt(selectedIndex),
+            collector.immediateHarmAt(selectedIndex),
+            collector.selfExposureAt(selectedIndex),
+            collector.resourceSwingAt(selectedIndex),
+            collector.controlLeverageAt(selectedIndex),
+            collector.futureWarLeverageAt(selectedIndex),
+            out,
+            flattenWords(emittedPairWordsByAttacker),
+            emittedPairWordsByAttacker.length == 0 ? 0 : emittedPairWordsByAttacker[0].length,
+            defenderCoverageCounts
+        );
+        }
+
+        static boolean emitSelectedEdge(
+            OpeningEvaluationScenario scenario,
+            OpeningEvaluator.CoveragePriorityCollector collector,
+            int selectedIndex,
+            CandidateEdgeTable out,
             long[] emittedPairWordsByAttacker,
             int emittedWordsPerAttacker,
             int[] defenderCoverageCounts
     ) {
         return emitEdge(
+            scenario,
                 collector.attackerIndexAt(selectedIndex),
                 collector.defenderIndexAt(selectedIndex),
                 collector.preferredWarTypeIdAt(selectedIndex),
                 collector.bestAttackTypeIdAt(selectedIndex),
                 collector.scoreAt(selectedIndex),
-                collector.counterRiskAt(selectedIndex),
                 collector.immediateHarmAt(selectedIndex),
                 collector.selfExposureAt(selectedIndex),
                 collector.resourceSwingAt(selectedIndex),
@@ -97,6 +129,7 @@ final class OpeningDefenderCoverageRescue {
     }
 
             static boolean emitSelectedEdge(
+                OpeningEvaluationScenario scenario,
                 OpeningEvaluator.CoveragePriorityCollector collector,
                 int selectedIndex,
                 CandidateEdgeTable out,
@@ -104,6 +137,7 @@ final class OpeningDefenderCoverageRescue {
                 int[] defenderCoverageCounts
             ) {
             return emitSelectedEdge(
+                scenario,
                 collector,
                 selectedIndex,
                 out,
@@ -114,12 +148,12 @@ final class OpeningDefenderCoverageRescue {
             }
 
         static boolean emitEdge(
+            OpeningEvaluationScenario scenario,
             int attackerIndex,
             int defenderIndex,
             byte preferredWarTypeId,
             byte bestAttackTypeId,
             float score,
-            float counterRisk,
             float immediateHarm,
             float selfExposure,
             float resourceSwing,
@@ -130,6 +164,43 @@ final class OpeningDefenderCoverageRescue {
             int emittedWordsPerAttacker,
             int[] defenderCoverageCounts
         ) {
+            float counterRisk = (float) scenario.estimateAllianceCounterRisk(attackerIndex, defenderIndex);
+            return emitEdge(
+                attackerIndex,
+                defenderIndex,
+                preferredWarTypeId,
+                bestAttackTypeId,
+                score,
+                counterRisk,
+                immediateHarm,
+                selfExposure,
+                resourceSwing,
+                controlLeverage,
+                futureWarLeverage,
+                out,
+                emittedPairWordsByAttacker,
+                emittedWordsPerAttacker,
+                defenderCoverageCounts
+            );
+            }
+
+            private static boolean emitEdge(
+                int attackerIndex,
+                int defenderIndex,
+                byte preferredWarTypeId,
+                byte bestAttackTypeId,
+                float score,
+                float counterRisk,
+                float immediateHarm,
+                float selfExposure,
+                float resourceSwing,
+                float controlLeverage,
+                float futureWarLeverage,
+                CandidateEdgeTable out,
+                long[] emittedPairWordsByAttacker,
+                int emittedWordsPerAttacker,
+                int[] defenderCoverageCounts
+            ) {
         if (!markEdgeEmitted(emittedPairWordsByAttacker, emittedWordsPerAttacker, attackerIndex, defenderIndex)) {
             return false;
         }

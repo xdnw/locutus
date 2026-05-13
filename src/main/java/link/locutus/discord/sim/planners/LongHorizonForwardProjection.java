@@ -200,6 +200,34 @@ final class LongHorizonForwardProjection {
         AttackType.AIRSTRIKE_INFRA,
         AttackType.NAVAL_INFRA
     };
+    private static final AttackType[] NO_ADAPTIVE_ATTACK_TYPES = new AttackType[0];
+    private static final AttackType[] ADAPTIVE_ATTACK_TYPES_GROUND_ONLY = {
+        AttackType.GROUND
+    };
+    private static final AttackType[] ADAPTIVE_ATTACK_TYPES_NO_SPECIALISTS = {
+        AttackType.GROUND,
+        AttackType.AIRSTRIKE_AIRCRAFT,
+        AttackType.AIRSTRIKE_TANK,
+        AttackType.AIRSTRIKE_SOLDIER,
+        AttackType.NAVAL_AIR,
+        AttackType.NAVAL_GROUND,
+        AttackType.NAVAL,
+        AttackType.AIRSTRIKE_INFRA,
+        AttackType.NAVAL_INFRA
+    };
+    private static final AttackType[] ADAPTIVE_ATTACK_TYPES_NO_NUKE = {
+        AttackType.MISSILE,
+        AttackType.GROUND,
+        AttackType.AIRSTRIKE_AIRCRAFT,
+        AttackType.AIRSTRIKE_TANK,
+        AttackType.AIRSTRIKE_SOLDIER,
+        AttackType.NAVAL_AIR,
+        AttackType.NAVAL_GROUND,
+        AttackType.NAVAL,
+        AttackType.AIRSTRIKE_INFRA,
+        AttackType.NAVAL_INFRA
+    };
+    private static final int MIN_ADAPTIVE_ATTACK_MAP_COST = AttackType.GROUND.getMapUsed();
 
     private enum ProjectedLaterDeclarationLane {
         OPENING_SIDE,
@@ -2145,8 +2173,9 @@ final class LongHorizonForwardProjection {
         int defenderNationIndex = warState.defenderNationIndex[context.warIndex()];
         CombatKernel.NationState attacker = state.nationViews[attackerNationIndex];
         int mapsAvailable = warState.attackerMaps[context.warIndex()];
+        AttackType[] adaptiveAttackTypes = adaptiveAttackTypesForMaps(mapsAvailable);
         lastAttackChoiceFailureReason = AttackChoiceFailureReason.NONE;
-        if (!hasMapForAdaptiveAttack(mapsAvailable)) {
+        if (adaptiveAttackTypes.length == 0) {
             lastAttackChoiceFailureReason = AttackChoiceFailureReason.NO_MAP;
             return null;
         }
@@ -2186,7 +2215,7 @@ final class LongHorizonForwardProjection {
                 defenderBaselineMilitaryValue
             );
             AttackType choice = HeuristicAttackChoicePolicy.INSTANCE.chooseAttackType(
-                    ADAPTIVE_ATTACK_TYPES,
+                    adaptiveAttackTypes,
                     mapsAvailable,
                     projectionAttackEvaluator,
                     heuristicAttackCandidate,
@@ -2201,7 +2230,7 @@ final class LongHorizonForwardProjection {
             return choice;
         }
         AttackType choice = projectionPolicies.attackChoicePolicy().chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
-                ADAPTIVE_ATTACK_TYPES,
+            adaptiveAttackTypes,
                 mapsAvailable,
                 attackType -> {
                     int mapCost = attackType.getMapUsed();
@@ -2248,7 +2277,7 @@ final class LongHorizonForwardProjection {
                 }
         ));
         if (choice == null) {
-            lastAttackChoiceFailureReason = hasLegalAdaptiveAttack(attacker, mapsAvailable)
+            lastAttackChoiceFailureReason = hasLegalAdaptiveAttack(attacker, adaptiveAttackTypes)
                     ? AttackChoiceFailureReason.NO_POSITIVE_ATTACK
                     : AttackChoiceFailureReason.NO_LEGAL_ATTACK;
         }
@@ -2265,20 +2294,25 @@ final class LongHorizonForwardProjection {
         }
     }
 
-    private static boolean hasMapForAdaptiveAttack(int mapsAvailable) {
-        for (AttackType attackType : ADAPTIVE_ATTACK_TYPES) {
-            int mapCost = attackType.getMapUsed();
-            if (mapCost > 0 && mapCost <= mapsAvailable) {
-                return true;
-            }
+    private static AttackType[] adaptiveAttackTypesForMaps(int mapsAvailable) {
+        if (mapsAvailable < MIN_ADAPTIVE_ATTACK_MAP_COST) {
+            return NO_ADAPTIVE_ATTACK_TYPES;
         }
-        return false;
+        if (mapsAvailable < AttackType.AIRSTRIKE_INFRA.getMapUsed()) {
+            return ADAPTIVE_ATTACK_TYPES_GROUND_ONLY;
+        }
+        if (mapsAvailable < AttackType.MISSILE.getMapUsed()) {
+            return ADAPTIVE_ATTACK_TYPES_NO_SPECIALISTS;
+        }
+        if (mapsAvailable < AttackType.NUKE.getMapUsed()) {
+            return ADAPTIVE_ATTACK_TYPES_NO_NUKE;
+        }
+        return ADAPTIVE_ATTACK_TYPES;
     }
 
-    private static boolean hasLegalAdaptiveAttack(CombatKernel.NationState attacker, int mapsAvailable) {
-        for (AttackType attackType : ADAPTIVE_ATTACK_TYPES) {
-            int mapCost = attackType.getMapUsed();
-            if (mapCost > 0 && mapCost <= mapsAvailable && CombatKernel.canUseAttackType(attacker, attackType)) {
+    private static boolean hasLegalAdaptiveAttack(CombatKernel.NationState attacker, AttackType[] adaptiveAttackTypes) {
+        for (AttackType attackType : adaptiveAttackTypes) {
+            if (CombatKernel.canUseAttackType(attacker, attackType)) {
                 return true;
             }
         }

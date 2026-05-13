@@ -115,9 +115,6 @@ public final class HeuristicAttackChoicePolicy implements AttackChoicePolicy {
                 selectionSummary.recordLegalCandidate();
             }
             int mapCost = candidate.mapCost;
-            if (mapCost <= 0 || mapCost > mapsAvailable) {
-                continue;
-            }
             double score = attackResultScore(candidate);
             if (bestAttackType == null
                     || score > bestScore

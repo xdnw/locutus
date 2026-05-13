@@ -414,6 +414,7 @@ final class OpeningEvaluator {
             }
 
             OpeningDefenderCoverageRescue.emit(
+                    scenario,
                     defenderCoverageCollectors,
                     defenderCaps,
                     defenderCoverageTarget,
@@ -593,14 +594,14 @@ final class OpeningEvaluator {
             float resourceSwing = edgeEvaluation.resourceSwing();
             float controlLeverage = edgeEvaluation.controlLeverage();
             float futureWarLeverage = edgeEvaluation.futureWarLeverage();
-            float counterRisk = (float) scenario.estimateAllianceCounterRisk(attackerIndex, defenderIndex);
+            // Collector ordering ignores counter risk, so defer that work until an edge is actually emitted.
             topK.consider(
                     attackerIndex,
                     defenderIndex,
                     edgeEvaluation.preferredWarTypeId(),
                     edgeEvaluation.firstAttackTypeId(),
                     edgeEvaluation.score(),
-                    counterRisk,
+                    0f,
                     immediateHarm,
                     selfExposure,
                     resourceSwing,
@@ -615,7 +616,7 @@ final class OpeningEvaluator {
                         edgeEvaluation.preferredWarTypeId(),
                         edgeEvaluation.firstAttackTypeId(),
                         edgeEvaluation.score(),
-                        counterRisk,
+                        0f,
                         immediateHarm,
                         selfExposure,
                         resourceSwing,
@@ -630,7 +631,7 @@ final class OpeningEvaluator {
                     edgeEvaluation.preferredWarTypeId(),
                     edgeEvaluation.firstAttackTypeId(),
                     edgeEvaluation.score(),
-                    counterRisk,
+                    0f,
                     immediateHarm,
                     selfExposure,
                     resourceSwing,
@@ -647,6 +648,7 @@ final class OpeningEvaluator {
             int emitCount = Math.min(topK.size(), Math.max(1, candidatesPerAttacker));
             for (int order = 0; order < emitCount; order++) {
                 OpeningDefenderCoverageRescue.emitSelectedEdge(
+                        scenario,
                         topK,
                         topK.sortedIndexAt(order),
                         out,
@@ -671,6 +673,7 @@ final class OpeningEvaluator {
                 }
                 boolean sourceDiversityEmission = defenderCoverageCounts[defenderIndex] >= defenderCoverageTarget;
                 if (OpeningDefenderCoverageRescue.emitSelectedEdge(
+                    scenario,
                         coverageSpillovers,
                         candidateIndex,
                         out,
