@@ -6,6 +6,22 @@ import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 public final class HeuristicAttackChoicePolicy implements AttackChoicePolicy {
     public static final HeuristicAttackChoicePolicy INSTANCE = new HeuristicAttackChoicePolicy();
 
+    static final class SelectionSummary {
+        private boolean sawLegalCandidate;
+
+        void reset() {
+            sawLegalCandidate = false;
+        }
+
+        void recordLegalCandidate() {
+            sawLegalCandidate = true;
+        }
+
+        boolean sawLegalCandidate() {
+            return sawLegalCandidate;
+        }
+    }
+
     @FunctionalInterface
     interface BestAttackObserver {
         void recordBestAttack();
@@ -82,14 +98,21 @@ public final class HeuristicAttackChoicePolicy implements AttackChoicePolicy {
             int mapsAvailable,
             AttackEvaluator evaluator,
             MutableAttackCandidate candidate,
-            BestAttackObserver bestAttackObserver
+            BestAttackObserver bestAttackObserver,
+            SelectionSummary selectionSummary
     ) {
+        if (selectionSummary != null) {
+            selectionSummary.reset();
+        }
         AttackType bestAttackType = null;
         double bestScore = Double.NEGATIVE_INFINITY;
         for (AttackType attackType : attackTypes) {
             evaluator.evaluate(attackType, candidate);
             if (!candidate.legal) {
                 continue;
+            }
+            if (selectionSummary != null) {
+                selectionSummary.recordLegalCandidate();
             }
             int mapCost = candidate.mapCost;
             if (mapCost <= 0 || mapCost > mapsAvailable) {

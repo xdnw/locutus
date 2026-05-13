@@ -252,6 +252,7 @@ final class LongHorizonForwardProjection {
     private final IntOpenHashSet[] scratchProjectedDeclarationActiveOpponentsByNation;
     private final ProjectionAttackEvaluator projectionAttackEvaluator;
     private final HeuristicAttackChoicePolicy.MutableAttackCandidate heuristicAttackCandidate;
+    private final HeuristicAttackChoicePolicy.SelectionSummary heuristicAttackSelectionSummary;
     private final MutableAttackResult heuristicAttackSelectionResult;
     private final DenseWarContext projectionWarContext;
     private long profiledProjectionTurns;
@@ -348,6 +349,7 @@ final class LongHorizonForwardProjection {
         this.scratchProjectedDeclarationActiveOpponentsByNation = new IntOpenHashSet[nationCount];
         this.projectionAttackEvaluator = new ProjectionAttackEvaluator();
         this.heuristicAttackCandidate = new HeuristicAttackChoicePolicy.MutableAttackCandidate();
+        this.heuristicAttackSelectionSummary = new HeuristicAttackChoicePolicy.SelectionSummary();
         this.heuristicAttackSelectionResult = new MutableAttackResult();
         this.projectionWarContext = new DenseWarContext();
     }
@@ -2188,10 +2190,11 @@ final class LongHorizonForwardProjection {
                     mapsAvailable,
                     projectionAttackEvaluator,
                     heuristicAttackCandidate,
-                    () -> projectionAttackEvaluator.copyResultInto(heuristicAttackSelectionResult)
+                    () -> projectionAttackEvaluator.copyResultInto(heuristicAttackSelectionResult),
+                    heuristicAttackSelectionSummary
             );
             if (choice == null) {
-                lastAttackChoiceFailureReason = hasLegalAdaptiveAttack(attacker, mapsAvailable)
+                lastAttackChoiceFailureReason = heuristicAttackSelectionSummary.sawLegalCandidate()
                         ? AttackChoiceFailureReason.NO_POSITIVE_ATTACK
                         : AttackChoiceFailureReason.NO_LEGAL_ATTACK;
             }
