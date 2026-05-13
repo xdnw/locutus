@@ -70,6 +70,47 @@ class BlitzObjectiveTest {
     }
 
     @Test
+    void controlOpeningCapturesTargetPressureOnlyThroughFollowThroughProgress() {
+        OpeningMetricVector hugeTargetTinyProgress = new OpeningMetricVector(
+                0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1_000.0
+        );
+        OpeningMetricVector hugeTargetDurableProgress = new OpeningMetricVector(
+                0.0, 0.0, 0.0, 5.0, 0.0, 8.0, 1_000.0
+        );
+
+        double tinyProgressScore = BlitzObjective.CONTROL.objective().scoreOpening(hugeTargetTinyProgress, 1);
+        double durableProgressScore = BlitzObjective.CONTROL.objective().scoreOpening(hugeTargetDurableProgress, 1);
+
+        assertTrue(tinyProgressScore < 100.0,
+                "A small control nudge must not unlock a huge target's whole pressure value");
+        assertTrue(durableProgressScore > tinyProgressScore * 5.0,
+                "Target-pressure value should scale with durable follow-through progress");
+    }
+
+    @Test
+    void controlOpeningDoesNotCaptureTargetPressureThroughLosingTrades() {
+        OpeningMetricVector costlyProgress = new OpeningMetricVector(
+                0.0, 500.0, 0.0, 5.0, 0.0, 8.0, 1_000.0
+        );
+        OpeningMetricVector cleanerProgress = new OpeningMetricVector(
+                0.0, 0.0, 0.0, 5.0, 0.0, 8.0, 1_000.0
+        );
+
+        double costlyScore = BlitzObjective.CONTROL.objective().scoreOpening(costlyProgress, 1);
+        double cleanerScore = BlitzObjective.CONTROL.objective().scoreOpening(cleanerProgress, 1);
+
+        assertTrue(costlyScore < cleanerScore * 0.25,
+                "Casualty-heavy progress should not capture the same target-pressure value as clean progress");
+    }
+
+    @Test
+    void balancedOpeningDoesNotRewardPressureWithoutActionableLeverage() {
+        OpeningMetricVector pressureOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0);
+
+        assertEquals(0.0, BlitzObjective.BALANCED.objective().scoreOpening(pressureOnly, 1), 1e-9);
+    }
+
+    @Test
     void controlTerminalScoringReadsPlannerWarControlViewWhenAvailable() {
         TeamWarControlView view = new TeamWarControlView() {
             @Override

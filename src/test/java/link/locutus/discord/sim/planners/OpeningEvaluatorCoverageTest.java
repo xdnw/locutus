@@ -322,7 +322,7 @@ class OpeningEvaluatorCoverageTest {
     void spilloverCanAddHighPriorityDefenderWhileCoverageRemainsBelowTarget() {
                 StrategicObjective objective = sourceDiversityControlObjective();
         DBNationSnapshot strongAttacker = buildNation(13, ATTACKER_TEAM, 2_050.0, 27, 450_000, 36_000, 2_900, 420);
-        DBNationSnapshot flexibleAttacker = buildNation(14, ATTACKER_TEAM, 820.0, 18, 37_500, 3_000, 240, 37);
+        DBNationSnapshot flexibleAttacker = buildNation(14, ATTACKER_TEAM, 1_970.0, 25, 300_000, 24_000, 1_900, 300);
         DBNationSnapshot highPriorityDefender = buildNation(112, DEFENDER_TEAM, 1_990.0, 25, 387_500, 31_000, 2_480, 387);
                 DBNationSnapshot softerDefender = buildNation(113, DEFENDER_TEAM, 1_500.0, 11, 1_200, 160, 120, 24);
 
@@ -353,7 +353,9 @@ class OpeningEvaluatorCoverageTest {
 
         assertTrue(Float.isFinite(strongAttackerHighPriority.score()), "Expected high-priority defender to be admitted for the strong attacker");
         assertTrue(Float.isFinite(strongAttackerSofter.score()), "Expected softer defender to be admitted for the strong attacker");
-        assertTrue(Float.isFinite(flexibleAttackerHighPriority.score()), "Expected high-priority defender to remain admitted for the flexible attacker");
+        assertTrue(Float.isFinite(flexibleAttackerHighPriority.score()),
+                "Expected high-priority defender to remain admitted for the flexible attacker: "
+                        + edgeSummary(flexibleAttackerHighPriority));
         assertTrue(Float.isFinite(flexibleAttackerSofter.score()), "Expected softer defender to remain admitted for the flexible attacker");
         assertTrue(
                 flexibleAttackerSofter.score() > flexibleAttackerHighPriority.score(),
@@ -380,24 +382,25 @@ class OpeningEvaluatorCoverageTest {
                 out
         );
 
-        boolean hasFlexibleAttackerSofter = false;
         boolean hasFlexibleAttackerHighPriority = false;
+                int highPrioritySources = 0;
         for (int edge = 0; edge < out.edgeCount(); edge++) {
             int attackerNationId = scenario.attackerNationId(out.attackerIndex(edge));
             int defenderNationId = scenario.defenderNationId(out.defenderIndex(edge));
-            if (attackerNationId == flexibleAttacker.nationId() && defenderNationId == softerDefender.nationId()) {
-                hasFlexibleAttackerSofter = true;
-            }
+                        if (defenderNationId == highPriorityDefender.nationId()) {
+                                highPrioritySources++;
+                        }
             if (attackerNationId == flexibleAttacker.nationId() && defenderNationId == highPriorityDefender.nationId()) {
                 hasFlexibleAttackerHighPriority = true;
             }
         }
 
-        assertTrue(hasFlexibleAttackerSofter,
-                "Expected the second attacker to keep its softer primary edge, edges=" + edgeList(out, scenario));
+                assertEquals(2, highPrioritySources,
+                                "Expected the high-priority defender to keep both viable sources while below target, edges="
+                                                + edgeList(out, scenario));
         assertTrue(
                 hasFlexibleAttackerHighPriority,
-                "Spillover should still emit a high-priority defender while that defender remains below the global coverage target, edges="
+                "Source diversity should keep the flexible high-priority defender lane while that defender remains below the global coverage target, edges="
                         + edgeList(out, scenario)
         );
     }
@@ -407,7 +410,7 @@ class OpeningEvaluatorCoverageTest {
                 StrategicObjective objective = sourceDiversityControlObjective();
         DBNationSnapshot strongAttackerOne = buildNation(15, ATTACKER_TEAM, 2_050.0, 27, 450_000, 36_000, 2_900, 420);
         DBNationSnapshot strongAttackerTwo = buildNation(16, ATTACKER_TEAM, 2_030.0, 27, 440_000, 35_200, 2_850, 410);
-        DBNationSnapshot flexibleAttacker = buildNation(17, ATTACKER_TEAM, 820.0, 18, 37_500, 3_000, 240, 37);
+        DBNationSnapshot flexibleAttacker = buildNation(17, ATTACKER_TEAM, 1_970.0, 25, 300_000, 24_000, 1_900, 300);
         DBNationSnapshot highPriorityDefender = buildNation(114, DEFENDER_TEAM, 1_990.0, 25, 387_500, 31_000, 2_480, 387);
         DBNationSnapshot softerDefender = buildNation(115, DEFENDER_TEAM, 1_500.0, 11, 1_200, 160, 120, 24);
 
@@ -424,7 +427,9 @@ class OpeningEvaluatorCoverageTest {
                 CandidateEdgeComponentPolicy.none()
         );
 
-        assertTrue(Float.isFinite(flexibleHighPriority.score()), "Expected high-priority defender to remain admitted for the flexible attacker");
+        assertTrue(Float.isFinite(flexibleHighPriority.score()),
+                "Expected high-priority defender to remain admitted for the flexible attacker: "
+                        + edgeSummary(flexibleHighPriority));
         assertTrue(Float.isFinite(flexibleSofter.score()), "Expected softer defender to remain admitted for the flexible attacker");
         assertTrue(
                 flexibleSofter.score() > flexibleHighPriority.score(),
@@ -1114,7 +1119,7 @@ class OpeningEvaluatorCoverageTest {
     }
 
         private static StrategicObjective sourceDiversityControlObjective() {
-                return withMinimumViabilityProbe(BlitzObjective.CONTROL.objective(), 0.0d, 2.0d);
+                return withMinimumViabilityProbe(BlitzObjective.CONTROL.objective(), 0.0d, 0.02d);
         }
 
         private static String edgeSummary(OpeningEvaluator.EvaluatedEdge edge) {

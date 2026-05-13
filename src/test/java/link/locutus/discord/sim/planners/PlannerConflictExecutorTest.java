@@ -696,6 +696,96 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
+    void replayDelaysAttacksByNationDeclaredOnThisTurn() {
+        DBNationSnapshot declarer = nation(401, 1)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .build();
+        DBNationSnapshot delayedAttacker = nation(402, 2)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .build();
+        DBNationSnapshot otherTarget = nation(403, 1)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .build();
+        PlannerProjectedWar existingWar = new PlannerProjectedWar(
+                delayedAttacker.nationId(),
+                otherTarget.nationId(),
+                WarType.ORD,
+                0,
+                WarStatus.ACTIVE,
+                6,
+                6,
+                100,
+                100,
+                PlannerLocalConflict.ControlOwner.NONE,
+                PlannerLocalConflict.ControlOwner.NONE,
+                PlannerLocalConflict.ControlOwner.NONE,
+                false,
+                false
+        );
+        PlannerLocalConflict conflict = PlannerLocalConflict.createWithActiveWars(
+                OverrideSet.EMPTY,
+                List.of(declarer, delayedAttacker, otherTarget),
+                List.of(existingWar),
+                0,
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.REPLAY
+        );
+
+        conflict.applyReplayTurn(Map.of(declarer.nationId(), List.of(delayedAttacker.nationId())), true);
+
+        PlannerProjectedWar delayedWar = conflict.project().activeWars().stream()
+                .filter(war -> war.attackerNationId() == delayedAttacker.nationId()
+                        && war.defenderNationId() == otherTarget.nationId())
+                .findFirst()
+                .orElseThrow();
+        assertEquals(6, delayedWar.attackerMaps());
+        assertEquals(100, delayedWar.defenderResistance());
+
+        conflict.applyReplayTurn(Map.of(), false);
+
+        PlannerProjectedWar afterDelayWar = conflict.project().activeWars().stream()
+                .filter(war -> war.attackerNationId() == delayedAttacker.nationId()
+                        && war.defenderNationId() == otherTarget.nationId())
+                .findFirst()
+                .orElseThrow();
+        assertTrue(afterDelayWar.attackerMaps() < 7);
+    }
+
+    @Test
+        void replayMaterializesConventionalRebuyAfterAttackLosses() {
+        DBNationSnapshot attacker = nation(404, 1)
+                .citySpecialistProfiles(rebuyProfiles())
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 0)
+                .build();
+        DBNationSnapshot defender = nation(405, 2)
+                .citySpecialistProfiles(rebuyProfiles())
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 0)
+                .build();
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker, defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.REPLAY
+        );
+
+        conflict.applyReplayTurn(Map.of(attacker.nationId(), List.of(defender.nationId())), true);
+
+        DBNationSnapshot projectedAttacker = conflict.project().snapshotsById().get(attacker.nationId());
+        assertNotNull(projectedAttacker);
+        assertTrue(projectedAttacker.unitsBoughtToday(MilitaryUnit.SOLDIER) > 0
+                || projectedAttacker.unitsBoughtToday(MilitaryUnit.TANK) > 0);
+        assertEquals(0, projectedAttacker.unitsBoughtToday(MilitaryUnit.AIRCRAFT));
+        assertEquals(0, projectedAttacker.pendingBuysNextTurn(MilitaryUnit.AIRCRAFT));
+    }
+
+    @Test
     void plannerProjectionPreservesBeigeTurnsAndDerivedDailyBuyBonus() {
         DBNationSnapshot attacker = nation(23, 1)
                 .cities(5)
@@ -2205,6 +2295,11 @@ class PlannerConflictExecutorTest {
                                 .maxOff(3)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION);
+        }
+
+        private static SpecialistCityProfile[] rebuyProfiles() {
+                SpecialistCityProfile profile = new SpecialistCityProfile(1_000d, 100, 0, 0, 0d, 0d, 5, 5, 5, 5);
+                return new SpecialistCityProfile[]{profile, profile, profile};
         }
 
         private static DBNationSnapshot retainedComponentNation(

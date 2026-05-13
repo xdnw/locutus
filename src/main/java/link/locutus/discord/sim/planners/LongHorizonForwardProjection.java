@@ -173,6 +173,7 @@ final class LongHorizonForwardProjection {
     private static final int INITIAL_RESISTANCE = 100;
     private static final int MAP_CAP = 12;
     private static final int WAR_EXPIRATION_TURN = 60;
+    static final int DECLARED_ON_ATTACK_DELAY_TURNS = 1;
     private static final int PROJECTED_COUNTER_START_TURN = 1;
     private static final double MIN_PROJECTED_DECLARATION_TARGET_VALUE = 50d;
     private static final double PROJECTED_DECLARATION_TARGET_VALUE_MULTIPLIER = 0.10d;
@@ -834,6 +835,10 @@ final class LongHorizonForwardProjection {
             for (int warIndex = warState.firstActiveWar(); warIndex >= 0; ) {
                 int nextWarIndex = warState.nextActiveWar(warIndex);
                 profiledWarIterations++;
+                if (isInDeclaredOnReactionDelay(warState, warState.attackerNationIndex[warIndex], turn)) {
+                    warIndex = nextWarIndex;
+                    continue;
+                }
                 context.setWarIndex(warIndex);
                 simulateAdaptiveAttacks(state, warState, context, projectionScratch, projectionResult);
                 warIndex = nextWarIndex;
@@ -2075,6 +2080,59 @@ final class LongHorizonForwardProjection {
         }
     }
 
+    private static boolean isInDeclaredOnReactionDelay(DenseWarState warState, int nationIndex, int turn) {
+        for (int warIndex = warState.firstDefensiveWarForNation(nationIndex);
+             warIndex >= 0;
+             warIndex = warState.nextDefensiveWarForNation(warIndex)) {
+            if (warState.active[warIndex]
+                    && turn - warState.startTurn[warIndex] < DECLARED_ON_ATTACK_DELAY_TURNS) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void applyPostAttackConventionalRebuyIfUseful(
+            ProjectionState state,
+            DenseWarState warState,
+            int warIndex,
+            boolean attackerSide,
+            int[] attackerLosses
+    ) {
+        if (!shouldUsePostAttackConventionalRebuy(warState, warIndex, attackerSide)) {
+            return;
+        }
+        int nationIndex = attackerSide ? warState.attackerNationIndex[warIndex] : warState.defenderNationIndex[warIndex];
+        state.applyReplacementBuysForNation(nationIndex, attackerLosses, false, true);
+    }
+
+    private static boolean shouldUsePostAttackConventionalRebuy(DenseWarState warState, int warIndex, boolean attackerSide) {
+        int ownResistance = attackerSide ? warState.attackerResistance[warIndex] : warState.defenderResistance[warIndex];
+        int enemyResistance = attackerSide ? warState.defenderResistance[warIndex] : warState.attackerResistance[warIndex];
+        if (ownResistance < 25) {
+            return false;
+        }
+        int ownOwner = attackerSide ? DenseWarState.OWNER_ATTACKER : DenseWarState.OWNER_DEFENDER;
+        int enemyOwner = attackerSide ? DenseWarState.OWNER_DEFENDER : DenseWarState.OWNER_ATTACKER;
+        int ownControls = PlannerControlStateReducer.controlCountForOwnerCode(
+                ownOwner,
+                warState.groundSuperiorityOwner[warIndex],
+                warState.airSuperiorityOwner[warIndex],
+                warState.blockadeOwner[warIndex]
+        );
+        int enemyControls = PlannerControlStateReducer.controlCountForOwnerCode(
+                enemyOwner,
+                warState.groundSuperiorityOwner[warIndex],
+                warState.airSuperiorityOwner[warIndex],
+                warState.blockadeOwner[warIndex]
+        );
+        if (ownControls >= enemyControls) {
+            return true;
+        }
+        return enemyControls < 2
+                && enemyResistance > 0;
+    }
+
     private AttackType chooseBestAttackType(
             ProjectionState state,
             DenseWarState warState,
@@ -2491,6 +2549,8 @@ final class LongHorizonForwardProjection {
             warState.defenderNationIndex[edgeIndex]
         );
         resolveDefeatIfNeeded(state, warState, edgeIndex);
+        applyPostAttackConventionalRebuyIfUseful(state, warState, edgeIndex, true, result.attackerLosses());
+        applyPostAttackConventionalRebuyIfUseful(state, warState, edgeIndex, false, result.defenderLosses());
     }
 
     private void resolveDefeatIfNeeded(ProjectionState state, DenseWarState warState, int edgeIndex) {
@@ -3287,25 +3347,76 @@ final class LongHorizonForwardProjection {
 
         void applyDailyBuys(boolean freshDay, boolean[] activeWarsByNation) {
             for (int nationIndex = 0; nationIndex < nationIds.length; nationIndex++) {
-                boolean changed = false;
                 boolean hasActiveWars = baseHasActiveWars[nationIndex]
                         || (activeWarsByNation != null && activeWarsByNation[nationIndex]);
-                for (MilitaryUnit unit : PROJECTED_BUY_UNITS) {
-                    int unitIndex = unitBaseOffsets[nationIndex] + unit.ordinal();
-                    int cap = dailyBuyCap(nationIndex, unit, hasActiveWars);
-                    int remaining = freshDay ? cap : Math.max(0, cap - unitsBoughtTodayFlat[unitIndex]);
-                    int bought = buyAffordable(nationIndex, unit, remaining);
-                    if (bought <= 0) {
-                        continue;
-                    }
-                    unitsFlat[unitIndex] += bought;
-                    unitsBoughtTodayFlat[unitIndex] += bought;
-                    changed = true;
+                applyDailyBuysForNation(nationIndex, freshDay, hasActiveWars);
+            }
+        }
+
+        void applyDailyBuysForNation(int nationIndex, boolean freshDay, boolean hasActiveWars) {
+            boolean changed = false;
+            for (MilitaryUnit unit : PROJECTED_BUY_UNITS) {
+                int unitIndex = unitBaseOffsets[nationIndex] + unit.ordinal();
+                int replacementDeficit = replacementDeficit(nationIndex, unit);
+                if (replacementDeficit <= 0) {
+                    continue;
                 }
-                if (changed) {
-                    invalidateCapability(nationIndex);
-                    invalidateScore(nationIndex);
+                int cap = dailyBuyCap(nationIndex, unit, hasActiveWars);
+                int remaining = freshDay ? cap : Math.max(0, cap - unitsBoughtTodayFlat[unitIndex]);
+                int bought = buyAffordable(nationIndex, unit, Math.min(replacementDeficit, remaining));
+                if (bought <= 0) {
+                    continue;
                 }
+                unitsFlat[unitIndex] += bought;
+                unitsBoughtTodayFlat[unitIndex] += bought;
+                changed = true;
+            }
+            if (changed) {
+                invalidateCapability(nationIndex);
+                invalidateScore(nationIndex);
+            }
+        }
+
+        private int replacementDeficit(int nationIndex, MilitaryUnit unit) {
+            int baseline = switch (unit) {
+                case SOLDIER -> baselineSoldiers[nationIndex];
+                case TANK -> baselineTanks[nationIndex];
+                case AIRCRAFT -> baselineAircraft[nationIndex];
+                case SHIP -> baselineShips[nationIndex];
+                default -> 0;
+            };
+            if (baseline <= 0) {
+                return 0;
+            }
+            int unitIndex = unitBaseOffsets[nationIndex] + unit.ordinal();
+            return Math.max(0, baseline - unitsFlat[unitIndex] - pendingBuysFlat[unitIndex]);
+        }
+
+        void applyReplacementBuysForNation(int nationIndex, int[] losses, boolean freshDay, boolean hasActiveWars) {
+            if (losses == null) {
+                return;
+            }
+            boolean changed = false;
+            for (MilitaryUnit unit : PROJECTED_BUY_UNITS) {
+                int lost = losses[unit.ordinal()];
+                if (lost <= 0) {
+                    continue;
+                }
+                int unitIndex = unitBaseOffsets[nationIndex] + unit.ordinal();
+                int cap = dailyBuyCap(nationIndex, unit, hasActiveWars);
+                int remaining = freshDay ? cap : Math.max(0, cap - unitsBoughtTodayFlat[unitIndex]);
+                int requested = Math.min(lost, remaining);
+                int bought = buyAffordable(nationIndex, unit, requested);
+                if (bought <= 0) {
+                    continue;
+                }
+                unitsFlat[unitIndex] += bought;
+                unitsBoughtTodayFlat[unitIndex] += bought;
+                changed = true;
+            }
+            if (changed) {
+                invalidateCapability(nationIndex);
+                invalidateScore(nationIndex);
             }
         }
 

@@ -31,7 +31,14 @@ final class BalancedBlitzObjective implements StrategicObjective {
             - (0.75d * selfExposure)
             + (1.50d * controlLeverage)
             + futureWarLeverage
-            + targetPressure
+            + StrategicOpeningPressure.capturableTargetPressure(
+                immediateHarm,
+                selfExposure,
+                resourceSwing,
+                controlLeverage,
+                futureWarLeverage,
+                targetPressure
+            )
             + (0.000001d * resourceSwing);
     }
 

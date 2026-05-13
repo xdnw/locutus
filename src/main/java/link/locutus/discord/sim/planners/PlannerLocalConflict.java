@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.function.IntPredicate;
 
 final class PlannerLocalConflict implements TeamWarControlView {
+    static final int DECLARED_ON_ATTACK_DELAY_TURNS = 1;
     private static final MilitaryUnit[] PROJECTED_BUY_UNITS = {
         MilitaryUnit.AIRCRAFT,
         MilitaryUnit.TANK,
@@ -95,6 +96,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final int[] activeDefensiveWarCounts;
         private final LocalNation[] nationsByIndex;
         private final int[] replayNationIdsAscending;
+        private final Int2IntOpenHashMap lastDeclaredOnTurnByNationId;
         private final ActiveWarContextScratch strategicValueWarContextScratch;
         private final Deque<Mark> markStack;
         private final List<PlannerExecutionLog.Turn> executionLogTurns;
@@ -143,6 +145,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.activeDefensiveWarCounts = new int[nationsById.size()];
         this.nationsByIndex = new LocalNation[nationsById.size()];
         this.replayNationIdsAscending = new int[nationsById.size()];
+        this.lastDeclaredOnTurnByNationId = new Int2IntOpenHashMap();
+        this.lastDeclaredOnTurnByNationId.defaultReturnValue(Integer.MIN_VALUE);
         int replayNationIndex = 0;
         for (LocalNation nation : nationsById.values()) {
             nationsByIndex[nation.nationIndex()] = nation;
@@ -457,6 +461,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 new ConflictMutationMark(
                         nextWarId,
                         currentTurn,
+                        new Int2IntOpenHashMap(lastDeclaredOnTurnByNationId),
                         new LocalNationBuffers.IntArrayChangeLog(),
                         new LocalNationBuffers.IntArrayChangeLog(),
                         new IntArrayList()
@@ -469,6 +474,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
         nationScalarRecorder.restore(snapshot.nationScalarSnapshot(), nationsByIndex);
 
         warBuffers.restore(snapshot.warBufferSnapshot());
+        lastDeclaredOnTurnByNationId.clear();
+        lastDeclaredOnTurnByNationId.putAll(snapshot.conflictMutationMark().lastDeclaredOnTurnByNationIdAtMark());
         snapshot.conflictMutationMark().restore(this);
     }
 
@@ -1745,6 +1752,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             activeMark.snapshot().conflictMutationMark().recordAddedWar(warId);
         }
         registerActiveWar(war);
+        lastDeclaredOnTurnByNationId.put(defenderNationId, currentTurn);
         recordReplayDeclaration(war);
         return war;
     }
@@ -1769,6 +1777,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
             boolean allowIdleWait
     ) {
         if (!war.isActive()) {
+            return;
+        }
+        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
             return;
         }
         int mapsAvailable = Math.max(0, war.attackerMapsValue() - Math.max(0, mapReserveFloor));
@@ -1811,6 +1822,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (!war.isActive()) {
             return;
         }
+        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
+            return;
+        }
         int reserveFloor = Math.max(0, mapReserveFloor);
         while (war.isActive()) {
             int mapsAvailable = Math.max(0, war.attackerMapsValue() - reserveFloor);
@@ -1834,6 +1848,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
             boolean allowIdleWait
     ) {
         if (!war.isActive()) {
+            return;
+        }
+        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
             return;
         }
         int mapsAvailable = Math.max(0, war.attackerMapsValue() - Math.max(0, mapReserveFloor));
@@ -1916,6 +1933,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (!war.isActive()) {
             return;
         }
+        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
+            return;
+        }
         int reserveFloor = Math.max(0, mapReserveFloor);
         int mapsAvailable = Math.max(0, war.attackerMapsValue() - reserveFloor);
         AttackType bestAttackType = chooseBestAttackType(war, allowedAttackTypes, mapsAvailable, objective, attackerTeamId);
@@ -1923,6 +1943,50 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return;
         }
         resolveAttack(war, bestAttackType);
+    }
+
+    private boolean isInDeclaredOnReactionDelay(int nationId) {
+        int declaredOnTurn = lastDeclaredOnTurnByNationId.get(nationId);
+        return declaredOnTurn != Integer.MIN_VALUE
+                && currentTurn - declaredOnTurn < DECLARED_ON_ATTACK_DELAY_TURNS;
+    }
+
+    private void applyPostAttackConventionalRebuyIfUseful(LocalWar war, boolean attackerSide, int[] losses) {
+        if (!PlannerTransitionSemantics.REPLAY.equals(transitionSemantics)) {
+            return;
+        }
+        if (!shouldUsePostAttackConventionalRebuy(war, attackerSide)) {
+            return;
+        }
+        LocalNation nation = attackerSide ? war.attacker : war.defender;
+        nation.buyReplacementUnitsNow(losses, true);
+    }
+
+    private static boolean shouldUsePostAttackConventionalRebuy(LocalWar war, boolean attackerSide) {
+        int ownResistance = attackerSide ? war.attackerResistanceValue() : war.defenderResistanceValue();
+        int enemyResistance = attackerSide ? war.defenderResistanceValue() : war.attackerResistanceValue();
+        if (ownResistance < 25) {
+            return false;
+        }
+        int ownOwner = attackerSide ? LocalWarBuffers.OWNER_ATTACKER : LocalWarBuffers.OWNER_DEFENDER;
+        int enemyOwner = attackerSide ? LocalWarBuffers.OWNER_DEFENDER : LocalWarBuffers.OWNER_ATTACKER;
+        int ownControls = PlannerControlStateReducer.controlCountForOwnerCode(
+                ownOwner,
+                war.warBuffers.groundSuperiorityOwner[war.warIndex],
+                war.warBuffers.airSuperiorityOwner[war.warIndex],
+                war.warBuffers.blockadeOwner[war.warIndex]
+        );
+        int enemyControls = PlannerControlStateReducer.controlCountForOwnerCode(
+                enemyOwner,
+                war.warBuffers.groundSuperiorityOwner[war.warIndex],
+                war.warBuffers.airSuperiorityOwner[war.warIndex],
+                war.warBuffers.blockadeOwner[war.warIndex]
+        );
+        if (ownControls >= enemyControls) {
+            return true;
+        }
+        return enemyControls < 2
+                && enemyResistance > 0;
     }
 
     private AttackType chooseBestAttackType(
@@ -2019,6 +2083,8 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 ignored -> { }
         );
         resolveDefeatIfNeeded(war);
+        applyPostAttackConventionalRebuyIfUseful(war, true, attackResult.attackerLosses());
+        applyPostAttackConventionalRebuyIfUseful(war, false, attackResult.defenderLosses());
     }
 
     private void applyLosses(LocalNation nation, int[] losses) {
@@ -2369,6 +2435,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
     private record ConflictMutationMark(
             int nextWarIdAtMark,
             int currentTurnAtMark,
+            Int2IntOpenHashMap lastDeclaredOnTurnByNationIdAtMark,
             LocalNationBuffers.IntArrayChangeLog activeOffensiveWarCountChanges,
             LocalNationBuffers.IntArrayChangeLog activeDefensiveWarCountChanges,
             IntArrayList addedWarIds
@@ -3330,6 +3397,10 @@ final class PlannerLocalConflict implements TeamWarControlView {
         void queueProjectedDailyRebuys(boolean hasActiveWars) {
             boolean changed = false;
             for (MilitaryUnit unit : PROJECTED_BUY_UNITS) {
+                int replacementDeficit = replacementDeficit(unit);
+                if (replacementDeficit <= 0) {
+                    continue;
+                }
                 int remainingDailyCap = dailyBuyCap(unit, hasActiveWars) - buffers.unitsBoughtToday(nationIndex, unit);
                 if (remainingDailyCap <= 0) {
                     continue;
@@ -3338,12 +3409,60 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 if (remainingCapacity <= 0) {
                     continue;
                 }
-                int requested = Math.min(remainingDailyCap, remainingCapacity);
+                int requested = Math.min(replacementDeficit, Math.min(remainingDailyCap, remainingCapacity));
                 int bought = affordableBuyAmount(unit, requested);
                 if (bought <= 0) {
                     continue;
                 }
                 buffers.setPendingBuys(nationIndex, unit, buffers.pendingBuys(nationIndex, unit) + bought);
+                buffers.setUnitsBoughtToday(nationIndex, unit, buffers.unitsBoughtToday(nationIndex, unit) + bought);
+                changed = true;
+            }
+            if (changed) {
+                recalculateScore();
+            }
+        }
+
+        private int replacementDeficit(MilitaryUnit unit) {
+            int baseline = switch (unit) {
+                case SOLDIER -> baselineSoldiers;
+                case TANK -> baselineTanks;
+                case AIRCRAFT -> baselineAircraft;
+                case SHIP -> baselineShips;
+                default -> 0;
+            };
+            if (baseline <= 0) {
+                return 0;
+            }
+            int current = getUnits(unit);
+            int pending = buffers.pendingBuys(nationIndex, unit);
+            return Math.max(0, baseline - current - pending);
+        }
+
+        void buyReplacementUnitsNow(int[] losses, boolean hasActiveWars) {
+            if (losses == null) {
+                return;
+            }
+            boolean changed = false;
+            for (MilitaryUnit unit : PROJECTED_BUY_UNITS) {
+                int lost = losses[unit.ordinal()];
+                if (lost <= 0) {
+                    continue;
+                }
+                int remainingDailyCap = dailyBuyCap(unit, hasActiveWars) - buffers.unitsBoughtToday(nationIndex, unit);
+                if (remainingDailyCap <= 0) {
+                    continue;
+                }
+                int remainingCapacity = remainingCapacity(unit);
+                if (remainingCapacity <= 0) {
+                    continue;
+                }
+                int requested = Math.min(lost, Math.min(remainingDailyCap, remainingCapacity));
+                int bought = affordableBuyAmount(unit, requested);
+                if (bought <= 0) {
+                    continue;
+                }
+                buffers.addUnits(nationIndex, unit, bought);
                 buffers.setUnitsBoughtToday(nationIndex, unit, buffers.unitsBoughtToday(nationIndex, unit) + bought);
                 changed = true;
             }
