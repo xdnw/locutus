@@ -7,6 +7,7 @@ import link.locutus.discord.sim.StrategicValueView;
 import link.locutus.discord.sim.actions.SimAction;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
@@ -36,6 +37,49 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
 
         assertTrue(openSlotScore > lastSlotScore);
     }
+
+        @Test
+        void controlPolicyDoesNotTreatTargetPressureAsAlreadyCapturedDamage() {
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+            link.locutus.discord.sim.BlitzObjective.CONTROL.objective()
+        );
+
+        double pressureOnlyScore = policy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+            0d,
+            0d,
+            0d,
+            0d,
+            0d,
+            0d,
+            250d,
+            100d,
+            100d,
+            0d,
+            1,
+            1,
+            1d
+        ));
+        double actionableScore = policy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+            0d,
+            0d,
+            0d,
+            0d,
+            1d,
+            1d,
+            250d,
+            100d,
+            100d,
+            0d,
+            1,
+            1,
+            1d
+        ));
+
+        assertEquals(0d, pressureOnlyScore, 1e-9,
+            "CONTROL later declarations must not score pressure-only targets as if damage already happened");
+        assertTrue(actionableScore > pressureOnlyScore,
+            "Target pressure should become valuable again once the declaration has control/future-war actionability");
+        }
 
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
             double declarerStrength,

@@ -1670,11 +1670,8 @@ final class LongHorizonForwardProjection {
         double strengthRatio = strengthRatio(declarerStrength, targetStrength);
         double targetPressure = projectedControlPressure(state, targetOverallIndex);
         double declarerPressure = projectedControlPressure(state, declarerOverallIndex);
-        double captureFactor = Double.isFinite(strengthRatio)
-                ? Math.min(1.25d, Math.sqrt(Math.max(0d, strengthRatio)))
-                : 1.25d;
         double underStrength = Double.isFinite(strengthRatio) ? Math.max(0d, 1d - strengthRatio) : 0d;
-        double immediateHarm = targetPressure * captureFactor;
+        double immediateHarm = 0d;
         double selfExposure = (0.15d * declarerPressure) + (0.85d * declarerPressure * underStrength * underStrength);
         double controlLeverage = primitiveDeclarationControlLeverage(strengthRatio);
         double futureWarLeverage = primitiveDeclarationFutureWarLeverage(strengthRatio);
