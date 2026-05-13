@@ -37,7 +37,7 @@ public final class StrategicLaneComparisonHarness {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final int DEFAULT_HORIZON_TURNS = 72;
     private static final int DEFAULT_POPULATION = 0;
-    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
+    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,respondingSideLaterDeclarationCapPressurePct,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
 
     private StrategicLaneComparisonHarness() {
     }
@@ -106,6 +106,11 @@ public final class StrategicLaneComparisonHarness {
                             formatDouble(best.strongDefenderCoveragePct(), 3),
                             tierCoverageSummary(best.defenderCoverageByTierCovered(), best.defenderCoverageByTierTotal()),
                             Integer.toString(best.maxWarsPerAttacker()),
+                            Integer.toString(best.attackersAtCap()),
+                            Integer.toString(best.attackersAtTwoWars()),
+                            formatDouble(best.attackerCapSaturationPct(), 2),
+                            warCountHistogramSummary(best.attackerWarCountHistogram()),
+                            formatDouble(best.respondingSideLaterDeclarationCapPressurePct(), 2),
                             formatDouble(best.avgAssignedCounterRisk(), 6),
                             formatDouble(best.terminalObjective(), 3),
                             formatDouble(best.attackerTerminalValue(), 3),
@@ -850,6 +855,10 @@ public final class StrategicLaneComparisonHarness {
             for (int count : attackerCounts) {
                 maxWarsPerAttacker = Math.max(maxWarsPerAttacker, count);
             }
+            int attackersAtCap = attackersAtCap(attackerCounts);
+            int attackersAtTwoWars = attackersAtTwoWars(attackerCounts);
+            double attackerCapSaturationPct = attackerCapSaturationPct(attackerCounts);
+            int[] attackerWarCountHistogram = warCountHistogram(attackerCounts);
             LongHorizonForwardProjection.ProjectionDiagnostics diagnostics = LongHorizonControlProjection.create(
                     edges,
                     scenario,
@@ -871,6 +880,14 @@ public final class StrategicLaneComparisonHarness {
                     defenderTierCoverage.covered(),
                     defenderTierCoverage.totals(),
                     maxWarsPerAttacker,
+                        attackersAtCap,
+                        attackersAtTwoWars,
+                        attackerCapSaturationPct,
+                        attackerWarCountHistogram,
+                        laterDeclarationCapPressurePct(
+                            diagnostics.respondingSideLaterDeclarations(),
+                            diagnostics.respondingSideLaterDeclarationsThrottled()
+                        ),
                     avgAssignedCounterRisk(edges, assignment),
                     terminalObjective,
                     diagnostics.attackerStrategicValue(),
@@ -960,6 +977,56 @@ public final class StrategicLaneComparisonHarness {
                 }
             }
             return freeSlotAttackers == 0 ? 0d : 100.0d * idleFreeSlotAttackers / freeSlotAttackers;
+        }
+
+        private int attackersAtCap(int[] attackerCounts) {
+            int saturated = 0;
+            for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
+                if (attackerCaps[attackerIndex] > 0 && attackerCounts[attackerIndex] >= attackerCaps[attackerIndex]) {
+                    saturated++;
+                }
+            }
+            return saturated;
+        }
+
+        private int attackersAtTwoWars(int[] attackerCounts) {
+            int atTwo = 0;
+            for (int count : attackerCounts) {
+                if (count == 2) {
+                    atTwo++;
+                }
+            }
+            return atTwo;
+        }
+
+        private double attackerCapSaturationPct(int[] attackerCounts) {
+            int assigned = 0;
+            int capacity = 0;
+            for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
+                if (attackerCaps[attackerIndex] <= 0) {
+                    continue;
+                }
+                assigned += Math.min(attackerCounts[attackerIndex], attackerCaps[attackerIndex]);
+                capacity += attackerCaps[attackerIndex];
+            }
+            return capacity == 0 ? 0d : 100.0d * assigned / capacity;
+        }
+
+        private int[] warCountHistogram(int[] attackerCounts) {
+            int maxBucket = 0;
+            for (int count : attackerCounts) {
+                maxBucket = Math.max(maxBucket, count);
+            }
+            int[] histogram = new int[maxBucket + 1];
+            for (int count : attackerCounts) {
+                histogram[count]++;
+            }
+            return histogram;
+        }
+
+        private double laterDeclarationCapPressurePct(int declarations, int throttled) {
+            int planned = declarations + throttled;
+            return planned == 0 ? 0d : 100.0d * throttled / planned;
         }
 
         private double strongDefenderCoveragePct(int[] defenderCounts) {
@@ -1108,6 +1175,11 @@ public final class StrategicLaneComparisonHarness {
             int[] defenderCoverageByTierCovered,
             int[] defenderCoverageByTierTotal,
             int maxWarsPerAttacker,
+            int attackersAtCap,
+            int attackersAtTwoWars,
+            double attackerCapSaturationPct,
+            int[] attackerWarCountHistogram,
+            double respondingSideLaterDeclarationCapPressurePct,
             double avgAssignedCounterRisk,
             double terminalObjective,
             double attackerTerminalValue,
@@ -1159,6 +1231,11 @@ public final class StrategicLaneComparisonHarness {
                     defenderCoverageByTierCovered,
                     defenderCoverageByTierTotal,
                     maxWarsPerAttacker,
+                    attackersAtCap,
+                    attackersAtTwoWars,
+                    attackerCapSaturationPct,
+                    attackerWarCountHistogram,
+                    respondingSideLaterDeclarationCapPressurePct,
                     avgAssignedCounterRisk,
                     terminalObjective,
                     attackerTerminalValue,
@@ -1216,6 +1293,20 @@ public final class StrategicLaneComparisonHarness {
                     .append(c)
                     .append('/')
                     .append(t);
+        }
+        return builder.toString();
+    }
+
+    private static String warCountHistogramSummary(int[] histogram) {
+        if (histogram.length == 0) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int wars = 0; wars < histogram.length; wars++) {
+            if (builder.length() > 0) {
+                builder.append(';');
+            }
+            builder.append(wars).append(':').append(histogram[wars]);
         }
         return builder.toString();
     }

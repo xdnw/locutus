@@ -26,7 +26,7 @@ public final class HeadToHeadComparisonHarness {
             + "attackerObjective,defenderObjective,attackerLane,defenderLane,"
             + "attackerAssignmentCount,attackerIdleViable,attackerIdleViablePct,"
             + "attackerStrongDefenderCoveragePct,attackerDefenderCoverageByTier,"
-            + "attackerMaxWarsPerNation,attackerAvgAssignedCounterRisk,"
+            + "attackerMaxWarsPerNation,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,respondingSideLaterDeclarationCapPressurePct,attackerAvgAssignedCounterRisk,"
             + "attackerTerminalObjective,attackerTerminalAssetValue,defenderTerminalAssetValue,"
             + "attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,"
             + "attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,"
@@ -115,6 +115,11 @@ public final class HeadToHeadComparisonHarness {
                 formatDouble(best.strongDefenderCoveragePct(), 3),
                 tierCoverageSummary(best.defenderCoverageByTierCovered(), best.defenderCoverageByTierTotal()),
                 Integer.toString(best.maxWarsPerAttacker()),
+                Integer.toString(best.attackersAtCap()),
+                Integer.toString(best.attackersAtTwoWars()),
+                formatDouble(best.attackerCapSaturationPct(), 2),
+                warCountHistogramSummary(best.attackerWarCountHistogram()),
+                formatDouble(best.respondingSideLaterDeclarationCapPressurePct(), 2),
                 formatDouble(best.avgAssignedCounterRisk(), 6),
                 formatDouble(best.terminalObjective(), 3),
                 formatDouble(best.attackerTerminalValue(), 3),
@@ -169,6 +174,7 @@ public final class HeadToHeadComparisonHarness {
             StrategicLaneComparisonHarness.Lane lane,
             BlitzObjective objective,
             int projectedAuditLimit,
+            int maxLaterDeclarationsPerTurn,
             double[] warTypeWeights,
             double[] attackTypeWeights,
             Double minimumViabilityProbe,
@@ -185,6 +191,7 @@ public final class HeadToHeadComparisonHarness {
                 throw new IllegalArgumentException("Policy must be NAME:lane:objective[:flags], got: " + effective);
             }
             int projectedAuditLimit = SidePlannerSettings.DEFAULT_PROJECTED_AUDIT_LIMIT;
+            int maxLaterDeclarationsPerTurn = SidePlannerSettings.DEFAULT_MAX_LATER_DECLARATIONS_PER_TURN;
             double[] warTypeWeights = neutralWarTypeWeights();
             double[] attackTypeWeights = neutralAttackTypeWeights();
             Double minimumViabilityProbe = null;
@@ -196,6 +203,8 @@ public final class HeadToHeadComparisonHarness {
                     String[] kv = flag.split("=", 2);
                     if (kv.length == 2 && kv[0].equalsIgnoreCase("audit")) {
                         projectedAuditLimit = Integer.parseInt(kv[1]);
+                    } else if (kv.length == 2 && kv[0].equalsIgnoreCase("laterCap")) {
+                        maxLaterDeclarationsPerTurn = Integer.parseInt(kv[1]);
                     } else if (kv.length == 2 && kv[0].equalsIgnoreCase("war")) {
                         parseWeights(kv[1], WarType.values, warTypeWeights, "war");
                     } else if (kv.length == 2 && kv[0].equalsIgnoreCase("attack")) {
@@ -221,6 +230,7 @@ public final class HeadToHeadComparisonHarness {
                     StrategicLaneComparisonHarness.Lane.parse(parts[1]),
                     BlitzObjective.valueOf(parts[2].toUpperCase(Locale.ROOT)),
                     projectedAuditLimit,
+                    maxLaterDeclarationsPerTurn,
                     warTypeWeights,
                     attackTypeWeights,
                     minimumViabilityProbe,
@@ -237,7 +247,9 @@ public final class HeadToHeadComparisonHarness {
             return new SidePolicy(
                     legacy.name(),
                     legacy.objective(),
-                    legacy.planner().withProjectedAuditLimit(projectedAuditLimit),
+                        legacy.planner()
+                            .withProjectedAuditLimit(projectedAuditLimit)
+                            .withMaxLaterDeclarationsPerTurn(maxLaterDeclarationsPerTurn),
                     opening,
                     projection(strategicObjective, opening, legacy.projection()),
                     legacy.turnActor(),
@@ -252,7 +264,9 @@ public final class HeadToHeadComparisonHarness {
             return new SidePolicy(
                     legacy.name(),
                     legacy.objective(),
-                    legacy.planner().withProjectedAuditLimit(projectedAuditLimit),
+                        legacy.planner()
+                            .withProjectedAuditLimit(projectedAuditLimit)
+                            .withMaxLaterDeclarationsPerTurn(maxLaterDeclarationsPerTurn),
                     opening,
                     projection(strategicObjective, opening, legacy.projection()),
                     legacy.turnActor(),
@@ -373,6 +387,20 @@ public final class HeadToHeadComparisonHarness {
             int c = tierIndex < covered.length ? covered[tierIndex] : 0;
             int t = tierIndex < totals.length ? totals[tierIndex] : 0;
             builder.append(tier.name().toLowerCase(Locale.ROOT)).append(':').append(c).append('/').append(t);
+        }
+        return builder.toString();
+    }
+
+    private static String warCountHistogramSummary(int[] histogram) {
+        if (histogram.length == 0) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int wars = 0; wars < histogram.length; wars++) {
+            if (builder.length() > 0) {
+                builder.append(';');
+            }
+            builder.append(wars).append(':').append(histogram[wars]);
         }
         return builder.toString();
     }

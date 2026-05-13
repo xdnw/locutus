@@ -94,21 +94,27 @@ class StrategicLaneComparisonHarnessTest {
         assertEquals(lane.get("idleAttackersFreeSlot"), headToHead.get("attackerIdleViable"));
         assertEquals(lane.get("strongDefenderCoveragePct"), headToHead.get("attackerStrongDefenderCoveragePct"));
         assertEquals(lane.get("terminalObjective"), headToHead.get("attackerTerminalObjective"));
+        assertEquals(lane.get("attackersAtCap"), headToHead.get("attackersAtCap"));
+        assertEquals(lane.get("attackersAtTwoWars"), headToHead.get("attackersAtTwoWars"));
+        assertEquals(lane.get("attackerCapSaturationPct"), headToHead.get("attackerCapSaturationPct"));
+        assertEquals(lane.get("attackerWarCountHistogram"), headToHead.get("attackerWarCountHistogram"));
         assertEquals(lane.get("respondingSideLaterDeclarations"), headToHead.get("respondingSideLaterDeclarations"));
         assertEquals(lane.get("openingSideLaterDeclarations"), headToHead.get("openingSideLaterDeclarations"));
         assertEquals(lane.get("respondingSideLaterDeclarationsThrottled"), headToHead.get("respondingSideLaterDeclarationsThrottled"));
+        assertEquals(lane.get("respondingSideLaterDeclarationCapPressurePct"), headToHead.get("respondingSideLaterDeclarationCapPressurePct"));
     }
 
     @Test
     void headToHeadPolicyFlagsConfigureOpeningWeightsAndAdmission() {
         HeadToHeadComparisonHarness.PolicySpec spec = HeadToHeadComparisonHarness.PolicySpec.parse(
-                "weighted:projectedObjective:CONTROL:audit=3;war=RAID:1.5,ORD:0.7;attack=MISSILE:2.0,NUKE:2.5;minProbe=0.05;specialists=true;positiveBaseline=false",
+                "weighted:projectedObjective:CONTROL:audit=3;laterCap=4;war=RAID:1.5,ORD:0.7;attack=MISSILE:2.0,NUKE:2.5;minProbe=0.05;specialists=true;positiveBaseline=false",
                 "A"
         );
 
         SidePolicy policy = spec.actingPolicy();
 
         assertEquals(3, policy.planner().projectedAuditLimit());
+        assertEquals(4, policy.planner().maxLaterDeclarationsPerTurn());
         assertEquals(1.5d, policy.opening().warTypeWeight(WarType.RAID), 1e-9);
         assertEquals(0.7d, policy.opening().warTypeWeight(WarType.ORD), 1e-9);
         assertEquals(1.0d, policy.opening().warTypeWeight(WarType.ATT), 1e-9);
