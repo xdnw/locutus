@@ -216,6 +216,7 @@ final class PrimitiveAssignmentSolver {
 
         int[] candidateFwdSlot = new int[edges.edgeCount()];
         Arrays.fill(candidateFwdSlot, -1);
+        boolean hasExcludedPairs = !excludedPairKeys.isEmpty();
 
         double[] potential = new double[nV];
         Arrays.fill(potential, Double.POSITIVE_INFINITY);
@@ -243,7 +244,7 @@ final class PrimitiveAssignmentSolver {
             if (supply[ai] <= 0 || capacity[di] <= 0) {
                 continue;
             }
-            if (excludedPairKeys.contains(pairKey(attackerNationIds[ai], defenderNationIds[di]))) {
+            if (hasExcludedPairs && excludedPairKeys.contains(pairKey(attackerNationIds[ai], defenderNationIds[di]))) {
                 continue;
             }
             int rank = (attStrengthRank != null && ai < attStrengthRank.length) ? attStrengthRank[ai] : 0;
@@ -291,30 +292,47 @@ final class PrimitiveAssignmentSolver {
 
         double[] dist = new double[nV];
         int[] prevEdge = new int[nV];
-        IntDoubleMinHeap heap = new IntDoubleMinHeap(Math.max(16, ptr + nV + 8));
+        int[] seenStamp = new int[nV];
+        int[] settledStamp = new int[nV];
+        int[] settledVertices = new int[nV];
+        int stamp = 0;
+        IndexedIntDoubleMinHeap heap = new IndexedIntDoubleMinHeap(nV);
 
         while (true) {
-            Arrays.fill(dist, Double.POSITIVE_INFINITY);
-            Arrays.fill(prevEdge, -1);
+            if (++stamp == Integer.MAX_VALUE) {
+                Arrays.fill(seenStamp, 0);
+                Arrays.fill(settledStamp, 0);
+                stamp = 1;
+            }
+
+            int settledCount = 0;
+
+            seenStamp[SOURCE] = stamp;
             dist[SOURCE] = 0.0;
+            prevEdge[SOURCE] = -1;
 
             heap.clear();
-            heap.push(SOURCE, 0.0);
+            heap.addOrDecrease(SOURCE, 0.0);
 
             while (!heap.isEmpty()) {
                 int u = heap.popVertex();
-                double du = heap.poppedKey();
-                if (du > dist[u] + COST_EPS) {
+                if (settledStamp[u] == stamp) {
                     continue;
                 }
+                settledStamp[u] = stamp;
+                settledVertices[settledCount++] = u;
                 if (u == SINK) {
-                    continue;
+                    break;
                 }
+                double du = dist[u];
                 for (int eid = head[u]; eid != -1; eid = eNext[eid]) {
                     if (eCap[eid] <= 0) {
                         continue;
                     }
                     int v = eTo[eid];
+                    if (settledStamp[v] == stamp) {
+                        continue;
+                    }
                     double reducedCost = eCost[eid] + potential[u] - potential[v];
                     if (reducedCost < 0.0) {
                         if (reducedCost > -REDUCED_COST_EPS) {
@@ -330,57 +348,31 @@ final class PrimitiveAssignmentSolver {
                         }
                     }
                     double nd = du + reducedCost;
-                    if (nd < dist[v] - COST_EPS) {
+                    if (seenStamp[v] != stamp || nd < dist[v] - COST_EPS) {
+                        seenStamp[v] = stamp;
                         dist[v] = nd;
                         prevEdge[v] = eid;
-                        heap.push(v, nd);
+                        heap.addOrDecrease(v, nd);
                     }
                 }
             }
 
-            if (!Double.isFinite(dist[SINK])) {
+            if (settledStamp[SINK] != stamp) {
                 break;
             }
 
-            double actualPathCost = dist[SINK] + potential[SINK] - potential[SOURCE];
+            double sinkDist = dist[SINK];
+            double actualPathCost = sinkDist + potential[SINK] - potential[SOURCE];
             if (actualPathCost >= -COST_EPS) {
                 break;
             }
 
-            for (int v = 0; v < nV; v++) {
-                if (Double.isFinite(dist[v])) {
-                    potential[v] += dist[v];
-                }
+            for (int i = 0; i < settledCount; i++) {
+                int settledVertex = settledVertices[i];
+                potential[settledVertex] += dist[settledVertex] - sinkDist;
             }
 
-            int v = SINK;
-            int hops = 0;
-            while (v != SOURCE) {
-                if (++hops > nV) {
-                    throw new IllegalStateException("Cyclic prevEdge chain while augmenting; residual path is invalid");
-                }
-                int eid = prevEdge[v];
-                if (eid < 0) {
-                    throw new IllegalStateException("Missing prevEdge for vertex " + v + " while augmenting");
-                }
-                int rev = eid ^ 1;
-                if (rev < 0 || rev >= ptr) {
-                    throw new IllegalStateException("Invalid reverse edge slot: eid=" + eid + ", rev=" + rev);
-                }
-                if (eTo[eid] != v) {
-                    throw new IllegalStateException(
-                            "prevEdge does not point into current vertex: vertex=" + v
-                                    + ", eid=" + eid
-                                    + ", eTo[eid]=" + eTo[eid]
-                    );
-                }
-                if (eCap[eid] <= 0) {
-                    throw new IllegalStateException("Augmenting through non-positive-capacity edge: eid=" + eid);
-                }
-                eCap[eid]--;
-                eCap[rev]++;
-                v = eTo[rev];
-            }
+            augmentPathByOneChecked(SOURCE, SINK, nV, ptr, eTo, eCap, prevEdge);
         }
 
         Map<Integer, List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
@@ -439,18 +431,62 @@ final class PrimitiveAssignmentSolver {
         return ptr;
     }
 
-    private static final class IntDoubleMinHeap {
-        private int[] vertices;
-        private double[] keys;
-        private int size;
-        private double poppedKey;
+    private static void augmentPathByOneChecked(
+            int source,
+            int sink,
+            int nV,
+            int ptr,
+            int[] eTo,
+            int[] eCap,
+            int[] prevEdge
+    ) {
+        int v = sink;
+        int hops = 0;
+        while (v != source) {
+            if (++hops > nV) {
+                throw new IllegalStateException("Cyclic prevEdge chain while augmenting; residual path is invalid");
+            }
+            int eid = prevEdge[v];
+            if (eid < 0 || eid >= ptr) {
+                throw new IllegalStateException("Invalid prevEdge while augmenting: vertex=" + v + ", eid=" + eid);
+            }
+            int rev = eid ^ 1;
+            if (rev < 0 || rev >= ptr) {
+                throw new IllegalStateException("Invalid reverse edge slot: eid=" + eid + ", rev=" + rev);
+            }
+            if (eTo[eid] != v) {
+                throw new IllegalStateException(
+                        "prevEdge does not point into current vertex: vertex=" + v
+                                + ", eid=" + eid
+                                + ", eTo[eid]=" + eTo[eid]
+                );
+            }
+            if (eCap[eid] <= 0) {
+                throw new IllegalStateException("Augmenting through non-positive-capacity edge: eid=" + eid);
+            }
+            eCap[eid]--;
+            eCap[rev]++;
+            v = eTo[rev];
+        }
+    }
 
-        private IntDoubleMinHeap(int initialCapacity) {
-            this.vertices = new int[Math.max(4, initialCapacity)];
+    private static final class IndexedIntDoubleMinHeap {
+        private final int[] vertices;
+        private final int[] positions;
+        private final double[] keys;
+        private int size;
+
+        private IndexedIntDoubleMinHeap(int vertexCount) {
+            this.vertices = new int[Math.max(4, vertexCount)];
+            this.positions = new int[this.vertices.length];
             this.keys = new double[this.vertices.length];
+            Arrays.fill(positions, -1);
         }
 
         void clear() {
+            for (int index = 0; index < size; index++) {
+                positions[vertices[index]] = -1;
+            }
             size = 0;
         }
 
@@ -458,62 +494,78 @@ final class PrimitiveAssignmentSolver {
             return size == 0;
         }
 
-        double poppedKey() {
-            return poppedKey;
-        }
-
-        void push(int vertex, double key) {
-            if (size == vertices.length) {
-                int newLength = vertices.length << 1;
-                vertices = Arrays.copyOf(vertices, newLength);
-                keys = Arrays.copyOf(keys, newLength);
+        void addOrDecrease(int vertex, double key) {
+            int index = positions[vertex];
+            if (index < 0) {
+                index = size++;
+                vertices[index] = vertex;
+                positions[vertex] = index;
+                keys[vertex] = key;
+                siftUp(index);
+                return;
             }
-
-            int index = size++;
-            while (index > 0) {
-                int parent = (index - 1) >>> 1;
-                if (lessOrEqual(keys[parent], vertices[parent], key, vertex)) {
-                    break;
-                }
-                keys[index] = keys[parent];
-                vertices[index] = vertices[parent];
-                index = parent;
+            if (key < keys[vertex]) {
+                keys[vertex] = key;
+                siftUp(index);
             }
-
-            keys[index] = key;
-            vertices[index] = vertex;
         }
 
         int popVertex() {
             int resultVertex = vertices[0];
-            poppedKey = keys[0];
-
             int lastVertex = vertices[--size];
-            double lastKey = keys[size];
+            positions[resultVertex] = -1;
             if (size > 0) {
-                int index = 0;
-                while (true) {
-                    int left = (index << 1) + 1;
-                    if (left >= size) {
-                        break;
-                    }
-                    int right = left + 1;
-                    int child = left;
-                    if (right < size && less(keys[right], vertices[right], keys[left], vertices[left])) {
+                vertices[0] = lastVertex;
+                positions[lastVertex] = 0;
+                siftDown(0);
+            }
+            return resultVertex;
+        }
+
+        private void siftUp(int index) {
+            int vertex = vertices[index];
+            double key = keys[vertex];
+            while (index > 0) {
+                int parent = (index - 1) >>> 1;
+                int parentVertex = vertices[parent];
+                if (lessOrEqual(keys[parentVertex], parentVertex, key, vertex)) {
+                    break;
+                }
+                vertices[index] = parentVertex;
+                positions[parentVertex] = index;
+                index = parent;
+            }
+            vertices[index] = vertex;
+            positions[vertex] = index;
+        }
+
+        private void siftDown(int index) {
+            int vertex = vertices[index];
+            double key = keys[vertex];
+            while (true) {
+                int left = (index << 1) + 1;
+                if (left >= size) {
+                    break;
+                }
+                int right = left + 1;
+                int child = left;
+                if (right < size) {
+                    int leftVertex = vertices[left];
+                    int rightVertex = vertices[right];
+                    if (less(keys[rightVertex], rightVertex, keys[leftVertex], leftVertex)) {
                         child = right;
                     }
-                    if (lessOrEqual(lastKey, lastVertex, keys[child], vertices[child])) {
-                        break;
-                    }
-                    keys[index] = keys[child];
-                    vertices[index] = vertices[child];
-                    index = child;
                 }
-                keys[index] = lastKey;
-                vertices[index] = lastVertex;
+                int childVertex = vertices[child];
+                if (lessOrEqual(key, vertex, keys[childVertex], childVertex)) {
+                    break;
+                }
+                vertices[index] = childVertex;
+                positions[childVertex] = index;
+                index = child;
             }
-
-            return resultVertex;
+            vertices[index] = vertex;
+            positions[vertex] = index;
         }
 
         private static boolean less(double aKey, int aVertex, double bKey, int bVertex) {
