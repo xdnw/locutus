@@ -65,6 +65,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
                 controlLeverage(candidate.controlDelta()),
                 tacticalMomentum(candidate.defenderResistanceDelta()),
             Math.max(0d, candidate.forceWindowAdvantage()),
+            Math.max(0d, candidate.timingWindowAdvantage()),
             Math.max(0d, candidate.targetPressure())
         );
         return objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);

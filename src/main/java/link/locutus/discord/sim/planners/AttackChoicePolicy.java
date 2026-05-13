@@ -19,6 +19,7 @@ public interface AttackChoicePolicy {
             double resourceSwing,
             double defenderResistanceDelta,
             double forceWindowAdvantage,
+            double timingWindowAdvantage,
             double targetPressure,
             SuperiorityFlagDelta controlDelta
     ) {

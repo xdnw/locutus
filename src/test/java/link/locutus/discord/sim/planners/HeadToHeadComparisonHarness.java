@@ -33,7 +33,7 @@ public final class HeadToHeadComparisonHarness {
             + "attackerWipeRisk,defenderWipeRisk,activeWars,attackerWinningWars,defenderWinningWars,"
             + "turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,"
             + "concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,"
-            + "attackChoiceCalls,noAttackChoices,noAttackChoicePct,specialistAttackSelections,"
+            + "attackChoiceCalls,noAttackChoices,noAttackChoicePct,noMapAttackChoices,noLegalAttackChoices,noPositiveAttackChoices,specialistAttackSelections,"
             + "selectedLaterDeclarations,selectedLaterDeclarationMeanScore,selectedLaterDeclarationTargetActionSpaceMean,"
             + "selectedLaterDeclarationTargetActionSpaceMax,selectedLaterDeclarationStrengthRatioMean,"
             + "selectedLaterDeclarationStrengthRatioMin,selectedLaterDeclarationUnderStrengthPct,"
@@ -152,6 +152,9 @@ public final class HeadToHeadComparisonHarness {
                 Integer.toString(best.attackChoiceCalls()),
                 Integer.toString(best.noAttackChoices()),
                 formatDouble(best.noAttackChoicePct(), 2),
+                Integer.toString(best.noMapAttackChoices()),
+                Integer.toString(best.noLegalAttackChoices()),
+                Integer.toString(best.noPositiveAttackChoices()),
                 Integer.toString(best.specialistAttackSelections()),
                 Integer.toString(best.selectedLaterDeclarations()),
                 formatDouble(best.selectedLaterDeclarationMeanScore(), 3),

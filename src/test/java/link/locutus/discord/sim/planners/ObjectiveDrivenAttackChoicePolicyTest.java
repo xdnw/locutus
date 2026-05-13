@@ -124,6 +124,24 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         assertEquals(AttackType.MISSILE, choice);
     }
 
+        @Test
+        void futureWarLeverageIncludesTimingWindowAdvantage() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                new LinearOpeningObjective(0d, 0d, 0d, 5.00d),
+                                null
+                );
+
+                AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                                6,
+                                attackType -> attackType == AttackType.GROUND
+                                                ? candidate(0d, 0d, -10d, 0d, 0d, 0.40d, SuperiorityFlagDelta.NONE)
+                                                : candidate(0d, 0d, -10d, 0d, 0.25d, 0d, SuperiorityFlagDelta.NONE)
+                ));
+
+                assertEquals(AttackType.GROUND, choice);
+        }
+
     private static AttackChoicePolicy.AttackCandidate candidate(
             double defenderDamage,
             double attackerDamage,
@@ -139,6 +157,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 defenderResistanceDelta,
                 0d,
                 0d,
+                                0d,
                 controlDelta
         );
     }
@@ -151,6 +170,26 @@ class ObjectiveDrivenAttackChoicePolicyTest {
             double forceWindowAdvantage,
             SuperiorityFlagDelta controlDelta
     ) {
+        return candidate(
+                defenderDamage,
+                attackerDamage,
+                defenderResistanceDelta,
+                resourceSwing,
+                forceWindowAdvantage,
+                0d,
+                controlDelta
+        );
+    }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            double resourceSwing,
+            double forceWindowAdvantage,
+            double timingWindowAdvantage,
+            SuperiorityFlagDelta controlDelta
+    ) {
         return new AttackChoicePolicy.AttackCandidate(
                 true,
                 3,
@@ -159,6 +198,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 resourceSwing,
                 defenderResistanceDelta,
                 forceWindowAdvantage,
+                                timingWindowAdvantage,
                 0d,
                 controlDelta
         );

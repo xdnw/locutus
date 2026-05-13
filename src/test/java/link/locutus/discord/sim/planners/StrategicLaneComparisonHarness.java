@@ -37,7 +37,7 @@ public final class StrategicLaneComparisonHarness {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final int DEFAULT_HORIZON_TURNS = 72;
     private static final int DEFAULT_POPULATION = 0;
-    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,respondingSideLaterDeclarationCapPressurePct,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,attackChoiceCalls,noAttackChoices,noAttackChoicePct,specialistAttackSelections,selectedLaterDeclarations,selectedLaterDeclarationMeanScore,selectedLaterDeclarationTargetActionSpaceMean,selectedLaterDeclarationTargetActionSpaceMax,selectedLaterDeclarationStrengthRatioMean,selectedLaterDeclarationStrengthRatioMin,selectedLaterDeclarationUnderStrengthPct,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
+    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,respondingSideLaterDeclarationCapPressurePct,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,attackChoiceCalls,noAttackChoices,noAttackChoicePct,noMapAttackChoices,noLegalAttackChoices,noPositiveAttackChoices,specialistAttackSelections,selectedLaterDeclarations,selectedLaterDeclarationMeanScore,selectedLaterDeclarationTargetActionSpaceMean,selectedLaterDeclarationTargetActionSpaceMax,selectedLaterDeclarationStrengthRatioMean,selectedLaterDeclarationStrengthRatioMin,selectedLaterDeclarationUnderStrengthPct,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
 
     private StrategicLaneComparisonHarness() {
     }
@@ -148,6 +148,9 @@ public final class StrategicLaneComparisonHarness {
                             Integer.toString(best.attackChoiceCalls()),
                             Integer.toString(best.noAttackChoices()),
                             formatDouble(best.noAttackChoicePct(), 2),
+                            Integer.toString(best.noMapAttackChoices()),
+                            Integer.toString(best.noLegalAttackChoices()),
+                            Integer.toString(best.noPositiveAttackChoices()),
                             Integer.toString(best.specialistAttackSelections()),
                             Integer.toString(best.selectedLaterDeclarations()),
                             formatDouble(best.selectedLaterDeclarationMeanScore(), 3),
@@ -936,6 +939,9 @@ public final class StrategicLaneComparisonHarness {
                     diagnostics.attackChoiceCalls(),
                     diagnostics.noAttackChoices(),
                     diagnostics.noAttackChoicePct(),
+                    diagnostics.noMapAttackChoices(),
+                    diagnostics.noLegalAttackChoices(),
+                    diagnostics.noPositiveAttackChoices(),
                     diagnostics.specialistAttackSelections(),
                     diagnostics.selectedLaterDeclarations(),
                     diagnostics.selectedLaterDeclarationMeanScore(),
@@ -1239,6 +1245,9 @@ public final class StrategicLaneComparisonHarness {
             int attackChoiceCalls,
             int noAttackChoices,
             double noAttackChoicePct,
+            int noMapAttackChoices,
+            int noLegalAttackChoices,
+            int noPositiveAttackChoices,
             int specialistAttackSelections,
             int selectedLaterDeclarations,
             double selectedLaterDeclarationMeanScore,
@@ -1306,6 +1315,9 @@ public final class StrategicLaneComparisonHarness {
                     attackChoiceCalls,
                     noAttackChoices,
                     noAttackChoicePct,
+                    noMapAttackChoices,
+                    noLegalAttackChoices,
+                    noPositiveAttackChoices,
                     specialistAttackSelections,
                     selectedLaterDeclarations,
                     selectedLaterDeclarationMeanScore,

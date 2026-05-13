@@ -205,6 +205,13 @@ final class LongHorizonForwardProjection {
         RESPONDING_SIDE
     }
 
+    private enum AttackChoiceFailureReason {
+        NONE,
+        NO_MAP,
+        NO_LEGAL_ATTACK,
+        NO_POSITIVE_ATTACK
+    }
+
     private final CandidateEdgeTable edges;
     private final CompiledScenario scenario;
     private final int horizonTurns;
@@ -259,6 +266,9 @@ final class LongHorizonForwardProjection {
     private long profiledWarIterations;
     private long profiledAttackChoiceCalls;
     private long profiledNoAttackChoices;
+    private long profiledNoMapAttackChoices;
+    private long profiledNoLegalAttackChoices;
+    private long profiledNoPositiveAttackChoices;
     private long profiledSpecialistAttackSelections;
     private long profiledAttackTypeEvaluations;
     private long profiledResolvedAttacks;
@@ -273,6 +283,7 @@ final class LongHorizonForwardProjection {
     private long profiledPreparedStateRestores;
     private long profiledPreparedWarTemplateBuilds;
     private long profiledPreparedWarRestores;
+    private AttackChoiceFailureReason lastAttackChoiceFailureReason = AttackChoiceFailureReason.NONE;
 
     private LongHorizonForwardProjection(
             CandidateEdgeTable edges,
@@ -2045,6 +2056,7 @@ final class LongHorizonForwardProjection {
             AttackType attackType = chooseBestAttackType(state, warState, context, scratch, result);
             if (attackType == null) {
                 profiledNoAttackChoices++;
+                recordAttackChoiceFailure(lastAttackChoiceFailureReason);
                 return;
             }
             if (attackType == AttackType.MISSILE || attackType == AttackType.NUKE) {
@@ -2070,6 +2082,11 @@ final class LongHorizonForwardProjection {
         int defenderNationIndex = warState.defenderNationIndex[context.warIndex()];
         CombatKernel.NationState attacker = state.nationViews[attackerNationIndex];
         int mapsAvailable = warState.attackerMaps[context.warIndex()];
+        lastAttackChoiceFailureReason = AttackChoiceFailureReason.NONE;
+        if (!hasMapForAdaptiveAttack(mapsAvailable)) {
+            lastAttackChoiceFailureReason = AttackChoiceFailureReason.NO_MAP;
+            return null;
+        }
         StrategicAssetValue.ActiveWarContext attackerActiveWarContext = state.activeWarContext(attackerNationIndex, warState);
         StrategicAssetValue.ActiveWarContext defenderActiveWarContext = state.activeWarContext(defenderNationIndex, warState);
         StrategicCapabilityVector attackerBaselineCapability = state.capabilityVector(
@@ -2105,21 +2122,27 @@ final class LongHorizonForwardProjection {
                 attackerBaselineMilitaryValue,
                 defenderBaselineMilitaryValue
             );
-            return HeuristicAttackChoicePolicy.INSTANCE.chooseAttackType(
+            AttackType choice = HeuristicAttackChoicePolicy.INSTANCE.chooseAttackType(
                     ADAPTIVE_ATTACK_TYPES,
                     mapsAvailable,
                     projectionAttackEvaluator,
                     heuristicAttackCandidate,
                     () -> projectionAttackEvaluator.copyResultInto(heuristicAttackSelectionResult)
             );
+            if (choice == null) {
+                lastAttackChoiceFailureReason = hasLegalAdaptiveAttack(attacker, mapsAvailable)
+                        ? AttackChoiceFailureReason.NO_POSITIVE_ATTACK
+                        : AttackChoiceFailureReason.NO_LEGAL_ATTACK;
+            }
+            return choice;
         }
-        return projectionPolicies.attackChoicePolicy().chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+        AttackType choice = projectionPolicies.attackChoicePolicy().chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
                 ADAPTIVE_ATTACK_TYPES,
                 mapsAvailable,
                 attackType -> {
                     int mapCost = attackType.getMapUsed();
                     if (mapCost <= 0 || mapCost > mapsAvailable || !CombatKernel.canUseAttackType(attacker, attackType)) {
-                        return new AttackChoicePolicy.AttackCandidate(false, mapCost, 0d, 0d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
+                        return new AttackChoicePolicy.AttackCandidate(false, mapCost, 0d, 0d, 0d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
                     }
                     CombatKernel.resolveInto(context, attackType, ResolutionMode.MOST_LIKELY, scratch, result);
                     double defenderUnitDamage = state.unitLossValue(
@@ -2144,6 +2167,7 @@ final class LongHorizonForwardProjection {
                             attackerUnitDamage,
                             attackerBaselineMilitaryValue
                     );
+                        double timingWindowAdvantage = projectedAttackTimingWindowAdvantage(warState, context, result);
                     return new AttackChoicePolicy.AttackCandidate(
                             true,
                             mapCost,
@@ -2152,12 +2176,141 @@ final class LongHorizonForwardProjection {
                             result.infraDestroyed(),
                             result.defenderResistanceDelta(),
                             forceWindowAdvantage,
+                            timingWindowAdvantage,
                             0d,
                             result.controlDelta()
                     );
                 }
         ));
+        if (choice == null) {
+            lastAttackChoiceFailureReason = hasLegalAdaptiveAttack(attacker, mapsAvailable)
+                    ? AttackChoiceFailureReason.NO_POSITIVE_ATTACK
+                    : AttackChoiceFailureReason.NO_LEGAL_ATTACK;
+        }
+        return choice;
     }
+
+    private void recordAttackChoiceFailure(AttackChoiceFailureReason reason) {
+        switch (reason) {
+            case NO_MAP -> profiledNoMapAttackChoices++;
+            case NO_LEGAL_ATTACK -> profiledNoLegalAttackChoices++;
+            case NO_POSITIVE_ATTACK -> profiledNoPositiveAttackChoices++;
+            default -> {
+            }
+        }
+    }
+
+    private static boolean hasMapForAdaptiveAttack(int mapsAvailable) {
+        for (AttackType attackType : ADAPTIVE_ATTACK_TYPES) {
+            int mapCost = attackType.getMapUsed();
+            if (mapCost > 0 && mapCost <= mapsAvailable) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasLegalAdaptiveAttack(CombatKernel.NationState attacker, int mapsAvailable) {
+        for (AttackType attackType : ADAPTIVE_ATTACK_TYPES) {
+            int mapCost = attackType.getMapUsed();
+            if (mapCost > 0 && mapCost <= mapsAvailable && CombatKernel.canUseAttackType(attacker, attackType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+                private static double projectedAttackTimingWindowAdvantage(
+                    DenseWarState warState,
+                    DenseWarContext context,
+                    MutableAttackResult result
+                ) {
+                int warIndex = context.warIndex();
+                int attackerControlsBefore = controlCountForAttacker(warState, warIndex);
+                int defenderControlsBefore = controlCountForDefender(warState, warIndex);
+                double before = StrategicTimingValue.victoryTimingWindowValue(
+                    warState.attackerResistance[warIndex],
+                    warState.defenderResistance[warIndex],
+                    attackerControlsBefore,
+                    defenderControlsBefore
+                );
+                SuperiorityFlagDelta controlDelta = result.controlDelta();
+                int groundOwnerAfter = postAttackOwner(
+                    warState.groundSuperiorityOwner[warIndex],
+                    controlDelta.groundSuperiority(),
+                    controlDelta.clearGroundSuperiority()
+                );
+                int airOwnerAfter = postAttackOwner(
+                    warState.airSuperiorityOwner[warIndex],
+                    controlDelta.airSuperiority(),
+                    controlDelta.clearAirSuperiority()
+                );
+                int blockadeOwnerAfter = postAttackOwner(
+                    warState.blockadeOwner[warIndex],
+                    controlDelta.blockade(),
+                    controlDelta.clearBlockade()
+                );
+                int attackerControlsAfter = PlannerControlStateReducer.controlCountForOwnerCode(
+                    DenseWarState.OWNER_ATTACKER,
+                    groundOwnerAfter,
+                    airOwnerAfter,
+                    blockadeOwnerAfter
+                );
+                int defenderControlsAfter = PlannerControlStateReducer.controlCountForOwnerCode(
+                    DenseWarState.OWNER_DEFENDER,
+                    groundOwnerAfter,
+                    airOwnerAfter,
+                    blockadeOwnerAfter
+                );
+                double after = StrategicTimingValue.victoryTimingWindowValue(
+                    resistanceAfter(warState.attackerResistance[warIndex], result.attackerResistanceDelta()),
+                    resistanceAfter(warState.defenderResistance[warIndex], result.defenderResistanceDelta()),
+                    attackerControlsAfter,
+                    defenderControlsAfter
+                );
+                return Math.max(0d, after - before);
+                }
+
+                private static int controlCountForAttacker(DenseWarState warState, int warIndex) {
+                return PlannerControlStateReducer.controlCountForOwnerCode(
+                    DenseWarState.OWNER_ATTACKER,
+                    warState.groundSuperiorityOwner[warIndex],
+                    warState.airSuperiorityOwner[warIndex],
+                    warState.blockadeOwner[warIndex]
+                );
+                }
+
+                private static int controlCountForDefender(DenseWarState warState, int warIndex) {
+                return PlannerControlStateReducer.controlCountForOwnerCode(
+                    DenseWarState.OWNER_DEFENDER,
+                    warState.groundSuperiorityOwner[warIndex],
+                    warState.airSuperiorityOwner[warIndex],
+                    warState.blockadeOwner[warIndex]
+                );
+                }
+
+                private static int postAttackOwner(int currentOwner, int ownerDelta, boolean clearDefenderControl) {
+                if (ownerDelta > 0) {
+                    return DenseWarState.OWNER_ATTACKER;
+                }
+                if (ownerDelta < 0) {
+                    return DenseWarState.OWNER_DEFENDER;
+                }
+                if (clearDefenderControl && currentOwner == DenseWarState.OWNER_DEFENDER) {
+                    return DenseWarState.OWNER_NONE;
+                }
+                return currentOwner;
+                }
+
+                private static int resistanceAfter(int currentResistance, double resistanceDelta) {
+                if (resistanceDelta < 0d) {
+                    return Math.max(0, currentResistance - (int) Math.round(-resistanceDelta));
+                }
+                if (resistanceDelta > 0d) {
+                    return Math.min(100, currentResistance + (int) Math.round(resistanceDelta));
+                }
+                return currentResistance;
+                }
 
     private static double projectedAttackForceWindowAdvantage(
             double defenderUnitDamage,
@@ -2440,6 +2593,9 @@ final class LongHorizonForwardProjection {
         profiledWarIterations = 0L;
         profiledAttackChoiceCalls = 0L;
         profiledNoAttackChoices = 0L;
+        profiledNoMapAttackChoices = 0L;
+        profiledNoLegalAttackChoices = 0L;
+        profiledNoPositiveAttackChoices = 0L;
         profiledSpecialistAttackSelections = 0L;
         profiledAttackTypeEvaluations = 0L;
         profiledResolvedAttacks = 0L;
@@ -2454,6 +2610,7 @@ final class LongHorizonForwardProjection {
         profiledPreparedStateRestores = 0L;
         profiledPreparedWarTemplateBuilds = 0L;
         profiledPreparedWarRestores = 0L;
+        lastAttackChoiceFailureReason = AttackChoiceFailureReason.NONE;
     }
 
     private void flushProjectedEvaluationProfile() {
@@ -4917,6 +5074,9 @@ final class LongHorizonForwardProjection {
                     saturatedInt(profiledAttackChoiceCalls),
                     saturatedInt(profiledNoAttackChoices),
                     percent(profiledNoAttackChoices, profiledAttackChoiceCalls),
+                    saturatedInt(profiledNoMapAttackChoices),
+                    saturatedInt(profiledNoLegalAttackChoices),
+                    saturatedInt(profiledNoPositiveAttackChoices),
                     saturatedInt(profiledSpecialistAttackSelections),
                     saturatedInt(profiledSelectedLaterDeclarations),
                     mean(profiledSelectedLaterDeclarationScoreSum, profiledSelectedLaterDeclarations),
@@ -5221,6 +5381,9 @@ final class LongHorizonForwardProjection {
                 int attackChoiceCalls,
                 int noAttackChoices,
                 double noAttackChoicePct,
+                int noMapAttackChoices,
+                int noLegalAttackChoices,
+                int noPositiveAttackChoices,
                 int specialistAttackSelections,
                 int selectedLaterDeclarations,
                 double selectedLaterDeclarationMeanScore,

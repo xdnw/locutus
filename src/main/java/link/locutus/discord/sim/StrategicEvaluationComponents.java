@@ -32,15 +32,24 @@ public interface StrategicEvaluationComponents {
     }
 
     /**
+     * Positive change in the side's useful control/timing window. This separates attacks that
+     * create a tenable follow-through window from attacks that merely drain resistance in a war
+     * whose timing is already strategically empty or worsening.
+     */
+    default double timingWindowAdvantage() {
+        return 0d;
+    }
+
+    /**
      * Backward-compatible follow-on leverage seam for opening/objective callers.
      *
      * <p>This intentionally excludes raw resistance drain. Resistance remains available through
      * {@link #tacticalMomentum()} as a tactical-transition diagnostic, but follow-on leverage is
-     * restricted to mechanics-facing force-window advantage until a dedicated timing/control owner
-     * replaces this compatibility surface.</p>
+     * restricted to mechanics-facing force-window and timing-window advantage until the older
+     * scalar objective signature is replaced.</p>
      */
     default double futureWarLeverage() {
-        return forceWindowAdvantage();
+        return forceWindowAdvantage() + timingWindowAdvantage();
     }
 
     default double targetPressure() {
