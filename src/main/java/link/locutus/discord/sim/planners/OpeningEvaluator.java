@@ -850,8 +850,7 @@ final class OpeningEvaluator {
         if (firstAttackTypeId < 0) {
             return false;
         }
-        metrics.set(0d, 0d, 0d, 0d, 0d, 0d, targetPressure);
-        float score = (float) objective.scoreOpening(metrics, attacker.teamId());
+        float score = (float) positiveBaselineOpeningScore(targetPressure);
         if (openingSettings != null) {
             score *= (float) (openingSettings.warTypeWeight(WarType.ORD)
                     * openingSettings.attackTypeWeight(AttackType.values[firstAttackTypeId]));
@@ -861,6 +860,13 @@ final class OpeningEvaluator {
         }
         out.set(score, (byte) WarType.ORD.ordinal(), firstAttackTypeId, 0f, 0f, 0f, 0f, 0f);
         return true;
+    }
+
+    private static double positiveBaselineOpeningScore(double targetPressure) {
+        if (!Double.isFinite(targetPressure) || targetPressure <= 0d) {
+            return 0d;
+        }
+        return 0.25d * targetPressure;
     }
 
     private static byte firstLegalOpeningAttack(DBNationSnapshot attacker) {

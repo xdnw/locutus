@@ -75,6 +75,44 @@ class PlannerAutonomousDeclarationPlannerTest {
     }
 
     @Test
+    void noDeclarationsPolicySuppressesAutonomousDeclarations() {
+        DBNationSnapshot declarer = nation(101, 1)
+                .maxOff(1)
+                .unit(MilitaryUnit.AIRCRAFT, 700)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .build();
+        DBNationSnapshot target = nation(202, 2)
+                .unit(MilitaryUnit.AIRCRAFT, 250)
+                .unit(MilitaryUnit.SOLDIER, 8_000)
+                .unit(MilitaryUnit.TANK, 250)
+                .build();
+
+        StrategicObjective objective = BlitzObjective.NET_DAMAGE.objective();
+        PlannerAutonomousDeclarationPlanner.Plan legacyPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
+                List.of(declarer),
+                List.of(target),
+                SimTuning.defaults(),
+                SidePolicy.legacy("acting", objective),
+                SidePolicy.legacyPassive("target", objective),
+                24
+        );
+        PlannerAutonomousDeclarationPlanner.Plan noDeclarationsPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
+                List.of(declarer),
+                List.of(target),
+                SimTuning.defaults(),
+                SidePolicy.noDeclarations("acting", objective),
+                SidePolicy.legacyPassive("target", objective),
+                24
+        );
+
+        assertFalse(legacyPlan.assignment().isEmpty(),
+                "legacy projection should still prove the fixture is declaration-eligible");
+        assertTrue(noDeclarationsPlan.assignment().isEmpty(),
+                "the named no-declarations policy must not retain heuristic later declarations");
+    }
+
+    @Test
     void autonomousPlannerCarriesSelectedWarTypeForAssignedPair() {
         DBNationSnapshot declarer = nation(101, 1)
                 .maxOff(2)

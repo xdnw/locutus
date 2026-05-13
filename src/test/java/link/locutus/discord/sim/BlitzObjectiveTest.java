@@ -188,7 +188,7 @@ class BlitzObjectiveTest {
     }
 
     @Test
-    void controlAndBalancedTerminalScoringRetainActiveWarStrategicPressure() {
+    void controlTerminalIgnoresActiveWarPressureWhileBalancedRetainsIt() {
         TeamWarControlView view = new TeamWarControlView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
@@ -212,8 +212,8 @@ class BlitzObjectiveTest {
             }
         };
 
-        assertEquals(57.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 1), 1e-9);
-        assertEquals(-57.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 2), 1e-9);
+        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 1), 1e-9);
+        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 2), 1e-9);
         assertEquals(15.0, BlitzObjective.BALANCED.objective().scoreTerminal(view, 1), 1e-9);
         assertEquals(-15.0, BlitzObjective.BALANCED.objective().scoreTerminal(view, 2), 1e-9);
     }

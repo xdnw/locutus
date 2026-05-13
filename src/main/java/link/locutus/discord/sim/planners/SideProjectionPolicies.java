@@ -13,7 +13,7 @@ public record SideProjectionPolicies(
 
     public static final SideProjectionPolicies NO_DECLARATIONS = new SideProjectionPolicies(
             HeuristicAttackChoicePolicy.INSTANCE,
-            HeuristicLaterDeclarationScoringPolicy.INSTANCE
+            context -> 0d
     );
 
     public SideProjectionPolicies {
