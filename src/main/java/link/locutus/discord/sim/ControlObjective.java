@@ -31,22 +31,31 @@ final class ControlObjective implements StrategicObjective {
             double targetPressure,
             int teamId
         ) {
-        double effectiveTargetPressure = hasActionableLeverage(immediateHarm, controlLeverage, futureWarLeverage)
+        double effectiveResourceSwing = Math.max(0d, resourceSwing);
+        double effectiveTargetPressure = hasActionableLeverage(
+                immediateHarm,
+                effectiveResourceSwing,
+                controlLeverage,
+                futureWarLeverage
+        )
                 ? targetPressure
                 : 0.0d;
         return (4.0d * controlLeverage)
             + (3.0d * futureWarLeverage)
             + (4.0d * effectiveTargetPressure)
+            + (0.05d * effectiveResourceSwing)
             + (0.10d * immediateHarm)
             - (0.35d * selfExposure);
     }
 
     private static boolean hasActionableLeverage(
             double immediateHarm,
+            double resourceSwing,
             double controlLeverage,
             double futureWarLeverage
     ) {
         return immediateHarm > 0.0d
+                || resourceSwing > 0.0d
                 || controlLeverage > 0.0d
                 || futureWarLeverage > 0.0d;
     }

@@ -962,9 +962,9 @@ final class OpeningEvaluator {
         OpeningRolloutMetricProjector.project(baseline, context, currentMetrics, result, projectedMetrics);
         if (projectedMetrics.immediateHarm() <= 0d && result.infraDestroyed() > 0d) {
             projectedMetrics.set(
-                    result.infraDestroyed(),
+                    projectedMetrics.immediateHarm(),
                     projectedMetrics.selfExposure(),
-                    projectedMetrics.resourceSwing(),
+                    projectedMetrics.resourceSwing() + result.infraDestroyed(),
                     projectedMetrics.controlLeverage(),
                     projectedMetrics.tacticalMomentum(),
                     projectedMetrics.forceWindowAdvantage(),

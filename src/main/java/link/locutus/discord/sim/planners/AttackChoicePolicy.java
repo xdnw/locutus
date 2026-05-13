@@ -16,7 +16,10 @@ public interface AttackChoicePolicy {
             int mapCost,
             double defenderUnitDamage,
             double attackerUnitDamage,
+            double resourceSwing,
             double defenderResistanceDelta,
+            double forceWindowAdvantage,
+            double targetPressure,
             SuperiorityFlagDelta controlDelta
     ) {
         public AttackCandidate {

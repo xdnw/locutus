@@ -61,11 +61,11 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage()),
                 Math.max(0d, candidate.attackerUnitDamage()),
-                0d,
+            Math.max(0d, candidate.resourceSwing()),
                 controlLeverage(candidate.controlDelta()),
                 tacticalMomentum(candidate.defenderResistanceDelta()),
-                forceWindowLeverage(candidate.defenderResistanceDelta()),
-                0d
+            Math.max(0d, candidate.forceWindowAdvantage()),
+            Math.max(0d, candidate.targetPressure())
         );
         return objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
     }
@@ -88,10 +88,6 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
 
     private static double tacticalMomentum(double defenderResistanceDelta) {
         return clamp01(-defenderResistanceDelta / 100d);
-    }
-
-    private static double forceWindowLeverage(double defenderResistanceDelta) {
-        return tacticalMomentum(defenderResistanceDelta);
     }
 
     private static double clamp01(double value) {

@@ -74,6 +74,56 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         assertEquals(AttackType.AIRSTRIKE_TANK, choice);
     }
 
+    @Test
+    void futureWarLeverageComesFromForceWindowNotResistanceDrain() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                new LinearOpeningObjective(0d, 0d, 0d, 5.00d),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(0d, 0d, -50d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                        : candidate(0d, 0d, -5d, 0d, 0.25d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.AIRSTRIKE_TANK, choice);
+    }
+
+    @Test
+    void resourceSwingIsNotSmuggledIntoImmediateHarm() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                new LinearOpeningObjective(1.00d, 0d, 0d, 0d),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.MISSILE},
+                8,
+                attackType -> candidate(0d, 0d, 0d, 100d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(null, choice);
+    }
+
+    @Test
+    void controlObjectiveCanValueSpecialistResourcePressure() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                link.locutus.discord.sim.BlitzObjective.CONTROL.objective(),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.MISSILE},
+                8,
+                attackType -> candidate(0d, 0d, 0d, 120d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.MISSILE, choice);
+    }
+
     private static AttackChoicePolicy.AttackCandidate candidate(
             double defenderDamage,
             double attackerDamage,
@@ -85,7 +135,31 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 3,
                 defenderDamage,
                 attackerDamage,
+                0d,
                 defenderResistanceDelta,
+                0d,
+                0d,
+                controlDelta
+        );
+    }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            double resourceSwing,
+            double forceWindowAdvantage,
+            SuperiorityFlagDelta controlDelta
+    ) {
+        return new AttackChoicePolicy.AttackCandidate(
+                true,
+                3,
+                defenderDamage,
+                attackerDamage,
+                resourceSwing,
+                defenderResistanceDelta,
+                forceWindowAdvantage,
+                0d,
                 controlDelta
         );
     }

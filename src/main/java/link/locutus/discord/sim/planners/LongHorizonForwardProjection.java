@@ -2119,7 +2119,7 @@ final class LongHorizonForwardProjection {
                 attackType -> {
                     int mapCost = attackType.getMapUsed();
                     if (mapCost <= 0 || mapCost > mapsAvailable || !CombatKernel.canUseAttackType(attacker, attackType)) {
-                        return new AttackChoicePolicy.AttackCandidate(false, mapCost, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
+                        return new AttackChoicePolicy.AttackCandidate(false, mapCost, 0d, 0d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
                     }
                     CombatKernel.resolveInto(context, attackType, ResolutionMode.MOST_LIKELY, scratch, result);
                     double defenderUnitDamage = state.unitLossValue(
@@ -2130,11 +2130,6 @@ final class LongHorizonForwardProjection {
                             defenderBaselineCapability,
                             defenderBaselineMilitaryValue
                     );
-                    if (defenderUnitDamage <= 0d
-                            && (attackType == AttackType.MISSILE || attackType == AttackType.NUKE)
-                            && result.infraDestroyed() > 0d) {
-                        defenderUnitDamage = result.infraDestroyed();
-                    }
                     double attackerUnitDamage = state.unitLossValue(
                             attackerNationIndex,
                             result.attackerLosses(),
@@ -2143,16 +2138,43 @@ final class LongHorizonForwardProjection {
                             attackerBaselineCapability,
                             attackerBaselineMilitaryValue
                     );
+                    double forceWindowAdvantage = projectedAttackForceWindowAdvantage(
+                            defenderUnitDamage,
+                            defenderBaselineMilitaryValue,
+                            attackerUnitDamage,
+                            attackerBaselineMilitaryValue
+                    );
                     return new AttackChoicePolicy.AttackCandidate(
                             true,
                             mapCost,
                             defenderUnitDamage,
                             attackerUnitDamage,
+                            result.infraDestroyed(),
                             result.defenderResistanceDelta(),
+                            forceWindowAdvantage,
+                            0d,
                             result.controlDelta()
                     );
                 }
         ));
+    }
+
+    private static double projectedAttackForceWindowAdvantage(
+            double defenderUnitDamage,
+            double defenderBaselineMilitaryValue,
+            double attackerUnitDamage,
+            double attackerBaselineMilitaryValue
+    ) {
+        double defenderLossShare = positiveShare(defenderUnitDamage, defenderBaselineMilitaryValue);
+        double attackerLossShare = positiveShare(attackerUnitDamage, attackerBaselineMilitaryValue);
+        return Math.max(0d, defenderLossShare - attackerLossShare);
+    }
+
+    private static double positiveShare(double value, double baseline) {
+        if (!(value > 0d) || !(baseline > 0d)) {
+            return 0d;
+        }
+        return Math.min(1d, value / baseline);
     }
 
     private SideProjectionPolicies projectionPoliciesForAttacker(int attackerNationIndex, int attackerCount) {
