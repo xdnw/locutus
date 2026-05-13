@@ -258,8 +258,17 @@ final class LongHorizonForwardProjection {
     private long profiledRedeclarations;
     private long profiledWarIterations;
     private long profiledAttackChoiceCalls;
+    private long profiledNoAttackChoices;
+    private long profiledSpecialistAttackSelections;
     private long profiledAttackTypeEvaluations;
     private long profiledResolvedAttacks;
+    private long profiledSelectedLaterDeclarations;
+    private double profiledSelectedLaterDeclarationScoreSum;
+    private double profiledSelectedLaterDeclarationTargetActionSpaceSum;
+    private double profiledSelectedLaterDeclarationTargetActionSpaceMax;
+    private double profiledSelectedLaterDeclarationStrengthRatioSum;
+    private double profiledSelectedLaterDeclarationStrengthRatioMin;
+    private long profiledSelectedLaterDeclarationUnderStrength;
     private long profiledPreparedStateProfiles;
     private long profiledPreparedStateRestores;
     private long profiledPreparedWarTemplateBuilds;
@@ -1438,7 +1447,34 @@ final class LongHorizonForwardProjection {
             declarerCaps,
             targetCaps
         );
-        return projectedLaterDeclarationInputs(projectedScenario, projectedEdges, declarerCaps, targetCaps, declarerOverallIndexes, targetOverallIndexes);
+        double[] edgeTargetActionSpaceValues = new double[projectedEdges.edgeCount()];
+        double[] edgeStrengthRatios = new double[projectedEdges.edgeCount()];
+        for (int edgeIndex = 0; edgeIndex < projectedEdges.edgeCount(); edgeIndex++) {
+            int declarerOverallIndex = declarerOverallIndexes[projectedEdges.attackerIndex(edgeIndex)];
+            int targetOverallIndex = targetOverallIndexes[projectedEdges.defenderIndex(edgeIndex)];
+            edgeTargetActionSpaceValues[edgeIndex] = state.marginalActionSpaceValue(targetOverallIndex, warState);
+            edgeStrengthRatios[edgeIndex] = strengthRatio(
+                    state.combatStrength(declarerOverallIndex),
+                    state.combatStrength(targetOverallIndex)
+            );
+        }
+        return projectedLaterDeclarationInputs(
+                projectedScenario,
+                projectedEdges,
+                declarerCaps,
+                targetCaps,
+                declarerOverallIndexes,
+                targetOverallIndexes,
+                edgeTargetActionSpaceValues,
+                edgeStrengthRatios
+        );
+    }
+
+    private static double strengthRatio(double declarerStrength, double targetStrength) {
+        if (targetStrength <= 0d) {
+            return declarerStrength > 0d ? Double.POSITIVE_INFINITY : 1d;
+        }
+        return Math.max(0d, declarerStrength) / targetStrength;
     }
 
     private double projectedDeclarationScore(
@@ -1629,8 +1665,33 @@ final class LongHorizonForwardProjection {
                     && declaration.targetNationIndex() < scenario.attackerCount()) {
                 counterIncidenceOut[declaration.targetNationIndex()]++;
             }
+            recordSelectedLaterDeclaration(inputs, declaration.edgeIndex());
         }
         return declarations;
+    }
+
+    private void recordSelectedLaterDeclaration(ProjectedLaterDeclarationInputs inputs, int edgeIndex) {
+        profiledSelectedLaterDeclarations++;
+        profiledSelectedLaterDeclarationScoreSum += Math.max(0d, inputs.edges().scalarScore(edgeIndex));
+        double targetActionSpace = safeArrayValue(inputs.edgeTargetActionSpaceValues(), edgeIndex);
+        profiledSelectedLaterDeclarationTargetActionSpaceSum += targetActionSpace;
+        profiledSelectedLaterDeclarationTargetActionSpaceMax = Math.max(
+                profiledSelectedLaterDeclarationTargetActionSpaceMax,
+                targetActionSpace
+        );
+        double strengthRatio = safeArrayValue(inputs.edgeStrengthRatios(), edgeIndex);
+        profiledSelectedLaterDeclarationStrengthRatioSum += strengthRatio;
+        profiledSelectedLaterDeclarationStrengthRatioMin = Math.min(
+                profiledSelectedLaterDeclarationStrengthRatioMin,
+                strengthRatio
+        );
+        if (strengthRatio < 0.75d) {
+            profiledSelectedLaterDeclarationUnderStrength++;
+        }
+    }
+
+    private static double safeArrayValue(double[] values, int index) {
+        return values != null && index >= 0 && index < values.length ? values[index] : 0d;
     }
 
     private static int compareProjectedAssignedDeclarations(
@@ -1659,7 +1720,9 @@ final class LongHorizonForwardProjection {
             int[] declarerCaps,
             int[] targetCaps,
             int[] declarerOverallIndexes,
-            int[] targetOverallIndexes
+            int[] targetOverallIndexes,
+            double[] edgeTargetActionSpaceValues,
+            double[] edgeStrengthRatios
     ) {
         int[] declarerNationIds = new int[projectedScenario.attackerCount()];
         Int2IntOpenHashMap declarerOverallIndexesByNationId = new Int2IntOpenHashMap(Math.max(16, projectedScenario.attackerCount() * 2));
@@ -1701,7 +1764,9 @@ final class LongHorizonForwardProjection {
             targetNationIds,
                 declarerOverallIndexesByNationId,
                 targetOverallIndexesByNationId,
-                edgeIndexByPair
+                edgeIndexByPair,
+                edgeTargetActionSpaceValues,
+                edgeStrengthRatios
         );
     }
 
@@ -1979,7 +2044,11 @@ final class LongHorizonForwardProjection {
             profiledAttackChoiceCalls++;
             AttackType attackType = chooseBestAttackType(state, warState, context, scratch, result);
             if (attackType == null) {
+                profiledNoAttackChoices++;
                 return;
+            }
+            if (attackType == AttackType.MISSILE || attackType == AttackType.NUKE) {
+                profiledSpecialistAttackSelections++;
             }
             if (projectionPoliciesForAttacker(warState.attackerNationIndex[context.warIndex()], state.attackerCount).attackChoicePolicy()
                     == HeuristicAttackChoicePolicy.INSTANCE) {
@@ -2348,8 +2417,17 @@ final class LongHorizonForwardProjection {
         profiledRedeclarations = 0L;
         profiledWarIterations = 0L;
         profiledAttackChoiceCalls = 0L;
+        profiledNoAttackChoices = 0L;
+        profiledSpecialistAttackSelections = 0L;
         profiledAttackTypeEvaluations = 0L;
         profiledResolvedAttacks = 0L;
+        profiledSelectedLaterDeclarations = 0L;
+        profiledSelectedLaterDeclarationScoreSum = 0d;
+        profiledSelectedLaterDeclarationTargetActionSpaceSum = 0d;
+        profiledSelectedLaterDeclarationTargetActionSpaceMax = 0d;
+        profiledSelectedLaterDeclarationStrengthRatioSum = 0d;
+        profiledSelectedLaterDeclarationStrengthRatioMin = Double.POSITIVE_INFINITY;
+        profiledSelectedLaterDeclarationUnderStrength = 0L;
         profiledPreparedStateProfiles = 0L;
         profiledPreparedStateRestores = 0L;
         profiledPreparedWarTemplateBuilds = 0L;
@@ -4813,8 +4891,29 @@ final class LongHorizonForwardProjection {
                     state.turnsNoControl,
                     saturatedInt(profiledCounterDeclarations),
                     saturatedInt(profiledRedeclarations),
-                    saturatedInt(profiledCounterDeclarationsThrottled)
+                    saturatedInt(profiledCounterDeclarationsThrottled),
+                    saturatedInt(profiledAttackChoiceCalls),
+                    saturatedInt(profiledNoAttackChoices),
+                    percent(profiledNoAttackChoices, profiledAttackChoiceCalls),
+                    saturatedInt(profiledSpecialistAttackSelections),
+                    saturatedInt(profiledSelectedLaterDeclarations),
+                    mean(profiledSelectedLaterDeclarationScoreSum, profiledSelectedLaterDeclarations),
+                    mean(profiledSelectedLaterDeclarationTargetActionSpaceSum, profiledSelectedLaterDeclarations),
+                    profiledSelectedLaterDeclarationTargetActionSpaceMax,
+                    mean(profiledSelectedLaterDeclarationStrengthRatioSum, profiledSelectedLaterDeclarations),
+                    profiledSelectedLaterDeclarations == 0L
+                            ? 0d
+                            : profiledSelectedLaterDeclarationStrengthRatioMin,
+                    percent(profiledSelectedLaterDeclarationUnderStrength, profiledSelectedLaterDeclarations)
             );
+        }
+
+        private double mean(double sum, long count) {
+            return count <= 0L ? 0d : sum / count;
+        }
+
+        private double percent(long numerator, long denominator) {
+            return denominator <= 0L ? 0d : (numerator * 100d) / denominator;
         }
 
         private boolean isWipeRisk(double baselineStrength, double terminalStrength) {
@@ -5096,7 +5195,18 @@ final class LongHorizonForwardProjection {
             int turnsNoControl,
                 int respondingSideLaterDeclarations,
                 int openingSideLaterDeclarations,
-                int respondingSideLaterDeclarationsThrottled
+                int respondingSideLaterDeclarationsThrottled,
+                int attackChoiceCalls,
+                int noAttackChoices,
+                double noAttackChoicePct,
+                int specialistAttackSelections,
+                int selectedLaterDeclarations,
+                double selectedLaterDeclarationMeanScore,
+                double selectedLaterDeclarationTargetActionSpaceMean,
+                double selectedLaterDeclarationTargetActionSpaceMax,
+                double selectedLaterDeclarationStrengthRatioMean,
+                double selectedLaterDeclarationStrengthRatioMin,
+                double selectedLaterDeclarationUnderStrengthPct
     ) {
     }
 
@@ -5116,7 +5226,9 @@ final class LongHorizonForwardProjection {
                 int[] targetNationIds,
                 Int2IntOpenHashMap declarerOverallIndexesByNationId,
                     Int2IntOpenHashMap targetOverallIndexesByNationId,
-                    Long2IntOpenHashMap edgeIndexByPair
+                    Long2IntOpenHashMap edgeIndexByPair,
+                    double[] edgeTargetActionSpaceValues,
+                    double[] edgeStrengthRatios
             ) {
             }
 

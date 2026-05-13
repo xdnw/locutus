@@ -37,7 +37,18 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
         if (!(objectiveScore > 0d)) {
             return 0d;
         }
-        return context.activityWeight() * objectiveScore / slotContention(context);
+        return context.activityWeight() * objectiveScore * actionability(context) / slotContention(context);
+    }
+
+    private static double actionability(LaterDeclarationScoreContext context) {
+        if (!(context.declarerStrength() > 0d) || !(context.targetStrength() > 0d)) {
+            return 0d;
+        }
+        double strengthRatio = context.declarerStrength() / context.targetStrength();
+        if (strengthRatio < 1d) {
+            return strengthRatio * strengthRatio;
+        }
+        return Math.min(1.5d, Math.sqrt(strengthRatio));
     }
 
     private static double slotContention(LaterDeclarationScoreContext context) {

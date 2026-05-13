@@ -33,6 +33,10 @@ public final class HeadToHeadComparisonHarness {
             + "attackerWipeRisk,defenderWipeRisk,activeWars,attackerWinningWars,defenderWinningWars,"
             + "turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,"
             + "concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,"
+            + "attackChoiceCalls,noAttackChoices,noAttackChoicePct,specialistAttackSelections,"
+            + "selectedLaterDeclarations,selectedLaterDeclarationMeanScore,selectedLaterDeclarationTargetActionSpaceMean,"
+            + "selectedLaterDeclarationTargetActionSpaceMax,selectedLaterDeclarationStrengthRatioMean,"
+            + "selectedLaterDeclarationStrengthRatioMin,selectedLaterDeclarationUnderStrengthPct,"
             + "assignedWarTypes,assignedAttackTypes,bestMs,avgMs";
 
     private HeadToHeadComparisonHarness() {
@@ -145,6 +149,17 @@ public final class HeadToHeadComparisonHarness {
                 Integer.toString(best.respondingSideLaterDeclarations()),
                 Integer.toString(best.openingSideLaterDeclarations()),
                 Integer.toString(best.respondingSideLaterDeclarationsThrottled()),
+                Integer.toString(best.attackChoiceCalls()),
+                Integer.toString(best.noAttackChoices()),
+                formatDouble(best.noAttackChoicePct(), 2),
+                Integer.toString(best.specialistAttackSelections()),
+                Integer.toString(best.selectedLaterDeclarations()),
+                formatDouble(best.selectedLaterDeclarationMeanScore(), 3),
+                formatDouble(best.selectedLaterDeclarationTargetActionSpaceMean(), 3),
+                formatDouble(best.selectedLaterDeclarationTargetActionSpaceMax(), 3),
+                formatDouble(best.selectedLaterDeclarationStrengthRatioMean(), 3),
+                formatDouble(best.selectedLaterDeclarationStrengthRatioMin(), 3),
+                formatDouble(best.selectedLaterDeclarationUnderStrengthPct(), 2),
                 enumCountSummary(link.locutus.discord.apiv1.enums.WarType.values, best.assignedWarTypeCounts()),
                 enumCountSummary(link.locutus.discord.apiv1.enums.AttackType.values, best.assignedAttackTypeCounts()),
                 formatDouble(bestMs, 3),

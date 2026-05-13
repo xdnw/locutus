@@ -102,6 +102,12 @@ class StrategicLaneComparisonHarnessTest {
         assertEquals(lane.get("openingSideLaterDeclarations"), headToHead.get("openingSideLaterDeclarations"));
         assertEquals(lane.get("respondingSideLaterDeclarationsThrottled"), headToHead.get("respondingSideLaterDeclarationsThrottled"));
         assertEquals(lane.get("respondingSideLaterDeclarationCapPressurePct"), headToHead.get("respondingSideLaterDeclarationCapPressurePct"));
+        assertEquals(lane.get("attackChoiceCalls"), headToHead.get("attackChoiceCalls"));
+        assertEquals(lane.get("noAttackChoices"), headToHead.get("noAttackChoices"));
+        assertEquals(lane.get("noAttackChoicePct"), headToHead.get("noAttackChoicePct"));
+        assertEquals(lane.get("specialistAttackSelections"), headToHead.get("specialistAttackSelections"));
+        assertEquals(lane.get("selectedLaterDeclarations"), headToHead.get("selectedLaterDeclarations"));
+        assertEquals(lane.get("selectedLaterDeclarationUnderStrengthPct"), headToHead.get("selectedLaterDeclarationUnderStrengthPct"));
     }
 
     @Test
