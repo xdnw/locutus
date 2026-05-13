@@ -193,6 +193,37 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void boundedPortfolioRepairsVisibleUncoveredHighCityDefender() {
+        List<DBNationSnapshot> attackers = List.of(
+                strategicNation(1, 1, 0, 40, 1.0d, 1)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900),
+                strategicNation(102, 2, 1, 40, 1.0d, 1)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 90.0f, 0.0f);
+
+        Map<Integer, List<Integer>> assignment = LongHorizonAssignmentOptimizer.solve(
+                edges,
+                scenario,
+                new int[]{1},
+                new int[]{1, 1},
+                new int[]{0},
+                new int[]{1},
+                new int[]{101, 102},
+                List.of(),
+                72,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new SlotDenialNeutralObjective())
+        );
+
+        assertEquals(List.of(102), assignment.get(1),
+                "Projected comparison should audit a retargeting shape for visible uncovered high-city defenders");
+    }
+
+    @Test
     void longHorizonOutputIsDeterministicAcrossRepeatedRuns() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900),
@@ -3216,6 +3247,45 @@ class LongHorizonAssignmentOptimizerTest {
                         int teamId
                 ) {
                         return -1d;
+                }
+
+                @Override
+                public double scoreAction(SimWorld world, SimAction action, int teamId) {
+                        return 0d;
+                }
+        }
+
+        private static final class SlotDenialNeutralObjective implements StrategicObjective {
+                @Override
+                public double scoreTerminal(StrategicValueView view, int teamId) {
+                        if (!(view instanceof TeamWarControlView controlView)) {
+                                return 0d;
+                        }
+                        int[] ownDeclaredWars = new int[1];
+                        controlView.forEachWarControl((attackerTeamId, defenderTeamId, groundSuperiorityTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
+                                if (attackerTeamId == teamId) {
+                                        ownDeclaredWars[0]++;
+                                }
+                        });
+                        return 1_000_000d * ownDeclaredWars[0];
+                }
+
+                @Override
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
+                        return 0d;
+                }
+
+                @Override
+                public boolean usesWarSlotDenial() {
+                        return true;
                 }
 
                 @Override

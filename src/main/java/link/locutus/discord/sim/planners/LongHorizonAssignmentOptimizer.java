@@ -34,6 +34,8 @@ final class LongHorizonAssignmentOptimizer {
     private static final int FULL_PROJECTED_PORTFOLIO_PAIR_LIMIT = 150;
     private static final int LARGE_PROJECTED_PORTFOLIO_AUDIT_LIMIT = 1;
     private static final int SLOT_DENIAL_DIVERSITY_HEDGE_AUDITS = 1;
+    private static final int HIGH_CITY_COVERAGE_REPAIR_AUDITS = 3;
+    private static final int HIGH_CITY_COVERAGE_REPAIR_CITY_FLOOR = 36;
     static final double PRESSURE_SCORE_WEIGHT = 0.70d;
     static final double EPSILON = 1e-9;
 
@@ -367,9 +369,23 @@ final class LongHorizonAssignmentOptimizer {
                 Candidate diversityHedge = preserveBudgetBreadth
                         ? selectDiversityHedge(reliefCandidates, marginalCandidate, projectedAuditLimit)
                         : null;
+                Candidate coverageRepairSeed = bestCommitmentBudget == null ? marginalCandidate : bestCommitmentBudget;
+                List<Candidate> coverageRepairCandidates = highCityCoverageRepairCandidates(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        coverageRepairSeed,
+                        terminalProjection,
+                        HIGH_CITY_COVERAGE_REPAIR_AUDITS
+                );
                 int audited = 0;
                 int reliefAudited = 0;
                 int diversityAudited = 0;
+                int coverageRepairAudited = 0;
                 Candidate best = currentBest;
                 for (Candidate candidate : reliefCandidates) {
                     if (reliefAudited >= projectedAuditLimit) {
@@ -383,6 +399,11 @@ final class LongHorizonAssignmentOptimizer {
                     best = projectedEvaluator.betterCandidate(best, diversityHedge, terminalProjection);
                     audited++;
                     diversityAudited++;
+                }
+                for (Candidate candidate : coverageRepairCandidates) {
+                    best = projectedEvaluator.betterCandidate(best, candidate, terminalProjection);
+                    audited++;
+                    coverageRepairAudited++;
                 }
                 if (preserveBudgetBreadth) {
                     if (bestCommitmentBudget != null) {
@@ -400,7 +421,186 @@ final class LongHorizonAssignmentOptimizer {
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedAudits", audited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedReliefAudits", reliefAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedDiversityAudits", diversityAudited);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCoverageRepairAudits", coverageRepairAudited);
                 return best;
+            }
+
+            private static List<Candidate> highCityCoverageRepairCandidates(
+                    CandidateEdgeTable baseEdges,
+                    CompiledScenario scenario,
+                    int[] attackerCaps,
+                    int[] defenderCaps,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    List<BlitzFixedEdge> fixedEdges,
+                    Candidate seed,
+                    LongHorizonControlProjection terminalProjection,
+                    int maxCandidates
+            ) {
+                List<Candidate> candidates = new ArrayList<>(Math.max(0, maxCandidates));
+                if (maxCandidates <= 0 || seed == null || seed.isEmpty()) {
+                    return candidates;
+                }
+                boolean[] fixedEdgeMask = fixedEdgeMask(baseEdges, attackerNationIds, defenderNationIds, fixedEdges);
+                boolean[] usedAttacker = new boolean[scenario.attackerCount()];
+                Candidate repairSeed = seed;
+                for (int defenderIndex = 0; defenderIndex < seed.defenderCounts().length && candidates.size() < maxCandidates; defenderIndex++) {
+                    int[] defenderCounts = repairSeed.defenderCounts();
+                    if (defenderCounts[defenderIndex] > 0
+                            || defenderCaps[defenderIndex] <= 0
+                            || scenario.defender(defenderIndex).cities() < HIGH_CITY_COVERAGE_REPAIR_CITY_FLOOR) {
+                        continue;
+                    }
+                    int bestIncomingEdge = bestActiveIncomingEdge(baseEdges, repairSeed, usedAttacker, defenderIndex);
+                    if (bestIncomingEdge < 0) {
+                        continue;
+                    }
+                    Candidate repaired = retargetCoverageCandidate(
+                            baseEdges,
+                            scenario,
+                            attackerCaps,
+                            attackerNationIds,
+                            defenderNationIds,
+                            fixedEdgeMask,
+                            repairSeed,
+                            terminalProjection,
+                            bestIncomingEdge
+                    );
+                    if (repaired != null) {
+                        candidates.add(repaired);
+                        repairSeed = repaired;
+                        usedAttacker[baseEdges.attackerIndex(bestIncomingEdge)] = true;
+                    }
+                }
+                return candidates;
+            }
+
+            private static int bestActiveIncomingEdge(
+                    CandidateEdgeTable baseEdges,
+                    Candidate seed,
+                    boolean[] usedAttacker,
+                    int defenderIndex
+            ) {
+                int bestEdge = -1;
+                double bestScore = Double.NEGATIVE_INFINITY;
+                int[] attackerCounts = seed.attackerCounts();
+                for (int edgeIndex = 0; edgeIndex < baseEdges.edgeCount(); edgeIndex++) {
+                    if (baseEdges.defenderIndex(edgeIndex) != defenderIndex) {
+                        continue;
+                    }
+                    int attackerIndex = baseEdges.attackerIndex(edgeIndex);
+                    if (attackerCounts[attackerIndex] <= 0 || usedAttacker[attackerIndex]) {
+                        continue;
+                    }
+                    double score = baseEdges.scalarScore(edgeIndex);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestEdge = edgeIndex;
+                    }
+                }
+                return bestEdge;
+            }
+
+            private static Candidate retargetCoverageCandidate(
+                    CandidateEdgeTable baseEdges,
+                    CompiledScenario scenario,
+                    int[] attackerCaps,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    boolean[] fixedEdgeMask,
+                    Candidate seed,
+                    LongHorizonControlProjection terminalProjection,
+                    int incomingEdge
+            ) {
+                int attackerIndex = baseEdges.attackerIndex(incomingEdge);
+                int defenderIndex = baseEdges.defenderIndex(incomingEdge);
+                if (seed.edgeAssigned()[incomingEdge]) {
+                    return null;
+                }
+                int removeEdge = -1;
+                if (seed.attackerCounts()[attackerIndex] >= attackerCaps[attackerIndex]) {
+                    removeEdge = removableAssignedEdgeForCoverageRepair(
+                            baseEdges,
+                            scenario,
+                            fixedEdgeMask,
+                            seed,
+                            attackerIndex,
+                            defenderIndex
+                    );
+                    if (removeEdge < 0) {
+                        return null;
+                    }
+                }
+
+                boolean[] edgeAssigned = seed.edgeAssigned().clone();
+                int[] attackerCounts = seed.attackerCounts().clone();
+                int[] defenderCounts = seed.defenderCounts().clone();
+                Map<Integer, List<Integer>> assignment = cloneAssignment(seed.assignment());
+                int attackerNationId = attackerNationIds[attackerIndex];
+                List<Integer> targets = assignment.computeIfAbsent(attackerNationId, ignored -> new IntArrayList());
+                if (removeEdge >= 0) {
+                    int removedDefenderIndex = baseEdges.defenderIndex(removeEdge);
+                    edgeAssigned[removeEdge] = false;
+                    defenderCounts[removedDefenderIndex]--;
+                    targets.remove(Integer.valueOf(defenderNationIds[removedDefenderIndex]));
+                } else {
+                    attackerCounts[attackerIndex]++;
+                }
+                edgeAssigned[incomingEdge] = true;
+                defenderCounts[defenderIndex]++;
+                targets.add(defenderNationIds[defenderIndex]);
+                double projectionScore = terminalProjection.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts);
+                return new Candidate(assignment, edgeAssigned, attackerCounts, defenderCounts, projectionScore);
+            }
+
+            private static int removableAssignedEdgeForCoverageRepair(
+                    CandidateEdgeTable baseEdges,
+                    CompiledScenario scenario,
+                    boolean[] fixedEdgeMask,
+                    Candidate seed,
+                    int attackerIndex,
+                    int targetDefenderIndex
+            ) {
+                int bestEdge = -1;
+                double bestRemovalScore = Double.POSITIVE_INFINITY;
+                for (int edgeIndex = 0; edgeIndex < baseEdges.edgeCount(); edgeIndex++) {
+                    if (!seed.edgeAssigned()[edgeIndex]
+                            || fixedEdgeMask[edgeIndex]
+                            || baseEdges.attackerIndex(edgeIndex) != attackerIndex
+                            || baseEdges.defenderIndex(edgeIndex) == targetDefenderIndex) {
+                        continue;
+                    }
+                    int defenderIndex = baseEdges.defenderIndex(edgeIndex);
+                    int defenderCount = seed.defenderCounts()[defenderIndex];
+                    double coveredBonus = defenderCount > 1 ? -1_000_000d : 0d;
+                    double cityCost = 250d * scenario.defender(defenderIndex).cities();
+                    double removalScore = coveredBonus + cityCost + baseEdges.scalarScore(edgeIndex);
+                    if (removalScore < bestRemovalScore) {
+                        bestRemovalScore = removalScore;
+                        bestEdge = edgeIndex;
+                    }
+                }
+                return bestEdge;
+            }
+
+            private static boolean[] fixedEdgeMask(
+                    CandidateEdgeTable baseEdges,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    List<BlitzFixedEdge> fixedEdges
+            ) {
+                boolean[] fixed = new boolean[baseEdges.edgeCount()];
+                if (fixedEdges == null || fixedEdges.isEmpty()) {
+                    return fixed;
+                }
+                Long2IntOpenHashMap edgeIndexByPair = baseEdges.edgeIndexByPair(attackerNationIds, defenderNationIds);
+                for (BlitzFixedEdge fixedEdge : fixedEdges) {
+                    int edgeIndex = edgeIndexByPair.get(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()));
+                    if (edgeIndex >= 0 && edgeIndex < fixed.length) {
+                        fixed[edgeIndex] = true;
+                    }
+                }
+                return fixed;
             }
 
             private static Candidate selectDiversityHedge(
