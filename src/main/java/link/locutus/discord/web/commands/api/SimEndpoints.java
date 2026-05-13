@@ -496,11 +496,11 @@ public class SimEndpoints {
         }
 
     private static SidePolicy autonomousDeclarerPolicy(BlitzPlanContext context, String name) {
-        return SidePolicy.legacy(name, objectiveForRequest(context.request()));
+        return SidePolicy.objectiveDrivenProjection(name, objectiveForRequest(context.request()));
     }
 
     private static SidePolicy autonomousTargetPolicy(BlitzPlanContext context, String name) {
-        return SidePolicy.legacyPassive(name, objectiveForRequest(context.request()));
+        return SidePolicy.objectiveDrivenProjectionPassive(name, objectiveForRequest(context.request()));
     }
 
     private static List<DBNationSnapshot> combinedSnapshots(
@@ -1690,8 +1690,8 @@ public class SimEndpoints {
         return planner.assignSymmetric(
             declarers,
             targets,
-            SidePolicy.legacy("acting", objective),
-            SidePolicy.legacyPassive("nonActing", objective),
+            SidePolicy.objectiveDrivenProjection("acting", objective),
+            SidePolicy.objectiveDrivenProjectionPassive("nonActing", objective),
             currentTurn,
             fixedEdges,
             List.of(),

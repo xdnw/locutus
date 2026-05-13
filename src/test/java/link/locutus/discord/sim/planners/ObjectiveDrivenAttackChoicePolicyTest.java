@@ -160,6 +160,32 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 assertEquals(AttackType.GROUND, choice);
         }
 
+        @Test
+        void mutableProjectionPathCarriesTargetPressure() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                new TargetPressureObjective(),
+                                null
+                );
+                ObjectiveDrivenAttackChoicePolicy.MutableAttackCandidate scratch =
+                                new ObjectiveDrivenAttackChoicePolicy.MutableAttackCandidate();
+
+                AttackType choice = policy.chooseAttackType(
+                                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                                6,
+                                (attackType, out) -> {
+                                        if (attackType == AttackType.GROUND) {
+                                                out.set(true, 3, 0d, 0d, 0d, -10d, 0d, 0d, 25d, 0d, SuperiorityFlagDelta.NONE);
+                                        } else {
+                                                out.set(true, 4, 50d, 0d, 0d, -12d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
+                                        }
+                                },
+                                scratch,
+                                null
+                );
+
+                assertEquals(AttackType.GROUND, choice);
+        }
+
     private static AttackChoicePolicy.AttackCandidate candidate(
             double defenderDamage,
             double attackerDamage,
@@ -283,6 +309,36 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                     - (exposureWeight * selfExposure)
                     + (controlWeight * controlLeverage)
                     + (futureWeight * futureWarLeverage);
+        }
+
+        @Override
+        public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
+            return CandidateEdgeComponentPolicy.none();
+        }
+
+        @Override
+        public double scoreAction(SimWorld world, SimAction action, int teamId) {
+            return 0d;
+        }
+    }
+
+    private static final class TargetPressureObjective implements StrategicObjective {
+        @Override
+        public double scoreTerminal(StrategicValueView view, int teamId) {
+            return 0d;
+        }
+
+        @Override
+        public double scoreOpening(
+                double immediateHarm,
+                double selfExposure,
+                double resourceSwing,
+                double controlLeverage,
+                double futureWarLeverage,
+                double targetPressure,
+                int teamId
+        ) {
+            return targetPressure;
         }
 
         @Override

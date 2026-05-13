@@ -2316,11 +2316,17 @@ class LongHorizonAssignmentOptimizerTest {
         long objectivePolicyCounterDeclarations = objectivePolicyProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
                 .getOrDefault("respondingSideLaterDeclarations", 0L);
+        long heuristicOpeningEvaluations = heuristicProfile.stats(PlannerProfiler.Scope.OPENING_EVALUATE).calls();
+        long objectiveOpeningEvaluations = objectivePolicyProfile.stats(PlannerProfiler.Scope.OPENING_EVALUATE).calls();
 
         assertTrue(heuristicCounterDeclarations > 0L,
                 "The legacy later-declaration heuristic should still declare in this counter fixture");
         assertEquals(0L, objectivePolicyCounterDeclarations,
                 "Objective-driven later-declaration policy should be able to reject a legal heuristic counter instead of only changing attack choice");
+        assertTrue(heuristicOpeningEvaluations > 0L,
+                "Legacy projected later declarations should still use opening evaluation for their candidate value");
+        assertEquals(0L, objectiveOpeningEvaluations,
+                "Objective-driven projected later declarations should use primitive dense-state components instead of rebuilding opening evaluations");
     }
 
     @Test

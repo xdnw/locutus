@@ -109,4 +109,52 @@ public record SidePolicy(
                 true
         );
     }
+
+    public static SidePolicy objectiveDrivenProjectionPassive(String name, StrategicObjective objective) {
+        if (objective == null) {
+            throw new IllegalArgumentException("objective must not be null");
+        }
+        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        return new SidePolicy(
+                name,
+                objective,
+                SidePlannerSettings.legacy(),
+                opening,
+                SideProjectionPolicies.objectiveDriven(objective, opening),
+                NO_OP_ACTOR,
+                false
+        );
+    }
+
+    public static SidePolicy objectiveDrivenAttackChoice(String name, StrategicObjective objective) {
+        if (objective == null) {
+            throw new IllegalArgumentException("objective must not be null");
+        }
+        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        return new SidePolicy(
+                name,
+                objective,
+                SidePlannerSettings.legacyActing(),
+                opening,
+                SideProjectionPolicies.objectiveAttackChoice(objective, opening),
+                NO_OP_ACTOR,
+                true
+        );
+    }
+
+    public static SidePolicy objectiveDrivenAttackChoicePassive(String name, StrategicObjective objective) {
+        if (objective == null) {
+            throw new IllegalArgumentException("objective must not be null");
+        }
+        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        return new SidePolicy(
+                name,
+                objective,
+                SidePlannerSettings.legacy(),
+                opening,
+                SideProjectionPolicies.objectiveAttackChoice(objective, opening),
+                NO_OP_ACTOR,
+                false
+        );
+    }
 }

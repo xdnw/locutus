@@ -23,6 +23,11 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
     }
 
     @Override
+    public boolean usesPrimitiveProjectedComponents() {
+        return true;
+    }
+
+    @Override
     public double score(LaterDeclarationScoreContext context) {
         metrics.set(
                 Math.max(0d, context.immediateHarm()),

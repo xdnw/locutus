@@ -16,6 +16,56 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     private final int teamId;
     private final OpeningMetricVector.Mutable metrics = new OpeningMetricVector.Mutable();
 
+    @FunctionalInterface
+    interface AttackEvaluator {
+        void evaluate(AttackType attackType, MutableAttackCandidate out);
+    }
+
+    @FunctionalInterface
+    interface BestAttackObserver {
+        void recordBestAttack();
+    }
+
+    static final class MutableAttackCandidate {
+        boolean legal;
+        int mapCost;
+        double defenderUnitDamage;
+        double attackerUnitDamage;
+        double resourceSwing;
+        double defenderResistanceDelta;
+        double forceWindowAdvantage;
+        double timingWindowAdvantage;
+        double targetPressure;
+        double conventionalFollowThroughValue;
+        SuperiorityFlagDelta controlDelta = SuperiorityFlagDelta.NONE;
+
+        void set(
+                boolean legal,
+                int mapCost,
+                double defenderUnitDamage,
+                double attackerUnitDamage,
+                double resourceSwing,
+                double defenderResistanceDelta,
+                double forceWindowAdvantage,
+                double timingWindowAdvantage,
+                double targetPressure,
+                double conventionalFollowThroughValue,
+                SuperiorityFlagDelta controlDelta
+        ) {
+            this.legal = legal;
+            this.mapCost = mapCost;
+            this.defenderUnitDamage = defenderUnitDamage;
+            this.attackerUnitDamage = attackerUnitDamage;
+            this.resourceSwing = resourceSwing;
+            this.defenderResistanceDelta = defenderResistanceDelta;
+            this.forceWindowAdvantage = forceWindowAdvantage;
+            this.timingWindowAdvantage = timingWindowAdvantage;
+            this.targetPressure = targetPressure;
+            this.conventionalFollowThroughValue = conventionalFollowThroughValue;
+            this.controlDelta = controlDelta == null ? SuperiorityFlagDelta.NONE : controlDelta;
+        }
+    }
+
     public ObjectiveDrivenAttackChoicePolicy(StrategicObjective objective, SideOpeningSettings openingSettings) {
         this(objective, openingSettings, DEFAULT_TEAM_ID);
     }
@@ -57,6 +107,38 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
         return bestScore > 0d ? bestAttackType : null;
     }
 
+    AttackType chooseAttackType(
+            AttackType[] attackTypes,
+            int mapsAvailable,
+            AttackEvaluator evaluator,
+            MutableAttackCandidate candidate,
+            BestAttackObserver bestAttackObserver
+    ) {
+        AttackType bestAttackType = null;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        for (AttackType attackType : attackTypes) {
+            evaluator.evaluate(attackType, candidate);
+            if (!candidate.legal) {
+                continue;
+            }
+            int mapCost = candidate.mapCost;
+            if (mapCost <= 0 || mapCost > mapsAvailable) {
+                continue;
+            }
+            double score = scoreCandidate(attackType, candidate);
+            if (bestAttackType == null
+                    || score > bestScore
+                    || (score == bestScore && attackType.ordinal() < bestAttackType.ordinal())) {
+                bestAttackType = attackType;
+                bestScore = score;
+                if (bestAttackObserver != null) {
+                    bestAttackObserver.recordBestAttack();
+                }
+            }
+        }
+        return bestScore > 0d ? bestAttackType : null;
+    }
+
     double scoreCandidate(AttackType attackType, AttackCandidate candidate) {
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage()),
@@ -71,6 +153,24 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
         double score = objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
         if (isSpecialist(attackType) && candidate.conventionalFollowThroughValue() > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue() * 0.20d);
+        }
+        return score;
+    }
+
+    double scoreCandidate(AttackType attackType, MutableAttackCandidate candidate) {
+        metrics.set(
+                Math.max(0d, candidate.defenderUnitDamage),
+                Math.max(0d, candidate.attackerUnitDamage),
+                Math.max(0d, candidate.resourceSwing),
+                controlLeverage(candidate.controlDelta),
+                tacticalMomentum(candidate.defenderResistanceDelta),
+                Math.max(0d, candidate.forceWindowAdvantage),
+                Math.max(0d, candidate.timingWindowAdvantage),
+                Math.max(0d, candidate.targetPressure)
+        );
+        double score = objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
+        if (isSpecialist(attackType) && candidate.conventionalFollowThroughValue > 0d) {
+            score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue * 0.20d);
         }
         return score;
     }
