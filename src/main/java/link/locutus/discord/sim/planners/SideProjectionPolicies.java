@@ -1,5 +1,7 @@
 package link.locutus.discord.sim.planners;
 
+import link.locutus.discord.sim.StrategicObjective;
+
 public record SideProjectionPolicies(AttackChoicePolicy attackChoicePolicy) {
     public static final SideProjectionPolicies HEURISTIC = new SideProjectionPolicies(
             HeuristicAttackChoicePolicy.INSTANCE
@@ -21,5 +23,9 @@ public record SideProjectionPolicies(AttackChoicePolicy attackChoicePolicy) {
 
     public static SideProjectionPolicies noDeclarations() {
         return NO_DECLARATIONS;
+    }
+
+    public static SideProjectionPolicies objectiveDriven(StrategicObjective objective, SideOpeningSettings openingSettings) {
+        return new SideProjectionPolicies(new ObjectiveDrivenAttackChoicePolicy(objective, openingSettings));
     }
 }

@@ -1,0 +1,142 @@
+package link.locutus.discord.sim.planners;
+
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
+import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
+import link.locutus.discord.sim.SimWorld;
+import link.locutus.discord.sim.StrategicObjective;
+import link.locutus.discord.sim.StrategicValueView;
+import link.locutus.discord.sim.actions.SimAction;
+import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class ObjectiveDrivenAttackChoicePolicyTest {
+    @Test
+    void choosesLowerExposureWhenObjectivePenalizesSelfDamage() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                new LinearOpeningObjective(0.10d, 1.00d, 0d, 0d),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_SOLDIER},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(10d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                        : candidate(30d, 5d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.GROUND, choice);
+    }
+
+    @Test
+    void controlObjectiveCanPreferControlTransitionOverRawDamage() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                new LinearOpeningObjective(0.05d, 0d, 4.00d, 0d),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(2d, 0d, -10d, SuperiorityFlagDelta.of(1, 0, 0, false, false, false))
+                        : candidate(40d, 0d, -12d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.GROUND, choice);
+    }
+
+    @Test
+    void attackTypeWeightsRemainPartOfObjectiveDrivenSelection() {
+        double[] attackWeights = neutralAttackWeights();
+        attackWeights[AttackType.AIRSTRIKE_TANK.ordinal()] = 3d;
+        SideOpeningSettings openingSettings = new SideOpeningSettings(
+                neutralWarWeights(),
+                attackWeights,
+                CandidateEdgeAdmissionPolicy.defaultPolicy()
+        );
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                new LinearOpeningObjective(1.00d, 0d, 0d, 0d),
+                openingSettings
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(10d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                        : candidate(5d, 0d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.AIRSTRIKE_TANK, choice);
+    }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            SuperiorityFlagDelta controlDelta
+    ) {
+        return new AttackChoicePolicy.AttackCandidate(
+                true,
+                3,
+                defenderDamage,
+                attackerDamage,
+                defenderResistanceDelta,
+                controlDelta
+        );
+    }
+
+    private static double[] neutralWarWeights() {
+        double[] weights = new double[link.locutus.discord.apiv1.enums.WarType.values.length];
+        java.util.Arrays.fill(weights, 1d);
+        return weights;
+    }
+
+    private static double[] neutralAttackWeights() {
+        double[] weights = new double[AttackType.values.length];
+        java.util.Arrays.fill(weights, 1d);
+        return weights;
+    }
+
+    private record LinearOpeningObjective(
+            double harmWeight,
+            double exposureWeight,
+            double controlWeight,
+            double futureWeight
+    ) implements StrategicObjective {
+        @Override
+        public double scoreTerminal(StrategicValueView view, int teamId) {
+            return 0d;
+        }
+
+        @Override
+        public double scoreOpening(
+                double immediateHarm,
+                double selfExposure,
+                double resourceSwing,
+                double controlLeverage,
+                double futureWarLeverage,
+                double targetPressure,
+                int teamId
+        ) {
+            return (harmWeight * immediateHarm)
+                    - (exposureWeight * selfExposure)
+                    + (controlWeight * controlLeverage)
+                    + (futureWeight * futureWarLeverage);
+        }
+
+        @Override
+        public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
+            return CandidateEdgeComponentPolicy.none();
+        }
+
+        @Override
+        public double scoreAction(SimWorld world, SimAction action, int teamId) {
+            return 0d;
+        }
+    }
+}

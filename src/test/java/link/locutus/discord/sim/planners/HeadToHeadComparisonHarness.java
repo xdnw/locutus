@@ -173,7 +173,8 @@ public final class HeadToHeadComparisonHarness {
             double[] attackTypeWeights,
             Double minimumViabilityProbe,
             Boolean allowLegalSpecialistFallback,
-            Boolean admitPositiveOpeningBaseline
+            Boolean admitPositiveOpeningBaseline,
+            boolean objectiveDrivenAttackChoice
     ) {
         static PolicySpec parse(String value, String fallbackName) {
             String effective = value == null || value.isBlank()
@@ -189,6 +190,7 @@ public final class HeadToHeadComparisonHarness {
             Double minimumViabilityProbe = null;
             Boolean allowLegalSpecialistFallback = null;
             Boolean admitPositiveOpeningBaseline = null;
+            boolean objectiveDrivenAttackChoice = false;
             if (parts.length == 4 && !parts[3].isBlank()) {
                 for (String flag : parts[3].split(";")) {
                     String[] kv = flag.split("=", 2);
@@ -204,6 +206,11 @@ public final class HeadToHeadComparisonHarness {
                         allowLegalSpecialistFallback = Boolean.parseBoolean(kv[1]);
                     } else if (kv.length == 2 && kv[0].equalsIgnoreCase("positiveBaseline")) {
                         admitPositiveOpeningBaseline = Boolean.parseBoolean(kv[1]);
+                    } else if (kv.length == 2 && kv[0].equalsIgnoreCase("attackPolicy")) {
+                        if (!kv[1].equalsIgnoreCase("heuristic") && !kv[1].equalsIgnoreCase("objective")) {
+                            throw new IllegalArgumentException("attackPolicy must be heuristic or objective");
+                        }
+                        objectiveDrivenAttackChoice = kv[1].equalsIgnoreCase("objective");
                     } else {
                         throw new IllegalArgumentException("Unknown policy flag: " + flag);
                     }
@@ -218,19 +225,21 @@ public final class HeadToHeadComparisonHarness {
                     attackTypeWeights,
                     minimumViabilityProbe,
                     allowLegalSpecialistFallback,
-                    admitPositiveOpeningBaseline
+                    admitPositiveOpeningBaseline,
+                    objectiveDrivenAttackChoice
             );
         }
 
         SidePolicy actingPolicy() {
             StrategicObjective strategicObjective = objective.objective();
             SidePolicy legacy = SidePolicy.legacy(name, strategicObjective);
+            SideOpeningSettings opening = openingSettings(strategicObjective);
             return new SidePolicy(
                     legacy.name(),
                     legacy.objective(),
                     legacy.planner().withProjectedAuditLimit(projectedAuditLimit),
-                    openingSettings(strategicObjective),
-                    legacy.projection(),
+                    opening,
+                    projection(strategicObjective, opening, legacy.projection()),
                     legacy.turnActor(),
                     true
             );
@@ -239,15 +248,26 @@ public final class HeadToHeadComparisonHarness {
         SidePolicy defendingPolicy() {
             StrategicObjective strategicObjective = objective.objective();
             SidePolicy legacy = SidePolicy.legacyPassive(name, strategicObjective);
+            SideOpeningSettings opening = openingSettings(strategicObjective);
             return new SidePolicy(
                     legacy.name(),
                     legacy.objective(),
                     legacy.planner().withProjectedAuditLimit(projectedAuditLimit),
-                    openingSettings(strategicObjective),
-                    legacy.projection(),
+                    opening,
+                    projection(strategicObjective, opening, legacy.projection()),
                     legacy.turnActor(),
                     false
             );
+        }
+
+        private SideProjectionPolicies projection(
+                StrategicObjective strategicObjective,
+                SideOpeningSettings opening,
+                SideProjectionPolicies legacyProjection
+        ) {
+            return objectiveDrivenAttackChoice
+                    ? SideProjectionPolicies.objectiveDriven(strategicObjective, opening)
+                    : legacyProjection;
         }
 
         private SideOpeningSettings openingSettings(StrategicObjective strategicObjective) {

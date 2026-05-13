@@ -93,4 +93,20 @@ public record SidePolicy(
                 false
         );
     }
+
+    public static SidePolicy objectiveDrivenProjection(String name, StrategicObjective objective) {
+        if (objective == null) {
+            throw new IllegalArgumentException("objective must not be null");
+        }
+        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        return new SidePolicy(
+                name,
+                objective,
+                SidePlannerSettings.legacyActing(),
+                opening,
+                SideProjectionPolicies.objectiveDriven(objective, opening),
+                NO_OP_ACTOR,
+                true
+        );
+    }
 }
