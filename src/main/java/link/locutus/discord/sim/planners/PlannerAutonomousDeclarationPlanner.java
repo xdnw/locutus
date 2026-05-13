@@ -8,6 +8,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
@@ -154,6 +155,15 @@ final class PlannerAutonomousDeclarationPlanner {
         if (edges.edgeCount() == 0) {
             return Plan.empty();
         }
+        edges = applyLaterDeclarationPolicy(
+                edges,
+                scenario,
+                declarerPolicy.projection().laterDeclarationScoringPolicy(),
+                declarerPolicy.planner().laterDeclarationScoreThreshold()
+        );
+        if (edges.edgeCount() == 0) {
+            return Plan.empty();
+        }
         Map<Integer, List<Integer>> assignment = projectionContext == null
             ? LongHorizonAssignmentOptimizer.solve(
                 edges,
@@ -179,6 +189,67 @@ final class PlannerAutonomousDeclarationPlanner {
                 projectionContext
             ).assignment();
         return planFromAssignment(assignment, edges, scenario);
+    }
+
+    private static CandidateEdgeTable applyLaterDeclarationPolicy(
+            CandidateEdgeTable rawEdges,
+            CompiledScenario scenario,
+            LaterDeclarationScoringPolicy scoringPolicy,
+            double scoreThreshold
+    ) {
+        if (scoringPolicy == HeuristicLaterDeclarationScoringPolicy.INSTANCE) {
+            return rawEdges;
+        }
+        CandidateEdgeTable rescoredEdges = new CandidateEdgeTable(rawEdges.edgeCount());
+        rescoredEdges.configureComponentRetention(retainedComponentPolicy(rawEdges));
+        for (int edgeIndex = 0; edgeIndex < rawEdges.edgeCount(); edgeIndex++) {
+            int attackerIndex = rawEdges.attackerIndex(edgeIndex);
+            int defenderIndex = rawEdges.defenderIndex(edgeIndex);
+            DBNationSnapshot declarer = scenario.attacker(attackerIndex);
+            DBNationSnapshot target = scenario.defender(defenderIndex);
+            double openingScore = Math.max(0d, rawEdges.scalarScore(edgeIndex));
+            double score = scoringPolicy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+                    openingScore,
+                    rawEdges.retainsImmediateHarm() ? rawEdges.immediateHarm(edgeIndex) : openingScore,
+                    rawEdges.retainsSelfExposure() ? rawEdges.selfExposure(edgeIndex) : 0d,
+                    rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0d,
+                    rawEdges.retainsControlLeverage() ? rawEdges.controlLeverage(edgeIndex) : 0d,
+                    rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(edgeIndex) : 0d,
+                    OpeningMetricSummary.defenderControlPressure(target),
+                    counterStrength(declarer),
+                    counterStrength(target),
+                    Math.max(1, scenario.attackerFreeOffSlots(attackerIndex)),
+                    Math.max(1, scenario.defenderFreeDefSlots(defenderIndex)),
+                    1d
+            ));
+            if (score <= scoreThreshold) {
+                continue;
+            }
+            rescoredEdges.add(
+                    attackerIndex,
+                    defenderIndex,
+                    rawEdges.preferredWarTypeId(edgeIndex),
+                    rawEdges.bestAttackTypeId(edgeIndex),
+                    (float) score,
+                    rawEdges.counterRisk(edgeIndex),
+                    rawEdges.retainsImmediateHarm() ? rawEdges.immediateHarm(edgeIndex) : 0f,
+                    rawEdges.retainsSelfExposure() ? rawEdges.selfExposure(edgeIndex) : 0f,
+                    rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0f,
+                    rawEdges.retainsControlLeverage() ? rawEdges.controlLeverage(edgeIndex) : 0f,
+                    rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(edgeIndex) : 0f
+            );
+        }
+        return rescoredEdges;
+    }
+
+    private static CandidateEdgeComponentPolicy retainedComponentPolicy(CandidateEdgeTable edges) {
+        return new CandidateEdgeComponentPolicy(
+                edges.retainsImmediateHarm(),
+                edges.retainsSelfExposure(),
+                edges.retainsResourceSwing(),
+                edges.retainsControlLeverage(),
+                edges.retainsFutureWarLeverage()
+        );
     }
 
     record Plan(

@@ -104,7 +104,7 @@ class PlannerAutonomousDeclarationPlannerTest {
     }
 
     @Test
-        void autonomousPlannerProjectionContextCanRejectScorerOnlyDeclarations() {
+    void autonomousPlannerProjectionContextCanRejectScorerOnlyDeclarations() {
         DBNationSnapshot slotRichDeclarer = nation(101, 1)
                 .maxOff(2)
                 .unit(MilitaryUnit.SOLDIER, 24_000)
@@ -162,6 +162,59 @@ class PlannerAutonomousDeclarationPlannerTest {
                 "The fallback-like no-idle-pressure planner should still allow the stronger slot-rich declarer to monopolize both comparable targets in this fixture");
         assertTrue(actingPlan.assignment().isEmpty(),
                 "Acting-side projection context should be able to reject declarations instead of forcing the scorer-only fallback shape");
+    }
+
+    @Test
+    void autonomousPlannerUsesExplicitLaterDeclarationPolicy() {
+        DBNationSnapshot declarer = nation(101, 1)
+                .maxOff(1)
+                .unit(MilitaryUnit.SOLDIER, 24_000)
+                .unit(MilitaryUnit.TANK, 2_400)
+                .unit(MilitaryUnit.AIRCRAFT, 1_100)
+                .build();
+        DBNationSnapshot target = nation(201, 2)
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_200)
+                .unit(MilitaryUnit.AIRCRAFT, 800)
+                .build();
+
+        StrategicObjective objective = BlitzObjective.NET_DAMAGE.objective();
+        SidePolicy legacyPolicy = SidePolicy.legacy("legacy", objective);
+        SidePolicy policyRejected = new SidePolicy(
+                "policyRejected",
+                objective,
+                legacyPolicy.planner().withLaterDeclarationScoreThreshold(0.0d),
+                legacyPolicy.opening(),
+                new SideProjectionPolicies(
+                        HeuristicAttackChoicePolicy.INSTANCE,
+                        context -> 0d
+                ),
+                legacyPolicy.turnActor(),
+                legacyPolicy.allowInitialDeclarations()
+        );
+        SidePolicy targetPolicy = SidePolicy.legacyPassive("target", objective);
+
+        PlannerAutonomousDeclarationPlanner.Plan legacyPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
+                List.of(declarer),
+                List.of(target),
+                SimTuning.defaults(),
+                legacyPolicy,
+                targetPolicy,
+                24
+        );
+        PlannerAutonomousDeclarationPlanner.Plan policyRejectedPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
+                List.of(declarer),
+                List.of(target),
+                SimTuning.defaults(),
+                policyRejected,
+                targetPolicy,
+                24
+        );
+
+        assertFalse(legacyPlan.assignment().isEmpty(),
+                "legacy autonomous later declarations should still select the viable pair");
+        assertTrue(policyRejectedPlan.assignment().isEmpty(),
+                "autonomous later-declaration scoring should honor the explicit projection policy for the same legal pair");
     }
 
     @Test
@@ -272,4 +325,3 @@ class PlannerAutonomousDeclarationPlannerTest {
         return values;
     }
 }
-

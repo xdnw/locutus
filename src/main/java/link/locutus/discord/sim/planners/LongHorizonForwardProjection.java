@@ -1197,6 +1197,7 @@ final class LongHorizonForwardProjection {
                 remainingTargetSlots,
                 declarersAreScenarioAttackers,
                 declarersAreScenarioAttackers ? attackerOpeningSettings : defenderOpeningSettings,
+                declarersAreScenarioAttackers ? attackerProjectionPolicies : defenderProjectionPolicies,
                 plannerSettings,
                 plannerSettings.laterDeclarationScoreThreshold(),
                 turn,
@@ -1211,6 +1212,7 @@ final class LongHorizonForwardProjection {
             int[] remainingTargetSlots,
             boolean declarersAreScenarioAttackers,
             SideOpeningSettings openingSettings,
+            SideProjectionPolicies projectionPolicies,
             SidePlannerSettings plannerSettings,
             double scoreThreshold,
             int turn,
@@ -1357,6 +1359,7 @@ final class LongHorizonForwardProjection {
                             warState,
                             rawEdges,
                             rawEdgeByPair.get(projectedIndexPairKey(declarerCompiledIndex, targetCompiledIndex)),
+                            projectionPolicies.laterDeclarationScoringPolicy(),
                             declarerOverallIndex,
                             targetOverallIndex,
                             remainingDeclarerSlots[declarersAreScenarioAttackers
@@ -1404,6 +1407,7 @@ final class LongHorizonForwardProjection {
                         warState,
                         rawEdges,
                         rawEdgeIndex,
+                        projectionPolicies.laterDeclarationScoringPolicy(),
                         declarerOverallIndex,
                         targetOverallIndex,
                         remainingDeclarerSlots[declarerSourceIndex],
@@ -1442,6 +1446,7 @@ final class LongHorizonForwardProjection {
             DenseWarState warState,
             CandidateEdgeTable rawEdges,
             int rawEdgeIndex,
+            LaterDeclarationScoringPolicy scoringPolicy,
             int declarerOverallIndex,
             int targetOverallIndex,
             int remainingDeclarerSlots,
@@ -1451,21 +1456,20 @@ final class LongHorizonForwardProjection {
         double openingScore = rawEdgeIndex >= 0 ? Math.max(0d, rawEdges.scalarScore(rawEdgeIndex)) : 0d;
         double declarerStrength = state.combatStrength(declarerOverallIndex);
         double targetStrength = state.combatStrength(targetOverallIndex);
-        if (!(declarerStrength > 0d) || !(targetStrength > 0d)) {
-            return openingScore;
-        }
-        double activity = Math.max(0d, Math.min(1d, activityWeight));
-        double strengthRatio = declarerStrength / Math.max(1d, targetStrength);
-        double targetValue = Math.max(
-                MIN_PROJECTED_DECLARATION_TARGET_VALUE,
-                state.marginalActionSpaceValue(targetOverallIndex, warState)
-                        * PROJECTED_DECLARATION_TARGET_VALUE_MULTIPLIER
-        );
-        double declarationScore = activity
-                * targetValue
-                * Math.min(MAX_PROJECTED_DECLARATION_STRENGTH_RATIO, strengthRatio)
-                / Math.max(1, Math.min(Math.max(1, remainingDeclarerSlots), Math.max(1, remainingTargetSlots)));
-        return Math.max(openingScore, declarationScore);
+        return scoringPolicy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+                openingScore,
+                rawEdgeIndex >= 0 && rawEdges.retainsImmediateHarm() ? rawEdges.immediateHarm(rawEdgeIndex) : openingScore,
+                rawEdgeIndex >= 0 && rawEdges.retainsSelfExposure() ? rawEdges.selfExposure(rawEdgeIndex) : 0d,
+                rawEdgeIndex >= 0 && rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(rawEdgeIndex) : 0d,
+                rawEdgeIndex >= 0 && rawEdges.retainsControlLeverage() ? rawEdges.controlLeverage(rawEdgeIndex) : 0d,
+                rawEdgeIndex >= 0 && rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(rawEdgeIndex) : 0d,
+                state.marginalActionSpaceValue(targetOverallIndex, warState),
+                declarerStrength,
+                targetStrength,
+                remainingDeclarerSlots,
+                remainingTargetSlots,
+                Math.max(0d, Math.min(1d, activityWeight))
+        ));
     }
 
     private double activityWeightForOverallIndex(int nationIndex) {

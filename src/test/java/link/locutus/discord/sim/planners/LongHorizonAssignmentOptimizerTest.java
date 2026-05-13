@@ -2274,6 +2274,56 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void objectiveDrivenProjectionPolicyCanSuppressHeuristicLaterDeclarations() {
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
+        List<DBNationSnapshot> defenders = List.of(
+                nation(102, 2, 900).toBuilder()
+                        .maxOff(1)
+                        .build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        StrategicObjective terminalObjective = new ReverseCounterWarCountObjective();
+
+        PlannerProfiler.ProfileSnapshot heuristicProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                terminalObjective,
+                24,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(terminalObjective)
+        );
+        PlannerProfiler.ProfileSnapshot objectivePolicyProfile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                terminalObjective,
+                24,
+                new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        terminalObjective,
+                        SidePlannerSettings.legacy(),
+                        SidePlannerSettings.legacy().withLaterDeclarationScoreThreshold(0.0d),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.objectiveDriven(
+                                new LaterDeclarationRejectingObjective(),
+                                SideOpeningSettings.legacy(new LaterDeclarationRejectingObjective())
+                        )
+                )
+        );
+        long heuristicCounterDeclarations = heuristicProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
+        long objectivePolicyCounterDeclarations = objectivePolicyProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("respondingSideLaterDeclarations", 0L);
+
+        assertTrue(heuristicCounterDeclarations > 0L,
+                "The legacy later-declaration heuristic should still declare in this counter fixture");
+        assertEquals(0L, objectivePolicyCounterDeclarations,
+                "Objective-driven later-declaration policy should be able to reject a legal heuristic counter instead of only changing attack choice");
+    }
+
+    @Test
     void forwardProjectionDefenderLaterDeclarationsCanTargetUnassignedAttackers() {
         List<DBNationSnapshot> attackers = List.of(
                 withTotalScore(nation(1, 1, 900), 2_000.0),
@@ -3143,6 +3193,31 @@ class LongHorizonAssignmentOptimizerTest {
                 }
         }
 
+        private static final class LaterDeclarationRejectingObjective implements StrategicObjective {
+                @Override
+                public double scoreTerminal(StrategicValueView view, int teamId) {
+                        return 0d;
+                }
+
+                @Override
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
+                        return -1d;
+                }
+
+                @Override
+                public double scoreAction(SimWorld world, SimAction action, int teamId) {
+                        return 0d;
+                }
+        }
+
     private static CandidateEdgeTable commitmentScenarioEdges() {
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
@@ -3291,4 +3366,3 @@ class LongHorizonAssignmentOptimizerTest {
         return values;
     }
 }
-
