@@ -341,12 +341,12 @@ class PlannerConflictExecutorTest {
                 attackerOne.nationId(), List.of(defenderOne.nationId()),
                 attackerTwo.nationId(), List.of(defenderTwo.nationId())
         );
-        List<Integer> counterDeclarerIds = List.of(defenderOne.nationId(), defenderTwo.nationId());
-        List<Integer> counterTargetIds = List.of(attackerOne.nationId(), attackerTwo.nationId());
+        List<Integer> laterDeclarerIds = List.of(defenderOne.nationId(), defenderTwo.nationId());
+        List<Integer> laterTargetIds = List.of(attackerOne.nationId(), attackerTwo.nationId());
         List<LaterDeclarationScope> laterDeclarationScopes = List.of(
                 new LaterDeclarationScope(
-                        counterDeclarerIds,
-                        counterTargetIds,
+                        laterDeclarerIds,
+                        laterTargetIds,
                         SidePolicy.legacy("laterDeclarerOpposingSide", new DamageObjective()),
                         SidePolicy.legacyPassive("laterTargetOpposingSide", new DamageObjective())
                 )
@@ -373,7 +373,7 @@ class PlannerConflictExecutorTest {
         assertFalse(executionLog.turns().isEmpty());
         assertTrue(
                 executionLog.turns().stream().anyMatch(turn -> !turn.autonomousDeclarations().isEmpty()),
-                "expected autonomous counter declarations to be recorded"
+                "expected autonomous later declarations to be recorded"
         );
 
         PlannerLocalConflict replayed = PlannerLocalConflict.create(
@@ -696,7 +696,7 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
-    void replayDelaysAttacksByNationDeclaredOnThisTurn() {
+    void replayDoesNotDelayExistingOffensiveWarsWhenNationIsDeclaredOn() {
         DBNationSnapshot declarer = nation(401, 1)
                 .unit(MilitaryUnit.SOLDIER, 20_000)
                 .unit(MilitaryUnit.TANK, 1_000)
@@ -741,8 +741,8 @@ class PlannerConflictExecutorTest {
                         && war.defenderNationId() == otherTarget.nationId())
                 .findFirst()
                 .orElseThrow();
-        assertEquals(6, delayedWar.attackerMaps());
-        assertEquals(100, delayedWar.defenderResistance());
+        assertTrue(delayedWar.attackerMaps() < 6);
+        assertTrue(delayedWar.defenderResistance() < 100);
 
         conflict.applyReplayTurn(Map.of(), false);
 
@@ -751,7 +751,7 @@ class PlannerConflictExecutorTest {
                         && war.defenderNationId() == otherTarget.nationId())
                 .findFirst()
                 .orElseThrow();
-        assertTrue(afterDelayWar.attackerMaps() < 7);
+        assertTrue(afterDelayWar.defenderResistance() <= delayedWar.defenderResistance());
     }
 
     @Test

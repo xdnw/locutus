@@ -125,7 +125,7 @@ public class BlitzReplayJmh {
                 state.defenderNationIds,
                 state.assignment.assignment(),
                 state.assignment.initialWarTypeOrdinalsByPair(),
-                List.of(opposingSideLaterDeclarationScope(state)),
+                List.of(defenderPopulationLaterDeclarationScope(state)),
                 state.participantIds,
                 state.existingWarPairs,
                 state.currentTurn,
@@ -135,7 +135,7 @@ public class BlitzReplayJmh {
     }
 
     @Benchmark
-    public void replayCaptureOpeningSideOnly(LiveReplayState state, Blackhole bh) {
+    public void replayCaptureAttackerPopulationOnly(LiveReplayState state, Blackhole bh) {
         BlitzReplayTrace trace = PlannerReplayProjector.capture(
                 state.tuning,
                 state.overrides,
@@ -144,7 +144,7 @@ public class BlitzReplayJmh {
                 state.defenderNationIds,
                 state.assignment.assignment(),
                 state.assignment.initialWarTypeOrdinalsByPair(),
-                List.of(openingSideLaterDeclarationScope(state)),
+                List.of(attackerPopulationLaterDeclarationScope(state)),
                 state.participantIds,
                 state.existingWarPairs,
                 state.currentTurn,
@@ -163,7 +163,7 @@ public class BlitzReplayJmh {
                 state.defenderNationIds,
                 state.assignment.assignment(),
                 state.assignment.initialWarTypeOrdinalsByPair(),
-                List.of(opposingSideLaterDeclarationScope(state), openingSideLaterDeclarationScope(state)),
+                List.of(defenderPopulationLaterDeclarationScope(state), attackerPopulationLaterDeclarationScope(state)),
                 state.participantIds,
                 state.existingWarPairs,
                 state.currentTurn,
@@ -296,7 +296,7 @@ public class BlitzReplayJmh {
         return (List<DBNationSnapshot>) value;
     }
 
-    private static LaterDeclarationScope opposingSideLaterDeclarationScope(LiveReplayState state) {
+    private static LaterDeclarationScope defenderPopulationLaterDeclarationScope(LiveReplayState state) {
         return new LaterDeclarationScope(
                 ids(state.opposingSideDeclarers),
                 ids(state.opposingSideTargets),
@@ -305,7 +305,7 @@ public class BlitzReplayJmh {
         );
     }
 
-    private static LaterDeclarationScope openingSideLaterDeclarationScope(LiveReplayState state) {
+    private static LaterDeclarationScope attackerPopulationLaterDeclarationScope(LiveReplayState state) {
         return new LaterDeclarationScope(
                 ids(state.openingSideDeclarers),
                 ids(state.openingSideTargets),

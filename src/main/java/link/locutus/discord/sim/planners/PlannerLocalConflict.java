@@ -1876,9 +1876,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (!war.isActive()) {
             return;
         }
-        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
-            return;
-        }
         int mapsAvailable = Math.max(0, war.attackerMapsValue() - Math.max(0, mapReserveFloor));
         if (shouldHoldForSpecialist(war, allowedAttackTypes, attackSequenceProfile, mapReserveFloor, turnsRemaining, allowIdleWait)) {
             return;
@@ -1919,9 +1916,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (!war.isActive()) {
             return;
         }
-        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
-            return;
-        }
         int reserveFloor = Math.max(0, mapReserveFloor);
         while (war.isActive()) {
             int mapsAvailable = Math.max(0, war.attackerMapsValue() - reserveFloor);
@@ -1945,9 +1939,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
             boolean allowIdleWait
     ) {
         if (!war.isActive()) {
-            return;
-        }
-        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
             return;
         }
         int mapsAvailable = Math.max(0, war.attackerMapsValue() - Math.max(0, mapReserveFloor));
@@ -2030,9 +2021,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (!war.isActive()) {
             return;
         }
-        if (isInDeclaredOnReactionDelay(war.attacker.nationId())) {
-            return;
-        }
         int reserveFloor = Math.max(0, mapReserveFloor);
         int mapsAvailable = Math.max(0, war.attackerMapsValue() - reserveFloor);
         AttackType bestAttackType = chooseBestAttackType(war, allowedAttackTypes, mapsAvailable, objective, attackerTeamId);
@@ -2040,12 +2028,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return;
         }
         resolveAttack(war, bestAttackType);
-    }
-
-    private boolean isInDeclaredOnReactionDelay(int nationId) {
-        int declaredOnTurn = lastDeclaredOnTurnByNationId.get(nationId);
-        return declaredOnTurn != Integer.MIN_VALUE
-                && currentTurn - declaredOnTurn < DECLARED_ON_ATTACK_DELAY_TURNS;
     }
 
     private void applyPostAttackConventionalRebuyIfUseful(LocalWar war, boolean attackerSide, int[] losses) {

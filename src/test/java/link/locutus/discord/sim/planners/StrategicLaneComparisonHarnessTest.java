@@ -98,10 +98,9 @@ class StrategicLaneComparisonHarnessTest {
         assertEquals(lane.get("attackersAtTwoWars"), headToHead.get("attackersAtTwoWars"));
         assertEquals(lane.get("attackerCapSaturationPct"), headToHead.get("attackerCapSaturationPct"));
         assertEquals(lane.get("attackerWarCountHistogram"), headToHead.get("attackerWarCountHistogram"));
-        assertEquals(lane.get("respondingSideLaterDeclarations"), headToHead.get("respondingSideLaterDeclarations"));
-        assertEquals(lane.get("openingSideLaterDeclarations"), headToHead.get("openingSideLaterDeclarations"));
-        assertEquals(lane.get("respondingSideLaterDeclarationsThrottled"), headToHead.get("respondingSideLaterDeclarationsThrottled"));
-        assertEquals(lane.get("respondingSideLaterDeclarationCapPressurePct"), headToHead.get("respondingSideLaterDeclarationCapPressurePct"));
+        assertEquals(lane.get("laterDeclarations"), headToHead.get("laterDeclarations"));
+        assertEquals(lane.get("laterDeclarationsThrottled"), headToHead.get("laterDeclarationsThrottled"));
+        assertEquals(lane.get("laterDeclarationCapPressurePct"), headToHead.get("laterDeclarationCapPressurePct"));
         assertEquals(lane.get("attackChoiceCalls"), headToHead.get("attackChoiceCalls"));
         assertEquals(lane.get("noAttackChoices"), headToHead.get("noAttackChoices"));
         assertEquals(lane.get("noAttackChoicePct"), headToHead.get("noAttackChoicePct"));

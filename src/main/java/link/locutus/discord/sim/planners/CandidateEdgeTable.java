@@ -247,7 +247,7 @@ final class CandidateEdgeTable {
      *
      * <p>This is the dense primitive equivalent of rebuilding a candidate edge from a projected
      * mid-horizon {@link link.locutus.discord.sim.planners.LongHorizonForwardProjection.MidHorizonSnapshot}:
-     * an attacker whose projected combat strength and score have been ground down by counter wars
+     * an attacker whose projected combat strength and score have been ground down by incoming wars
      * has its outgoing edges' immediate harm, control leverage, future-war leverage, etc. all
      * proportionally reduced, not just the scalar opening score.</p>
      */

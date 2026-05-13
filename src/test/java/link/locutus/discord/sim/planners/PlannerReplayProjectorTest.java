@@ -240,12 +240,12 @@ class PlannerReplayProjectorTest {
 
         assertTrue(
                 hasDeclaredWar(trace, unhitDefender.nationId(), attacker.nationId()),
-                "An unhit defender-side nation should counter after the initial blitz turn"
+                "An unhit defender-side nation should be able to declare after the initial blitz turn"
         );
     }
 
     @Test
-    void hitDefendersDoNotCreateReciprocalCounterWars() {
+        void hitDefendersDoNotCreateReciprocalSamePairDeclarations() {
         DBNationSnapshot attacker = nation(101, 1)
                 .unit(MilitaryUnit.AIRCRAFT, 700)
                 .build();
@@ -267,12 +267,12 @@ class PlannerReplayProjectorTest {
 
         assertFalse(
                 hasDeclaredWar(trace, hitDefender.nationId(), attacker.nationId()),
-                "A defender already hit by the blitz should not create a reciprocal counter war"
+                "A defender already hit by the blitz should not create a reciprocal same-pair declaration"
         );
     }
 
     @Test
-    void hitDefendersCanCounterDifferentTargetsAfterInitialTurn() {
+        void hitDefendersCanDeclareOnDifferentTargetsAfterInitialTurn() {
         DBNationSnapshot attacker = nation(101, 1)
                 .unit(MilitaryUnit.AIRCRAFT, 700)
                 .build();
@@ -297,7 +297,7 @@ class PlannerReplayProjectorTest {
 
         assertTrue(
                 hasDeclaredWar(trace, hitDefender.nationId(), otherAttacker.nationId()),
-                "A defender hit by one attacker should still be able to counter a different legal target after turn 1"
+                "A defender hit by one attacker should still be able to declare on a different legal target after turn 1"
         );
         assertFalse(
                 hasDeclaredWar(trace, hitDefender.nationId(), attacker.nationId()),
@@ -306,8 +306,8 @@ class PlannerReplayProjectorTest {
     }
 
     @Test
-    void autonomousCounterWarsKeepAttackingAfterDeclarationTurn() {
-        DBNationSnapshot counterDeclarer = nation(202, 2)
+        void autonomousLaterDeclaredWarsKeepAttackingAfterDeclarationTurn() {
+                DBNationSnapshot laterDeclarer = nation(202, 2)
                 .unit(MilitaryUnit.SOLDIER, 20_000)
                 .unit(MilitaryUnit.TANK, 2_000)
                 .unit(MilitaryUnit.AIRCRAFT, 1_200)
@@ -320,45 +320,45 @@ class PlannerReplayProjectorTest {
 
         BlitzReplayTrace trace = capture(
                 List.of(target),
-                List.of(counterDeclarer),
+                List.of(laterDeclarer),
                 Map.of(),
                 Map.of(),
-                List.of(counterDeclarer),
+                List.of(laterDeclarer),
                 List.of(target),
                 BlitzObjective.DAMAGE.objective(),
                 SimTuning.defaults().withTurn1DeclarePolicy(Turn1DeclarePolicy.BOTH_FREE),
                 8
         );
 
-        int declaredTurn = declaredTurn(trace, counterDeclarer.nationId(), target.nationId());
-        assertTrue(declaredTurn >= 0, "Counter war should be declared during the replay");
+        int declaredTurn = declaredTurn(trace, laterDeclarer.nationId(), target.nationId());
+        assertTrue(declaredTurn >= 0, "Later war should be declared during the replay");
         assertTrue(
                 hasAttacksAfterTurn(trace, declaredTurn, false),
-                "Counter wars must keep executing daily attacks after their declaration turn instead of idling outside the assignment map"
+                "Later-declared wars must keep executing daily attacks after their declaration turn instead of idling outside the assignment map"
         );
     }
 
     @Test
-    void replayAutonomousCountersHonorPassedSideOpeningAdmissionPolicy() {
+        void replayAutonomousLaterDeclarationsHonorPassedSideOpeningAdmissionPolicy() {
         DBNationSnapshot target = nation(101, 1)
                 .unit(MilitaryUnit.AIRCRAFT, 500)
                 .unit(MilitaryUnit.SOLDIER, 8_500)
                 .unit(MilitaryUnit.TANK, 320)
                 .build();
-        DBNationSnapshot counterDeclarer = nation(202, 2)
+        DBNationSnapshot laterDeclarer = nation(202, 2)
                 .unit(MilitaryUnit.AIRCRAFT, 520)
                 .unit(MilitaryUnit.SOLDIER, 8_000)
                 .unit(MilitaryUnit.TANK, 300)
                 .build();
 
-        SidePolicy permissivePolicy = SidePolicy.legacy("counterDeclarer", BlitzObjective.DAMAGE.objective());
+        SidePolicy permissivePolicy = SidePolicy.legacy("laterDeclarer", BlitzObjective.DAMAGE.objective());
         SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
                 Arrays.copyOf(permissivePolicy.opening().warTypeWeights(), permissivePolicy.opening().warTypeWeights().length),
                 Arrays.copyOf(permissivePolicy.opening().attackTypeWeights(), permissivePolicy.opening().attackTypeWeights().length),
                 new CandidateEdgeAdmissionPolicy(1.0d, false, false)
         );
         SidePolicy restrictivePolicy = new SidePolicy(
-                "restrictiveCounterDeclarer",
+                "restrictiveLaterDeclarer",
                 permissivePolicy.objective(),
                 permissivePolicy.planner(),
                 restrictiveOpening,
@@ -366,9 +366,9 @@ class PlannerReplayProjectorTest {
                 permissivePolicy.turnActor(),
                 permissivePolicy.allowInitialDeclarations()
         );
-        SidePolicy passiveTargetPolicy = SidePolicy.legacyPassive("counterTarget", BlitzObjective.DAMAGE.objective());
+        SidePolicy passiveTargetPolicy = SidePolicy.legacyPassive("laterTarget", BlitzObjective.DAMAGE.objective());
 
-        List<DBNationSnapshot> nations = List.of(target, counterDeclarer);
+        List<DBNationSnapshot> nations = List.of(target, laterDeclarer);
         SimTuning tuning = SimTuning.defaults().withTurn1DeclarePolicy(Turn1DeclarePolicy.BOTH_FREE);
 
         BlitzReplayTrace permissiveTrace = PlannerReplayProjector.capture(
@@ -376,11 +376,11 @@ class PlannerReplayProjectorTest {
                 OverrideSet.EMPTY,
                 nations,
                 ids(List.of(target)),
-                ids(List.of(counterDeclarer)),
+                ids(List.of(laterDeclarer)),
                 Map.of(),
                 Map.of(),
                 List.of(laterDeclarationScope(
-                        List.of(counterDeclarer),
+                        List.of(laterDeclarer),
                         List.of(target),
                         permissivePolicy,
                         passiveTargetPolicy
@@ -395,11 +395,11 @@ class PlannerReplayProjectorTest {
                 OverrideSet.EMPTY,
                 nations,
                 ids(List.of(target)),
-                ids(List.of(counterDeclarer)),
+                ids(List.of(laterDeclarer)),
                 Map.of(),
                 Map.of(),
                 List.of(laterDeclarationScope(
-                        List.of(counterDeclarer),
+                        List.of(laterDeclarer),
                         List.of(target),
                         restrictivePolicy,
                         passiveTargetPolicy
@@ -413,17 +413,17 @@ class PlannerReplayProjectorTest {
         PARTICIPANT_IDS_BY_TRACE.put(restrictiveTrace, ids(nations));
 
         assertTrue(
-                hasDeclaredWar(permissiveTrace, counterDeclarer.nationId(), target.nationId()),
-                "Replay capture should honor a permissive autonomous counter declarer policy"
+                hasDeclaredWar(permissiveTrace, laterDeclarer.nationId(), target.nationId()),
+                "Replay capture should honor a permissive autonomous later-declarer policy"
         );
         assertFalse(
-                hasDeclaredWar(restrictiveTrace, counterDeclarer.nationId(), target.nationId()),
-                "Replay capture should honor a restrictive autonomous counter declarer admission policy"
+                hasDeclaredWar(restrictiveTrace, laterDeclarer.nationId(), target.nationId()),
+                "Replay capture should honor a restrictive autonomous later-declarer admission policy"
         );
     }
 
     @Test
-    void freeCounterDeclarerOutranksSaturatedPeerForLimitedTarget() {
+    void freeLaterDeclarerOutranksSaturatedPeerForLimitedTarget() {
         DBNationSnapshot freeDeclarer = nation(301, 2)
                 .unit(MilitaryUnit.AIRCRAFT, 800)
                 .build();
@@ -666,7 +666,7 @@ class PlannerReplayProjectorTest {
     }
 
     @Test
-    void attackerSideAutonomouslyRedeclaresAfterInitialWarCycle() {
+        void attackerSideAutonomouslyDeclaresAfterInitialWarCycle() {
         DBNationSnapshot attacker = nation(101, 1)
                 .maxOff(2)
                 .unit(MilitaryUnit.SOLDIER, 24_000)
@@ -743,7 +743,7 @@ class PlannerReplayProjectorTest {
     }
 
     @Test
-    void attackerAutonomousRedeclarerGetsOpeningAttacksFirst() {
+        void attackerAutonomousLaterDeclarerGetsOpeningAttacksFirst() {
         DBNationSnapshot attacker = nation(101, 1)
                 .maxOff(2)
                 .unit(MilitaryUnit.SOLDIER, 24_000)
@@ -773,16 +773,16 @@ class PlannerReplayProjectorTest {
                 72
         );
 
-        int redeclareTurn = firstDeclaredTurnByDeclarerAfter(trace, attacker.nationId(), 1);
-        assertTrue(redeclareTurn > 0, "expected attacker-side autonomous redeclaration after the initial turn");
-        assertTrue(attackCountOnTurn(trace, redeclareTurn, true) > 0,
-                "attacker redeclarer should take opening attacks on the redeclaration turn");
-        assertEquals(0, attackCountOnTurn(trace, redeclareTurn, false),
-                "the redeclared-on side should not act before the attacker redeclarer on the declaration turn");
+        int laterDeclarationTurn = firstDeclaredTurnByDeclarerAfter(trace, attacker.nationId(), 1);
+        assertTrue(laterDeclarationTurn > 0, "expected attacker-side autonomous declaration after the initial turn");
+        assertTrue(attackCountOnTurn(trace, laterDeclarationTurn, true) > 0,
+                "attacker later declarer should take opening attacks on the declaration turn");
+        assertEquals(0, attackCountOnTurn(trace, laterDeclarationTurn, false),
+                "the declared-on side should not act before the attacker later declarer on the declaration turn");
     }
 
     @Test
-    void attackerAutonomousRedeclarationPreservesPlannerSelectedWarType() {
+        void attackerAutonomousLaterDeclarationPreservesPlannerSelectedWarType() {
         DBNationSnapshot attacker = nation(101, 1)
                 .maxOff(2)
                 .unit(MilitaryUnit.AIRCRAFT, 700)
@@ -813,16 +813,16 @@ class PlannerReplayProjectorTest {
         );
 
         assertTrue(totalDeclaredWarCount(trace, attacker.nationId()) > 1,
-                "expected the attacker to redeclare on the reserve target over the long replay horizon");
+                "expected the attacker to declare on the reserve target over the long replay horizon");
         assertEquals(
                 WarType.ATT.ordinal(),
                 declaredWarTypeOrdinal(trace, attacker.nationId(), reserveTarget.nationId()),
-                "later autonomous redeclarations should preserve the autonomous planner's selected war type instead of defaulting to ORD"
+                                "later autonomous declarations should preserve the autonomous planner's selected war type instead of defaulting to ORD"
         );
     }
 
     @Test
-    void defenderSideAutonomouslyRedeclaresAfterInitialWarCycleWhenDefendersAreBlitzing() {
+        void defenderSideAutonomouslyDeclaresAfterInitialWarCycleWhenDefendersAreBlitzing() {
         DBNationSnapshot initialTarget = nation(101, 1)
                 .unit(MilitaryUnit.SOLDIER, 14_000)
                 .unit(MilitaryUnit.TANK, 900)
@@ -856,11 +856,11 @@ class PlannerReplayProjectorTest {
         );
 
         assertTrue(totalDeclaredWarCount(trace, defenderDeclarer.nationId()) > 1,
-                "the original defender population should be able to redeclare later when DEFENDERS_ONLY is the declaring side");
+                "the original defender population should be able to declare later when DEFENDERS_ONLY is the declaring side");
     }
 
     @Test
-    void bothModeReplayAllowsLaterRedeclarationsFromBothOriginalSides() {
+    void bothModeReplayAllowsLaterDeclarationsFromBothOriginalSides() {
         DBNationSnapshot attackerDeclarer = nation(101, 1)
                 .maxOff(2)
                 .unit(MilitaryUnit.SOLDIER, 24_000)
@@ -921,9 +921,9 @@ class PlannerReplayProjectorTest {
         );
 
         assertTrue(totalDeclaredWarCount(trace, attackerDeclarer.nationId()) > 1,
-                "BOTH mode should still allow later redeclarations from the original attacker population");
+                "BOTH mode should still allow later declarations from the original attacker population");
         assertTrue(totalDeclaredWarCount(trace, defenderDeclarer.nationId()) > 1,
-                "BOTH mode should also allow later redeclarations from the original defender population");
+                "BOTH mode should also allow later declarations from the original defender population");
     }
 
     @Test

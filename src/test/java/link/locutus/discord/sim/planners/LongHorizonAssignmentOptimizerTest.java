@@ -976,7 +976,7 @@ class LongHorizonAssignmentOptimizerTest {
         assertTrue(counterFactor < passiveFactor,
                 "Mid-horizon edge factor should drop when projected state shows real counter damage");
         assertTrue(counterFactor < 1.0d,
-                "An attacker absorbing projected counter wars should not project to its full baseline strength + score");
+                "An attacker absorbing projected later declarations should not project to its full baseline strength + score");
     }
 
     @Test
@@ -2179,9 +2179,12 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
-    void forwardProjectionAddsReverseCounterWarsFromProjectedState() {
-        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
-        List<DBNationSnapshot> counterCapableDefenders = List.of(
+        void forwardProjectionAddsLaterDeclarationsFromProjectedState() {
+        List<DBNationSnapshot> attackers = List.of(
+                withTotalScore(nation(1, 1, 900), 2_000.0),
+                withTotalScore(nation(2, 1, 900), 2_000.0)
+        );
+        List<DBNationSnapshot> declaringDefenders = List.of(
                 withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(1).build()
         );
         List<DBNationSnapshot> passiveDefenders = List.of(
@@ -2194,24 +2197,24 @@ class LongHorizonAssignmentOptimizerTest {
                 attackers,
                 passiveDefenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 24
         );
-        double counterReverseWars = projectedAssignedScore(
+        double declaredWars = projectedAssignedScore(
                 attackers,
-                counterCapableDefenders,
+                declaringDefenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 24
         );
 
         assertEquals(0d, passiveReverseWars, 1e-6);
-        assertTrue(counterReverseWars > passiveReverseWars,
-                "Projected scoring should emit defender-side counter declarations as reverse-team active wars");
+        assertTrue(declaredWars > passiveReverseWars,
+                "Projected scoring should emit legal later declarations as active wars");
     }
 
     @Test
-    void forwardProjectionAgesBeigeBeforeProjectedCounterSelection() {
+    void forwardProjectionAgesBeigeBeforeLaterDeclarationSelection() {
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 nation(101, 2, 900).toBuilder()
@@ -2226,16 +2229,16 @@ class LongHorizonAssignmentOptimizerTest {
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 24
         );
 
         assertTrue(reverseWars > 0d,
-                "Dense projection should age initial beige turns before projected counter eligibility is evaluated");
+                "Dense projection should age initial beige turns before projected later-declaration eligibility is evaluated");
     }
 
     @Test
-    void forwardProjectionDeclaresCountersWhenProjectedStateAllowsThem() {
+    void forwardProjectionDeclaresLaterWarsWhenProjectedStateAllowsThem() {
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 nation(102, 2, 900).toBuilder()
@@ -2250,16 +2253,16 @@ class LongHorizonAssignmentOptimizerTest {
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 36
         );
 
         assertTrue(reverseWars > 0d,
-                "Receding counter projection should declare as soon as projected beige and slot state allows it, not at a fixed turn window");
+                "Projected later declarations should occur as soon as projected beige and slot state allows them, not at a fixed turn window");
     }
 
     @Test
-    void forwardProjectionUsesPerSideCounterScoreThreshold() {
+    void forwardProjectionUsesPerSideLaterDeclarationScoreThreshold() {
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 nation(102, 2, 900).toBuilder()
@@ -2273,18 +2276,18 @@ class LongHorizonAssignmentOptimizerTest {
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 24,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseCounterWarCountObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective())
         );
         PlannerProfiler.ProfileSnapshot thresholdSuppressedProfile = projectedProfileSnapshot(
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 24,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
-                        new ReverseCounterWarCountObjective(),
+                        new ReverseLaterDeclarationWarCountObjective(),
                         SidePlannerSettings.legacy(),
                         SidePlannerSettings.legacy().withLaterDeclarationScoreThreshold(1_000_000d),
                         SideProjectionPolicies.heuristic(),
@@ -2293,20 +2296,23 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long defaultCounterDeclarations = defaultProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
         long thresholdSuppressedCounterDeclarations = thresholdSuppressedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
 
         assertTrue(defaultCounterDeclarations > 0L,
-                "Default defender counter threshold should still allow this projected counter scenario");
+                "Default defender later-declaration threshold should still allow this projected declaration scenario");
         assertEquals(0L, thresholdSuppressedCounterDeclarations,
-                "A very high defender-side counter threshold should suppress projected counters without changing the opening assignment path");
+                "A very high defender-side later-declaration threshold should suppress projected declarations without changing the opening assignment path");
     }
 
     @Test
     void objectiveDrivenProjectionPolicyCanSuppressHeuristicLaterDeclarations() {
-        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
+        List<DBNationSnapshot> attackers = List.of(
+                withTotalScore(nation(1, 1, 900), 2_000.0),
+                withTotalScore(nation(2, 1, 900), 2_000.0)
+        );
         List<DBNationSnapshot> defenders = List.of(
                 nation(102, 2, 900).toBuilder()
                         .maxOff(1)
@@ -2314,7 +2320,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
-        StrategicObjective terminalObjective = new ReverseCounterWarCountObjective();
+        StrategicObjective terminalObjective = new ReverseLaterDeclarationWarCountObjective();
 
         PlannerProfiler.ProfileSnapshot heuristicProfile = projectedProfileSnapshot(
                 attackers,
@@ -2343,17 +2349,17 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long heuristicCounterDeclarations = heuristicProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
         long objectivePolicyCounterDeclarations = objectivePolicyProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
         long heuristicOpeningEvaluations = heuristicProfile.stats(PlannerProfiler.Scope.OPENING_EVALUATE).calls();
         long objectiveOpeningEvaluations = objectivePolicyProfile.stats(PlannerProfiler.Scope.OPENING_EVALUATE).calls();
 
         assertTrue(heuristicCounterDeclarations > 0L,
-                "The legacy later-declaration heuristic should still declare in this counter fixture");
+                "The legacy later-declaration heuristic should still declare in this fixture");
         assertEquals(0L, objectivePolicyCounterDeclarations,
-                "Objective-driven later-declaration policy should be able to reject a legal heuristic counter instead of only changing attack choice");
+                "Objective-driven later-declaration policy should be able to reject a legal heuristic declaration instead of only changing attack choice");
         assertTrue(heuristicOpeningEvaluations > 0L,
                 "Legacy projected later declarations should still use opening evaluation for their candidate value");
         assertEquals(0L, objectiveOpeningEvaluations,
@@ -2378,22 +2384,22 @@ class LongHorizonAssignmentOptimizerTest {
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 24,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseCounterWarCountObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective())
         );
         long counterDeclarations = profile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
 
         assertTrue(counterDeclarations > 0L,
-                "Projected defender later declarations should consider legal attacker-side targets with free defensive slots, not only attackers assigned in the opening");
+                "Projected later declarations should consider legal targets with free defensive slots, not only targets assigned in the opening");
     }
 
     @Test
-        void forwardProjectionBlocksSamePairRedeclareDuringPostVictoryDelay() {
+        void forwardProjectionBlocksSamePairDeclarationDuringPostVictoryDelay() {
                 // Single attacker with one viable target. Projection should not reuse the same pair before
-                // the post-victory reopen delay. A later-profile guardrail covers the resumed redeclare path.
+                // the post-victory reopen delay. A later-profile guardrail covers the resumed declaration path.
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
@@ -2412,12 +2418,12 @@ class LongHorizonAssignmentOptimizerTest {
                         LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
         );
 
-                long blockedRedeclarations = blockedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                long blockedLaterDeclarations = blockedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                         .counters()
-                        .getOrDefault("openingSideLaterDeclarations", 0L);
+                        .getOrDefault("laterDeclarations", 0L);
 
-                assertEquals(0L, blockedRedeclarations,
-                        "Projected post-victory delay should block same-pair redeclarations before the reopen window");
+                assertEquals(0L, blockedLaterDeclarations,
+                        "Projected post-victory delay should block same-pair declarations before the reopen window");
     }
 
     @Test
@@ -2460,18 +2466,18 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderCounts
         ));
 
-        long redeclareDeclarations = session.snapshot()
+        long laterDeclarations = session.snapshot()
                 .stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("openingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
         assertTrue(
-                redeclareDeclarations > 0L,
+                laterDeclarations > 0L,
                 "projected later declarations should be able to use a free offensive slot before turn 60 instead of waiting for an arbitrary expiration gate"
         );
     }
 
     @Test
-    void forwardProjectionUsesPerSideRedeclareScoreThreshold() {
+        void forwardProjectionUsesPerSideLaterDeclarationThreshold() {
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
@@ -2501,21 +2507,21 @@ class LongHorizonAssignmentOptimizerTest {
                         SideProjectionPolicies.heuristic()
                 )
         );
-        long defaultRedeclarations = defaultProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+        long defaultLaterDeclarations = defaultProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("openingSideLaterDeclarations", 0L);
-        long thresholdSuppressedRedeclarations = thresholdSuppressedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .getOrDefault("laterDeclarations", 0L);
+        long thresholdSuppressedLaterDeclarations = thresholdSuppressedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("openingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
 
-        assertTrue(defaultRedeclarations > 0L,
-                "Default attacker-side redeclare threshold should still allow projected redeclarations after the post-victory delay");
-        assertEquals(0L, thresholdSuppressedRedeclarations,
-                "A very high attacker-side redeclare threshold should suppress projected redeclarations after the post-victory delay");
+        assertTrue(defaultLaterDeclarations > 0L,
+                "Default attacker-side later-declaration threshold should still allow projected declarations after the post-victory delay");
+        assertEquals(0L, thresholdSuppressedLaterDeclarations,
+                "A very high attacker-side later-declaration threshold should suppress projected declarations after the post-victory delay");
     }
 
     @Test
-    void forwardProjectionRespectsPerTurnCounterCap() {
+        void forwardProjectionRespectsPerTurnLaterDeclarationCap() {
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
                 withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(1).build(),
@@ -2529,18 +2535,18 @@ class LongHorizonAssignmentOptimizerTest {
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 2,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseCounterWarCountObjective())
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective())
         );
         PlannerProfiler.ProfileSnapshot cappedProfile = projectedProfileSnapshot(
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 2,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
-                        new ReverseCounterWarCountObjective(),
+                        new ReverseLaterDeclarationWarCountObjective(),
                         SidePlannerSettings.legacy(),
                         SidePlannerSettings.legacy().withMaxLaterDeclarationsPerTurn(1),
                         SideProjectionPolicies.heuristic(),
@@ -2549,15 +2555,15 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long uncappedCounterDeclarations = uncappedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
         long cappedCounterDeclarations = cappedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
 
         assertTrue(uncappedCounterDeclarations > cappedCounterDeclarations,
-                "A defender-side per-turn counter cap should spread counter declarations over time instead of emptying the pool immediately");
+                "A per-turn later-declaration cap should spread declarations over time instead of emptying the pool immediately");
         assertEquals(1L, cappedCounterDeclarations,
-                "With one counter turn available at horizon=2 and a per-turn cap of 1, only one reverse counter war should exist");
+                "With one later-declaration turn available at horizon=2 and a per-turn cap of 1, only one later declaration should exist");
     }
 
     @Test
@@ -2580,10 +2586,10 @@ class LongHorizonAssignmentOptimizerTest {
                 defenders,
                 activityWeights,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 2,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
-                        new ReverseCounterWarCountObjective(),
+                        new ReverseLaterDeclarationWarCountObjective(),
                         SidePlannerSettings.legacy(),
                         SidePlannerSettings.legacy()
                                 .withActivityActThreshold(0.0d)
@@ -2597,10 +2603,10 @@ class LongHorizonAssignmentOptimizerTest {
                 defenders,
                 activityWeights,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 2,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
-                        new ReverseCounterWarCountObjective(),
+                        new ReverseLaterDeclarationWarCountObjective(),
                         SidePlannerSettings.legacy(),
                         SidePlannerSettings.legacy()
                                 .withActivityActThreshold(0.5d)
@@ -2611,15 +2617,15 @@ class LongHorizonAssignmentOptimizerTest {
         );
         long unrestrictedCounterDeclarations = unrestrictedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
         long thresholdedCounterDeclarations = thresholdedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
-                .getOrDefault("respondingSideLaterDeclarations", 0L);
+                .getOrDefault("laterDeclarations", 0L);
 
         assertEquals(2L, unrestrictedCounterDeclarations,
-                "Without an activity threshold, both defenders should be eligible to counter on the single counter turn");
+                "Without an activity threshold, both defenders should be eligible for later declarations on the single declaration turn");
         assertEquals(1L, thresholdedCounterDeclarations,
-                "Defender-side activity threshold should suppress low-activity projected counters before pair scoring");
+                "Declarer activity threshold should suppress low-activity projected later declarations before pair scoring");
     }
 
     @Test
@@ -2757,7 +2763,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
 
         assertEquals(0d, projection.attackerIdlePressureMarginalScore(0), 1e-9,
-                "An attacker that already has an offensive war should not get a fresh idle-pressure bonus for one more redeclare slot");
+                "An attacker that already has an offensive war should not get a fresh idle-pressure bonus for one more later-declaration slot");
         assertTrue(projection.attackerIdlePressureMarginalScore(1) > 0d,
                 "A still-idle attacker should retain idle-pressure incentive for its first offensive assignment");
     }
@@ -2831,12 +2837,12 @@ class LongHorizonAssignmentOptimizerTest {
                 attackers,
                 defenders,
                 edges,
-                new ReverseCounterWarCountObjective(),
+                new ReverseLaterDeclarationWarCountObjective(),
                 24
         );
 
         assertEquals(0d, reverseWars, 1e-6,
-                "Counter capacity should require projected post-opening value, not only snapshot free-off slots");
+                "Later-declaration capacity should require projected post-opening value, not only snapshot free-off slots");
     }
 
     private static double emptyProjectionScore(
@@ -3196,7 +3202,7 @@ class LongHorizonAssignmentOptimizerTest {
                 }
         }
 
-        private static final class ReverseCounterWarCountObjective implements StrategicObjective {
+        private static final class ReverseLaterDeclarationWarCountObjective implements StrategicObjective {
                 @Override
                 public double scoreTerminal(StrategicValueView view, int teamId) {
                         if (!(view instanceof TeamWarControlView controlView)) {

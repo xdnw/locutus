@@ -37,7 +37,7 @@ public final class StrategicLaneComparisonHarness {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final int DEFAULT_HORIZON_TURNS = 72;
     private static final int DEFAULT_POPULATION = 0;
-    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,respondingSideLaterDeclarationCapPressurePct,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,attackChoiceCalls,noAttackChoices,noAttackChoicePct,noMapAttackChoices,noLegalAttackChoices,noPositiveAttackChoices,specialistAttackSelections,selectedLaterDeclarations,selectedLaterDeclarationMeanScore,selectedLaterDeclarationTargetActionSpaceMean,selectedLaterDeclarationTargetActionSpaceMax,selectedLaterDeclarationStrengthRatioMean,selectedLaterDeclarationStrengthRatioMin,selectedLaterDeclarationUnderStrengthPct,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
+    private static final String CSV_HEADER = "family,lane,objective,horizon,attackers,defenders,edges,assignments,idleAttackersWithEdges,idleAttackersFreeSlot,idleAttackersFreeSlotPct,strongDefenderCoveragePct,defenderCoverageByTier,maxWarsPerAttacker,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,laterDeclarationCapPressurePct,avgAssignedCounterRisk,terminalObjective,attackerTerminalValue,defenderTerminalValue,attackerUnitLosses,defenderUnitLosses,attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,attackerRebuyPreserved,defenderRebuyPreserved,attackerRebuyDestroyed,defenderRebuyDestroyed,attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,attackerWipeRisk,defenderWipeRisk,activeWars,attackerSuperiorityFlags,defenderSuperiorityFlags,superiorityBalancePct,attackerWinningWars,defenderWinningWars,turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,concludedWars,laterDeclarations,laterDeclarationsThrottled,attackChoiceCalls,noAttackChoices,noAttackChoicePct,noMapAttackChoices,noLegalAttackChoices,noPositiveAttackChoices,specialistAttackSelections,selectedLaterDeclarations,selectedLaterDeclarationMeanScore,selectedLaterDeclarationTargetActionSpaceMean,selectedLaterDeclarationTargetActionSpaceMax,selectedLaterDeclarationStrengthRatioMean,selectedLaterDeclarationStrengthRatioMin,selectedLaterDeclarationUnderStrengthPct,concludedWarsByDefenderTier,assignedWarTypes,assignedAttackTypes,payloadBytes,bestMs,avgMs";
 
     private StrategicLaneComparisonHarness() {
     }
@@ -110,7 +110,7 @@ public final class StrategicLaneComparisonHarness {
                             Integer.toString(best.attackersAtTwoWars()),
                             formatDouble(best.attackerCapSaturationPct(), 2),
                             warCountHistogramSummary(best.attackerWarCountHistogram()),
-                            formatDouble(best.respondingSideLaterDeclarationCapPressurePct(), 2),
+                            formatDouble(best.laterDeclarationCapPressurePct(), 2),
                             formatDouble(best.avgAssignedCounterRisk(), 6),
                             formatDouble(best.terminalObjective(), 3),
                             formatDouble(best.attackerTerminalValue(), 3),
@@ -142,9 +142,8 @@ public final class StrategicLaneComparisonHarness {
                             Integer.toString(best.turnsNoControl()),
                             Integer.toString(best.currentWarOutcomeFlips()),
                             Integer.toString(best.concludedWars()),
-                            Integer.toString(best.respondingSideLaterDeclarations()),
-                            Integer.toString(best.openingSideLaterDeclarations()),
-                            Integer.toString(best.respondingSideLaterDeclarationsThrottled()),
+                            Integer.toString(best.laterDeclarations()),
+                            Integer.toString(best.laterDeclarationsThrottled()),
                             Integer.toString(best.attackChoiceCalls()),
                             Integer.toString(best.noAttackChoices()),
                             formatDouble(best.noAttackChoicePct(), 2),
@@ -945,8 +944,8 @@ public final class StrategicLaneComparisonHarness {
                         attackerCapSaturationPct,
                         attackerWarCountHistogram,
                         laterDeclarationCapPressurePct(
-                            diagnostics.respondingSideLaterDeclarations(),
-                            diagnostics.respondingSideLaterDeclarationsThrottled()
+                            diagnostics.laterDeclarations(),
+                            diagnostics.laterDeclarationsThrottled()
                         ),
                     avgAssignedCounterRisk(edges, assignment),
                     terminalObjective,
@@ -979,9 +978,8 @@ public final class StrategicLaneComparisonHarness {
                     diagnostics.turnsNoControl(),
                     diagnostics.currentWarOutcomeFlips(),
                     diagnostics.concludedWars(),
-                    diagnostics.respondingSideLaterDeclarations(),
-                    diagnostics.openingSideLaterDeclarations(),
-                    diagnostics.respondingSideLaterDeclarationsThrottled(),
+                    diagnostics.laterDeclarations(),
+                    diagnostics.laterDeclarationsThrottled(),
                     diagnostics.attackChoiceCalls(),
                     diagnostics.noAttackChoices(),
                     diagnostics.noAttackChoicePct(),
@@ -1253,7 +1251,7 @@ public final class StrategicLaneComparisonHarness {
             int attackersAtTwoWars,
             double attackerCapSaturationPct,
             int[] attackerWarCountHistogram,
-            double respondingSideLaterDeclarationCapPressurePct,
+            double laterDeclarationCapPressurePct,
             double avgAssignedCounterRisk,
             double terminalObjective,
             double attackerTerminalValue,
@@ -1285,9 +1283,8 @@ public final class StrategicLaneComparisonHarness {
             int turnsNoControl,
             int currentWarOutcomeFlips,
             int concludedWars,
-            int respondingSideLaterDeclarations,
-            int openingSideLaterDeclarations,
-            int respondingSideLaterDeclarationsThrottled,
+            int laterDeclarations,
+            int laterDeclarationsThrottled,
             int attackChoiceCalls,
             int noAttackChoices,
             double noAttackChoicePct,
@@ -1323,7 +1320,7 @@ public final class StrategicLaneComparisonHarness {
                     attackersAtTwoWars,
                     attackerCapSaturationPct,
                     attackerWarCountHistogram,
-                    respondingSideLaterDeclarationCapPressurePct,
+                    laterDeclarationCapPressurePct,
                     avgAssignedCounterRisk,
                     terminalObjective,
                     attackerTerminalValue,
@@ -1355,9 +1352,8 @@ public final class StrategicLaneComparisonHarness {
                     turnsNoControl,
                     currentWarOutcomeFlips,
                     concludedWars,
-                    respondingSideLaterDeclarations,
-                    openingSideLaterDeclarations,
-                    respondingSideLaterDeclarationsThrottled,
+                    laterDeclarations,
+                    laterDeclarationsThrottled,
                     attackChoiceCalls,
                     noAttackChoices,
                     noAttackChoicePct,

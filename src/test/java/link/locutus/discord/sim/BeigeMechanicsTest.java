@@ -83,7 +83,7 @@ class BeigeMechanicsTest {
     }
 
     @Test
-    void recentOpponentLockoutBlocksRedeclareButReleasesSlotsImmediately() {
+    void recentOpponentLockoutBlocksSameOpponentDeclarationButReleasesSlotsImmediately() {
         SimWorld world = new SimWorld();
         SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 1_000_000d);
         SimNation defender = new SimNation(2, WarPolicy.TURTLE, 1_000_000d);

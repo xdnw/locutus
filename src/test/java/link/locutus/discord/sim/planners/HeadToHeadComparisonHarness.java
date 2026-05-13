@@ -26,13 +26,13 @@ public final class HeadToHeadComparisonHarness {
             + "attackerObjective,defenderObjective,attackerLane,defenderLane,"
             + "attackerAssignmentCount,attackerIdleViable,attackerIdleViablePct,"
             + "attackerStrongDefenderCoveragePct,attackerDefenderCoverageByTier,"
-            + "attackerMaxWarsPerNation,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,respondingSideLaterDeclarationCapPressurePct,attackerAvgAssignedCounterRisk,"
+            + "attackerMaxWarsPerNation,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,laterDeclarationCapPressurePct,attackerAvgAssignedCounterRisk,"
             + "attackerTerminalObjective,attackerTerminalAssetValue,defenderTerminalAssetValue,"
             + "attackerUnitLossValue,defenderUnitLossValue,attackerLandAirLossValue,defenderLandAirLossValue,"
             + "attackerInfraDestroyed,defenderInfraDestroyed,attackerWiped,defenderWiped,"
             + "attackerWipeRisk,defenderWipeRisk,activeWars,attackerWinningWars,defenderWinningWars,"
             + "turnsAtkControl,turnsDefControl,turnsNoControl,currentWarOutcomeFlips,"
-            + "concludedWars,respondingSideLaterDeclarations,openingSideLaterDeclarations,respondingSideLaterDeclarationsThrottled,"
+            + "concludedWars,laterDeclarations,laterDeclarationsThrottled,"
             + "attackChoiceCalls,noAttackChoices,noAttackChoicePct,noMapAttackChoices,noLegalAttackChoices,noPositiveAttackChoices,specialistAttackSelections,"
             + "selectedLaterDeclarations,selectedLaterDeclarationMeanScore,selectedLaterDeclarationTargetActionSpaceMean,"
             + "selectedLaterDeclarationTargetActionSpaceMax,selectedLaterDeclarationStrengthRatioMean,"
@@ -123,7 +123,7 @@ public final class HeadToHeadComparisonHarness {
                 Integer.toString(best.attackersAtTwoWars()),
                 formatDouble(best.attackerCapSaturationPct(), 2),
                 warCountHistogramSummary(best.attackerWarCountHistogram()),
-                formatDouble(best.respondingSideLaterDeclarationCapPressurePct(), 2),
+                formatDouble(best.laterDeclarationCapPressurePct(), 2),
                 formatDouble(best.avgAssignedCounterRisk(), 6),
                 formatDouble(best.terminalObjective(), 3),
                 formatDouble(best.attackerTerminalValue(), 3),
@@ -146,9 +146,8 @@ public final class HeadToHeadComparisonHarness {
                 Integer.toString(best.turnsNoControl()),
                 Integer.toString(best.currentWarOutcomeFlips()),
                 Integer.toString(best.concludedWars()),
-                Integer.toString(best.respondingSideLaterDeclarations()),
-                Integer.toString(best.openingSideLaterDeclarations()),
-                Integer.toString(best.respondingSideLaterDeclarationsThrottled()),
+                Integer.toString(best.laterDeclarations()),
+                Integer.toString(best.laterDeclarationsThrottled()),
                 Integer.toString(best.attackChoiceCalls()),
                 Integer.toString(best.noAttackChoices()),
                 formatDouble(best.noAttackChoicePct(), 2),
