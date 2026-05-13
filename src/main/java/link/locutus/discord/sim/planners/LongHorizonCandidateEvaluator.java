@@ -18,10 +18,15 @@ import java.util.Set;
  */
 final class LongHorizonCandidateEvaluator {
     private static final int REALIZED_COUNTER_OBJECTIVE_PENALTY = 300;
+    private static final double OPENING_OVERCOMMITMENT_OPPORTUNITY_WEIGHT = 0.35d;
+    private static final double UNCOVERED_DEFENDER_OBJECTIVE_PENALTY_WEIGHT = 28.0d;
 
     private final LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext;
     private final boolean canScoreProjection;
     private final int attackerTeamId;
+    private final double[] uncoveredDefenderPenalties;
+    private final int[] openingCommitmentTargets;
+    private final double[] openingOvercommitmentUnitPenalties;
         private final IdentityHashMap<LongHorizonAssignmentOptimizer.Candidate, CandidateStateKey> candidateKeys =
             new IdentityHashMap<>();
         private final Map<CandidateStateKey, LongHorizonForwardProjection.ProjectedEvaluation> projectedEvaluations =
@@ -34,18 +39,30 @@ final class LongHorizonCandidateEvaluator {
 
     private LongHorizonCandidateEvaluator(
             CompiledScenario scenario,
+            CandidateEdgeTable edges,
             LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext
     ) {
         this.projectionScoringContext = projectionScoringContext;
         this.canScoreProjection = canScoreProjection(scenario);
         this.attackerTeamId = scenario.attackerCount() == 0 ? 1 : scenario.attacker(0).teamId();
+        this.uncoveredDefenderPenalties = uncoveredDefenderPenalties(scenario, edges);
+        this.openingCommitmentTargets = openingCommitmentTargets(scenario, edges);
+        this.openingOvercommitmentUnitPenalties = openingOvercommitmentUnitPenalties(scenario, edges);
     }
 
     static LongHorizonCandidateEvaluator create(
             CompiledScenario scenario,
             LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext
     ) {
-        return new LongHorizonCandidateEvaluator(scenario, projectionScoringContext);
+        return new LongHorizonCandidateEvaluator(scenario, null, projectionScoringContext);
+    }
+
+    static LongHorizonCandidateEvaluator create(
+            CompiledScenario scenario,
+            CandidateEdgeTable edges,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext
+    ) {
+        return new LongHorizonCandidateEvaluator(scenario, edges, projectionScoringContext);
     }
 
     LongHorizonAssignmentOptimizer.Candidate betterCandidate(
@@ -118,7 +135,12 @@ final class LongHorizonCandidateEvaluator {
         }
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
         double realizedCounterPenalty = realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
-        return evaluation.objectiveScore() - realizedCounterPenalty;
+        double openingOvercommitmentPenalty = openingOvercommitmentObjectivePenalty(candidate);
+        double uncoveredDefenderPenalty = uncoveredDefenderObjectivePenalty(candidate);
+        return evaluation.objectiveScore()
+                - realizedCounterPenalty
+                - openingOvercommitmentPenalty
+                - uncoveredDefenderPenalty;
     }
 
     ObjectiveValueSummary objectiveSummary(
@@ -264,7 +286,12 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonForwardProjection.ProjectedEvaluation evaluation
     ) {
         double realizedCounterPenalty = realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
-        return evaluation.objectiveScore() - realizedCounterPenalty;
+        double openingOvercommitmentPenalty = openingOvercommitmentObjectivePenalty(candidate);
+        double uncoveredDefenderPenalty = uncoveredDefenderObjectivePenalty(candidate);
+        return evaluation.objectiveScore()
+                - realizedCounterPenalty
+                - openingOvercommitmentPenalty
+                - uncoveredDefenderPenalty;
     }
 
     private static double realizedCounterObjectivePenalty(
@@ -284,6 +311,117 @@ final class LongHorizonCandidateEvaluator {
             }
         }
         return penalty;
+    }
+
+    private double uncoveredDefenderObjectivePenalty(LongHorizonAssignmentOptimizer.Candidate candidate) {
+        double penalty = 0d;
+        int[] defenderCounts = candidate.defenderCounts();
+        for (int defenderIndex = 0; defenderIndex < defenderCounts.length && defenderIndex < uncoveredDefenderPenalties.length; defenderIndex++) {
+            if (defenderCounts[defenderIndex] == 0) {
+                penalty += uncoveredDefenderPenalties[defenderIndex];
+            }
+        }
+        return penalty;
+    }
+
+    private static double[] uncoveredDefenderPenalties(CompiledScenario scenario, CandidateEdgeTable edges) {
+        double[] penalties = new double[scenario.defenderCount()];
+        for (int defenderIndex = 0; defenderIndex < penalties.length; defenderIndex++) {
+            DBNationSnapshot defender = scenario.defender(defenderIndex);
+            double tierWeight = Math.max(0d, Math.min(1d, (defender.cities() - 35d) / 10d));
+            if (!(tierWeight > 0d)) {
+                continue;
+            }
+            penalties[defenderIndex] = UNCOVERED_DEFENDER_OBJECTIVE_PENALTY_WEIGHT
+                    * tierWeight
+                    * (OpeningMetricSummary.defenderControlPressure(defender) + (35d * defender.cities()));
+        }
+        if (edges == null || edges.edgeCount() == 0) {
+            return penalties;
+        }
+        int[] defenderCaps = new int[scenario.defenderCount()];
+        for (int defenderIndex = 0; defenderIndex < defenderCaps.length; defenderIndex++) {
+            defenderCaps[defenderIndex] = Math.max(0, scenario.defenderFreeDefSlots(defenderIndex));
+        }
+        int[] defenderNeeds = LongHorizonOpeningCommitmentModel.defenderPressureNeeds(scenario, edges, defenderCaps);
+        double[] maxIncomingEdgeScores = new double[scenario.defenderCount()];
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            double edgeScore = Math.max(0d, edges.scalarScore(edgeIndex));
+            if (!(edgeScore > 0d)) {
+                continue;
+            }
+            int defenderIndex = edges.defenderIndex(edgeIndex);
+            maxIncomingEdgeScores[defenderIndex] = Math.max(maxIncomingEdgeScores[defenderIndex], edgeScore);
+        }
+        for (int defenderIndex = 0; defenderIndex < penalties.length; defenderIndex++) {
+            penalties[defenderIndex] = Math.max(
+                    penalties[defenderIndex],
+                    maxIncomingEdgeScores[defenderIndex] * Math.max(1, defenderNeeds[defenderIndex])
+            );
+        }
+        return penalties;
+    }
+
+    private double openingOvercommitmentObjectivePenalty(LongHorizonAssignmentOptimizer.Candidate candidate) {
+        double penalty = 0d;
+        int[] attackerCounts = candidate.attackerCounts();
+        for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
+            int target = attackerIndex < openingCommitmentTargets.length ? openingCommitmentTargets[attackerIndex] : 0;
+            int surplus = attackerCounts[attackerIndex] - Math.max(0, target);
+            if (surplus <= 0) {
+                continue;
+            }
+            double unitPenalty = attackerIndex < openingOvercommitmentUnitPenalties.length
+                    ? openingOvercommitmentUnitPenalties[attackerIndex]
+                    : 0d;
+            double targetScale = 1d / Math.max(1d, target);
+            penalty += unitPenalty * targetScale * surplus * surplus;
+        }
+        return penalty;
+    }
+
+    private static double[] openingOvercommitmentUnitPenalties(CompiledScenario scenario, CandidateEdgeTable edges) {
+        double[] penalties = new double[scenario.attackerCount()];
+        if (edges == null || edges.edgeCount() == 0) {
+            return penalties;
+        }
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            double edgeScore = Math.max(0d, edges.scalarScore(edgeIndex));
+            if (!(edgeScore > 0d)) {
+                continue;
+            }
+            int attackerIndex = edges.attackerIndex(edgeIndex);
+            penalties[attackerIndex] = Math.max(
+                    penalties[attackerIndex],
+                    OPENING_OVERCOMMITMENT_OPPORTUNITY_WEIGHT * edgeScore
+            );
+        }
+        return penalties;
+    }
+
+    private static int[] openingCommitmentTargets(CompiledScenario scenario, CandidateEdgeTable edges) {
+        if (edges == null || edges.edgeCount() == 0) {
+            return new int[scenario.attackerCount()];
+        }
+        int[] attackerCaps = new int[scenario.attackerCount()];
+        for (int attackerIndex = 0; attackerIndex < attackerCaps.length; attackerIndex++) {
+            attackerCaps[attackerIndex] = Math.max(0, scenario.attackerFreeOffSlots(attackerIndex));
+        }
+        int[] defenderCaps = new int[scenario.defenderCount()];
+        for (int defenderIndex = 0; defenderIndex < defenderCaps.length; defenderIndex++) {
+            defenderCaps[defenderIndex] = Math.max(0, scenario.defenderFreeDefSlots(defenderIndex));
+        }
+        double[] edgeScores = new double[edges.edgeCount()];
+        for (int edgeIndex = 0; edgeIndex < edgeScores.length; edgeIndex++) {
+            edgeScores[edgeIndex] = edges.scalarScore(edgeIndex);
+        }
+        return LongHorizonOpeningCommitmentModel.attackerCommitmentNeeds(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                edgeScores
+        );
     }
 
     private static boolean canScoreProjection(CompiledScenario scenario) {

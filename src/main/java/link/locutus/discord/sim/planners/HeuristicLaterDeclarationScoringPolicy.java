@@ -21,7 +21,7 @@ final class HeuristicLaterDeclarationScoringPolicy implements LaterDeclarationSc
         double declarationScore = activity
                 * targetValue
                 * Math.min(MAX_STRENGTH_RATIO, strengthRatio)
-                / Math.max(1, Math.min(Math.max(1, context.remainingDeclarerSlots()), Math.max(1, context.remainingTargetSlots())));
+                * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots());
         return Math.max(context.openingScore(), declarationScore);
     }
 

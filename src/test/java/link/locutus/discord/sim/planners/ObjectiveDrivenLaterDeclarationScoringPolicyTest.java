@@ -25,9 +25,30 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
         assertTrue(strongScore <= parityScore * 1.50d);
     }
 
+    @Test
+    void prefersComparableUnderutilizedDeclarerOverLastSlotDeclarer() {
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+                new TargetPressureObjective()
+        );
+
+        double lastSlotScore = policy.score(context(110d, 100d, 1, 1));
+        double openSlotScore = policy.score(context(110d, 100d, 3, 1));
+
+        assertTrue(openSlotScore > lastSlotScore);
+    }
+
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
             double declarerStrength,
             double targetStrength
+    ) {
+        return context(declarerStrength, targetStrength, 1, 1);
+    }
+
+    private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
+            double declarerStrength,
+            double targetStrength,
+            int remainingDeclarerSlots,
+            int remainingTargetSlots
     ) {
         return new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
                 0d,
@@ -40,8 +61,8 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 declarerStrength,
                 targetStrength,
                 0d,
-                1,
-                1,
+                remainingDeclarerSlots,
+                remainingTargetSlots,
                 1d
         );
     }
