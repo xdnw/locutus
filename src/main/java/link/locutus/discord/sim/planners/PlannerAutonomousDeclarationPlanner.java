@@ -1,6 +1,8 @@
 package link.locutus.discord.sim.planners;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2FloatMaps;
+import it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -106,7 +108,7 @@ final class PlannerAutonomousDeclarationPlanner {
                     false,
                     declarerPlannerSettings
             );
-                return new Plan(candidate.assignment(), assignmentWarTypeOrdinals(candidate.assignment(), edges, attackerNationIds, defenderNationIds));
+                return planFromAssignment(candidate.assignment(), edges, attackerNationIds, defenderNationIds);
         }
 
         private static Plan planInternal(
@@ -176,21 +178,29 @@ final class PlannerAutonomousDeclarationPlanner {
                 Math.max(1, remainingTurns),
                 projectionContext
             ).assignment();
-        return new Plan(assignment, assignmentWarTypeOrdinals(assignment, edges, scenario));
+        return planFromAssignment(assignment, edges, scenario);
     }
 
     record Plan(
             Map<Integer, List<Integer>> assignment,
-            Map<Long, Integer> warTypeOrdinalsByPair
+            Map<Long, Integer> warTypeOrdinalsByPair,
+            Map<Long, Float> scalarScoresByPair
     ) {
         static Plan empty() {
-            return new Plan(Map.of(), Map.of());
+            return new Plan(Map.of(), Map.of(), Map.of());
         }
 
         int warTypeOrdinal(int declarerNationId, int targetNationId) {
             return warTypeOrdinalsByPair.getOrDefault(
                     PlannerLocalConflict.pairKey(declarerNationId, targetNationId),
                     WarType.ORD.ordinal()
+            );
+        }
+
+        float scalarScore(int declarerNationId, int targetNationId) {
+            return scalarScoresByPair.getOrDefault(
+                    PlannerLocalConflict.pairKey(declarerNationId, targetNationId),
+                    0f
             );
         }
     }
@@ -312,12 +322,12 @@ final class PlannerAutonomousDeclarationPlanner {
         );
     }
 
-    private static Map<Long, Integer> assignmentWarTypeOrdinals(
+    private static Plan planFromAssignment(
             Map<Integer, List<Integer>> assignment,
             CandidateEdgeTable edges,
             CompiledScenario scenario
     ) {
-        return assignmentWarTypeOrdinals(
+        return planFromAssignment(
             assignment,
             edges,
             attackerNationIds(scenario),
@@ -325,14 +335,14 @@ final class PlannerAutonomousDeclarationPlanner {
         );
         }
 
-        private static Map<Long, Integer> assignmentWarTypeOrdinals(
+        private static Plan planFromAssignment(
             Map<Integer, List<Integer>> assignment,
             CandidateEdgeTable edges,
             int[] attackerNationIds,
             int[] defenderNationIds
         ) {
         if (assignment.isEmpty() || edges.edgeCount() == 0) {
-            return Map.of();
+            return Plan.empty();
         }
         int assignmentPairCount = assignmentPairCount(assignment);
         LongOpenHashSet assignedPairs = new LongOpenHashSet(Math.max(16, assignmentPairCount * 2));
@@ -343,6 +353,7 @@ final class PlannerAutonomousDeclarationPlanner {
             }
         }
         Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, assignmentPairCount * 2));
+        Long2FloatOpenHashMap scoresByPair = new Long2FloatOpenHashMap(Math.max(16, assignmentPairCount * 2));
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
             int attackerNationId = attackerNationIds[edges.attackerIndex(edgeIndex)];
             int defenderNationId = defenderNationIds[edges.defenderIndex(edgeIndex)];
@@ -354,8 +365,13 @@ final class PlannerAutonomousDeclarationPlanner {
                     pairKey,
                     validWarTypeOrdinal(edges.preferredWarTypeId(edgeIndex))
             );
+            scoresByPair.put(pairKey, edges.scalarScore(edgeIndex));
         }
-        return Long2IntMaps.unmodifiable(ordinalsByPair);
+        return new Plan(
+                assignment,
+                Long2IntMaps.unmodifiable(ordinalsByPair),
+                Long2FloatMaps.unmodifiable(scoresByPair)
+        );
     }
 
     private static int assignmentPairCount(Map<Integer, List<Integer>> assignment) {

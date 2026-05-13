@@ -43,6 +43,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
@@ -1363,11 +1364,17 @@ final class PlannerLocalConflict implements TeamWarControlView {
                 declarations.add(new AutonomousDeclaration(
                         declarerId,
                         targetId,
-                        plan.warTypeOrdinal(declarerId, targetId)
+                        plan.warTypeOrdinal(declarerId, targetId),
+                        plan.scalarScore(declarerId, targetId)
                 ));
             }
         }
-        return declarations;
+        int declarationLimit = scope.scope().declarerPolicy().planner().maxLaterDeclarationsPerTurn();
+        if (declarations.size() <= declarationLimit) {
+            return declarations;
+        }
+        declarations.sort(AutonomousDeclaration.BY_SCORE_DESC);
+        return List.copyOf(declarations.subList(0, declarationLimit));
     }
 
     void evaluateAssignmentOpenings(Map<Integer, List<Integer>> assignment) {
@@ -1519,7 +1526,12 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    private record AutonomousDeclaration(int declarerNationId, int targetNationId, int warTypeOrdinal) {
+    private record AutonomousDeclaration(int declarerNationId, int targetNationId, int warTypeOrdinal, float scalarScore) {
+        private static final Comparator<AutonomousDeclaration> BY_SCORE_DESC = Comparator
+                .comparingDouble((AutonomousDeclaration declaration) -> declaration.scalarScore)
+                .reversed()
+                .thenComparingInt(AutonomousDeclaration::declarerNationId)
+                .thenComparingInt(AutonomousDeclaration::targetNationId);
     }
 
     private record EligibleLaterDeclarationScope(

@@ -9,6 +9,7 @@ import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.Turn1DeclarePolicy;
 import link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace;
 import org.junit.jupiter.api.Test;
@@ -829,6 +830,61 @@ class PlannerReplayProjectorTest {
     }
 
     @Test
+    void exactReplayLaterDeclarationsHonorPerTurnCap() {
+        DBNationSnapshot declarer = nation(101, 1)
+                .maxOff(5)
+                .unit(MilitaryUnit.SOLDIER, 28_000)
+                .unit(MilitaryUnit.TANK, 2_800)
+                .unit(MilitaryUnit.AIRCRAFT, 1_500)
+                .build();
+        DBNationSnapshot targetA = nation(201, 2)
+                .unit(MilitaryUnit.SOLDIER, 16_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 650)
+                .build();
+        DBNationSnapshot targetB = nation(202, 2)
+                .unit(MilitaryUnit.SOLDIER, 16_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 650)
+                .build();
+        DBNationSnapshot targetC = nation(203, 2)
+                .unit(MilitaryUnit.SOLDIER, 16_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 650)
+                .build();
+
+        StrategicObjective objective = BlitzObjective.DAMAGE.objective();
+        SidePolicy baseDeclarerPolicy = SidePolicy.legacy("cappedDeclarer", objective);
+        SidePolicy cappedDeclarerPolicy = new SidePolicy(
+                baseDeclarerPolicy.name(),
+                baseDeclarerPolicy.objective(),
+                baseDeclarerPolicy.planner().withMaxLaterDeclarationsPerTurn(1),
+                baseDeclarerPolicy.opening(),
+                baseDeclarerPolicy.projection(),
+                baseDeclarerPolicy.turnActor(),
+                baseDeclarerPolicy.allowInitialDeclarations()
+        );
+
+        BlitzReplayTrace trace = capture(
+                List.of(declarer),
+                List.of(targetA, targetB, targetC),
+                Map.of(),
+                Map.of(),
+                List.of(laterDeclarationScope(
+                        List.of(declarer),
+                        List.of(targetA, targetB, targetC),
+                        cappedDeclarerPolicy,
+                        SidePolicy.legacyPassive("target", objective)
+                )),
+                SimTuning.defaults(),
+                1
+        );
+
+        assertEquals(1, firstDeclaredTurn(trace).declaredWarPairs().length / 2,
+                "exact replay should apply the declarer side's per-turn autonomous declaration cap");
+    }
+
+    @Test
     void compactTraceUsesNationIndexesAndSummaryLanes() {
         DBNationSnapshot attacker = nation(101, 1)
                 .unit(MilitaryUnit.SOLDIER, 20_000)
@@ -1341,4 +1397,3 @@ class PlannerReplayProjectorTest {
         return values;
     }
 }
-
