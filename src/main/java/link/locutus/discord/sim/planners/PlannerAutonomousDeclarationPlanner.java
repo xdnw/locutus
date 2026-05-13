@@ -129,7 +129,7 @@ final class PlannerAutonomousDeclarationPlanner {
         }
         SimTuning effectiveTuning = tuningForPlannerSettings(tuning, declarerPolicy.planner());
 
-        CompiledScenario scenario = SCENARIO_COMPILER.compile(
+        CompiledScenario scenario = SCENARIO_COMPILER.compileWithoutRelevantDefenderIndexes(
                 declarerSnapshots,
                 targetSnapshots,
                 OverrideSet.EMPTY,

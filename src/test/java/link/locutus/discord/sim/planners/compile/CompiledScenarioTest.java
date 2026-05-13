@@ -141,6 +141,38 @@ class CompiledScenarioTest {
         assertEquals(0.5f, scenario.defenderActivityWeight(0));
     }
 
+    @Test
+    void leanFullCompileSkipsRelevantDefenderIndexesButKeepsPlannerState() {
+        DBNationSnapshot attacker = nation(1, 1_000.0)
+                .unit(MilitaryUnit.SOLDIER, 12_345)
+                .researchBits(0b10101)
+                .projectBits(1L << 4)
+                .build();
+        DBNationSnapshot defender = nation(101, 1_000.0)
+                .unit(MilitaryUnit.AIRCRAFT, 222)
+                .researchBits(0b10010)
+                .projectBits(1L << 7)
+                .build();
+
+        CompiledScenario scenario = compiler.compileWithoutRelevantDefenderIndexes(
+                List.of(attacker),
+                List.of(defender),
+                OverrideSet.EMPTY,
+                TreatyProvider.NONE,
+                Map.of(attacker.nationId(), 0.75f, defender.nationId(), 0.5f)
+        );
+
+        assertEquals(List.of(), toList(scenario.relevantDefenderIndexes(0)));
+        assertEquals(12_345, scenario.attackerUnitCount(0, MilitaryUnit.SOLDIER));
+        assertEquals(222, scenario.defenderUnitCount(0, MilitaryUnit.AIRCRAFT));
+        assertEquals(0.75f, scenario.attackerActivityWeight(0));
+        assertEquals(0.5f, scenario.defenderActivityWeight(0));
+        assertEquals(attacker.researchBits(), scenario.attackerResearchBits(0));
+        assertEquals(attacker.projectBits(), scenario.attackerProjectBits(0));
+        assertEquals(defender.researchBits(), scenario.defenderResearchBits(0));
+        assertEquals(defender.projectBits(), scenario.defenderProjectBits(0));
+    }
+
         @Test
         void estimatesAllianceCounterRiskFromIndexedAllianceGroups() {
                 DBNationSnapshot attacker = nation(1, 1_000.0).allianceId(10).build();

@@ -27,7 +27,7 @@ public final class ScenarioCompiler {
             TreatyProvider treatyProvider,
             Map<Integer, Float> activityWeightsByNationId
     ) {
-        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of(), true);
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of(), false, true);
     }
 
     public CompiledScenario compileForOpeningEvaluation(
@@ -37,7 +37,17 @@ public final class ScenarioCompiler {
             TreatyProvider treatyProvider,
             Map<Integer, Float> activityWeightsByNationId
     ) {
-        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of(), false);
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of(), true, false);
+    }
+
+    public CompiledScenario compileWithoutRelevantDefenderIndexes(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            OverrideSet overrides,
+            TreatyProvider treatyProvider,
+            Map<Integer, Float> activityWeightsByNationId
+    ) {
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, List.of(), false, false);
     }
 
     public CompiledScenario compile(
@@ -48,7 +58,7 @@ public final class ScenarioCompiler {
             Map<Integer, Float> activityWeightsByNationId,
             Collection<CompiledActiveWar> activeWars
     ) {
-        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, activeWars, true);
+        return compile(attackers, defenders, overrides, treatyProvider, activityWeightsByNationId, activeWars, false, true);
     }
 
     private CompiledScenario compile(
@@ -58,9 +68,9 @@ public final class ScenarioCompiler {
             TreatyProvider treatyProvider,
             Map<Integer, Float> activityWeightsByNationId,
             Collection<CompiledActiveWar> activeWars,
+            boolean openingEvaluationOnly,
             boolean includeRelevantDefenderIndexes
     ) {
-        boolean openingEvaluationOnly = !includeRelevantDefenderIndexes;
         boolean defaultActivityWeights = openingEvaluationOnly && activityWeightsByNationId.isEmpty();
         boolean noTreaties = openingEvaluationOnly && treatyProvider == TreatyProvider.NONE;
         List<DBNationSnapshot> attackerList = List.copyOf(attackers);
