@@ -439,27 +439,21 @@ final class LongHorizonMarginalFlowSolver {
             if (!scratch.wasReached(sink, searchVersion) || scratch.previousEdge(sink) < 0) {
                 return;
             }
-            int[] previousEdge = scratch.previousEdgeArray();
-            double originalPathCost = pathCost(previousEdge, to, cost, source, sink);
+            double sinkDistance = scratch.reducedDistance(sink, searchVersion);
+            double originalPathCost = sinkDistance + potential[sink] - potential[source];
             if (originalPathCost >= -1e-12) {
                 return;
             }
+            int[] previousEdge = scratch.previousEdgeArray();
             for (int index = 0; index < scratch.touchedVertexCount(); index++) {
                 int vertex = scratch.touchedVertex(index);
                 potential[vertex] += scratch.reducedDistance(vertex, searchVersion);
             }
             int vertex = sink;
-            int amount = Integer.MAX_VALUE;
             while (vertex != source) {
                 int edge = previousEdge[vertex];
-                amount = Math.min(amount, capacity[edge]);
-                vertex = to[edge ^ 1];
-            }
-            vertex = sink;
-            while (vertex != source) {
-                int edge = previousEdge[vertex];
-                capacity[edge] -= amount;
-                capacity[edge ^ 1] += amount;
+                capacity[edge]--;
+                capacity[edge ^ 1]++;
                 vertex = to[edge ^ 1];
             }
         }
@@ -508,23 +502,6 @@ final class LongHorizonMarginalFlowSolver {
             }
         }
         return distance;
-    }
-
-    private static double pathCost(
-            int[] previousEdge,
-            int[] to,
-            double[] cost,
-            int source,
-            int sink
-    ) {
-        double total = 0d;
-        int vertex = sink;
-        while (vertex != source) {
-            int edge = previousEdge[vertex];
-            total += cost[edge];
-            vertex = to[edge ^ 1];
-        }
-        return total;
     }
 
     private static final class DistanceHeap {
