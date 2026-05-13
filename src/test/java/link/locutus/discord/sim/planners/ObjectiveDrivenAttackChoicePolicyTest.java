@@ -125,6 +125,24 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     }
 
         @Test
+        void controlObjectiveDoesNotTreatConventionalLootAsControlProgress() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                link.locutus.discord.sim.BlitzObjective.CONTROL.objective(),
+                                null
+                );
+
+                AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                                new AttackType[]{AttackType.AIRSTRIKE_MONEY, AttackType.GROUND},
+                                8,
+                                attackType -> attackType == AttackType.AIRSTRIKE_MONEY
+                                ? candidate(2d, 0d, -12d, 500d, 0.01d, SuperiorityFlagDelta.NONE)
+                                                : candidate(20d, 0d, -10d, 0d, 0.10d, SuperiorityFlagDelta.NONE)
+                ));
+
+                assertEquals(AttackType.GROUND, choice);
+        }
+
+        @Test
         void futureWarLeverageIncludesTimingWindowAdvantage() {
                 ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                                 new LinearOpeningObjective(0d, 0d, 0d, 5.00d),

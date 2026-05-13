@@ -1000,7 +1000,7 @@ final class LongHorizonForwardProjection {
             DenseWarState warState
     ) {
         return edges.edgeCount() > 0
-                && warState.warCount > 0
+            && warState.firstActiveWar() >= 0
                 && horizonTurns > MIN_PROJECTED_LATER_DECLARATION_TURN
                 && turn >= MIN_PROJECTED_LATER_DECLARATION_TURN;
     }

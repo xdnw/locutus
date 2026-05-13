@@ -140,59 +140,51 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     }
 
     double scoreCandidate(AttackType attackType, AttackCandidate candidate) {
+        double controlLeverage = AttackObjectiveComponentMapper.controlLeverage(candidate.controlDelta());
+        double forceWindowAdvantage = Math.max(0d, candidate.forceWindowAdvantage());
+        double timingWindowAdvantage = Math.max(0d, candidate.timingWindowAdvantage());
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage()),
                 Math.max(0d, candidate.attackerUnitDamage()),
-            Math.max(0d, candidate.resourceSwing()),
-                controlLeverage(candidate.controlDelta()),
+                AttackObjectiveComponentMapper.resourceSwingForObjective(
+                        attackType,
+                    candidate.resourceSwing()
+                ),
+                controlLeverage,
                 tacticalMomentum(candidate.defenderResistanceDelta()),
-            Math.max(0d, candidate.forceWindowAdvantage()),
-            Math.max(0d, candidate.timingWindowAdvantage()),
-            Math.max(0d, candidate.targetPressure())
+                forceWindowAdvantage,
+                timingWindowAdvantage,
+                Math.max(0d, candidate.targetPressure())
         );
         double score = objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
-        if (isSpecialist(attackType) && candidate.conventionalFollowThroughValue() > 0d) {
+        if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue() > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue() * 0.20d);
         }
         return score;
     }
 
     double scoreCandidate(AttackType attackType, MutableAttackCandidate candidate) {
+        double controlLeverage = AttackObjectiveComponentMapper.controlLeverage(candidate.controlDelta);
+        double forceWindowAdvantage = Math.max(0d, candidate.forceWindowAdvantage);
+        double timingWindowAdvantage = Math.max(0d, candidate.timingWindowAdvantage);
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage),
                 Math.max(0d, candidate.attackerUnitDamage),
-                Math.max(0d, candidate.resourceSwing),
-                controlLeverage(candidate.controlDelta),
+                AttackObjectiveComponentMapper.resourceSwingForObjective(
+                        attackType,
+                    candidate.resourceSwing
+                ),
+                controlLeverage,
                 tacticalMomentum(candidate.defenderResistanceDelta),
-                Math.max(0d, candidate.forceWindowAdvantage),
-                Math.max(0d, candidate.timingWindowAdvantage),
+                forceWindowAdvantage,
+                timingWindowAdvantage,
                 Math.max(0d, candidate.targetPressure)
         );
         double score = objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
-        if (isSpecialist(attackType) && candidate.conventionalFollowThroughValue > 0d) {
+        if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue * 0.20d);
         }
         return score;
-    }
-
-    private static boolean isSpecialist(AttackType attackType) {
-        return attackType == AttackType.MISSILE || attackType == AttackType.NUKE;
-    }
-
-    private static double controlLeverage(SuperiorityFlagDelta controlDelta) {
-        SuperiorityFlagDelta delta = controlDelta == null ? SuperiorityFlagDelta.NONE : controlDelta;
-        double leverage = 0d;
-        leverage += positiveFlag(delta.groundSuperiority());
-        leverage += positiveFlag(delta.airSuperiority());
-        leverage += positiveFlag(delta.blockade());
-        leverage += delta.clearGroundSuperiority() ? 1d : 0d;
-        leverage += delta.clearAirSuperiority() ? 1d : 0d;
-        leverage += delta.clearBlockade() ? 1d : 0d;
-        return leverage;
-    }
-
-    private static double positiveFlag(int value) {
-        return value > 0 ? 1d : 0d;
     }
 
     private static double tacticalMomentum(double defenderResistanceDelta) {

@@ -897,9 +897,6 @@ final class LongHorizonAssignmentOptimizer {
             int[] attackerNationIds,
             int[] defenderNationIds
         ) {
-        if (assignment.isEmpty()) {
-            return ObjectiveValueSummary.identical(0d);
-        }
         LongHorizonControlProjection projection = LongHorizonControlProjection.create(
                 baseEdges,
                 scenario,

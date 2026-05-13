@@ -582,8 +582,23 @@ final class OpeningEvaluator {
             }
             finalizeEdgeSelection(edgeEvaluation, candidateAdmission.preferredWarTypeId(), candidateAdmission.bestAttackTypeId());
             float score = edgeEvaluation.score();
-            if (!Float.isFinite(score)) {
-                return;
+            if (!Float.isFinite(score) || score <= 0f) {
+                if (!candidateAdmission.admitPositiveOpeningBaseline()
+                        || !evaluatePositiveBaselineOpening(
+                                attacker,
+                                defender,
+                                objective,
+                                openingSettings,
+                                defenderCoveragePriorities[defenderIndex],
+                                attackerFirstLegalOpeningAttackId,
+                                positiveBaselineMetrics,
+                                edgeEvaluation
+                        )) {
+                    return;
+                }
+                if (retainEdgeComponents) {
+                    OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
+                }
             }
             retainEvaluatedEdge(defenderIndex, edgeEvaluation);
         }
@@ -871,8 +886,7 @@ final class OpeningEvaluator {
         double rebuiltStrength = currentStrength + pendingGain;
         double defenderStrength = combatStrength(defender);
         return currentStrength < defenderStrength * 0.85d
-                && rebuiltStrength > currentStrength * 1.35d
-                && rebuiltStrength >= defenderStrength * 0.70d;
+            && rebuiltStrength > currentStrength * 1.35d;
     }
 
     private static double pendingConventionalStrengthGain(DBNationSnapshot nation) {
@@ -1005,15 +1019,20 @@ final class OpeningEvaluator {
         context.setAttackerMaps(SimWar.MAP_CAP);
         currentMetrics.set(0d, 0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
         CombatKernel.resolveInto(context, attackType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
-        OpeningRolloutMetricProjector.project(baseline, context, currentMetrics, result, projectedMetrics);
+        OpeningRolloutMetricProjector.project(baseline, context, attackType, currentMetrics, result, projectedMetrics);
         if (projectedMetrics.immediateHarm() <= 0d && result.infraDestroyed() > 0d) {
+            double specialistResourceSwing = AttackObjectiveComponentMapper.resourceSwingForObjective(
+                attackType,
+                    result.infraDestroyed()
+            );
             projectedMetrics.set(
                     projectedMetrics.immediateHarm(),
                     projectedMetrics.selfExposure(),
-                    projectedMetrics.resourceSwing() + result.infraDestroyed(),
+                projectedMetrics.resourceSwing() + specialistResourceSwing,
                     projectedMetrics.controlLeverage(),
                     projectedMetrics.tacticalMomentum(),
                     projectedMetrics.forceWindowAdvantage(),
+                projectedMetrics.timingWindowAdvantage(),
                     projectedMetrics.targetPressure()
             );
         }

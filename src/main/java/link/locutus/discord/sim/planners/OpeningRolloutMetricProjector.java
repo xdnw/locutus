@@ -1,5 +1,6 @@
 package link.locutus.discord.sim.planners;
 
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimWar;
@@ -14,6 +15,7 @@ final class OpeningRolloutMetricProjector {
     static void project(
             OpeningEvaluator.OpeningBaseline baseline,
             CombatKernel.AttackContext context,
+            AttackType attackType,
             OpeningMetricVector currentMetrics,
             MutableAttackResult result,
             OpeningMetricVector.Mutable out
@@ -52,7 +54,6 @@ final class OpeningRolloutMetricProjector {
                 attackerHadAirControl,
                 blockadeOwner == CombatKernel.AttackContext.BLOCKADE_ATTACKER
             );
-        double resourceSwing = currentMetrics.resourceSwing() + result.loot();
         double controlLeverage = OpeningMetricSummary.controlLeverage(
                 attackerHasGroundSuperiority,
                 attackerHasAirControl,
@@ -83,6 +84,12 @@ final class OpeningRolloutMetricProjector {
                 baseline.defenderNaval(),
             remainingUnits(defender, defenderLosses, MilitaryUnit.SHIP)
         );
+            double timingWindowAdvantage = 0d;
+            double resourceSwing = currentMetrics.resourceSwing()
+                + AttackObjectiveComponentMapper.resourceSwingForObjective(
+                    attackType,
+                    result.loot()
+                );
         out.set(
                 immediateHarm,
                 selfExposure,
@@ -90,6 +97,7 @@ final class OpeningRolloutMetricProjector {
                 controlLeverage,
                 tacticalMomentum,
                 forceWindowAdvantage,
+                timingWindowAdvantage,
                 baseline.targetPressure()
         );
     }

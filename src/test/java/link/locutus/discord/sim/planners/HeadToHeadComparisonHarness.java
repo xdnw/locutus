@@ -24,6 +24,7 @@ public final class HeadToHeadComparisonHarness {
     private static final String CSV_HEADER = "family,horizon,attackerCount,defenderCount,"
             + "attackerPolicyName,defenderPolicyName,pass,"
             + "attackerObjective,defenderObjective,attackerLane,defenderLane,"
+            + "attackerEdgeCount,"
             + "attackerAssignmentCount,attackerIdleViable,attackerIdleViablePct,"
             + "attackerStrongDefenderCoveragePct,attackerDefenderCoverageByTier,"
             + "attackerMaxWarsPerNation,attackersAtCap,attackersAtTwoWars,attackerCapSaturationPct,attackerWarCountHistogram,laterDeclarationCapPressurePct,attackerAvgAssignedCounterRisk,"
@@ -113,6 +114,7 @@ public final class HeadToHeadComparisonHarness {
                 defenderSpec.objective().name(),
                 attackerSpec.lane().name(),
                 defenderSpec.lane().name(),
+                Integer.toString(best.edgeCount()),
                 Integer.toString(best.assignmentCount()),
                 Integer.toString(best.idleAttackersFreeSlot()),
                 formatDouble(best.idleAttackersFreeSlotPct(), 2),

@@ -115,6 +115,7 @@ final class OpeningRolloutSearch {
                 OpeningRolloutMetricProjector.project(
                         baseline,
                         context,
+                    type,
                         currentMetrics,
                         result,
                         projectedMetrics

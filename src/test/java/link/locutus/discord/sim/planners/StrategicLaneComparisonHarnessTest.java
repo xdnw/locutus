@@ -164,6 +164,7 @@ class StrategicLaneComparisonHarnessTest {
 
         assertTrue(Integer.parseInt(control.get("assignments")) > 0);
         assertTrue(control.get("assignedAttackTypes").contains("GROUND"));
+        assertFalse(control.get("assignedAttackTypes").contains("AIRSTRIKE_MONEY"));
         assertFalse(control.get("assignedAttackTypes").contains("MISSILE"));
     }
 

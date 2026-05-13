@@ -42,6 +42,7 @@ final class ControlObjective implements StrategicObjective {
         );
         return (4.0d * controlLeverage)
             + (3.0d * futureWarLeverage)
+            + (0.25d * Math.max(0d, targetPressure))
             + (4.0d * effectiveTargetPressure)
             + (0.05d * effectiveResourceSwing)
             + (0.10d * immediateHarm)

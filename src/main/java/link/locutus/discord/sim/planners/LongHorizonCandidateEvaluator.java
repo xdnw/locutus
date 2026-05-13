@@ -130,9 +130,6 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonControlProjection projection
     ) {
-        if (candidate.isEmpty()) {
-            return 0d;
-        }
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
         double realizedCounterPenalty = realizedCounterObjectivePenalty(candidate, evaluation.realizedCounterIncidence());
         double openingOvercommitmentPenalty = openingOvercommitmentObjectivePenalty(candidate);
@@ -147,9 +144,6 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonControlProjection projection
     ) {
-        if (candidate.isEmpty()) {
-            return ObjectiveValueSummary.identical(0d);
-        }
         if (projectionScoringContext == null || !canScoreProjection) {
             return null;
         }

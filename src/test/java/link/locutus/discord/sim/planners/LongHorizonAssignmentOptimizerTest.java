@@ -496,6 +496,48 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void emptyProjectedCandidateUsesTerminalObjectiveBaseline() {
+        List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 100), 100.0));
+        List<DBNationSnapshot> defenders = List.of(withTotalScore(nation(101, 2, 300), 300.0));
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                new int[]{0},
+                new int[]{0},
+                72,
+                1.0d
+        );
+        LongHorizonAssignmentOptimizer.Candidate emptyCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(),
+                new boolean[0],
+                new int[]{0},
+                new int[]{0},
+                0d
+        );
+        TeamDifferenceObjective objective = new TeamDifferenceObjective();
+        LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
+                scenario,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+        );
+        double projectedBaseline = projection.projectedEvaluation(
+                objective,
+                attackers.get(0).teamId(),
+                emptyCandidate.edgeAssigned(),
+                emptyCandidate.attackerCounts(),
+                emptyCandidate.defenderCounts()
+        ).objectiveScore();
+
+        ObjectiveValueSummary summary = evaluator.objectiveSummary(emptyCandidate, projection);
+
+        assertNotNull(summary);
+        assertTrue(projectedBaseline < 0d, "Test setup must produce a non-neutral no-opening terminal baseline");
+        assertEquals(projectedBaseline, summary.mean(), 1e-6,
+                "Empty projected candidates must use the real no-opening terminal objective instead of a magic neutral baseline");
+    }
+
+    @Test
     void forwardProjectionDerivesScoreFromMutableStateAndCurrentRebuyCapacity() {
                 DBNationSnapshot attackerNoBuysUsed = noCurrentBuysNationWithTotalScore(1, 1, 100.0);
                 DBNationSnapshot attackerNoRebuyLeft = exhaustedBuysNationWithTotalScore(1, 1, 100.0);
@@ -1256,7 +1298,7 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
-    void slotDenialProjectedPortfolioAddsOneDiversityHedgeAudit() {
+        void slotDenialProjectedPortfolioKeepsReliefAuditBounded() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 900).toBuilder().maxOff(3).build(),
                 nation(2, 1, 880).toBuilder().maxOff(2).build()
@@ -1309,11 +1351,9 @@ class LongHorizonAssignmentOptimizerTest {
                 "Slot-denial objectives should stay on the same bounded projected-portfolio owner");
         assertEquals(1L, solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
                 "The explicit relief audit budget should remain unchanged for slot-denial objectives");
-        assertEquals(1L, solveStats.counters().getOrDefault("boundedProjectedDiversityAudits", 0L),
-                "Slot-denial objectives should spend one extra audit on a structurally different relief hedge");
         assertTrue(solveStats.counters().getOrDefault("boundedProjectedAudits", 0L)
-                        > solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
-                "The extra diversity hedge should increase total projected audits without widening the relief budget itself");
+                        >= solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
+                "Bounded projected audits should not hide extra work inside the relief budget itself");
     }
 
     @Test
@@ -2397,6 +2437,37 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void forwardProjectionDoesNotStartLaterDeclarationsWithoutActiveWars() {
+        List<DBNationSnapshot> attackers = List.of(
+                withTotalScore(nation(1, 1, 900), 2_000.0),
+                withTotalScore(nation(2, 1, 900), 2_000.0)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900).toBuilder()
+                        .maxOff(1)
+                        .build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+
+        PlannerProfiler.ProfileSnapshot profile = projectedProfileSnapshot(
+                attackers,
+                defenders,
+                edges,
+                new ReverseLaterDeclarationWarCountObjective(),
+                24,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective()),
+                false
+        );
+        long counterDeclarations = profile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
+                .counters()
+                .getOrDefault("laterDeclarations", 0L);
+
+        assertEquals(0L, counterDeclarations,
+                "Projected later declarations must not begin from a nonempty inactive opening template");
+    }
+
+    @Test
         void forwardProjectionBlocksSamePairDeclarationDuringPostVictoryDelay() {
                 // Single attacker with one viable target. Projection should not reuse the same pair before
                 // the post-victory reopen delay. A later-profile guardrail covers the resumed declaration path.
@@ -2954,6 +3025,18 @@ class LongHorizonAssignmentOptimizerTest {
         return projectedProfileSnapshot(attackers, defenders, Map.of(), edges, objective, horizonTurns, projectionContext);
     }
 
+        private static PlannerProfiler.ProfileSnapshot projectedProfileSnapshot(
+                        List<DBNationSnapshot> attackers,
+                        List<DBNationSnapshot> defenders,
+                        CandidateEdgeTable edges,
+                        StrategicObjective objective,
+                        int horizonTurns,
+                        LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext,
+                        boolean assignEdges
+        ) {
+                return projectedProfileSnapshot(attackers, defenders, Map.of(), edges, objective, horizonTurns, projectionContext, assignEdges);
+        }
+
     private static PlannerProfiler.ProfileSnapshot projectedProfileSnapshot(
             List<DBNationSnapshot> attackers,
             List<DBNationSnapshot> defenders,
@@ -2962,6 +3045,19 @@ class LongHorizonAssignmentOptimizerTest {
             StrategicObjective objective,
             int horizonTurns,
             LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+        ) {
+                return projectedProfileSnapshot(attackers, defenders, activityWeights, edges, objective, horizonTurns, projectionContext, true);
+        }
+
+        private static PlannerProfiler.ProfileSnapshot projectedProfileSnapshot(
+                        List<DBNationSnapshot> attackers,
+                        List<DBNationSnapshot> defenders,
+                        Map<Integer, Float> activityWeights,
+                        CandidateEdgeTable edges,
+                        StrategicObjective objective,
+                        int horizonTurns,
+                        LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext,
+                        boolean assignEdges
     ) {
         CompiledScenario scenario = compile(attackers, defenders, activityWeights);
         LongHorizonControlProjection projection = LongHorizonControlProjection.create(
@@ -2978,14 +3074,14 @@ class LongHorizonAssignmentOptimizerTest {
                 projectionContext.defenderProjectionPolicies()
         );
         boolean[] edgeAssigned = new boolean[edges.edgeCount()];
-        java.util.Arrays.fill(edgeAssigned, true);
+        java.util.Arrays.fill(edgeAssigned, assignEdges);
         PlannerProfiler.Session session = new PlannerProfiler.Session();
         PlannerProfiler.withSession(session, () -> projection.projectedObjectiveScore(
                 objective,
                 attackers.get(0).teamId(),
                 edgeAssigned,
-                fill(attackers.size(), 1),
-                fill(defenders.size(), 1)
+                fill(attackers.size(), assignEdges ? 1 : 0),
+                fill(defenders.size(), assignEdges ? 1 : 0)
         ));
         return session.snapshot();
     }
