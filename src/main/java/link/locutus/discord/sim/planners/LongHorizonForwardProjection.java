@@ -164,6 +164,7 @@ final class LongHorizonForwardProjection {
     private static final double PROJECTED_DECLARATION_TARGET_VALUE_MULTIPLIER = 0.10d;
     private static final double MAX_PROJECTED_DECLARATION_STRENGTH_RATIO = 2.0d;
     private static final int PROJECTED_DECLARATION_TOP_K_MAX_LIMIT = 256;
+    private static final int OPENING_SIDE_LATER_DECLARATION_PROMOTION_LIMIT = 8;
     private static final double WIPE_RISK_COMBAT_STRENGTH_RATIO = 0.25d;
     private static final int DAY_TURNS = 12;
     private static final MilitaryUnit[] PROJECTED_BUY_UNITS = {
@@ -302,6 +303,7 @@ final class LongHorizonForwardProjection {
     private double profiledSelectedLaterDeclarationStrengthRatioMin;
     private long profiledSelectedLaterDeclarationUnderStrength;
     private double profiledOpeningSideDelayedDeclarationRegret;
+    private final List<OpeningSideLaterDeclaration> profiledOpeningSideLaterDeclarations = new ArrayList<>(OPENING_SIDE_LATER_DECLARATION_PROMOTION_LIMIT);
     private long profiledPreparedStateProfiles;
     private long profiledPreparedStateRestores;
     private long profiledPreparedWarTemplateBuilds;
@@ -601,7 +603,8 @@ final class LongHorizonForwardProjection {
         return new ProjectedEvaluation(
             objective.scoreTerminal(view, teamId),
             incomingDeclarationIncidence.clone(),
-            profiledOpeningSideDelayedDeclarationRegret
+            profiledOpeningSideDelayedDeclarationRegret,
+            List.copyOf(profiledOpeningSideLaterDeclarations)
         );
     }
 
@@ -629,7 +632,8 @@ final class LongHorizonForwardProjection {
             new ProjectedEvaluation(
                 objective.scoreTerminal(view, teamId),
                 incomingDeclarationIncidence.clone(),
-                profiledOpeningSideDelayedDeclarationRegret
+                profiledOpeningSideDelayedDeclarationRegret,
+                List.copyOf(profiledOpeningSideLaterDeclarations)
             ),
             midHorizonSnapshot
         );
@@ -659,7 +663,8 @@ final class LongHorizonForwardProjection {
             new ProjectedEvaluation(
                 objective.scoreTerminal(view, teamId),
                 incomingDeclarationIncidence.clone(),
-                profiledOpeningSideDelayedDeclarationRegret
+                profiledOpeningSideDelayedDeclarationRegret,
+                List.copyOf(profiledOpeningSideLaterDeclarations)
             ),
             midHorizonSnapshot
         );
@@ -2068,7 +2073,19 @@ final class LongHorizonForwardProjection {
                     Math.max(0, turn),
                     Math.max(1, horizonTurns)
             );
-            profiledOpeningSideDelayedDeclarationRegret += score * Math.max(0d, 1d - waitDiscount);
+            double regretContribution = score * Math.max(0d, 1d - waitDiscount);
+            profiledOpeningSideDelayedDeclarationRegret += regretContribution;
+            if (regretContribution > 0d) {
+                int declarerNationId = inputs.declarerNationIds()[inputs.edges().attackerIndex(edgeIndex)];
+                int targetNationId = inputs.targetNationIds()[inputs.edges().defenderIndex(edgeIndex)];
+                recordOpeningSideLaterDeclaration(new OpeningSideLaterDeclaration(
+                        declarerNationId,
+                        targetNationId,
+                        turn,
+                        score,
+                        regretContribution
+                ));
+            }
         }
         double targetActionSpace = safeArrayValue(inputs.edgeTargetActionSpaceValues(), edgeIndex);
         profiledSelectedLaterDeclarationTargetActionSpaceSum += targetActionSpace;
@@ -2084,6 +2101,21 @@ final class LongHorizonForwardProjection {
         );
         if (strengthRatio < 0.75d) {
             profiledSelectedLaterDeclarationUnderStrength++;
+        }
+    }
+
+    private void recordOpeningSideLaterDeclaration(OpeningSideLaterDeclaration declaration) {
+        int insertIndex = 0;
+        while (insertIndex < profiledOpeningSideLaterDeclarations.size()
+                && declaration.regretContribution() <= profiledOpeningSideLaterDeclarations.get(insertIndex).regretContribution()) {
+            insertIndex++;
+        }
+        if (insertIndex >= OPENING_SIDE_LATER_DECLARATION_PROMOTION_LIMIT) {
+            return;
+        }
+        profiledOpeningSideLaterDeclarations.add(insertIndex, declaration);
+        if (profiledOpeningSideLaterDeclarations.size() > OPENING_SIDE_LATER_DECLARATION_PROMOTION_LIMIT) {
+            profiledOpeningSideLaterDeclarations.remove(profiledOpeningSideLaterDeclarations.size() - 1);
         }
     }
 
@@ -3138,6 +3170,7 @@ final class LongHorizonForwardProjection {
         profiledSelectedLaterDeclarationStrengthRatioMin = Double.POSITIVE_INFINITY;
         profiledSelectedLaterDeclarationUnderStrength = 0L;
         profiledOpeningSideDelayedDeclarationRegret = 0d;
+        profiledOpeningSideLaterDeclarations.clear();
         profiledPreparedStateProfiles = 0L;
         profiledPreparedStateRestores = 0L;
         profiledPreparedWarTemplateBuilds = 0L;
@@ -6049,9 +6082,19 @@ final class LongHorizonForwardProjection {
     record ProjectedEvaluation(
             double objectiveScore,
             int[] realizedCounterIncidence,
-            double openingSideDelayedDeclarationRegret
+            double openingSideDelayedDeclarationRegret,
+            List<OpeningSideLaterDeclaration> openingSideLaterDeclarations
     ) {
     }
+
+        record OpeningSideLaterDeclaration(
+            int declarerNationId,
+            int targetNationId,
+            int turn,
+            double score,
+            double regretContribution
+        ) {
+        }
 
     record ProjectedFeedbackEvaluation(
             ProjectedEvaluation projectedEvaluation,

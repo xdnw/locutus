@@ -156,6 +156,16 @@ final class LongHorizonCandidateEvaluator {
         return realized;
     }
 
+    LongHorizonForwardProjection.ProjectedEvaluation projectedEvaluation(
+            LongHorizonAssignmentOptimizer.Candidate candidate,
+            LongHorizonControlProjection projection
+    ) {
+        if (projectionScoringContext == null || !canScoreProjection) {
+            throw new IllegalStateException("Projected evaluation requires objective projection scoring");
+        }
+        return evaluationFor(candidate, projection);
+    }
+
     LongHorizonForwardProjection.ProjectedFeedbackEvaluation feedbackEvaluation(
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonControlProjection projection
