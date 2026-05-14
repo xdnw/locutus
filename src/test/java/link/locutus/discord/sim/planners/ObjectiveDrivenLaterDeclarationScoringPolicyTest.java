@@ -97,6 +97,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             1,
             1,
             1d,
+            0d,
             1d
         ));
         double actionableScore = policy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
@@ -113,6 +114,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             1,
             1,
             1d,
+            0d,
             1d
         ));
 
@@ -142,6 +144,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             1,
             1,
             LaterDeclarationFit.specialistSlotActionability(320d, 250d),
+            0d,
             1d
         ));
 
@@ -161,6 +164,19 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
         assertTrue(cleanSpecialistScore > 0d);
         assertTrue(exposedSpecialistScore < cleanSpecialistScore * 0.25d,
                 "Specialist resource pressure should not overwhelm severe projected self-exposure");
+    }
+
+    @Test
+    void unsupportedWeakDeclarationScoresBelowSupportedWarOnSameTarget() {
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+                new TargetPressureObjective()
+        );
+
+        double isolatedScore = policy.score(context(65d, 100d, 1, 2, LaterDeclarationFit.actionability(90d, 100d), 0d));
+        double supportedScore = policy.score(context(65d, 100d, 1, 2, LaterDeclarationFit.actionability(90d, 100d), 0.85d));
+
+        assertTrue(supportedScore > isolatedScore * 1.35d,
+                "A weak marginal declaration should be worth more when committed allies can support the same target");
     }
 
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
@@ -190,17 +206,29 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 remainingDeclarerSlots,
                 remainingTargetSlots,
                 LaterDeclarationFit.actionability(declarerStrength, targetStrength),
+                0d,
                 1d
         );
     }
 
-            private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
-                double declarerStrength,
-                double targetStrength,
-                int remainingDeclarerSlots,
-                int remainingTargetSlots,
-                double targetBestActionability
-            ) {
+    private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
+            double declarerStrength,
+            double targetStrength,
+            int remainingDeclarerSlots,
+            int remainingTargetSlots,
+            double targetBestActionability
+    ) {
+        return context(declarerStrength, targetStrength, remainingDeclarerSlots, remainingTargetSlots, targetBestActionability, 0d);
+    }
+
+    private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
+            double declarerStrength,
+            double targetStrength,
+            int remainingDeclarerSlots,
+            int remainingTargetSlots,
+            double targetBestActionability,
+            double targetSupportActionability
+    ) {
             return new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
                 0d,
                 0d,
@@ -215,9 +243,10 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 remainingDeclarerSlots,
                 remainingTargetSlots,
                 targetBestActionability,
+                targetSupportActionability,
                 1d
             );
-            }
+    }
 
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext specialistContext(double selfExposure) {
         return new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
@@ -234,6 +263,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 1,
                 1,
                 LaterDeclarationFit.specialistSlotActionability(320d, 250d),
+                0d,
                 1d
         );
     }

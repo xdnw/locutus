@@ -299,6 +299,14 @@ final class LongHorizonAssignmentOptimizer {
                             projectionScoringContext.objective().usesWarSlotDenial(),
                             projectedAuditLimit
                     );
+                            best = evaluator.betterCandidate(best, fixedOnlyCandidate(
+                                baseEdges,
+                                scenario,
+                                attackerNationIds,
+                                defenderNationIds,
+                                fixedEdges,
+                                terminalProjection
+                            ), terminalProjection);
                     if (allowProjectionFeedbackEdges
                             && appendProjectedFeedbackEdges(
                                     baseEdges,
@@ -332,6 +340,42 @@ final class LongHorizonAssignmentOptimizer {
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "assignmentPairs", best.assignmentPairCount());
                 return new Result(cloneAssignment(best.assignment()), projectedObjectiveSummary);
         }
+    }
+
+    private static Candidate fixedOnlyCandidate(
+            CandidateEdgeTable baseEdges,
+            CompiledScenario scenario,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            List<BlitzFixedEdge> fixedEdges,
+            LongHorizonControlProjection terminalProjection
+    ) {
+        boolean[] edgeAssigned = new boolean[baseEdges.edgeCount()];
+        int[] attackerCounts = new int[scenario.attackerCount()];
+        int[] defenderCounts = new int[scenario.defenderCount()];
+        Map<Integer, List<Integer>> assignment = fixedEdges.isEmpty()
+                ? Map.of()
+                : new Int2ObjectLinkedOpenHashMap<>();
+        Long2IntOpenHashMap edgeIndexByPair = fixedEdges.isEmpty()
+                ? null
+                : baseEdges.edgeIndexByPair(attackerNationIds, defenderNationIds);
+        for (BlitzFixedEdge fixedEdge : fixedEdges) {
+            int attackerIndex = scenario.attackerIndexOrMinusOne(fixedEdge.attackerNationId());
+            int defenderIndex = scenario.defenderIndexOrMinusOne(fixedEdge.defenderNationId());
+            if (attackerIndex < 0 || defenderIndex < 0) {
+                continue;
+            }
+            attackerCounts[attackerIndex]++;
+            defenderCounts[defenderIndex]++;
+            int edgeIndex = edgeIndexByPair.get(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()));
+            if (edgeIndex >= 0 && edgeIndex < edgeAssigned.length) {
+                edgeAssigned[edgeIndex] = true;
+            }
+            assignment.computeIfAbsent(fixedEdge.attackerNationId(), ignored -> new IntArrayList())
+                    .add(fixedEdge.defenderNationId());
+        }
+        double projectionScore = terminalProjection.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts);
+        return new Candidate(assignment, edgeAssigned, attackerCounts, defenderCounts, projectionScore);
     }
 
     private static int appendProjectedFeedbackEdges(

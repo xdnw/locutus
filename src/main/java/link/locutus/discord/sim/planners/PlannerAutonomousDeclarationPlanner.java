@@ -235,6 +235,7 @@ final class PlannerAutonomousDeclarationPlanner {
         CandidateEdgeTable rescoredEdges = new CandidateEdgeTable(rawEdges.edgeCount());
         rescoredEdges.configureComponentRetention(retainedComponentPolicy(rawEdges));
         double[] targetBestActionability = targetBestActionability(rawEdges, scenario);
+        double[] targetSupportActionability = targetSupportActionability(rawEdges, scenario);
         for (int edgeIndex = 0; edgeIndex < rawEdges.edgeCount(); edgeIndex++) {
             int attackerIndex = rawEdges.attackerIndex(edgeIndex);
             int defenderIndex = rawEdges.defenderIndex(edgeIndex);
@@ -255,6 +256,7 @@ final class PlannerAutonomousDeclarationPlanner {
                     Math.max(1, scenario.attackerFreeOffSlots(attackerIndex)),
                     Math.max(1, scenario.defenderFreeDefSlots(defenderIndex)),
                     targetBestActionability[defenderIndex],
+                        Math.max(0d, targetSupportActionability[defenderIndex] - edgeActionability(rawEdges, scenario, edgeIndex)),
                     1d
             ));
             if (score <= scoreThreshold) {
@@ -297,6 +299,44 @@ final class PlannerAutonomousDeclarationPlanner {
             best[defenderIndex] = Math.max(best[defenderIndex], Math.max(conventionalActionability, specialistActionability));
         }
         return best;
+    }
+
+    private static double[] targetSupportActionability(CandidateEdgeTable rawEdges, CompiledScenario scenario) {
+        double[] best = new double[scenario.defenderCount()];
+        double[] second = new double[scenario.defenderCount()];
+        for (int edgeIndex = 0; edgeIndex < rawEdges.edgeCount(); edgeIndex++) {
+            int defenderIndex = rawEdges.defenderIndex(edgeIndex);
+            double actionability = edgeActionability(rawEdges, scenario, edgeIndex);
+            if (actionability > best[defenderIndex]) {
+                second[defenderIndex] = best[defenderIndex];
+                best[defenderIndex] = actionability;
+            } else if (actionability > second[defenderIndex]) {
+                second[defenderIndex] = actionability;
+            }
+        }
+        double[] support = new double[scenario.defenderCount()];
+        for (int defenderIndex = 0; defenderIndex < support.length; defenderIndex++) {
+            support[defenderIndex] = best[defenderIndex] + second[defenderIndex];
+        }
+        return support;
+    }
+
+    private static double edgeActionability(CandidateEdgeTable rawEdges, CompiledScenario scenario, int edgeIndex) {
+        int attackerIndex = rawEdges.attackerIndex(edgeIndex);
+        int defenderIndex = rawEdges.defenderIndex(edgeIndex);
+        DBNationSnapshot declarer = scenario.attacker(attackerIndex);
+        DBNationSnapshot target = scenario.defender(defenderIndex);
+        double conventionalActionability = LaterDeclarationFit.actionability(
+                counterStrength(declarer),
+                counterStrength(target)
+        );
+        double specialistActionability = rawEdges.retainsResourceSwing()
+                ? LaterDeclarationFit.specialistSlotActionability(
+                rawEdges.resourceSwing(edgeIndex),
+                OpeningMetricSummary.defenderControlPressure(target)
+            )
+                : 0d;
+        return Math.max(conventionalActionability, specialistActionability);
     }
 
     private static CandidateEdgeComponentPolicy retainedComponentPolicy(CandidateEdgeTable edges) {

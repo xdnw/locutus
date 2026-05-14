@@ -55,7 +55,23 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
             * rebuildReadiness(context)
                 * exposureReadiness(context)
                 * targetOpportunityReadiness(context, slotActionability)
+                * supportReadiness(context, slotActionability)
             * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots(), slotActionability);
+    }
+
+    private static double supportReadiness(LaterDeclarationScoreContext context, double slotActionability) {
+        if (slotActionability >= 1d || !(context.targetPressure() > 0d)) {
+            return 1d;
+        }
+        double support = Math.max(0d, context.targetSupportActionability());
+        double unsupportedNeed = Math.max(0d, 1d - slotActionability);
+        if (!(unsupportedNeed > 0d)) {
+            return 1d;
+        }
+        double supportedFit = Math.min(1d, slotActionability + (0.65d * support));
+        double pressureWeight = context.targetPressure() / (context.targetPressure() + 12d);
+        double readiness = 1d - (pressureWeight * (1d - supportedFit));
+        return Math.max(0.15d, Math.min(1d, readiness));
     }
 
     private static double targetOpportunityReadiness(LaterDeclarationScoreContext context, double slotActionability) {

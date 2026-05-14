@@ -21,6 +21,7 @@ interface LaterDeclarationScoringPolicy {
             int remainingDeclarerSlots,
             int remainingTargetSlots,
             double targetBestActionability,
+            double targetSupportActionability,
             double activityWeight
     ) {
     }
