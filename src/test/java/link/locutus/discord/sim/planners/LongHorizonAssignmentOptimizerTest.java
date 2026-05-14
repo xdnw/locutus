@@ -2911,6 +2911,86 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void projectedPrimaryObjectiveScorePenalizesAttackStarvationBeforeTieBreak() {
+        LongHorizonAssignmentOptimizer.Candidate steadierCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonAssignmentOptimizer.Candidate starvedCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation steadierEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                10d,
+                new int[]{1},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(200, 40, 10, 3, 0)
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation starvedEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                10d,
+                new int[]{1},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(200, 140, 120, 3, 0)
+        );
+
+        assertTrue(
+                LongHorizonCandidateEvaluator.projectedPrimaryObjectiveScore(steadierCandidate, steadierEvaluation)
+                        > LongHorizonCandidateEvaluator.projectedPrimaryObjectiveScore(starvedCandidate, starvedEvaluation),
+                "Projected primary scoring should demote families that burn many turns on no-op or non-positive attack choices even when comparisonScore, opening score, and delayed-declaration regret match"
+        );
+    }
+
+    @Test
+    void projectedPrimaryObjectiveScorePenalizesCounterStormAndUnderStrengthFollowOns() {
+        LongHorizonAssignmentOptimizer.Candidate steadierCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonAssignmentOptimizer.Candidate stormierCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation steadierEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                10d,
+                new int[]{1},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(120, 20, 10, 3, 0)
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation stormierEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                10d,
+                new int[]{4},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(120, 20, 10, 3, 2)
+        );
+
+        assertTrue(
+                LongHorizonCandidateEvaluator.projectedPrimaryObjectiveScore(steadierCandidate, steadierEvaluation)
+                        > LongHorizonCandidateEvaluator.projectedPrimaryObjectiveScore(stormierCandidate, stormierEvaluation),
+                "Projected primary scoring should charge counter-storm overload and under-strength follow-on shape before exact score ties are required"
+        );
+    }
+
+    @Test
     void projectedFamilyConsequenceTieBreakPrefersFewerUnderStrengthLaterDeclarations() {
         LongHorizonAssignmentOptimizer.Candidate steadierCandidate = new LongHorizonAssignmentOptimizer.Candidate(
                 Map.of(1, List.of(101)),

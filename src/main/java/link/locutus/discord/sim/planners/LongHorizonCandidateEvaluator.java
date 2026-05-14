@@ -17,6 +17,12 @@ import java.util.Set;
  * both objective scoring and realized-counter feedback.</p>
  */
 final class LongHorizonCandidateEvaluator {
+    private static final double PROJECTED_OVERLOADED_ATTACKER_REGRET_WEIGHT = 1.25d;
+    private static final double PROJECTED_COUNTER_STORM_EXCESS_REGRET_WEIGHT = 0.75d;
+    private static final double PROJECTED_NO_POSITIVE_ATTACK_RATE_REGRET_WEIGHT = 1.5d;
+    private static final double PROJECTED_NO_ATTACK_RATE_REGRET_WEIGHT = 0.75d;
+    private static final double PROJECTED_UNDER_STRENGTH_LATER_DECLARATION_RATE_REGRET_WEIGHT = 0.75d;
+
     private final LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext;
     private final boolean canScoreProjection;
     private final int attackerTeamId;
@@ -281,9 +287,51 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonForwardProjection.ProjectedEvaluation evaluation
     ) {
+        return projectedPrimaryObjectiveScore(candidate, evaluation);
+        }
+
+        static double projectedPrimaryObjectiveScore(
+            LongHorizonAssignmentOptimizer.Candidate candidate,
+            LongHorizonForwardProjection.ProjectedEvaluation evaluation
+        ) {
         return evaluation.comparisonScore()
                 + candidate.projectionScore()
-                - evaluation.openingSideDelayedDeclarationRegret();
+            - evaluation.openingSideDelayedDeclarationRegret()
+            - projectedStrategyRegretPenalty(candidate, evaluation);
+        }
+
+        static double projectedStrategyRegretPenalty(
+            LongHorizonAssignmentOptimizer.Candidate candidate,
+            LongHorizonForwardProjection.ProjectedEvaluation evaluation
+        ) {
+        LongHorizonForwardProjection.ProjectedFamilyConsequences consequences = evaluation.familyConsequences();
+        int[] attackerCounts = candidate.attackerCounts();
+        int[] realizedCounterIncidence = evaluation.realizedCounterIncidence();
+        double overloadedAttackerRate = ratio(
+            projectedOverloadedAttackers(attackerCounts, realizedCounterIncidence),
+            committedAttackers(attackerCounts)
+        );
+        double counterStormExcessRate = ratio(
+            projectedCounterStormExcess(attackerCounts, realizedCounterIncidence),
+            committedOpenings(attackerCounts)
+        );
+        double noPositiveAttackRate = ratio(
+            consequences.noPositiveAttackChoices(),
+            consequences.attackChoiceCalls()
+        );
+        double noAttackRate = ratio(
+            consequences.noAttackChoices(),
+            consequences.attackChoiceCalls()
+        );
+        double underStrengthLaterDeclarationRate = ratio(
+            consequences.underStrengthSelectedLaterDeclarations(),
+            consequences.selectedLaterDeclarations()
+        );
+        return PROJECTED_OVERLOADED_ATTACKER_REGRET_WEIGHT * overloadedAttackerRate
+            + PROJECTED_COUNTER_STORM_EXCESS_REGRET_WEIGHT * counterStormExcessRate
+            + PROJECTED_NO_POSITIVE_ATTACK_RATE_REGRET_WEIGHT * noPositiveAttackRate
+            + PROJECTED_NO_ATTACK_RATE_REGRET_WEIGHT * noAttackRate
+            + PROJECTED_UNDER_STRENGTH_LATER_DECLARATION_RATE_REGRET_WEIGHT * underStrengthLaterDeclarationRate;
     }
 
     static boolean preferProjectedFamilyConsequences(
@@ -391,6 +439,31 @@ final class LongHorizonCandidateEvaluator {
             excess += Math.max(0, realizedCounterIncidence[attackerIndex] - Math.max(1, attackerCounts[attackerIndex]));
         }
         return excess;
+    }
+
+    private static int committedAttackers(int[] attackerCounts) {
+        int committed = 0;
+        for (int count : attackerCounts) {
+            if (count > 0) {
+                committed++;
+            }
+        }
+        return committed;
+    }
+
+    private static int committedOpenings(int[] attackerCounts) {
+        int openings = 0;
+        for (int count : attackerCounts) {
+            openings += Math.max(0, count);
+        }
+        return openings;
+    }
+
+    private static double ratio(int numerator, int denominator) {
+        if (numerator <= 0 || denominator <= 0) {
+            return 0d;
+        }
+        return (double) numerator / (double) denominator;
     }
 
     private static boolean canScoreProjection(CompiledScenario scenario) {
