@@ -589,6 +589,50 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void projectedTerminalSlotCostIsMarginalAcrossMultipleWars() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 1_200).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 1_000),
+                nation(102, 2, 1_000)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 100.0f, 0.0f);
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                new int[]{2},
+                new int[]{1, 1},
+                1,
+                1.0d
+        );
+        OffensiveSlotCostObjective objective = new OffensiveSlotCostObjective();
+
+        double oneWarCost = projection.projectedEvaluation(
+                objective,
+                attackers.get(0).teamId(),
+                new boolean[]{true, false},
+                new int[]{1},
+                new int[]{1, 0}
+        ).objectiveScore();
+        double twoWarCost = projection.projectedEvaluation(
+                objective,
+                attackers.get(0).teamId(),
+                new boolean[]{true, true},
+                new int[]{2},
+                new int[]{1, 1}
+        ).objectiveScore();
+
+        assertTrue(oneWarCost > 0d, "Test setup must expose positive offensive slot cost");
+        assertTrue(twoWarCost > oneWarCost, "A second active war can still increase total slot cost through higher slot pressure");
+        assertTrue(twoWarCost < oneWarCost * 2d,
+                "Terminal slot metrics should allocate current nation slot cost across active wars instead of repeating full cost per war");
+    }
+
+    @Test
     void forwardProjectionDerivesScoreFromMutableStateAndCurrentRebuyCapacity() {
                 DBNationSnapshot attackerNoBuysUsed = noCurrentBuysNationWithTotalScore(1, 1, 100.0);
                 DBNationSnapshot attackerNoRebuyLeft = exhaustedBuysNationWithTotalScore(1, 1, 100.0);
@@ -3439,6 +3483,40 @@ class LongHorizonAssignmentOptimizerTest {
                 @Override
                 public boolean usesWarSlotDenial() {
                         return true;
+                }
+
+                @Override
+                public double scoreAction(SimWorld world, SimAction action, int teamId) {
+                        return 0d;
+                }
+        }
+
+        private static final class OffensiveSlotCostObjective implements StrategicObjective {
+                @Override
+                public double scoreTerminal(StrategicValueView view, int teamId) {
+                        if (!(view instanceof TeamWarControlView controlView)) {
+                                return 0d;
+                        }
+                        double[] cost = new double[1];
+                        controlView.forEachActiveWarSlotMetric((attackerTeamId, defenderTeamId, attackerOffensiveSlotCost, defenderDefensiveSlotDenial) -> {
+                                if (attackerTeamId == teamId) {
+                                        cost[0] += attackerOffensiveSlotCost;
+                                }
+                        });
+                        return cost[0];
+                }
+
+                @Override
+                public double scoreOpening(
+                        double immediateHarm,
+                        double selfExposure,
+                        double resourceSwing,
+                        double controlLeverage,
+                        double futureWarLeverage,
+                        double targetPressure,
+                        int teamId
+                ) {
+                        return 0d;
                 }
 
                 @Override

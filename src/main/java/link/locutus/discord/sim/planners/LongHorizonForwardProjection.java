@@ -301,6 +301,7 @@ final class LongHorizonForwardProjection {
     private double profiledSelectedLaterDeclarationStrengthRatioSum;
     private double profiledSelectedLaterDeclarationStrengthRatioMin;
     private long profiledSelectedLaterDeclarationUnderStrength;
+    private double profiledOpeningSideDelayedDeclarationRegret;
     private long profiledPreparedStateProfiles;
     private long profiledPreparedStateRestores;
     private long profiledPreparedWarTemplateBuilds;
@@ -597,7 +598,11 @@ final class LongHorizonForwardProjection {
     ) {
         int[] incomingDeclarationIncidence = resetCounterIncidenceScratch();
         ProjectionView view = project(edgeAssigned, attackerCounts, defenderCounts, incomingDeclarationIncidence);
-        return new ProjectedEvaluation(objective.scoreTerminal(view, teamId), incomingDeclarationIncidence.clone());
+        return new ProjectedEvaluation(
+            objective.scoreTerminal(view, teamId),
+            incomingDeclarationIncidence.clone(),
+            profiledOpeningSideDelayedDeclarationRegret
+        );
     }
 
     ProjectedFeedbackEvaluation projectedFeedbackEvaluation(
@@ -621,7 +626,11 @@ final class LongHorizonForwardProjection {
         flushProjectedEvaluationProfile();
         ProjectionView view = new ProjectionView(state, warState, edgeAssigned);
         return new ProjectedFeedbackEvaluation(
-            new ProjectedEvaluation(objective.scoreTerminal(view, teamId), incomingDeclarationIncidence.clone()),
+            new ProjectedEvaluation(
+                objective.scoreTerminal(view, teamId),
+                incomingDeclarationIncidence.clone(),
+                profiledOpeningSideDelayedDeclarationRegret
+            ),
             midHorizonSnapshot
         );
         }
@@ -647,7 +656,11 @@ final class LongHorizonForwardProjection {
         flushProjectedEvaluationProfile();
         ProjectionView view = new ProjectionView(state, warState, edgeAssigned);
         return new ProjectedAttackerFeedbackEvaluation(
-            new ProjectedEvaluation(objective.scoreTerminal(view, teamId), incomingDeclarationIncidence.clone()),
+            new ProjectedEvaluation(
+                objective.scoreTerminal(view, teamId),
+                incomingDeclarationIncidence.clone(),
+                profiledOpeningSideDelayedDeclarationRegret
+            ),
             midHorizonSnapshot
         );
     }
@@ -1061,7 +1074,8 @@ final class LongHorizonForwardProjection {
                 plannerSettings,
                 turn,
                 declarersAreScenarioAttackers ? null : incomingDeclarationIncidenceOut,
-                plannerSettings.maxLaterDeclarationsPerTurn()
+            plannerSettings.maxLaterDeclarationsPerTurn(),
+            declarersAreScenarioAttackers
         );
         profiledLaterDeclarations += declarations;
     }
@@ -1939,7 +1953,8 @@ final class LongHorizonForwardProjection {
             SidePlannerSettings plannerSettings,
             int turn,
             int[] incomingDeclarationIncidenceOut,
-            int maxDeclarations
+                int maxDeclarations,
+                boolean openingSideDeclarers
     ) {
         PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
             inputs.scenario(),
@@ -2039,14 +2054,22 @@ final class LongHorizonForwardProjection {
                     && declaration.targetNationIndex() < scenario.attackerCount()) {
                 incomingDeclarationIncidenceOut[declaration.targetNationIndex()]++;
             }
-            recordSelectedLaterDeclaration(inputs, declaration.edgeIndex());
+            recordSelectedLaterDeclaration(inputs, declaration.edgeIndex(), turn, openingSideDeclarers);
         }
         return declarations;
     }
 
-    private void recordSelectedLaterDeclaration(ProjectedLaterDeclarationInputs inputs, int edgeIndex) {
+    private void recordSelectedLaterDeclaration(ProjectedLaterDeclarationInputs inputs, int edgeIndex, int turn, boolean openingSideDeclarers) {
         profiledSelectedLaterDeclarations++;
-        profiledSelectedLaterDeclarationScoreSum += Math.max(0d, inputs.edges().scalarScore(edgeIndex));
+        double score = Math.max(0d, inputs.edges().scalarScore(edgeIndex));
+        profiledSelectedLaterDeclarationScoreSum += score;
+        if (openingSideDeclarers && score > 0d) {
+            double waitDiscount = StrategicTimingValue.declarationWaitDiscount(
+                    Math.max(0, turn),
+                    Math.max(1, horizonTurns)
+            );
+            profiledOpeningSideDelayedDeclarationRegret += score * Math.max(0d, 1d - waitDiscount);
+        }
         double targetActionSpace = safeArrayValue(inputs.edgeTargetActionSpaceValues(), edgeIndex);
         profiledSelectedLaterDeclarationTargetActionSpaceSum += targetActionSpace;
         profiledSelectedLaterDeclarationTargetActionSpaceMax = Math.max(
@@ -3114,6 +3137,7 @@ final class LongHorizonForwardProjection {
         profiledSelectedLaterDeclarationStrengthRatioSum = 0d;
         profiledSelectedLaterDeclarationStrengthRatioMin = Double.POSITIVE_INFINITY;
         profiledSelectedLaterDeclarationUnderStrength = 0L;
+        profiledOpeningSideDelayedDeclarationRegret = 0d;
         profiledPreparedStateProfiles = 0L;
         profiledPreparedStateRestores = 0L;
         profiledPreparedWarTemplateBuilds = 0L;
@@ -5661,27 +5685,29 @@ final class LongHorizonForwardProjection {
                 int defenderOpponents = activeOpponentCount(defenderSnapshot, activeOpponentsByNation[defenderNationIndex]);
                 double attackerPressure = state.targetPressure(defenderNationIndex, attackerNationIndex);
                 double defenderPressure = state.targetPressure(attackerNationIndex, defenderNationIndex);
+                double attackerSlotCost = StrategicAssetValue.offensiveWarSlotOpportunityCost(
+                    PlannerStrategicValue.offensiveSlotCapabilityValue(
+                        state.slotCapabilityValue(attackerNationIndex, warState),
+                        attackerSlotPressure
+                    ),
+                    attackerPressure,
+                    attackerSlotPressure,
+                    attackerOpponents
+                ) / Math.max(1, projectedOffensiveWarsByNation[attackerNationIndex] + seededOffensiveWarsByNation[attackerNationIndex]);
+                double defenderSlotDenial = StrategicAssetValue.defensiveWarSlotDenialValue(
+                    PlannerStrategicValue.defensiveSlotCapabilityValue(
+                        state.slotCapabilityValue(defenderNationIndex, warState),
+                        defenderSlotPressure
+                    ),
+                    defenderPressure,
+                    defenderSlotPressure,
+                    defenderOpponents
+                ) / Math.max(1, projectedDefensiveWarsByNation[defenderNationIndex] + seededDefensiveWarsByNation[defenderNationIndex]);
                 consumer.accept(
                         stateTeamId(attackerNationIndex),
                         stateTeamId(defenderNationIndex),
-                        StrategicAssetValue.offensiveWarSlotOpportunityCost(
-                        PlannerStrategicValue.offensiveSlotCapabilityValue(
-                            state.slotCapabilityValue(attackerNationIndex, warState),
-                            attackerSlotPressure
-                        ),
-                                attackerPressure,
-                                attackerSlotPressure,
-                                attackerOpponents
-                        ),
-                        StrategicAssetValue.defensiveWarSlotDenialValue(
-                        PlannerStrategicValue.defensiveSlotCapabilityValue(
-                            state.slotCapabilityValue(defenderNationIndex, warState),
-                            defenderSlotPressure
-                        ),
-                                defenderPressure,
-                                defenderSlotPressure,
-                                defenderOpponents
-                        )
+                        attackerSlotCost,
+                        defenderSlotDenial
                 );
             }
         }
@@ -6022,7 +6048,8 @@ final class LongHorizonForwardProjection {
 
     record ProjectedEvaluation(
             double objectiveScore,
-            int[] realizedCounterIncidence
+            int[] realizedCounterIncidence,
+            double openingSideDelayedDeclarationRegret
     ) {
     }
 

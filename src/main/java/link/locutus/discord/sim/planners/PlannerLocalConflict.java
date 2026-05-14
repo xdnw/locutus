@@ -1104,27 +1104,29 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
             double attackerSlotPressure = offensiveSlotPressure(war.attacker);
             double defenderSlotPressure = defensiveSlotPressure(war.defender);
+            double attackerSlotCost = StrategicAssetValue.offensiveWarSlotOpportunityCost(
+                PlannerStrategicValue.offensiveSlotCapabilityValue(
+                    slotCapabilityValue(war.attacker),
+                    attackerSlotPressure
+                ),
+                war.defender.targetPressureAgainst(war.attacker),
+                attackerSlotPressure,
+                activeOpponentCount(war.attacker)
+            ) / Math.max(1, activeOffensiveWarCount(war.attacker.nationId()));
+            double defenderSlotDenial = StrategicAssetValue.defensiveWarSlotDenialValue(
+                PlannerStrategicValue.defensiveSlotCapabilityValue(
+                    slotCapabilityValue(war.defender),
+                    defenderSlotPressure
+                ),
+                targetPressure(war),
+                defenderSlotPressure,
+                activeOpponentCount(war.defender)
+            ) / Math.max(1, activeDefensiveWarCount(war.defender.nationId()));
             consumer.accept(
                     war.attacker.teamId(),
                     war.defender.teamId(),
-                    StrategicAssetValue.offensiveWarSlotOpportunityCost(
-                            PlannerStrategicValue.offensiveSlotCapabilityValue(
-                                    slotCapabilityValue(war.attacker),
-                                    attackerSlotPressure
-                            ),
-                            war.defender.targetPressureAgainst(war.attacker),
-                            attackerSlotPressure,
-                            activeOpponentCount(war.attacker)
-                    ),
-                    StrategicAssetValue.defensiveWarSlotDenialValue(
-                            PlannerStrategicValue.defensiveSlotCapabilityValue(
-                                    slotCapabilityValue(war.defender),
-                                    defenderSlotPressure
-                            ),
-                            targetPressure(war),
-                            defenderSlotPressure,
-                            activeOpponentCount(war.defender)
-                    )
+                attackerSlotCost,
+                defenderSlotDenial
             );
         }
     }

@@ -121,7 +121,7 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonControlProjection projection
     ) {
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
-        return evaluation.objectiveScore();
+        return objectiveScore(candidate, evaluation);
     }
 
     ObjectiveValueSummary objectiveSummary(
@@ -132,7 +132,7 @@ final class LongHorizonCandidateEvaluator {
             return null;
         }
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
-        return ObjectiveValueSummary.identical(evaluation.objectiveScore());
+        return ObjectiveValueSummary.identical(objectiveScore(candidate, evaluation));
     }
 
     int[] realizedCounters(
@@ -263,7 +263,7 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonForwardProjection.ProjectedEvaluation evaluation
     ) {
-        return evaluation.objectiveScore();
+        return evaluation.objectiveScore() - evaluation.openingSideDelayedDeclarationRegret();
     }
 
     private static boolean canScoreProjection(CompiledScenario scenario) {
