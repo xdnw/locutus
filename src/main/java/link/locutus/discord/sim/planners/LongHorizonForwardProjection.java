@@ -616,7 +616,11 @@ final class LongHorizonForwardProjection {
             objective.scoreTerminalComparison(view, teamId, opposingTeamId),
             incomingDeclarationIncidence.clone(),
             profiledOpeningSideDelayedDeclarationRegret,
-            List.copyOf(profiledOpeningSideLaterDeclarations)
+            List.copyOf(profiledOpeningSideLaterDeclarations),
+            new ProjectedFamilyConsequences(
+                    saturatedInt(profiledSelectedLaterDeclarations),
+                    saturatedInt(profiledSelectedLaterDeclarationUnderStrength)
+            )
         );
     }
 
@@ -646,7 +650,11 @@ final class LongHorizonForwardProjection {
                 objective.scoreTerminalComparison(view, teamId, teamId),
                 incomingDeclarationIncidence.clone(),
                 profiledOpeningSideDelayedDeclarationRegret,
-                List.copyOf(profiledOpeningSideLaterDeclarations)
+                List.copyOf(profiledOpeningSideLaterDeclarations),
+                new ProjectedFamilyConsequences(
+                        saturatedInt(profiledSelectedLaterDeclarations),
+                        saturatedInt(profiledSelectedLaterDeclarationUnderStrength)
+                )
             ),
             midHorizonSnapshot
         );
@@ -678,7 +686,11 @@ final class LongHorizonForwardProjection {
                 objective.scoreTerminalComparison(view, teamId, teamId),
                 incomingDeclarationIncidence.clone(),
                 profiledOpeningSideDelayedDeclarationRegret,
-                List.copyOf(profiledOpeningSideLaterDeclarations)
+                List.copyOf(profiledOpeningSideLaterDeclarations),
+                new ProjectedFamilyConsequences(
+                        saturatedInt(profiledSelectedLaterDeclarations),
+                        saturatedInt(profiledSelectedLaterDeclarationUnderStrength)
+                )
             ),
             midHorizonSnapshot
         );
@@ -6298,9 +6310,16 @@ final class LongHorizonForwardProjection {
             double comparisonScore,
             int[] realizedCounterIncidence,
             double openingSideDelayedDeclarationRegret,
-            List<OpeningSideLaterDeclaration> openingSideLaterDeclarations
+            List<OpeningSideLaterDeclaration> openingSideLaterDeclarations,
+            ProjectedFamilyConsequences familyConsequences
     ) {
     }
+
+        record ProjectedFamilyConsequences(
+            int selectedLaterDeclarations,
+            int underStrengthSelectedLaterDeclarations
+        ) {
+        }
 
         record OpeningSideLaterDeclaration(
             int declarerNationId,

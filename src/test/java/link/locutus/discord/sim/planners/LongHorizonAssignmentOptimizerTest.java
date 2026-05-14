@@ -2827,7 +2827,8 @@ class LongHorizonAssignmentOptimizerTest {
                 0d,
                 new int[]{0},
                 12d,
-                List.of(new LongHorizonForwardProjection.OpeningSideLaterDeclaration(1, 102, 24, 95d, 12d))
+                List.of(new LongHorizonForwardProjection.OpeningSideLaterDeclaration(1, 102, 24, 95d, 12d)),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(1, 0)
         );
         LongHorizonAssignmentOptimizer.Candidate promoted = LongHorizonAssignmentOptimizer.followOnPromotionCandidate(
                 edges,
@@ -2858,6 +2859,97 @@ class LongHorizonAssignmentOptimizerTest {
         assertNotNull(rebalanced);
         assertEquals(List.of(101, 102), rebalanced.assignment().get(1),
                 "The bounded rebalance candidate should evict the weakest opening and admit the higher-regret delayed follow-on");
+    }
+
+    @Test
+    void projectedFamilyConsequenceTieBreakPrefersLowerCounterStorm() {
+        LongHorizonAssignmentOptimizer.Candidate saferCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonAssignmentOptimizer.Candidate stormierCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation saferEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{1},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(0, 0)
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation stormierEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{3},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(0, 0)
+        );
+
+        assertTrue(LongHorizonCandidateEvaluator.preferProjectedFamilyConsequences(
+                        saferCandidate,
+                        saferEvaluation,
+                        stormierCandidate,
+                        stormierEvaluation
+                ),
+                "When projected objective scores tie, the bounded family owner should prefer the family with lower counter-storm overload before falling back to raw opening score");
+        assertFalse(LongHorizonCandidateEvaluator.preferProjectedFamilyConsequences(
+                        stormierCandidate,
+                        stormierEvaluation,
+                        saferCandidate,
+                        saferEvaluation
+                ),
+                "Projected family-consequence comparison must be directional so a stormier family cannot win the same tie-break in reverse");
+    }
+
+    @Test
+    void projectedFamilyConsequenceTieBreakPrefersFewerUnderStrengthLaterDeclarations() {
+        LongHorizonAssignmentOptimizer.Candidate steadierCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonAssignmentOptimizer.Candidate weakerFollowOnCandidate = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true},
+                new int[]{1},
+                new int[]{1},
+                100d
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation steadierEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{1},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(3, 0)
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation weakerFollowOnEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{1},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(3, 2)
+        );
+
+        assertTrue(LongHorizonCandidateEvaluator.preferProjectedFamilyConsequences(
+                        steadierCandidate,
+                        steadierEvaluation,
+                        weakerFollowOnCandidate,
+                        weakerFollowOnEvaluation
+                ),
+                "When counter pressure ties, the bounded family owner should prefer the candidate whose projected later declarations rely less on under-strength follow-ons");
     }
 
     @Test

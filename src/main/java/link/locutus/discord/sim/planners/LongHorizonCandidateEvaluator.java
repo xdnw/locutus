@@ -75,14 +75,27 @@ final class LongHorizonCandidateEvaluator {
             double candidateScore = score(candidate, projection);
             return candidateScore > currentScore + LongHorizonAssignmentOptimizer.EPSILON ? candidate : current;
         }
-        double currentObjective = objectiveComparisonScore(current, projection);
-        double candidateObjective = objectiveComparisonScore(candidate, projection);
+        LongHorizonForwardProjection.ProjectedEvaluation currentEvaluation = evaluationFor(current, projection);
+        LongHorizonForwardProjection.ProjectedEvaluation candidateEvaluation = evaluationFor(candidate, projection);
+        double currentObjective = objectiveScore(current, currentEvaluation);
+        double candidateObjective = objectiveScore(candidate, candidateEvaluation);
         if (candidateObjective > currentObjective + LongHorizonAssignmentOptimizer.EPSILON) {
             return candidate;
         }
-        if (Math.abs(candidateObjective - currentObjective) <= LongHorizonAssignmentOptimizer.EPSILON
-                && candidate.projectionScore() > current.projectionScore() + LongHorizonAssignmentOptimizer.EPSILON) {
-            return candidate;
+        if (Math.abs(candidateObjective - currentObjective) <= LongHorizonAssignmentOptimizer.EPSILON) {
+            int familyComparison = compareProjectedFamilyConsequences(
+                    candidate,
+                    candidateEvaluation,
+                    current,
+                    currentEvaluation
+            );
+            if (familyComparison < 0) {
+                return candidate;
+            }
+            if (familyComparison == 0
+                    && candidate.projectionScore() > current.projectionScore() + LongHorizonAssignmentOptimizer.EPSILON) {
+                return candidate;
+            }
         }
         return current;
     }
@@ -116,14 +129,6 @@ final class LongHorizonCandidateEvaluator {
 
     private boolean usesPrimaryTerminalComparison() {
         return projectionScoringContext.objective().usesWarSlotDenial();
-    }
-
-    private double objectiveComparisonScore(
-            LongHorizonAssignmentOptimizer.Candidate candidate,
-            LongHorizonControlProjection projection
-    ) {
-        LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluationFor(candidate, projection);
-        return objectiveScore(candidate, evaluation);
     }
 
     ObjectiveValueSummary objectiveSummary(
@@ -279,6 +284,86 @@ final class LongHorizonCandidateEvaluator {
         return evaluation.comparisonScore()
                 + candidate.projectionScore()
                 - evaluation.openingSideDelayedDeclarationRegret();
+    }
+
+    static boolean preferProjectedFamilyConsequences(
+            LongHorizonAssignmentOptimizer.Candidate preferredCandidate,
+            LongHorizonForwardProjection.ProjectedEvaluation preferredEvaluation,
+            LongHorizonAssignmentOptimizer.Candidate otherCandidate,
+            LongHorizonForwardProjection.ProjectedEvaluation otherEvaluation
+    ) {
+        return compareProjectedFamilyConsequences(
+            preferredCandidate,
+            preferredEvaluation,
+            otherCandidate,
+            otherEvaluation
+        ) < 0;
+        }
+
+        private static int compareProjectedFamilyConsequences(
+            LongHorizonAssignmentOptimizer.Candidate leftCandidate,
+            LongHorizonForwardProjection.ProjectedEvaluation leftEvaluation,
+            LongHorizonAssignmentOptimizer.Candidate rightCandidate,
+            LongHorizonForwardProjection.ProjectedEvaluation rightEvaluation
+        ) {
+        int preferredOverloadedAttackers = projectedOverloadedAttackers(
+            leftCandidate.attackerCounts(),
+            leftEvaluation.realizedCounterIncidence()
+        );
+        int otherOverloadedAttackers = projectedOverloadedAttackers(
+            rightCandidate.attackerCounts(),
+            rightEvaluation.realizedCounterIncidence()
+        );
+        if (preferredOverloadedAttackers != otherOverloadedAttackers) {
+            return Integer.compare(preferredOverloadedAttackers, otherOverloadedAttackers);
+        }
+        int preferredCounterStormExcess = projectedCounterStormExcess(
+            leftCandidate.attackerCounts(),
+            leftEvaluation.realizedCounterIncidence()
+        );
+        int otherCounterStormExcess = projectedCounterStormExcess(
+            rightCandidate.attackerCounts(),
+            rightEvaluation.realizedCounterIncidence()
+        );
+        if (preferredCounterStormExcess != otherCounterStormExcess) {
+            return Integer.compare(preferredCounterStormExcess, otherCounterStormExcess);
+        }
+        LongHorizonForwardProjection.ProjectedFamilyConsequences preferredConsequences = leftEvaluation.familyConsequences();
+        LongHorizonForwardProjection.ProjectedFamilyConsequences otherConsequences = rightEvaluation.familyConsequences();
+        if (preferredConsequences.underStrengthSelectedLaterDeclarations()
+                != otherConsequences.underStrengthSelectedLaterDeclarations()) {
+            return Integer.compare(
+                preferredConsequences.underStrengthSelectedLaterDeclarations(),
+                otherConsequences.underStrengthSelectedLaterDeclarations()
+            );
+        }
+        if (preferredConsequences.selectedLaterDeclarations() != otherConsequences.selectedLaterDeclarations()) {
+            return Integer.compare(
+                preferredConsequences.selectedLaterDeclarations(),
+                otherConsequences.selectedLaterDeclarations()
+            );
+        }
+        return 0;
+    }
+
+    private static int projectedOverloadedAttackers(int[] attackerCounts, int[] realizedCounterIncidence) {
+        int count = 0;
+        int length = Math.min(attackerCounts.length, realizedCounterIncidence.length);
+        for (int attackerIndex = 0; attackerIndex < length; attackerIndex++) {
+            if (realizedCounterIncidence[attackerIndex] > Math.max(1, attackerCounts[attackerIndex])) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static int projectedCounterStormExcess(int[] attackerCounts, int[] realizedCounterIncidence) {
+        int excess = 0;
+        int length = Math.min(attackerCounts.length, realizedCounterIncidence.length);
+        for (int attackerIndex = 0; attackerIndex < length; attackerIndex++) {
+            excess += Math.max(0, realizedCounterIncidence[attackerIndex] - Math.max(1, attackerCounts[attackerIndex]));
+        }
+        return excess;
     }
 
     private static boolean canScoreProjection(CompiledScenario scenario) {
