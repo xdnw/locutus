@@ -939,6 +939,8 @@ final class LongHorizonAssignmentOptimizer {
                 int missingBaseEdge = 0;
                 int capBlocked = 0;
                 int skippedBusyDeclarer = 0;
+                int visibleSourceSubstitutions = 0;
+                int missingVisibleSource = 0;
                 boolean[] edgeAssigned = seed.edgeAssigned().clone();
                 int[] attackerCounts = seed.attackerCounts().clone();
                 int[] defenderCounts = seed.defenderCounts().clone();
@@ -948,13 +950,39 @@ final class LongHorizonAssignmentOptimizer {
                     if (promoted >= SLOT_RICH_REALLOCATION_EDGE_LIMIT) {
                         break;
                     }
-                    int attackerIndex = scenario.attackerIndexOrMinusOne(followOn.declarerNationId());
+                    int originalDeclarerIndex = scenario.attackerIndexOrMinusOne(followOn.declarerNationId());
+                    int attackerIndex = originalDeclarerIndex;
+                    int edgeIndex = baseEdgeByPair.get(pairKey(followOn.declarerNationId(), followOn.targetNationId()));
+                    int busyDeclarerRemoval = -1;
                     if (attackerIndex < 0
                             || !LongHorizonFeedbackSearch.isSlotRichLightlyUsedAttacker(scenario, seedAttackerCounts, attackerIndex)) {
                         skippedBusyDeclarer++;
-                        continue;
+                        edgeIndex = bestVisibleSlotRichEdgeForTarget(
+                                baseEdges,
+                                scenario,
+                                seedAttackerCounts,
+                                edgeAssigned,
+                                followOn.targetNationId()
+                        );
+                        if (edgeIndex < 0) {
+                            missingVisibleSource++;
+                            continue;
+                        }
+                        attackerIndex = baseEdges.attackerIndex(edgeIndex);
+                        if (originalDeclarerIndex >= 0) {
+                            busyDeclarerRemoval = weakestAssignedEdgeForAttacker(
+                                    baseEdges,
+                                    fixedEdgeMask,
+                                    edgeAssigned,
+                                    originalDeclarerIndex
+                            );
+                            if (busyDeclarerRemoval < 0) {
+                                capBlocked++;
+                                continue;
+                            }
+                        }
+                        visibleSourceSubstitutions++;
                     }
-                    int edgeIndex = baseEdgeByPair.get(pairKey(followOn.declarerNationId(), followOn.targetNationId()));
                     if (edgeIndex < 0 || edgeIndex >= edgeAssigned.length) {
                         missingBaseEdge++;
                         continue;
@@ -980,24 +1008,32 @@ final class LongHorizonAssignmentOptimizer {
                     if (attackerRemoval >= 0 && baseEdges.defenderIndex(attackerRemoval) == defenderIndex) {
                         defenderCountAfterAttackerRemoval--;
                     }
+                    if (busyDeclarerRemoval >= 0 && baseEdges.defenderIndex(busyDeclarerRemoval) == defenderIndex) {
+                        defenderCountAfterAttackerRemoval--;
+                    }
                     if (defenderBlocked && defenderCountAfterAttackerRemoval >= defenderCaps[defenderIndex]) {
                         defenderRemoval = weakestAssignedEdgeForDefender(
                                 baseEdges,
                                 fixedEdgeMask,
                                 edgeAssigned,
                                 defenderIndex,
-                                attackerRemoval
+                                attackerRemoval,
+                                busyDeclarerRemoval
                         );
                         if (defenderRemoval < 0) {
                             capBlocked++;
                             continue;
                         }
                     }
+                    if (busyDeclarerRemoval >= 0) {
+                        removeAssignedEdge(baseEdges, assignment, edgeAssigned, attackerCounts, defenderCounts, attackerNationIds, defenderNationIds, busyDeclarerRemoval);
+                        removed++;
+                    }
                     if (attackerRemoval >= 0) {
                         removeAssignedEdge(baseEdges, assignment, edgeAssigned, attackerCounts, defenderCounts, attackerNationIds, defenderNationIds, attackerRemoval);
                         removed++;
                     }
-                    if (defenderRemoval >= 0 && defenderRemoval != attackerRemoval) {
+                    if (defenderRemoval >= 0 && defenderRemoval != attackerRemoval && defenderRemoval != busyDeclarerRemoval) {
                         removeAssignedEdge(baseEdges, assignment, edgeAssigned, attackerCounts, defenderCounts, attackerNationIds, defenderNationIds, defenderRemoval);
                         removed++;
                     }
@@ -1012,6 +1048,8 @@ final class LongHorizonAssignmentOptimizer {
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedSlotRichReallocationMissingBaseEdge", missingBaseEdge);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedSlotRichReallocationCapBlocked", capBlocked);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedSlotRichReallocationSkippedBusyDeclarer", skippedBusyDeclarer);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedSlotRichReallocationVisibleSourceSubstitutions", visibleSourceSubstitutions);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedSlotRichReallocationMissingVisibleSource", missingVisibleSource);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedSlotRichReallocationEdges", promoted);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedSlotRichReallocationRemovedEdges", removed);
                 if (promoted == 0) {
@@ -1019,6 +1057,37 @@ final class LongHorizonAssignmentOptimizer {
                 }
                 double projectionScore = terminalProjection.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts);
                 return new Candidate(assignment, edgeAssigned, attackerCounts, defenderCounts, projectionScore);
+            }
+
+            private static int bestVisibleSlotRichEdgeForTarget(
+                    CandidateEdgeTable baseEdges,
+                    CompiledScenario scenario,
+                    int[] attackerCounts,
+                    boolean[] edgeAssigned,
+                    int targetNationId
+            ) {
+                int targetDefenderIndex = scenario.defenderIndexOrMinusOne(targetNationId);
+                if (targetDefenderIndex < 0) {
+                    return -1;
+                }
+                int bestEdge = -1;
+                double bestScore = Double.NEGATIVE_INFINITY;
+                for (int edgeIndex = 0; edgeIndex < baseEdges.edgeCount(); edgeIndex++) {
+                    if (edgeAssigned[edgeIndex] || baseEdges.defenderIndex(edgeIndex) != targetDefenderIndex) {
+                        continue;
+                    }
+                    int attackerIndex = baseEdges.attackerIndex(edgeIndex);
+                    if (attackerIndex < 0
+                            || !LongHorizonFeedbackSearch.isSlotRichLightlyUsedAttacker(scenario, attackerCounts, attackerIndex)) {
+                        continue;
+                    }
+                    double edgeScore = baseEdges.scalarScore(edgeIndex);
+                    if (edgeScore > bestScore) {
+                        bestScore = edgeScore;
+                        bestEdge = edgeIndex;
+                    }
+                }
+                return bestEdge;
             }
 
             static Candidate followOnRebalanceCandidate(
@@ -1116,7 +1185,8 @@ final class LongHorizonAssignmentOptimizer {
                                 fixedEdgeMask,
                                 edgeAssigned,
                                 defenderIndex,
-                                attackerRemoval
+                                attackerRemoval,
+                                -1
                         );
                         if (defenderRemoval < 0) {
                             capBlocked++;
@@ -1227,12 +1297,14 @@ final class LongHorizonAssignmentOptimizer {
                     boolean[] fixedEdgeMask,
                     boolean[] edgeAssigned,
                     int defenderIndex,
-                    int excludedEdge
+                int excludedEdge,
+                int secondExcludedEdge
             ) {
                 int bestEdge = -1;
                 double bestScore = Double.POSITIVE_INFINITY;
                 for (int edgeIndex = 0; edgeIndex < edgeAssigned.length; edgeIndex++) {
-                    if (edgeIndex == excludedEdge
+                if (edgeIndex == excludedEdge
+                    || edgeIndex == secondExcludedEdge
                             || !edgeAssigned[edgeIndex]
                             || fixedEdgeMask[edgeIndex]
                             || baseEdges.defenderIndex(edgeIndex) != defenderIndex) {
