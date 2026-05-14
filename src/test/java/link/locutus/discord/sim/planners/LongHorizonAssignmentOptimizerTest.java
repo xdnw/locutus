@@ -2706,6 +2706,51 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void projectedFollowOnFeedbackAddsMissingOpeningEdgeBeforeFinalSolve() {
+        List<DBNationSnapshot> attackers = List.of(
+                withTotalScore(nation(1, 1, 900), 2_000.0).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build(),
+                withTotalScore(nation(102, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders, Map.of());
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        int[] attackerCaps = {2};
+        int[] defenderCaps = {1, 1};
+        int[] attackerNationIds = {1};
+        int[] defenderNationIds = {101, 102};
+
+        PlannerProfiler.Session session = new PlannerProfiler.Session();
+        LongHorizonAssignmentOptimizer.Result result = PlannerProfiler.withSession(session, () ->
+                LongHorizonAssignmentOptimizer.solveDetailed(
+                        edges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        new int[]{1},
+                        attackerNationIds,
+                        defenderNationIds,
+                        List.of(),
+                        72,
+                        LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
+                )
+        );
+
+        assertEquals(2, edges.edgeCount(),
+                "Projection-selected follow-ons that were missing from the opening table should become real bounded feedback edges");
+        assertTrue(result.assignment().getOrDefault(1, List.of()).contains(102),
+                "The final solve should be allowed to compare the induced strategy with the projected follow-on declared at turn 0");
+        long feedbackEdges = session.snapshot()
+                .stats(PlannerProfiler.Scope.LONG_HORIZON_SOLVE)
+                .counters()
+                .getOrDefault("boundedProjectedFeedbackEdges", 0L);
+        assertTrue(feedbackEdges > 0L,
+                "The profiler should distinguish projection-feedback visibility from ordinary base-edge promotion");
+    }
+
+    @Test
         void forwardProjectionUsesPerSideLaterDeclarationThreshold() {
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(

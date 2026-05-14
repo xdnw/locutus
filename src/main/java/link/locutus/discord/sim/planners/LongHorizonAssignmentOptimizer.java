@@ -37,6 +37,7 @@ final class LongHorizonAssignmentOptimizer {
     private static final int HIGH_CITY_COVERAGE_REPAIR_AUDITS = 3;
     private static final int HIGH_CITY_COVERAGE_REPAIR_CITY_FLOOR = 36;
     private static final int FOLLOW_ON_PROMOTION_EDGE_LIMIT = 3;
+    private static final int PROJECTED_FEEDBACK_EDGE_LIMIT = 6;
     static final double PRESSURE_SCORE_WEIGHT = 0.70d;
     static final double EPSILON = 1e-9;
 
@@ -109,6 +110,34 @@ final class LongHorizonAssignmentOptimizer {
             List<BlitzFixedEdge> fixedEdges,
             int horizonTurns,
             ProjectionScoringContext projectionScoringContext
+    ) {
+            return solveDetailed(
+                baseEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges,
+                horizonTurns,
+                projectionScoringContext,
+                true
+        );
+    }
+
+    private static Result solveDetailed(
+            CandidateEdgeTable baseEdges,
+            CompiledScenario scenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int[] attackerStrengthRanks,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            List<BlitzFixedEdge> fixedEdges,
+            int horizonTurns,
+            ProjectionScoringContext projectionScoringContext,
+            boolean allowProjectionFeedbackEdges
     ) {
             try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE)) {
                 int edgeCount = baseEdges.edgeCount();
@@ -270,6 +299,31 @@ final class LongHorizonAssignmentOptimizer {
                             projectionScoringContext.objective().usesWarSlotDenial(),
                             projectedAuditLimit
                     );
+                    if (allowProjectionFeedbackEdges
+                            && appendProjectedFeedbackEdges(
+                                    baseEdges,
+                                    scenario,
+                                    attackerNationIds,
+                                    defenderNationIds,
+                                    best,
+                                    marginalCandidate,
+                                    terminalProjection,
+                                    evaluator
+                            ) > 0) {
+                        return solveDetailed(
+                                baseEdges,
+                                scenario,
+                                attackerCaps,
+                                defenderCaps,
+                                attackerStrengthRanks,
+                                attackerNationIds,
+                                defenderNationIds,
+                                fixedEdges,
+                                horizonTurns,
+                                projectionScoringContext,
+                                false
+                        );
+                    }
                 }
                 ObjectiveValueSummary projectedObjectiveSummary = evaluator.objectiveSummary(
                     best,
@@ -277,7 +331,93 @@ final class LongHorizonAssignmentOptimizer {
                 );
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "assignmentPairs", best.assignmentPairCount());
                 return new Result(cloneAssignment(best.assignment()), projectedObjectiveSummary);
+        }
+    }
+
+    private static int appendProjectedFeedbackEdges(
+            CandidateEdgeTable baseEdges,
+            CompiledScenario scenario,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            Candidate best,
+            Candidate marginalCandidate,
+            LongHorizonControlProjection terminalProjection,
+            LongHorizonCandidateEvaluator projectedEvaluator
+    ) {
+        if (best == null && marginalCandidate == null) {
+            return 0;
+        }
+        Long2IntOpenHashMap baseEdgeByPair = baseEdges.edgeIndexByPair(attackerNationIds, defenderNationIds);
+        int appended = 0;
+        appended += appendProjectedFeedbackEdgesFromCandidate(
+                baseEdges,
+                scenario,
+                baseEdgeByPair,
+                best,
+                terminalProjection,
+                projectedEvaluator,
+                PROJECTED_FEEDBACK_EDGE_LIMIT - appended
+        );
+        if (appended < PROJECTED_FEEDBACK_EDGE_LIMIT && marginalCandidate != best) {
+            appended += appendProjectedFeedbackEdgesFromCandidate(
+                    baseEdges,
+                    scenario,
+                    baseEdgeByPair,
+                    marginalCandidate,
+                    terminalProjection,
+                    projectedEvaluator,
+                    PROJECTED_FEEDBACK_EDGE_LIMIT - appended
+            );
+        }
+        if (appended > 0) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFeedbackEdges", appended);
+        }
+        return appended;
+    }
+
+    private static int appendProjectedFeedbackEdgesFromCandidate(
+            CandidateEdgeTable baseEdges,
+            CompiledScenario scenario,
+            Long2IntOpenHashMap baseEdgeByPair,
+            Candidate seed,
+            LongHorizonControlProjection terminalProjection,
+            LongHorizonCandidateEvaluator projectedEvaluator,
+            int limit
+    ) {
+        if (limit <= 0 || seed == null || seed.isEmpty()) {
+            return 0;
+        }
+        LongHorizonForwardProjection.ProjectedEvaluation evaluation = projectedEvaluator.projectedEvaluation(seed, terminalProjection);
+        int appended = 0;
+        for (LongHorizonForwardProjection.OpeningSideLaterDeclaration followOn : evaluation.openingSideLaterDeclarations()) {
+            if (appended >= limit) {
+                break;
             }
+            long key = pairKey(followOn.declarerNationId(), followOn.targetNationId());
+            if (baseEdgeByPair.get(key) >= 0) {
+                continue;
+            }
+            int attackerIndex = scenario.attackerIndexOrMinusOne(followOn.declarerNationId());
+            int defenderIndex = scenario.defenderIndexOrMinusOne(followOn.targetNationId());
+            if (attackerIndex < 0 || defenderIndex < 0) {
+                continue;
+            }
+            float score = (float) Math.max(0d, followOn.score());
+            if (!Float.isFinite(score) || score <= 0f) {
+                continue;
+            }
+            int edgeIndex = baseEdges.add(
+                    attackerIndex,
+                    defenderIndex,
+                    (byte) link.locutus.discord.apiv1.enums.WarType.ORD.ordinal(),
+                    (byte) 0,
+                    score,
+                    0f
+            );
+            baseEdgeByPair.put(key, edgeIndex);
+            appended++;
+        }
+        return appended;
     }
 
                 static boolean shouldRunFixedPointFeedback(int edgeCount, int assignmentPairs) {

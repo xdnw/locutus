@@ -144,7 +144,9 @@ public final class BlitzPlanner {
         PlannedAssignment planned = planPreparedAssignment(prepared);
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "assignmentPairs", assignmentPairCount(planned.assignment()));
         Map<Long, Integer> assignmentWarTypeOrdinalsByPair = assignmentWarTypeOrdinals(
-            prepared.candidates(),
+            prepared.candidates().edgeTable(),
+            prepared.attackerNationIds(),
+            prepared.defenderNationIds(),
             prepared.inputs().fixedEdges()
         );
         return new BlitzAssignment(
@@ -153,7 +155,11 @@ public final class BlitzPlanner {
             planned.objectiveSummary().mean(),
             planned.objectiveSummary(),
             assignmentWarTypeOrdinalsByPair,
-            prepared.candidates().initialAttackTypeOrdinalsByPair()
+            initialAttackTypeOrdinalsByPair(
+                    prepared.candidates().edgeTable(),
+                    prepared.attackerNationIds(),
+                    prepared.defenderNationIds()
+            )
         );
         }
 
@@ -257,7 +263,9 @@ public final class BlitzPlanner {
             );
         }
         Map<Long, Integer> assignmentWarTypeOrdinalsByPair = assignmentWarTypeOrdinals(
-                prepared.candidates(),
+            prepared.candidates().edgeTable(),
+            prepared.attackerNationIds(),
+            prepared.defenderNationIds(),
                 prepared.inputs().fixedEdges()
         );
         assignment = BlitzAssignmentRefiner.refine(
@@ -433,17 +441,54 @@ public final class BlitzPlanner {
     }
 
     private static Map<Long, Integer> assignmentWarTypeOrdinals(
-            BlitzGeneratedCandidates candidates,
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
             List<BlitzFixedEdge> fixedEdges
     ) {
+        Long2IntOpenHashMap initialWarTypeOrdinalsByPair = initialWarTypeOrdinalsByPair(
+                edges,
+                attackerNationIds,
+                defenderNationIds
+        );
         if (fixedEdges.isEmpty()) {
-            return candidates.initialWarTypeOrdinalsByPair();
+            return initialWarTypeOrdinalsByPair;
         }
-        Long2IntOpenHashMap merged = new Long2IntOpenHashMap(candidates.initialWarTypeOrdinalsByPair());
+        Long2IntOpenHashMap merged = new Long2IntOpenHashMap(initialWarTypeOrdinalsByPair);
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
             merged.put(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()), fixedEdge.warTypeOrdinal());
         }
         return Long2IntMaps.unmodifiable(merged);
+    }
+
+    private static Long2IntOpenHashMap initialWarTypeOrdinalsByPair(
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds
+    ) {
+        Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, edges.edgeCount() * 2));
+        for (int edge = 0; edge < edges.edgeCount(); edge++) {
+            ordinalsByPair.put(
+                    pairKey(attackerNationIds[edges.attackerIndex(edge)], defenderNationIds[edges.defenderIndex(edge)]),
+                    validWarTypeOrdinal(edges.preferredWarTypeId(edge))
+            );
+        }
+        return ordinalsByPair;
+    }
+
+    private static Long2IntOpenHashMap initialAttackTypeOrdinalsByPair(
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds
+    ) {
+        Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, edges.edgeCount() * 2));
+        for (int edge = 0; edge < edges.edgeCount(); edge++) {
+            ordinalsByPair.put(
+                    pairKey(attackerNationIds[edges.attackerIndex(edge)], defenderNationIds[edges.defenderIndex(edge)]),
+                    (int) edges.bestAttackTypeId(edge)
+            );
+        }
+        return ordinalsByPair;
     }
 
     // ============================================================
