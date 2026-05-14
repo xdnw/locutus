@@ -1954,62 +1954,23 @@ public final class PW {
 
     public static void getOdds4(double attStrength, double defStrength, double[] out, int off) {
         if (attStrength <= 0.0) {
-            out[off]     = 1.0;
-            out[off + 1] = 0.0;
-            out[off + 2] = 0.0;
-            out[off + 3] = 0.0;
+            writeGuaranteedOdds4(out, off, 0);
             return;
         }
-
         if (defStrength <= 0.0) {
-            out[off]     = 0.0;
-            out[off + 1] = 0.0;
-            out[off + 2] = 0.0;
-            out[off + 3] = 1.0;
+            writeGuaranteedOdds4(out, off, 3);
             return;
         }
 
-        double x = attStrength / defStrength;
-
-        if (x <= 0.294722519891231) {
-            out[off]     = 1.0;
-            out[off + 1] = 0.0;
-            out[off + 2] = 0.0;
-            out[off + 3] = 0.0;
+        double ratio = attStrength / defStrength;
+        int guaranteedSuccess = guaranteedOddsSuccess(ratio);
+        if (guaranteedSuccess >= 0) {
+            writeGuaranteedOdds4(out, off, guaranteedSuccess);
             return;
         }
 
-        if (x >= 3.393022020743633) {
-            out[off]     = 0.0;
-            out[off + 1] = 0.0;
-            out[off + 2] = 0.0;
-            out[off + 3] = 1.0;
-            return;
-        }
-
-        double s = Math.sqrt(x);
-        double r = s * Math.sqrt(s);
-        double invR = 1.0 / r;
-
-        double p;
-        if (r < 1.0) {
-            p = 1.3888888888888888 * r
-                    + 0.2222222222222222 * invR
-                    - 1.1111111111111112;
-        } else {
-            p = 2.111111111111111
-                    - 1.3888888888888888 * invR
-                    - 0.2222222222222222 * r;
-        }
-
-        double q = 1.0 - p;
-        double pp = p * p;
-        double qq = q * q;
-
-        out[off]     = q * qq;
-        out[off + 1] = 3.0 * p * qq;
-        out[off + 2] = 3.0 * pp * q;
-        out[off + 3] = p * pp;
+        double p = oddsWinProgress(ratio);
+        writeOdds4FromWinProgress(p, out, off);
     }
 
     public static double getOdds(double attStrength, double defStrength, int success) {
@@ -2020,43 +1981,47 @@ public final class PW {
         if (attStrength <= 0.0) {
             return success == 0 ? 1.0 : 0.0;
         }
-
         if (defStrength <= 0.0) {
             return success == 3 ? 1.0 : 0.0;
         }
 
-        double x = attStrength / defStrength;
-
-        if (x <= 0.294722519891231) {
-            return success == 0 ? 1.0 : 0.0;
+        double ratio = attStrength / defStrength;
+        int guaranteedSuccess = guaranteedOddsSuccess(ratio);
+        if (guaranteedSuccess >= 0) {
+            return success == guaranteedSuccess ? 1.0 : 0.0;
         }
 
-        if (x >= 3.393022020743633) {
-            return success == 3 ? 1.0 : 0.0;
+        double p = oddsWinProgress(ratio);
+        return oddsProbability(success, p);
+    }
+
+    private static int guaranteedOddsSuccess(double ratio) {
+        if (ratio <= 0.294722519891231) {
+            return 0;
         }
+        if (ratio >= 3.393022020743633) {
+            return 3;
+        }
+        return -1;
+    }
 
-        // r = x^0.75 = sqrt(x) * sqrt(sqrt(x))
-        double s = Math.sqrt(x);
-        double r = s * Math.sqrt(s);
-
+    private static double oddsWinProgress(double ratio) {
+        double sqrtRatio = Math.sqrt(ratio);
+        double r = sqrtRatio * Math.sqrt(sqrtRatio);
         double invR = 1.0 / r;
 
-        // Algebraically equivalent to the overlap formula, but avoids t*t and denom multiply.
-        double p;
         if (r < 1.0) {
-            // p = (25/18)r - 10/9 + 2/(9r)
-            p = 1.3888888888888888 * r
+            return 1.3888888888888888 * r
                     + 0.2222222222222222 * invR
                     - 1.1111111111111112;
-        } else {
-            // p = 19/9 - 25/(18r) - 2r/9
-            p = 2.111111111111111
-                    - 1.3888888888888888 * invR
-                    - 0.2222222222222222 * r;
         }
+        return 2.111111111111111
+                - 1.3888888888888888 * invR
+                - 0.2222222222222222 * r;
+    }
 
+    private static double oddsProbability(int success, double p) {
         double q = 1.0 - p;
-
         return switch (success) {
             case 0 -> q * q * q;
             case 1 -> 3.0 * p * q * q;
@@ -2064,6 +2029,25 @@ public final class PW {
             case 3 -> p * p * p;
             default -> 0.0;
         };
+    }
+
+    private static void writeGuaranteedOdds4(double[] out, int off, int success) {
+        out[off] = 0.0;
+        out[off + 1] = 0.0;
+        out[off + 2] = 0.0;
+        out[off + 3] = 0.0;
+        out[off + success] = 1.0;
+    }
+
+    private static void writeOdds4FromWinProgress(double p, double[] out, int off) {
+        double q = 1.0 - p;
+        double pp = p * p;
+        double qq = q * q;
+
+        out[off] = q * qq;
+        out[off + 1] = 3.0 * p * qq;
+        out[off + 2] = 3.0 * pp * q;
+        out[off + 3] = p * pp;
     }
 
     public static Set<Integer> parseAlliances(GuildDB db, String arg) {
