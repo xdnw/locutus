@@ -16,6 +16,7 @@ final class CandidateEdgeComponents {
     private float[] resourceSwings;
     private float[] controlLeverages;
     private float[] futureWarLeverages;
+    private float[] declarationReadinesses;
 
     CandidateEdgeComponents(int capacity, CandidateEdgeComponentPolicy policy) {
         CandidateEdgeComponentPolicy effectivePolicy = policy == null ? CandidateEdgeComponentPolicy.none() : policy;
@@ -25,6 +26,7 @@ final class CandidateEdgeComponents {
         resourceSwings = effectivePolicy.retainResourceSwing() ? new float[effectiveCapacity] : null;
         controlLeverages = effectivePolicy.retainControlLeverage() ? new float[effectiveCapacity] : null;
         futureWarLeverages = effectivePolicy.retainFutureWarLeverage() ? new float[effectiveCapacity] : null;
+        declarationReadinesses = effectivePolicy.retainDeclarationReadiness() ? new float[effectiveCapacity] : null;
     }
 
     boolean retainsImmediateHarm() {
@@ -47,6 +49,10 @@ final class CandidateEdgeComponents {
         return futureWarLeverages != null;
     }
 
+    boolean retainsDeclarationReadiness() {
+        return declarationReadinesses != null;
+    }
+
     void ensureCapacity(int needed) {
         if (immediateHarms != null && immediateHarms.length < needed) {
             immediateHarms = Arrays.copyOf(immediateHarms, needed);
@@ -63,6 +69,9 @@ final class CandidateEdgeComponents {
         if (futureWarLeverages != null && futureWarLeverages.length < needed) {
             futureWarLeverages = Arrays.copyOf(futureWarLeverages, needed);
         }
+        if (declarationReadinesses != null && declarationReadinesses.length < needed) {
+            declarationReadinesses = Arrays.copyOf(declarationReadinesses, needed);
+        }
     }
 
     void set(
@@ -71,7 +80,8 @@ final class CandidateEdgeComponents {
             float selfExposure,
             float resourceSwing,
             float controlLeverage,
-            float futureWarLeverage
+            float futureWarLeverage,
+            float declarationReadiness
     ) {
         if (immediateHarms != null) {
             immediateHarms[index] = immediateHarm;
@@ -88,6 +98,20 @@ final class CandidateEdgeComponents {
         if (futureWarLeverages != null) {
             futureWarLeverages[index] = futureWarLeverage;
         }
+        if (declarationReadinesses != null) {
+            declarationReadinesses[index] = declarationReadiness;
+        }
+    }
+
+    void set(
+            int index,
+            float immediateHarm,
+            float selfExposure,
+            float resourceSwing,
+            float controlLeverage,
+            float futureWarLeverage
+    ) {
+        set(index, immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage, 0f);
     }
 
     CandidateEdgeComponents deepCopy() {
@@ -97,6 +121,7 @@ final class CandidateEdgeComponents {
         copy.resourceSwings = resourceSwings == null ? null : Arrays.copyOf(resourceSwings, resourceSwings.length);
         copy.controlLeverages = controlLeverages == null ? null : Arrays.copyOf(controlLeverages, controlLeverages.length);
         copy.futureWarLeverages = futureWarLeverages == null ? null : Arrays.copyOf(futureWarLeverages, futureWarLeverages.length);
+        copy.declarationReadinesses = declarationReadinesses == null ? null : Arrays.copyOf(declarationReadinesses, declarationReadinesses.length);
         return copy;
     }
 
@@ -120,6 +145,9 @@ final class CandidateEdgeComponents {
         }
         if (futureWarLeverages != null) {
             futureWarLeverages[index] *= factor;
+        }
+        if (declarationReadinesses != null) {
+            declarationReadinesses[index] *= factor;
         }
     }
 
@@ -149,6 +177,11 @@ final class CandidateEdgeComponents {
             futureWarLeverages[lhs] = futureWarLeverages[rhs];
             futureWarLeverages[rhs] = swap;
         }
+        if (declarationReadinesses != null) {
+            float swap = declarationReadinesses[lhs];
+            declarationReadinesses[lhs] = declarationReadinesses[rhs];
+            declarationReadinesses[rhs] = swap;
+        }
     }
 
     float immediateHarm(int index) {
@@ -174,6 +207,11 @@ final class CandidateEdgeComponents {
     float futureWarLeverage(int index) {
         requireRetained(futureWarLeverages, "futureWarLeverage");
         return futureWarLeverages[index];
+    }
+
+    float declarationReadiness(int index) {
+        requireRetained(declarationReadinesses, "declarationReadiness");
+        return declarationReadinesses[index];
     }
 
     private static void requireRetained(float[] values, String name) {

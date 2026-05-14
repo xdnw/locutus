@@ -332,6 +332,7 @@ final class PlannerAutonomousDeclarationPlanner {
                     rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0d,
                     rawEdges.retainsControlLeverage() ? rawEdges.controlLeverage(edgeIndex) : 0d,
                     rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(edgeIndex) : 0d,
+                    rawEdges.retainsDeclarationReadiness() ? rawEdges.declarationReadiness(edgeIndex) : 0d,
                     OpeningMetricSummary.defenderControlPressure(target),
                     counterStrength(declarer),
                     counterStrength(target),
@@ -356,7 +357,8 @@ final class PlannerAutonomousDeclarationPlanner {
                     rawEdges.retainsSelfExposure() ? rawEdges.selfExposure(edgeIndex) : 0f,
                     rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0f,
                     rawEdges.retainsControlLeverage() ? rawEdges.controlLeverage(edgeIndex) : 0f,
-                    rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(edgeIndex) : 0f
+                    rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(edgeIndex) : 0f,
+                    rawEdges.retainsDeclarationReadiness() ? rawEdges.declarationReadiness(edgeIndex) : 0f
             );
         }
         return rescoredEdges;

@@ -108,6 +108,36 @@ final class CandidateEdgeTable {
             float controlLeverage,
             float futureWarLeverage
     ) {
+            return add(
+                attackerIndex,
+                defenderIndex,
+                preferredWarTypeId,
+                bestAttackTypeId,
+                score,
+                counterRisk,
+                immediateHarm,
+                selfExposure,
+                resourceSwing,
+                controlLeverage,
+                futureWarLeverage,
+                0f
+        );
+    }
+
+    int add(
+            int attackerIndex,
+            int defenderIndex,
+            byte preferredWarTypeId,
+            byte bestAttackTypeId,
+            float score,
+            float counterRisk,
+            float immediateHarm,
+            float selfExposure,
+            float resourceSwing,
+            float controlLeverage,
+            float futureWarLeverage,
+            float declarationReadiness
+    ) {
         edges.ensureCapacity(edgeCount + 1);
         int i = edgeCount++;
         invalidateLookupCaches();
@@ -123,7 +153,8 @@ final class CandidateEdgeTable {
                 selfExposure,
                 resourceSwing,
                 controlLeverage,
-                futureWarLeverage
+                futureWarLeverage,
+                declarationReadiness
         );
         return i;
     }
@@ -291,6 +322,10 @@ final class CandidateEdgeTable {
         return edges.retainsFutureWarLeverage();
     }
 
+    boolean retainsDeclarationReadiness() {
+        return edges.retainsDeclarationReadiness();
+    }
+
     float immediateHarm(int edge) {
         return edges.immediateHarmAt(edge);
     }
@@ -305,6 +340,10 @@ final class CandidateEdgeTable {
 
     float controlLeverage(int edge) {
         return edges.controlLeverageAt(edge);
+    }
+
+    float declarationReadiness(int edge) {
+        return edges.declarationReadinessAt(edge);
     }
 
     private void invalidateLookupCaches() {

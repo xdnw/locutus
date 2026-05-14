@@ -70,6 +70,28 @@ class BlitzObjectiveTest {
     }
 
     @Test
+    void controlOpeningTreatsDeclarationReadinessAsWeakerThanRealLeverage() {
+        OpeningMetricVector readinessOnly = new OpeningMetricVector(
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                12.0
+        );
+        OpeningMetricVector realLeverage = new OpeningMetricVector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 12.0);
+
+        double readinessScore = BlitzObjective.CONTROL.objective().scoreOpening(readinessOnly, 1);
+        double leverageScore = BlitzObjective.CONTROL.objective().scoreOpening(realLeverage, 1);
+
+        assertTrue(readinessScore > 0d);
+        assertTrue(leverageScore > readinessScore);
+    }
+
+    @Test
     void controlOpeningDoesNotTreatTacticalPostureAsControlByItself() {
         OpeningMetricVector tacticalPostureOnly = new OpeningMetricVector(
                 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0

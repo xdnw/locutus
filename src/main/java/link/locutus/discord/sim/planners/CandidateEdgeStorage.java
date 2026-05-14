@@ -60,13 +60,45 @@ final class CandidateEdgeStorage {
             float controlLeverage,
             float futureWarLeverage
     ) {
+            write(
+                index,
+                attackerIndex,
+                defenderIndex,
+                preferredWarTypeId,
+                bestAttackTypeId,
+                score,
+                counterRisk,
+                immediateHarm,
+                selfExposure,
+                resourceSwing,
+                controlLeverage,
+                futureWarLeverage,
+                0f
+        );
+    }
+
+    void write(
+            int index,
+            int attackerIndex,
+            int defenderIndex,
+            byte preferredWarTypeId,
+            byte bestAttackTypeId,
+            float score,
+            float counterRisk,
+            float immediateHarm,
+            float selfExposure,
+            float resourceSwing,
+            float controlLeverage,
+            float futureWarLeverage,
+            float declarationReadiness
+    ) {
         attackerIndexes[index] = attackerIndex;
         defenderIndexes[index] = defenderIndex;
         preferredWarTypeIds[index] = preferredWarTypeId;
         bestAttackTypeIds[index] = bestAttackTypeId;
         scalarScores[index] = score;
         counterRisks[index] = counterRisk;
-        retainedComponents.set(index, immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage);
+        retainedComponents.set(index, immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage, declarationReadiness);
     }
 
     int attackerIndexAt(int index) {
@@ -122,6 +154,10 @@ final class CandidateEdgeStorage {
         return retainedComponents.retainsFutureWarLeverage();
     }
 
+    boolean retainsDeclarationReadiness() {
+        return retainedComponents.retainsDeclarationReadiness();
+    }
+
     float immediateHarmAt(int index) {
         return retainedComponents.immediateHarm(index);
     }
@@ -140,6 +176,10 @@ final class CandidateEdgeStorage {
 
     float futureWarLeverageAt(int index) {
         return retainedComponents.futureWarLeverage(index);
+    }
+
+    float declarationReadinessAt(int index) {
+        return retainedComponents.declarationReadiness(index);
     }
 
     void swap(int lhs, int rhs) {

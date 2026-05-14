@@ -53,6 +53,7 @@ final class OpeningEvaluator {
             0f,
             0f,
             0f,
+            0f,
             0f
     );
     static final AttackType[] OPENING_ATTACK_TYPES = {
@@ -164,7 +165,8 @@ final class OpeningEvaluator {
                         evaluation.selfExposure(),
                         evaluation.resourceSwing(),
                         evaluation.controlLeverage(),
-                        evaluation.futureWarLeverage()
+                    evaluation.futureWarLeverage(),
+                    evaluation.declarationReadiness()
                 );
             }
             return REJECTED_EDGE;
@@ -226,8 +228,31 @@ final class OpeningEvaluator {
             float selfExposure,
             float resourceSwing,
             float controlLeverage,
-            float futureWarLeverage
+            float futureWarLeverage,
+            float declarationReadiness
     ) {
+        EvaluatedEdge(
+            float score,
+            byte preferredWarTypeId,
+            byte firstAttackTypeId,
+            float immediateHarm,
+            float selfExposure,
+            float resourceSwing,
+            float controlLeverage,
+            float futureWarLeverage
+        ) {
+            this(
+                score,
+                preferredWarTypeId,
+                firstAttackTypeId,
+                immediateHarm,
+                selfExposure,
+                resourceSwing,
+                controlLeverage,
+                futureWarLeverage,
+                0f
+            );
+        }
     }
 
     private enum EvaluationEffortTier {
@@ -609,6 +634,7 @@ final class OpeningEvaluator {
             float resourceSwing = edgeEvaluation.resourceSwing();
             float controlLeverage = edgeEvaluation.controlLeverage();
             float futureWarLeverage = edgeEvaluation.futureWarLeverage();
+            float declarationReadiness = edgeEvaluation.declarationReadiness();
             // Collector ordering ignores counter risk, so defer that work until an edge is actually emitted.
             topK.consider(
                     attackerIndex,
@@ -621,7 +647,8 @@ final class OpeningEvaluator {
                     selfExposure,
                     resourceSwing,
                     controlLeverage,
-                    futureWarLeverage
+                        futureWarLeverage,
+                        declarationReadiness
             );
                     TopKEdgeCollector defenderCoverageCollector = defenderCoverageCollectors[defenderIndex];
                     if (defenderCoverageCollector != null) {
@@ -636,7 +663,8 @@ final class OpeningEvaluator {
                         selfExposure,
                         resourceSwing,
                         controlLeverage,
-                        futureWarLeverage
+                        futureWarLeverage,
+                        declarationReadiness
                     );
                     }
                 coverageSpillovers.consider(
@@ -651,7 +679,8 @@ final class OpeningEvaluator {
                     selfExposure,
                     resourceSwing,
                     controlLeverage,
-                    futureWarLeverage
+                    futureWarLeverage,
+                    declarationReadiness
                 );
         }
 
@@ -985,7 +1014,8 @@ final class OpeningEvaluator {
                 edgeEvaluation.selfExposure(),
                 edgeEvaluation.resourceSwing(),
                 edgeEvaluation.controlLeverage(),
-                edgeEvaluation.futureWarLeverage()
+            edgeEvaluation.futureWarLeverage(),
+            edgeEvaluation.declarationReadiness()
         );
     }
 
@@ -1057,7 +1087,8 @@ final class OpeningEvaluator {
                 (float) projectedMetrics.selfExposure(),
                 (float) projectedMetrics.resourceSwing(),
                 (float) projectedMetrics.controlLeverage(),
-                (float) projectedMetrics.futureWarLeverage()
+            (float) projectedMetrics.futureWarLeverage(),
+            (float) projectedMetrics.declarationReadiness()
         );
         return true;
     }
@@ -1112,7 +1143,8 @@ final class OpeningEvaluator {
                 edgeEvaluation.selfExposure(),
                 edgeEvaluation.resourceSwing(),
                 edgeEvaluation.controlLeverage(),
-                edgeEvaluation.futureWarLeverage()
+            edgeEvaluation.futureWarLeverage(),
+            edgeEvaluation.declarationReadiness()
         );
     }
 
@@ -1201,6 +1233,10 @@ final class OpeningEvaluator {
             return edges.retainsFutureWarLeverage() ? edges.futureWarLeverageAt(index) : 0f;
         }
 
+        float declarationReadinessAt(int index) {
+            return edges.retainsDeclarationReadiness() ? edges.declarationReadinessAt(index) : 0f;
+        }
+
         byte bestAttackTypeIdAt(int index) {
             return edges.bestAttackTypeIdAt(index);
         }
@@ -1216,7 +1252,8 @@ final class OpeningEvaluator {
                 float selfExposure,
                 float resourceSwing,
                 float controlLeverage,
-                float futureWarLeverage
+                float futureWarLeverage,
+                float declarationReadiness
         ) {
             if (activeLimit == 0) {
                 return;
@@ -1235,7 +1272,8 @@ final class OpeningEvaluator {
                         selfExposure,
                         resourceSwing,
                         controlLeverage,
-                        futureWarLeverage
+                        futureWarLeverage,
+                        declarationReadiness
                 );
                 siftUp(size);
                 size++;
@@ -1265,11 +1303,41 @@ final class OpeningEvaluator {
                     selfExposure,
                     resourceSwing,
                     controlLeverage,
-                    futureWarLeverage
+                        futureWarLeverage,
+                        declarationReadiness
             );
             siftDown(0);
             sortedDirty = true;
         }
+
+            void consider(
+                int attackerIndex,
+                int defenderIndex,
+                byte preferredWarTypeId,
+                byte bestAttackTypeId,
+                float score,
+                float counterRisk,
+                float immediateHarm,
+                float selfExposure,
+                float resourceSwing,
+                float controlLeverage,
+                float futureWarLeverage
+            ) {
+                consider(
+                    attackerIndex,
+                    defenderIndex,
+                    preferredWarTypeId,
+                    bestAttackTypeId,
+                    score,
+                    counterRisk,
+                    immediateHarm,
+                    selfExposure,
+                    resourceSwing,
+                    controlLeverage,
+                    futureWarLeverage,
+                    0f
+                );
+            }
 
         void sortSelectedDescending() {
             if (!sortedDirty) {
@@ -1523,6 +1591,10 @@ final class OpeningEvaluator {
             return edges.retainsFutureWarLeverage() ? edges.futureWarLeverageAt(index) : 0f;
         }
 
+        float declarationReadinessAt(int index) {
+            return edges.retainsDeclarationReadiness() ? edges.declarationReadinessAt(index) : 0f;
+        }
+
         float priorityAt(int index) {
             return priorities[index];
         }
@@ -1539,7 +1611,8 @@ final class OpeningEvaluator {
                 float selfExposure,
                 float resourceSwing,
                 float controlLeverage,
-                float futureWarLeverage
+                float futureWarLeverage,
+                float declarationReadiness
         ) {
             if (edges.capacity() == 0 || !Float.isFinite(priority)) {
                 return;
@@ -1558,7 +1631,8 @@ final class OpeningEvaluator {
                         selfExposure,
                         resourceSwing,
                         controlLeverage,
-                        futureWarLeverage
+                        futureWarLeverage,
+                        declarationReadiness
                 );
                 siftUp(size);
                 size++;
@@ -1588,11 +1662,43 @@ final class OpeningEvaluator {
                     selfExposure,
                     resourceSwing,
                     controlLeverage,
-                    futureWarLeverage
+                        futureWarLeverage,
+                        declarationReadiness
             );
             siftDown(0);
             sortedDirty = true;
         }
+
+                    void consider(
+                        float priority,
+                        int attackerIndex,
+                        int defenderIndex,
+                        byte preferredWarTypeId,
+                        byte bestAttackTypeId,
+                        float score,
+                        float counterRisk,
+                        float immediateHarm,
+                        float selfExposure,
+                        float resourceSwing,
+                        float controlLeverage,
+                        float futureWarLeverage
+                    ) {
+                        consider(
+                            priority,
+                            attackerIndex,
+                            defenderIndex,
+                            preferredWarTypeId,
+                            bestAttackTypeId,
+                            score,
+                            counterRisk,
+                            immediateHarm,
+                            selfExposure,
+                            resourceSwing,
+                            controlLeverage,
+                            futureWarLeverage,
+                            0f
+                        );
+                    }
 
         void sortSelectedDescending() {
             if (!sortedDirty) {
@@ -1686,7 +1792,8 @@ final class OpeningEvaluator {
                 float selfExposure,
                 float resourceSwing,
                 float controlLeverage,
-                float futureWarLeverage
+                float futureWarLeverage,
+                float declarationReadiness
         ) {
             priorities[index] = priority;
             edges.write(
@@ -1701,7 +1808,8 @@ final class OpeningEvaluator {
                     selfExposure,
                     resourceSwing,
                     controlLeverage,
-                    futureWarLeverage
+                    futureWarLeverage,
+                    declarationReadiness
             );
         }
 
@@ -1765,6 +1873,7 @@ final class OpeningEvaluator {
         private float resourceSwing;
         private float controlLeverage;
         private float futureWarLeverage;
+        private float declarationReadiness;
 
         float score() {
             return score;
@@ -1798,6 +1907,10 @@ final class OpeningEvaluator {
             return futureWarLeverage;
         }
 
+        float declarationReadiness() {
+            return declarationReadiness;
+        }
+
         void set(
                 float score,
                 byte preferredWarTypeId,
@@ -1808,6 +1921,30 @@ final class OpeningEvaluator {
                 float controlLeverage,
                 float futureWarLeverage
         ) {
+            set(
+                    score,
+                    preferredWarTypeId,
+                    firstAttackTypeId,
+                    immediateHarm,
+                    selfExposure,
+                    resourceSwing,
+                    controlLeverage,
+                    futureWarLeverage,
+                    0f
+            );
+        }
+
+        void set(
+                float score,
+                byte preferredWarTypeId,
+                byte firstAttackTypeId,
+                float immediateHarm,
+                float selfExposure,
+                float resourceSwing,
+                float controlLeverage,
+                float futureWarLeverage,
+                float declarationReadiness
+        ) {
             this.score = score;
             this.preferredWarTypeId = preferredWarTypeId;
             this.firstAttackTypeId = firstAttackTypeId;
@@ -1816,10 +1953,11 @@ final class OpeningEvaluator {
             this.resourceSwing = resourceSwing;
             this.controlLeverage = controlLeverage;
             this.futureWarLeverage = futureWarLeverage;
+            this.declarationReadiness = declarationReadiness;
         }
 
         void clear() {
-            set(Float.NEGATIVE_INFINITY, (byte) -1, (byte) -1, 0f, 0f, 0f, 0f, 0f);
+            set(Float.NEGATIVE_INFINITY, (byte) -1, (byte) -1, 0f, 0f, 0f, 0f, 0f, 0f);
         }
     }
 

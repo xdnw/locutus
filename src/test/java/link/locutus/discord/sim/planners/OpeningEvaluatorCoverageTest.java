@@ -1177,6 +1177,12 @@ class OpeningEvaluatorCoverageTest {
                                 ) - (targetPressurePenalty * targetPressure);
                         }
 
+                                        @Override
+                                        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
+                                                return delegate.scoreOpening(metrics, teamId)
+                                                                - (targetPressurePenalty * metrics.targetPressure());
+                                        }
+
                         @Override
                         public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
                                 return delegate.candidateEdgeComponentPolicy();

@@ -153,6 +153,35 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
     }
 
     @Test
+    void controlPolicyDoesNotLetReadinessOnlyLaterDeclarationTurnPositive() {
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+                link.locutus.discord.sim.BlitzObjective.CONTROL.objective()
+        );
+
+        double readinessOnlyScore = policy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+            0d,
+            0d,
+            0d,
+            0d,
+            0d,
+            0d,
+            1d,
+            250d,
+            100d,
+            100d,
+            0d,
+            1,
+            1,
+            1d,
+            0d,
+            1d
+        ));
+
+        assertEquals(0d, readinessOnlyScore, 1e-9,
+                "Declaration readiness alone should preserve opening visibility, not make later declarations positive by itself");
+    }
+
+    @Test
     void specialistPressureIsDampedBySevereSelfExposure() {
         ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
             link.locutus.discord.sim.BlitzObjective.CONTROL.objective()

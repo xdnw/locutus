@@ -14,6 +14,14 @@ public interface StrategicEvaluationComponents {
     double controlLeverage();
 
     /**
+     * Declaration-only opportunity signal for rows that remain visible without realized tactical
+     * leverage from an opening attack.
+     */
+    default double declarationReadiness() {
+        return 0d;
+    }
+
+    /**
      * How much of the defender's resistance has been drained in this war (0→1 as resistance falls
      * from full to zero). Measures tactical transition propensity: a fully drained war frees the
      * attacker to pivot to new engagements. This is a current-state signal, not a force-window signal.

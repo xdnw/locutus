@@ -9,7 +9,7 @@ final class ControlObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, true, false, true, true);
+        return new CandidateEdgeComponentPolicy(true, true, false, true, true, true);
     }
 
     @Override
@@ -31,7 +31,7 @@ final class ControlObjective implements StrategicObjective {
             double targetPressure,
             int teamId
         ) {
-        return scoreOpening(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, futureWarLeverage, targetPressure);
+        return scoreOpening(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, 0d, futureWarLeverage, targetPressure);
     }
 
     @Override
@@ -41,6 +41,7 @@ final class ControlObjective implements StrategicObjective {
                 metrics.selfExposure(),
                 metrics.resourceSwing(),
                 metrics.controlLeverage(),
+                metrics.declarationReadiness(),
                 metrics.tacticalMomentum(),
                 metrics.futureWarLeverage(),
                 metrics.targetPressure()
@@ -52,6 +53,7 @@ final class ControlObjective implements StrategicObjective {
             double selfExposure,
             double resourceSwing,
             double controlLeverage,
+            double declarationReadiness,
             double tacticalMomentum,
             double futureWarLeverage,
             double targetPressure
@@ -65,12 +67,37 @@ final class ControlObjective implements StrategicObjective {
             futureWarLeverage + Math.max(0d, tacticalMomentum),
             targetPressure
         );
+        double readinessContribution = declarationReadinessContribution(
+                declarationReadiness,
+                controlLeverage,
+                futureWarLeverage,
+                targetPressure
+        );
         return (3.0d * futureWarLeverage)
             + (1.5d * Math.max(0d, tacticalMomentum))
+            + readinessContribution
             + (4.0d * effectiveTargetPressure)
             + (0.10d * immediateHarm)
             + (0.02d * effectiveResourceSwing)
             - (0.85d * selfExposure);
+    }
+
+    private static double declarationReadinessContribution(
+            double declarationReadiness,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure
+    ) {
+        if (!(declarationReadiness > 0d) || !(targetPressure > 0d)) {
+            return 0d;
+        }
+        double targetOpportunity = targetPressure / (targetPressure + 12d);
+        double visibilityContribution = 1.20d * Math.min(1d, declarationReadiness) * targetOpportunity;
+        double realizedLeverage = Math.max(0d, controlLeverage) + Math.max(0d, futureWarLeverage);
+        if (!(realizedLeverage > 0d)) {
+            return visibilityContribution;
+        }
+        return Math.min(0.20d * realizedLeverage, 0.35d * visibilityContribution);
     }
 
     @Override

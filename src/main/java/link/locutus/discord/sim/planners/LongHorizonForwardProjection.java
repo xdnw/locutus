@@ -1776,6 +1776,14 @@ final class LongHorizonForwardProjection {
         );
         double controlLeverage = primitiveDeclarationControlLeverage(strengthRatio);
         double futureWarLeverage = primitiveDeclarationFutureWarLeverage(strengthRatio);
+        double declarationReadiness = DeclarationReadiness.projected(
+            declarerStrength,
+            targetStrength,
+            true,
+            remainingDeclarerSlots > 0,
+            remainingTargetSlots,
+            targetBestActionability
+        );
         return scoringPolicy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
                 Math.max(0d, immediateHarm - selfExposure),
                 immediateHarm,
@@ -1783,6 +1791,7 @@ final class LongHorizonForwardProjection {
                 specialistResourceSwing,
                 controlLeverage,
                 futureWarLeverage,
+            declarationReadiness,
                 targetPressure,
                 declarerStrength,
                 targetStrength,
@@ -2137,6 +2146,7 @@ final class LongHorizonForwardProjection {
                 rawEdgeIndex >= 0 && rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(rawEdgeIndex) : 0d,
                 rawEdgeIndex >= 0 && rawEdges.retainsControlLeverage() ? rawEdges.controlLeverage(rawEdgeIndex) : 0d,
                 rawEdgeIndex >= 0 && rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(rawEdgeIndex) : 0d,
+            rawEdgeIndex >= 0 && rawEdges.retainsDeclarationReadiness() ? rawEdges.declarationReadiness(rawEdgeIndex) : 0d,
                 state.marginalActionSpaceValue(targetOverallIndex, warState),
                 declarerStrength,
                 targetStrength,

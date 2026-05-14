@@ -34,29 +34,66 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
                 Math.max(0d, context.selfExposure()),
                 Math.max(0d, context.resourceSwing()),
                 Math.max(0d, context.controlLeverage()),
+                Math.max(0d, context.declarationReadiness()),
                 0d,
                 Math.max(0d, context.futureWarLeverage()),
+            0d,
                 Math.max(0d, context.targetPressure())
         );
         double objectiveScore = objective.scoreOpening(metrics, teamId);
+        if (isReadinessOnly(context)) {
+            metrics.set(
+                    Math.max(0d, context.immediateHarm()),
+                    Math.max(0d, context.selfExposure()),
+                    Math.max(0d, context.resourceSwing()),
+                    Math.max(0d, context.controlLeverage()),
+                    0d,
+                    0d,
+                    Math.max(0d, context.futureWarLeverage()),
+                    0d,
+                    Math.max(0d, context.targetPressure())
+            );
+            if (!(objective.scoreOpening(metrics, teamId) > 0d)) {
+                return 0d;
+            }
+            metrics.set(
+                    Math.max(0d, context.immediateHarm()),
+                    Math.max(0d, context.selfExposure()),
+                    Math.max(0d, context.resourceSwing()),
+                    Math.max(0d, context.controlLeverage()),
+                    Math.max(0d, context.declarationReadiness()),
+                    0d,
+                    Math.max(0d, context.futureWarLeverage()),
+                    0d,
+                    Math.max(0d, context.targetPressure())
+            );
+            objectiveScore = objective.scoreOpening(metrics, teamId);
+        }
         if (!(objectiveScore > 0d)) {
             return 0d;
         }
         double actionability = LaterDeclarationFit.actionability(context.declarerStrength(), context.targetStrength());
         double slotActionability = context.resourceSwing() > 0d
-            ? Math.max(actionability, LaterDeclarationFit.specialistSlotActionability(
-                    context.resourceSwing(),
-                    context.targetPressure()
-            ))
-            : actionability;
+                ? Math.max(actionability, LaterDeclarationFit.specialistSlotActionability(
+                        context.resourceSwing(),
+                        context.targetPressure()
+                ))
+                : actionability;
         return context.activityWeight()
-            * objectiveScore
-            * actionability
-            * rebuildReadiness(context)
+                * objectiveScore
+                * actionability
+                * rebuildReadiness(context)
                 * exposureReadiness(context)
                 * targetOpportunityReadiness(context, slotActionability)
                 * supportReadiness(context, slotActionability)
-            * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots(), slotActionability);
+                * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots(), slotActionability);
+    }
+
+    private static boolean isReadinessOnly(LaterDeclarationScoreContext context) {
+                return context.declarationReadiness() > 0d
+                && !(context.resourceSwing() > 0d)
+                && !(context.controlLeverage() > 0d)
+                && !(context.futureWarLeverage() > 0d);
     }
 
     private static double supportReadiness(LaterDeclarationScoreContext context, double slotActionability) {
