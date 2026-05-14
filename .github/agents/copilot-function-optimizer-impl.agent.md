@@ -6,7 +6,7 @@ tools:
   - search
   - edit
   - execute
-model: ["GPT-5.4 (copilot)", "Raptor mini (Preview) (copilot)"]
+model: ["GPT-5.4 mini (copilot)", "GPT-5.4 (copilot)", "Raptor mini (Preview) (copilot)"]
 user-invocable: true
 disable-model-invocation: true
 target: vscode

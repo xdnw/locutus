@@ -1388,6 +1388,21 @@ final class LongHorizonForwardProjection {
             );
         }
         LaterDeclarationScoringPolicy laterScoringPolicy = projectionPolicies.laterDeclarationScoringPolicy();
+        boolean[] eligibleSupportersByOverallIndex = eligibleOverallIndexesByNation(
+            state.attackerCount + state.defenderCount,
+            declarerOverallIndexes
+        );
+        ProjectedTargetSupportSummary[] targetSupportSummaries = projectedTargetSupportSummaries(
+            state,
+            warState,
+            eligibleSupportersByOverallIndex,
+            targetOverallIndexes,
+            remainingDeclarerSlots,
+            remainingTargetSlots,
+            declarersAreScenarioAttackers,
+            applyPairLockoutTiming,
+            turn
+        );
         double[] deferredBestByDeclarer = new double[declarerSnapshots.size()];
         int horizonRemainingTurns = Math.max(0, horizonTurns - turn);
         if (applyPairLockoutTiming) {
@@ -1418,17 +1433,7 @@ final class LongHorizonForwardProjection {
                                     ? targetOverallIndex - state.attackerCount
                                     : targetOverallIndex],
                             0d,
-                            projectedTargetSupportActionability(
-                                    state,
-                                    warState,
-                                    declarerOverallIndex,
-                                    targetOverallIndex,
-                                    remainingDeclarerSlots,
-                                    remainingTargetSlots,
-                                    declarersAreScenarioAttackers,
-                                    applyPairLockoutTiming,
-                                    turn
-                            ),
+                                targetSupportSummaries[targetCompiledIndex].supportActionabilityExcluding(declarerOverallIndex),
                             activityWeightForOverallIndex(declarerOverallIndex)
                     )
                             * StrategicTimingValue.declarationWaitDiscount(blockedTurns, horizonRemainingTurns);
@@ -1473,17 +1478,7 @@ final class LongHorizonForwardProjection {
                         remainingDeclarerSlots[declarerSourceIndex],
                         remainingTargetSlots[targetSourceIndex],
                         0d,
-                        projectedTargetSupportActionability(
-                            state,
-                            warState,
-                            declarerOverallIndex,
-                            targetOverallIndex,
-                            remainingDeclarerSlots,
-                            remainingTargetSlots,
-                            declarersAreScenarioAttackers,
-                            applyPairLockoutTiming,
-                            turn
-                        ),
+                        targetSupportSummaries[targetCompiledIndex].supportActionabilityExcluding(declarerOverallIndex),
                         activityWeightForOverallIndex(declarerOverallIndex)
                 );
                 if (blockedTurns > 0
@@ -1593,6 +1588,21 @@ final class LongHorizonForwardProjection {
                         turn
                 )
                 : new double[targetOverallIndexes.length];
+                boolean[] eligibleSupportersByOverallIndex = eligibleOverallIndexesByNation(
+                    state.attackerCount + state.defenderCount,
+                    declarerOverallIndexes
+                );
+                ProjectedTargetSupportSummary[] targetSupportSummaries = projectedTargetSupportSummaries(
+                    state,
+                    warState,
+                    eligibleSupportersByOverallIndex,
+                    targetOverallIndexes,
+                    remainingDeclarerSlots,
+                    remainingTargetSlots,
+                    declarersAreScenarioAttackers,
+                    applyPairLockoutTiming,
+                    turn
+                );
         double[] deferredBestByDeclarer = new double[declarerSnapshots.size()];
         int horizonRemainingTurns = Math.max(0, horizonTurns - turn);
         if (applyPairLockoutTiming) {
@@ -1617,17 +1627,7 @@ final class LongHorizonForwardProjection {
                             remainingDeclarerSlots[projectedDeclarationSourceIndex(declarerOverallIndex, declarersAreScenarioAttackers)],
                             remainingTargetSlots[projectedDeclarationTargetSourceIndex(state, targetOverallIndex, declarersAreScenarioAttackers)],
                             targetBestActionability[targetCompiledIndex],
-                            projectedTargetSupportActionability(
-                                    state,
-                                    warState,
-                                    declarerOverallIndex,
-                                    targetOverallIndex,
-                                    remainingDeclarerSlots,
-                                    remainingTargetSlots,
-                                    declarersAreScenarioAttackers,
-                                    applyPairLockoutTiming,
-                                    turn
-                            ),
+                                targetSupportSummaries[targetCompiledIndex].supportActionabilityExcluding(declarerOverallIndex),
                             activityWeightForOverallIndex(declarerOverallIndex)
                     ) * StrategicTimingValue.declarationWaitDiscount(blockedTurns, horizonRemainingTurns);
                     deferredBestByDeclarer[declarerCompiledIndex] = Math.max(
@@ -1662,17 +1662,7 @@ final class LongHorizonForwardProjection {
                         remainingDeclarerSlots[projectedDeclarationSourceIndex(declarerOverallIndex, declarersAreScenarioAttackers)],
                         remainingTargetSlots[projectedDeclarationTargetSourceIndex(state, targetOverallIndex, declarersAreScenarioAttackers)],
                         targetBestActionability[targetCompiledIndex],
-                        projectedTargetSupportActionability(
-                            state,
-                            warState,
-                            declarerOverallIndex,
-                            targetOverallIndex,
-                            remainingDeclarerSlots,
-                            remainingTargetSlots,
-                            declarersAreScenarioAttackers,
-                            applyPairLockoutTiming,
-                            turn
-                        ),
+                        targetSupportSummaries[targetCompiledIndex].supportActionabilityExcluding(declarerOverallIndex),
                         activityWeightForOverallIndex(declarerOverallIndex)
                 );
                 if (blockedTurns > 0
@@ -1791,65 +1781,134 @@ final class LongHorizonForwardProjection {
         ));
     }
 
-    private double projectedTargetSupportActionability(
+    private ProjectedTargetSupportSummary[] projectedTargetSupportSummaries(
             ProjectionState state,
             DenseWarState warState,
-            int declarerOverallIndex,
-            int targetOverallIndex,
+            boolean[] eligibleSupportersByOverallIndex,
+            int[] targetOverallIndexes,
             int[] remainingDeclarerSlots,
             int[] remainingTargetSlots,
             boolean declarersAreScenarioAttackers,
             boolean applyPairLockoutTiming,
             int turn
     ) {
+        ProjectedTargetSupportSummary[] summaries = new ProjectedTargetSupportSummary[targetOverallIndexes.length];
         int supportStart = declarersAreScenarioAttackers ? 0 : state.attackerCount;
         int supportEnd = declarersAreScenarioAttackers ? state.attackerCount : state.attackerCount + state.defenderCount;
-        int targetRemainingAfterDeclaration = Math.max(0, projectedDeclarationTargetSlotsRemainingAfterDeclaration(
-                state,
-                targetOverallIndex,
-                declarersAreScenarioAttackers,
-                remainingTargetSlots
-        ));
-        double activeSupport = 0d;
-        double bestPotential = 0d;
-        double secondPotential = 0d;
-        for (int supporterOverallIndex = supportStart; supporterOverallIndex < supportEnd; supporterOverallIndex++) {
-            if (supporterOverallIndex == declarerOverallIndex
-                    || state.beigeTurns[supporterOverallIndex] > 0
-                    || state.combatStrength(supporterOverallIndex) <= 0d) {
-                continue;
+        for (int targetCompiledIndex = 0; targetCompiledIndex < targetOverallIndexes.length; targetCompiledIndex++) {
+            int targetOverallIndex = targetOverallIndexes[targetCompiledIndex];
+            int targetRemainingAfterDeclaration = Math.max(0, projectedDeclarationTargetSlotsRemainingAfterDeclaration(
+                    state,
+                    targetOverallIndex,
+                    declarersAreScenarioAttackers,
+                    remainingTargetSlots
+            ));
+            double activeSupport = 0d;
+            int bestSupporterOverallIndex = -1;
+            double bestPotential = 0d;
+            int secondSupporterOverallIndex = -1;
+            double secondPotential = 0d;
+            int thirdSupporterOverallIndex = -1;
+            double thirdPotential = 0d;
+            for (int supporterOverallIndex = supportStart; supporterOverallIndex < supportEnd; supporterOverallIndex++) {
+                if (state.beigeTurns[supporterOverallIndex] > 0
+                        || state.combatStrength(supporterOverallIndex) <= 0d) {
+                    continue;
+                }
+                double actionability = projectedDeclarationSlotActionability(state, supporterOverallIndex, targetOverallIndex);
+                if (!(actionability > 0d)) {
+                    continue;
+                }
+                if (warState.hasActiveWarBetween(supporterOverallIndex, targetOverallIndex)) {
+                    activeSupport += actionability * projectedSupportCommitmentReadiness(warState, supporterOverallIndex, true);
+                    continue;
+                }
+                if (targetRemainingAfterDeclaration <= 0
+                    || !eligibleSupportersByOverallIndex[supporterOverallIndex]
+                        || !canProjectedDeclare(state, supporterOverallIndex, targetOverallIndex)
+                        || state.shouldPreserveDeclarerBeigeRebuild(supporterOverallIndex, targetOverallIndex)
+                        || remainingDeclarerSlots[projectedDeclarationSourceIndex(supporterOverallIndex, declarersAreScenarioAttackers)] <= 0) {
+                    continue;
+                }
+                if (applyPairLockoutTiming
+                        && projectedDeclarationBlockedTurns(state, warState, supporterOverallIndex, targetOverallIndex, turn) > 0) {
+                    continue;
+                }
+                double potential = actionability * projectedSupportCommitmentReadiness(warState, supporterOverallIndex, false);
+                if (potential > bestPotential) {
+                    thirdSupporterOverallIndex = secondSupporterOverallIndex;
+                    thirdPotential = secondPotential;
+                    secondSupporterOverallIndex = bestSupporterOverallIndex;
+                    secondPotential = bestPotential;
+                    bestSupporterOverallIndex = supporterOverallIndex;
+                    bestPotential = potential;
+                } else if (potential > secondPotential) {
+                    thirdSupporterOverallIndex = secondSupporterOverallIndex;
+                    thirdPotential = secondPotential;
+                    secondSupporterOverallIndex = supporterOverallIndex;
+                    secondPotential = potential;
+                } else if (potential > thirdPotential) {
+                    thirdSupporterOverallIndex = supporterOverallIndex;
+                    thirdPotential = potential;
+                }
             }
-            double actionability = projectedDeclarationSlotActionability(state, supporterOverallIndex, targetOverallIndex);
-            if (!(actionability > 0d)) {
-                continue;
-            }
-            if (warState.hasActiveWarBetween(supporterOverallIndex, targetOverallIndex)) {
-                activeSupport += actionability * projectedSupportCommitmentReadiness(warState, supporterOverallIndex, true);
-                continue;
-            }
-            if (targetRemainingAfterDeclaration <= 0
-                    || !canProjectedDeclare(state, supporterOverallIndex, targetOverallIndex)
-                    || state.shouldPreserveDeclarerBeigeRebuild(supporterOverallIndex, targetOverallIndex)
-                    || remainingDeclarerSlots[projectedDeclarationSourceIndex(supporterOverallIndex, declarersAreScenarioAttackers)] <= 0) {
-                continue;
-            }
-            if (applyPairLockoutTiming
-                    && projectedDeclarationBlockedTurns(state, warState, supporterOverallIndex, targetOverallIndex, turn) > 0) {
-                continue;
-            }
-            double potential = actionability * projectedSupportCommitmentReadiness(warState, supporterOverallIndex, false);
-            if (potential > bestPotential) {
-                secondPotential = bestPotential;
-                bestPotential = potential;
-            } else if (potential > secondPotential) {
-                secondPotential = potential;
-            }
+            summaries[targetCompiledIndex] = new ProjectedTargetSupportSummary(
+                    activeSupport,
+                    targetRemainingAfterDeclaration,
+                    bestSupporterOverallIndex,
+                    bestPotential,
+                    secondSupporterOverallIndex,
+                    secondPotential,
+                    thirdSupporterOverallIndex,
+                    thirdPotential
+            );
         }
-        double potentialSupport = bestPotential;
-        if (targetRemainingAfterDeclaration > 1) {
-            potentialSupport += secondPotential;
+        return summaries;
+    }
+
+    private static boolean[] eligibleOverallIndexesByNation(int totalNationCount, int[] overallIndexes) {
+        boolean[] eligibleByOverallIndex = new boolean[totalNationCount];
+        for (int overallIndex : overallIndexes) {
+            eligibleByOverallIndex[overallIndex] = true;
         }
-        return activeSupport + potentialSupport;
+        return eligibleByOverallIndex;
+    }
+
+    private record ProjectedTargetSupportSummary(
+            double activeSupport,
+            int targetRemainingAfterDeclaration,
+            int bestSupporterOverallIndex,
+            double bestPotential,
+            int secondSupporterOverallIndex,
+            double secondPotential,
+            int thirdSupporterOverallIndex,
+            double thirdPotential
+    ) {
+        private double supportActionabilityExcluding(int excludedSupporterOverallIndex) {
+            if (targetRemainingAfterDeclaration <= 0) {
+                return activeSupport;
+            }
+            double primaryPotential;
+            double secondaryPotential;
+            if (bestSupporterOverallIndex != excludedSupporterOverallIndex) {
+                primaryPotential = bestPotential;
+                if (targetRemainingAfterDeclaration > 1) {
+                    secondaryPotential = secondSupporterOverallIndex != excludedSupporterOverallIndex
+                            ? secondPotential
+                            : thirdPotential;
+                } else {
+                    secondaryPotential = 0d;
+                }
+            } else {
+                primaryPotential = secondPotential;
+                if (targetRemainingAfterDeclaration > 1) {
+                    secondaryPotential = thirdPotential;
+                } else {
+                    secondaryPotential = 0d;
+                }
+            }
+            return activeSupport + primaryPotential + secondaryPotential;
+        }
     }
 
     private int projectedDeclarationTargetSlotsRemainingAfterDeclaration(
