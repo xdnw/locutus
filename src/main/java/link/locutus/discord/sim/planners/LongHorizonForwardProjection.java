@@ -12,6 +12,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.DamageObjective;
+import link.locutus.discord.sim.ControlHoldability;
 import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicTimingValue;
@@ -5984,6 +5985,56 @@ final class LongHorizonForwardProjection {
             return warState.active[warIndex]
                     || warState.seededCurrentWar[warIndex]
                     || (warIndex < edges.edgeCount() && edgeAssigned[warIndex]);
+        }
+
+        @Override
+        public void forEachDurableWarControlMetric(DurableWarControlMetricConsumer consumer) {
+            for (int warIndex = 0; warIndex < warState.warCount; warIndex++) {
+                if (!warMetricPresent(warIndex)) {
+                    continue;
+                }
+                int attackerNationIndex = warState.attackerNationIndex[warIndex];
+                int defenderNationIndex = warState.defenderNationIndex[warIndex];
+                int attackerTeamId = stateTeamId(attackerNationIndex);
+                int defenderTeamId = stateTeamId(defenderNationIndex);
+                int groundOwner = controlTeamId(warIndex, warState.groundSuperiorityOwner[warIndex]);
+                int airOwner = controlTeamId(warIndex, warState.airSuperiorityOwner[warIndex]);
+                int blockadeOwner = controlTeamId(warIndex, warState.blockadeOwner[warIndex]);
+                int attackerBackedControls = ControlHoldability.backedControlCount(
+                        attackerTeamId,
+                        groundOwner,
+                        airOwner,
+                        blockadeOwner,
+                        unit -> state.unit(attackerNationIndex, unit)
+                );
+                int defenderBackedControls = ControlHoldability.backedControlCount(
+                        defenderTeamId,
+                        groundOwner,
+                        airOwner,
+                        blockadeOwner,
+                        unit -> state.unit(defenderNationIndex, unit)
+                );
+                consumer.accept(
+                        attackerTeamId,
+                        defenderTeamId,
+                        StrategicAssetValue.controlRegimeScore(
+                                warState.attackerMaps[warIndex],
+                                warState.defenderMaps[warIndex],
+                                warState.attackerResistance[warIndex],
+                                warState.defenderResistance[warIndex],
+                                attackerBackedControls,
+                                defenderBackedControls
+                        ),
+                        StrategicAssetValue.controlRegimeScore(
+                                warState.defenderMaps[warIndex],
+                                warState.attackerMaps[warIndex],
+                                warState.defenderResistance[warIndex],
+                                warState.attackerResistance[warIndex],
+                                defenderBackedControls,
+                                attackerBackedControls
+                        )
+                );
+            }
         }
 
         private int controlTeamId(int warIndex, int ownerCode) {

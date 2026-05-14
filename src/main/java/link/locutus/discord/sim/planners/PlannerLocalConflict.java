@@ -20,6 +20,7 @@ import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimClock;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
+import link.locutus.discord.sim.ControlHoldability;
 import link.locutus.discord.sim.NationCapacityRules;
 import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicObjective;
@@ -1129,6 +1130,52 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     war.defender.teamId(),
                 attackerSlotCost,
                 defenderSlotDenial
+            );
+        }
+    }
+
+    @Override
+    public void forEachDurableWarControlMetric(DurableWarControlMetricConsumer consumer) {
+        for (LocalWar war : warsById.values()) {
+            if (!war.isActive()) {
+                continue;
+            }
+            int groundOwner = flagOwnerTeamId(war, war.warBuffers.groundSuperiorityOwner[war.warIndex]);
+            int airOwner = flagOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]);
+            int blockadeOwner = flagOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]);
+            int attackerBackedControls = ControlHoldability.backedControlCount(
+                    war.attacker.teamId(),
+                    groundOwner,
+                    airOwner,
+                    blockadeOwner,
+                    war.attacker::getUnits
+            );
+            int defenderBackedControls = ControlHoldability.backedControlCount(
+                    war.defender.teamId(),
+                    groundOwner,
+                    airOwner,
+                    blockadeOwner,
+                    war.defender::getUnits
+            );
+            consumer.accept(
+                    war.attacker.teamId(),
+                    war.defender.teamId(),
+                    StrategicAssetValue.controlRegimeScore(
+                            war.attackerMapsValue(),
+                            war.defenderMapsValue(),
+                            war.attackerResistanceValue(),
+                            war.defenderResistanceValue(),
+                            attackerBackedControls,
+                            defenderBackedControls
+                    ),
+                    StrategicAssetValue.controlRegimeScore(
+                            war.defenderMapsValue(),
+                            war.attackerMapsValue(),
+                            war.defenderResistanceValue(),
+                            war.attackerResistanceValue(),
+                            defenderBackedControls,
+                            attackerBackedControls
+                    )
             );
         }
     }

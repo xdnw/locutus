@@ -243,6 +243,85 @@ class BlitzObjectiveTest {
         assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 2) < 0.0);
     }
 
+    @Test
+    void controlHoldabilityRequiresBackingUnitsForControlFlags() {
+        assertEquals(
+                0,
+                ControlHoldability.backedControlCount(
+                        1,
+                        1,
+                        1,
+                        1,
+                        unit -> 0
+                )
+        );
+        assertEquals(
+                3,
+                ControlHoldability.backedControlCount(
+                        1,
+                        1,
+                        1,
+                        1,
+                        unit -> switch (unit) {
+                            case SOLDIER -> 1;
+                            case AIRCRAFT -> 1;
+                            case SHIP -> 1;
+                            default -> 0;
+                        }
+                )
+        );
+    }
+
+    @Test
+    void explicitDurableControlMetricOverridesRawFlagGuessing() {
+        TeamWarControlView rawFlagsOnly = new TeamWarControlView() {
+            @Override
+            public void forEachNation(NationScoreConsumer consumer) {
+                consumer.accept(101, 1, 1_000.0);
+                consumer.accept(202, 2, 1_000.0);
+            }
+
+            @Override
+            public void forEachNationStrategicValue(NationValueConsumer consumer) {
+                consumer.accept(101, 1, 100.0);
+                consumer.accept(202, 2, 100.0);
+            }
+
+            @Override
+            public void forEachWarControl(WarControlConsumer consumer) {
+                consumer.accept(1, 2, 1, 1, 1, 100, 40);
+            }
+        };
+
+        TeamWarControlView explicitUnbackedFlags = new TeamWarControlView() {
+            @Override
+            public void forEachNation(NationScoreConsumer consumer) {
+                consumer.accept(101, 1, 1_000.0);
+                consumer.accept(202, 2, 1_000.0);
+            }
+
+            @Override
+            public void forEachNationStrategicValue(NationValueConsumer consumer) {
+                consumer.accept(101, 1, 100.0);
+                consumer.accept(202, 2, 100.0);
+            }
+
+            @Override
+            public void forEachWarControl(WarControlConsumer consumer) {
+                consumer.accept(1, 2, 1, 1, 1, 100, 40);
+            }
+
+            @Override
+            public void forEachDurableWarControlMetric(DurableWarControlMetricConsumer consumer) {
+                consumer.accept(1, 2, 0.0, 0.0);
+            }
+        };
+
+        assertTrue(StrategicControlReducer.reduce(rawFlagsOnly, 1).durableControl() > 0.0);
+        assertEquals(0.0, StrategicControlReducer.reduce(explicitUnbackedFlags, 1).durableControl(), 1e-9);
+        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreTerminal(explicitUnbackedFlags, 1), 1e-9);
+    }
+
     private record LaterDeclarationEvaluationFixture(
             double immediateHarm,
             double selfExposure,

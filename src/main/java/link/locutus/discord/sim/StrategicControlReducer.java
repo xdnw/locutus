@@ -50,6 +50,16 @@ public final class StrategicControlReducer {
 
     public static ControlComponents reduce(TeamWarControlView view, int teamId) {
         double[] components = new double[6];
+        boolean[] explicitDurableControl = new boolean[1];
+        view.forEachDurableWarControlMetric((attackerTeamId, defenderTeamId, attackerDurableControl, defenderDurableControl) -> {
+            if (attackerTeamId == teamId) {
+                components[5] += attackerDurableControl - defenderDurableControl;
+                explicitDurableControl[0] = true;
+            } else if (defenderTeamId == teamId) {
+                components[5] += defenderDurableControl - attackerDurableControl;
+                explicitDurableControl[0] = true;
+            }
+        });
         view.forEachWarControl((attackerTeamId, defenderTeamId, groundSuperiorityTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
             if (attackerTeamId != teamId && defenderTeamId != teamId) {
                 return;
@@ -76,6 +86,9 @@ public final class StrategicControlReducer {
                 enemyControls++;
             }
 
+            if (explicitDurableControl[0]) {
+                return;
+            }
             int ownResistance = attackerTeamId == teamId ? attackerResistance : defenderResistance;
             int enemyResistance = attackerTeamId == teamId ? defenderResistance : attackerResistance;
             components[5] += StrategicAssetValue.controlRegimeScore(
