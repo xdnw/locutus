@@ -159,6 +159,7 @@ public final class BlitzPlanEndpointBenchmark {
                 config.objectiveOrdinal(),
                 assignmentPairs.length / 2,
                 response.plannerNationCount());
+        printOpeningUtilizationSummary(attackers);
 
         List<ParticipantAssignmentRow> highCityIdleAttackers = attackers.stream()
                 .filter(row -> row.cityCount() >= 40 && row.offensiveAssignments() == 0)
@@ -192,6 +193,77 @@ public final class BlitzPlanEndpointBenchmark {
         topUntargetedDefenders.forEach(row -> System.out.printf(Locale.ROOT,
                 "untargetedDefender,id=%d,name=%s,cities=%d,freeDef=%d,offAssigned=%d%n",
                 row.nationId(), csvSafe(row.name()), row.cityCount(), row.freeDef(), row.offensiveAssignments()));
+    }
+
+    private static void printOpeningUtilizationSummary(List<ParticipantAssignmentRow> attackers) {
+        int slotAvailableAttackers = 0;
+        int totalFreeOff = 0;
+        int totalAssignedOff = 0;
+        int maxAssignedOff = 0;
+        int atCapAttackers = 0;
+        int slotRichAttackers = 0;
+        int slotRichZeroWarAttackers = 0;
+        int slotRichOneWarAttackers = 0;
+        int slotRichLightlyUsedAttackers = 0;
+        int[] histogram = new int[8];
+        for (ParticipantAssignmentRow row : attackers) {
+            int freeOff = Math.max(0, row.freeOff());
+            int assigned = Math.max(0, row.offensiveAssignments());
+            if (freeOff > 0) {
+                slotAvailableAttackers++;
+            }
+            totalFreeOff += freeOff;
+            totalAssignedOff += assigned;
+            maxAssignedOff = Math.max(maxAssignedOff, assigned);
+            if (freeOff > 0 && assigned >= freeOff) {
+                atCapAttackers++;
+            }
+            histogram[Math.min(histogram.length - 1, assigned)]++;
+            if (row.cityCount() >= 40 && freeOff >= 5) {
+                slotRichAttackers++;
+                if (assigned == 0) {
+                    slotRichZeroWarAttackers++;
+                }
+                if (assigned == 1) {
+                    slotRichOneWarAttackers++;
+                }
+                if (assigned <= 1) {
+                    slotRichLightlyUsedAttackers++;
+                }
+            }
+        }
+        double utilizationPct = totalFreeOff == 0 ? 0d : 100.0d * totalAssignedOff / totalFreeOff;
+        System.out.printf(Locale.ROOT,
+                "openingUtilization,attackersWithFreeOff=%d,totalFreeOff=%d,totalAssignedOff=%d,utilizationPct=%.2f,maxAssignedOff=%d,attackersAtOffCap=%d,warCountHistogram=%s%n",
+                slotAvailableAttackers,
+                totalFreeOff,
+                totalAssignedOff,
+                utilizationPct,
+                maxAssignedOff,
+                atCapAttackers,
+                warCountHistogram(histogram));
+        System.out.printf(Locale.ROOT,
+                "slotRichOpeningUse,citiesAtLeast=40,freeOffAtLeast=5,attackers=%d,zeroWar=%d,oneWar=%d,zeroOrOneWar=%d%n",
+                slotRichAttackers,
+                slotRichZeroWarAttackers,
+                slotRichOneWarAttackers,
+                slotRichLightlyUsedAttackers);
+    }
+
+    private static String warCountHistogram(int[] histogram) {
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < histogram.length; index++) {
+            if (index > 0) {
+                builder.append(';');
+            }
+            if (index + 1 == histogram.length) {
+                builder.append(index).append("+");
+            } else {
+                builder.append(index);
+            }
+            builder.append(':').append(histogram[index]);
+        }
+        return builder.toString();
     }
 
     private static void printTraceSummary(BlitzPlanResponse response) {
@@ -602,16 +674,21 @@ public final class BlitzPlanEndpointBenchmark {
         int defenderIndex = candidateEdges.defenderIndex(edgeIndex);
         int attackerNationId = scenario.attackerNationId(attackerIndex);
         int defenderNationId = scenario.defenderNationId(defenderIndex);
+        double targetPressure = OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
+        double positiveBaselineScore = targetPressure > 0d ? 0.25d * targetPressure : 0d;
         System.out.printf(Locale.ROOT,
-                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,immediateHarm=%.3f,selfExposure=%.3f,controlLeverage=%.3f,futureWarLeverage=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
+                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,positiveBaselineScore=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,controlLeverage=%.3f,futureWarLeverage=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
                 rank,
                 attackerNationId,
                 csvSafe(participantName(response, attackerNationId)),
                 defenderNationId,
                 csvSafe(participantName(response, defenderNationId)),
                 candidateEdges.scalarScore(edgeIndex),
+                targetPressure,
+                positiveBaselineScore,
                 candidateEdges.retainsImmediateHarm() ? candidateEdges.immediateHarm(edgeIndex) : 0f,
                 candidateEdges.retainsSelfExposure() ? candidateEdges.selfExposure(edgeIndex) : 0f,
+                candidateEdges.retainsResourceSwing() ? candidateEdges.resourceSwing(edgeIndex) : 0f,
                 candidateEdges.retainsControlLeverage() ? candidateEdges.controlLeverage(edgeIndex) : 0f,
                 candidateEdges.retainsFutureWarLeverage() ? candidateEdges.futureWarLeverage(edgeIndex) : 0f,
                 candidateEdges.counterRisk(edgeIndex),
