@@ -411,7 +411,7 @@ final class LongHorizonMarginalFlowSolver {
         while (true) {
             int searchVersion = scratch.beginSearch();
             scratch.setReducedDistance(source, searchVersion, 0d);
-            queue.add(source, 0d);
+            queue.addOrDecrease(source, 0d, searchVersion);
             boolean sinkSettled = false;
             while (!queue.isEmpty()) {
                 int current = queue.removeMinVertex();
@@ -444,7 +444,7 @@ final class LongHorizonMarginalFlowSolver {
                     if (nextDistance < scratch.reducedDistance(nextVertex, searchVersion) - 1e-12) {
                         scratch.setReducedDistance(nextVertex, searchVersion, nextDistance);
                         scratch.setPreviousEdge(nextVertex, edge);
-                        queue.add(nextVertex, nextDistance);
+                        queue.addOrDecrease(nextVertex, nextDistance, searchVersion);
                     }
                 }
             }
@@ -532,6 +532,8 @@ final class LongHorizonMarginalFlowSolver {
     private static final class DistanceHeap {
         private int[] vertices;
         private double[] distances;
+        private int[] heapIndexByVertex;
+        private int[] heapIndexVersion;
         private int size;
         private double lastDistance;
 
@@ -539,6 +541,9 @@ final class LongHorizonMarginalFlowSolver {
             int capacity = Math.max(16, initialCapacity);
             vertices = new int[capacity];
             distances = new double[capacity];
+            heapIndexByVertex = new int[capacity];
+            heapIndexVersion = new int[capacity];
+            Arrays.fill(heapIndexByVertex, -1);
         }
 
         private void clear() {
@@ -550,20 +555,35 @@ final class LongHorizonMarginalFlowSolver {
             return size == 0;
         }
 
-        private void add(int vertex, double distance) {
+        private void addOrDecrease(int vertex, double distance, int version) {
+            ensureVertexCapacity(vertex + 1);
+            if (heapIndexVersion[vertex] == version) {
+                int index = heapIndexByVertex[vertex];
+                if (index >= 0) {
+                    if (distance < distances[index]) {
+                        distances[index] = distance;
+                        siftUp(index);
+                    }
+                    return;
+                }
+            }
             ensureCapacity(size + 1);
             vertices[size] = vertex;
             distances[size] = distance;
+            heapIndexVersion[vertex] = version;
+            heapIndexByVertex[vertex] = size;
             siftUp(size++);
         }
 
         private int removeMinVertex() {
             int result = vertices[0];
             lastDistance = distances[0];
+            heapIndexByVertex[result] = -1;
             int lastIndex = --size;
             if (lastIndex > 0) {
                 vertices[0] = vertices[lastIndex];
                 distances[0] = distances[lastIndex];
+                heapIndexByVertex[vertices[0]] = 0;
                 siftDown(0);
             }
             return result;
@@ -580,6 +600,17 @@ final class LongHorizonMarginalFlowSolver {
             int nextCapacity = Math.max(required, vertices.length * 2);
             vertices = Arrays.copyOf(vertices, nextCapacity);
             distances = Arrays.copyOf(distances, nextCapacity);
+        }
+
+        private void ensureVertexCapacity(int required) {
+            if (required <= heapIndexByVertex.length) {
+                return;
+            }
+            int previousLength = heapIndexByVertex.length;
+            int nextCapacity = Math.max(required, previousLength * 2);
+            heapIndexByVertex = Arrays.copyOf(heapIndexByVertex, nextCapacity);
+            heapIndexVersion = Arrays.copyOf(heapIndexVersion, nextCapacity);
+            Arrays.fill(heapIndexByVertex, previousLength, nextCapacity, -1);
         }
 
         private void siftUp(int index) {
@@ -618,6 +649,8 @@ final class LongHorizonMarginalFlowSolver {
             int vertexSwap = vertices[left];
             vertices[left] = vertices[right];
             vertices[right] = vertexSwap;
+            heapIndexByVertex[vertices[left]] = left;
+            heapIndexByVertex[vertices[right]] = right;
             double distanceSwap = distances[left];
             distances[left] = distances[right];
             distances[right] = distanceSwap;
