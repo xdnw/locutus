@@ -16,10 +16,9 @@ import java.util.function.IntFunction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class WarControlRulesTest {
+class WarTacticalFlagRulesTest {
 
     @Test
     void navalAirStripsDefenderAirAndImmenseStillGrantsBlockade() {
@@ -37,12 +36,12 @@ class WarControlRulesTest {
                 CombatKernel.AttackContext.BLOCKADE_NONE
         );
 
-        SuperiorityFlagDelta moderate = WarControlRules.controlDelta(context, AttackType.NAVAL_AIR, SuccessType.MODERATE_SUCCESS);
+        SuperiorityFlagDelta moderate = WarTacticalFlagRules.tacticalFlagDelta(context, AttackType.NAVAL_AIR, SuccessType.MODERATE_SUCCESS);
         assertEquals(0, moderate.airSuperiority());
         assertTrue(moderate.clearAirSuperiority());
         assertEquals(0, moderate.blockade());
 
-        SuperiorityFlagDelta immense = WarControlRules.controlDelta(context, AttackType.NAVAL_AIR, SuccessType.IMMENSE_TRIUMPH);
+        SuperiorityFlagDelta immense = WarTacticalFlagRules.tacticalFlagDelta(context, AttackType.NAVAL_AIR, SuccessType.IMMENSE_TRIUMPH);
         assertEquals(1, immense.blockade());
         assertTrue(immense.clearAirSuperiority());
     }
@@ -63,7 +62,7 @@ class WarControlRulesTest {
         );
         List<Integer> blockadeChangedWars = new ArrayList<>();
 
-        WarControlRules.reconcileAfterAttack(
+        WarTacticalFlagRules.reconcileAfterAttack(
                 currentWar,
                 attacker,
                 defender,
@@ -73,7 +72,7 @@ class WarControlRulesTest {
         );
 
         assertEquals(1, currentWar.blockadeNationId);
-        assertEquals(WarControlRules.MutableWarControlState.NO_NATION_ID, otherWar.blockadeNationId);
+        assertEquals(WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID, otherWar.blockadeNationId);
         assertEquals(List.of(1001, 1002), blockadeChangedWars);
     }
 
@@ -92,7 +91,7 @@ class WarControlRulesTest {
                 3, List.of(otherWar)
         );
 
-        WarControlRules.reconcileAfterAttack(
+        WarTacticalFlagRules.reconcileAfterAttack(
                 currentWar,
                 attacker,
                 defenderWithoutAircraft,
@@ -101,29 +100,29 @@ class WarControlRulesTest {
                 ignored -> { }
         );
 
-        assertEquals(WarControlRules.MutableWarControlState.NO_NATION_ID, otherWar.airSuperiorityNationId);
+        assertEquals(WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID, otherWar.airSuperiorityNationId);
     }
 
     @Test
-        void booleanOverloadMatchesContextDrivenControlDelta() {
+    void booleanOverloadMatchesContextDrivenTacticalFlagDelta() {
         CombatantView attacker = nation(1, 0, 0, 0, 12);
         CombatantView defender = nation(2, 0, 0, 80, 6);
         TestContext context = new TestContext(
-            attacker,
-            defender,
-            false,
-            true,
-            false,
-            true,
-            false,
-            false,
-            CombatKernel.AttackContext.BLOCKADE_DEFENDER
+                attacker,
+                defender,
+                false,
+                true,
+                false,
+                true,
+                false,
+                false,
+                CombatKernel.AttackContext.BLOCKADE_DEFENDER
         );
 
         SuperiorityFlagDelta fromContext =
-            WarControlRules.controlDelta(context, AttackType.NAVAL_GROUND, SuccessType.MODERATE_SUCCESS);
+                WarTacticalFlagRules.tacticalFlagDelta(context, AttackType.NAVAL_GROUND, SuccessType.MODERATE_SUCCESS);
         SuperiorityFlagDelta fromBooleans =
-            WarControlRules.controlDelta(AttackType.NAVAL_GROUND, SuccessType.MODERATE_SUCCESS, true, true, true);
+                WarTacticalFlagRules.tacticalFlagDelta(AttackType.NAVAL_GROUND, SuccessType.MODERATE_SUCCESS, true, true, true);
 
         assertEquals(fromContext, fromBooleans);
         assertFalse(fromBooleans == SuperiorityFlagDelta.NONE);
@@ -187,7 +186,7 @@ class WarControlRulesTest {
         }
     }
 
-    private static final class TestWar implements WarControlRules.MutableWarControlState {
+    private static final class TestWar implements WarTacticalFlagRules.MutableWarFlagState {
         private final int warId;
         private final int attackerNationId;
         private final int defenderNationId;
@@ -230,7 +229,7 @@ class WarControlRulesTest {
         }
 
         @Override
-        public void setgroundSuperiorityNationId(int nationId) {
+        public void setGroundSuperiorityNationId(int nationId) {
             groundSuperiorityNationId = nationId;
         }
 

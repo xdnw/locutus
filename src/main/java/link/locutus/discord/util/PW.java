@@ -1952,29 +1952,50 @@ public final class PW {
         };
     }
 
+    private static final double ODDS_RATIO_MIN = 0.294722519891231;
+    private static final double ODDS_RATIO_MAX = 3.393022020743633;
+
+    private static final double ODDS_A = 1.3888888888888888;
+    private static final double ODDS_B = 0.2222222222222222;
+    private static final double ODDS_C = 1.1111111111111112;
+    private static final double ODDS_D = 2.111111111111111;
+
     public static void getOdds4(double attStrength, double defStrength, double[] out, int off) {
         if (attStrength <= 0.0) {
-            writeGuaranteedOdds4(out, off, 0);
+            writeOdds4_1000(out, off);
             return;
         }
         if (defStrength <= 0.0) {
-            writeGuaranteedOdds4(out, off, 3);
+            writeOdds4_0001(out, off);
             return;
         }
 
         double ratio = attStrength / defStrength;
-        int guaranteedSuccess = guaranteedOddsSuccess(ratio);
-        if (guaranteedSuccess >= 0) {
-            writeGuaranteedOdds4(out, off, guaranteedSuccess);
+
+        if (ratio <= ODDS_RATIO_MIN) {
+            writeOdds4_1000(out, off);
+            return;
+        }
+        if (ratio >= ODDS_RATIO_MAX) {
+            writeOdds4_0001(out, off);
             return;
         }
 
-        double p = oddsWinProgress(ratio);
-        writeOdds4FromWinProgress(p, out, off);
+        double p = oddsWinProgressUnchecked(ratio);
+        double q = 1.0 - p;
+
+        double pp = p * p;
+        double qq = q * q;
+
+        out[off]     = q * qq;
+        out[off + 1] = 3.0 * p * qq;
+        out[off + 2] = 3.0 * pp * q;
+        out[off + 3] = p * pp;
     }
 
     public static double getOdds(double attStrength, double defStrength, int success) {
-        if (success < 0 || success > 3) {
+        // Valid only for success in [0, 3].
+        if ((success & ~3) != 0) {
             return 0.0;
         }
 
@@ -1986,68 +2007,59 @@ public final class PW {
         }
 
         double ratio = attStrength / defStrength;
-        int guaranteedSuccess = guaranteedOddsSuccess(ratio);
-        if (guaranteedSuccess >= 0) {
-            return success == guaranteedSuccess ? 1.0 : 0.0;
+
+        if (ratio <= ODDS_RATIO_MIN) {
+            return success == 0 ? 1.0 : 0.0;
+        }
+        if (ratio >= ODDS_RATIO_MAX) {
+            return success == 3 ? 1.0 : 0.0;
         }
 
-        double p = oddsWinProgress(ratio);
-        return oddsProbability(success, p);
+        double p = oddsWinProgressUnchecked(ratio);
+
+        return switch (success) {
+            case 0 -> {
+                double q = 1.0 - p;
+                yield q * q * q;
+            }
+            case 1 -> {
+                double q = 1.0 - p;
+                yield 3.0 * p * q * q;
+            }
+            case 2 -> {
+                double q = 1.0 - p;
+                yield 3.0 * p * p * q;
+            }
+            case 3 -> p * p * p;
+            default -> 0.0; // unreachable because of the bit check above
+        };
     }
 
-    private static int guaranteedOddsSuccess(double ratio) {
-        if (ratio <= 0.294722519891231) {
-            return 0;
-        }
-        if (ratio >= 3.393022020743633) {
-            return 3;
-        }
-        return -1;
-    }
-
-    private static double oddsWinProgress(double ratio) {
+    private static double oddsWinProgressUnchecked(double ratio) {
+        // r = ratio^0.75, but much faster than Math.pow(ratio, 0.75).
         double sqrtRatio = Math.sqrt(ratio);
         double r = sqrtRatio * Math.sqrt(sqrtRatio);
         double invR = 1.0 / r;
 
         if (r < 1.0) {
-            return 1.3888888888888888 * r
-                    + 0.2222222222222222 * invR
-                    - 1.1111111111111112;
+            return ODDS_A * r + ODDS_B * invR - ODDS_C;
         }
-        return 2.111111111111111
-                - 1.3888888888888888 * invR
-                - 0.2222222222222222 * r;
+
+        return ODDS_D - ODDS_A * invR - ODDS_B * r;
     }
 
-    private static double oddsProbability(int success, double p) {
-        double q = 1.0 - p;
-        return switch (success) {
-            case 0 -> q * q * q;
-            case 1 -> 3.0 * p * q * q;
-            case 2 -> 3.0 * p * p * q;
-            case 3 -> p * p * p;
-            default -> 0.0;
-        };
-    }
-
-    private static void writeGuaranteedOdds4(double[] out, int off, int success) {
-        out[off] = 0.0;
+    private static void writeOdds4_1000(double[] out, int off) {
+        out[off]     = 1.0;
         out[off + 1] = 0.0;
         out[off + 2] = 0.0;
         out[off + 3] = 0.0;
-        out[off + success] = 1.0;
     }
 
-    private static void writeOdds4FromWinProgress(double p, double[] out, int off) {
-        double q = 1.0 - p;
-        double pp = p * p;
-        double qq = q * q;
-
-        out[off] = q * qq;
-        out[off + 1] = 3.0 * p * qq;
-        out[off + 2] = 3.0 * pp * q;
-        out[off + 3] = p * pp;
+    private static void writeOdds4_0001(double[] out, int off) {
+        out[off]     = 0.0;
+        out[off + 1] = 0.0;
+        out[off + 2] = 0.0;
+        out[off + 3] = 1.0;
     }
 
     public static Set<Integer> parseAlliances(GuildDB db, String arg) {

@@ -1112,9 +1112,9 @@ public class SimEndpoints {
         int packedFlags = packWarFlags(
                 war.getWarType().ordinal(),
                 war.getStatus().ordinal(),
-                controlOwnerOrdinal(war.getGroundControl(), war),
-                controlOwnerOrdinal(war.getAirControl(), war),
-                controlOwnerOrdinal(war.getBlockader(), war),
+                flagOwnerOrdinal(war.getGroundControl(), war),
+                flagOwnerOrdinal(war.getAirControl(), war),
+                flagOwnerOrdinal(war.getBlockader(), war),
                 fortified.getKey(),
                 fortified.getValue()
         );
@@ -1163,7 +1163,7 @@ public class SimEndpoints {
         return flags;
     }
 
-    private static int controlOwnerOrdinal(int nationId, DBWar war) {
+    private static int flagOwnerOrdinal(int nationId, DBWar war) {
         if (nationId == war.getAttacker_id()) {
             return 1;
         }

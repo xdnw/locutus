@@ -25,7 +25,7 @@ import link.locutus.discord.sim.combat.ProjectileDefenseMath;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.UnitEconomy;
-import link.locutus.discord.sim.combat.WarControlRules;
+import link.locutus.discord.sim.combat.WarTacticalFlagRules;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.planners.compile.CompiledActiveWar;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
@@ -3219,7 +3219,7 @@ final class LongHorizonForwardProjection {
             double transferred = state.subtractResource(warState.defenderNationIndex[edgeIndex], ResourceType.MONEY, result.loot());
             state.addResource(warState.attackerNationIndex[edgeIndex], ResourceType.MONEY, transferred);
         }
-        WarControlRules.applySameWarDelta(
+        WarTacticalFlagRules.applySameWarDelta(
                 context,
                 state.nationIds[warState.attackerNationIndex[edgeIndex]],
                 state.nationIds[warState.defenderNationIndex[edgeIndex]],
@@ -3403,7 +3403,7 @@ final class LongHorizonForwardProjection {
         if (state.unit(nationIndex, primaryUnit) > 0 || (secondaryUnit != null && state.unit(nationIndex, secondaryUnit) > 0)) {
             return;
         }
-        warState.clearControlOwner(ownerByWar, edgeIndex);
+        warState.clearFlagOwner(ownerByWar, edgeIndex);
     }
 
     private double positiveControlLeverage(int edgeIndex) {
@@ -5214,7 +5214,7 @@ final class LongHorizonForwardProjection {
             return OWNER_NONE;
         }
 
-        private static int ownerCode(CompiledActiveWar.ControlOwner owner) {
+        private static int ownerCode(CompiledActiveWar.FlagOwner owner) {
             return switch (owner) {
                 case ATTACKER -> OWNER_ATTACKER;
                 case DEFENDER -> OWNER_DEFENDER;
@@ -5283,7 +5283,7 @@ final class LongHorizonForwardProjection {
             enemyResistanceByNation[defenderIndex] += attackerResistance[warIndex] - previousAttackerResistance;
         }
 
-        void clearControlOwner(int[] ownerByWar, int warIndex) {
+        void clearFlagOwner(int[] ownerByWar, int warIndex) {
             if (ownerByWar == groundSuperiorityOwner) {
                 setGroundSuperiorityOwner(warIndex, OWNER_NONE);
                 return;
@@ -5319,15 +5319,15 @@ final class LongHorizonForwardProjection {
         }
 
         void setGroundSuperiorityOwner(int warIndex, int owner) {
-            setControlOwner(warIndex, owner, 0);
+            setFlagOwner(warIndex, owner, 0);
         }
 
         void setAirSuperiorityOwner(int warIndex, int owner) {
-            setControlOwner(warIndex, owner, 1);
+            setFlagOwner(warIndex, owner, 1);
         }
 
         void setBlockadeOwner(int warIndex, int owner) {
-            setControlOwner(warIndex, owner, 2);
+            setFlagOwner(warIndex, owner, 2);
         }
 
         private void addWarStateContribution(int warIndex) {
@@ -5403,7 +5403,7 @@ final class LongHorizonForwardProjection {
             }
         }
 
-        private void setControlOwner(int warIndex, int owner, int lane) {
+        private void setFlagOwner(int warIndex, int owner, int lane) {
             int currentOwner = switch (lane) {
                 case 0 -> groundSuperiorityOwner[warIndex];
                 case 1 -> airSuperiorityOwner[warIndex];
@@ -5683,7 +5683,7 @@ final class LongHorizonForwardProjection {
         }
     }
 
-    private static final class DenseWarContext implements CombatKernel.BufferBackedAttackContext, WarControlRules.MutableWarControlState {
+    private static final class DenseWarContext implements CombatKernel.BufferBackedAttackContext, WarTacticalFlagRules.MutableWarFlagState {
         private ProjectionState state;
         private DenseWarState warState;
         private int warIndex;
@@ -5708,21 +5708,21 @@ final class LongHorizonForwardProjection {
 
         @Override
         public int groundSuperiorityNationId() {
-            return controlNationId(warState.groundSuperiorityOwner[warIndex]);
+            return flagOwnerNationId(warState.groundSuperiorityOwner[warIndex]);
         }
 
         @Override
         public int airSuperiorityNationId() {
-            return controlNationId(warState.airSuperiorityOwner[warIndex]);
+            return flagOwnerNationId(warState.airSuperiorityOwner[warIndex]);
         }
 
         @Override
         public int blockadeNationId() {
-            return controlNationId(warState.blockadeOwner[warIndex]);
+            return flagOwnerNationId(warState.blockadeOwner[warIndex]);
         }
 
         @Override
-        public void setgroundSuperiorityNationId(int nationId) {
+        public void setGroundSuperiorityNationId(int nationId) {
             warState.setGroundSuperiorityOwner(warIndex, ownerCode(nationId));
         }
 
@@ -5736,16 +5736,16 @@ final class LongHorizonForwardProjection {
             warState.setBlockadeOwner(warIndex, ownerCode(nationId));
         }
 
-        private int controlNationId(int ownerCode) {
+        private int flagOwnerNationId(int ownerCode) {
             return switch (ownerCode) {
                 case DenseWarState.OWNER_ATTACKER -> state.nationIds[warState.attackerNationIndex[warIndex]];
                 case DenseWarState.OWNER_DEFENDER -> state.nationIds[warState.defenderNationIndex[warIndex]];
-                default -> WarControlRules.MutableWarControlState.NO_NATION_ID;
+                default -> WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID;
             };
         }
 
         private int ownerCode(int nationId) {
-            if (nationId == WarControlRules.MutableWarControlState.NO_NATION_ID) {
+            if (nationId == WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID) {
                 return DenseWarState.OWNER_NONE;
             }
             if (nationId == state.nationIds[warState.attackerNationIndex[warIndex]]) {

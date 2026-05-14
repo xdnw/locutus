@@ -3,13 +3,13 @@ package link.locutus.discord.sim;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.sim.combat.WarControlRules;
+import link.locutus.discord.sim.combat.WarTacticalFlagRules;
 import link.locutus.discord.sim.combat.state.BasicWarStateView;
 import link.locutus.discord.sim.combat.state.WarStateView;
 
 import java.util.Objects;
 
-public final class SimWar implements WarControlRules.MutableWarControlState {
+public final class SimWar implements WarTacticalFlagRules.MutableWarFlagState {
     public static final int INITIAL_RESISTANCE = 100;
     public static final int INITIAL_TURNS_REMAINING = 60;
     public static final int INITIAL_MAPS = 6;
@@ -31,7 +31,7 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
     private WarStatus status = WarStatus.ACTIVE;
     private boolean slotsReleased;
 
-    // Control flags: null means no one has the control, otherwise ATTACKER or DEFENDER holds it
+    // Tactical flags: null means no one holds the flag, otherwise ATTACKER or DEFENDER does.
     private SimSide groundSuperiorityOwner = null;
     private SimSide airSuperiorityOwner = null;
     private SimSide blockadeOwner = null;
@@ -138,32 +138,32 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
 
     @Override
     public int groundSuperiorityNationId() {
-        return controlNationId(groundSuperiorityOwner);
+        return flagOwnerNationId(groundSuperiorityOwner);
     }
 
     @Override
     public int airSuperiorityNationId() {
-        return controlNationId(airSuperiorityOwner);
+        return flagOwnerNationId(airSuperiorityOwner);
     }
 
     @Override
     public int blockadeNationId() {
-        return controlNationId(blockadeOwner);
+        return flagOwnerNationId(blockadeOwner);
     }
 
     @Override
-    public void setgroundSuperiorityNationId(int nationId) {
-        groundSuperiorityOwner = controlSide(nationId);
+    public void setGroundSuperiorityNationId(int nationId) {
+        groundSuperiorityOwner = flagOwnerSide(nationId);
     }
 
     @Override
     public void setAirSuperiorityNationId(int nationId) {
-        airSuperiorityOwner = controlSide(nationId);
+        airSuperiorityOwner = flagOwnerSide(nationId);
     }
 
     @Override
     public void setBlockadeNationId(int nationId) {
-        blockadeOwner = controlSide(nationId);
+        blockadeOwner = flagOwnerSide(nationId);
     }
 
     /**
@@ -184,7 +184,7 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
     ) {
         ensureActive();
         int defenderNationId = actorNationId == this.attackerNationId ? this.defenderNationId : this.attackerNationId;
-        return WarControlRules.applySameWarDelta(
+        return WarTacticalFlagRules.applySameWarDelta(
                 this,
                 actorNationId,
                 defenderNationId,
@@ -309,7 +309,7 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
      * Build a WarStateView from the perspective of the given actor side.
      * When the defender is performing an attack (e.g. a counter), the resolver still
      * expects an "attacker" slot that corresponds to the nation actually attacking, so
-     * control-flag ownership and fortify flags must be flipped accordingly.
+    * tactical-flag ownership and fortify flags must be flipped accordingly.
      */
     public WarStateView asWarStateViewFor(SimSide actorSide) {
         boolean actorIsAttacker = actorSide == SimSide.ATTACKER;
@@ -400,15 +400,15 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
         return side == SimSide.ATTACKER ? SimSide.DEFENDER : SimSide.ATTACKER;
     }
 
-    private int controlNationId(SimSide owner) {
+    private int flagOwnerNationId(SimSide owner) {
         if (owner == null) {
-            return WarControlRules.MutableWarControlState.NO_NATION_ID;
+            return WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID;
         }
         return owner == SimSide.ATTACKER ? attackerNationId : defenderNationId;
     }
 
-    private SimSide controlSide(int nationId) {
-        if (nationId == WarControlRules.MutableWarControlState.NO_NATION_ID) {
+    private SimSide flagOwnerSide(int nationId) {
+        if (nationId == WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID) {
             return null;
         }
         return sideForNation(nationId);

@@ -80,9 +80,9 @@ class CompiledScenarioTest {
                 7,
                 62,
                 57,
-                CompiledActiveWar.ControlOwner.ATTACKER,
-                CompiledActiveWar.ControlOwner.NONE,
-                CompiledActiveWar.ControlOwner.DEFENDER,
+                CompiledActiveWar.FlagOwner.ATTACKER,
+                CompiledActiveWar.FlagOwner.NONE,
+                CompiledActiveWar.FlagOwner.DEFENDER,
                 false,
                 false
         );

@@ -913,14 +913,14 @@ final class PlannerConflictExecutor {
             PlannerProjectedWar war,
             boolean subjectIsWarAttacker
     ) {
-        PlannerLocalConflict.ControlOwner ownOwner = subjectIsWarAttacker
-                ? PlannerLocalConflict.ControlOwner.ATTACKER
-                : PlannerLocalConflict.ControlOwner.DEFENDER;
-        PlannerLocalConflict.ControlOwner enemyOwner = subjectIsWarAttacker
-                ? PlannerLocalConflict.ControlOwner.DEFENDER
-                : PlannerLocalConflict.ControlOwner.ATTACKER;
-        int ownControls = PlannerControlStateReducer.controlCountForProjectedWar(war, ownOwner);
-        int enemyControls = PlannerControlStateReducer.controlCountForProjectedWar(war, enemyOwner);
+        PlannerLocalConflict.FlagOwner ownFlagOwner = subjectIsWarAttacker
+            ? PlannerLocalConflict.FlagOwner.ATTACKER
+            : PlannerLocalConflict.FlagOwner.DEFENDER;
+        PlannerLocalConflict.FlagOwner enemyFlagOwner = subjectIsWarAttacker
+            ? PlannerLocalConflict.FlagOwner.DEFENDER
+            : PlannerLocalConflict.FlagOwner.ATTACKER;
+        int ownControls = PlannerControlStateReducer.controlCountForProjectedWar(war, ownFlagOwner);
+        int enemyControls = PlannerControlStateReducer.controlCountForProjectedWar(war, enemyFlagOwner);
         return PlannerControlStateReducer.activeWarContextFromRelativeState(
                 1,
                 1.0d,
@@ -938,9 +938,9 @@ final class PlannerConflictExecutor {
             return 0.0;
         }
         return OpeningMetricSummary.controlLeverage(
-                war.groundSuperiorityOwner() == PlannerLocalConflict.ControlOwner.ATTACKER,
-                war.airSuperiorityOwner() == PlannerLocalConflict.ControlOwner.ATTACKER,
-                war.blockadeOwner() == PlannerLocalConflict.ControlOwner.ATTACKER
+                war.groundSuperiorityOwner() == PlannerLocalConflict.FlagOwner.ATTACKER,
+                war.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.ATTACKER,
+                war.blockadeOwner() == PlannerLocalConflict.FlagOwner.ATTACKER
         );
     }
 
@@ -957,9 +957,9 @@ final class PlannerConflictExecutor {
             PlannerProjectedWar projectedWar
     ) {
         boolean attackerHasAirControl = projectedWar != null
-                && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.ControlOwner.ATTACKER;
+                && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.ATTACKER;
         boolean defenderHasAirControl = projectedWar != null
-                && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.ControlOwner.DEFENDER;
+                && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.DEFENDER;
         return OpeningMetricSummary.forceWindowScore(
                 OpeningMetricSummary.groundStrength(
                         initialAttacker.unit(MilitaryUnit.SOLDIER),

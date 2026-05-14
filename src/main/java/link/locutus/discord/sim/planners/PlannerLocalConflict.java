@@ -34,7 +34,7 @@ import link.locutus.discord.sim.combat.RandomSource;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.UnitEconomy;
-import link.locutus.discord.sim.combat.WarControlRules;
+import link.locutus.discord.sim.combat.WarTacticalFlagRules;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.util.PW;
@@ -109,7 +109,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private int currentTurn;
         private int nextWarId = 1_000_000;
 
-        enum ControlOwner {
+        enum FlagOwner {
         NONE,
         ATTACKER,
         DEFENDER
@@ -843,9 +843,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
             consumer.accept(
                     war.attacker.teamId(),
                     war.defender.teamId(),
-                    controlOwnerTeamId(war, war.warBuffers.groundSuperiorityOwner[war.warIndex]),
-                    controlOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]),
-                    controlOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]),
+                    flagOwnerTeamId(war, war.warBuffers.groundSuperiorityOwner[war.warIndex]),
+                    flagOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]),
+                    flagOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]),
                     war.attackerResistanceValue(),
                     war.defenderResistanceValue()
             );
@@ -875,9 +875,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
             controls.add(new ExternalWarControl(
                     war.attacker.teamId(),
                     war.defender.teamId(),
-                    controlOwnerTeamId(war, war.warBuffers.groundSuperiorityOwner[war.warIndex]),
-                    controlOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]),
-                    controlOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]),
+                    flagOwnerTeamId(war, war.warBuffers.groundSuperiorityOwner[war.warIndex]),
+                    flagOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]),
+                    flagOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]),
                     war.attackerResistanceValue(),
                     war.defenderResistanceValue()
             ));
@@ -1183,7 +1183,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         );
     }
 
-    private static int controlOwnerTeamId(LocalWar war, int ownerCode) {
+    private static int flagOwnerTeamId(LocalWar war, int ownerCode) {
         return switch (ownerCode) {
             case LocalWarBuffers.OWNER_ATTACKER -> war.attacker.teamId();
             case LocalWarBuffers.OWNER_DEFENDER -> war.defender.teamId();
@@ -2158,7 +2158,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
         }
 
-        WarControlRules.reconcileAfterAttack(
+        WarTacticalFlagRules.reconcileAfterAttack(
                 war,
                 war.attacker,
                 war.defender,
@@ -2356,9 +2356,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     war.defenderMapsValue(),
                     war.attackerResistanceValue(),
                     war.defenderResistanceValue(),
-                    LocalWarBuffers.controlOwner(war.warBuffers.groundSuperiorityOwner[war.warIndex]).ordinal(),
-                    LocalWarBuffers.controlOwner(war.warBuffers.airSuperiorityOwner[war.warIndex]).ordinal(),
-                    LocalWarBuffers.controlOwner(war.warBuffers.blockadeOwner[war.warIndex]).ordinal(),
+                    LocalWarBuffers.flagOwner(war.warBuffers.groundSuperiorityOwner[war.warIndex]).ordinal(),
+                    LocalWarBuffers.flagOwner(war.warBuffers.airSuperiorityOwner[war.warIndex]).ordinal(),
+                    LocalWarBuffers.flagOwner(war.warBuffers.blockadeOwner[war.warIndex]).ordinal(),
                     war.warBuffers.attackerFortified(war.warIndex),
                     war.warBuffers.defenderFortified(war.warIndex)
             );
@@ -4369,7 +4369,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
         }
 
-        private static int ownerCode(ControlOwner owner) {
+        private static int ownerCode(FlagOwner owner) {
             return switch (owner) {
                 case ATTACKER -> OWNER_ATTACKER;
                 case DEFENDER -> OWNER_DEFENDER;
@@ -4398,11 +4398,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
         }
 
-        private static ControlOwner controlOwner(int ownerCode) {
+        private static FlagOwner flagOwner(int ownerCode) {
             return switch (ownerCode) {
-                case OWNER_ATTACKER -> ControlOwner.ATTACKER;
-                case OWNER_DEFENDER -> ControlOwner.DEFENDER;
-                default -> ControlOwner.NONE;
+                case OWNER_ATTACKER -> FlagOwner.ATTACKER;
+                case OWNER_DEFENDER -> FlagOwner.DEFENDER;
+                default -> FlagOwner.NONE;
             };
         }
 
@@ -4779,7 +4779,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         }
     }
 
-    private static final class LocalWar implements CombatKernel.BufferBackedAttackContext, WarControlRules.MutableWarControlState {
+    private static final class LocalWar implements CombatKernel.BufferBackedAttackContext, WarTacticalFlagRules.MutableWarFlagState {
         private static final int INITIAL_RESISTANCE = 100;
         private static final int INITIAL_MAPS = 6;
         private static final int INITIAL_TURNS = 60;
@@ -4890,21 +4890,21 @@ final class PlannerLocalConflict implements TeamWarControlView {
 
         @Override
         public int groundSuperiorityNationId() {
-            return controlNationId(warBuffers.groundSuperiorityOwner[warIndex]);
+            return flagOwnerNationId(warBuffers.groundSuperiorityOwner[warIndex]);
         }
 
         @Override
         public int airSuperiorityNationId() {
-            return controlNationId(warBuffers.airSuperiorityOwner[warIndex]);
+            return flagOwnerNationId(warBuffers.airSuperiorityOwner[warIndex]);
         }
 
         @Override
         public int blockadeNationId() {
-            return controlNationId(warBuffers.blockadeOwner[warIndex]);
+            return flagOwnerNationId(warBuffers.blockadeOwner[warIndex]);
         }
 
         @Override
-        public void setgroundSuperiorityNationId(int nationId) {
+        public void setGroundSuperiorityNationId(int nationId) {
             warBuffers.setgroundSuperiorityOwner(warIndex, ownerCode(nationId));
         }
 
@@ -4933,9 +4933,9 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     defenderMapsValue(),
                     attackerResistanceValue(),
                     defenderResistanceValue(),
-                    LocalWarBuffers.controlOwner(warBuffers.groundSuperiorityOwner[warIndex]),
-                    LocalWarBuffers.controlOwner(warBuffers.airSuperiorityOwner[warIndex]),
-                    LocalWarBuffers.controlOwner(warBuffers.blockadeOwner[warIndex]),
+                    LocalWarBuffers.flagOwner(warBuffers.groundSuperiorityOwner[warIndex]),
+                    LocalWarBuffers.flagOwner(warBuffers.airSuperiorityOwner[warIndex]),
+                    LocalWarBuffers.flagOwner(warBuffers.blockadeOwner[warIndex]),
                     warBuffers.attackerFortified(warIndex),
                     warBuffers.defenderFortified(warIndex)
             );
@@ -4945,16 +4945,16 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return side == Side.ATTACKER ? LocalWarBuffers.OWNER_ATTACKER : LocalWarBuffers.OWNER_DEFENDER;
         }
 
-        private int controlNationId(int ownerCode) {
+        private int flagOwnerNationId(int ownerCode) {
             return switch (ownerCode) {
                 case LocalWarBuffers.OWNER_ATTACKER -> attacker.nationId();
                 case LocalWarBuffers.OWNER_DEFENDER -> defender.nationId();
-                default -> WarControlRules.MutableWarControlState.NO_NATION_ID;
+                default -> WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID;
             };
         }
 
         private int ownerCode(int nationId) {
-            if (nationId == WarControlRules.MutableWarControlState.NO_NATION_ID) {
+            if (nationId == WarTacticalFlagRules.MutableWarFlagState.NO_NATION_ID) {
                 return LocalWarBuffers.OWNER_NONE;
             }
             if (nationId == attacker.nationId()) {

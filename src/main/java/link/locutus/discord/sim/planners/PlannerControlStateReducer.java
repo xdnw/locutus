@@ -20,7 +20,7 @@ final class PlannerControlStateReducer {
         return count;
     }
 
-    static int controlCountForProjectedWar(PlannerProjectedWar war, PlannerLocalConflict.ControlOwner owner) {
+    static int controlCountForProjectedWar(PlannerProjectedWar war, PlannerLocalConflict.FlagOwner owner) {
         int count = 0;
         if (war.groundSuperiorityOwner() == owner) {
             count++;

@@ -719,9 +719,9 @@ class PlannerConflictExecutorTest {
                 6,
                 100,
                 100,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
                 false,
                 false
         );
@@ -2133,9 +2133,9 @@ class PlannerConflictExecutorTest {
                 6,
                 100,
                 0,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
                 false,
                 false
         );

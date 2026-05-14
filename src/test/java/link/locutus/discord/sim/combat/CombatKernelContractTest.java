@@ -353,7 +353,7 @@ class CombatKernelContractTest {
                 AttackType.GROUND,
                 SuccessType.MODERATE_SUCCESS
         );
-        SuperiorityFlagDelta liveDelta = WarControlRules.controlDelta(liveContext, AttackType.GROUND, SuccessType.MODERATE_SUCCESS);
+        SuperiorityFlagDelta liveDelta = WarTacticalFlagRules.tacticalFlagDelta(liveContext, AttackType.GROUND, SuccessType.MODERATE_SUCCESS);
 
         assertEquals(liveDelta, snapshotRanges.controlDelta());
     }

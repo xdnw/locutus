@@ -535,7 +535,7 @@ public final class CombatKernel {
             attacker,
             defender,
             context,
-            success -> computeControlDelta(context, type, success),
+            success -> computeTacticalFlagDelta(context, type, success),
             type,
             finalOptions,
             scratch.odds,
@@ -575,15 +575,15 @@ public final class CombatKernel {
         return oddsModel.odds(strengths.attacker(), strengths.defender(), type);
     }
 
-    private interface ControlDeltaProvider {
-        SuperiorityFlagDelta controlDelta(SuccessType success);
+    private interface TacticalFlagDeltaProvider {
+        SuperiorityFlagDelta tacticalFlagDelta(SuccessType success);
     }
 
     private static void resolveInternalInto(
             NationState attacker,
             NationState defender,
             AttackContext context,
-            ControlDeltaProvider controlDeltaProvider,
+            TacticalFlagDeltaProvider tacticalFlagDeltaProvider,
             AttackType type,
             EngagementOptions options,
             double[] odds,
@@ -654,7 +654,7 @@ public final class CombatKernel {
                         clampResistanceDelta(defenderResistanceDelta),
                         type.getMapUsed(),
                         consumption,
-                        controlDeltaProvider.controlDelta(successHint)
+                        tacticalFlagDeltaProvider.tacticalFlagDelta(successHint)
                 );
             }
             case MOST_LIKELY -> {
@@ -698,7 +698,7 @@ public final class CombatKernel {
                         clampResistanceDelta(-type.getResistance(success)),
                         type.getMapUsed(),
                         consumption,
-                        controlDeltaProvider.controlDelta(success)
+                        tacticalFlagDeltaProvider.tacticalFlagDelta(success)
                 );
             }
             case STOCHASTIC -> {
@@ -744,14 +744,14 @@ public final class CombatKernel {
                         clampResistanceDelta(-type.getResistance(success)),
                         type.getMapUsed(),
                         consumption,
-                        controlDeltaProvider.controlDelta(success)
+                        tacticalFlagDeltaProvider.tacticalFlagDelta(success)
                 );
             }
         }
     }
 
-    static SuperiorityFlagDelta computeControlDelta(AttackContext context, AttackType type, SuccessType success) {
-        return WarControlRules.controlDelta(context, type, success);
+    static SuperiorityFlagDelta computeTacticalFlagDelta(AttackContext context, AttackType type, SuccessType success) {
+        return WarTacticalFlagRules.tacticalFlagDelta(context, type, success);
     }
 
     private static void writeCasualtyRanges(

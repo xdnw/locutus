@@ -694,12 +694,12 @@ public final class StrategicLaneComparisonHarness {
                 int defenderResistance = decisive
                         ? (attackerInitiallyWinning ? 31 : 94)
                         : (attackerInitiallyWinning ? 55 : 62);
-                CompiledActiveWar.ControlOwner favoredOwner = attackerInitiallyWinning
-                        ? CompiledActiveWar.ControlOwner.ATTACKER
-                        : CompiledActiveWar.ControlOwner.DEFENDER;
-                CompiledActiveWar.ControlOwner otherOwner = attackerInitiallyWinning
-                        ? CompiledActiveWar.ControlOwner.DEFENDER
-                        : CompiledActiveWar.ControlOwner.ATTACKER;
+                CompiledActiveWar.FlagOwner favoredOwner = attackerInitiallyWinning
+                    ? CompiledActiveWar.FlagOwner.ATTACKER
+                    : CompiledActiveWar.FlagOwner.DEFENDER;
+                CompiledActiveWar.FlagOwner otherOwner = attackerInitiallyWinning
+                    ? CompiledActiveWar.FlagOwner.DEFENDER
+                    : CompiledActiveWar.FlagOwner.ATTACKER;
                 activeWars.add(new CompiledActiveWar(
                         10_000 + index,
                         20_000 + index,
@@ -710,7 +710,7 @@ public final class StrategicLaneComparisonHarness {
                         attackerResistance,
                         defenderResistance,
                         favoredOwner,
-                        decisive ? favoredOwner : CompiledActiveWar.ControlOwner.NONE,
+                        decisive ? favoredOwner : CompiledActiveWar.FlagOwner.NONE,
                         decisive ? favoredOwner : otherOwner,
                         false,
                         false
@@ -1226,11 +1226,11 @@ public final class StrategicLaneComparisonHarness {
         return List.copyOf(reversed);
     }
 
-    private static CompiledActiveWar.ControlOwner reverseOwner(CompiledActiveWar.ControlOwner owner) {
+    private static CompiledActiveWar.FlagOwner reverseOwner(CompiledActiveWar.FlagOwner owner) {
         return switch (owner) {
-            case NONE -> CompiledActiveWar.ControlOwner.NONE;
-            case ATTACKER -> CompiledActiveWar.ControlOwner.DEFENDER;
-            case DEFENDER -> CompiledActiveWar.ControlOwner.ATTACKER;
+            case NONE -> CompiledActiveWar.FlagOwner.NONE;
+            case ATTACKER -> CompiledActiveWar.FlagOwner.DEFENDER;
+            case DEFENDER -> CompiledActiveWar.FlagOwner.ATTACKER;
         };
     }
 

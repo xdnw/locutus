@@ -23,7 +23,7 @@ import link.locutus.discord.sim.combat.LiveAttackContext;
 import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.RandomSource;
 import link.locutus.discord.sim.combat.ResolutionMode;
-import link.locutus.discord.sim.combat.WarControlRules;
+import link.locutus.discord.sim.combat.WarTacticalFlagRules;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.input.NationInit;
 import link.locutus.discord.sim.actions.SimAction;
@@ -470,8 +470,8 @@ public final class SimWorld {
             }
         }
 
-        // 7. Control flag changes and any cross-war stripping caused by the new local state.
-        WarControlRules.reconcileAfterAttack(
+        // 7. Tactical flag changes and any cross-war stripping caused by the new local state.
+        WarTacticalFlagRules.reconcileAfterAttack(
             war,
             attackerNation,
             defenderNation,
