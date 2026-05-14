@@ -100,6 +100,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         private final ActiveWarContextScratch strategicValueWarContextScratch;
         private final Deque<Mark> markStack;
         private final List<PlannerExecutionLog.Turn> executionLogTurns;
+        private final Map<LaterDeclarationPreparedCacheKey, PlannerAutonomousDeclarationPlanner.PreparedPlanInputs> replayLaterDeclarationPreparedCache;
         private final Map<LaterDeclarationPlanCacheKey, PlannerAutonomousDeclarationPlanner.Plan> replayLaterDeclarationPlanCache;
         private PlannerReplayTurnMetrics replayTurnMetrics;
         private ReplayExecutionTurnBuilder currentExecutionTurn;
@@ -159,6 +160,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
         this.strategicValueWarContextScratch = new ActiveWarContextScratch(nationsById.size());
         this.markStack = new ArrayDeque<>();
         this.executionLogTurns = new ArrayList<>();
+        this.replayLaterDeclarationPreparedCache = new java.util.HashMap<>();
         this.replayLaterDeclarationPlanCache = new java.util.HashMap<>();
         this.currentExecutionPhase = ReplayExecutionPhase.NONE;
         this.currentTurn = currentTurn;
@@ -1510,11 +1512,33 @@ final class PlannerLocalConflict implements TeamWarControlView {
         if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
             return PlannerAutonomousDeclarationPlanner.Plan.empty();
         }
+        LaterDeclarationPreparedCacheKey preparedCacheKey = new LaterDeclarationPreparedCacheKey(
+                scope.scope(),
+                snapshotFingerprints(declarerSnapshots),
+                snapshotFingerprints(targetSnapshots)
+        );
+        PlannerAutonomousDeclarationPlanner.PreparedPlanInputs prepared = replayLaterDeclarationPreparedCache.get(preparedCacheKey);
+        if (prepared != null) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "laterDeclarationPreparedCacheHits", 1);
+        } else {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "laterDeclarationPreparedCacheMisses", 1);
+            prepared = PlannerAutonomousDeclarationPlanner.prepareInputs(
+                    declarerSnapshots,
+                    targetSnapshots,
+                    tuning,
+                    scope.scope().declarerPolicy(),
+                    scope.scope().targetPolicy()
+            );
+            replayLaterDeclarationPreparedCache.put(preparedCacheKey, prepared);
+        }
+        if (prepared.isEmpty()) {
+            return PlannerAutonomousDeclarationPlanner.Plan.empty();
+        }
         LaterDeclarationPlanCacheKey cacheKey = new LaterDeclarationPlanCacheKey(
                 scope.scope(),
                 Math.max(1, remainingTurns),
-                snapshotFingerprints(declarerSnapshots),
-                snapshotFingerprints(targetSnapshots)
+                preparedCacheKey.declarerFingerprints(),
+                preparedCacheKey.targetFingerprints()
         );
         PlannerAutonomousDeclarationPlanner.Plan cached = replayLaterDeclarationPlanCache.get(cacheKey);
         if (cached != null) {
@@ -1522,28 +1546,18 @@ final class PlannerLocalConflict implements TeamWarControlView {
             return cached;
         }
         PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "laterDeclarationPlanCacheMisses", 1);
-        PlannerAutonomousDeclarationPlanner.Plan plan;
         if (usesHeuristicLaterDeclarationPlanning(scope.scope())) {
             PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "heuristicLaterDeclarationPlans", 1);
-            plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
-                    declarerSnapshots,
-                    targetSnapshots,
-                    tuning,
-                    scope.scope().declarerPolicy(),
-                    scope.scope().targetPolicy(),
-                    remainingTurns
-            );
-        } else {
-            PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "projectedLaterDeclarationPlans", 1);
-            plan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
-                    declarerSnapshots,
-                    targetSnapshots,
-                    tuning,
-                    scope.scope().declarerPolicy(),
-                    scope.scope().targetPolicy(),
-                    remainingTurns
-            );
         }
+        if (!usesHeuristicLaterDeclarationPlanning(scope.scope())) {
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.REPLAY_CAPTURE, "projectedLaterDeclarationPlans", 1);
+        }
+        PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planFromPreparedInputs(
+                prepared,
+                scope.scope().declarerPolicy(),
+                remainingTurns,
+                usesHeuristicLaterDeclarationPlanning(scope.scope())
+        );
         replayLaterDeclarationPlanCache.put(cacheKey, plan);
         return plan;
     }
@@ -1561,29 +1575,20 @@ final class PlannerLocalConflict implements TeamWarControlView {
         hash = mixFingerprint(hash, snapshot.nationId());
         hash = mixFingerprint(hash, snapshot.allianceId());
         hash = mixFingerprint(hash, snapshot.teamId());
+        hash = mixFingerprint(hash, Double.doubleToLongBits(snapshot.score()));
         hash = mixFingerprint(hash, snapshot.cities());
         hash = mixFingerprint(hash, snapshot.currentOffensiveWars());
         hash = mixFingerprint(hash, snapshot.currentDefensiveWars());
         hash = mixFingerprint(hash, snapshot.maxOff());
-        hash = mixFingerprint(hash, snapshot.warPolicy().ordinal());
-        hash = mixFingerprint(hash, snapshot.resetHourUtc());
-        hash = mixFingerprint(hash, snapshot.resetHourUtcFallback() ? 1 : 0);
-        hash = mixFingerprint(hash, snapshot.policyCooldownTurnsRemaining());
         hash = mixFingerprint(hash, snapshot.beigeTurns());
         hash = mixFingerprint(hash, snapshot.vmTurns());
         hash = mixFingerprint(hash, snapshot.researchBits());
         hash = mixFingerprint(hash, snapshot.projectBits());
         hash = mixFingerprint(hash, snapshot.blitzkriegActive() ? 1 : 0);
         hash = mixFingerprint(hash, snapshot.activeOpponentNationIds().hashCode());
-        hash = mixFingerprint(hash, Arrays.hashCode(snapshot.slotOnlyOffensiveWarReleaseTurns()));
-        hash = mixFingerprint(hash, Arrays.hashCode(snapshot.slotOnlyDefensiveWarReleaseTurns()));
         for (MilitaryUnit unit : MilitaryUnit.values) {
             hash = mixFingerprint(hash, snapshot.unit(unit));
-            hash = mixFingerprint(hash, snapshot.unitsBoughtToday(unit));
             hash = mixFingerprint(hash, snapshot.pendingBuysNextTurn(unit));
-        }
-        for (double resource : snapshot.resourcesRaw()) {
-            hash = mixFingerprint(hash, Double.doubleToLongBits(resource));
         }
         for (double infra : snapshot.cityInfraRaw()) {
             hash = mixFingerprint(hash, Double.doubleToLongBits(infra));
@@ -2637,6 +2642,33 @@ final class PlannerLocalConflict implements TeamWarControlView {
         public int hashCode() {
             int result = scope.hashCode();
             result = 31 * result + remainingTurns;
+            result = 31 * result + Arrays.hashCode(declarerFingerprints);
+            result = 31 * result + Arrays.hashCode(targetFingerprints);
+            return result;
+        }
+    }
+
+    private record LaterDeclarationPreparedCacheKey(
+            LaterDeclarationScope scope,
+            long[] declarerFingerprints,
+            long[] targetFingerprints
+    ) {
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof LaterDeclarationPreparedCacheKey other)) {
+                return false;
+            }
+            return scope.equals(other.scope)
+                    && Arrays.equals(declarerFingerprints, other.declarerFingerprints)
+                    && Arrays.equals(targetFingerprints, other.targetFingerprints);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = scope.hashCode();
             result = 31 * result + Arrays.hashCode(declarerFingerprints);
             result = 31 * result + Arrays.hashCode(targetFingerprints);
             return result;

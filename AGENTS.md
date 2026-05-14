@@ -23,8 +23,8 @@ Use:
 - `copilot-code-indexer` for broad read-only indexing where shell search is better: usage scans, imports/packages, generated sources, changed files, or test discovery.
 - `copilot-code-cartographer` before non-trivial refactors/roadmaps when boundaries, ownership, data flow, dependency direction, or overlapping concepts are unclear.
 - `copilot-test-output-triager` for build/test/check output or logs.
-- `copilot-function-optimizer-scout.agent.md` for read-only performance analysis of a specific function, loop, or small algorithmic unit.
-- `copilot-function-optimizer-impl.agent.md` for implementing a specific, correctness-preserving optimization for one function, loop, method, or small algorithmic unit.
+- `copilot-function-optimizer-scout` for read-only performance analysis of a specific function, loop, or small algorithmic unit.
+- `copilot-function-optimizer-impl` for implementing a specific, correctness-preserving optimization for one function, loop, method, or small algorithmic unit.
 
 Do not chain subagents by default. Escalate only if the prior result is insufficient: `file-reader` → `code-indexer` → `code-cartographer`.
 Subagent findings are leads, not authority. Before editing, directly inspect the cited files/line ranges.

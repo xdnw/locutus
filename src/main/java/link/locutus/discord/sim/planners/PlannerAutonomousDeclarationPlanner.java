@@ -43,6 +43,102 @@ final class PlannerAutonomousDeclarationPlanner {
         );
         }
 
+        static PreparedPlanInputs prepareInputs(
+            List<DBNationSnapshot> declarerSnapshots,
+            List<DBNationSnapshot> targetSnapshots,
+            SimTuning tuning,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy
+        ) {
+        if (declarerSnapshots.isEmpty() || targetSnapshots.isEmpty()) {
+            return PreparedPlanInputs.empty();
+        }
+        if (declarerPolicy == null) {
+            throw new IllegalArgumentException("declarerPolicy must not be null");
+        }
+        if (targetPolicy == null) {
+            throw new IllegalArgumentException("targetPolicy must not be null");
+        }
+        SimTuning effectiveTuning = tuningForPlannerSettings(tuning, declarerPolicy.planner());
+        CompiledScenario scenario = SCENARIO_COMPILER.compileWithoutRelevantDefenderIndexes(
+                declarerSnapshots,
+                targetSnapshots,
+                OverrideSet.EMPTY,
+                sameTeamTreaty(declarerSnapshots, targetSnapshots),
+                Map.of()
+        );
+        int[] attackerCaps = attackerCaps(scenario);
+        int[] defenderCaps = defenderCaps(scenario);
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        OpeningEvaluator.evaluate(
+                scenario,
+                effectiveTuning,
+                OverrideSet.EMPTY,
+                declarerPolicy.objective(),
+                declarerPolicy.opening(),
+                attackerCaps,
+                defenderCaps,
+                edges
+        );
+        if (edges.edgeCount() == 0) {
+            return PreparedPlanInputs.empty();
+        }
+        edges = applyLaterDeclarationPolicy(
+                edges,
+                scenario,
+                declarerPolicy.projection().laterDeclarationScoringPolicy(),
+                declarerPolicy.planner().laterDeclarationScoreThreshold()
+        );
+        if (edges.edgeCount() == 0) {
+            return PreparedPlanInputs.empty();
+        }
+        return new PreparedPlanInputs(
+                scenario,
+                edges,
+                attackerCaps,
+                defenderCaps,
+                attackerNationIds(scenario),
+                defenderNationIds(scenario),
+                projectionContextFor(declarerPolicy, targetPolicy)
+        );
+        }
+
+        static Plan planFromPreparedInputs(
+            PreparedPlanInputs prepared,
+            SidePolicy declarerPolicy,
+            int remainingTurns,
+            boolean scorerOnly
+        ) {
+        if (prepared == null || prepared.isEmpty()) {
+            return Plan.empty();
+        }
+        if (scorerOnly) {
+            return planScorerOnly(
+                    prepared.scenario(),
+                    prepared.edges(),
+                    prepared.attackerCaps(),
+                    prepared.defenderCaps(),
+                    prepared.attackerNationIds(),
+                    prepared.defenderNationIds(),
+                    declarerPolicy.planner(),
+                    remainingTurns
+            );
+        }
+        Map<Integer, List<Integer>> assignment = LongHorizonAssignmentOptimizer.solveDetailed(
+                prepared.edges(),
+                prepared.scenario(),
+                prepared.attackerCaps(),
+                prepared.defenderCaps(),
+                attackerStrengthRanks(prepared.scenario()),
+                prepared.attackerNationIds(),
+                prepared.defenderNationIds(),
+                List.of(),
+                Math.max(1, remainingTurns),
+                prepared.projectionContext()
+        ).assignment();
+        return planFromAssignment(assignment, prepared.edges(), prepared.scenario());
+        }
+
         static Plan planScorerOnly(
             List<DBNationSnapshot> declarerSnapshots,
             List<DBNationSnapshot> targetSnapshots,
@@ -150,77 +246,64 @@ final class PlannerAutonomousDeclarationPlanner {
         if (targetPolicy == null) {
             throw new IllegalArgumentException("targetPolicy must not be null");
         }
-        SimTuning effectiveTuning = tuningForPlannerSettings(tuning, declarerPolicy.planner());
-
-        CompiledScenario scenario = SCENARIO_COMPILER.compileWithoutRelevantDefenderIndexes(
+        PreparedPlanInputs prepared = prepareInputs(
                 declarerSnapshots,
                 targetSnapshots,
-                OverrideSet.EMPTY,
-                sameTeamTreaty(declarerSnapshots, targetSnapshots),
-                Map.of()
+                tuning,
+                declarerPolicy,
+                targetPolicy
         );
-        int[] attackerCaps = attackerCaps(scenario);
-        int[] defenderCaps = defenderCaps(scenario);
-        CandidateEdgeTable edges = new CandidateEdgeTable();
-        OpeningEvaluator.evaluate(
-                scenario,
-            effectiveTuning,
-                OverrideSet.EMPTY,
-                declarerPolicy.objective(),
-                declarerPolicy.opening(),
-                attackerCaps,
-                defenderCaps,
-                edges
-        );
-        if (edges.edgeCount() == 0) {
+        if (prepared.isEmpty()) {
             return Plan.empty();
         }
-        edges = applyLaterDeclarationPolicy(
-                edges,
-                scenario,
-                declarerPolicy.projection().laterDeclarationScoringPolicy(),
-                declarerPolicy.planner().laterDeclarationScoreThreshold()
-        );
-        if (edges.edgeCount() == 0) {
-            return Plan.empty();
-        }
-        if (scorerOnly) {
+        if (scorerOnly && projectionContext == null) {
             return planScorerOnly(
-                    scenario,
-                    edges,
-                    attackerCaps,
-                    defenderCaps,
-                    attackerNationIds(scenario),
-                    defenderNationIds(scenario),
+                    prepared.scenario(),
+                    prepared.edges(),
+                    prepared.attackerCaps(),
+                    prepared.defenderCaps(),
+                    prepared.attackerNationIds(),
+                    prepared.defenderNationIds(),
                     declarerPolicy.planner(),
                     remainingTurns
             );
         }
         Map<Integer, List<Integer>> assignment = projectionContext == null
-            ? LongHorizonAssignmentOptimizer.solve(
-                edges,
-                scenario,
-                attackerCaps,
-                defenderCaps,
-                attackerStrengthRanks(scenario),
-                attackerNationIds(scenario),
-                defenderNationIds(scenario),
+                ? LongHorizonAssignmentOptimizer.solve(
+                prepared.edges(),
+                prepared.scenario(),
+                prepared.attackerCaps(),
+                prepared.defenderCaps(),
+                attackerStrengthRanks(prepared.scenario()),
+                prepared.attackerNationIds(),
+                prepared.defenderNationIds(),
                 List.of(),
                 Math.max(1, remainingTurns)
-            )
-            : LongHorizonAssignmentOptimizer.solveDetailed(
-                edges,
-                scenario,
-                attackerCaps,
-                defenderCaps,
-                attackerStrengthRanks(scenario),
-                attackerNationIds(scenario),
-                defenderNationIds(scenario),
+        )
+                : LongHorizonAssignmentOptimizer.solveDetailed(
+                prepared.edges(),
+                prepared.scenario(),
+                prepared.attackerCaps(),
+                prepared.defenderCaps(),
+                attackerStrengthRanks(prepared.scenario()),
+                prepared.attackerNationIds(),
+                prepared.defenderNationIds(),
                 List.of(),
                 Math.max(1, remainingTurns),
                 projectionContext
-            ).assignment();
-        return planFromAssignment(assignment, edges, scenario);
+        ).assignment();
+        return planFromAssignment(assignment, prepared.edges(), prepared.scenario());
+    }
+
+    private static LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContextFor(
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy
+    ) {
+        return LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+                declarerPolicy.objective(),
+                declarerPolicy,
+                targetPolicy
+        );
     }
 
     private static CandidateEdgeTable applyLaterDeclarationPolicy(
@@ -370,6 +453,24 @@ final class PlannerAutonomousDeclarationPlanner {
                     PlannerLocalConflict.pairKey(declarerNationId, targetNationId),
                     0f
             );
+        }
+    }
+
+    record PreparedPlanInputs(
+            CompiledScenario scenario,
+            CandidateEdgeTable edges,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext
+    ) {
+        static PreparedPlanInputs empty() {
+            return new PreparedPlanInputs(null, null, null, null, null, null, null);
+        }
+
+        boolean isEmpty() {
+            return scenario == null || edges == null;
         }
     }
 
