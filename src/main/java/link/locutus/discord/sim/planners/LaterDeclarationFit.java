@@ -34,6 +34,16 @@ final class LaterDeclarationFit {
         return declarerBreadth * targetContention * Math.max(0d, targetOpportunityFit);
     }
 
+    static double specialistSlotActionability(double resourceSwing, double targetPressure) {
+        if (!(resourceSwing > 0d)) {
+            return 0d;
+        }
+        double targetScale = targetPressure > 0d
+            ? Math.min(1d, resourceSwing / targetPressure)
+            : 1d;
+        return 0.85d * Math.max(0d, targetScale);
+    }
+
     private static double clamp01(double value) {
         if (value <= 0d) {
             return 0d;

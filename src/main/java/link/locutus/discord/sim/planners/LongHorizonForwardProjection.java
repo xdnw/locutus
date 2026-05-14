@@ -1368,6 +1368,7 @@ final class LongHorizonForwardProjection {
                     edgeIndex
             );
         }
+        LaterDeclarationScoringPolicy laterScoringPolicy = projectionPolicies.laterDeclarationScoringPolicy();
         double[] deferredBestByDeclarer = new double[declarerSnapshots.size()];
         int horizonRemainingTurns = Math.max(0, horizonTurns - turn);
         if (applyPairLockoutTiming) {
@@ -1388,7 +1389,7 @@ final class LongHorizonForwardProjection {
                             warState,
                             rawEdges,
                             rawEdgeByPair.get(projectedIndexPairKey(declarerCompiledIndex, targetCompiledIndex)),
-                            projectionPolicies.laterDeclarationScoringPolicy(),
+                            laterScoringPolicy,
                             declarerOverallIndex,
                             targetOverallIndex,
                             remainingDeclarerSlots[declarersAreScenarioAttackers
@@ -1397,6 +1398,7 @@ final class LongHorizonForwardProjection {
                             remainingTargetSlots[declarersAreScenarioAttackers
                                     ? targetOverallIndex - state.attackerCount
                                     : targetOverallIndex],
+                            0d,
                             activityWeightForOverallIndex(declarerOverallIndex)
                     )
                             * StrategicTimingValue.declarationWaitDiscount(blockedTurns, horizonRemainingTurns);
@@ -1435,11 +1437,12 @@ final class LongHorizonForwardProjection {
                         warState,
                         rawEdges,
                         rawEdgeIndex,
-                        projectionPolicies.laterDeclarationScoringPolicy(),
+                        laterScoringPolicy,
                         declarerOverallIndex,
                         targetOverallIndex,
                         remainingDeclarerSlots[declarerSourceIndex],
                         remainingTargetSlots[targetSourceIndex],
+                        0d,
                         activityWeightForOverallIndex(declarerOverallIndex)
                 );
                 if (blockedTurns > 0
@@ -1539,6 +1542,16 @@ final class LongHorizonForwardProjection {
         }
 
         CandidateEdgeTable projectedEdges = new CandidateEdgeTable(Math.max(4, retainedDeclarerCount * retainedTargetCount));
+        double[] targetBestActionability = usesTargetOpportunity(scoringPolicy)
+                ? projectedTargetBestActionability(
+                        state,
+                        warState,
+                        declarerOverallIndexes,
+                        targetOverallIndexes,
+                        applyPairLockoutTiming,
+                        turn
+                )
+                : new double[targetOverallIndexes.length];
         double[] deferredBestByDeclarer = new double[declarerSnapshots.size()];
         int horizonRemainingTurns = Math.max(0, horizonTurns - turn);
         if (applyPairLockoutTiming) {
@@ -1562,6 +1575,7 @@ final class LongHorizonForwardProjection {
                             targetOverallIndex,
                             remainingDeclarerSlots[projectedDeclarationSourceIndex(declarerOverallIndex, declarersAreScenarioAttackers)],
                             remainingTargetSlots[projectedDeclarationTargetSourceIndex(state, targetOverallIndex, declarersAreScenarioAttackers)],
+                            targetBestActionability[targetCompiledIndex],
                             activityWeightForOverallIndex(declarerOverallIndex)
                     ) * StrategicTimingValue.declarationWaitDiscount(blockedTurns, horizonRemainingTurns);
                     deferredBestByDeclarer[declarerCompiledIndex] = Math.max(
@@ -1595,6 +1609,7 @@ final class LongHorizonForwardProjection {
                         targetOverallIndex,
                         remainingDeclarerSlots[projectedDeclarationSourceIndex(declarerOverallIndex, declarersAreScenarioAttackers)],
                         remainingTargetSlots[projectedDeclarationTargetSourceIndex(state, targetOverallIndex, declarersAreScenarioAttackers)],
+                        targetBestActionability[targetCompiledIndex],
                         activityWeightForOverallIndex(declarerOverallIndex)
                 );
                 if (blockedTurns > 0
@@ -1664,6 +1679,7 @@ final class LongHorizonForwardProjection {
             int targetOverallIndex,
             int remainingDeclarerSlots,
             int remainingTargetSlots,
+            double targetBestActionability,
             double activityWeight
     ) {
         double declarerStrength = state.combatStrength(declarerOverallIndex);
@@ -1674,9 +1690,17 @@ final class LongHorizonForwardProjection {
         double underStrength = Double.isFinite(strengthRatio) ? Math.max(0d, 1d - strengthRatio) : 0d;
         double immediateHarm = 0d;
         double underStrengthExposure = underStrength * underStrength;
+        double targetActionSpaceExposure = primitiveDeclarationTargetActionSpaceExposure(
+                state,
+                warState,
+                declarerOverallIndex,
+                targetOverallIndex,
+                underStrengthExposure
+        );
         double selfExposure = (0.15d * declarerPressure)
                 + (0.85d * declarerPressure * underStrengthExposure)
-                + (0.35d * targetPressure * underStrengthExposure);
+                + (0.35d * targetPressure * underStrengthExposure)
+                + targetActionSpaceExposure;
         double specialistResourceSwing = primitiveSpecialistResourceSwing(
                 state,
                 declarerOverallIndex,
@@ -1697,8 +1721,81 @@ final class LongHorizonForwardProjection {
                 state.pendingConventionalStrengthGain(declarerOverallIndex),
                 remainingDeclarerSlots,
                 remainingTargetSlots,
+                targetBestActionability,
                 Math.max(0d, Math.min(1d, activityWeight))
         ));
+    }
+
+    private double primitiveDeclarationTargetActionSpaceExposure(
+            ProjectionState state,
+            DenseWarState warState,
+            int declarerOverallIndex,
+            int targetOverallIndex,
+            double underStrengthExposure
+    ) {
+        if (!(underStrengthExposure > 0d)) {
+            return 0d;
+        }
+        double targetActionSpace = state.marginalActionSpaceValue(targetOverallIndex, warState);
+        if (!(targetActionSpace > 0d)) {
+            return 0d;
+        }
+        double counterActionability = LaterDeclarationFit.actionability(
+                state.combatStrength(targetOverallIndex),
+                state.combatStrength(declarerOverallIndex)
+        );
+        return 0.20d * targetActionSpace * underStrengthExposure * Math.min(1.5d, counterActionability);
+    }
+
+    private double[] projectedTargetBestActionability(
+            ProjectionState state,
+            DenseWarState warState,
+            int[] declarerOverallIndexes,
+            int[] targetOverallIndexes,
+            boolean applyPairLockoutTiming,
+            int turn
+    ) {
+        double[] bestByTarget = new double[targetOverallIndexes.length];
+        for (int targetCompiledIndex = 0; targetCompiledIndex < targetOverallIndexes.length; targetCompiledIndex++) {
+            int targetOverallIndex = targetOverallIndexes[targetCompiledIndex];
+            for (int declarerOverallIndex : declarerOverallIndexes) {
+                if (warState.hasActiveWarBetween(declarerOverallIndex, targetOverallIndex)
+                        || !canProjectedDeclare(state, declarerOverallIndex, targetOverallIndex)
+                        || state.shouldPreserveDeclarerBeigeRebuild(declarerOverallIndex, targetOverallIndex)) {
+                    continue;
+                }
+                if (applyPairLockoutTiming
+                        && projectedDeclarationBlockedTurns(state, warState, declarerOverallIndex, targetOverallIndex, turn) > 0) {
+                    continue;
+                }
+                bestByTarget[targetCompiledIndex] = Math.max(
+                        bestByTarget[targetCompiledIndex],
+                        projectedDeclarationSlotActionability(state, declarerOverallIndex, targetOverallIndex)
+                );
+            }
+        }
+        return bestByTarget;
+    }
+
+    private double projectedDeclarationSlotActionability(
+            ProjectionState state,
+            int declarerOverallIndex,
+            int targetOverallIndex
+    ) {
+        double targetPressure = projectedControlPressure(state, targetOverallIndex);
+        double conventionalActionability = LaterDeclarationFit.actionability(
+                state.combatStrength(declarerOverallIndex),
+                state.combatStrength(targetOverallIndex)
+        );
+        double specialistActionability = LaterDeclarationFit.specialistSlotActionability(
+                primitiveSpecialistResourceSwing(state, declarerOverallIndex, targetOverallIndex),
+                targetPressure
+        );
+        return Math.max(conventionalActionability, specialistActionability);
+    }
+
+    private static boolean usesTargetOpportunity(LaterDeclarationScoringPolicy scoringPolicy) {
+        return scoringPolicy instanceof ObjectiveDrivenLaterDeclarationScoringPolicy;
     }
 
     private double primitiveSpecialistResourceSwing(
@@ -1805,6 +1902,7 @@ final class LongHorizonForwardProjection {
             int targetOverallIndex,
             int remainingDeclarerSlots,
             int remainingTargetSlots,
+            double targetBestActionability,
             double activityWeight
     ) {
         double openingScore = rawEdgeIndex >= 0 ? Math.max(0d, rawEdges.scalarScore(rawEdgeIndex)) : 0d;
@@ -1823,6 +1921,7 @@ final class LongHorizonForwardProjection {
                 state.pendingConventionalStrengthGain(declarerOverallIndex),
                 remainingDeclarerSlots,
                 remainingTargetSlots,
+                targetBestActionability,
                 Math.max(0d, Math.min(1d, activityWeight))
         ));
     }

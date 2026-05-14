@@ -40,28 +40,41 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
 
     @Test
     void scarceTargetSlotDoesNotAmplifyWeakConventionalDeclarer() {
-    ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
-        new TargetPressureObjective()
-    );
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+            new TargetPressureObjective()
+        );
 
-    double lastSlotScore = policy.score(context(55d, 100d, 1, 1));
-    double openTargetScore = policy.score(context(55d, 100d, 1, 3));
+        double lastSlotScore = policy.score(context(55d, 100d, 1, 1));
+        double openTargetScore = policy.score(context(55d, 100d, 1, 3));
 
-    assertTrue(lastSlotScore < openTargetScore,
-        "Weak conventional declarations should not be rewarded for consuming the target's scarce final defensive slot");
+        assertTrue(lastSlotScore < openTargetScore,
+            "Weak conventional declarations should not be rewarded for consuming the target's scarce final defensive slot");
     }
 
     @Test
     void scarceTargetSlotStillRewardsActionableDeclarer() {
-    ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
-        new TargetPressureObjective()
-    );
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+            new TargetPressureObjective()
+        );
 
-    double lastSlotScore = policy.score(context(130d, 100d, 1, 1));
-    double openTargetScore = policy.score(context(130d, 100d, 1, 3));
+        double lastSlotScore = policy.score(context(130d, 100d, 1, 1));
+        double openTargetScore = policy.score(context(130d, 100d, 1, 3));
 
-    assertTrue(lastSlotScore > openTargetScore,
-        "Actionable declarations can still value a scarce target slot");
+        assertTrue(lastSlotScore > openTargetScore,
+            "Actionable declarations can still value a scarce target slot");
+    }
+
+    @Test
+    void scarceTargetSlotPenalizesWeakDeclarerWhenBetterDeclarerIsAvailable() {
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+            new TargetPressureObjective()
+        );
+
+        double noBetterDeclarerScore = policy.score(context(55d, 100d, 1, 1, LaterDeclarationFit.actionability(55d, 100d)));
+        double betterDeclarerAvailableScore = policy.score(context(55d, 100d, 1, 1, LaterDeclarationFit.actionability(150d, 100d)));
+
+        assertTrue(betterDeclarerAvailableScore < noBetterDeclarerScore * 0.50d,
+            "Weak declarations should not spend a scarce target slot as if stronger available declarers did not exist");
     }
 
     @Test
@@ -83,6 +96,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             0d,
             1,
             1,
+            1d,
             1d
         ));
         double actionableScore = policy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
@@ -98,6 +112,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             0d,
             1,
             1,
+            1d,
             1d
         ));
 
@@ -126,6 +141,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             0d,
             1,
             1,
+            LaterDeclarationFit.specialistSlotActionability(320d, 250d),
             1d
         ));
 
@@ -173,9 +189,35 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 0d,
                 remainingDeclarerSlots,
                 remainingTargetSlots,
+                LaterDeclarationFit.actionability(declarerStrength, targetStrength),
                 1d
         );
     }
+
+            private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
+                double declarerStrength,
+                double targetStrength,
+                int remainingDeclarerSlots,
+                int remainingTargetSlots,
+                double targetBestActionability
+            ) {
+            return new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                100d,
+                declarerStrength,
+                targetStrength,
+                0d,
+                remainingDeclarerSlots,
+                remainingTargetSlots,
+                targetBestActionability,
+                1d
+            );
+            }
 
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext specialistContext(double selfExposure) {
         return new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
@@ -191,6 +233,7 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 0d,
                 1,
                 1,
+                LaterDeclarationFit.specialistSlotActionability(320d, 250d),
                 1d
         );
     }

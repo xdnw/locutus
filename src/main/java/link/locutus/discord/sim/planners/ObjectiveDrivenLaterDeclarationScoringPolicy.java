@@ -44,24 +44,29 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
         }
         double actionability = LaterDeclarationFit.actionability(context.declarerStrength(), context.targetStrength());
         double slotActionability = context.resourceSwing() > 0d
-            ? Math.max(actionability, specialistSlotActionability(context))
+            ? Math.max(actionability, LaterDeclarationFit.specialistSlotActionability(
+                    context.resourceSwing(),
+                    context.targetPressure()
+            ))
             : actionability;
         return context.activityWeight()
             * objectiveScore
             * actionability
             * rebuildReadiness(context)
                 * exposureReadiness(context)
+                * targetOpportunityReadiness(context, slotActionability)
             * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots(), slotActionability);
     }
 
-    private static double specialistSlotActionability(LaterDeclarationScoreContext context) {
-        if (!(context.resourceSwing() > 0d)) {
-            return 0d;
+    private static double targetOpportunityReadiness(LaterDeclarationScoreContext context, double slotActionability) {
+        double bestActionability = Math.max(0d, context.targetBestActionability());
+        if (!(bestActionability > slotActionability) || !(slotActionability > 0d)) {
+            return 1d;
         }
-        double targetScale = context.targetPressure() > 0d
-            ? Math.min(1d, context.resourceSwing() / context.targetPressure())
-            : 1d;
-        return 0.85d * Math.max(0d, targetScale);
+        double relativeActionability = Math.max(0d, Math.min(1d, slotActionability / bestActionability));
+        double slotScarcity = 1d / Math.sqrt(Math.max(1, context.remainingTargetSlots()));
+        double readiness = 1d - (slotScarcity * (1d - (relativeActionability * relativeActionability)));
+        return Math.max(0.05d, Math.min(1d, readiness));
     }
 
     private static double exposureReadiness(LaterDeclarationScoreContext context) {

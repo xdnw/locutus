@@ -20,6 +20,7 @@ interface LaterDeclarationScoringPolicy {
                 double declarerRebuildStrengthGain,
             int remainingDeclarerSlots,
             int remainingTargetSlots,
+            double targetBestActionability,
             double activityWeight
     ) {
     }

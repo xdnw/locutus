@@ -234,6 +234,7 @@ final class PlannerAutonomousDeclarationPlanner {
         }
         CandidateEdgeTable rescoredEdges = new CandidateEdgeTable(rawEdges.edgeCount());
         rescoredEdges.configureComponentRetention(retainedComponentPolicy(rawEdges));
+        double[] targetBestActionability = targetBestActionability(rawEdges, scenario);
         for (int edgeIndex = 0; edgeIndex < rawEdges.edgeCount(); edgeIndex++) {
             int attackerIndex = rawEdges.attackerIndex(edgeIndex);
             int defenderIndex = rawEdges.defenderIndex(edgeIndex);
@@ -253,6 +254,7 @@ final class PlannerAutonomousDeclarationPlanner {
                     0d,
                     Math.max(1, scenario.attackerFreeOffSlots(attackerIndex)),
                     Math.max(1, scenario.defenderFreeDefSlots(defenderIndex)),
+                    targetBestActionability[defenderIndex],
                     1d
             ));
             if (score <= scoreThreshold) {
@@ -273,6 +275,28 @@ final class PlannerAutonomousDeclarationPlanner {
             );
         }
         return rescoredEdges;
+    }
+
+    private static double[] targetBestActionability(CandidateEdgeTable rawEdges, CompiledScenario scenario) {
+        double[] best = new double[scenario.defenderCount()];
+        for (int edgeIndex = 0; edgeIndex < rawEdges.edgeCount(); edgeIndex++) {
+            int attackerIndex = rawEdges.attackerIndex(edgeIndex);
+            int defenderIndex = rawEdges.defenderIndex(edgeIndex);
+            DBNationSnapshot declarer = scenario.attacker(attackerIndex);
+            DBNationSnapshot target = scenario.defender(defenderIndex);
+            double conventionalActionability = LaterDeclarationFit.actionability(
+                    counterStrength(declarer),
+                    counterStrength(target)
+            );
+            double specialistActionability = rawEdges.retainsResourceSwing()
+                    ? LaterDeclarationFit.specialistSlotActionability(
+                            rawEdges.resourceSwing(edgeIndex),
+                            OpeningMetricSummary.defenderControlPressure(target)
+                    )
+                    : 0d;
+            best[defenderIndex] = Math.max(best[defenderIndex], Math.max(conventionalActionability, specialistActionability));
+        }
+        return best;
     }
 
     private static CandidateEdgeComponentPolicy retainedComponentPolicy(CandidateEdgeTable edges) {
