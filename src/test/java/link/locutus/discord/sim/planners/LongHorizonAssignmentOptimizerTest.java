@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -1398,6 +1399,8 @@ class LongHorizonAssignmentOptimizerTest {
                 "The small-portfolio path should audit only generated bounded variants");
         assertTrue(solveStats.counters().getOrDefault("boundedProjectedFollowOnPromotionAudits", 0L) <= 2L,
                 "Follow-on promotion should remain bounded to the current best and marginal-flow seeds, not replay every later declaration");
+        assertTrue(solveStats.counters().getOrDefault("boundedProjectedFollowOnRebalanceAudits", 0L) <= 2L,
+                "Follow-on rebalance should stay bounded to one structural swap candidate per audited seed");
         assertFalse(solveStats.counters().containsKey("fixedPointFeedbackDeferred"),
                 "Fixed-point feedback should remain on the dedicated path instead of being deferred by the portfolio owner");
     }
@@ -1521,6 +1524,8 @@ class LongHorizonAssignmentOptimizerTest {
         assertTrue(solveStats.counters().getOrDefault("boundedProjectedAudits", 0L)
                         >= solveStats.counters().getOrDefault("boundedProjectedReliefAudits", 0L),
                 "Bounded projected audits should not hide extra work inside the relief budget itself");
+        assertTrue(solveStats.counters().getOrDefault("boundedProjectedFollowOnRebalanceAudits", 0L) <= 2L,
+                "Slot-denial projected families should keep rebalance audits bounded to the same small seed set");
     }
 
     @Test
@@ -2775,6 +2780,84 @@ class LongHorizonAssignmentOptimizerTest {
         assertNotNull(promoted);
         assertEquals(List.of(101, 102), promoted.assignment().get(1),
                 "The bounded promotion candidate should add the projected follow-on as an opening declaration when initial caps allow it");
+    }
+
+    @Test
+    void followOnRebalanceCandidateSwapsOutWeakOpeningForProjectedDelayedDeclaration() {
+        List<DBNationSnapshot> attackers = List.of(
+                withTotalScore(nation(1, 1, 900), 2_000.0).toBuilder().maxOff(2).build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                withTotalScore(nation(101, 2, 900), 2_000.0).toBuilder().maxOff(0).build(),
+                withTotalScore(nation(102, 2, 900), 2_000.0).toBuilder().maxOff(0).build(),
+                withTotalScore(nation(103, 2, 900), 2_000.0).toBuilder().maxOff(0).build()
+        );
+        CompiledScenario scenario = compile(attackers, defenders, Map.of());
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 100.0f, 0.0f);
+        edges.add(0, 1, 95.0f, 0.0f);
+        edges.add(0, 2, 5.0f, 0.0f);
+        int[] attackerCaps = {2};
+        int[] defenderCaps = {1, 1, 1};
+        int[] attackerNationIds = {1};
+        int[] defenderNationIds = {101, 102, 103};
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                2,
+                1.0d,
+                false,
+                SidePlannerSettings.legacy(),
+                SidePlannerSettings.legacy(),
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+        LongHorizonAssignmentOptimizer.Candidate seed = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, new IntArrayList(List.of(101, 103))),
+                new boolean[]{true, false, true},
+                new int[]{2},
+                new int[]{1, 0, 1},
+                projection.assignmentScoreDense(new boolean[]{true, false, true}, new int[]{2}, new int[]{1, 0, 1})
+        );
+
+        LongHorizonForwardProjection.ProjectedEvaluation evaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{0},
+                12d,
+                List.of(new LongHorizonForwardProjection.OpeningSideLaterDeclaration(1, 102, 24, 95d, 12d))
+        );
+        LongHorizonAssignmentOptimizer.Candidate promoted = LongHorizonAssignmentOptimizer.followOnPromotionCandidate(
+                edges,
+                attackerCaps,
+                defenderCaps,
+                attackerNationIds,
+                defenderNationIds,
+                seed,
+                projection,
+                evaluation
+        );
+        LongHorizonAssignmentOptimizer.Candidate rebalanced = LongHorizonAssignmentOptimizer.followOnRebalanceCandidate(
+                edges,
+                attackerCaps,
+                defenderCaps,
+                attackerNationIds,
+                defenderNationIds,
+                new boolean[edges.edgeCount()],
+                seed,
+                projection,
+                evaluation
+        );
+
+        assertTrue(evaluation.openingSideDelayedDeclarationRegret() > 0d,
+                "Synthetic projected evaluation must expose a delayed opening-side declaration worth promoting into the opening family");
+        assertNull(promoted,
+                "Direct promotion should stay blocked when the seed is already at the opening cap");
+        assertNotNull(rebalanced);
+        assertEquals(List.of(101, 102), rebalanced.assignment().get(1),
+                "The bounded rebalance candidate should evict the weakest opening and admit the higher-regret delayed follow-on");
     }
 
     @Test

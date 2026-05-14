@@ -542,6 +542,7 @@ final class LongHorizonAssignmentOptimizer {
                 Candidate diversityHedge = preserveBudgetBreadth
                         ? selectDiversityHedge(reliefCandidates, marginalCandidate, projectedAuditLimit)
                         : null;
+                boolean[] fixedEdgeMask = fixedEdgeMask(baseEdges, attackerNationIds, defenderNationIds, fixedEdges);
                 Candidate coverageRepairSeed = bestCommitmentBudget == null ? marginalCandidate : bestCommitmentBudget;
                 List<Candidate> coverageRepairCandidates = highCityCoverageRepairCandidates(
                         baseEdges,
@@ -550,7 +551,7 @@ final class LongHorizonAssignmentOptimizer {
                         defenderCaps,
                         attackerNationIds,
                         defenderNationIds,
-                        fixedEdges,
+                    fixedEdgeMask,
                         coverageRepairSeed,
                         terminalProjection,
                         HIGH_CITY_COVERAGE_REPAIR_AUDITS
@@ -560,6 +561,7 @@ final class LongHorizonAssignmentOptimizer {
                 int diversityAudited = 0;
                 int coverageRepairAudited = 0;
                 int followOnPromotionAudited = 0;
+                int followOnRebalanceAudited = 0;
                 Candidate best = currentBest;
                 for (Candidate candidate : reliefCandidates) {
                     if (reliefAudited >= projectedAuditLimit) {
@@ -588,22 +590,52 @@ final class LongHorizonAssignmentOptimizer {
                     best = projectedEvaluator.betterCandidate(best, bestCommitmentBudget, terminalProjection);
                     audited++;
                 }
+                Candidate bestSeedForFollowOnFamilies = best;
+                LongHorizonForwardProjection.ProjectedEvaluation bestFollowOnEvaluation = followOnEvaluation(
+                        bestSeedForFollowOnFamilies,
+                        terminalProjection,
+                        projectedEvaluator
+                );
                 Candidate bestFollowOnPromotionCandidate = followOnPromotionCandidate(
                         baseEdges,
                         attackerCaps,
                         defenderCaps,
                         attackerNationIds,
                         defenderNationIds,
-                        best,
+                        bestSeedForFollowOnFamilies,
                         terminalProjection,
-                        projectedEvaluator
+                        bestFollowOnEvaluation
                 );
                 if (bestFollowOnPromotionCandidate != null) {
                     best = projectedEvaluator.betterCandidate(best, bestFollowOnPromotionCandidate, terminalProjection);
                     audited++;
                     followOnPromotionAudited++;
                 }
-                Candidate marginalFollowOnPromotionCandidate = best == marginalCandidate
+                Candidate bestFollowOnRebalanceCandidate = followOnRebalanceCandidate(
+                        baseEdges,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdgeMask,
+                        bestSeedForFollowOnFamilies,
+                        terminalProjection,
+                        bestFollowOnEvaluation
+                );
+                if (bestFollowOnRebalanceCandidate != null) {
+                    best = projectedEvaluator.betterCandidate(best, bestFollowOnRebalanceCandidate, terminalProjection);
+                    audited++;
+                    followOnRebalanceAudited++;
+                }
+                Candidate marginalSeedForFollowOnFamilies = bestSeedForFollowOnFamilies == marginalCandidate
+                        ? null
+                        : marginalCandidate;
+                LongHorizonForwardProjection.ProjectedEvaluation marginalFollowOnEvaluation = followOnEvaluation(
+                        marginalSeedForFollowOnFamilies,
+                        terminalProjection,
+                        projectedEvaluator
+                );
+                Candidate marginalFollowOnPromotionCandidate = marginalSeedForFollowOnFamilies == null
                         ? null
                         : followOnPromotionCandidate(
                                 baseEdges,
@@ -611,27 +643,59 @@ final class LongHorizonAssignmentOptimizer {
                                 defenderCaps,
                                 attackerNationIds,
                                 defenderNationIds,
-                                marginalCandidate,
+                                marginalSeedForFollowOnFamilies,
                                 terminalProjection,
-                                projectedEvaluator
+                                marginalFollowOnEvaluation
                         );
                 if (marginalFollowOnPromotionCandidate != null) {
                     best = projectedEvaluator.betterCandidate(best, marginalFollowOnPromotionCandidate, terminalProjection);
                     audited++;
                     followOnPromotionAudited++;
                 }
+                Candidate marginalFollowOnRebalanceCandidate = marginalSeedForFollowOnFamilies == null
+                        ? null
+                        : followOnRebalanceCandidate(
+                                baseEdges,
+                                attackerCaps,
+                                defenderCaps,
+                                attackerNationIds,
+                                defenderNationIds,
+                                fixedEdgeMask,
+                                marginalSeedForFollowOnFamilies,
+                                terminalProjection,
+                                marginalFollowOnEvaluation
+                        );
+                if (marginalFollowOnRebalanceCandidate != null) {
+                    best = projectedEvaluator.betterCandidate(best, marginalFollowOnRebalanceCandidate, terminalProjection);
+                    audited++;
+                    followOnRebalanceAudited++;
+                }
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedPortfolio", 1);
                 int commitmentCandidateCount = bestCommitmentBudget == null ? 0 : 1;
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCandidates", reliefCandidates.size()
                         + commitmentCandidateCount
                         + (bestFollowOnPromotionCandidate == null ? 0 : 1)
-                        + (marginalFollowOnPromotionCandidate == null ? 0 : 1));
+                    + (marginalFollowOnPromotionCandidate == null ? 0 : 1)
+                    + (bestFollowOnRebalanceCandidate == null ? 0 : 1)
+                    + (marginalFollowOnRebalanceCandidate == null ? 0 : 1));
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedAudits", audited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedReliefAudits", reliefAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedDiversityAudits", diversityAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCoverageRepairAudits", coverageRepairAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnPromotionAudits", followOnPromotionAudited);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceAudits", followOnRebalanceAudited);
                 return best;
+            }
+
+            private static LongHorizonForwardProjection.ProjectedEvaluation followOnEvaluation(
+                    Candidate seed,
+                    LongHorizonControlProjection terminalProjection,
+                    LongHorizonCandidateEvaluator projectedEvaluator
+            ) {
+                if (seed == null || seed.isEmpty()) {
+                    return null;
+                }
+                return projectedEvaluator.projectedEvaluation(seed, terminalProjection);
             }
 
             static Candidate followOnPromotionCandidate(
@@ -644,10 +708,34 @@ final class LongHorizonAssignmentOptimizer {
                     LongHorizonControlProjection terminalProjection,
                     LongHorizonCandidateEvaluator projectedEvaluator
             ) {
+                return followOnPromotionCandidate(
+                        baseEdges,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerNationIds,
+                        defenderNationIds,
+                        seed,
+                        terminalProjection,
+                        followOnEvaluation(seed, terminalProjection, projectedEvaluator)
+                );
+            }
+
+            static Candidate followOnPromotionCandidate(
+                    CandidateEdgeTable baseEdges,
+                    int[] attackerCaps,
+                    int[] defenderCaps,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    Candidate seed,
+                    LongHorizonControlProjection terminalProjection,
+                    LongHorizonForwardProjection.ProjectedEvaluation evaluation
+            ) {
                 if (seed == null || seed.isEmpty()) {
                     return null;
                 }
-                LongHorizonForwardProjection.ProjectedEvaluation evaluation = projectedEvaluator.projectedEvaluation(seed, terminalProjection);
+                if (evaluation == null) {
+                    return null;
+                }
                 List<LongHorizonForwardProjection.OpeningSideLaterDeclaration> followOns = evaluation.openingSideLaterDeclarations();
                 if (followOns.isEmpty()) {
                     return null;
@@ -702,6 +790,135 @@ final class LongHorizonAssignmentOptimizer {
                 return new Candidate(assignment, edgeAssigned, attackerCounts, defenderCounts, projectionScore);
             }
 
+            static Candidate followOnRebalanceCandidate(
+                    CandidateEdgeTable baseEdges,
+                    int[] attackerCaps,
+                    int[] defenderCaps,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    List<BlitzFixedEdge> fixedEdges,
+                    Candidate seed,
+                    LongHorizonControlProjection terminalProjection,
+                    LongHorizonCandidateEvaluator projectedEvaluator
+            ) {
+                return followOnRebalanceCandidate(
+                        baseEdges,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdgeMask(baseEdges, attackerNationIds, defenderNationIds, fixedEdges),
+                        seed,
+                        terminalProjection,
+                        followOnEvaluation(seed, terminalProjection, projectedEvaluator)
+                );
+            }
+
+            static Candidate followOnRebalanceCandidate(
+                    CandidateEdgeTable baseEdges,
+                    int[] attackerCaps,
+                    int[] defenderCaps,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    boolean[] fixedEdgeMask,
+                    Candidate seed,
+                    LongHorizonControlProjection terminalProjection,
+                    LongHorizonForwardProjection.ProjectedEvaluation evaluation
+            ) {
+                if (seed == null || seed.isEmpty() || evaluation == null) {
+                    return null;
+                }
+                List<LongHorizonForwardProjection.OpeningSideLaterDeclaration> followOns = evaluation.openingSideLaterDeclarations();
+                if (followOns.isEmpty()) {
+                    return null;
+                }
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceSignals", followOns.size());
+                Long2IntOpenHashMap baseEdgeByPair = baseEdges.edgeIndexByPair(attackerNationIds, defenderNationIds);
+                boolean[] edgeAssigned = seed.edgeAssigned().clone();
+                int[] attackerCounts = seed.attackerCounts().clone();
+                int[] defenderCounts = seed.defenderCounts().clone();
+                Map<Integer, List<Integer>> assignment = cloneAssignment(seed.assignment());
+                int rebalanced = 0;
+                int removed = 0;
+                int alreadyAssigned = 0;
+                int missingBaseEdge = 0;
+                int capBlocked = 0;
+                for (LongHorizonForwardProjection.OpeningSideLaterDeclaration followOn : followOns) {
+                    if (rebalanced >= FOLLOW_ON_PROMOTION_EDGE_LIMIT) {
+                        break;
+                    }
+                    int edgeIndex = baseEdgeByPair.get(pairKey(followOn.declarerNationId(), followOn.targetNationId()));
+                    if (edgeIndex < 0 || edgeIndex >= edgeAssigned.length) {
+                        missingBaseEdge++;
+                        continue;
+                    }
+                    if (edgeAssigned[edgeIndex]) {
+                        alreadyAssigned++;
+                        continue;
+                    }
+                    int attackerIndex = baseEdges.attackerIndex(edgeIndex);
+                    int defenderIndex = baseEdges.defenderIndex(edgeIndex);
+                    boolean attackerBlocked = attackerIndex < 0
+                            || attackerIndex >= attackerCounts.length
+                            || attackerCounts[attackerIndex] >= attackerCaps[attackerIndex];
+                    boolean defenderBlocked = defenderIndex < 0
+                            || defenderIndex >= defenderCounts.length
+                            || defenderCounts[defenderIndex] >= defenderCaps[defenderIndex];
+                    if (!attackerBlocked && !defenderBlocked) {
+                        continue;
+                    }
+                    int attackerRemoval = attackerBlocked
+                            ? weakestAssignedEdgeForAttacker(baseEdges, fixedEdgeMask, edgeAssigned, attackerIndex)
+                            : -1;
+                    if (attackerBlocked && attackerRemoval < 0) {
+                        capBlocked++;
+                        continue;
+                    }
+                    int defenderRemoval = -1;
+                    int defenderCountAfterAttackerRemoval = defenderCounts[defenderIndex];
+                    if (attackerRemoval >= 0 && baseEdges.defenderIndex(attackerRemoval) == defenderIndex) {
+                        defenderCountAfterAttackerRemoval--;
+                    }
+                    if (defenderBlocked && defenderCountAfterAttackerRemoval >= defenderCaps[defenderIndex]) {
+                        defenderRemoval = weakestAssignedEdgeForDefender(
+                                baseEdges,
+                                fixedEdgeMask,
+                                edgeAssigned,
+                                defenderIndex,
+                                attackerRemoval
+                        );
+                        if (defenderRemoval < 0) {
+                            capBlocked++;
+                            continue;
+                        }
+                    }
+                    if (attackerRemoval >= 0) {
+                        removeAssignedEdge(baseEdges, assignment, edgeAssigned, attackerCounts, defenderCounts, attackerNationIds, defenderNationIds, attackerRemoval);
+                        removed++;
+                    }
+                    if (defenderRemoval >= 0 && defenderRemoval != attackerRemoval) {
+                        removeAssignedEdge(baseEdges, assignment, edgeAssigned, attackerCounts, defenderCounts, attackerNationIds, defenderNationIds, defenderRemoval);
+                        removed++;
+                    }
+                    edgeAssigned[edgeIndex] = true;
+                    attackerCounts[attackerIndex]++;
+                    defenderCounts[defenderIndex]++;
+                    assignment.computeIfAbsent(attackerNationIds[attackerIndex], ignored -> new IntArrayList())
+                            .add(defenderNationIds[defenderIndex]);
+                    rebalanced++;
+                }
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceAlreadyAssigned", alreadyAssigned);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceMissingBaseEdge", missingBaseEdge);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceCapBlocked", capBlocked);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceEdges", rebalanced);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceRemovedEdges", removed);
+                if (rebalanced == 0 || removed == 0) {
+                    return null;
+                }
+                double projectionScore = terminalProjection.assignmentScoreDense(edgeAssigned, attackerCounts, defenderCounts);
+                return new Candidate(assignment, edgeAssigned, attackerCounts, defenderCounts, projectionScore);
+            }
+
             private static List<Candidate> highCityCoverageRepairCandidates(
                     CandidateEdgeTable baseEdges,
                     CompiledScenario scenario,
@@ -709,7 +926,7 @@ final class LongHorizonAssignmentOptimizer {
                     int[] defenderCaps,
                     int[] attackerNationIds,
                     int[] defenderNationIds,
-                    List<BlitzFixedEdge> fixedEdges,
+                    boolean[] fixedEdgeMask,
                     Candidate seed,
                     LongHorizonControlProjection terminalProjection,
                     int maxCandidates
@@ -718,7 +935,6 @@ final class LongHorizonAssignmentOptimizer {
                 if (maxCandidates <= 0 || seed == null || seed.isEmpty()) {
                     return candidates;
                 }
-                boolean[] fixedEdgeMask = fixedEdgeMask(baseEdges, attackerNationIds, defenderNationIds, fixedEdges);
                 boolean[] usedAttacker = new boolean[scenario.attackerCount()];
                 Candidate repairSeed = seed;
                 for (int defenderIndex = 0; defenderIndex < seed.defenderCounts().length && candidates.size() < maxCandidates; defenderIndex++) {
@@ -750,6 +966,81 @@ final class LongHorizonAssignmentOptimizer {
                     }
                 }
                 return candidates;
+            }
+
+            private static int weakestAssignedEdgeForAttacker(
+                    CandidateEdgeTable baseEdges,
+                    boolean[] fixedEdgeMask,
+                    boolean[] edgeAssigned,
+                    int attackerIndex
+            ) {
+                int bestEdge = -1;
+                double bestScore = Double.POSITIVE_INFINITY;
+                for (int edgeIndex = 0; edgeIndex < edgeAssigned.length; edgeIndex++) {
+                    if (!edgeAssigned[edgeIndex]
+                            || fixedEdgeMask[edgeIndex]
+                            || baseEdges.attackerIndex(edgeIndex) != attackerIndex) {
+                        continue;
+                    }
+                    double score = baseEdges.scalarScore(edgeIndex);
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestEdge = edgeIndex;
+                    }
+                }
+                return bestEdge;
+            }
+
+            private static int weakestAssignedEdgeForDefender(
+                    CandidateEdgeTable baseEdges,
+                    boolean[] fixedEdgeMask,
+                    boolean[] edgeAssigned,
+                    int defenderIndex,
+                    int excludedEdge
+            ) {
+                int bestEdge = -1;
+                double bestScore = Double.POSITIVE_INFINITY;
+                for (int edgeIndex = 0; edgeIndex < edgeAssigned.length; edgeIndex++) {
+                    if (edgeIndex == excludedEdge
+                            || !edgeAssigned[edgeIndex]
+                            || fixedEdgeMask[edgeIndex]
+                            || baseEdges.defenderIndex(edgeIndex) != defenderIndex) {
+                        continue;
+                    }
+                    double score = baseEdges.scalarScore(edgeIndex);
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestEdge = edgeIndex;
+                    }
+                }
+                return bestEdge;
+            }
+
+            private static void removeAssignedEdge(
+                    CandidateEdgeTable baseEdges,
+                    Map<Integer, List<Integer>> assignment,
+                    boolean[] edgeAssigned,
+                    int[] attackerCounts,
+                    int[] defenderCounts,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    int edgeIndex
+            ) {
+                if (edgeIndex < 0 || edgeIndex >= edgeAssigned.length || !edgeAssigned[edgeIndex]) {
+                    return;
+                }
+                int attackerIndex = baseEdges.attackerIndex(edgeIndex);
+                int defenderIndex = baseEdges.defenderIndex(edgeIndex);
+                edgeAssigned[edgeIndex] = false;
+                attackerCounts[attackerIndex]--;
+                defenderCounts[defenderIndex]--;
+                List<Integer> targets = assignment.get(attackerNationIds[attackerIndex]);
+                if (targets != null) {
+                    targets.remove(Integer.valueOf(defenderNationIds[defenderIndex]));
+                    if (targets.isEmpty()) {
+                        assignment.remove(attackerNationIds[attackerIndex]);
+                    }
+                }
             }
 
             private static int bestActiveIncomingEdge(
