@@ -2957,6 +2957,84 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void slotRichReallocationCandidatePromotesLightlyUsedDeclarerBeforeBusyFollowOn() {
+        List<DBNationSnapshot> attackers = List.of(
+                strategicNation(1, 1, 0, 40, 1.0d, 6),
+                strategicNation(2, 1, 1, 30, 1.0d, 3)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                strategicNation(101, 2, 0, 30, 1.0d, 1),
+                strategicNation(102, 2, 1, 30, 1.0d, 1)
+        );
+        CompiledScenario scenario = CompiledScenario.scorerOnlyPlannerView(
+                attackers,
+                defenders,
+                new int[]{6, 3},
+                new int[]{1, 1}
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, 80.0f, 0.0f);
+        edges.add(1, 0, 100.0f, 0.0f);
+        edges.add(1, 1, 95.0f, 0.0f);
+        int[] attackerCaps = {6, 3};
+        int[] defenderCaps = {1, 1};
+        int[] attackerStrengthRanks = {1, 0};
+        int[] attackerNationIds = {1, 2};
+        int[] defenderNationIds = {101, 102};
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                72,
+                1.0d,
+                false,
+                SidePlannerSettings.legacyActing()
+        );
+        LongHorizonAssignmentOptimizer.Candidate seed = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(2, new IntArrayList(List.of(101))),
+                new boolean[]{false, true, false},
+                new int[]{0, 1},
+                new int[]{1, 0},
+                projection.assignmentScoreDense(new boolean[]{false, true, false}, new int[]{0, 1}, new int[]{1, 0})
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation evaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{0, 0},
+                10d,
+                List.of(
+                        new LongHorizonForwardProjection.OpeningSideLaterDeclaration(2, 102, 24, 95d, 12d),
+                        new LongHorizonForwardProjection.OpeningSideLaterDeclaration(1, 101, 24, 80d, 10d)
+                ),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(0, 0, 0, 2, 0)
+        );
+
+        LongHorizonAssignmentOptimizer.Candidate reallocated = LongHorizonAssignmentOptimizer.slotRichReallocationCandidate(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerNationIds,
+                defenderNationIds,
+                new boolean[edges.edgeCount()],
+                seed,
+                projection,
+                evaluation
+        );
+
+        assertNotNull(reallocated,
+                "The bounded portfolio should audit a real turn-0 substitution for a slot-rich lightly used declarer");
+        assertEquals(List.of(101), reallocated.assignment().get(1),
+                "The slot-rich family should promote the lightly used declarer instead of following the first busy-declarer delayed declaration");
+        assertFalse(reallocated.assignment().containsKey(2),
+                "The substitution family should free the displaced busy declarer instead of layering on another busy-source opening");
+        assertArrayEquals(new int[]{1, 0}, reallocated.attackerCounts(),
+                "The slot-rich family should move the opening source rather than preserve the original busy attacker count shape");
+    }
+
+    @Test
     void projectedFamilyConsequenceTieBreakPrefersLowerCounterStorm() {
         LongHorizonAssignmentOptimizer.Candidate saferCandidate = new LongHorizonAssignmentOptimizer.Candidate(
                 Map.of(1, List.of(101)),
@@ -3203,6 +3281,7 @@ class LongHorizonAssignmentOptimizerTest {
         List<LongHorizonAssignmentOptimizer.Candidate> seeds = LongHorizonAssignmentOptimizer.followOnFamilySeeds(
                 best,
                 marginal,
+                null,
                 null,
                 null,
                 null,

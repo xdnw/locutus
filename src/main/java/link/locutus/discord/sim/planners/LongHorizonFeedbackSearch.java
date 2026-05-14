@@ -634,7 +634,7 @@ final class LongHorizonFeedbackSearch {
         return false;
     }
 
-    private static boolean hasSlotRichLightlyUsedAttackers(CompiledScenario scenario, int[] attackerCounts) {
+    static boolean hasSlotRichLightlyUsedAttackers(CompiledScenario scenario, int[] attackerCounts) {
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
             if (isSlotRichLightlyUsedAttacker(scenario, attackerCounts, attackerIndex)) {
                 return true;
@@ -643,7 +643,7 @@ final class LongHorizonFeedbackSearch {
         return false;
     }
 
-    private static boolean isSlotRichLightlyUsedAttacker(
+    static boolean isSlotRichLightlyUsedAttacker(
             CompiledScenario scenario,
             int[] attackerCounts,
             int attackerIndex
