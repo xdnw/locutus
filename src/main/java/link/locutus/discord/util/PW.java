@@ -1952,40 +1952,118 @@ public final class PW {
         };
     }
 
+    public static void getOdds4(double attStrength, double defStrength, double[] out, int off) {
+        if (attStrength <= 0.0) {
+            out[off]     = 1.0;
+            out[off + 1] = 0.0;
+            out[off + 2] = 0.0;
+            out[off + 3] = 0.0;
+            return;
+        }
+
+        if (defStrength <= 0.0) {
+            out[off]     = 0.0;
+            out[off + 1] = 0.0;
+            out[off + 2] = 0.0;
+            out[off + 3] = 1.0;
+            return;
+        }
+
+        double x = attStrength / defStrength;
+
+        if (x <= 0.294722519891231) {
+            out[off]     = 1.0;
+            out[off + 1] = 0.0;
+            out[off + 2] = 0.0;
+            out[off + 3] = 0.0;
+            return;
+        }
+
+        if (x >= 3.393022020743633) {
+            out[off]     = 0.0;
+            out[off + 1] = 0.0;
+            out[off + 2] = 0.0;
+            out[off + 3] = 1.0;
+            return;
+        }
+
+        double s = Math.sqrt(x);
+        double r = s * Math.sqrt(s);
+        double invR = 1.0 / r;
+
+        double p;
+        if (r < 1.0) {
+            p = 1.3888888888888888 * r
+                    + 0.2222222222222222 * invR
+                    - 1.1111111111111112;
+        } else {
+            p = 2.111111111111111
+                    - 1.3888888888888888 * invR
+                    - 0.2222222222222222 * r;
+        }
+
+        double q = 1.0 - p;
+        double pp = p * p;
+        double qq = q * q;
+
+        out[off]     = q * qq;
+        out[off + 1] = 3.0 * p * qq;
+        out[off + 2] = 3.0 * pp * q;
+        out[off + 3] = p * pp;
+    }
+
     public static double getOdds(double attStrength, double defStrength, int success) {
-        attStrength = Math.pow(attStrength, 0.75);
-        defStrength = Math.pow(defStrength, 0.75);
+        if (success < 0 || success > 3) {
+            return 0.0;
+        }
 
-        double attMin = attStrength * 0.4;
-        double attMax = attStrength;
-        double defMin = defStrength * 0.4;
-        double defMax = defStrength;
+        if (attStrength <= 0.0) {
+            return success == 0 ? 1.0 : 0.0;
+        }
 
-        // Skip formula for common cases (for performance)
-        if (attStrength <= 0)
-            return success == 0 ? 1 : 0;
-        if (defStrength * 2.5 <= attStrength)
-            return success == 3 ? 1 : 0;
-        if (attMax <= defMin || defMax <= attMin)
-            return success == 0 ? 1 : 0;
+        if (defStrength <= 0.0) {
+            return success == 3 ? 1.0 : 0.0;
+        }
 
-        double sampleSpace = (attMax - attMin) * (defMax - defMin);
-        double overlap = Math.min(attMax, defMax) - Math.max(attMin, defMin);
-        double p = (overlap * overlap * 0.5) / sampleSpace;
-        if (attStrength > defStrength)
-            p = 1 - p;
+        double x = attStrength / defStrength;
 
-        if (p <= 0)
-            return 0;
-        if (p >= 1)
-            return 1;
+        if (x <= 0.294722519891231) {
+            return success == 0 ? 1.0 : 0.0;
+        }
 
-        int k = success;
-        int n = 3;
+        if (x >= 3.393022020743633) {
+            return success == 3 ? 1.0 : 0.0;
+        }
 
-        double odds = Math.pow(p, k) * Math.pow(1 - p, n - k);
-        double npr = MathMan.factorial(n) / (double) (MathMan.factorial(k) * MathMan.factorial(n - k));
-        return odds * npr;
+        // r = x^0.75 = sqrt(x) * sqrt(sqrt(x))
+        double s = Math.sqrt(x);
+        double r = s * Math.sqrt(s);
+
+        double invR = 1.0 / r;
+
+        // Algebraically equivalent to the overlap formula, but avoids t*t and denom multiply.
+        double p;
+        if (r < 1.0) {
+            // p = (25/18)r - 10/9 + 2/(9r)
+            p = 1.3888888888888888 * r
+                    + 0.2222222222222222 * invR
+                    - 1.1111111111111112;
+        } else {
+            // p = 19/9 - 25/(18r) - 2r/9
+            p = 2.111111111111111
+                    - 1.3888888888888888 * invR
+                    - 0.2222222222222222 * r;
+        }
+
+        double q = 1.0 - p;
+
+        return switch (success) {
+            case 0 -> q * q * q;
+            case 1 -> 3.0 * p * q * q;
+            case 2 -> 3.0 * p * p * q;
+            case 3 -> p * p * p;
+            default -> 0.0;
+        };
     }
 
     public static Set<Integer> parseAlliances(GuildDB db, String arg) {
