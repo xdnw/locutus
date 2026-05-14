@@ -21,10 +21,26 @@ final class LaterDeclarationFit {
     }
 
     static double slotFit(int remainingDeclarerSlots, int remainingTargetSlots) {
+        return slotFit(remainingDeclarerSlots, remainingTargetSlots, 1d);
+    }
+
+    static double slotFit(int remainingDeclarerSlots, int remainingTargetSlots, double actionability) {
         int declarerSlots = Math.max(1, remainingDeclarerSlots);
         int targetSlots = Math.max(1, remainingTargetSlots);
         double declarerBreadth = 0.70d + (0.15d * Math.min(3, declarerSlots));
         double targetContention = 1d / Math.sqrt(targetSlots);
-        return declarerBreadth * targetContention;
+        double boundedActionability = clamp01(actionability);
+        double targetOpportunityFit = 1d - (targetContention * (1d - boundedActionability));
+        return declarerBreadth * targetContention * Math.max(0d, targetOpportunityFit);
+    }
+
+    private static double clamp01(double value) {
+        if (value <= 0d) {
+            return 0d;
+        }
+        if (value >= 1d) {
+            return 1d;
+        }
+        return value;
     }
 }

@@ -39,6 +39,32 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
     }
 
     @Test
+    void scarceTargetSlotDoesNotAmplifyWeakConventionalDeclarer() {
+    ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+        new TargetPressureObjective()
+    );
+
+    double lastSlotScore = policy.score(context(55d, 100d, 1, 1));
+    double openTargetScore = policy.score(context(55d, 100d, 1, 3));
+
+    assertTrue(lastSlotScore < openTargetScore,
+        "Weak conventional declarations should not be rewarded for consuming the target's scarce final defensive slot");
+    }
+
+    @Test
+    void scarceTargetSlotStillRewardsActionableDeclarer() {
+    ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+        new TargetPressureObjective()
+    );
+
+    double lastSlotScore = policy.score(context(130d, 100d, 1, 1));
+    double openTargetScore = policy.score(context(130d, 100d, 1, 3));
+
+    assertTrue(lastSlotScore > openTargetScore,
+        "Actionable declarations can still value a scarce target slot");
+    }
+
+    @Test
     void controlPolicyDoesNotTreatTargetPressureAsAlreadyCapturedDamage() {
         ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
             link.locutus.discord.sim.BlitzObjective.CONTROL.objective()
@@ -107,6 +133,20 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             "Legal specialist pressure should be visible to CONTROL even when conventional control is not attainable");
     }
 
+    @Test
+    void specialistPressureIsDampedBySevereSelfExposure() {
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+            link.locutus.discord.sim.BlitzObjective.CONTROL.objective()
+        );
+
+        double cleanSpecialistScore = policy.score(specialistContext(0d));
+        double exposedSpecialistScore = policy.score(specialistContext(500d));
+
+        assertTrue(cleanSpecialistScore > 0d);
+        assertTrue(exposedSpecialistScore < cleanSpecialistScore * 0.25d,
+                "Specialist resource pressure should not overwhelm severe projected self-exposure");
+    }
+
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
             double declarerStrength,
             double targetStrength
@@ -133,6 +173,24 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 0d,
                 remainingDeclarerSlots,
                 remainingTargetSlots,
+                1d
+        );
+    }
+
+    private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext specialistContext(double selfExposure) {
+        return new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+                0d,
+                0d,
+                selfExposure,
+                320d,
+                0d,
+                0d,
+                250d,
+                60d,
+                200d,
+                0d,
+                1,
+                1,
                 1d
         );
     }

@@ -118,20 +118,17 @@ final class PlannerAutonomousDeclarationPlanner {
         if (scenario.attackerCount() == 0 || scenario.defenderCount() == 0 || edges.edgeCount() == 0) {
             return Plan.empty();
         }
-            LongHorizonAssignmentOptimizer.Candidate candidate = LongHorizonAssignmentOptimizer.solveWithAttackerCaps(
-                    edges,
-                    scenario,
-                    attackerCaps,
-                    defenderCaps,
+            Map<Integer, List<Integer>> assignment = PrimitiveAssignmentSolver.solveAssignment(
+                edges,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
                     attackerStrengthRanks(scenario),
-                    attackerNationIds,
-                    defenderNationIds,
-                    List.of(),
-                    Math.max(1, remainingTurns),
-                    false,
-                    declarerPlannerSettings
+                attackerNationIds,
+                defenderNationIds
             );
-                return planFromAssignment(candidate.assignment(), edges, attackerNationIds, defenderNationIds);
+            return planFromAssignment(assignment, edges, attackerNationIds, defenderNationIds);
         }
 
         private static Plan planInternal(

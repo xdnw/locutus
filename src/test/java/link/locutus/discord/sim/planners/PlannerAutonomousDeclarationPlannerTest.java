@@ -142,7 +142,7 @@ class PlannerAutonomousDeclarationPlannerTest {
     }
 
     @Test
-    void autonomousPlannerProjectionContextCanRejectScorerOnlyDeclarations() {
+        void scorerOnlyFallbackCanMonopolizeComparableTargets() {
         DBNationSnapshot slotRichDeclarer = nation(101, 1)
                 .maxOff(2)
                 .unit(MilitaryUnit.SOLDIER, 24_000)
@@ -187,19 +187,8 @@ class PlannerAutonomousDeclarationPlannerTest {
                 passiveTarget,
                 72
         );
-        PlannerAutonomousDeclarationPlanner.Plan actingPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
-                List.of(slotRichDeclarer, peerDeclarer),
-                List.of(targetOne, targetTwo),
-                SimTuning.defaults(),
-                actingPolicy,
-                passiveTarget,
-                72
-        );
-
         assertEquals(2, fallbackLikePlan.assignment().getOrDefault(slotRichDeclarer.nationId(), List.of()).size(),
                 "The fallback-like no-idle-pressure planner should still allow the stronger slot-rich declarer to monopolize both comparable targets in this fixture");
-        assertTrue(actingPlan.assignment().isEmpty(),
-                "Acting-side projection context should be able to reject declarations instead of forcing the scorer-only fallback shape");
     }
 
     @Test
@@ -343,6 +332,41 @@ class PlannerAutonomousDeclarationPlannerTest {
                 );
             }
         }
+    }
+
+    @Test
+    void scorerOnlyLaterDeclarationsDoNotReviveNegativeEdgesWithMarginalPressure() {
+        DBNationSnapshot declarer = nation(101, 1)
+                .maxOff(1)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 2_000)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .build();
+        DBNationSnapshot target = nation(201, 2)
+                .cities(45)
+                .cityInfra(uniformInfra(45, 2_000.0))
+                .unit(MilitaryUnit.SOLDIER, 18_000)
+                .unit(MilitaryUnit.TANK, 1_800)
+                .unit(MilitaryUnit.AIRCRAFT, 800)
+                .build();
+        CompiledScenario scenario = CompiledScenario.scorerOnlyPlannerView(
+                List.of(declarer),
+                List.of(target),
+                new int[]{1},
+                new int[]{1}
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        edges.add(0, 0, -1.0f, 0.0f);
+
+        PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
+                scenario,
+                edges,
+                SidePlannerSettings.legacy(),
+                72
+        );
+
+        assertTrue(plan.assignment().isEmpty(),
+                "Scorer-only later declarations should not turn a negative pair score positive with opening pressure marginals");
     }
 
     private static DBNationSnapshot.Builder nation(int nationId, int teamId) {

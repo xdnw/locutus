@@ -42,11 +42,45 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
         if (!(objectiveScore > 0d)) {
             return 0d;
         }
+        double actionability = LaterDeclarationFit.actionability(context.declarerStrength(), context.targetStrength());
+        double slotActionability = context.resourceSwing() > 0d
+            ? Math.max(actionability, specialistSlotActionability(context))
+            : actionability;
         return context.activityWeight()
             * objectiveScore
-            * LaterDeclarationFit.actionability(context.declarerStrength(), context.targetStrength())
+            * actionability
             * rebuildReadiness(context)
-            * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots());
+                * exposureReadiness(context)
+            * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots(), slotActionability);
+    }
+
+    private static double specialistSlotActionability(LaterDeclarationScoreContext context) {
+        if (!(context.resourceSwing() > 0d)) {
+            return 0d;
+        }
+        double targetScale = context.targetPressure() > 0d
+            ? Math.min(1d, context.resourceSwing() / context.targetPressure())
+            : 1d;
+        return 0.85d * Math.max(0d, targetScale);
+    }
+
+    private static double exposureReadiness(LaterDeclarationScoreContext context) {
+        double exposure = Math.max(0d, context.selfExposure());
+        if (!(exposure > 0d)) {
+            return 1d;
+        }
+        double actionableProgress = Math.max(0d, context.immediateHarm())
+            + (0.01d * Math.max(0d, context.resourceSwing()))
+                + (2.0d * Math.max(0d, context.controlLeverage()))
+                + (3.0d * Math.max(0d, context.futureWarLeverage()));
+        if (!(actionableProgress > 0d)) {
+            return 0d;
+        }
+        if (actionableProgress >= exposure) {
+            return 1d;
+        }
+        double fit = actionableProgress / (actionableProgress + exposure);
+        return fit * fit;
     }
 
     private static double rebuildReadiness(LaterDeclarationScoreContext context) {
