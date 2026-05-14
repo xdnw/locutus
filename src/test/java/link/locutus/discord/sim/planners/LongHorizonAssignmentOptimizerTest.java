@@ -2861,6 +2861,56 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void followOnFamilySeedsIncludeReliefCandidatesBeforeCoverageRepair() {
+        LongHorizonAssignmentOptimizer.Candidate best = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(101)),
+                new boolean[]{true, false, false, false, false},
+                new int[]{1, 0},
+                new int[]{1, 0, 0},
+                100d
+        );
+        LongHorizonAssignmentOptimizer.Candidate marginal = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, List.of(102)),
+                new boolean[]{false, true, false, false, false},
+                new int[]{1, 0},
+                new int[]{0, 1, 0},
+                95d
+        );
+        LongHorizonAssignmentOptimizer.Candidate relief = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(2, List.of(103)),
+                new boolean[]{false, false, true, false, false},
+                new int[]{0, 1},
+                new int[]{0, 0, 1},
+                90d
+        );
+        LongHorizonAssignmentOptimizer.Candidate coverageRepair = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(2, List.of(101)),
+                new boolean[]{false, false, false, true, false},
+                new int[]{0, 1},
+                new int[]{1, 0, 0},
+                85d
+        );
+
+        List<LongHorizonAssignmentOptimizer.Candidate> seeds = LongHorizonAssignmentOptimizer.followOnFamilySeeds(
+                best,
+                marginal,
+                null,
+                null,
+                List.of(relief),
+                List.of(coverageRepair)
+        );
+
+        assertTrue(seeds.contains(best),
+                "The current best family should still seed bounded follow-on promotion and rebalance");
+        assertTrue(seeds.contains(marginal),
+                "The original marginal family should remain available as a bounded follow-on seed");
+        assertTrue(seeds.contains(relief),
+                "A non-winning relief family should now be eligible to seed follow-on promotion and rebalance");
+        assertTrue(seeds.contains(coverageRepair),
+                "When budget remains, coverage-repair families should also remain eligible follow-on seeds");
+    }
+
+    @Test
     void projectedFollowOnFeedbackAddsMissingOpeningEdgeBeforeFinalSolve() {
         List<DBNationSnapshot> attackers = List.of(
                 withTotalScore(nation(1, 1, 900), 2_000.0).toBuilder().maxOff(2).build()

@@ -37,6 +37,7 @@ final class LongHorizonAssignmentOptimizer {
     private static final int HIGH_CITY_COVERAGE_REPAIR_AUDITS = 3;
     private static final int HIGH_CITY_COVERAGE_REPAIR_CITY_FLOOR = 36;
     private static final int FOLLOW_ON_PROMOTION_EDGE_LIMIT = 3;
+    private static final int FOLLOW_ON_FAMILY_SEED_LIMIT = 4;
     private static final int PROJECTED_FEEDBACK_EDGE_LIMIT = 6;
     static final double PRESSURE_SCORE_WEIGHT = 0.70d;
     static final double EPSILON = 1e-9;
@@ -590,101 +591,139 @@ final class LongHorizonAssignmentOptimizer {
                     best = projectedEvaluator.betterCandidate(best, bestCommitmentBudget, terminalProjection);
                     audited++;
                 }
-                Candidate bestSeedForFollowOnFamilies = best;
-                LongHorizonForwardProjection.ProjectedEvaluation bestFollowOnEvaluation = followOnEvaluation(
-                        bestSeedForFollowOnFamilies,
-                        terminalProjection,
-                        projectedEvaluator
+                List<Candidate> followOnSeeds = followOnFamilySeeds(
+                        best,
+                        marginalCandidate,
+                        bestCommitmentBudget,
+                        diversityHedge,
+                        reliefCandidates,
+                        coverageRepairCandidates
                 );
-                Candidate bestFollowOnPromotionCandidate = followOnPromotionCandidate(
-                        baseEdges,
-                        attackerCaps,
-                        defenderCaps,
-                        attackerNationIds,
-                        defenderNationIds,
-                        bestSeedForFollowOnFamilies,
-                        terminalProjection,
-                        bestFollowOnEvaluation
-                );
-                if (bestFollowOnPromotionCandidate != null) {
-                    best = projectedEvaluator.betterCandidate(best, bestFollowOnPromotionCandidate, terminalProjection);
-                    audited++;
-                    followOnPromotionAudited++;
-                }
-                Candidate bestFollowOnRebalanceCandidate = followOnRebalanceCandidate(
-                        baseEdges,
-                        attackerCaps,
-                        defenderCaps,
-                        attackerNationIds,
-                        defenderNationIds,
-                        fixedEdgeMask,
-                        bestSeedForFollowOnFamilies,
-                        terminalProjection,
-                        bestFollowOnEvaluation
-                );
-                if (bestFollowOnRebalanceCandidate != null) {
-                    best = projectedEvaluator.betterCandidate(best, bestFollowOnRebalanceCandidate, terminalProjection);
-                    audited++;
-                    followOnRebalanceAudited++;
-                }
-                Candidate marginalSeedForFollowOnFamilies = bestSeedForFollowOnFamilies == marginalCandidate
-                        ? null
-                        : marginalCandidate;
-                LongHorizonForwardProjection.ProjectedEvaluation marginalFollowOnEvaluation = followOnEvaluation(
-                        marginalSeedForFollowOnFamilies,
-                        terminalProjection,
-                        projectedEvaluator
-                );
-                Candidate marginalFollowOnPromotionCandidate = marginalSeedForFollowOnFamilies == null
-                        ? null
-                        : followOnPromotionCandidate(
-                                baseEdges,
-                                attackerCaps,
-                                defenderCaps,
-                                attackerNationIds,
-                                defenderNationIds,
-                                marginalSeedForFollowOnFamilies,
-                                terminalProjection,
-                                marginalFollowOnEvaluation
-                        );
-                if (marginalFollowOnPromotionCandidate != null) {
-                    best = projectedEvaluator.betterCandidate(best, marginalFollowOnPromotionCandidate, terminalProjection);
-                    audited++;
-                    followOnPromotionAudited++;
-                }
-                Candidate marginalFollowOnRebalanceCandidate = marginalSeedForFollowOnFamilies == null
-                        ? null
-                        : followOnRebalanceCandidate(
-                                baseEdges,
-                                attackerCaps,
-                                defenderCaps,
-                                attackerNationIds,
-                                defenderNationIds,
-                                fixedEdgeMask,
-                                marginalSeedForFollowOnFamilies,
-                                terminalProjection,
-                                marginalFollowOnEvaluation
-                        );
-                if (marginalFollowOnRebalanceCandidate != null) {
-                    best = projectedEvaluator.betterCandidate(best, marginalFollowOnRebalanceCandidate, terminalProjection);
-                    audited++;
-                    followOnRebalanceAudited++;
+                for (Candidate followOnSeed : followOnSeeds) {
+                    FollowOnAuditResult followOnAudit = auditFollowOnFamilies(
+                            best,
+                            followOnSeed,
+                            baseEdges,
+                            attackerCaps,
+                            defenderCaps,
+                            attackerNationIds,
+                            defenderNationIds,
+                            fixedEdgeMask,
+                            terminalProjection,
+                            projectedEvaluator
+                    );
+                    best = followOnAudit.bestCandidate();
+                    audited += followOnAudit.additionalAudits();
+                    followOnPromotionAudited += followOnAudit.promotionAudits();
+                    followOnRebalanceAudited += followOnAudit.rebalanceAudits();
                 }
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedPortfolio", 1);
                 int commitmentCandidateCount = bestCommitmentBudget == null ? 0 : 1;
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCandidates", reliefCandidates.size()
                         + commitmentCandidateCount
-                        + (bestFollowOnPromotionCandidate == null ? 0 : 1)
-                    + (marginalFollowOnPromotionCandidate == null ? 0 : 1)
-                    + (bestFollowOnRebalanceCandidate == null ? 0 : 1)
-                    + (marginalFollowOnRebalanceCandidate == null ? 0 : 1));
+                    + followOnPromotionAudited
+                    + followOnRebalanceAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedAudits", audited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedReliefAudits", reliefAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedDiversityAudits", diversityAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCoverageRepairAudits", coverageRepairAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnPromotionAudits", followOnPromotionAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnRebalanceAudits", followOnRebalanceAudited);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnFamilySeeds", followOnSeeds.size());
                 return best;
+            }
+
+            private static FollowOnAuditResult auditFollowOnFamilies(
+                    Candidate currentBest,
+                    Candidate seed,
+                    CandidateEdgeTable baseEdges,
+                    int[] attackerCaps,
+                    int[] defenderCaps,
+                    int[] attackerNationIds,
+                    int[] defenderNationIds,
+                    boolean[] fixedEdgeMask,
+                    LongHorizonControlProjection terminalProjection,
+                    LongHorizonCandidateEvaluator projectedEvaluator
+            ) {
+                if (seed == null || seed.isEmpty()) {
+                    return new FollowOnAuditResult(currentBest, 0, 0, 0);
+                }
+                Candidate best = currentBest;
+                int additionalAudits = 0;
+                int promotionAudits = 0;
+                int rebalanceAudits = 0;
+                LongHorizonForwardProjection.ProjectedEvaluation evaluation = followOnEvaluation(
+                        seed,
+                        terminalProjection,
+                        projectedEvaluator
+                );
+                Candidate promotionCandidate = followOnPromotionCandidate(
+                        baseEdges,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerNationIds,
+                        defenderNationIds,
+                        seed,
+                        terminalProjection,
+                        evaluation
+                );
+                if (promotionCandidate != null) {
+                    best = projectedEvaluator.betterCandidate(best, promotionCandidate, terminalProjection);
+                    additionalAudits++;
+                    promotionAudits++;
+                }
+                Candidate rebalanceCandidate = followOnRebalanceCandidate(
+                        baseEdges,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdgeMask,
+                        seed,
+                        terminalProjection,
+                        evaluation
+                );
+                if (rebalanceCandidate != null) {
+                    best = projectedEvaluator.betterCandidate(best, rebalanceCandidate, terminalProjection);
+                    additionalAudits++;
+                    rebalanceAudits++;
+                }
+                return new FollowOnAuditResult(best, additionalAudits, promotionAudits, rebalanceAudits);
+            }
+
+                static List<Candidate> followOnFamilySeeds(
+                    Candidate best,
+                    Candidate marginalCandidate,
+                    Candidate bestCommitmentBudget,
+                    Candidate diversityHedge,
+                    List<Candidate> reliefCandidates,
+                    List<Candidate> coverageRepairCandidates
+            ) {
+                List<Candidate> seeds = new ArrayList<>(FOLLOW_ON_FAMILY_SEED_LIMIT);
+                addFollowOnFamilySeed(seeds, best);
+                addFollowOnFamilySeed(seeds, marginalCandidate);
+                addFollowOnFamilySeed(seeds, bestCommitmentBudget);
+                addFollowOnFamilySeed(seeds, diversityHedge);
+                for (Candidate candidate : reliefCandidates) {
+                    if (seeds.size() >= FOLLOW_ON_FAMILY_SEED_LIMIT) {
+                        break;
+                    }
+                    addFollowOnFamilySeed(seeds, candidate);
+                }
+                for (Candidate candidate : coverageRepairCandidates) {
+                    if (seeds.size() >= FOLLOW_ON_FAMILY_SEED_LIMIT) {
+                        break;
+                    }
+                    addFollowOnFamilySeed(seeds, candidate);
+                }
+                return seeds;
+            }
+
+            private static void addFollowOnFamilySeed(List<Candidate> seeds, Candidate candidate) {
+                if (candidate == null || candidate.isEmpty() || seeds.contains(candidate) || seeds.size() >= FOLLOW_ON_FAMILY_SEED_LIMIT) {
+                    return;
+                }
+                seeds.add(candidate);
             }
 
             private static LongHorizonForwardProjection.ProjectedEvaluation followOnEvaluation(
@@ -1657,6 +1696,14 @@ final class LongHorizonAssignmentOptimizer {
             ObjectiveValueSummary projectedObjectiveSummary
     ) {
     }
+
+        private record FollowOnAuditResult(
+            Candidate bestCandidate,
+            int additionalAudits,
+            int promotionAudits,
+            int rebalanceAudits
+        ) {
+        }
 
     static final class Candidate {
         private Map<Integer, List<Integer>> assignment;
