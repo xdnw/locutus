@@ -1119,7 +1119,7 @@ class OpeningEvaluatorCoverageTest {
     }
 
         private static StrategicObjective sourceDiversityControlObjective() {
-                return withMinimumViabilityProbe(BlitzObjective.CONTROL.objective(), 0.0d, 0.02d);
+                return withMinimumViabilityProbe(BlitzObjective.CONTROL.objective(), 0.0d, 0.0d);
         }
 
         private static String edgeSummary(OpeningEvaluator.EvaluatedEdge edge) {

@@ -70,7 +70,7 @@ final class ControlObjective implements StrategicObjective {
             + (4.0d * effectiveTargetPressure)
             + (0.10d * immediateHarm)
             + (0.02d * effectiveResourceSwing)
-            - (0.35d * selfExposure);
+            - (0.85d * selfExposure);
     }
 
     @Override

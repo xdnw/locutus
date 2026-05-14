@@ -2090,11 +2090,8 @@ final class LongHorizonForwardProjection {
         if (!Double.isFinite(strengthRatio) || strengthRatio >= 1.30d) {
             return 3d;
         }
-        if (strengthRatio >= 1.00d) {
+        if (strengthRatio >= 1.05d) {
             return 2d;
-        }
-        if (strengthRatio >= 0.80d) {
-            return 0.75d;
         }
         return 0d;
     }
@@ -2103,7 +2100,10 @@ final class LongHorizonForwardProjection {
         if (!Double.isFinite(strengthRatio)) {
             return 3d;
         }
-        return Math.max(0d, Math.min(3d, (strengthRatio - 0.75d) * 2d));
+        if (strengthRatio < 1.0d) {
+            return 0d;
+        }
+        return Math.max(0d, Math.min(3d, (strengthRatio - 1.0d) * 2d));
     }
 
     private static double strengthRatio(double declarerStrength, double targetStrength) {
