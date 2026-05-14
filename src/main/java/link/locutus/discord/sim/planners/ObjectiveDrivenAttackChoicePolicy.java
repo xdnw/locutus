@@ -33,7 +33,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
         double attackerUnitDamage;
         double resourceSwing;
         double defenderResistanceDelta;
-        double forceWindowAdvantage;
+        double actionSpaceQuality;
         double timingWindowAdvantage;
         double targetPressure;
         double conventionalFollowThroughValue;
@@ -46,7 +46,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
                 double attackerUnitDamage,
                 double resourceSwing,
                 double defenderResistanceDelta,
-                double forceWindowAdvantage,
+                double actionSpaceQuality,
                 double timingWindowAdvantage,
                 double targetPressure,
                 double conventionalFollowThroughValue,
@@ -58,7 +58,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
             this.attackerUnitDamage = attackerUnitDamage;
             this.resourceSwing = resourceSwing;
             this.defenderResistanceDelta = defenderResistanceDelta;
-            this.forceWindowAdvantage = forceWindowAdvantage;
+            this.actionSpaceQuality = actionSpaceQuality;
             this.timingWindowAdvantage = timingWindowAdvantage;
             this.targetPressure = targetPressure;
             this.conventionalFollowThroughValue = conventionalFollowThroughValue;
@@ -141,7 +141,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
 
     double scoreCandidate(AttackType attackType, AttackCandidate candidate) {
         double controlLeverage = AttackObjectiveComponentMapper.controlLeverage(candidate.controlDelta());
-        double forceWindowAdvantage = Math.max(0d, candidate.forceWindowAdvantage());
+        double actionSpaceQuality = Math.max(0d, candidate.actionSpaceQuality());
         double timingWindowAdvantage = Math.max(0d, candidate.timingWindowAdvantage());
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage()),
@@ -152,7 +152,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
                 ),
                 controlLeverage,
                 tacticalMomentum(candidate.defenderResistanceDelta()),
-                forceWindowAdvantage,
+                actionSpaceQuality,
                 timingWindowAdvantage,
                 Math.max(0d, candidate.targetPressure())
         );
@@ -165,7 +165,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
 
     double scoreCandidate(AttackType attackType, MutableAttackCandidate candidate) {
         double controlLeverage = AttackObjectiveComponentMapper.controlLeverage(candidate.controlDelta);
-        double forceWindowAdvantage = Math.max(0d, candidate.forceWindowAdvantage);
+        double actionSpaceQuality = Math.max(0d, candidate.actionSpaceQuality);
         double timingWindowAdvantage = Math.max(0d, candidate.timingWindowAdvantage);
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage),
@@ -176,7 +176,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
                 ),
                 controlLeverage,
                 tacticalMomentum(candidate.defenderResistanceDelta),
-                forceWindowAdvantage,
+                actionSpaceQuality,
                 timingWindowAdvantage,
                 Math.max(0d, candidate.targetPressure)
         );

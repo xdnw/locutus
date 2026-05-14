@@ -1067,7 +1067,7 @@ final class OpeningEvaluator {
                 projectedMetrics.resourceSwing() + specialistResourceSwing,
                     projectedMetrics.controlLeverage(),
                     projectedMetrics.tacticalMomentum(),
-                    projectedMetrics.forceWindowAdvantage(),
+                    projectedMetrics.actionSpaceQuality(),
                 projectedMetrics.timingWindowAdvantage(),
                     projectedMetrics.targetPressure()
             );

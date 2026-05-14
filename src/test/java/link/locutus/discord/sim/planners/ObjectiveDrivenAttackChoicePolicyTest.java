@@ -75,7 +75,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     }
 
     @Test
-    void futureWarLeverageComesFromForceWindowNotResistanceDrain() {
+    void futureWarLeverageComesFromActionSpaceQualityNotResistanceDrain() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                 new LinearOpeningObjective(0d, 0d, 0d, 5.00d),
                 null
@@ -230,7 +230,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
             double attackerDamage,
             double defenderResistanceDelta,
             double resourceSwing,
-            double forceWindowAdvantage,
+            double actionSpaceQuality,
             SuperiorityFlagDelta controlDelta
     ) {
         return candidate(
@@ -238,7 +238,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 attackerDamage,
                 defenderResistanceDelta,
                 resourceSwing,
-                forceWindowAdvantage,
+                actionSpaceQuality,
                 0d,
                 controlDelta
         );
@@ -249,7 +249,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
             double attackerDamage,
             double defenderResistanceDelta,
             double resourceSwing,
-            double forceWindowAdvantage,
+            double actionSpaceQuality,
             double timingWindowAdvantage,
                         double conventionalFollowThroughValue,
             SuperiorityFlagDelta controlDelta
@@ -261,7 +261,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 attackerDamage,
                 resourceSwing,
                 defenderResistanceDelta,
-                forceWindowAdvantage,
+                actionSpaceQuality,
                                 timingWindowAdvantage,
                 0d,
                 conventionalFollowThroughValue,
@@ -274,7 +274,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
             double attackerDamage,
             double defenderResistanceDelta,
             double resourceSwing,
-            double forceWindowAdvantage,
+            double actionSpaceQuality,
             double timingWindowAdvantage,
             SuperiorityFlagDelta controlDelta
     ) {
@@ -283,7 +283,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 attackerDamage,
                 defenderResistanceDelta,
                 resourceSwing,
-                forceWindowAdvantage,
+                actionSpaceQuality,
                 timingWindowAdvantage,
                 0d,
                 controlDelta

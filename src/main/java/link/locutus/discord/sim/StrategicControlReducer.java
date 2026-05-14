@@ -99,15 +99,15 @@ public final class StrategicControlReducer {
             );
         });
 
-        view.forEachActiveWarMetric((attackerTeamId, defenderTeamId, targetPressure, tacticalMomentum, forceWindowAdvantage) -> {
+        view.forEachActiveWarMetric((attackerTeamId, defenderTeamId, targetPressure, tacticalMomentum, actionSpaceQuality) -> {
             if (attackerTeamId == teamId) {
                 components[1] += targetPressure;
                 components[2] += tacticalMomentum;
-                components[3] += forceWindowAdvantage;
+                components[3] += actionSpaceQuality;
             } else if (defenderTeamId == teamId) {
                 components[1] -= targetPressure;
                 components[2] -= tacticalMomentum;
-                components[3] -= forceWindowAdvantage;
+                components[3] -= actionSpaceQuality;
             }
         });
 

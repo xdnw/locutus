@@ -35,7 +35,7 @@ public interface TeamWarControlView extends StrategicValueView {
                 int defenderTeamId,
                 double targetPressure,
                 double tacticalMomentum,
-                double forceWindowAdvantage
+                double actionSpaceQuality
         );
     }
 

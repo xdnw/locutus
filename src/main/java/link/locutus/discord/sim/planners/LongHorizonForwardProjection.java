@@ -2895,7 +2895,7 @@ final class LongHorizonForwardProjection {
                             attackerBaselineCapability,
                             attackerBaselineMilitaryValue
                     );
-                    double forceWindowAdvantage = projectedAttackForceWindowAdvantage(
+                    double actionSpaceQuality = projectedAttackActionSpaceQualityAdvantage(
                             defenderUnitDamage,
                             defenderBaselineMilitaryValue,
                             attackerUnitDamage,
@@ -2910,7 +2910,7 @@ final class LongHorizonForwardProjection {
                             attackerUnitDamage,
                             result.infraDestroyed(),
                             result.defenderResistanceDelta(),
-                            forceWindowAdvantage,
+                            actionSpaceQuality,
                             timingWindowAdvantage,
                             targetPressure,
                             attackerBaselineMilitaryValue,
@@ -3053,7 +3053,7 @@ final class LongHorizonForwardProjection {
                 return currentResistance;
                 }
 
-    private static double projectedAttackForceWindowAdvantage(
+    private static double projectedAttackActionSpaceQualityAdvantage(
             double defenderUnitDamage,
             double defenderBaselineMilitaryValue,
             double attackerUnitDamage,
@@ -3193,7 +3193,7 @@ final class LongHorizonForwardProjection {
                     attackerBaselineCapability,
                     attackerBaselineMilitaryValue
             );
-            double forceWindowAdvantage = projectedAttackForceWindowAdvantage(
+            double actionSpaceQuality = projectedAttackActionSpaceQualityAdvantage(
                     defenderUnitDamage,
                     defenderBaselineMilitaryValue,
                     attackerUnitDamage,
@@ -3208,7 +3208,7 @@ final class LongHorizonForwardProjection {
                     attackerUnitDamage,
                     result.infraDestroyed(),
                     result.defenderResistanceDelta(),
-                    forceWindowAdvantage,
+                    actionSpaceQuality,
                     timingWindowAdvantage,
                     targetPressure,
                     attackerBaselineMilitaryValue,
@@ -4572,13 +4572,13 @@ final class LongHorizonForwardProjection {
             return activeWarContext;
         }
 
-        double forceWindowScore(
+        double actionSpaceQuality(
                 int attackerNationIndex,
                 int defenderNationIndex,
                 boolean attackerHasAirControl,
                 boolean defenderHasAirControl
         ) {
-            return OpeningMetricSummary.forceWindowScore(
+            return OpeningMetricSummary.actionSpaceQuality(
                     baselineGroundStrength(attackerNationIndex, defenderHasAirControl),
                     groundStrength(attackerNationIndex, defenderHasAirControl),
                     baselineGroundStrength(defenderNationIndex, attackerHasAirControl),
@@ -5904,7 +5904,7 @@ final class LongHorizonForwardProjection {
                         stateTeamId(defenderNationIndex),
                         state.targetPressure(attackerNationIndex, defenderNationIndex),
                         OpeningMetricSummary.tacticalMomentumScore(warState.defenderResistance[warIndex]),
-                        state.forceWindowScore(attackerNationIndex, defenderNationIndex, attackerHasAirControl, defenderHasAirControl)
+                        state.actionSpaceQuality(attackerNationIndex, defenderNationIndex, attackerHasAirControl, defenderHasAirControl)
                 );
             }
         }

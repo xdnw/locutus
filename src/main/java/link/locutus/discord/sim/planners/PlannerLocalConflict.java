@@ -1094,7 +1094,7 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     war.defender.teamId(),
                     targetPressure(war),
                     tacticalMomentumScore(war),
-                    forceWindowScore(war)
+                    actionSpaceQuality(war)
             );
         }
     }
@@ -1213,10 +1213,10 @@ final class PlannerLocalConflict implements TeamWarControlView {
         return OpeningMetricSummary.tacticalMomentumScore(war.defenderResistanceValue());
     }
 
-    private static double forceWindowScore(LocalWar war) {
+    private static double actionSpaceQuality(LocalWar war) {
         boolean attackerHasAirControl = war.warBuffers.airSuperiorityOwner[war.warIndex] == LocalWarBuffers.OWNER_ATTACKER;
         boolean defenderHasAirControl = war.warBuffers.airSuperiorityOwner[war.warIndex] == LocalWarBuffers.OWNER_DEFENDER;
-        return OpeningMetricSummary.forceWindowScore(
+        return OpeningMetricSummary.actionSpaceQuality(
                 war.attacker.baselineGroundStrength(defenderHasAirControl),
                 war.attacker.currentGroundStrength(defenderHasAirControl),
                 war.defender.baselineGroundStrength(attackerHasAirControl),

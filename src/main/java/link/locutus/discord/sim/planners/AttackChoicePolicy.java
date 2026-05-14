@@ -18,7 +18,7 @@ public interface AttackChoicePolicy {
             double attackerUnitDamage,
             double resourceSwing,
             double defenderResistanceDelta,
-            double forceWindowAdvantage,
+            double actionSpaceQuality,
             double timingWindowAdvantage,
             double targetPressure,
                 double conventionalFollowThroughValue,

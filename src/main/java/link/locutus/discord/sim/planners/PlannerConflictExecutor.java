@@ -859,8 +859,8 @@ final class PlannerConflictExecutor {
         double tacticalMomentum = policy.retainFutureWarLeverage()
             ? tacticalMomentumScore(projectedWar)
                 : 0.0;
-        double forceWindowAdvantage = policy.retainFutureWarLeverage()
-            ? forceWindowScore(attacker, projectedAttacker, defender, projectedDefender, projectedWar)
+        double actionSpaceQuality = policy.retainFutureWarLeverage()
+            ? actionSpaceQuality(attacker, projectedAttacker, defender, projectedDefender, projectedWar)
                 : 0.0;
 
         return new DeclaredWarEvaluation(
@@ -870,7 +870,7 @@ final class PlannerConflictExecutor {
             resourceSwing,
             controlLeverage,
             tacticalMomentum,
-            forceWindowAdvantage
+            actionSpaceQuality
         );
     }
 
@@ -949,7 +949,7 @@ final class PlannerConflictExecutor {
         return OpeningMetricSummary.tacticalMomentumScore(defenderResistance);
     }
 
-    private static double forceWindowScore(
+    private static double actionSpaceQuality(
             DBNationSnapshot initialAttacker,
             DBNationSnapshot projectedAttacker,
             DBNationSnapshot initialDefender,
@@ -960,7 +960,7 @@ final class PlannerConflictExecutor {
                 && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.ATTACKER;
         boolean defenderHasAirControl = projectedWar != null
                 && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.DEFENDER;
-        return OpeningMetricSummary.forceWindowScore(
+        return OpeningMetricSummary.actionSpaceQuality(
                 OpeningMetricSummary.groundStrength(
                         initialAttacker.unit(MilitaryUnit.SOLDIER),
                         initialAttacker.unit(MilitaryUnit.TANK),
@@ -999,7 +999,7 @@ final class PlannerConflictExecutor {
             double resourceSwing,
             double controlLeverage,
             double tacticalMomentum,
-            double forceWindowAdvantage
+            double actionSpaceQuality
     ) implements StrategicEvaluationComponents {
         static DeclaredWarEvaluation scoreOnly(double objectiveScore) {
             return new DeclaredWarEvaluation(objectiveScore, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);

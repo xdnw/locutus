@@ -62,7 +62,7 @@ final class OpeningRolloutMetricProjector {
         double tacticalMomentum = OpeningMetricSummary.tacticalMomentumScore(
                 projectedDefenderResistance(context, result)
         );
-        double forceWindowAdvantage = OpeningMetricSummary.forceWindowScore(
+        double actionSpaceQuality = OpeningMetricSummary.actionSpaceQuality(
                 baseline.attackerGround(),
                 OpeningMetricSummary.groundStrength(
                 remainingUnits(attacker, attackerLosses, MilitaryUnit.SOLDIER),
@@ -96,7 +96,7 @@ final class OpeningRolloutMetricProjector {
                 resourceSwing,
                 controlLeverage,
                 tacticalMomentum,
-                forceWindowAdvantage,
+                actionSpaceQuality,
                 timingWindowAdvantage,
                 baseline.targetPressure()
         );

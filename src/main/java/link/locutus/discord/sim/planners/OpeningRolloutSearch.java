@@ -212,7 +212,7 @@ final class OpeningRolloutSearch {
                 metrics.controlLeverage(),
                 Math.max(metrics.declarationReadiness(), declarationReadiness),
                 metrics.tacticalMomentum(),
-                metrics.forceWindowAdvantage(),
+                metrics.actionSpaceQuality(),
                 metrics.timingWindowAdvantage(),
                 metrics.targetPressure()
         );

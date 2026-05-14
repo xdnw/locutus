@@ -103,13 +103,13 @@ final class OpeningMetricSummary {
     static double tacticalMomentumScore(int defenderResistance) {
         // Measures how much of the defender's resistance has been drained (0 = full, 1 = exhausted).
         // Captures tactical transition propensity: a fully drained war allows the attacker to pivot
-        // to new engagements, but carries no force-window information.
+        // to new engagements, but carries no action-space quality information.
         return clamp01(
                 (SimWar.INITIAL_RESISTANCE - Math.max(0, defenderResistance)) / (double) SimWar.INITIAL_RESISTANCE
         );
     }
 
-    static double forceWindowScore(
+    static double actionSpaceQuality(
             double initialAttackerGround,
             double currentAttackerGround,
             double initialDefenderGround,
@@ -123,27 +123,23 @@ final class OpeningMetricSummary {
             double initialDefenderNaval,
             double currentDefenderNaval
     ) {
-        // Measures the relative unit-advantage accumulated by the attacker across all three domains.
-        // Each domain contributes a positive relative-gain fraction (0 when no relative advantage).
-        double groundWindow = positiveRelativeGain(
+        double initialQuality = combatOptionQuality(
                 initialAttackerGround,
-                currentAttackerGround,
                 initialDefenderGround,
-                currentDefenderGround
-        );
-        double airWindow = positiveRelativeGain(
                 initialAttackerAir,
-                currentAttackerAir,
                 initialDefenderAir,
-                currentDefenderAir
-        );
-        double navalWindow = positiveRelativeGain(
                 initialAttackerNaval,
+                initialDefenderNaval
+        );
+        double currentQuality = combatOptionQuality(
+                currentAttackerGround,
+                currentDefenderGround,
+                currentAttackerAir,
+                currentDefenderAir,
                 currentAttackerNaval,
-                initialDefenderNaval,
                 currentDefenderNaval
         );
-        return groundWindow + airWindow + navalWindow;
+        return Math.max(0d, currentQuality - initialQuality);
     }
 
     static double futureWarLeverage(
@@ -161,7 +157,7 @@ final class OpeningMetricSummary {
             double currentDefenderNaval,
             int defenderResistance
     ) {
-            return forceWindowScore(
+            return actionSpaceQuality(
                 initialAttackerGround, currentAttackerGround,
                 initialDefenderGround, currentDefenderGround,
                 initialAttackerAir, currentAttackerAir,
@@ -366,15 +362,27 @@ final class OpeningMetricSummary {
         return score;
     }
 
-    private static double positiveRelativeGain(
-            double initialAttackerStrength,
-            double currentAttackerStrength,
-            double initialDefenderStrength,
-            double currentDefenderStrength
+    private static double combatOptionQuality(
+            double attackerGround,
+            double defenderGround,
+            double attackerAir,
+            double defenderAir,
+            double attackerNaval,
+            double defenderNaval
     ) {
-        double defenderLossFraction = lossFraction(initialDefenderStrength, currentDefenderStrength);
-        double attackerLossFraction = lossFraction(initialAttackerStrength, currentAttackerStrength);
-        return Math.max(0d, defenderLossFraction - attackerLossFraction);
+        return (1.15d * domainOptionQuality(attackerGround, defenderGround))
+                + (1.35d * domainOptionQuality(attackerAir, defenderAir))
+                + (0.80d * domainOptionQuality(attackerNaval, defenderNaval));
+    }
+
+    private static double domainOptionQuality(double attackerStrength, double defenderStrength) {
+        if (!(attackerStrength > 0d)) {
+            return 0d;
+        }
+        if (!(defenderStrength > 0d)) {
+            return 1d;
+        }
+        return clamp01(attackerStrength / (attackerStrength + defenderStrength));
     }
 
     private static double lossFraction(double initial, double current) {

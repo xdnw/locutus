@@ -29,16 +29,16 @@ class BlitzObjectiveTest {
     @Test
     void futureWarLeverageCompatibilityIgnoresRawResistanceDrain() {
         OpeningMetricVector momentumOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.9, 0.0);
-        OpeningMetricVector forceWindowOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.9);
+        OpeningMetricVector actionSpaceQualityOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.9);
 
         assertEquals(0.0, momentumOnly.futureWarLeverage(), 1e-9);
-        assertEquals(0.9, forceWindowOnly.futureWarLeverage(), 1e-9);
+        assertEquals(0.9, actionSpaceQualityOnly.futureWarLeverage(), 1e-9);
         assertTrue(
-                BlitzObjective.CONTROL.objective().scoreOpening(forceWindowOnly, 1)
+                BlitzObjective.CONTROL.objective().scoreOpening(actionSpaceQualityOnly, 1)
                         > BlitzObjective.CONTROL.objective().scoreOpening(momentumOnly, 1)
         );
         assertTrue(
-                BlitzObjective.BALANCED.objective().scoreOpening(forceWindowOnly, 1)
+                BlitzObjective.BALANCED.objective().scoreOpening(actionSpaceQualityOnly, 1)
                         > BlitzObjective.BALANCED.objective().scoreOpening(momentumOnly, 1)
         );
     }
@@ -473,7 +473,7 @@ class BlitzObjectiveTest {
     }
 
     @Test
-    void controlTerminalIgnoresActiveWarPressureWhileBalancedRetainsIt() {
+    void controlTerminalUsesActiveWarQualityThroughSharedVector() {
         TeamWarControlView view = new TeamWarControlView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
@@ -497,14 +497,14 @@ class BlitzObjectiveTest {
             }
         };
 
-        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 1), 1e-9);
-        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 2), 1e-9);
+        assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 1) > 0.0);
+        assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 2) < 0.0);
         assertEquals(15.0, BlitzObjective.BALANCED.objective().scoreTerminal(view, 1), 1e-9);
         assertEquals(-15.0, BlitzObjective.BALANCED.objective().scoreTerminal(view, 2), 1e-9);
     }
 
     @Test
-    void terminalObjectivesIgnoreTacticalMomentumOnlyPressure() {
+    void controlTerminalPricesTimingQualityWithoutMakingItDamageValue() {
         TeamWarControlView lowMomentum = new TeamWarControlView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
@@ -551,10 +551,9 @@ class BlitzObjectiveTest {
             }
         };
 
-        assertEquals(
-                BlitzObjective.CONTROL.objective().scoreTerminal(lowMomentum, 1),
-                BlitzObjective.CONTROL.objective().scoreTerminal(highMomentum, 1),
-                1e-9
+        assertTrue(
+                BlitzObjective.CONTROL.objective().scoreTerminal(highMomentum, 1)
+                        > BlitzObjective.CONTROL.objective().scoreTerminal(lowMomentum, 1)
         );
         assertEquals(
                 BlitzObjective.BALANCED.objective().scoreTerminal(lowMomentum, 1),
