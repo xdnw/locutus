@@ -330,6 +330,24 @@ final class LongHorizonCandidateEvaluator {
         }
         LongHorizonForwardProjection.ProjectedFamilyConsequences preferredConsequences = leftEvaluation.familyConsequences();
         LongHorizonForwardProjection.ProjectedFamilyConsequences otherConsequences = rightEvaluation.familyConsequences();
+        int noPositiveAttackRateComparison = comparePerCallRate(
+            preferredConsequences.noPositiveAttackChoices(),
+            preferredConsequences.attackChoiceCalls(),
+            otherConsequences.noPositiveAttackChoices(),
+            otherConsequences.attackChoiceCalls()
+        );
+        if (noPositiveAttackRateComparison != 0) {
+            return noPositiveAttackRateComparison;
+        }
+        int noAttackRateComparison = comparePerCallRate(
+            preferredConsequences.noAttackChoices(),
+            preferredConsequences.attackChoiceCalls(),
+            otherConsequences.noAttackChoices(),
+            otherConsequences.attackChoiceCalls()
+        );
+        if (noAttackRateComparison != 0) {
+            return noAttackRateComparison;
+        }
         if (preferredConsequences.underStrengthSelectedLaterDeclarations()
                 != otherConsequences.underStrengthSelectedLaterDeclarations()) {
             return Integer.compare(
@@ -344,6 +362,15 @@ final class LongHorizonCandidateEvaluator {
             );
         }
         return 0;
+    }
+
+    private static int comparePerCallRate(int leftNumerator, int leftCalls, int rightNumerator, int rightCalls) {
+        if (leftCalls <= 0 || rightCalls <= 0) {
+            return 0;
+        }
+        long leftScaled = (long) leftNumerator * (long) rightCalls;
+        long rightScaled = (long) rightNumerator * (long) leftCalls;
+        return Long.compare(leftScaled, rightScaled);
     }
 
     private static int projectedOverloadedAttackers(int[] attackerCounts, int[] realizedCounterIncidence) {

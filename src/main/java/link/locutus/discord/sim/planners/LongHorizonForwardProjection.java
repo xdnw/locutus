@@ -618,6 +618,9 @@ final class LongHorizonForwardProjection {
             profiledOpeningSideDelayedDeclarationRegret,
             List.copyOf(profiledOpeningSideLaterDeclarations),
             new ProjectedFamilyConsequences(
+                    saturatedInt(profiledAttackChoiceCalls),
+                    saturatedInt(profiledNoAttackChoices),
+                    saturatedInt(profiledNoPositiveAttackChoices),
                     saturatedInt(profiledSelectedLaterDeclarations),
                     saturatedInt(profiledSelectedLaterDeclarationUnderStrength)
             )
@@ -652,6 +655,9 @@ final class LongHorizonForwardProjection {
                 profiledOpeningSideDelayedDeclarationRegret,
                 List.copyOf(profiledOpeningSideLaterDeclarations),
                 new ProjectedFamilyConsequences(
+                        saturatedInt(profiledAttackChoiceCalls),
+                        saturatedInt(profiledNoAttackChoices),
+                        saturatedInt(profiledNoPositiveAttackChoices),
                         saturatedInt(profiledSelectedLaterDeclarations),
                         saturatedInt(profiledSelectedLaterDeclarationUnderStrength)
                 )
@@ -688,6 +694,9 @@ final class LongHorizonForwardProjection {
                 profiledOpeningSideDelayedDeclarationRegret,
                 List.copyOf(profiledOpeningSideLaterDeclarations),
                 new ProjectedFamilyConsequences(
+                        saturatedInt(profiledAttackChoiceCalls),
+                        saturatedInt(profiledNoAttackChoices),
+                        saturatedInt(profiledNoPositiveAttackChoices),
                         saturatedInt(profiledSelectedLaterDeclarations),
                         saturatedInt(profiledSelectedLaterDeclarationUnderStrength)
                 )
@@ -6316,6 +6325,9 @@ final class LongHorizonForwardProjection {
     }
 
         record ProjectedFamilyConsequences(
+            int attackChoiceCalls,
+            int noAttackChoices,
+            int noPositiveAttackChoices,
             int selectedLaterDeclarations,
             int underStrengthSelectedLaterDeclarations
         ) {
