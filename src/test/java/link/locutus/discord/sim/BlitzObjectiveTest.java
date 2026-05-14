@@ -150,6 +150,35 @@ class BlitzObjectiveTest {
     }
 
     @Test
+    void controlTerminalComparisonSubtractsOpponentControl() {
+        TeamWarControlView view = new TeamWarControlView() {
+            @Override
+            public void forEachNation(NationScoreConsumer consumer) {
+                consumer.accept(101, 1, 1_000.0);
+                consumer.accept(202, 2, 1_000.0);
+            }
+
+            @Override
+            public void forEachNationStrategicValue(NationValueConsumer consumer) {
+                consumer.accept(101, 1, 100.0);
+                consumer.accept(202, 2, 100.0);
+            }
+
+            @Override
+            public void forEachWarControl(WarControlConsumer consumer) {
+                consumer.accept(1, 2, 1, 1, 2, 100, 70);
+            }
+        };
+
+        StrategicObjective objective = BlitzObjective.CONTROL.objective();
+        assertEquals(
+                objective.scoreTerminal(view, 1) - objective.scoreTerminal(view, 2),
+                objective.scoreTerminalComparison(view, 1, 2),
+                1e-9
+        );
+    }
+
+    @Test
     void tacticalPostureScoreDoesNotDoubleCountResistanceDrain() {
         TeamWarControlView slowerDrain = new TeamWarControlView() {
             @Override

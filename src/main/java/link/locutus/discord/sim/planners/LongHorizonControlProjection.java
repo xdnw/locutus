@@ -741,6 +741,25 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
         return forwardProjection.projectedEvaluation(objective, teamId, edgeAssigned, attackerCounts, defenderCounts);
     }
 
+    LongHorizonForwardProjection.ProjectedEvaluation projectedEvaluation(
+            link.locutus.discord.sim.StrategicObjective objective,
+            int teamId,
+            int opposingTeamId,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts
+    ) {
+        LongHorizonForwardProjection forwardProjection = forwardProjection();
+        return forwardProjection.projectedEvaluation(
+                objective,
+                teamId,
+                opposingTeamId,
+                edgeAssigned,
+                attackerCounts,
+                defenderCounts
+        );
+    }
+
         LongHorizonForwardProjection.ProjectedFeedbackEvaluation projectedFeedbackEvaluation(
             link.locutus.discord.sim.StrategicObjective objective,
             int teamId,

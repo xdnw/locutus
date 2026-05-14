@@ -598,10 +598,22 @@ final class LongHorizonForwardProjection {
             int[] attackerCounts,
             int[] defenderCounts
     ) {
+        return projectedEvaluation(objective, teamId, teamId, edgeAssigned, attackerCounts, defenderCounts);
+    }
+
+    ProjectedEvaluation projectedEvaluation(
+            StrategicObjective objective,
+            int teamId,
+            int opposingTeamId,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts
+    ) {
         int[] incomingDeclarationIncidence = resetCounterIncidenceScratch();
         ProjectionView view = project(edgeAssigned, attackerCounts, defenderCounts, incomingDeclarationIncidence);
         return new ProjectedEvaluation(
             objective.scoreTerminal(view, teamId),
+            objective.scoreTerminalComparison(view, teamId, opposingTeamId),
             incomingDeclarationIncidence.clone(),
             profiledOpeningSideDelayedDeclarationRegret,
             List.copyOf(profiledOpeningSideLaterDeclarations)
@@ -631,6 +643,7 @@ final class LongHorizonForwardProjection {
         return new ProjectedFeedbackEvaluation(
             new ProjectedEvaluation(
                 objective.scoreTerminal(view, teamId),
+                objective.scoreTerminalComparison(view, teamId, teamId),
                 incomingDeclarationIncidence.clone(),
                 profiledOpeningSideDelayedDeclarationRegret,
                 List.copyOf(profiledOpeningSideLaterDeclarations)
@@ -662,6 +675,7 @@ final class LongHorizonForwardProjection {
         return new ProjectedAttackerFeedbackEvaluation(
             new ProjectedEvaluation(
                 objective.scoreTerminal(view, teamId),
+                objective.scoreTerminalComparison(view, teamId, teamId),
                 incomingDeclarationIncidence.clone(),
                 profiledOpeningSideDelayedDeclarationRegret,
                 List.copyOf(profiledOpeningSideLaterDeclarations)
@@ -6271,6 +6285,7 @@ final class LongHorizonForwardProjection {
 
     record ProjectedEvaluation(
             double objectiveScore,
+            double comparisonScore,
             int[] realizedCounterIncidence,
             double openingSideDelayedDeclarationRegret,
             List<OpeningSideLaterDeclaration> openingSideLaterDeclarations

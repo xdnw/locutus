@@ -2102,7 +2102,11 @@ final class PlannerLocalConflict implements TeamWarControlView {
             try {
                 replayMetricSuppressionDepth++;
                 resolveAttack(war, type);
-                double score = objective.scoreTerminal(this, attackerTeamId);
+                double score = objective.scoreTerminalComparison(
+                        this,
+                        attackerTeamId,
+                        opposingTeamId(war, attackerTeamId)
+                );
                 if (bestAttackType == null
                         || score > bestScore
                         || (score == bestScore && type.ordinal() < bestAttackType.ordinal())) {
@@ -2115,6 +2119,13 @@ final class PlannerLocalConflict implements TeamWarControlView {
             }
         }
         return bestAttackType;
+    }
+
+    private static int opposingTeamId(LocalWar war, int teamId) {
+        if (war.attacker.teamId() == teamId) {
+            return war.defender.teamId();
+        }
+        return war.attacker.teamId();
     }
 
     private void resolveAttack(LocalWar war, AttackType attackType) {

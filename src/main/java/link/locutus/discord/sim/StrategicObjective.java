@@ -6,6 +6,10 @@ package link.locutus.discord.sim;
 public interface StrategicObjective extends Objective {
     double scoreTerminal(StrategicValueView view, int teamId);
 
+    default double scoreTerminalComparison(StrategicValueView view, int teamId, int opposingTeamId) {
+        return scoreTerminal(view, teamId);
+    }
+
     /**
      * Scores a bounded opening rollout directly from its retained planner metrics.
      */

@@ -20,6 +20,7 @@ final class LongHorizonCandidateEvaluator {
     private final LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionScoringContext;
     private final boolean canScoreProjection;
     private final int attackerTeamId;
+    private final int defenderTeamId;
         private final IdentityHashMap<LongHorizonAssignmentOptimizer.Candidate, CandidateStateKey> candidateKeys =
             new IdentityHashMap<>();
         private final Map<CandidateStateKey, LongHorizonForwardProjection.ProjectedEvaluation> projectedEvaluations =
@@ -38,6 +39,7 @@ final class LongHorizonCandidateEvaluator {
         this.projectionScoringContext = projectionScoringContext;
         this.canScoreProjection = canScoreProjection(scenario);
         this.attackerTeamId = scenario.attackerCount() == 0 ? 1 : scenario.attacker(0).teamId();
+        this.defenderTeamId = scenario.defenderCount() == 0 ? attackerTeamId : scenario.defender(0).teamId();
     }
 
     static LongHorizonCandidateEvaluator create(
@@ -236,6 +238,7 @@ final class LongHorizonCandidateEvaluator {
             evaluation = projection.projectedEvaluation(
                     projectionScoringContext.objective(),
                     attackerTeamId,
+                    defenderTeamId,
                     candidate.edgeAssigned(),
                     candidate.attackerCounts(),
                     candidate.defenderCounts()
@@ -273,7 +276,7 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonForwardProjection.ProjectedEvaluation evaluation
     ) {
-        return evaluation.objectiveScore() - evaluation.openingSideDelayedDeclarationRegret();
+        return evaluation.comparisonScore() - evaluation.openingSideDelayedDeclarationRegret();
     }
 
     private static boolean canScoreProjection(CompiledScenario scenario) {

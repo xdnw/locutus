@@ -56,6 +56,11 @@ final class ControlObjective implements StrategicObjective {
     }
 
     @Override
+    public double scoreTerminalComparison(StrategicValueView view, int teamId, int opposingTeamId) {
+        return scoreTerminal(view, teamId) - scoreTerminal(view, opposingTeamId);
+    }
+
+    @Override
     public boolean usesWarSlotDenial() {
         return true;
     }

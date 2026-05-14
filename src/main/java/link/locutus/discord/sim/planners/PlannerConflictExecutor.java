@@ -787,7 +787,7 @@ final class PlannerConflictExecutor {
                 objective,
                 attacker.teamId()
         );
-        return objective.scoreTerminal(conflict, attacker.teamId());
+        return objective.scoreTerminalComparison(conflict, attacker.teamId(), defender.teamId());
     }
 
     static DeclaredWarEvaluation evaluateDeclaredWarDetailed(
@@ -827,7 +827,7 @@ final class PlannerConflictExecutor {
                 attacker.teamId()
         );
 
-        double objectiveScore = objective.scoreTerminal(conflict, attacker.teamId());
+        double objectiveScore = objective.scoreTerminalComparison(conflict, attacker.teamId(), defender.teamId());
         CandidateEdgeComponentPolicy policy = componentPolicy == null
                 ? CandidateEdgeComponentPolicy.none()
                 : componentPolicy;
