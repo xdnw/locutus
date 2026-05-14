@@ -6078,6 +6078,27 @@ final class LongHorizonForwardProjection {
             return horizonTurns;
         }
 
+        ProjectedNationState projectedNationState(int nationId) {
+            int nationIndex = state.nationIndexById.get(nationId);
+            if (nationIndex < 0) {
+                throw new IllegalArgumentException("Unknown projected nation id " + nationId);
+            }
+            return new ProjectedNationState(
+                    nationId,
+                    state.teamIds[nationIndex],
+                    state.score(nationIndex),
+                    state.totalInfra(nationIndex),
+                    state.resource(nationIndex, ResourceType.MONEY),
+                    state.unit(nationIndex, MilitaryUnit.SOLDIER),
+                    state.unit(nationIndex, MilitaryUnit.TANK),
+                    state.unit(nationIndex, MilitaryUnit.AIRCRAFT),
+                    state.unit(nationIndex, MilitaryUnit.SHIP),
+                    Math.max(0, state.beigeTurns[nationIndex]),
+                    warState.activeOffensiveWarCount(nationIndex),
+                    warState.activeDefensiveWarCount(nationIndex)
+            );
+        }
+
         ProjectionDiagnostics diagnostics() {
             double attackerStrategicValue = 0d;
             double defenderStrategicValue = 0d;
@@ -6392,6 +6413,25 @@ final class LongHorizonForwardProjection {
             double regretContribution
         ) {
         }
+
+    record ProjectedNationState(
+            int nationId,
+            int teamId,
+            double score,
+            double totalInfra,
+            double money,
+            int soldiers,
+            int tanks,
+            int aircraft,
+            int ships,
+            int beigeTurns,
+            int activeOffensiveWars,
+            int activeDefensiveWars
+    ) {
+        int combatUnitCount() {
+            return soldiers + tanks + aircraft + ships;
+        }
+    }
 
     record ProjectedFeedbackEvaluation(
             ProjectedEvaluation projectedEvaluation,
