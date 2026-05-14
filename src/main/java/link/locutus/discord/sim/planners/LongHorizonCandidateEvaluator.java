@@ -276,7 +276,9 @@ final class LongHorizonCandidateEvaluator {
             LongHorizonAssignmentOptimizer.Candidate candidate,
             LongHorizonForwardProjection.ProjectedEvaluation evaluation
     ) {
-        return evaluation.comparisonScore() - evaluation.openingSideDelayedDeclarationRegret();
+        return evaluation.comparisonScore()
+                + candidate.projectionScore()
+                - evaluation.openingSideDelayedDeclarationRegret();
     }
 
     private static boolean canScoreProjection(CompiledScenario scenario) {

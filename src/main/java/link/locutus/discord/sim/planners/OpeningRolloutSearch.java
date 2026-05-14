@@ -159,6 +159,7 @@ final class OpeningRolloutSearch {
             if (firstAttackTypeId < 0) {
                 return; // no legal attacks at all — cannot declare
             }
+            applyDeclarationReadiness(baseline, currentMetrics);
             currentScore = scoreObjective(
                     objective,
                     attacker.teamId(),
@@ -181,6 +182,57 @@ final class OpeningRolloutSearch {
                 (float) currentMetrics.controlLeverage(),
                 (float) currentMetrics.futureWarLeverage()
         );
+    }
+
+    private static void applyDeclarationReadiness(
+            OpeningEvaluator.OpeningBaseline baseline,
+            OpeningMetricVector.Mutable metrics
+    ) {
+        double strengthRatio = strengthRatio(
+                combinedStrength(baseline.attackerGround(), baseline.attackerAir(), baseline.attackerNaval()),
+                combinedStrength(baseline.defenderGround(), baseline.defenderAir(), baseline.defenderNaval())
+        );
+        metrics.set(
+                metrics.immediateHarm(),
+                metrics.selfExposure(),
+                metrics.resourceSwing(),
+                Math.max(metrics.controlLeverage(), declarationControlLeverage(strengthRatio)),
+                metrics.tacticalMomentum(),
+                Math.max(metrics.forceWindowAdvantage(), declarationFutureWarLeverage(strengthRatio)),
+                metrics.timingWindowAdvantage(),
+                metrics.targetPressure()
+        );
+    }
+
+    private static double combinedStrength(double ground, double air, double naval) {
+        return Math.max(0d, ground) + (3d * Math.max(0d, air)) + (2d * Math.max(0d, naval));
+    }
+
+    private static double strengthRatio(double attackerStrength, double defenderStrength) {
+        if (defenderStrength <= 0d) {
+            return attackerStrength > 0d ? Double.POSITIVE_INFINITY : 1d;
+        }
+        return Math.max(0d, attackerStrength) / defenderStrength;
+    }
+
+    private static double declarationControlLeverage(double strengthRatio) {
+        if (!Double.isFinite(strengthRatio) || strengthRatio >= 1.30d) {
+            return 3d;
+        }
+        if (strengthRatio >= 1.00d) {
+            return 2d;
+        }
+        if (strengthRatio >= 0.80d) {
+            return 0.75d;
+        }
+        return 0d;
+    }
+
+    private static double declarationFutureWarLeverage(double strengthRatio) {
+        if (!Double.isFinite(strengthRatio)) {
+            return 3d;
+        }
+        return Math.max(0d, Math.min(3d, (strengthRatio - 0.75d) * 2d));
     }
 
     private float scoreObjective(

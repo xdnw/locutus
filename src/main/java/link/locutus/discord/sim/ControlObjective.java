@@ -17,7 +17,7 @@ final class ControlObjective implements StrategicObjective {
         return new CandidateEdgeAdmissionPolicy(
                 CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
                 true,
-                true
+                false
         );
     }
 
@@ -31,16 +31,42 @@ final class ControlObjective implements StrategicObjective {
             double targetPressure,
             int teamId
         ) {
+        return scoreOpening(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, futureWarLeverage, targetPressure);
+    }
+
+    @Override
+    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
+        return scoreOpening(
+                metrics.immediateHarm(),
+                metrics.selfExposure(),
+                metrics.resourceSwing(),
+                metrics.controlLeverage(),
+                metrics.tacticalMomentum(),
+                metrics.futureWarLeverage(),
+                metrics.targetPressure()
+        );
+    }
+
+    private static double scoreOpening(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double tacticalMomentum,
+            double futureWarLeverage,
+            double targetPressure
+    ) {
         double effectiveResourceSwing = Math.max(0d, resourceSwing);
         double effectiveTargetPressure = StrategicOpeningPressure.capturableTargetPressure(
             immediateHarm,
             selfExposure,
             effectiveResourceSwing,
             controlLeverage,
-            futureWarLeverage,
+            futureWarLeverage + Math.max(0d, tacticalMomentum),
             targetPressure
         );
         return (3.0d * futureWarLeverage)
+            + (1.5d * Math.max(0d, tacticalMomentum))
             + (4.0d * effectiveTargetPressure)
             + (0.10d * immediateHarm)
             + (0.02d * effectiveResourceSwing)
