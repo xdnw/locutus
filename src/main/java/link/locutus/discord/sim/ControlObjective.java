@@ -2,10 +2,10 @@ package link.locutus.discord.sim;
 
 import link.locutus.discord.sim.actions.SimAction;
 
-/** Objective that prioritizes control flags and follow-up war leverage. */
+/** Objective that prioritizes durable control, slot denial, and follow-through leverage. */
 final class ControlObjective implements StrategicObjective {
     private static final StrategicControlReducer.ControlWeights TERMINAL_CONTROL_WEIGHTS =
-            new StrategicControlReducer.ControlWeights(1.0d, 0.0d, 0.0d, 0.0d, 1.5d, 1.5d);
+            new StrategicControlReducer.ControlWeights(0.0d, 0.0d, 0.0d, 0.0d, 1.5d, 1.5d);
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
@@ -40,10 +40,10 @@ final class ControlObjective implements StrategicObjective {
             futureWarLeverage,
             targetPressure
         );
-        return (4.0d * controlLeverage)
-            + (3.0d * futureWarLeverage)
+        return (3.0d * futureWarLeverage)
             + (4.0d * effectiveTargetPressure)
             + (0.10d * immediateHarm)
+            + (0.02d * effectiveResourceSwing)
             - (0.35d * selfExposure);
     }
 

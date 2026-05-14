@@ -8,7 +8,7 @@ public final class StrategicControlReducer {
     }
 
     public record ControlWeights(
-            double controlOwnershipWeight,
+            double tacticalPostureWeight,
             double targetPressureWeight,
             double tacticalMomentumWeight,
             double followOnLeverageWeight,
@@ -18,7 +18,7 @@ public final class StrategicControlReducer {
     }
 
     public record ControlComponents(
-            double controlOwnership,
+            double tacticalPosture,
             double targetPressure,
             double tacticalMomentum,
             double followOnLeverage,
@@ -39,7 +39,7 @@ public final class StrategicControlReducer {
             if (weights == null) {
                 return 0d;
             }
-            return (weights.controlOwnershipWeight() * controlOwnership)
+            return (weights.tacticalPostureWeight() * tacticalPosture)
                     + (weights.targetPressureWeight() * targetPressure)
                     + (weights.tacticalMomentumWeight() * tacticalMomentum)
                     + (weights.followOnLeverageWeight() * followOnLeverage)
@@ -51,14 +51,13 @@ public final class StrategicControlReducer {
     public static ControlComponents reduce(TeamWarControlView view, int teamId) {
         double[] components = new double[6];
         view.forEachWarControl((attackerTeamId, defenderTeamId, groundSuperiorityTeamId, airSuperiorityTeamId, blockadeTeamId, attackerResistance, defenderResistance) -> {
-            int enemyTeamId = attackerTeamId == teamId ? defenderTeamId : attackerTeamId;
-            components[0] += controlOwnerScore(groundSuperiorityTeamId, teamId, enemyTeamId, 4.0d);
-            components[0] += controlOwnerScore(airSuperiorityTeamId, teamId, enemyTeamId, 5.0d);
-            components[0] += controlOwnerScore(blockadeTeamId, teamId, enemyTeamId, 3.0d);
-
             if (attackerTeamId != teamId && defenderTeamId != teamId) {
                 return;
             }
+            int enemyTeamId = attackerTeamId == teamId ? defenderTeamId : attackerTeamId;
+            components[0] += tacticalPostureScore(groundSuperiorityTeamId, teamId, enemyTeamId, 4.0d);
+            components[0] += tacticalPostureScore(airSuperiorityTeamId, teamId, enemyTeamId, 5.0d);
+            components[0] += tacticalPostureScore(blockadeTeamId, teamId, enemyTeamId, 3.0d);
             int ownControls = 0;
             int enemyControls = 0;
             if (groundSuperiorityTeamId == teamId) {
@@ -121,7 +120,7 @@ public final class StrategicControlReducer {
         return reduce(view, teamId).score(weights);
     }
 
-    private static double controlOwnerScore(int ownerTeamId, int teamId, int enemyTeamId, double value) {
+    private static double tacticalPostureScore(int ownerTeamId, int teamId, int enemyTeamId, double value) {
         if (ownerTeamId == teamId) {
             return value;
         }

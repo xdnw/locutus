@@ -167,7 +167,7 @@ public final class SimWar implements WarControlRules.MutableWarControlState {
     }
 
     /**
-        * Apply direct same-war control ownership changes without cross-war reconciliation.
+        * Apply direct same-war superiority/blockade ownership changes without cross-war reconciliation.
         * This is a compatibility/setup helper for callers that need to seed war state explicitly.
      * 
      * @param actorNationId the nation performing the attack

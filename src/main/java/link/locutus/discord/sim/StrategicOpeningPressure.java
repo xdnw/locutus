@@ -1,6 +1,8 @@
 package link.locutus.discord.sim;
 
 final class StrategicOpeningPressure {
+    private static final double TACTICAL_FLAG_PRESSURE_PROGRESS_WEIGHT = 1.25d;
+
     private StrategicOpeningPressure() {
     }
 
@@ -38,7 +40,7 @@ final class StrategicOpeningPressure {
     ) {
         double positiveProgress = (0.10d * positiveFinite(immediateHarm))
                 + (0.05d * positiveFinite(resourceSwing))
-                + (4.00d * positiveFinite(controlLeverage))
+                + (TACTICAL_FLAG_PRESSURE_PROGRESS_WEIGHT * positiveFinite(controlLeverage))
                 + (3.00d * positiveFinite(futureWarLeverage));
         return Math.max(0d, positiveProgress - (0.35d * positiveFinite(selfExposure)));
     }

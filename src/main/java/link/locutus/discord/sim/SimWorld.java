@@ -186,12 +186,12 @@ public final class SimWorld {
     }
 
     /**
-     * Apply control flag changes to a war and invoke the provider callback if blockade changed.
-     * This is called after an attack resolves and may have shifted control flags.
+     * Apply superiority/blockade flag changes to a war and invoke the provider callback if blockade changed.
+     * This is called after an attack resolves and may have shifted tactical war flags.
      * 
      * @param warId the war ID
      * @param actorNationId the nation that attacked
-     * @param groundSuperiorityDelta +1/-1/0 control change
+     * @param groundSuperiorityDelta +1/-1/0 tactical flag change
      * @param airSuperiorityDelta similar
      * @param blockadeDelta similar
      */

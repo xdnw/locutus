@@ -70,6 +70,20 @@ class BlitzObjectiveTest {
     }
 
     @Test
+    void controlOpeningDoesNotTreatTacticalPostureAsControlByItself() {
+        OpeningMetricVector tacticalPostureOnly = new OpeningMetricVector(
+                0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0
+        );
+        OpeningMetricVector durableWindow = new OpeningMetricVector(
+                0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0
+        );
+
+        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreOpening(tacticalPostureOnly, 1), 1e-9);
+        assertTrue(BlitzObjective.CONTROL.objective().scoreOpening(durableWindow, 1)
+                > BlitzObjective.CONTROL.objective().scoreOpening(tacticalPostureOnly, 1));
+    }
+
+    @Test
     void controlOpeningCapturesTargetPressureOnlyThroughFollowThroughProgress() {
         OpeningMetricVector hugeTargetTinyProgress = new OpeningMetricVector(
                 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1_000.0
@@ -136,7 +150,7 @@ class BlitzObjectiveTest {
     }
 
     @Test
-    void controlOwnershipScoreDoesNotDoubleCountResistanceDrain() {
+    void tacticalPostureScoreDoesNotDoubleCountResistanceDrain() {
         TeamWarControlView slowerDrain = new TeamWarControlView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
@@ -176,14 +190,63 @@ class BlitzObjectiveTest {
         };
 
         assertEquals(
-            StrategicControlReducer.reduce(slowerDrain, 1).controlOwnership(),
-            StrategicControlReducer.reduce(fasterDrain, 1).controlOwnership(),
+            StrategicControlReducer.reduce(slowerDrain, 1).tacticalPosture(),
+            StrategicControlReducer.reduce(fasterDrain, 1).tacticalPosture(),
             1e-9
         );
         assertEquals(
-            StrategicControlReducer.reduce(slowerDrain, 2).controlOwnership(),
-            StrategicControlReducer.reduce(fasterDrain, 2).controlOwnership(),
+            StrategicControlReducer.reduce(slowerDrain, 2).tacticalPosture(),
+            StrategicControlReducer.reduce(fasterDrain, 2).tacticalPosture(),
             1e-9
+        );
+    }
+
+    @Test
+    void controlTerminalDoesNotTreatTacticalPostureAsDurableControl() {
+        TeamWarControlView groundForAirAgainst = new TeamWarControlView() {
+            @Override
+            public void forEachNation(NationScoreConsumer consumer) {
+                consumer.accept(101, 1, 1_000.0);
+                consumer.accept(202, 2, 1_000.0);
+            }
+
+            @Override
+            public void forEachNationStrategicValue(NationValueConsumer consumer) {
+                consumer.accept(101, 1, 100.0);
+                consumer.accept(202, 2, 100.0);
+            }
+
+            @Override
+            public void forEachWarControl(WarControlConsumer consumer) {
+                consumer.accept(1, 2, 1, 2, 0, 100, 100);
+            }
+        };
+
+        TeamWarControlView airForGroundAgainst = new TeamWarControlView() {
+            @Override
+            public void forEachNation(NationScoreConsumer consumer) {
+                consumer.accept(101, 1, 1_000.0);
+                consumer.accept(202, 2, 1_000.0);
+            }
+
+            @Override
+            public void forEachNationStrategicValue(NationValueConsumer consumer) {
+                consumer.accept(101, 1, 100.0);
+                consumer.accept(202, 2, 100.0);
+            }
+
+            @Override
+            public void forEachWarControl(WarControlConsumer consumer) {
+                consumer.accept(1, 2, 2, 1, 0, 100, 100);
+            }
+        };
+
+        assertTrue(StrategicControlReducer.reduce(groundForAirAgainst, 1).tacticalPosture()
+                != StrategicControlReducer.reduce(airForGroundAgainst, 1).tacticalPosture());
+        assertEquals(
+                BlitzObjective.CONTROL.objective().scoreTerminal(groundForAirAgainst, 1),
+                BlitzObjective.CONTROL.objective().scoreTerminal(airForGroundAgainst, 1),
+                1e-9
         );
     }
 
