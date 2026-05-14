@@ -1062,6 +1062,78 @@ class LongHorizonAssignmentOptimizerTest {
                 );
         }
 
+            @Test
+            void selectiveReliefCandidatesProvideFallbackVariantBelowOvercounterThreshold() {
+                List<DBNationSnapshot> attackers = List.of(
+                                withTotalScore(nation(1, 1, 80), 1_600.0).toBuilder().maxOff(2).build(),
+                                nation(2, 1, 900)
+                );
+                List<DBNationSnapshot> defenders = List.of(
+                                nation(101, 2, 1_500).toBuilder().maxOff(1).build(),
+                                nation(102, 2, 1_500).toBuilder().maxOff(1).build()
+                );
+                CompiledScenario scenario = compile(attackers, defenders);
+                CandidateEdgeTable edges = counterPressureAssignmentEdges();
+                int[] attackerCaps = {2, 1};
+                int[] defenderCaps = {1, 1};
+                int[] attackerStrengthRanks = {1, 0};
+                int[] attackerNationIds = {1, 2};
+                int[] defenderNationIds = {101, 102};
+
+                LongHorizonAssignmentOptimizer.Candidate seed = new LongHorizonAssignmentOptimizer.Candidate(
+                                Map.of(1, new IntArrayList(List.of(101, 102))),
+                                new boolean[]{true, true, false, false},
+                                new int[]{2, 0},
+                                new int[]{1, 1},
+                                0d
+                );
+                LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
+                        edges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        72,
+                        1.0d,
+                        false,
+                        SidePlannerSettings.legacyActing()
+                );
+                LongHorizonMarginalFlowSolver.StaticSolveInputs staticSolveInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
+                        attackerNationIds,
+                        defenderNationIds,
+                        List.of()
+                );
+                LongHorizonMarginalFlowSolver.GraphBuildBuffers graphBuffers =
+                        new LongHorizonMarginalFlowSolver.GraphBuildBuffers();
+
+                assertTrue(-projection.attackerCounterOpportunityMarginalScore(0, seed.attackerCounts()[0] - 1) > 0d,
+                        "Test setup must expose positive counter-pressure on the primary attacker");
+
+                List<LongHorizonAssignmentOptimizer.Candidate> reliefCandidates = LongHorizonFeedbackSearch.selectiveAttackerReliefCandidates(
+                        edges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        List.of(),
+                        LongHorizonFeedbackSearch.fixedAttackerCounts(List.of(), attackerNationIds),
+                        72,
+                        seed,
+                        projection,
+                        new int[]{1, 0},
+                        SidePlannerSettings.legacyActing(),
+                        staticSolveInputs,
+                        graphBuffers
+                );
+
+                assertTrue(
+                        reliefCandidates.stream().anyMatch(candidate -> candidate.attackerCounts()[0] < seed.attackerCounts()[0]),
+                        "Selective relief should emit a one-step safer partial variant when counter-pressure exists below the overcounter threshold"
+                );
+            }
+
     @Test
     void midHorizonSnapshotReducesAttackerEdgeFactorAfterProjectedCounters() {
         // A vulnerable attacker exposed to a counter-capable defender for long enough should have

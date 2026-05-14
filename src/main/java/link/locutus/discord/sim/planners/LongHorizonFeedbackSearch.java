@@ -45,6 +45,9 @@ final class LongHorizonFeedbackSearch {
             return List.of();
         }
         int[] reliefBudgets = reliefBudgets(seed.attackerCounts(), fixedCounts, realizedCounters);
+        if (reliefVariantLimit(reliefBudgets) <= 0) {
+            addFallbackReliefBudget(reliefBudgets, reliefOrder, seed.attackerCounts(), fixedCounts, terminalProjection, realizedCounters);
+        }
         int variantLimit = reliefVariantLimit(reliefBudgets);
         if (variantLimit <= 0) {
             return List.of();
@@ -122,6 +125,39 @@ final class LongHorizonFeedbackSearch {
             totalBudget += Math.max(0, budget);
         }
         return Math.min(MAX_SELECTIVE_RELIEF_VARIANTS, totalBudget);
+    }
+
+    private static void addFallbackReliefBudget(
+            int[] reliefBudgets,
+            IntArrayList reliefOrder,
+            int[] attackerCounts,
+            int[] fixedCounts,
+            LongHorizonControlProjection terminalProjection,
+            int[] realizedCounters
+    ) {
+        int totalAvailableRelief = 0;
+        for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
+            totalAvailableRelief += Math.max(0, attackerCounts[attackerIndex] - fixedCounts[attackerIndex]);
+        }
+        if (totalAvailableRelief <= 1) {
+            return;
+        }
+        int fallbackAttackerIndex = -1;
+        double fallbackPriority = 0d;
+        for (int index = 0; index < reliefOrder.size(); index++) {
+            int attackerIndex = reliefOrder.getInt(index);
+            if (attackerCounts[attackerIndex] <= fixedCounts[attackerIndex]) {
+                continue;
+            }
+            double priority = reliefPriority(attackerIndex, attackerCounts, terminalProjection, realizedCounters);
+            if (priority > fallbackPriority) {
+                fallbackPriority = priority;
+                fallbackAttackerIndex = attackerIndex;
+            }
+        }
+        if (fallbackAttackerIndex >= 0 && fallbackPriority > 0d) {
+            reliefBudgets[fallbackAttackerIndex] = 1;
+        }
     }
 
     static LongHorizonAssignmentOptimizer.Candidate recedingFixedPointFeedback(
