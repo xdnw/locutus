@@ -196,11 +196,6 @@ final class LongHorizonAssignmentOptimizer {
                     attackerProjectionPolicies,
                     defenderProjectionPolicies
                 );
-                double initialScore = terminalProjection.assignmentScoreDense(
-                    initialEdgeAssigned,
-                    initialAttackerCounts,
-                    initialDefenderCounts
-                );
                 LongHorizonMarginalFlowSolver.Result marginalResult = LongHorizonMarginalFlowSolver.solve(
                     baseEdges,
                     terminalProjection,
@@ -220,20 +215,13 @@ final class LongHorizonAssignmentOptimizer {
                     marginalResult.attackerCounts(),
                     marginalResult.defenderCounts()
                 );
-                Candidate best = new Candidate(
-                    initialAssignment,
-                    initialEdgeAssigned,
-                    initialAttackerCounts,
-                    initialDefenderCounts,
-                    initialScore
-                );
                 Candidate marginalCandidate = new Candidate(marginalResult, marginalScore);
                 LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
                     scenario,
                     baseEdges,
                     projectionScoringContext
                 );
-                best = evaluator.betterCandidate(best, marginalCandidate, terminalProjection);
+                Candidate best = marginalCandidate;
 
                 if (evaluator.canScoreObjectiveProjection()) {
                     int[] fixedAttackerCounts = LongHorizonFeedbackSearch.fixedAttackerCounts(fixedEdges, attackerNationIds);

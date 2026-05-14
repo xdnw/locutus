@@ -193,6 +193,57 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
+    void projectedControlStartsFromMarginalFlowPortfolioNotRawPrimitiveBaseline() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 900).toBuilder().maxOff(3).build(),
+                nation(2, 1, 880),
+                nation(3, 1, 860),
+                nation(4, 1, 840)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 900),
+                nation(102, 2, 900),
+                nation(103, 2, 900)
+        );
+        CompiledScenario scenario = compile(attackers, defenders);
+        CandidateEdgeTable edges = deepCommitmentScenarioEdges();
+        int[] attackerCaps = {3, 1, 1, 1};
+        int[] defenderCaps = {1, 1, 1};
+        int[] attackerStrengthRanks = {0, 1, 2, 3};
+        int[] attackerNationIds = {1, 2, 3, 4};
+        int[] defenderNationIds = {101, 102, 103};
+
+        Map<Integer, List<Integer>> primitiveAssignment = PrimitiveAssignmentSolver.solveAssignment(
+                edges,
+                scenario.attackerCount(),
+                scenario.defenderCount(),
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds
+        );
+        Map<Integer, List<Integer>> projectedAssignment = LongHorizonAssignmentOptimizer.solve(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                List.of(),
+                72,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(BlitzObjective.CONTROL.objective())
+        );
+
+        assertEquals(1, distinctCommittedAttackerCount(primitiveAssignment),
+                "The raw primitive baseline in this fixture is intentionally source-collapsed");
+        assertTrue(distinctCommittedAttackerCount(projectedAssignment) >= 3,
+                "Projected CONTROL should not let the raw primitive baseline override the marginal-flow opening portfolio");
+        assertEquals(totalPairs(primitiveAssignment), totalPairs(projectedAssignment));
+    }
+
+    @Test
     void boundedPortfolioRepairsVisibleUncoveredHighCityDefender() {
         List<DBNationSnapshot> attackers = List.of(
                 strategicNation(1, 1, 0, 40, 1.0d, 1)
