@@ -21,6 +21,7 @@ import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 import link.locutus.discord.sim.combat.MutableAttackResult;
+import link.locutus.discord.sim.combat.ProjectileDefenseMath;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.UnitEconomy;
@@ -1672,14 +1673,22 @@ final class LongHorizonForwardProjection {
         double declarerPressure = projectedControlPressure(state, declarerOverallIndex);
         double underStrength = Double.isFinite(strengthRatio) ? Math.max(0d, 1d - strengthRatio) : 0d;
         double immediateHarm = 0d;
-        double selfExposure = (0.15d * declarerPressure) + (0.85d * declarerPressure * underStrength * underStrength);
+        double underStrengthExposure = underStrength * underStrength;
+        double selfExposure = (0.15d * declarerPressure)
+                + (0.85d * declarerPressure * underStrengthExposure)
+                + (0.35d * targetPressure * underStrengthExposure);
+        double specialistResourceSwing = primitiveSpecialistResourceSwing(
+                state,
+                declarerOverallIndex,
+                targetOverallIndex
+        );
         double controlLeverage = primitiveDeclarationControlLeverage(strengthRatio);
         double futureWarLeverage = primitiveDeclarationFutureWarLeverage(strengthRatio);
         return scoringPolicy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
                 Math.max(0d, immediateHarm - selfExposure),
                 immediateHarm,
                 selfExposure,
-                0d,
+                specialistResourceSwing,
                 controlLeverage,
                 futureWarLeverage,
                 targetPressure,
@@ -1690,6 +1699,65 @@ final class LongHorizonForwardProjection {
                 remainingTargetSlots,
                 Math.max(0d, Math.min(1d, activityWeight))
         ));
+    }
+
+    private double primitiveSpecialistResourceSwing(
+            ProjectionState state,
+            int declarerOverallIndex,
+            int targetOverallIndex
+    ) {
+        double best = 0d;
+        if (CombatKernel.canUseAttackType(state.nationViews[declarerOverallIndex], AttackType.MISSILE)) {
+            best = Math.max(best, expectedPrimitiveProjectileInfraDamage(
+                    state,
+                    declarerOverallIndex,
+                    targetOverallIndex,
+                    AttackType.MISSILE
+            ));
+        }
+        if (CombatKernel.canUseAttackType(state.nationViews[declarerOverallIndex], AttackType.NUKE)) {
+            best = Math.max(best, expectedPrimitiveProjectileInfraDamage(
+                    state,
+                    declarerOverallIndex,
+                    targetOverallIndex,
+                    AttackType.NUKE
+            ));
+        }
+        return best;
+    }
+
+    private double expectedPrimitiveProjectileInfraDamage(
+            ProjectionState state,
+            int declarerOverallIndex,
+            int targetOverallIndex,
+            AttackType attackType
+    ) {
+        if (!ProjectileDefenseMath.isProjectileAttack(attackType)) {
+            return 0d;
+        }
+        int cityCount = state.cityCounts[targetOverallIndex];
+        if (cityCount <= 0) {
+            return 0d;
+        }
+        double bestCityDamage = 0d;
+        int cityBase = state.cityInfraBaseOffsets[targetOverallIndex];
+        for (int cityIndex = 0; cityIndex < cityCount; cityIndex++) {
+            double infra = state.cityInfraFlat[cityBase + cityIndex];
+            SpecialistCityProfile cityProfile = state.citySpecialistProfilesFlat[cityBase + cityIndex];
+            Map.Entry<Integer, Integer> range = attackType == AttackType.MISSILE
+                    ? cityProfile.missileDamage(infra, project -> state.hasProject(declarerOverallIndex, project))
+                    : cityProfile.nukeDamage(infra, project -> state.hasProject(declarerOverallIndex, project));
+            double expectedCityDamage = (range.getKey() + range.getValue()) * 0.5d;
+            bestCityDamage = Math.max(bestCityDamage, expectedCityDamage);
+        }
+        if (!(bestCityDamage > 0d)) {
+            return 0d;
+        }
+        double hitChance = 1d - ProjectileDefenseMath.interceptionChance(
+                attackType,
+                project -> state.hasProject(targetOverallIndex, project)
+        );
+        return bestCityDamage * Math.max(0d, Math.min(1d, hitChance));
     }
 
     private double projectedControlPressure(ProjectionState state, int nationIndex) {
@@ -3861,6 +3929,10 @@ final class LongHorizonForwardProjection {
 
         int unit(int nationIndex, MilitaryUnit unit) {
             return unitsFlat[unitBaseOffsets[nationIndex] + unit.ordinal()];
+        }
+
+        boolean hasProject(int nationIndex, Project project) {
+            return project != null && (projectBits[nationIndex] & (1L << project.ordinal())) != 0L;
         }
 
         double totalInfra(int nationIndex) {

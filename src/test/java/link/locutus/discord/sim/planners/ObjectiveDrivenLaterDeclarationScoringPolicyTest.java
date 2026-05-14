@@ -38,8 +38,8 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
         assertTrue(openSlotScore > lastSlotScore);
     }
 
-        @Test
-        void controlPolicyDoesNotTreatTargetPressureAsAlreadyCapturedDamage() {
+    @Test
+    void controlPolicyDoesNotTreatTargetPressureAsAlreadyCapturedDamage() {
         ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
             link.locutus.discord.sim.BlitzObjective.CONTROL.objective()
         );
@@ -79,7 +79,33 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             "CONTROL later declarations must not score pressure-only targets as if damage already happened");
         assertTrue(actionableScore > pressureOnlyScore,
             "Target pressure should become valuable again once the declaration has control/future-war actionability");
-        }
+    }
+
+    @Test
+    void controlPolicyTreatsSpecialistResourcePressureAsActionable() {
+        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
+            link.locutus.discord.sim.BlitzObjective.CONTROL.objective()
+        );
+
+        double specialistScore = policy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
+            0d,
+            0d,
+            0d,
+            320d,
+            0d,
+            0d,
+            250d,
+            60d,
+            200d,
+            0d,
+            1,
+            1,
+            1d
+        ));
+
+        assertTrue(specialistScore > 0d,
+            "Legal specialist pressure should be visible to CONTROL even when conventional control is not attainable");
+    }
 
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
             double declarerStrength,

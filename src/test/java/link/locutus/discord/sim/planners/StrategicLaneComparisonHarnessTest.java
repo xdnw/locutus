@@ -154,7 +154,7 @@ class StrategicLaneComparisonHarnessTest {
         String csv = StrategicLaneComparisonHarness.renderCsv(
                 72,
                 1,
-                8,
+                50,
                 StrategicLaneComparisonHarness.ProjectionPolicyPath.DEFAULT,
                 "conventionalThenSpecialists",
                 "projectedObjective"
