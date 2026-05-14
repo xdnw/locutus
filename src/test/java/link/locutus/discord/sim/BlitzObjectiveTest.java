@@ -92,6 +92,78 @@ class BlitzObjectiveTest {
     }
 
     @Test
+    void controlLaterDeclarationDoesNotLetReadinessOnlyTurnPositive() {
+    StrategicObjective objective = BlitzObjective.CONTROL.objective();
+
+    double readinessOnlyScore = objective.scoreLaterDeclaration(
+            new LaterDeclarationEvaluationFixture(
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            12.0,
+            100.0,
+            100.0,
+            0.0,
+            1,
+            1,
+            1.0,
+            1.0,
+            0.0,
+            1.0
+            ),
+        1
+    );
+
+    assertEquals(0.0, readinessOnlyScore, 1e-9);
+    }
+
+    @Test
+    void controlLaterDeclarationUsesSupportInObjectiveSeam() {
+    StrategicObjective objective = BlitzObjective.CONTROL.objective();
+    StrategicObjective.LaterDeclarationEvaluation unsupported = new LaterDeclarationEvaluationFixture(
+            0.0,
+            0.0,
+            0.0,
+            0.75,
+            0.0,
+            0.40,
+            100.0,
+            90.0,
+            100.0,
+            0.0,
+            1,
+            2,
+            0.65,
+            0.65,
+            0.0,
+            1.0
+    );
+    StrategicObjective.LaterDeclarationEvaluation supported = new LaterDeclarationEvaluationFixture(
+            0.0,
+            0.0,
+            0.0,
+            0.75,
+            0.0,
+            0.40,
+            100.0,
+            90.0,
+            100.0,
+            0.0,
+            1,
+            2,
+            0.65,
+            0.65,
+            0.85,
+            1.0
+    );
+
+    assertTrue(objective.scoreLaterDeclaration(supported, 1) > objective.scoreLaterDeclaration(unsupported, 1));
+    }
+
+    @Test
     void controlOpeningDoesNotTreatTacticalPostureAsControlByItself() {
         OpeningMetricVector tacticalPostureOnly = new OpeningMetricVector(
                 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0
@@ -169,6 +241,26 @@ class BlitzObjectiveTest {
 
         assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 1) > 0.0);
         assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 2) < 0.0);
+    }
+
+    private record LaterDeclarationEvaluationFixture(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double declarationReadiness,
+            double futureWarLeverage,
+            double targetPressure,
+            double declarerStrength,
+            double targetStrength,
+            double declarerRebuildStrengthGain,
+            int remainingDeclarerSlots,
+            int remainingTargetSlots,
+            double slotActionability,
+            double targetBestActionability,
+            double targetSupportActionability,
+            double activityWeight
+    ) implements StrategicObjective.LaterDeclarationEvaluation {
     }
 
     @Test

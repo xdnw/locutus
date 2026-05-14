@@ -1,6 +1,5 @@
 package link.locutus.discord.sim.planners;
 
-import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.StrategicObjective;
 
 final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclarationScoringPolicy {
@@ -8,7 +7,7 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
 
     private final StrategicObjective objective;
     private final int teamId;
-    private final OpeningMetricVector.Mutable metrics = new OpeningMetricVector.Mutable();
+    private final LaterDeclarationMetrics metrics = new LaterDeclarationMetrics();
 
     ObjectiveDrivenLaterDeclarationScoringPolicy(StrategicObjective objective) {
         this(objective, DEFAULT_TEAM_ID);
@@ -29,49 +28,6 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
 
     @Override
     public double score(LaterDeclarationScoreContext context) {
-        metrics.set(
-                Math.max(0d, context.immediateHarm()),
-                Math.max(0d, context.selfExposure()),
-                Math.max(0d, context.resourceSwing()),
-                Math.max(0d, context.controlLeverage()),
-                Math.max(0d, context.declarationReadiness()),
-                0d,
-                Math.max(0d, context.futureWarLeverage()),
-            0d,
-                Math.max(0d, context.targetPressure())
-        );
-        double objectiveScore = objective.scoreOpening(metrics, teamId);
-        if (isReadinessOnly(context)) {
-            metrics.set(
-                    Math.max(0d, context.immediateHarm()),
-                    Math.max(0d, context.selfExposure()),
-                    Math.max(0d, context.resourceSwing()),
-                    Math.max(0d, context.controlLeverage()),
-                    0d,
-                    0d,
-                    Math.max(0d, context.futureWarLeverage()),
-                    0d,
-                    Math.max(0d, context.targetPressure())
-            );
-            if (!(objective.scoreOpening(metrics, teamId) > 0d)) {
-                return 0d;
-            }
-            metrics.set(
-                    Math.max(0d, context.immediateHarm()),
-                    Math.max(0d, context.selfExposure()),
-                    Math.max(0d, context.resourceSwing()),
-                    Math.max(0d, context.controlLeverage()),
-                    Math.max(0d, context.declarationReadiness()),
-                    0d,
-                    Math.max(0d, context.futureWarLeverage()),
-                    0d,
-                    Math.max(0d, context.targetPressure())
-            );
-            objectiveScore = objective.scoreOpening(metrics, teamId);
-        }
-        if (!(objectiveScore > 0d)) {
-            return 0d;
-        }
         double actionability = LaterDeclarationFit.actionability(context.declarerStrength(), context.targetStrength());
         double slotActionability = context.resourceSwing() > 0d
                 ? Math.max(actionability, LaterDeclarationFit.specialistSlotActionability(
@@ -79,80 +35,132 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
                         context.targetPressure()
                 ))
                 : actionability;
+        metrics.set(context, slotActionability);
+        double objectiveScore = objective.scoreLaterDeclaration(metrics, teamId);
+        if (!(objectiveScore > 0d)) {
+            return 0d;
+        }
         return context.activityWeight()
                 * objectiveScore
                 * actionability
-                * rebuildReadiness(context)
-                * exposureReadiness(context)
-                * targetOpportunityReadiness(context, slotActionability)
-                * supportReadiness(context, slotActionability)
                 * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots(), slotActionability);
     }
 
-    private static boolean isReadinessOnly(LaterDeclarationScoreContext context) {
-                return context.declarationReadiness() > 0d
-                && !(context.resourceSwing() > 0d)
-                && !(context.controlLeverage() > 0d)
-                && !(context.futureWarLeverage() > 0d);
-    }
+    private static final class LaterDeclarationMetrics implements StrategicObjective.LaterDeclarationEvaluation {
+        private double immediateHarm;
+        private double selfExposure;
+        private double resourceSwing;
+        private double controlLeverage;
+        private double declarationReadiness;
+        private double futureWarLeverage;
+        private double targetPressure;
+        private double declarerStrength;
+        private double targetStrength;
+        private double declarerRebuildStrengthGain;
+        private int remainingDeclarerSlots;
+        private int remainingTargetSlots;
+        private double slotActionability;
+        private double targetBestActionability;
+        private double targetSupportActionability;
+        private double activityWeight;
 
-    private static double supportReadiness(LaterDeclarationScoreContext context, double slotActionability) {
-        if (slotActionability >= 1d || !(context.targetPressure() > 0d)) {
-            return 1d;
+        private void set(LaterDeclarationScoreContext context, double slotActionability) {
+            this.immediateHarm = Math.max(0d, context.immediateHarm());
+            this.selfExposure = Math.max(0d, context.selfExposure());
+            this.resourceSwing = Math.max(0d, context.resourceSwing());
+            this.controlLeverage = Math.max(0d, context.controlLeverage());
+            this.declarationReadiness = Math.max(0d, context.declarationReadiness());
+            this.futureWarLeverage = Math.max(0d, context.futureWarLeverage());
+            this.targetPressure = Math.max(0d, context.targetPressure());
+            this.declarerStrength = Math.max(0d, context.declarerStrength());
+            this.targetStrength = Math.max(0d, context.targetStrength());
+            this.declarerRebuildStrengthGain = Math.max(0d, context.declarerRebuildStrengthGain());
+            this.remainingDeclarerSlots = context.remainingDeclarerSlots();
+            this.remainingTargetSlots = context.remainingTargetSlots();
+            this.slotActionability = Math.max(0d, slotActionability);
+            this.targetBestActionability = Math.max(0d, context.targetBestActionability());
+            this.targetSupportActionability = Math.max(0d, context.targetSupportActionability());
+            this.activityWeight = Math.max(0d, context.activityWeight());
         }
-        double support = Math.max(0d, context.targetSupportActionability());
-        double unsupportedNeed = Math.max(0d, 1d - slotActionability);
-        if (!(unsupportedNeed > 0d)) {
-            return 1d;
-        }
-        double supportedFit = Math.min(1d, slotActionability + (0.65d * support));
-        double pressureWeight = context.targetPressure() / (context.targetPressure() + 12d);
-        double readiness = 1d - (pressureWeight * (1d - supportedFit));
-        return Math.max(0.15d, Math.min(1d, readiness));
-    }
 
-    private static double targetOpportunityReadiness(LaterDeclarationScoreContext context, double slotActionability) {
-        double bestActionability = Math.max(0d, context.targetBestActionability());
-        if (!(bestActionability > slotActionability) || !(slotActionability > 0d)) {
-            return 1d;
+        @Override
+        public double immediateHarm() {
+            return immediateHarm;
         }
-        double relativeActionability = Math.max(0d, Math.min(1d, slotActionability / bestActionability));
-        double slotScarcity = 1d / Math.sqrt(Math.max(1, context.remainingTargetSlots()));
-        double readiness = 1d - (slotScarcity * (1d - (relativeActionability * relativeActionability)));
-        return Math.max(0.05d, Math.min(1d, readiness));
-    }
 
-    private static double exposureReadiness(LaterDeclarationScoreContext context) {
-        double exposure = Math.max(0d, context.selfExposure());
-        if (!(exposure > 0d)) {
-            return 1d;
+        @Override
+        public double selfExposure() {
+            return selfExposure;
         }
-        double actionableProgress = Math.max(0d, context.immediateHarm())
-            + (0.01d * Math.max(0d, context.resourceSwing()))
-                + (2.0d * Math.max(0d, context.controlLeverage()))
-                + (3.0d * Math.max(0d, context.futureWarLeverage()));
-        if (!(actionableProgress > 0d)) {
-            return 0d;
-        }
-        if (actionableProgress >= exposure) {
-            return 1d;
-        }
-        double fit = actionableProgress / (actionableProgress + exposure);
-        return fit * fit;
-    }
 
-    private static double rebuildReadiness(LaterDeclarationScoreContext context) {
-        if (!(context.declarerRebuildStrengthGain() > 0d)
-                || !(context.declarerStrength() > 0d)
-                || !(context.targetStrength() > 0d)
-                || context.declarerStrength() >= context.targetStrength()) {
-            return 1d;
+        @Override
+        public double resourceSwing() {
+            return resourceSwing;
         }
-        double rebuiltStrength = context.declarerStrength() + context.declarerRebuildStrengthGain();
-        if (rebuiltStrength <= context.declarerStrength()) {
-            return 1d;
+
+        @Override
+        public double controlLeverage() {
+            return controlLeverage;
         }
-        double readiness = context.declarerStrength() / rebuiltStrength;
-        return Math.max(0.20d, Math.min(1d, readiness));
+
+        @Override
+        public double declarationReadiness() {
+            return declarationReadiness;
+        }
+
+        @Override
+        public double futureWarLeverage() {
+            return futureWarLeverage;
+        }
+
+        @Override
+        public double targetPressure() {
+            return targetPressure;
+        }
+
+        @Override
+        public double declarerStrength() {
+            return declarerStrength;
+        }
+
+        @Override
+        public double targetStrength() {
+            return targetStrength;
+        }
+
+        @Override
+        public double declarerRebuildStrengthGain() {
+            return declarerRebuildStrengthGain;
+        }
+
+        @Override
+        public int remainingDeclarerSlots() {
+            return remainingDeclarerSlots;
+        }
+
+        @Override
+        public int remainingTargetSlots() {
+            return remainingTargetSlots;
+        }
+
+        @Override
+        public double slotActionability() {
+            return slotActionability;
+        }
+
+        @Override
+        public double targetBestActionability() {
+            return targetBestActionability;
+        }
+
+        @Override
+        public double targetSupportActionability() {
+            return targetSupportActionability;
+        }
+
+        @Override
+        public double activityWeight() {
+            return activityWeight;
+        }
     }
 }

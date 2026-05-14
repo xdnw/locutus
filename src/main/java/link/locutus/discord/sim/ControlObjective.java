@@ -48,6 +48,34 @@ final class ControlObjective implements StrategicObjective {
         );
     }
 
+    @Override
+    public double scoreLaterDeclaration(LaterDeclarationEvaluation metrics, int teamId) {
+        double objectiveScore = scoreOpening(metrics, teamId);
+        if (isReadinessOnly(metrics)) {
+            double actionableScore = scoreOpening(
+                    metrics.immediateHarm(),
+                    metrics.selfExposure(),
+                    metrics.resourceSwing(),
+                    metrics.controlLeverage(),
+                    0d,
+                    metrics.tacticalMomentum(),
+                    metrics.futureWarLeverage(),
+                    metrics.targetPressure()
+            );
+            if (!(actionableScore > 0d)) {
+                return 0d;
+            }
+        }
+        if (!(objectiveScore > 0d)) {
+            return 0d;
+        }
+        return objectiveScore
+                * StrategicObjective.laterRebuildFit(metrics)
+                * StrategicObjective.laterExposureFit(metrics)
+                * StrategicObjective.laterTargetOpportunityFit(metrics)
+                * StrategicObjective.laterSupportFit(metrics);
+    }
+
     private static double scoreOpening(
             double immediateHarm,
             double selfExposure,
@@ -98,6 +126,13 @@ final class ControlObjective implements StrategicObjective {
             return visibilityContribution;
         }
         return Math.min(0.20d * realizedLeverage, 0.35d * visibilityContribution);
+    }
+
+    private static boolean isReadinessOnly(StrategicEvaluationComponents metrics) {
+        return metrics.declarationReadiness() > 0d
+                && !(metrics.resourceSwing() > 0d)
+                && !(metrics.controlLeverage() > 0d)
+                && !(metrics.futureWarLeverage() > 0d);
     }
 
     @Override
