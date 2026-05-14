@@ -1136,6 +1136,101 @@ class LongHorizonAssignmentOptimizerTest {
             }
 
     @Test
+    void actionabilityFeedbackTriggerRequiresProjectedStarvationAndSlotRichUnderuse() {
+        List<DBNationSnapshot> attackers = List.of(
+                strategicNation(1, 1, 0, 40, 1.0d, 6),
+                strategicNation(2, 1, 1, 28, 1.0d, 3)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                strategicNation(101, 2, 0, 28, 1.0d, 1)
+        );
+        CompiledScenario scenario = CompiledScenario.scorerOnlyPlannerView(
+                attackers,
+                defenders,
+                new int[]{6, 3},
+                new int[]{1}
+        );
+        LongHorizonAssignmentOptimizer.Candidate seed = new LongHorizonAssignmentOptimizer.Candidate(
+                Map.of(1, new IntArrayList(List.of(101)), 2, new IntArrayList(List.of(101, 101))),
+                new boolean[]{true},
+                new int[]{1, 2},
+                new int[]{1},
+                0d
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation starvingEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{0, 0},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(4, 1, 2, 0, 0)
+        );
+        LongHorizonForwardProjection.ProjectedEvaluation healthyEvaluation = new LongHorizonForwardProjection.ProjectedEvaluation(
+                0d,
+                0d,
+                new int[]{0, 0},
+                0d,
+                List.of(),
+                new LongHorizonForwardProjection.ProjectedFamilyConsequences(4, 0, 0, 0, 0)
+        );
+
+        assertTrue(
+                LongHorizonFeedbackSearch.shouldAuditActionabilityFeedbackFamily(scenario, seed, starvingEvaluation),
+                "Projected no-attack starvation plus slot-rich one-war underuse should trigger the bounded actionability feedback family"
+        );
+        assertFalse(
+                LongHorizonFeedbackSearch.shouldAuditActionabilityFeedbackFamily(scenario, seed, healthyEvaluation),
+                "Without projected starvation, slot-rich underuse alone should not trigger another feedback family"
+        );
+        LongHorizonAssignmentOptimizer.Candidate saturatedSlotRichSeed = new LongHorizonAssignmentOptimizer.Candidate(
+                seed.assignment(),
+                seed.edgeAssigned(),
+                new int[]{2, 2},
+                seed.defenderCounts(),
+                seed.projectionScore()
+        );
+        assertFalse(
+                LongHorizonFeedbackSearch.shouldAuditActionabilityFeedbackFamily(scenario, saturatedSlotRichSeed, starvingEvaluation),
+                "Once the slot-rich attacker is no longer lightly used, the actionability family should stay off"
+        );
+    }
+
+    @Test
+    void actionabilityFeedbackAttackersPreferWeakOvercommittedAttackers() {
+        List<DBNationSnapshot> attackers = List.of(
+                strategicNation(1, 1, 0, 40, 1.0d, 6),
+                strategicNation(2, 1, 1, 30, 1.0d, 4),
+                strategicNation(3, 1, 2, 28, 1.0d, 3)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                strategicNation(101, 2, 0, 28, 1.0d, 1)
+        );
+        CompiledScenario scenario = CompiledScenario.scorerOnlyPlannerView(
+                attackers,
+                defenders,
+                new int[]{6, 4, 3},
+                new int[]{1}
+        );
+
+        IntArrayList adjustedAttackers = LongHorizonFeedbackSearch.actionabilityFeedbackAttackers(
+                scenario,
+                new int[]{6, 4, 3},
+                new int[]{0, 0, 0},
+                new int[]{1, 3, 2},
+                new LongHorizonForwardProjection.AttackerMidHorizonSnapshot(
+                        new double[]{100d, 100d, 100d},
+                        new double[]{100d, 35d, 60d},
+                        new double[]{100d, 100d, 100d},
+                        new double[]{100d, 35d, 60d}
+                )
+        );
+
+        assertEquals(List.of(2, 3), adjustedAttackers.intStream().map(index -> index + 1).boxed().toList(),
+                "Actionability feedback should free caps from the weakest overcommitted attackers before touching the lightly used slot-rich attacker"
+        );
+    }
+
+    @Test
     void midHorizonSnapshotReducesAttackerEdgeFactorAfterProjectedCounters() {
         // A vulnerable attacker exposed to a counter-capable defender for long enough should have
         // a projected mid-horizon edge factor strictly less than 1.0; a passive defender should
@@ -3108,6 +3203,7 @@ class LongHorizonAssignmentOptimizerTest {
         List<LongHorizonAssignmentOptimizer.Candidate> seeds = LongHorizonAssignmentOptimizer.followOnFamilySeeds(
                 best,
                 marginal,
+                null,
                 null,
                 null,
                 List.of(relief),

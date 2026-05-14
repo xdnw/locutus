@@ -512,6 +512,22 @@ final class LongHorizonAssignmentOptimizer {
                         marginalFlowStaticInputs,
                         marginalFlowGraphBuffers
                     ));
+                    Candidate actionabilityFeedbackCandidate = LongHorizonFeedbackSearch.actionabilityFeedbackCandidate(
+                        baseEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        fixedEdges,
+                        fixedAttackerCounts,
+                        marginalCandidate,
+                        terminalProjection,
+                        projectedEvaluator,
+                        marginalFlowStaticInputs,
+                        marginalFlowGraphBuffers
+                    );
                     int[] commitmentCaps = dynamicCommitmentCaps(
                             baseEdges,
                             scenario,
@@ -559,6 +575,7 @@ final class LongHorizonAssignmentOptimizer {
                 );
                 int audited = 0;
                 int reliefAudited = 0;
+                int actionabilityFeedbackAudited = 0;
                 int diversityAudited = 0;
                 int coverageRepairAudited = 0;
                 int followOnPromotionAudited = 0;
@@ -571,6 +588,11 @@ final class LongHorizonAssignmentOptimizer {
                     best = projectedEvaluator.betterCandidate(best, candidate, terminalProjection);
                     audited++;
                     reliefAudited++;
+                }
+                if (actionabilityFeedbackCandidate != null) {
+                    best = projectedEvaluator.betterCandidate(best, actionabilityFeedbackCandidate, terminalProjection);
+                    audited++;
+                    actionabilityFeedbackAudited++;
                 }
                 if (diversityHedge != null) {
                     best = projectedEvaluator.betterCandidate(best, diversityHedge, terminalProjection);
@@ -595,6 +617,7 @@ final class LongHorizonAssignmentOptimizer {
                         best,
                         marginalCandidate,
                         bestCommitmentBudget,
+                        actionabilityFeedbackCandidate,
                         diversityHedge,
                         reliefCandidates,
                         coverageRepairCandidates
@@ -619,12 +642,15 @@ final class LongHorizonAssignmentOptimizer {
                 }
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedPortfolio", 1);
                 int commitmentCandidateCount = bestCommitmentBudget == null ? 0 : 1;
+                int actionabilityCandidateCount = actionabilityFeedbackCandidate == null ? 0 : 1;
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCandidates", reliefCandidates.size()
                         + commitmentCandidateCount
+                    + actionabilityCandidateCount
                     + followOnPromotionAudited
                     + followOnRebalanceAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedAudits", audited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedReliefAudits", reliefAudited);
+                PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedActionabilityFeedbackAudits", actionabilityFeedbackAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedDiversityAudits", diversityAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedCoverageRepairAudits", coverageRepairAudited);
                 PlannerProfiler.addCounter(PlannerProfiler.Scope.LONG_HORIZON_SOLVE, "boundedProjectedFollowOnPromotionAudits", followOnPromotionAudited);
@@ -695,6 +721,7 @@ final class LongHorizonAssignmentOptimizer {
                     Candidate best,
                     Candidate marginalCandidate,
                     Candidate bestCommitmentBudget,
+                    Candidate actionabilityFeedbackCandidate,
                     Candidate diversityHedge,
                     List<Candidate> reliefCandidates,
                     List<Candidate> coverageRepairCandidates
@@ -703,6 +730,7 @@ final class LongHorizonAssignmentOptimizer {
                 addFollowOnFamilySeed(seeds, best);
                 addFollowOnFamilySeed(seeds, marginalCandidate);
                 addFollowOnFamilySeed(seeds, bestCommitmentBudget);
+                addFollowOnFamilySeed(seeds, actionabilityFeedbackCandidate);
                 addFollowOnFamilySeed(seeds, diversityHedge);
                 for (Candidate candidate : reliefCandidates) {
                     if (seeds.size() >= FOLLOW_ON_FAMILY_SEED_LIMIT) {
