@@ -8,7 +8,7 @@ tools:
   - search/textSearch
   - search/codebase
   - search/usages
-model: ["Raptor mini (Preview) (copilot)", "DeepSeek V4 Flash (deepseek)", "GPT-5.4 mini (copilot)"]
+model: ["DeepSeek V4 Flash (deepseek)", "Raptor mini (Preview) (copilot)", "GPT-5.4 mini (copilot)"]
 user-invocable: false
 disable-model-invocation: false
 ---
