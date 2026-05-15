@@ -19,7 +19,7 @@ import link.locutus.discord.db.entities.conflict.DayTierGraphData;
 import link.locutus.discord.db.entities.conflict.TurnTierGraphData;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -236,9 +236,9 @@ public class WarStatistics {
 
         Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
         List<List<Object>> damageData = new ObjectArrayList<>();
-        JteUtil.writeArray(damageData, damageHeader.values(), List.of(lossesAndDefensiveStats, inflictedAndOffensiveStats));
-        JteUtil.writeArray(damageData, damageHeader.values(), allianceIds, damageByAlliance);
-        JteUtil.writeArray(damageData, damageHeader.values(), nationIds, damageByNation);
+        WebSerializeUtil.writeArray(damageData, damageHeader.values(), List.of(lossesAndDefensiveStats, inflictedAndOffensiveStats));
+        WebSerializeUtil.writeArray(damageData, damageHeader.values(), allianceIds, damageByAlliance);
+        WebSerializeUtil.writeArray(damageData, damageHeader.values(), nationIds, damageByNation);
         root.put("damage", damageData);
         return root;
     }

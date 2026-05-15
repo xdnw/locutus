@@ -1,7 +1,7 @@
 package link.locutus.discord.db.conflict;
 
 import link.locutus.discord.util.IOUtil;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -178,8 +178,8 @@ class ConflictUtilTest {
                 null
         );
 
-        byte[] sparseBytes = IOUtil.writeMsgpackBytes(JteUtil.getSerializer(), Map.of("data", sparse));
-        byte[] denseBytes = IOUtil.writeMsgpackBytes(JteUtil.getSerializer(), Map.of("data", dense));
+        byte[] sparseBytes = IOUtil.writeMsgpackBytes(WebSerializeUtil.getSerializer(), Map.of("data", sparse));
+        byte[] denseBytes = IOUtil.writeMsgpackBytes(WebSerializeUtil.getSerializer(), Map.of("data", dense));
 
         assertTrue(sparseBytes.length < denseBytes.length,
                 "Expected sparse payload to be smaller than dense payload, sparse="

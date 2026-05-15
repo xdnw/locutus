@@ -11,7 +11,6 @@ import gg.jte.html.OwaspHtmlTemplateOutput;
 import gg.jte.output.StringOutput;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -31,7 +30,7 @@ import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class JteUtil {
+public class WebSerializeUtil {
 
     public static ObjectMapper getSerializer() {
         return WebSerializers.MSGPACK;
@@ -86,7 +85,7 @@ public class JteUtil {
         return merged;
     }
 
-    private static final BiFunction<Object, Object, Object> MERGE_FN = JteUtil::mergeValues;
+    private static final BiFunction<Object, Object, Object> MERGE_FN = WebSerializeUtil::mergeValues;
 
     @SuppressWarnings("unchecked")
     public static void merge(Map<String, Object> target, Map<String, Object> source) {
@@ -133,7 +132,7 @@ public class JteUtil {
 
     public static byte[] compress(Object root) {
         try {
-            return compress(JteUtil.getSerializer().writeValueAsBytes(root));
+            return compress(WebSerializeUtil.getSerializer().writeValueAsBytes(root));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

@@ -1,7 +1,7 @@
 package link.locutus.discord.db.conflict;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * two header groups (PAGE_META + PAGE_STATS, GRAPH_META + GRAPH_DATA) both emit
  * a {@code coalitions} key, a flat msgpack map would let the second occurrence
  * overwrite the first and strip {@code alliance_ids}/{@code alliance_names}
- * from the frontend's view. {@link JteUtil#merge} is the owner of the
+ * from the frontend's view. {@link WebSerializeUtil#merge} is the owner of the
  * "combine groups" semantic.
  */
 class HeaderGroupTest {
@@ -55,11 +55,11 @@ class HeaderGroupTest {
                 )));
 
         Map<String, Object> combined = new LinkedHashMap<>();
-        JteUtil.merge(combined, pageMeta);
-        JteUtil.merge(combined, pageStats);
+        WebSerializeUtil.merge(combined, pageMeta);
+        WebSerializeUtil.merge(combined, pageStats);
         combined.put("update_ms", 12345L);
 
-        ObjectMapper mapper = JteUtil.getSerializer();
+        ObjectMapper mapper = WebSerializeUtil.getSerializer();
         @SuppressWarnings("unchecked")
         Map<String, Object> roundTripped = mapper.readValue(
                 mapper.writeValueAsBytes(combined), Map.class);

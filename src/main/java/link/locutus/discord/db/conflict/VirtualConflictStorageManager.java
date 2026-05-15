@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.web.jooby.CloudItem;
 import link.locutus.discord.web.jooby.CloudStorage;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public class VirtualConflictStorageManager {
             throw new IllegalArgumentException(
                     "Temporary conflict not found for id `" + id.toWebId() + "`");
         }
-        byte[] unpacked = JteUtil.decompress(zipped);
+        byte[] unpacked = WebSerializeUtil.decompress(zipped);
         if (unpacked == null || unpacked.length == 0) {
             throw new IllegalArgumentException(
                     "Temporary conflict payload is empty for id `" + id.toWebId() + "`");
@@ -70,7 +70,7 @@ public class VirtualConflictStorageManager {
 
         VirtualConflictPayload data;
         try {
-            data = JteUtil.getSerializer().readValue(unpacked, VirtualConflictPayload.class);
+            data = WebSerializeUtil.getSerializer().readValue(unpacked, VirtualConflictPayload.class);
         } catch (IOException e) {
             throw new IllegalArgumentException(
                     "Failed to deserialize temporary conflict from `" + id.toObjectKey() + "` | " + unpacked.length, e);

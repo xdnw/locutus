@@ -29,7 +29,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -695,7 +695,7 @@ public class DiscordUtil {
         }
         String query = url.substring(placeholder.length());
         if (isType2) {
-            return JteUtil.decompressToObject(Url3986Encoder.decode(query), Map.class);
+            return WebSerializeUtil.decompressToObject(Url3986Encoder.decode(query), Map.class);
         }
 
         List<NameValuePair> entries = URLEncodedUtils.parse(query, Charsets.UTF_8);
@@ -707,7 +707,7 @@ public class DiscordUtil {
     }
 
     public static Pair<String, String> encodeCommands(Map<String, String> commands, int maxLength) {
-        String encoded = Url3986Encoder.encode(JteUtil.compress(commands));
+        String encoded = Url3986Encoder.encode(WebSerializeUtil.compress(commands));
         if (encoded.length() <= maxLength) {
             return Pair.of(encoded, null);
         }
@@ -727,8 +727,8 @@ public class DiscordUtil {
                     secondMap.put(e.getKey(), e.getValue());
             }
 
-            String enc1 = Url3986Encoder.encode(JteUtil.compress(firstMap));
-            String enc2 = Url3986Encoder.encode(JteUtil.compress(secondMap));
+            String enc1 = Url3986Encoder.encode(WebSerializeUtil.compress(firstMap));
+            String enc2 = Url3986Encoder.encode(WebSerializeUtil.compress(secondMap));
 
             if (enc1.length() <= maxLength && enc2.length() <= maxLength) {
                 return Pair.of(enc1, enc2);
