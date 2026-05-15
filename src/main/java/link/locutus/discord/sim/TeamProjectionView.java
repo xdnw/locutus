@@ -1,15 +1,12 @@
 package link.locutus.discord.sim;
 
-public interface TeamWarControlView extends StrategicValueView {
+public interface TeamProjectionView extends StrategicValueView {
     void forEachWarControl(WarControlConsumer consumer);
 
     default void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
     }
 
     default void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
-    }
-
-    default void forEachDurableWarControlMetric(DurableWarControlMetricConsumer consumer) {
     }
 
     default void forEachExternalTeamStrategicValue(ExternalTeamValueConsumer consumer) {
@@ -46,16 +43,6 @@ public interface TeamWarControlView extends StrategicValueView {
                 int defenderTeamId,
                 double attackerOffensiveSlotCost,
                 double defenderDefensiveSlotDenial
-        );
-    }
-
-    @FunctionalInterface
-    interface DurableWarControlMetricConsumer {
-        void accept(
-                int attackerTeamId,
-                int defenderTeamId,
-                double attackerDurableControl,
-                double defenderDurableControl
         );
     }
 

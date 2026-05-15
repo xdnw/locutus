@@ -156,7 +156,8 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
                 timingWindowAdvantage,
                 Math.max(0d, candidate.targetPressure())
         );
-        double score = objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
+        double score = OpeningEvaluator.baseScore(objective, metrics, teamId)
+            * openingSettings.attackTypeWeight(attackType);
         if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue() > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue() * 0.20d);
         }
@@ -180,7 +181,8 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
                 timingWindowAdvantage,
                 Math.max(0d, candidate.targetPressure)
         );
-        double score = objective.scoreOpening(metrics, teamId) * openingSettings.attackTypeWeight(attackType);
+        double score = OpeningEvaluator.baseScore(objective, metrics, teamId)
+            * openingSettings.attackTypeWeight(attackType);
         if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue * 0.20d);
         }

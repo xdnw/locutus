@@ -121,8 +121,21 @@ final class CandidateEdgeStorage {
         return scalarScores[index];
     }
 
+    void setScalarScore(int index, float score) {
+        scalarScores[index] = sanitizeScalarScore(score);
+    }
+
     void scaleScalarScore(int index, float factor) {
-        scalarScores[index] *= factor;
+        float currentScore = scalarScores[index];
+        if (!Float.isFinite(currentScore) || !Float.isFinite(factor)) {
+            scalarScores[index] = Float.NEGATIVE_INFINITY;
+            return;
+        }
+        scalarScores[index] = sanitizeScalarScore(currentScore * factor);
+    }
+
+    private static float sanitizeScalarScore(float score) {
+        return Float.isFinite(score) ? score : Float.NEGATIVE_INFINITY;
     }
 
     float counterRiskAt(int index) {

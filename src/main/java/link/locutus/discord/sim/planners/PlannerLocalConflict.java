@@ -20,11 +20,10 @@ import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimClock;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
-import link.locutus.discord.sim.ControlHoldability;
 import link.locutus.discord.sim.NationCapacityRules;
 import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.StrategicObjective;
-import link.locutus.discord.sim.TeamWarControlView;
+import link.locutus.discord.sim.TeamProjectionView;
 import link.locutus.discord.sim.Turn1DeclarePolicy;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.combat.AttackScratch;
@@ -51,7 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.IntPredicate;
 
-final class PlannerLocalConflict implements TeamWarControlView {
+final class PlannerLocalConflict implements TeamProjectionView {
     static final int DECLARED_ON_ATTACK_DELAY_TURNS = 1;
     private static final MilitaryUnit[] PROJECTED_BUY_UNITS = {
         MilitaryUnit.AIRCRAFT,
@@ -1130,52 +1129,6 @@ final class PlannerLocalConflict implements TeamWarControlView {
                     war.defender.teamId(),
                 attackerSlotCost,
                 defenderSlotDenial
-            );
-        }
-    }
-
-    @Override
-    public void forEachDurableWarControlMetric(DurableWarControlMetricConsumer consumer) {
-        for (LocalWar war : warsById.values()) {
-            if (!war.isActive()) {
-                continue;
-            }
-            int groundOwner = flagOwnerTeamId(war, war.warBuffers.groundSuperiorityOwner[war.warIndex]);
-            int airOwner = flagOwnerTeamId(war, war.warBuffers.airSuperiorityOwner[war.warIndex]);
-            int blockadeOwner = flagOwnerTeamId(war, war.warBuffers.blockadeOwner[war.warIndex]);
-            int attackerBackedControls = ControlHoldability.backedControlCount(
-                    war.attacker.teamId(),
-                    groundOwner,
-                    airOwner,
-                    blockadeOwner,
-                    war.attacker::getUnits
-            );
-            int defenderBackedControls = ControlHoldability.backedControlCount(
-                    war.defender.teamId(),
-                    groundOwner,
-                    airOwner,
-                    blockadeOwner,
-                    war.defender::getUnits
-            );
-            consumer.accept(
-                    war.attacker.teamId(),
-                    war.defender.teamId(),
-                    StrategicAssetValue.controlRegimeScore(
-                            war.attackerMapsValue(),
-                            war.defenderMapsValue(),
-                            war.attackerResistanceValue(),
-                            war.defenderResistanceValue(),
-                            attackerBackedControls,
-                            defenderBackedControls
-                    ),
-                    StrategicAssetValue.controlRegimeScore(
-                            war.defenderMapsValue(),
-                            war.attackerMapsValue(),
-                            war.defenderResistanceValue(),
-                            war.attackerResistanceValue(),
-                            defenderBackedControls,
-                            attackerBackedControls
-                    )
             );
         }
     }

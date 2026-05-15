@@ -12,8 +12,8 @@ import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.StrategicControlReducer;
 import link.locutus.discord.sim.StrategicEvaluationComponents;
+import link.locutus.discord.sim.TeamProjectionView;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
@@ -245,7 +245,7 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
-    void plannerLocalConflictExposesActiveWarStrategicMetrics() {
+        void plannerLocalConflictExposesActiveWarProjectionMetrics() {
         DBNationSnapshot attacker = nation(213, 1)
                 .unit(MilitaryUnit.SOLDIER, 12_000)
                 .unit(MilitaryUnit.TANK, 500)
@@ -268,13 +268,16 @@ class PlannerConflictExecutorTest {
         );
         conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
 
-        double attackerStrategicScore = StrategicControlReducer.reduce(conflict, attacker.teamId())
-                .activeWarStrategicScore(1.0, 1.0, 1.0);
-        double defenderStrategicScore = StrategicControlReducer.reduce(conflict, defender.teamId())
-                .activeWarStrategicScore(1.0, 1.0, 1.0);
+        TeamProjectionView projectionView = conflict;
+        double[] attackerSignal = new double[1];
+        double[] defenderSignal = new double[1];
+        projectionView.forEachActiveWarMetric((attackerTeamId, defenderTeamId, targetPressure, tacticalMomentum, actionSpaceQuality) -> {
+            attackerSignal[0] += targetPressure + tacticalMomentum + actionSpaceQuality;
+            defenderSignal[0] -= targetPressure + tacticalMomentum + actionSpaceQuality;
+        });
 
-        assertTrue(attackerStrategicScore > 0.0);
-        assertEquals(-attackerStrategicScore, defenderStrategicScore, 1e-9);
+        assertTrue(attackerSignal[0] > 0.0);
+        assertEquals(-attackerSignal[0], defenderSignal[0], 1e-9);
     }
 
     @Test

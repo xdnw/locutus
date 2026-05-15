@@ -65,19 +65,6 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
     }
 
     @Test
-    void scarceTargetSlotPenalizesWeakDeclarerWhenBetterDeclarerIsAvailable() {
-        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
-            new TargetPressureObjective()
-        );
-
-        double noBetterDeclarerScore = policy.score(context(55d, 100d, 1, 1, LaterDeclarationFit.actionability(55d, 100d)));
-        double betterDeclarerAvailableScore = policy.score(context(55d, 100d, 1, 1, LaterDeclarationFit.actionability(150d, 100d)));
-
-        assertTrue(betterDeclarerAvailableScore < noBetterDeclarerScore * 0.50d,
-            "Weak declarations should not spend a scarce target slot as if stronger available declarers did not exist");
-    }
-
-    @Test
     void controlPolicyDoesNotTreatTargetPressureAsAlreadyCapturedDamage() {
         ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
             link.locutus.discord.sim.BlitzObjective.CONTROL.objective()
@@ -93,11 +80,8 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             250d,
             100d,
             100d,
-            0d,
             1,
             1,
-            1d,
-            0d,
             1d
         ));
         double actionableScore = policy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
@@ -110,11 +94,8 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             250d,
             100d,
             100d,
-            0d,
             1,
             1,
-            1d,
-            0d,
             1d
         ));
 
@@ -140,11 +121,8 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             250d,
             60d,
             200d,
-            0d,
             1,
             1,
-            LaterDeclarationFit.specialistSlotActionability(320d, 250d),
-            0d,
             1d
         ));
 
@@ -169,11 +147,8 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
             250d,
             100d,
             100d,
-            0d,
             1,
             1,
-            1d,
-            0d,
             1d
         ));
 
@@ -193,19 +168,6 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
         assertTrue(cleanSpecialistScore > 0d);
         assertTrue(exposedSpecialistScore < cleanSpecialistScore * 0.25d,
                 "Specialist resource pressure should not overwhelm severe projected self-exposure");
-    }
-
-    @Test
-    void unsupportedWeakDeclarationScoresBelowSupportedWarOnSameTarget() {
-        ObjectiveDrivenLaterDeclarationScoringPolicy policy = new ObjectiveDrivenLaterDeclarationScoringPolicy(
-                new TargetPressureObjective()
-        );
-
-        double isolatedScore = policy.score(context(65d, 100d, 1, 2, LaterDeclarationFit.actionability(90d, 100d), 0d));
-        double supportedScore = policy.score(context(65d, 100d, 1, 2, LaterDeclarationFit.actionability(90d, 100d), 0.85d));
-
-        assertTrue(supportedScore > isolatedScore * 1.35d,
-                "A weak marginal declaration should be worth more when committed allies can support the same target");
     }
 
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
@@ -231,50 +193,10 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 100d,
                 declarerStrength,
                 targetStrength,
-                0d,
                 remainingDeclarerSlots,
                 remainingTargetSlots,
-                LaterDeclarationFit.actionability(declarerStrength, targetStrength),
-                0d,
                 1d
         );
-    }
-
-    private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
-            double declarerStrength,
-            double targetStrength,
-            int remainingDeclarerSlots,
-            int remainingTargetSlots,
-            double targetBestActionability
-    ) {
-        return context(declarerStrength, targetStrength, remainingDeclarerSlots, remainingTargetSlots, targetBestActionability, 0d);
-    }
-
-    private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext context(
-            double declarerStrength,
-            double targetStrength,
-            int remainingDeclarerSlots,
-            int remainingTargetSlots,
-            double targetBestActionability,
-            double targetSupportActionability
-    ) {
-            return new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                0d,
-                100d,
-                declarerStrength,
-                targetStrength,
-                0d,
-                remainingDeclarerSlots,
-                remainingTargetSlots,
-                targetBestActionability,
-                targetSupportActionability,
-                1d
-            );
     }
 
     private static LaterDeclarationScoringPolicy.LaterDeclarationScoreContext specialistContext(double selfExposure) {
@@ -288,11 +210,8 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
                 250d,
                 60d,
                 200d,
-                0d,
                 1,
                 1,
-                LaterDeclarationFit.specialistSlotActionability(320d, 250d),
-                0d,
                 1d
         );
     }

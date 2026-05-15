@@ -18,11 +18,8 @@ interface LaterDeclarationScoringPolicy {
             double targetPressure,
             double declarerStrength,
             double targetStrength,
-                double declarerRebuildStrengthGain,
             int remainingDeclarerSlots,
             int remainingTargetSlots,
-            double targetBestActionability,
-            double targetSupportActionability,
             double activityWeight
     ) {
         LaterDeclarationScoreContext(
@@ -35,11 +32,8 @@ interface LaterDeclarationScoringPolicy {
                 double targetPressure,
                 double declarerStrength,
                 double targetStrength,
-                double declarerRebuildStrengthGain,
                 int remainingDeclarerSlots,
                 int remainingTargetSlots,
-                double targetBestActionability,
-                double targetSupportActionability,
                 double activityWeight
         ) {
             this(
@@ -53,11 +47,8 @@ interface LaterDeclarationScoringPolicy {
                     targetPressure,
                     declarerStrength,
                     targetStrength,
-                    declarerRebuildStrengthGain,
                     remainingDeclarerSlots,
                     remainingTargetSlots,
-                    targetBestActionability,
-                    targetSupportActionability,
                     activityWeight
             );
         }

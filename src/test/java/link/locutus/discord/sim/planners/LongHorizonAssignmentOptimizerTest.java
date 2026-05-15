@@ -11,7 +11,7 @@ import link.locutus.discord.sim.SimWorld;
 import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicValueView;
-import link.locutus.discord.sim.TeamWarControlView;
+import link.locutus.discord.sim.TeamProjectionView;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
@@ -3815,7 +3815,7 @@ class LongHorizonAssignmentOptimizerTest {
         private static final class WarCountAvoidanceObjective implements StrategicObjective {
                 @Override
                 public double scoreTerminal(StrategicValueView view, int teamId) {
-                        if (!(view instanceof TeamWarControlView controlView)) {
+                        if (!(view instanceof TeamProjectionView controlView)) {
                                 return 0d;
                         }
                         int[] ownDeclaredWars = new int[1];
@@ -3882,7 +3882,7 @@ class LongHorizonAssignmentOptimizerTest {
         private static final class ActiveWarStateObjective implements StrategicObjective {
                 @Override
                 public double scoreTerminal(StrategicValueView view, int teamId) {
-                        if (!(view instanceof TeamWarControlView controlView)) {
+                        if (!(view instanceof TeamProjectionView controlView)) {
                                 return 0d;
                         }
                         double[] score = new double[1];
@@ -3919,7 +3919,7 @@ class LongHorizonAssignmentOptimizerTest {
         private static final class CounterAdjustedForwardWarObjective implements StrategicObjective {
                 @Override
                 public double scoreTerminal(StrategicValueView view, int teamId) {
-                        if (!(view instanceof TeamWarControlView controlView)) {
+                        if (!(view instanceof TeamProjectionView controlView)) {
                                 return 0d;
                         }
                         double[] score = new double[1];
@@ -3955,7 +3955,7 @@ class LongHorizonAssignmentOptimizerTest {
         private static final class ReverseLaterDeclarationWarCountObjective implements StrategicObjective {
                 @Override
                 public double scoreTerminal(StrategicValueView view, int teamId) {
-                        if (!(view instanceof TeamWarControlView controlView)) {
+                        if (!(view instanceof TeamProjectionView controlView)) {
                                 return 0d;
                         }
                         int[] reverseWars = new int[1];
@@ -4014,7 +4014,7 @@ class LongHorizonAssignmentOptimizerTest {
         private static final class SlotDenialNeutralObjective implements StrategicObjective {
                 @Override
                 public double scoreTerminal(StrategicValueView view, int teamId) {
-                        if (!(view instanceof TeamWarControlView controlView)) {
+                        if (!(view instanceof TeamProjectionView controlView)) {
                                 return 0d;
                         }
                         int[] ownDeclaredWars = new int[1];
@@ -4053,7 +4053,7 @@ class LongHorizonAssignmentOptimizerTest {
         private static final class OffensiveSlotCostObjective implements StrategicObjective {
                 @Override
                 public double scoreTerminal(StrategicValueView view, int teamId) {
-                        if (!(view instanceof TeamWarControlView controlView)) {
+                        if (!(view instanceof TeamProjectionView controlView)) {
                                 return 0d;
                         }
                         double[] cost = new double[1];

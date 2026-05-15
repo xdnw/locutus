@@ -3,6 +3,7 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.OpeningMetricVector;
@@ -45,6 +46,12 @@ import java.util.Objects;
  */
 final class OpeningEvaluator {
     private static final int DEFAULT_ACTION_BUDGET = 3;
+    private static final double PRESSURE_PROGRESS_FLAG_WEIGHT = 1.25d;
+    private static final double CONTROL_TIMING_WEIGHT = 1.5d;
+    private static final double CONTROL_PRESSURE_WEIGHT = 4.0d;
+    private static final double CONTROL_IMMEDIATE_HARM_WEIGHT = 0.10d;
+    private static final double CONTROL_RESOURCE_SWING_WEIGHT = 0.02d;
+    private static final double CONTROL_INDUCED_EXPOSURE_WEIGHT = 0.85d;
     private static final EvaluatedEdge REJECTED_EDGE = new EvaluatedEdge(
             Float.NEGATIVE_INFINITY,
             (byte) -1,
@@ -1072,10 +1079,14 @@ final class OpeningEvaluator {
                     projectedMetrics.targetPressure()
             );
         }
-        double score = objective.scoreOpening(projectedMetrics, attacker.teamId());
-        if (openingSettings != null) {
-            score *= openingSettings.warTypeWeight(warType) * openingSettings.attackTypeWeight(attackType);
-        }
+        double score = scoreShellHeuristic(
+                objective,
+                attacker.teamId(),
+            projectedMetrics,
+                warType,
+                attackType,
+                openingSettings
+        );
         if (!Double.isFinite(score) || score <= 0d) {
             return false;
         }
@@ -1112,6 +1123,164 @@ final class OpeningEvaluator {
         return candidateComponentPolicy == null
                 ? CandidateEdgeComponentPolicy.none()
                 : candidateComponentPolicy;
+    }
+
+    static double scoreShellHeuristic(
+            StrategicObjective objective,
+            int attackerTeamId,
+            OpeningMetricVector metrics,
+            WarType warType,
+            AttackType openingAttackType,
+            SideOpeningSettings openingSettings
+    ) {
+        return applyOpeningSettingsWeight(
+                baseScore(objective, metrics, attackerTeamId),
+                openingSettings,
+                warType,
+                openingAttackType
+        );
+    }
+
+    static double applyOpeningSettingsWeight(
+            double score,
+            SideOpeningSettings openingSettings,
+            WarType warType,
+            AttackType openingAttackType
+    ) {
+        if (openingSettings == null) {
+            return score;
+        }
+        double weightedScore = score;
+        if (warType != null) {
+            weightedScore *= openingSettings.warTypeWeight(warType);
+        }
+        if (openingAttackType != null) {
+            weightedScore *= openingSettings.attackTypeWeight(openingAttackType);
+        }
+        return weightedScore;
+    }
+
+    static double baseScore(StrategicObjective objective, OpeningMetricVector metrics, int attackerTeamId) {
+        if (objective == BlitzObjective.NET_DAMAGE.objective()) {
+            return metrics.immediateHarm() - metrics.selfExposure();
+        }
+        if (objective == BlitzObjective.DAMAGE.objective()) {
+            return metrics.immediateHarm();
+        }
+        if (objective == BlitzObjective.MINIMUM_DAMAGE_RECEIVED.objective()) {
+            return (0.35d * metrics.immediateHarm()) - metrics.selfExposure();
+        }
+        if (objective == BlitzObjective.CONTROL.objective()) {
+            return controlScore(metrics);
+        }
+        if (objective == BlitzObjective.BALANCED.objective()) {
+            return balancedScore(metrics);
+        }
+        return objective.scoreOpening(metrics, attackerTeamId);
+    }
+
+    private static double balancedScore(OpeningMetricVector metrics) {
+        double immediateHarm = metrics.immediateHarm();
+        double selfExposure = metrics.selfExposure();
+        double resourceSwing = metrics.resourceSwing();
+        double controlLeverage = metrics.controlLeverage();
+        double futureWarLeverage = metrics.futureWarLeverage();
+        return immediateHarm
+                - (0.75d * selfExposure)
+                + (1.50d * controlLeverage)
+                + futureWarLeverage
+                + capturableTargetPressure(
+                        immediateHarm,
+                        selfExposure,
+                        resourceSwing,
+                        controlLeverage,
+                        futureWarLeverage,
+                        metrics.targetPressure()
+                )
+                + (0.000001d * resourceSwing);
+    }
+
+    private static double controlScore(OpeningMetricVector metrics) {
+        double immediateHarm = positiveFinite(metrics.immediateHarm());
+        double selfExposure = positiveFinite(metrics.selfExposure());
+        double resourceSwing = positiveFinite(metrics.resourceSwing());
+        double controlLeverage = positiveFinite(metrics.controlLeverage());
+        double futureWarLeverage = positiveFinite(metrics.futureWarLeverage());
+        double declarationReadiness = positiveFinite(metrics.declarationReadiness());
+        double tacticalMomentum = positiveFinite(metrics.tacticalMomentum());
+        double targetPressure = positiveFinite(metrics.targetPressure());
+        double actionSpaceQuality = futureWarLeverage;
+        double timing = tacticalMomentum
+                + (declarationReadinessContribution(declarationReadiness, controlLeverage, futureWarLeverage, targetPressure)
+                / CONTROL_TIMING_WEIGHT)
+                + controlPressureTiming(controlLeverage, targetPressure);
+        double effectivePressure = capturableTargetPressure(
+                immediateHarm,
+                selfExposure,
+                resourceSwing,
+                controlLeverage,
+                actionSpaceQuality + Math.max(0d, timing),
+                targetPressure
+        );
+        return (3.0d * actionSpaceQuality)
+                + (CONTROL_TIMING_WEIGHT * Math.max(0d, timing))
+                + (CONTROL_PRESSURE_WEIGHT * effectivePressure)
+                + (CONTROL_IMMEDIATE_HARM_WEIGHT * immediateHarm)
+                + (CONTROL_RESOURCE_SWING_WEIGHT * resourceSwing)
+                - (CONTROL_INDUCED_EXPOSURE_WEIGHT * selfExposure);
+    }
+
+    private static double declarationReadinessContribution(
+            double declarationReadiness,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure
+    ) {
+        if (!(declarationReadiness > 0d) || !(targetPressure > 0d)) {
+            return 0d;
+        }
+        double targetOpportunity = targetPressure / (targetPressure + 12d);
+        double visibilityContribution = 1.20d * Math.min(1d, declarationReadiness) * targetOpportunity;
+        double realizedLeverage = Math.max(0d, controlLeverage) + Math.max(0d, futureWarLeverage);
+        if (!(realizedLeverage > 0d)) {
+            return visibilityContribution;
+        }
+        return Math.min(0.20d * realizedLeverage, 0.35d * visibilityContribution);
+    }
+
+    private static double controlPressureTiming(double controlLeverage, double targetPressure) {
+        if (!(controlLeverage > 0d) || !(targetPressure > 0d)) {
+            return 0d;
+        }
+        double targetOpportunity = targetPressure / (targetPressure + 12d);
+        return Math.min(Math.max(0d, controlLeverage), targetOpportunity);
+    }
+
+    private static double capturableTargetPressure(
+            double immediateHarm,
+            double selfExposure,
+            double resourceSwing,
+            double controlLeverage,
+            double futureWarLeverage,
+            double targetPressure
+    ) {
+        double pressure = positiveFinite(targetPressure);
+        if (!(pressure > 0d)) {
+            return 0d;
+        }
+        double progress = (0.10d * positiveFinite(immediateHarm))
+                + (0.05d * positiveFinite(resourceSwing))
+                + (PRESSURE_PROGRESS_FLAG_WEIGHT * positiveFinite(controlLeverage))
+                + (3.00d * positiveFinite(futureWarLeverage))
+                - (0.35d * positiveFinite(selfExposure));
+        if (!(progress > 0d)) {
+            return 0d;
+        }
+        return pressure * (1d - Math.exp(-progress / pressure));
+    }
+
+    private static double positiveFinite(double value) {
+        return Double.isFinite(value) ? Math.max(0d, value) : 0d;
     }
 
     private static EvaluatedEdge evaluateAdmittedOpening(

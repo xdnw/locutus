@@ -269,6 +269,10 @@ final class CandidateEdgeTable {
         return edges.scoreAt(edge);
     }
 
+    void setScalarScore(int edge, float score) {
+        edges.setScalarScore(edge, score);
+    }
+
     void scaleScalarScore(int edge, float factor) {
         edges.scaleScalarScore(edge, factor);
     }

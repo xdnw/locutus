@@ -92,78 +92,6 @@ class BlitzObjectiveTest {
     }
 
     @Test
-    void controlLaterDeclarationDoesNotLetReadinessOnlyTurnPositive() {
-    StrategicObjective objective = BlitzObjective.CONTROL.objective();
-
-    double readinessOnlyScore = objective.scoreLaterDeclaration(
-            new LaterDeclarationEvaluationFixture(
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            12.0,
-            100.0,
-            100.0,
-            0.0,
-            1,
-            1,
-            1.0,
-            1.0,
-            0.0,
-            1.0
-            ),
-        1
-    );
-
-    assertEquals(0.0, readinessOnlyScore, 1e-9);
-    }
-
-    @Test
-    void controlLaterDeclarationUsesSupportInObjectiveSeam() {
-    StrategicObjective objective = BlitzObjective.CONTROL.objective();
-    StrategicObjective.LaterDeclarationEvaluation unsupported = new LaterDeclarationEvaluationFixture(
-            0.0,
-            0.0,
-            0.0,
-            0.75,
-            0.0,
-            0.40,
-            100.0,
-            90.0,
-            100.0,
-            0.0,
-            1,
-            2,
-            0.65,
-            0.65,
-            0.0,
-            1.0
-    );
-    StrategicObjective.LaterDeclarationEvaluation supported = new LaterDeclarationEvaluationFixture(
-            0.0,
-            0.0,
-            0.0,
-            0.75,
-            0.0,
-            0.40,
-            100.0,
-            90.0,
-            100.0,
-            0.0,
-            1,
-            2,
-            0.65,
-            0.65,
-            0.85,
-            1.0
-    );
-
-    assertTrue(objective.scoreLaterDeclaration(supported, 1) > objective.scoreLaterDeclaration(unsupported, 1));
-    }
-
-    @Test
     void controlOpeningDoesNotTreatTacticalPostureAsControlByItself() {
         OpeningMetricVector tacticalPostureOnly = new OpeningMetricVector(
             0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0
@@ -219,8 +147,8 @@ class BlitzObjectiveTest {
     }
 
     @Test
-    void controlTerminalScoringReadsPlannerWarControlViewWhenAvailable() {
-        TeamWarControlView view = new TeamWarControlView() {
+    void controlTerminalUsesProjectedStrategicTotals() {
+        StrategicValueView view = new StrategicValueView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
                 consumer.accept(101, 1, 1_000.0);
@@ -229,52 +157,23 @@ class BlitzObjectiveTest {
 
             @Override
             public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
+                consumer.accept(101, 1, 140.0);
                 consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 2, 100, 70);
             }
         };
 
-        assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 1) > 0.0);
-        assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 2) < 0.0);
-    }
-
-    @Test
-    void controlHoldabilityRequiresBackingUnitsForControlFlags() {
+        assertEquals(40.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 1), 1e-9);
+        assertEquals(-40.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 2), 1e-9);
         assertEquals(
-                0,
-                ControlHoldability.backedControlCount(
-                        1,
-                        1,
-                        1,
-                        1,
-                        unit -> 0
-                )
-        );
-        assertEquals(
-                3,
-                ControlHoldability.backedControlCount(
-                        1,
-                        1,
-                        1,
-                        1,
-                        unit -> switch (unit) {
-                            case SOLDIER -> 1;
-                            case AIRCRAFT -> 1;
-                            case SHIP -> 1;
-                            default -> 0;
-                        }
-                )
+                BlitzObjective.NET_DAMAGE.objective().scoreTerminal(view, 1),
+                BlitzObjective.CONTROL.objective().scoreTerminal(view, 1),
+                1e-9
         );
     }
 
     @Test
-    void explicitDurableControlMetricOverridesRawFlagGuessing() {
-        TeamWarControlView rawFlagsOnly = new TeamWarControlView() {
+    void controlTerminalComparisonSubtractsOpponentTotals() {
+        StrategicValueView view = new StrategicValueView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
                 consumer.accept(101, 1, 1_000.0);
@@ -283,83 +182,8 @@ class BlitzObjectiveTest {
 
             @Override
             public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
+                consumer.accept(101, 1, 140.0);
                 consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 1, 100, 40);
-            }
-        };
-
-        TeamWarControlView explicitUnbackedFlags = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 1, 100, 40);
-            }
-
-            @Override
-            public void forEachDurableWarControlMetric(DurableWarControlMetricConsumer consumer) {
-                consumer.accept(1, 2, 0.0, 0.0);
-            }
-        };
-
-        assertTrue(StrategicControlReducer.reduce(rawFlagsOnly, 1).durableControl() > 0.0);
-        assertEquals(0.0, StrategicControlReducer.reduce(explicitUnbackedFlags, 1).durableControl(), 1e-9);
-        assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreTerminal(explicitUnbackedFlags, 1), 1e-9);
-    }
-
-    private record LaterDeclarationEvaluationFixture(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double declarationReadiness,
-            double futureWarLeverage,
-            double targetPressure,
-            double declarerStrength,
-            double targetStrength,
-            double declarerRebuildStrengthGain,
-            int remainingDeclarerSlots,
-            int remainingTargetSlots,
-            double slotActionability,
-            double targetBestActionability,
-            double targetSupportActionability,
-            double activityWeight
-    ) implements StrategicObjective.LaterDeclarationEvaluation {
-    }
-
-    @Test
-    void controlTerminalComparisonSubtractsOpponentControl() {
-        TeamWarControlView view = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 2, 100, 70);
             }
         };
 
@@ -372,8 +196,8 @@ class BlitzObjectiveTest {
     }
 
     @Test
-    void tacticalPostureScoreDoesNotDoubleCountResistanceDrain() {
-        TeamWarControlView slowerDrain = new TeamWarControlView() {
+    void terminalScoringIgnoresProjectionDiagnosticsOnceTotalsMatch() {
+        TeamProjectionView lowerDiagnostics = new TeamProjectionView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
                 consumer.accept(101, 1, 1_000.0);
@@ -382,17 +206,27 @@ class BlitzObjectiveTest {
 
             @Override
             public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
+                consumer.accept(101, 1, 140.0);
                 consumer.accept(202, 2, 100.0);
             }
 
             @Override
             public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 2, 100, 95);
+                consumer.accept(1, 2, 1, 0, 0, 100, 95);
+            }
+
+            @Override
+            public void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
+                consumer.accept(1, 2, 1.0, 0.1, 0.0);
+            }
+
+            @Override
+            public void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
+                consumer.accept(1, 2, 10.0, 20.0);
             }
         };
 
-        TeamWarControlView fasterDrain = new TeamWarControlView() {
+        TeamProjectionView higherDiagnostics = new TeamProjectionView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
                 consumer.accept(101, 1, 1_000.0);
@@ -401,175 +235,46 @@ class BlitzObjectiveTest {
 
             @Override
             public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
+                consumer.accept(101, 1, 140.0);
                 consumer.accept(202, 2, 100.0);
             }
 
             @Override
             public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 2, 100, 10);
+                consumer.accept(1, 2, 1, 1, 1, 100, 5);
+            }
+
+            @Override
+            public void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
+                consumer.accept(1, 2, 20.0, 0.9, 4.0);
+            }
+
+            @Override
+            public void forEachActiveWarSlotMetric(ActiveWarSlotMetricConsumer consumer) {
+                consumer.accept(1, 2, 10.0, 20.0);
             }
         };
 
         assertEquals(
-            StrategicControlReducer.reduce(slowerDrain, 1).tacticalPosture(),
-            StrategicControlReducer.reduce(fasterDrain, 1).tacticalPosture(),
-            1e-9
+                BlitzObjective.CONTROL.objective().scoreTerminal(lowerDiagnostics, 1),
+                BlitzObjective.CONTROL.objective().scoreTerminal(higherDiagnostics, 1),
+                1e-9
         );
         assertEquals(
-            StrategicControlReducer.reduce(slowerDrain, 2).tacticalPosture(),
-            StrategicControlReducer.reduce(fasterDrain, 2).tacticalPosture(),
-            1e-9
+                BlitzObjective.BALANCED.objective().scoreTerminal(lowerDiagnostics, 1),
+                BlitzObjective.BALANCED.objective().scoreTerminal(higherDiagnostics, 1),
+                1e-9
         );
-    }
-
-    @Test
-    void controlTerminalDoesNotTreatTacticalPostureAsDurableControl() {
-        TeamWarControlView groundForAirAgainst = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 2, 0, 100, 100);
-            }
-        };
-
-        TeamWarControlView airForGroundAgainst = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 2, 1, 0, 100, 100);
-            }
-        };
-
-        assertTrue(StrategicControlReducer.reduce(groundForAirAgainst, 1).tacticalPosture()
-                != StrategicControlReducer.reduce(airForGroundAgainst, 1).tacticalPosture());
         assertEquals(
-                BlitzObjective.CONTROL.objective().scoreTerminal(groundForAirAgainst, 1),
-                BlitzObjective.CONTROL.objective().scoreTerminal(airForGroundAgainst, 1),
+                BlitzObjective.DAMAGE.objective().scoreTerminal(lowerDiagnostics, 1),
+                BlitzObjective.DAMAGE.objective().scoreTerminal(higherDiagnostics, 1),
                 1e-9
         );
     }
 
     @Test
-    void controlTerminalUsesActiveWarQualityThroughSharedVector() {
-        TeamWarControlView view = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-            }
-
-            @Override
-            public void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
-                consumer.accept(1, 2, 12.0, 0.0, 3.0);
-            }
-        };
-
-        assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 1) > 0.0);
-        assertTrue(BlitzObjective.CONTROL.objective().scoreTerminal(view, 2) < 0.0);
-        assertEquals(15.0, BlitzObjective.BALANCED.objective().scoreTerminal(view, 1), 1e-9);
-        assertEquals(-15.0, BlitzObjective.BALANCED.objective().scoreTerminal(view, 2), 1e-9);
-    }
-
-    @Test
-    void controlTerminalPricesTimingQualityWithoutMakingItDamageValue() {
-        TeamWarControlView lowMomentum = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
-                consumer.accept(1, 2, 0.0, 0.1, 0.0);
-            }
-        };
-
-        TeamWarControlView highMomentum = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachActiveWarMetric(ActiveWarMetricConsumer consumer) {
-                consumer.accept(1, 2, 0.0, 0.9, 0.0);
-            }
-        };
-
-        assertTrue(
-                BlitzObjective.CONTROL.objective().scoreTerminal(highMomentum, 1)
-                        > BlitzObjective.CONTROL.objective().scoreTerminal(lowMomentum, 1)
-        );
-        assertEquals(
-                BlitzObjective.BALANCED.objective().scoreTerminal(lowMomentum, 1),
-                BlitzObjective.BALANCED.objective().scoreTerminal(highMomentum, 1),
-                1e-9
-        );
-        assertEquals(
-                BlitzObjective.DAMAGE.objective().scoreTerminal(lowMomentum, 1),
-                BlitzObjective.DAMAGE.objective().scoreTerminal(highMomentum, 1),
-                1e-9
-        );
-    }
-
-    @Test
-    void terminalScoringPricesExplicitWarSlotDenial() {
-        TeamWarControlView view = new TeamWarControlView() {
+    void terminalScoringStillPricesProjectedSlotOccupancy() {
+        TeamProjectionView view = new TeamProjectionView() {
             @Override
             public void forEachNation(NationScoreConsumer consumer) {
                 consumer.accept(101, 1, 1_000.0);
@@ -592,119 +297,9 @@ class BlitzObjectiveTest {
             }
         };
 
-        assertEquals(110.0, StrategicControlReducer.reduce(view, 1).slotDenial(), 1e-9);
-        assertEquals(-110.0, StrategicControlReducer.reduce(view, 2).slotDenial(), 1e-9);
         assertEquals(110.0, BlitzObjective.NET_DAMAGE.objective().scoreTerminal(view, 1), 1e-9);
         assertEquals(-110.0, BlitzObjective.NET_DAMAGE.objective().scoreTerminal(view, 2), 1e-9);
         assertEquals(165.0, BlitzObjective.CONTROL.objective().scoreTerminal(view, 1), 1e-9);
-    }
-
-    @Test
-    void controlRegimeScoreRewardsTenableWarsAndPenalizesLostControlStates() {
-        TeamWarControlView favorable = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 2, 90, 45);
-            }
-        };
-
-        TeamWarControlView lost = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 100.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 2, 2, 2, 25, 70);
-            }
-        };
-
-        assertTrue(StrategicControlReducer.reduce(favorable, 1).durableControl() > 0.0);
-        assertTrue(StrategicControlReducer.reduce(favorable, 2).durableControl() < 0.0);
-        assertTrue(StrategicControlReducer.reduce(lost, 1).durableControl() < 0.0);
-        assertTrue(StrategicControlReducer.reduce(lost, 2).durableControl() > 0.0);
-        assertTrue(
-                BlitzObjective.CONTROL.objective().scoreTerminal(favorable, 1)
-                        > BlitzObjective.CONTROL.objective().scoreTerminal(lost, 1),
-                "Control objective should prefer wars where current control and resistance state make future leverage tenable"
-        );
-        assertTrue(
-                BlitzObjective.BALANCED.objective().scoreTerminal(favorable, 1)
-                        > BlitzObjective.BALANCED.objective().scoreTerminal(lost, 1),
-                "Balanced objective should down-rank lost-control wars instead of pricing them like stable leverage"
-        );
-    }
-
-    @Test
-    void controlRegimeScoreDoesNotRepeatGlobalStrategicEdgePerWar() {
-        TeamWarControlView lowerGlobalEdge = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 110.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 2, 90, 45);
-            }
-        };
-
-        TeamWarControlView higherGlobalEdge = new TeamWarControlView() {
-            @Override
-            public void forEachNation(NationScoreConsumer consumer) {
-                consumer.accept(101, 1, 1_000.0);
-                consumer.accept(202, 2, 1_000.0);
-            }
-
-            @Override
-            public void forEachNationStrategicValue(NationValueConsumer consumer) {
-                consumer.accept(101, 1, 310.0);
-                consumer.accept(202, 2, 100.0);
-            }
-
-            @Override
-            public void forEachWarControl(WarControlConsumer consumer) {
-                consumer.accept(1, 2, 1, 1, 2, 90, 45);
-            }
-        };
-
-        assertEquals(
-                StrategicControlReducer.reduce(lowerGlobalEdge, 1).durableControl(),
-                StrategicControlReducer.reduce(higherGlobalEdge, 1).durableControl(),
-                1e-9
-        );
-        assertEquals(
-                StrategicControlReducer.reduce(lowerGlobalEdge, 2).durableControl(),
-                StrategicControlReducer.reduce(higherGlobalEdge, 2).durableControl(),
-                1e-9
-        );
     }
 
     @Test

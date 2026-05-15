@@ -2,9 +2,8 @@ package link.locutus.discord.sim;
 
 import link.locutus.discord.sim.actions.SimAction;
 
-/** Objective that prioritizes durable control, slot denial, and follow-through leverage. */
-final class ControlObjective implements StrategicObjective {
-    private static final double DURABLE_CONTROL_WEIGHT = 1.5d;
+/** Objective that prioritizes opening leverage while reading terminal value from projected strategic totals. */
+final class BlitzStrategicObjective implements StrategicObjective {
     private static final double ACTIONABLE_SLOT_WEIGHT = 1.5d;
     private static final double ACTION_SPACE_QUALITY_WEIGHT = 3.0d;
     private static final double TIMING_WEIGHT = 1.5d;
@@ -28,7 +27,7 @@ final class ControlObjective implements StrategicObjective {
     }
 
     @Override
-        public double scoreOpening(
+    public double scoreOpening(
             double immediateHarm,
             double selfExposure,
             double resourceSwing,
@@ -36,7 +35,7 @@ final class ControlObjective implements StrategicObjective {
             double futureWarLeverage,
             double targetPressure,
             int teamId
-        ) {
+    ) {
         return scoreOpening(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, 0d, futureWarLeverage, targetPressure);
     }
 
@@ -54,34 +53,6 @@ final class ControlObjective implements StrategicObjective {
         );
     }
 
-    @Override
-    public double scoreLaterDeclaration(LaterDeclarationEvaluation metrics, int teamId) {
-        double objectiveScore = scoreOpening(metrics, teamId);
-        if (isReadinessOnly(metrics)) {
-            double actionableScore = scoreOpening(
-                    metrics.immediateHarm(),
-                    metrics.selfExposure(),
-                    metrics.resourceSwing(),
-                    metrics.controlLeverage(),
-                    0d,
-                    metrics.tacticalMomentum(),
-                    metrics.futureWarLeverage(),
-                    metrics.targetPressure()
-            );
-            if (!(actionableScore > 0d)) {
-                return 0d;
-            }
-        }
-        if (!(objectiveScore > 0d)) {
-            return 0d;
-        }
-        return objectiveScore
-                * StrategicObjective.laterRebuildFit(metrics)
-                * StrategicObjective.laterExposureFit(metrics)
-                * StrategicObjective.laterTargetOpportunityFit(metrics)
-                * StrategicObjective.laterSupportFit(metrics);
-    }
-
     private static double scoreOpening(
             double immediateHarm,
             double selfExposure,
@@ -92,7 +63,7 @@ final class ControlObjective implements StrategicObjective {
             double futureWarLeverage,
             double targetPressure
     ) {
-        return ControlVector.fromOpening(
+        return OpeningVector.fromOpening(
                 immediateHarm,
                 selfExposure,
                 resourceSwing,
@@ -122,19 +93,11 @@ final class ControlObjective implements StrategicObjective {
         return Math.min(0.20d * realizedLeverage, 0.35d * visibilityContribution);
     }
 
-    private static boolean isReadinessOnly(StrategicEvaluationComponents metrics) {
-        return metrics.declarationReadiness() > 0d
-                && !(metrics.resourceSwing() > 0d)
-                && !(metrics.controlLeverage() > 0d)
-                && !(metrics.futureWarLeverage() > 0d);
-    }
-
     @Override
     public double scoreTerminal(StrategicValueView view, int teamId) {
-        if (view instanceof TeamWarControlView controlView) {
-            return ControlVector.fromTerminal(StrategicControlReducer.reduce(controlView, teamId)).score();
-        }
-        return 0d;
+        StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
+        return (totals.ownValue() - totals.enemyValue())
+                + (ACTIONABLE_SLOT_WEIGHT * StrategicValueTotals.slotBalanceOf(view, teamId));
     }
 
     @Override
@@ -152,9 +115,7 @@ final class ControlObjective implements StrategicObjective {
         return 0.0;
     }
 
-    private record ControlVector(
-            double durableControl,
-            double actionableSlotValue,
+    private record OpeningVector(
             double actionSpaceQuality,
             double timing,
             double pressure,
@@ -163,7 +124,7 @@ final class ControlObjective implements StrategicObjective {
             double resourceSwing,
             double inducedExposure
     ) {
-        static ControlVector fromOpening(
+        static OpeningVector fromOpening(
                 double immediateHarm,
                 double selfExposure,
                 double resourceSwing,
@@ -182,9 +143,7 @@ final class ControlObjective implements StrategicObjective {
                             targetPressure
                     ) / TIMING_WEIGHT
                     + controlPressureTiming(controlLeverage, targetPressure);
-            return new ControlVector(
-                    0d,
-                    0d,
+            return new OpeningVector(
                     actionSpaceQuality,
                     timing,
                     Math.max(0d, targetPressure),
@@ -195,39 +154,18 @@ final class ControlObjective implements StrategicObjective {
             );
         }
 
-        static ControlVector fromTerminal(StrategicControlReducer.ControlComponents components) {
-            return new ControlVector(
-                    components.durableControl(),
-                    components.slotDenial(),
-                    components.followOnLeverage(),
-                    components.tacticalMomentum(),
-                    components.targetPressure(),
-                    Math.max(0d, components.durableControl())
-                            + Math.max(0d, components.slotDenial())
-                            + Math.max(0d, components.followOnLeverage())
-                            + Math.max(0d, components.tacticalMomentum()),
-                    0d,
-                    0d,
-                    0d
-            );
-        }
-
         double score() {
-            double positiveDurableControl = Math.max(0d, durableControl);
-            double positiveActionableSlotValue = Math.max(0d, actionableSlotValue);
             double positiveActionSpaceQuality = Math.max(0d, actionSpaceQuality);
             double positiveTiming = Math.max(0d, timing);
             double effectivePressure = StrategicOpeningPressure.capturableTargetPressure(
                     immediateHarm,
                     inducedExposure,
                     Math.max(0d, resourceSwing),
-                    positiveDurableControl + positiveActionableSlotValue + Math.max(0d, pressureProgress),
+                    Math.max(0d, pressureProgress),
                     positiveActionSpaceQuality + positiveTiming,
                     pressure
             );
-            return (DURABLE_CONTROL_WEIGHT * durableControl)
-                    + (ACTIONABLE_SLOT_WEIGHT * actionableSlotValue)
-                    + (ACTION_SPACE_QUALITY_WEIGHT * actionSpaceQuality)
+            return (ACTION_SPACE_QUALITY_WEIGHT * actionSpaceQuality)
                     + (TIMING_WEIGHT * timing)
                     + (PRESSURE_WEIGHT * effectivePressure)
                     + (IMMEDIATE_HARM_WEIGHT * immediateHarm)

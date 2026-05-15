@@ -4,8 +4,6 @@ import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that maximizes damage dealt while ignoring own losses. */
 final class DamageDealtObjective implements StrategicObjective {
-    private static final StrategicControlReducer.ControlWeights TERMINAL_CONTROL_WEIGHTS =
-            new StrategicControlReducer.ControlWeights(0.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d);
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
@@ -28,11 +26,7 @@ final class DamageDealtObjective implements StrategicObjective {
     @Override
     public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
-        double score = -totals.enemyValue();
-        if (view instanceof TeamWarControlView controlView) {
-            score += StrategicControlReducer.score(controlView, teamId, TERMINAL_CONTROL_WEIGHTS);
-        }
-        return score;
+        return -totals.enemyValue() + StrategicValueTotals.slotBalanceOf(view, teamId);
     }
 
     @Override

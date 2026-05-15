@@ -59,8 +59,8 @@ class LongHorizonForwardProjectionStateTest {
         );
     }
 
-    @Test
-    void currentChosenOpeningProjectsWorseRawEnemyStateThanHandBuiltKnownGoodOpening() {
+        @Test
+        void plannerChosenOpeningProjectsNoWorseRawEnemyStateThanHandBuiltKnownGoodOpening() {
         List<DBNationSnapshot> attackers = List.of(
                 withTotalScore(nation(1, 1, 650, 16_000, 1_600, 650, 0, 1), 1_050.0d),
                 withTotalScore(nation(2, 1, 220, 5_000, 500, 220, 0, 1), 900.0d)
@@ -130,15 +130,15 @@ class LongHorizonForwardProjectionStateTest {
         LongHorizonForwardProjection.ProjectedNationState knownGoodTrapDefender = knownGoodView.projectedNationState(102);
 
         assertTrue(
-                knownGoodPriorityDefender.money() < chosenPriorityDefender.money(),
-                "The hand-built opening should project more damage onto the higher-value defender than the planner-chosen opening"
+                chosenPriorityDefender.money() <= knownGoodPriorityDefender.money(),
+                "The planner-chosen opening should project at least as much damage onto the higher-value defender as the hand-built known-good opening"
                         + "; chosen=" + chosen.assignment()
                         + ", defender101 chosen=" + describeState(chosenPriorityDefender)
                         + ", defender101 knownGood=" + describeState(knownGoodPriorityDefender)
         );
         assertTrue(
-                knownGoodTrapDefender.beigeTurns() < chosenTrapDefender.beigeTurns(),
-                "The hand-built opening should avoid prematurely beiged low-value targets that the planner-chosen opening leaves trapped in beige"
+                chosenTrapDefender.beigeTurns() <= knownGoodTrapDefender.beigeTurns(),
+                "The planner-chosen opening should avoid a worse low-value beige trap than the hand-built known-good opening"
                         + "; chosen=" + chosen.assignment()
                         + ", defender102 chosen=" + describeState(chosenTrapDefender)
                         + ", defender102 knownGood=" + describeState(knownGoodTrapDefender)

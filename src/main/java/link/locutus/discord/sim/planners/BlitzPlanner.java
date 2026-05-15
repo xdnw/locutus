@@ -10,7 +10,9 @@ import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
@@ -262,7 +264,16 @@ public final class BlitzPlanner {
         int[] attStrengthRank = computeStrengthRanks(compiledScenario);
         int[] attackerNationIds = attackerNationIds(compiledScenario);
         int[] defenderNationIds = defenderNationIds(compiledScenario);
-        BlitzGeneratedCandidates candidates = generateCandidates(compiledScenario, attCaps, defCaps, effectiveTuning, effectiveObjective);
+        BlitzGeneratedCandidates candidates = generateCandidates(
+            compiledScenario,
+            attCaps,
+            defCaps,
+            effectiveTuning,
+            effectiveObjective,
+            actingPolicy,
+            defendingPolicy,
+            inputs.planningHorizonTurns()
+        );
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "candidateEdges", candidates.edgeTable().edgeCount());
 
         List<PlannerDiagnostic> diagnostics = new ObjectArrayList<>();
@@ -435,7 +446,10 @@ public final class BlitzPlanner {
             int[] attCaps,
             int[] defCaps,
             SimTuning effectiveTuning,
-            StrategicObjective effectiveObjective) {
+            StrategicObjective effectiveObjective,
+            SidePolicy actingPolicy,
+            SidePolicy defendingPolicy,
+            int horizonTurns) {
         CandidateEdgeTable edges = new CandidateEdgeTable();
 
         OpeningEvaluator.evaluate(
@@ -445,6 +459,19 @@ public final class BlitzPlanner {
             effectiveObjective,
             attCaps,
             defCaps,
+            edges
+        );
+
+        rescoreOpeningCandidatesInPlace(
+            compiledScenario,
+            attCaps,
+            defCaps,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+                effectiveObjective,
+                actingPolicy,
+                defendingPolicy
+            ),
+            horizonTurns,
             edges
         );
 
@@ -486,6 +513,81 @@ public final class BlitzPlanner {
         }
 
         return new BlitzGeneratedCandidates(edges, candidateDefendersByAttacker, edgeScoresByPair, initialWarTypeOrdinalsByPair, initialAttackTypeOrdinalsByPair);
+    }
+
+    private static void rescoreOpeningCandidatesInPlace(
+            CompiledScenario compiledScenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext,
+            int horizonTurns,
+            CandidateEdgeTable edges
+    ) {
+        if (edges.edgeCount() == 0) {
+            return;
+        }
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                compiledScenario,
+                attackerCaps,
+                defenderCaps,
+                horizonTurns,
+                LongHorizonAssignmentOptimizer.horizonFactor(horizonTurns),
+                projectionContext.objective().usesWarSlotDenial(),
+                projectionContext.objective(),
+                projectionContext.attackerOpeningSettings(),
+                projectionContext.defenderOpeningSettings(),
+                projectionContext.attackerPlannerSettings(),
+                projectionContext.defenderPlannerSettings(),
+                projectionContext.attackerProjectionPolicies(),
+                projectionContext.defenderProjectionPolicies()
+        );
+        boolean[] edgeAssigned = new boolean[edges.edgeCount()];
+        int[] attackerCounts = new int[compiledScenario.attackerCount()];
+        int[] defenderCounts = new int[compiledScenario.defenderCount()];
+        for (int edge = 0; edge < edges.edgeCount(); edge++) {
+            int attackerIndex = edges.attackerIndex(edge);
+            int defenderIndex = edges.defenderIndex(edge);
+            edgeAssigned[edge] = true;
+            attackerCounts[attackerIndex] = 1;
+            defenderCounts[defenderIndex] = 1;
+            LongHorizonForwardProjection.ProjectedEvaluation evaluation = projection.projectedEvaluation(
+                    projectionContext.objective(),
+                    compiledScenario.attacker(attackerIndex).teamId(),
+                    compiledScenario.defender(defenderIndex).teamId(),
+                    edgeAssigned,
+                    attackerCounts,
+                    defenderCounts
+            );
+            double weightedScore = OpeningEvaluator.applyOpeningSettingsWeight(
+                    evaluation.comparisonScore(),
+                    projectionContext.attackerOpeningSettings(),
+                    warType(edges.preferredWarTypeId(edge)),
+                    attackType(edges.bestAttackTypeId(edge))
+            );
+            edges.setScalarScore(edge, finiteScore(weightedScore));
+            edgeAssigned[edge] = false;
+            attackerCounts[attackerIndex] = 0;
+            defenderCounts[defenderIndex] = 0;
+        }
+    }
+
+    private static float finiteScore(double score) {
+        return Double.isFinite(score) ? (float) score : Float.NEGATIVE_INFINITY;
+    }
+
+    private static WarType warType(byte warTypeOrdinal) {
+        if (warTypeOrdinal < 0 || warTypeOrdinal >= WarType.values.length) {
+            return null;
+        }
+        return WarType.values[warTypeOrdinal];
+    }
+
+    private static AttackType attackType(byte attackTypeOrdinal) {
+        if (attackTypeOrdinal < 0 || attackTypeOrdinal >= AttackType.values.length) {
+            return null;
+        }
+        return AttackType.values[attackTypeOrdinal];
     }
 
     private static int validWarTypeOrdinal(byte warTypeOrdinal) {

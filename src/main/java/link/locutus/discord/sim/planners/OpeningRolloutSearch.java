@@ -97,10 +97,10 @@ final class OpeningRolloutSearch {
         byte firstAttackTypeId = (byte) -1;
         byte fallbackAttackTypeId = (byte) -1;
         currentMetrics.set(0d, 0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
-        float currentScore = scoreObjective(objective, attacker.teamId(), currentMetrics, warType, null, openingSettings);
+        double currentScore = scoreObjective(objective, attacker.teamId(), currentMetrics, warType, null, openingSettings);
 
         for (int action = 0; action < actionBudget; action++) {
-            float bestNextScore = currentScore;
+            double bestNextScore = currentScore;
             AttackType bestType = null;
             bestMetrics.copyFrom(currentMetrics);
 
@@ -120,15 +120,15 @@ final class OpeningRolloutSearch {
                         result,
                         projectedMetrics
                 );
-                    AttackType openingAttackType = firstAttackTypeId < 0 ? type : AttackType.values[firstAttackTypeId];
-                    float projectedScore = scoreObjective(
+                AttackType openingAttackType = firstAttackTypeId < 0 ? type : AttackType.values[firstAttackTypeId];
+                double projectedScore = scoreObjective(
                         objective,
                         attacker.teamId(),
                         projectedMetrics,
                         warType,
                         openingAttackType,
                         openingSettings
-                    );
+                );
                 if (projectedScore > bestNextScore) {
                     bestNextScore = projectedScore;
                     bestType = type;
@@ -169,11 +169,11 @@ final class OpeningRolloutSearch {
                     openingSettings
             );
         }
-        if (!Float.isFinite(currentScore) || currentScore <= 0f || currentScore <= out.score()) {
+        if (!Double.isFinite(currentScore) || currentScore <= 0d || currentScore <= out.score()) {
             return;
         }
         out.set(
-                currentScore,
+                (float) currentScore,
                 (byte) warType.ordinal(),
                 firstAttackTypeId,
                 (float) currentMetrics.immediateHarm(),
@@ -222,7 +222,7 @@ final class OpeningRolloutSearch {
         return Math.max(0d, ground) + (3d * Math.max(0d, air)) + (2d * Math.max(0d, naval));
     }
 
-    private float scoreObjective(
+    private double scoreObjective(
             StrategicObjective objective,
             int attackerTeamId,
             OpeningMetricVector metrics,
@@ -230,14 +230,13 @@ final class OpeningRolloutSearch {
             AttackType openingAttackType,
             SideOpeningSettings openingSettings
     ) {
-        float baseScore = (float) objective.scoreOpening(metrics, attackerTeamId);
-        if (openingSettings == null) {
-            return baseScore;
-        }
-        double weightedScore = baseScore * openingSettings.warTypeWeight(warType);
-        if (openingAttackType != null) {
-            weightedScore *= openingSettings.attackTypeWeight(openingAttackType);
-        }
-        return (float) weightedScore;
+        return OpeningEvaluator.scoreShellHeuristic(
+            objective,
+            attackerTeamId,
+            metrics,
+            warType,
+            openingAttackType,
+            openingSettings
+        );
     }
 }
