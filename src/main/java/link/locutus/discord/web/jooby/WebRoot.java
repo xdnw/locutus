@@ -2,30 +2,32 @@ package link.locutus.discord.web.jooby;
 
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
+import io.javalin.Javalin;
 import io.javalin.community.ssl.SslPlugin;
 import io.javalin.config.SizeUnit;
-import link.locutus.discord.Logg;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.test.WebDB;
-import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.http.staticfiles.StaticFileConfig;
 import io.javalin.rendering.template.JavalinJte;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.web.jooby.handler.SseMessageOutput;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
+import link.locutus.discord.web.jooby.handler.SseMessageOutput;
+import link.locutus.discord.web.test.WebDB;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static link.locutus.discord.util.discord.DiscordUtil.threadDump;
@@ -42,22 +44,8 @@ public class WebRoot {
     private static WebRoot INSTANCE;
 
     private final BankRequestHandler legacyBankHandler;
-    private final TemplateEngine jteEngine;
-    private final DirectoryCodeResolver jteResolver;
 
     private final MCPHandler mcpHandler;
-
-    private static TemplateEngine createTemplateEngine() {
-        TemplateEngine engine = TemplateEngine.createPrecompiled(Path.of("src/main/jte"), ContentType.Plain);
-        engine.setHtmlCommentsPreserved(false);
-        engine.setTrimControlStructures(true);
-        engine.setBinaryStaticContent(true);
-        return engine;
-    }
-
-    private static DirectoryCodeResolver createResolver() {
-        return new DirectoryCodeResolver(Path.of("src/main/jte"));
-    }
 
     public WebRoot(int port, boolean ssl) throws SQLException, ClassNotFoundException {
         if (Settings.INSTANCE.CLIENT_SECRET.isEmpty()) throw new IllegalArgumentException("Please set CLIENT_SECRET in " + Settings.INSTANCE.getDefaultFile());
@@ -86,17 +74,6 @@ public class WebRoot {
             conf.redirect = true;
             conf.insecure = false;
         });
-
-        this.jteEngine = createTemplateEngine();
-        this.jteResolver = createResolver();
-        {
-            DirectoryWatcher watcher = new DirectoryWatcher(jteEngine, jteResolver);
-            watcher.start(templates -> {
-                for (String template : templates) {
-                    Logg.text("Reloaded template " + template);
-                }
-            });
-        }
 
         Logg.text("Starting on port " + port);
 

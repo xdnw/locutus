@@ -21,7 +21,6 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.page.PageHelper;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -44,7 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class AuthBindings extends WebBindingHelper {
+public class AuthBindings {
     @Binding
     @Me
     public static DBAuthRecord auth(Context context) {
@@ -139,7 +138,7 @@ public class AuthBindings extends WebBindingHelper {
             WebRoot.db().removeToken(true, auth.getUUID(), auth.getNationIdRaw(), auth.getUserIdRaw());
         }
         if (redirect) {
-            PageHelper.redirect(ws, context, WebRoot.REDIRECT, false);
+            PageHelper.redirect(ws, context, WebRoot.REDIRECT);
         }
     }
 

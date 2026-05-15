@@ -63,10 +63,7 @@ import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.api.TreatyEndpoints;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
-import link.locutus.discord.web.commands.binding.DiscordWebBindings;
 import link.locutus.discord.web.commands.binding.JavalinBindings;
-import link.locutus.discord.web.commands.binding.PrimitiveWebBindings;
-import link.locutus.discord.web.commands.binding.WebPWBindings;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.PageHelper;
 import link.locutus.discord.web.jooby.handler.SseMessageOutput;
@@ -138,9 +135,6 @@ public class PageHandler implements Handler {
 
         new JavalinBindings().register(store);
         new AuthBindings().register(store);
-        new DiscordWebBindings(placeholders).register(store);
-        new WebPWBindings().register(store);
-        new PrimitiveWebBindings().register(store);
 
         this.validators = PWBindings.createDefaultValidators();
         this.permisser = PWBindings.createDefaultPermisser();
@@ -577,7 +571,7 @@ public class PageHandler implements Handler {
                         Object cmdResult = parametric.call(null, stack.getStore(), parsed);
                         result = wrap(ws, cmdResult, ctx, isApi);
                     } else if (!isApi) {
-                        result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
+                        throw new IllegalArgumentException("API endpoint is not viewable: `" + path + "`. Only informational commands can be executed without user confirmation.");
                     } else if (cmd instanceof ParametricCallable parametric) {
                         throw new IllegalArgumentException("API endpoint is not viewable: `" + path + "`. Only informational commands can be executed without user confirmation.");
                     } else {
@@ -620,7 +614,7 @@ public class PageHandler implements Handler {
                 ctx.result(WebUtil.minify(msg));
                 return;
             }
-            PageHelper.redirect(ws, ctx, redirectResponse.getMessage(), false);
+            PageHelper.redirect(ws, ctx, redirectResponse.getMessage());
             return;
         }
         if (isApi) {

@@ -6,13 +6,25 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.*;
+import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.MethodParser;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.CommandGroup;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
@@ -28,11 +40,8 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.commands.HtmlInput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.json.JSONObject;
@@ -40,7 +49,14 @@ import org.json.JSONObject;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -492,46 +508,6 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             }
         }
         return (ParametricCallable) result;
-    }
-
-    public String getHtml(ValueStore store, String cmd, String parentId) {
-        ParametricCallable callable = get(cmd);
-        StringBuilder html = new StringBuilder(callable.toBasicHtml(store));
-        html.append("<select name=\"filter-operator\" for=\"").append(parentId).append("\" class=\"form-control\">");
-        for (MathOperation value : MathOperation.values()) {
-            String selected = value == MathOperation.EQUAL ? "selected=\"selected\"" : "";
-            html.append("<option value=\"").append(value.code).append("\" ").append(selected).append(">")
-                    .append(StringEscapeUtils.escapeHtml4(value.code)).append("</option>");
-        }
-        html.append("</select>");
-        Type type = callable.getReturnType();
-        if (type == String.class) {
-            html.append("<input name=\"filter-value\" for=\"").append(parentId)
-                    .append("\" required type=\"text\" class=\"form-control\"/>");
-        } else if (Enum.class.isAssignableFrom((Class<?>) type)) {
-            html.append("<select name=\"filter-value\" for=\"").append(parentId)
-                    .append("\" required class=\"form-control\">");
-            for (Object o : ((Class<?>) type).getEnumConstants()) {
-                html.append("<option value=\"").append(StringEscapeUtils.escapeHtml4(o.toString())).append("\">")
-                        .append(StringEscapeUtils.escapeHtml4(o.toString())).append("</option>");
-            }
-            html.append("</select>");
-            html.append(html);
-        } else if (type == boolean.class || type == Boolean.class) {
-            html.append("<select name=\"filter-value\" for=\"").append(parentId)
-                    .append("\" required class=\"form-control\"><option>true</option><option>false</option></select>");
-        } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class
-                || type == long.class || type == Long.class) {
-            html.append("<input name=\"filter-value\" for=\"").append(parentId)
-                    .append("\" required type=\"number\" class=\"form-control\"/>");
-        } else {
-            throw new IllegalArgumentException(
-                    "Only the following filter types are supported: String, Number, Boolean.");
-        }
-        html.append("<button id=\"addfilter.submit\" for=\"").append(parentId)
-                .append("\" class=\"btn btn-primary\" >Add Filter</button>");
-
-        return html.toString();
     }
 
     public List<CommandCallable> getFilterCallables() {

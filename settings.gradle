@@ -9,6 +9,81 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
+def sanitizeBuildIsolationToken = { String value ->
+    def collapsed = (value ?: 'default')
+            .replaceAll(/[^A-Za-z0-9._-]+/, '-')
+            .replaceAll(/-+/, '-')
+            .replaceAll(/^-|-$/, '')
+    collapsed ? collapsed.take(64) : 'default'
+}
+
+def currentGradleProcessId = {
+    def runtimeName = java.lang.management.ManagementFactory.runtimeMXBean.name ?: 'unknown'
+    sanitizeBuildIsolationToken(runtimeName.tokenize('@')[0] ?: 'unknown')
+}
+
+def preferredBuildLane = {
+    def requestedTasks = gradle.startParameter.taskNames.findAll { it && !it.startsWith('-') }
+    def taskSignature = requestedTasks ? requestedTasks.join('_') : 'default'
+    def taskLabel = sanitizeBuildIsolationToken(taskSignature)
+    def taskHash = Integer.toUnsignedString(taskSignature.hashCode(), 36)
+    "${taskLabel}-${taskHash}"
+}
+
+def explicitIsolationId = System.getProperty('locutus.build.isolation.id')
+        ?: System.getProperty('locutusBuildIsolationId')
+        ?: System.getenv('LOCUTUS_BUILD_ISOLATION_ID')
+
+def locutusGradleStateRoot = new File(settingsDir, '.gradle/locutus')
+def resolvedIsolationId = explicitIsolationId ? sanitizeBuildIsolationToken(explicitIsolationId) : null
+def preferredLaneLockChannel = null
+def preferredLaneLock = null
+
+if (!resolvedIsolationId) {
+    def preferredLane = preferredBuildLane()
+    def lockDir = new File(locutusGradleStateRoot, 'locks')
+    lockDir.mkdirs()
+    def preferredLaneLockFile = new File(lockDir, "${preferredLane}.lock")
+    preferredLaneLockChannel = java.nio.channels.FileChannel.open(
+            preferredLaneLockFile.toPath(),
+            java.nio.file.StandardOpenOption.CREATE,
+            java.nio.file.StandardOpenOption.WRITE
+    )
+
+    try {
+        preferredLaneLock = preferredLaneLockChannel.tryLock()
+    } catch (java.nio.channels.OverlappingFileLockException ignored) {
+        preferredLaneLock = null
+    }
+
+    resolvedIsolationId = preferredLaneLock != null
+            ? preferredLane
+            : "${preferredLane}-${currentGradleProcessId()}"
+
+    if (preferredLaneLock == null) {
+        preferredLaneLockChannel.close()
+        preferredLaneLockChannel = null
+    }
+}
+
+System.setProperty('locutus.build.isolation.id', resolvedIsolationId)
+
+if (gradle.startParameter.projectCacheDir == null) {
+    def projectCacheRoot = new File(locutusGradleStateRoot, 'project-cache')
+    projectCacheRoot.mkdirs()
+    gradle.startParameter.projectCacheDir = new File(projectCacheRoot, resolvedIsolationId)
+}
+
+if (preferredLaneLockChannel != null) {
+    gradle.buildFinished {
+        try {
+            preferredLaneLock?.release()
+        } finally {
+            preferredLaneLockChannel.close()
+        }
+    }
+}
+
 rootProject.name = 'Locutus'
 
 dependencyResolutionManagement {

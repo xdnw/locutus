@@ -175,13 +175,6 @@ public class WebSerializeUtil {
         }
     }
 
-    public static String render(Consumer<OwaspHtmlTemplateOutput> task) {
-        TemplateOutput output = new StringOutput();
-        OwaspHtmlTemplateOutput htmlOutput = new OwaspHtmlTemplateOutput(output);
-        task.accept(htmlOutput);
-        return output.toString();
-    }
-
     public static <V, T> List<List<Object>> writeArray(List<List<Object>> parent, Collection<Function<T, Object>> functions, List<V> values, Map<V, Map.Entry<T, T>> map) {
         return writeArray(parent, functions, values, (aaId, consumer) -> {
             Map.Entry<T, T> pair = map.get(aaId);
