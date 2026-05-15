@@ -3,10 +3,6 @@ package link.locutus.discord.sim.planners;
 interface LaterDeclarationScoringPolicy {
     double score(LaterDeclarationScoreContext context);
 
-    default boolean usesPrimitiveProjectedComponents() {
-        return false;
-    }
-
     record LaterDeclarationScoreContext(
             double openingScore,
             double immediateHarm,

@@ -2542,7 +2542,7 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
-    void objectiveDrivenProjectionPolicyCanSuppressHeuristicLaterDeclarations() {
+    void objectiveDrivenProjectionPolicyCanSuppressPrimitiveLaterDeclarations() {
         List<DBNationSnapshot> attackers = List.of(
                 withTotalScore(nation(1, 1, 900), 2_000.0),
                 withTotalScore(nation(2, 1, 900), 2_000.0)
@@ -2596,8 +2596,8 @@ class LongHorizonAssignmentOptimizerTest {
                 "The legacy later-declaration heuristic should still declare in this fixture");
         assertEquals(0L, objectivePolicyCounterDeclarations,
                 "Objective-driven later-declaration policy should be able to reject a legal heuristic declaration instead of only changing attack choice");
-        assertTrue(heuristicOpeningEvaluations > 0L,
-                "Legacy projected later declarations should still use opening evaluation for their candidate value");
+        assertEquals(0L, heuristicOpeningEvaluations,
+                "Projected later declarations should use primitive dense-state components instead of rebuilding opening evaluations");
         assertEquals(0L, objectiveOpeningEvaluations,
                 "Objective-driven projected later declarations should use primitive dense-state components instead of rebuilding opening evaluations");
     }

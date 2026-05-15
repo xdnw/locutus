@@ -21,11 +21,6 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
     }
 
     @Override
-    public boolean usesPrimitiveProjectedComponents() {
-        return true;
-    }
-
-    @Override
     public double score(LaterDeclarationScoreContext context) {
         double actionability = LaterDeclarationFit.actionability(context.declarerStrength(), context.targetStrength());
         double slotActionability = context.resourceSwing() > 0d
