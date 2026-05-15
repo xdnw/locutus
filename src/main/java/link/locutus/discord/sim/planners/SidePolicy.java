@@ -37,46 +37,34 @@ public record SidePolicy(
         }
     }
 
-    public static SidePolicy legacy(StrategicObjective objective) {
-        return legacy("legacy", objective);
-    }
-
-    public static SidePolicy legacy(String name, StrategicObjective objective) {
+    public static SidePolicy heuristicActing(String name, StrategicObjective objective) {
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }
         return new SidePolicy(
                 name,
                 objective,
-                SidePlannerSettings.legacyActing(),
-                SideOpeningSettings.legacy(objective),
+                SidePlannerSettings.actingDefaults(),
+                SideOpeningSettings.defaults(objective),
                 SideProjectionPolicies.heuristic(),
                 NO_OP_ACTOR,
                 true
         );
     }
 
-    public static SidePolicy legacyPassive(StrategicObjective objective) {
-        return legacyPassive("legacyPassive", objective);
-    }
-
-    public static SidePolicy legacyPassive(String name, StrategicObjective objective) {
+    public static SidePolicy heuristicPassive(String name, StrategicObjective objective) {
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }
         return new SidePolicy(
                 name,
                 objective,
-                SidePlannerSettings.legacy(),
-                SideOpeningSettings.legacy(objective),
+                SidePlannerSettings.defaults(),
+                SideOpeningSettings.defaults(objective),
                 SideProjectionPolicies.heuristic(),
                 NO_OP_ACTOR,
                 false
         );
-    }
-
-    public static SidePolicy noDeclarations(StrategicObjective objective) {
-        return noDeclarations("noDeclarations", objective);
     }
 
     public static SidePolicy noDeclarations(String name, StrategicObjective objective) {
@@ -86,8 +74,8 @@ public record SidePolicy(
         return new SidePolicy(
                 name,
                 objective,
-                SidePlannerSettings.legacy(),
-                SideOpeningSettings.legacy(objective),
+                SidePlannerSettings.defaults(),
+                SideOpeningSettings.defaults(objective),
                 SideProjectionPolicies.noDeclarations(),
                 NO_OP_ACTOR,
                 false
@@ -98,11 +86,11 @@ public record SidePolicy(
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }
-        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        SideOpeningSettings opening = SideOpeningSettings.defaults(objective);
         return new SidePolicy(
                 name,
                 objective,
-                SidePlannerSettings.legacyActing(),
+            SidePlannerSettings.actingDefaults(),
                 opening,
                 SideProjectionPolicies.objectiveDriven(objective, opening),
                 NO_OP_ACTOR,
@@ -114,11 +102,11 @@ public record SidePolicy(
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }
-        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        SideOpeningSettings opening = SideOpeningSettings.defaults(objective);
         return new SidePolicy(
                 name,
                 objective,
-                SidePlannerSettings.legacy(),
+            SidePlannerSettings.defaults(),
                 opening,
                 SideProjectionPolicies.objectiveDriven(objective, opening),
                 NO_OP_ACTOR,
@@ -130,11 +118,11 @@ public record SidePolicy(
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }
-        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        SideOpeningSettings opening = SideOpeningSettings.defaults(objective);
         return new SidePolicy(
                 name,
                 objective,
-                SidePlannerSettings.legacyActing(),
+            SidePlannerSettings.actingDefaults(),
                 opening,
                 SideProjectionPolicies.objectiveAttackChoice(objective, opening),
                 NO_OP_ACTOR,
@@ -146,11 +134,11 @@ public record SidePolicy(
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }
-        SideOpeningSettings opening = SideOpeningSettings.legacy(objective);
+        SideOpeningSettings opening = SideOpeningSettings.defaults(objective);
         return new SidePolicy(
                 name,
                 objective,
-                SidePlannerSettings.legacy(),
+            SidePlannerSettings.defaults(),
                 opening,
                 SideProjectionPolicies.objectiveAttackChoice(objective, opening),
                 NO_OP_ACTOR,

@@ -384,29 +384,6 @@ final class LongHorizonForwardProjection {
             CompiledScenario scenario,
             int[] attackerCaps,
             int horizonTurns,
-            double horizonFactor
-    ) {
-        return create(
-                edges,
-                scenario,
-                attackerCaps,
-                horizonTurns,
-                horizonFactor,
-            null,
-            null,
-            null,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
-                SideProjectionPolicies.heuristic(),
-                SideProjectionPolicies.heuristic()
-        );
-    }
-
-    static LongHorizonForwardProjection create(
-            CandidateEdgeTable edges,
-            CompiledScenario scenario,
-            int[] attackerCaps,
-            int horizonTurns,
             double horizonFactor,
             StrategicObjective projectionObjective,
             SideOpeningSettings attackerOpeningSettings,
@@ -1405,7 +1382,7 @@ final class LongHorizonForwardProjection {
                 PlannerAutonomousDeclarationPlanner.tuningForPlannerSettings(SimTuning.defaults(), plannerSettings),
                 OverrideSet.EMPTY,
                 declarationObjective,
-                openingSettings == null ? SideOpeningSettings.legacy(declarationObjective) : openingSettings,
+                openingSettings == null ? SideOpeningSettings.defaults(declarationObjective) : openingSettings,
             declarerCaps,
             targetCaps,
                 rawEdges

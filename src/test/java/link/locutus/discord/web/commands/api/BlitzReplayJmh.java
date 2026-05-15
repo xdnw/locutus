@@ -262,8 +262,8 @@ public class BlitzReplayJmh {
             assignment = planner.assign(
                     attackerSnapshots,
                     defenderSnapshots,
-                    SidePolicy.legacy("acting", objective),
-                    SidePolicy.legacyPassive("nonActing", objective),
+                    SidePolicy.heuristicActing("acting", objective),
+                    SidePolicy.heuristicPassive("nonActing", objective),
                     currentTurn,
                     List.of(),
                     horizonTurns
@@ -277,10 +277,10 @@ public class BlitzReplayJmh {
             opposingSideTargets = List.copyOf(attackerSnapshots);
             openingSideDeclarers = List.copyOf(attackerSnapshots);
             openingSideTargets = List.copyOf(defenderSnapshots);
-            opposingSideDeclarerPolicy = SidePolicy.legacy("laterDeclarerOpposingSide", objective);
-            opposingSideTargetPolicy = SidePolicy.legacyPassive("laterTargetOpposingSide", objective);
-            openingSideDeclarerPolicy = SidePolicy.legacy("laterDeclarerOpeningSide", objective);
-            openingSideTargetPolicy = SidePolicy.legacyPassive("laterTargetOpeningSide", objective);
+            opposingSideDeclarerPolicy = SidePolicy.heuristicActing("laterDeclarerOpposingSide", objective);
+            opposingSideTargetPolicy = SidePolicy.heuristicPassive("laterTargetOpposingSide", objective);
+            openingSideDeclarerPolicy = SidePolicy.heuristicActing("laterDeclarerOpeningSide", objective);
+            openingSideTargetPolicy = SidePolicy.heuristicPassive("laterTargetOpeningSide", objective);
         }
 
         @TearDown(Level.Trial)
@@ -486,7 +486,7 @@ public class BlitzReplayJmh {
     }
 
     private static SimTuning tuningForRequest(BlitzPlanRequest request) {
-        SidePlannerSettings plannerSettings = SidePolicy.legacy(objectiveForRequest(request)).planner();
+        SidePlannerSettings plannerSettings = SidePolicy.heuristicActing("heuristic", objectiveForRequest(request)).planner();
         SimTuning defaults = SimTuning.defaults();
         return new SimTuning(
                 defaults.intraTurnPasses(),

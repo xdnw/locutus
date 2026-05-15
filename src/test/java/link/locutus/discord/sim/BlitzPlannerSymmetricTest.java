@@ -25,8 +25,8 @@ class BlitzPlannerSymmetricTest {
         BlitzAssignment oneWay = planner.assign(
                 sideA,
                 sideB,
-                SidePolicy.legacy("sideA", planner.objective()),
-                SidePolicy.legacyPassive("sideB", planner.objective()),
+                SidePolicy.heuristicActing("sideA", planner.objective()),
+                SidePolicy.heuristicPassive("sideB", planner.objective()),
                 0,
                 List.of(),
                 72
@@ -34,8 +34,8 @@ class BlitzPlannerSymmetricTest {
         BlitzAssignmentPair symmetric = planner.assignSymmetric(
                 sideA,
                 sideB,
-                SidePolicy.legacy("sideA", new DamageObjective()),
-                SidePolicy.legacyPassive("sideB", new DamageObjective()),
+                SidePolicy.heuristicActing("sideA", new DamageObjective()),
+                SidePolicy.heuristicPassive("sideB", new DamageObjective()),
                 0,
                 List.of(),
                 List.of(),

@@ -33,6 +33,15 @@ Direct main-agent Read/Grep is allowed for exact verification, trivial edits, an
 When running under GitHub Copilot, do not use `.claude/agents/*` agents directly.
 Use `.github/agents/copilot-*` agents only.
 
+## Search/tool policy
+Installed tools: `rg`, `fd`, `ast-grep`, `semgrep`, `jq`.
+Do not discuss tool choice. Run the search.
+Default to `rg`. Use it for symbols, strings, method names, class names, config keys, logs, comments, and first-pass narrowing.
+Use `fd` only when the task is to select files by path, name, or extension.
+Use `ast-grep --lang java` only after `rg` is insufficient because the match depends on Java structure: declarations, annotations, call shape, nesting, control flow, or syntax-safe rewrite.
+Use `semgrep` only for explicit repeated bug/correctness/security scans across files. Never use it for ordinary lookup.
+Use `jq` only for JSON output.
+
 ## Roadmap Continuity
 
 - For roadmap work, use `docs/ACTIVE_FRONTIER.md` as the cross-session handoff.

@@ -851,7 +851,7 @@ public final class BlitzPlanEndpointBenchmark {
     }
 
     private static SimTuning tuningForRequest(BlitzPlanRequest request) {
-        SidePlannerSettings plannerSettings = SidePolicy.legacy(objectiveForRequest(request)).planner();
+        SidePlannerSettings plannerSettings = SidePolicy.heuristicActing("heuristic", objectiveForRequest(request)).planner();
         SimTuning defaults = SimTuning.defaults();
         return new SimTuning(
             defaults.intraTurnPasses(),

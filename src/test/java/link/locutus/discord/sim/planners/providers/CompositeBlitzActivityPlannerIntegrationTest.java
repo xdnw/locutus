@@ -105,8 +105,8 @@ class CompositeBlitzActivityPlannerIntegrationTest {
         ).assign(
                 combined,
                 combined,
-                SidePolicy.legacy("acting", new DamageObjective()),
-                SidePolicy.legacyPassive("nonActing", new DamageObjective()),
+                SidePolicy.heuristicActing("acting", new DamageObjective()),
+                SidePolicy.heuristicPassive("nonActing", new DamageObjective()),
                 0,
                 List.of(),
                 1
@@ -120,8 +120,8 @@ class CompositeBlitzActivityPlannerIntegrationTest {
         ).assign(
                 combined,
                 combined,
-                SidePolicy.legacy("acting", new DamageObjective()),
-                SidePolicy.legacyPassive("nonActing", new DamageObjective()),
+                SidePolicy.heuristicActing("acting", new DamageObjective()),
+                SidePolicy.heuristicPassive("nonActing", new DamageObjective()),
                 0,
                 List.of(),
                 1

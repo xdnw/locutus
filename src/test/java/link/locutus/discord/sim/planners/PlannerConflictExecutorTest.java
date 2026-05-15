@@ -347,8 +347,8 @@ class PlannerConflictExecutorTest {
                 new LaterDeclarationScope(
                         laterDeclarerIds,
                         laterTargetIds,
-                        SidePolicy.legacy("laterDeclarerOpposingSide", new DamageObjective()),
-                        SidePolicy.legacyPassive("laterTargetOpposingSide", new DamageObjective())
+                        SidePolicy.heuristicActing("laterDeclarerOpposingSide", new DamageObjective()),
+                        SidePolicy.heuristicPassive("laterTargetOpposingSide", new DamageObjective())
                 )
         );
 
@@ -1686,7 +1686,10 @@ class PlannerConflictExecutorTest {
                                 evaluation.resourceSwing(),
                                 evaluation.controlLeverage(),
                                 0f,
-                                evaluation.futureWarLeverage()
+                                evaluation.futureWarLeverage(),
+                                0f,
+                                0f,
+                                0f
                         ),
                         attacker.teamId()
                 ),

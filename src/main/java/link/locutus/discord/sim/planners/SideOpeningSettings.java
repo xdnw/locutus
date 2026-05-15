@@ -36,7 +36,7 @@ public record SideOpeningSettings(
         attackTypeWeights = Arrays.copyOf(attackTypeWeights, attackTypeWeights.length);
     }
 
-    public static SideOpeningSettings legacy(StrategicObjective objective) {
+    public static SideOpeningSettings defaults(StrategicObjective objective) {
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }

@@ -49,7 +49,7 @@ final class LongHorizonAssignmentOptimizer {
         return horizonTurns > SHORT_HORIZON_LIMIT_TURNS;
     }
 
-    static Map<Integer, List<Integer>> solve(
+    static Map<Integer, List<Integer>> solveHeuristic(
             CandidateEdgeTable baseEdges,
             CompiledScenario scenario,
             int[] attackerCaps,
@@ -60,7 +60,7 @@ final class LongHorizonAssignmentOptimizer {
             List<BlitzFixedEdge> fixedEdges,
             int horizonTurns
     ) {
-        return solve(
+            return solveDetailedHeuristic(
                 baseEdges,
                 scenario,
                 attackerCaps,
@@ -69,9 +69,8 @@ final class LongHorizonAssignmentOptimizer {
                 attackerNationIds,
                 defenderNationIds,
                 fixedEdges,
-                horizonTurns,
-                null
-        );
+                horizonTurns
+            ).assignment();
     }
 
     static Map<Integer, List<Integer>> solve(
@@ -86,6 +85,9 @@ final class LongHorizonAssignmentOptimizer {
             int horizonTurns,
             ProjectionScoringContext projectionScoringContext
     ) {
+        if (projectionScoringContext == null) {
+            throw new IllegalArgumentException("projectionScoringContext must not be null");
+        }
         return solveDetailed(
                 baseEdges,
                 scenario,
@@ -100,6 +102,32 @@ final class LongHorizonAssignmentOptimizer {
         ).assignment();
     }
 
+            static Result solveDetailedHeuristic(
+                CandidateEdgeTable baseEdges,
+                CompiledScenario scenario,
+                int[] attackerCaps,
+                int[] defenderCaps,
+                int[] attackerStrengthRanks,
+                int[] attackerNationIds,
+                int[] defenderNationIds,
+                List<BlitzFixedEdge> fixedEdges,
+                int horizonTurns
+            ) {
+            return solveDetailed(
+                baseEdges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                attackerStrengthRanks,
+                attackerNationIds,
+                defenderNationIds,
+                fixedEdges,
+                horizonTurns,
+                null,
+                true
+            );
+            }
+
     static Result solveDetailed(
             CandidateEdgeTable baseEdges,
             CompiledScenario scenario,
@@ -112,7 +140,10 @@ final class LongHorizonAssignmentOptimizer {
             int horizonTurns,
             ProjectionScoringContext projectionScoringContext
     ) {
-            return solveDetailed(
+        if (projectionScoringContext == null) {
+            throw new IllegalArgumentException("projectionScoringContext must not be null");
+        }
+        return solveDetailed(
                 baseEdges,
                 scenario,
                 attackerCaps,
@@ -160,10 +191,10 @@ final class LongHorizonAssignmentOptimizer {
                     ? LARGE_PROJECTED_PORTFOLIO_AUDIT_LIMIT
                     : projectionScoringContext.projectedAuditLimit();
                 SidePlannerSettings attackerPlannerSettings = projectionScoringContext == null
-                    ? SidePlannerSettings.legacy()
+                    ? SidePlannerSettings.defaults()
                     : projectionScoringContext.attackerPlannerSettings();
                 SidePlannerSettings defenderPlannerSettings = projectionScoringContext == null
-                    ? SidePlannerSettings.legacy()
+                    ? SidePlannerSettings.defaults()
                     : projectionScoringContext.defenderPlannerSettings();
                 LongHorizonMarginalFlowSolver.StaticSolveInputs marginalFlowStaticInputs =
                     LongHorizonMarginalFlowSolver.staticSolveInputs(
@@ -1383,7 +1414,7 @@ final class LongHorizonAssignmentOptimizer {
                 fixedEdges,
                 horizonTurns,
                 includeSlotDenialScoring,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
             );
             }
 
@@ -1473,30 +1504,6 @@ final class LongHorizonAssignmentOptimizer {
     }
 
     static ObjectiveValueSummary projectedObjectiveSummary(
-            CandidateEdgeTable baseEdges,
-            CompiledScenario scenario,
-            int[] attackerCaps,
-            int[] defenderCaps,
-            int horizonTurns,
-            Map<Integer, List<Integer>> assignment,
-            StrategicObjective objective,
-            int[] attackerNationIds,
-            int[] defenderNationIds
-    ) {
-        return projectedObjectiveSummary(
-            baseEdges,
-            scenario,
-            attackerCaps,
-            defenderCaps,
-            horizonTurns,
-            assignment,
-            ProjectionScoringContext.legacy(objective),
-            attackerNationIds,
-            defenderNationIds
-        );
-        }
-
-        static ObjectiveValueSummary projectedObjectiveSummary(
             CandidateEdgeTable baseEdges,
             CompiledScenario scenario,
             int[] attackerCaps,
@@ -1600,14 +1607,6 @@ final class LongHorizonAssignmentOptimizer {
             SideProjectionPolicies attackerProjectionPolicies,
             SideProjectionPolicies defenderProjectionPolicies
     ) {
-        static ProjectionScoringContext legacy(StrategicObjective objective) {
-            return fromSidePolicies(
-                objective,
-                SidePolicy.legacy("attacker", objective),
-                SidePolicy.legacyPassive("defender", objective)
-            );
-        }
-
         static ProjectionScoringContext fromSidePolicies(
             StrategicObjective objective,
             SidePolicy attackerPolicy,
@@ -1627,41 +1626,6 @@ final class LongHorizonAssignmentOptimizer {
                 defenderPolicy.planner(),
                 attackerPolicy.projection(),
                 defenderPolicy.projection()
-            );
-        }
-
-        ProjectionScoringContext(
-            StrategicObjective objective,
-            SidePlannerSettings attackerPlannerSettings,
-            SidePlannerSettings defenderPlannerSettings,
-            SideProjectionPolicies attackerProjectionPolicies,
-            SideProjectionPolicies defenderProjectionPolicies
-        ) {
-            this(
-                objective,
-                SideOpeningSettings.legacy(objective),
-                SideOpeningSettings.legacy(objective),
-                attackerPlannerSettings,
-                defenderPlannerSettings,
-                attackerProjectionPolicies,
-                defenderProjectionPolicies
-            );
-        }
-
-        ProjectionScoringContext(
-                StrategicObjective objective,
-                SideProjectionPolicies attackerProjectionPolicies,
-                SideProjectionPolicies defenderProjectionPolicies,
-                int projectedAuditLimit
-        ) {
-            this(
-                    objective,
-                    SidePolicy.legacy(objective).opening(),
-                    SidePolicy.legacyPassive(objective).opening(),
-                    SidePolicy.legacy(objective).planner().withProjectedAuditLimit(projectedAuditLimit),
-                    SidePolicy.legacyPassive(objective).planner(),
-                    attackerProjectionPolicies,
-                    defenderProjectionPolicies
             );
         }
 

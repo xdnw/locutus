@@ -124,8 +124,8 @@ class LongHorizonForwardProjectionStateTest {
                 null,
                 null,
                 null,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.noDeclarations(),
                 SideProjectionPolicies.noDeclarations()
         );

@@ -79,7 +79,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
             throw new IllegalArgumentException("objective must not be null");
         }
         this.objective = objective;
-        this.openingSettings = openingSettings == null ? SideOpeningSettings.legacy(objective) : openingSettings;
+        this.openingSettings = openingSettings == null ? SideOpeningSettings.defaults(objective) : openingSettings;
         this.teamId = teamId;
     }
 

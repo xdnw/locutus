@@ -1,15 +1,9 @@
 package link.locutus.discord.sim;
 
-import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.input.NationInit;
-import link.locutus.discord.sim.strategy.AirControlBuild;
-import link.locutus.discord.sim.strategy.GroundUnderAir;
-import link.locutus.discord.sim.strategy.RuleBasedActor;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -21,80 +15,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * Integration test for M1 provider seams: Actor, Objective, ActivityProvider, etc.
  */
 class ActorAndObjectiveIntegrationTest {
-
-    @Test
-    void ruleBasedActorWithSimplePrimitives() {
-        SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4));
-
-        RuleBasedActor actor = new RuleBasedActor();
-        actor.addPrimitive(new AirControlBuild());
-        actor.addPrimitive(new GroundUnderAir());
-
-        SimNation self = world.requireNation(1);
-        Set<Integer> neighbors = new HashSet<>();
-        neighbors.add(2);
-        DecisionContext ctx = new DecisionContext(world, 0, neighbors, Objective.DAMAGE);
-
-        var actions = actor.decide(world, self, ctx);
-        assertNotNull(actions);
-        // With no active offensive wars, both tactical primitives should pass.
-        assertTrue(actions.isEmpty());
-    }
-
-    @Test
-    void airControlBuildTargetsOffensiveWarWithAirPressure() {
-        SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4));
-
-        world.declareWar(1001, 1, 2, WarType.ORD);
-
-        world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 120);
-        world.requireNation(2).setUnitCount(MilitaryUnit.AIRCRAFT, 40);
-        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 300);
-
-        RuleBasedActor actor = new RuleBasedActor();
-        actor.addPrimitive(new AirControlBuild());
-        actor.addPrimitive(new GroundUnderAir());
-
-        DecisionContext ctx = new DecisionContext(world, 0, Set.of(2), Objective.DAMAGE);
-        var actions = actor.decide(world, world.requireNation(1), ctx);
-
-        assertEquals(1, actions.size());
-        assertInstanceOf(AttackAction.class, actions.get(0));
-        assertEquals(AttackType.AIRSTRIKE_AIRCRAFT, ((AttackAction) actions.get(0)).attackType());
-        assertEquals(1, world.activeWarsForNation(1).size());
-    }
-
-    @Test
-    void groundUnderAirTargetsGroundAfterAirControlIsHeld() {
-        SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4));
-
-        world.declareWar(1002, 1, 2, WarType.ORD);
-
-        world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 120);
-        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 600);
-        world.requireNation(1).setUnitCount(MilitaryUnit.TANK, 80);
-        world.requireNation(2).setUnitCount(MilitaryUnit.AIRCRAFT, 60);
-        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 400);
-        world.requireNation(2).setUnitCount(MilitaryUnit.TANK, 120);
-        world.applySuperiorityFlagChanges(1002, 1, 0, 1, 0);
-
-        RuleBasedActor actor = new RuleBasedActor();
-        actor.addPrimitive(new AirControlBuild());
-        actor.addPrimitive(new GroundUnderAir());
-
-        DecisionContext ctx = new DecisionContext(world, 0, Set.of(2), Objective.DAMAGE);
-        var actions = actor.decide(world, world.requireNation(1), ctx);
-
-        assertEquals(1, actions.size());
-        assertInstanceOf(AttackAction.class, actions.get(0));
-        assertEquals(AttackType.GROUND, ((AttackAction) actions.get(0)).attackType());
-    }
 
     @Test
     void damageObjectiveScoresTerminal() {

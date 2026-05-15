@@ -10,14 +10,14 @@ class BlitzObjectiveTest {
     void defaultObjectivePreservesExistingNetDamageBehavior() {
         assertEquals(BlitzObjective.NET_DAMAGE, BlitzObjective.defaultObjective());
 
-        OpeningMetricVector metrics = new OpeningMetricVector(100.0, 30.0, 0.0, 0.0, 0.0, 0.0);
+        OpeningMetricVector metrics = new OpeningMetricVector(100.0, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
         assertEquals(70.0, BlitzObjective.defaultObjective().objective().scoreOpening(metrics, 1), 1e-9);
     }
 
     @Test
     void objectiveScalarizersAreDistinctAndComponentBacked() {
-        OpeningMetricVector metrics = new OpeningMetricVector(100.0, 30.0, 1_000_000.0, 5.0, 0.0, 8.0);
+        OpeningMetricVector metrics = new OpeningMetricVector(100.0, 30.0, 1_000_000.0, 5.0, 0.0, 8.0, 0.0, 0.0, 0.0);
 
         assertEquals(100.0, BlitzObjective.DAMAGE.objective().scoreOpening(metrics, 1), 1e-9);
         assertEquals(70.0, BlitzObjective.NET_DAMAGE.objective().scoreOpening(metrics, 1), 1e-9);
@@ -28,8 +28,8 @@ class BlitzObjectiveTest {
 
     @Test
     void futureWarLeverageCompatibilityIgnoresRawResistanceDrain() {
-        OpeningMetricVector momentumOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.9, 0.0);
-        OpeningMetricVector actionSpaceQualityOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.9);
+        OpeningMetricVector momentumOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0);
+        OpeningMetricVector actionSpaceQualityOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.0, 0.0, 0.0);
 
         assertEquals(0.0, momentumOnly.futureWarLeverage(), 1e-9);
         assertEquals(0.9, actionSpaceQualityOnly.futureWarLeverage(), 1e-9);
@@ -45,8 +45,8 @@ class BlitzObjectiveTest {
 
     @Test
     void targetPressureIsControlAndBalancedOnly() {
-        OpeningMetricVector lowPressure = new OpeningMetricVector(100.0, 30.0, 0.0, 2.0, 0.0, 3.0, 1.0);
-        OpeningMetricVector highPressure = new OpeningMetricVector(100.0, 30.0, 0.0, 2.0, 0.0, 3.0, 12.0);
+        OpeningMetricVector lowPressure = new OpeningMetricVector(100.0, 30.0, 0.0, 2.0, 0.0, 3.0, 0.0, 0.0, 1.0);
+        OpeningMetricVector highPressure = new OpeningMetricVector(100.0, 30.0, 0.0, 2.0, 0.0, 3.0, 0.0, 0.0, 12.0);
 
         assertEquals(
                 BlitzObjective.NET_DAMAGE.objective().scoreOpening(lowPressure, 1),
@@ -61,8 +61,8 @@ class BlitzObjectiveTest {
 
     @Test
     void controlOpeningDoesNotRewardPressureWithoutActionableLeverage() {
-        OpeningMetricVector pressureOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0);
-        OpeningMetricVector pressureWithControl = new OpeningMetricVector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 12.0);
+        OpeningMetricVector pressureOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0);
+        OpeningMetricVector pressureWithControl = new OpeningMetricVector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 12.0);
 
         assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreOpening(pressureOnly, 1), 1e-9);
         assertTrue(BlitzObjective.CONTROL.objective().scoreOpening(pressureWithControl, 1)
@@ -82,7 +82,7 @@ class BlitzObjectiveTest {
                 1.0,
                 12.0
         );
-        OpeningMetricVector realLeverage = new OpeningMetricVector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 12.0);
+        OpeningMetricVector realLeverage = new OpeningMetricVector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 12.0);
 
         double readinessScore = BlitzObjective.CONTROL.objective().scoreOpening(readinessOnly, 1);
         double leverageScore = BlitzObjective.CONTROL.objective().scoreOpening(realLeverage, 1);
@@ -166,10 +166,10 @@ class BlitzObjectiveTest {
     @Test
     void controlOpeningDoesNotTreatTacticalPostureAsControlByItself() {
         OpeningMetricVector tacticalPostureOnly = new OpeningMetricVector(
-                0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0
+            0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0
         );
         OpeningMetricVector durableWindow = new OpeningMetricVector(
-                0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0
+            0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0
         );
 
         assertEquals(0.0, BlitzObjective.CONTROL.objective().scoreOpening(tacticalPostureOnly, 1), 1e-9);
@@ -180,10 +180,10 @@ class BlitzObjectiveTest {
     @Test
     void controlOpeningCapturesTargetPressureOnlyThroughFollowThroughProgress() {
         OpeningMetricVector hugeTargetTinyProgress = new OpeningMetricVector(
-                0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1_000.0
+            0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1_000.0
         );
         OpeningMetricVector hugeTargetDurableProgress = new OpeningMetricVector(
-                0.0, 0.0, 0.0, 5.0, 0.0, 8.0, 1_000.0
+            0.0, 0.0, 0.0, 5.0, 0.0, 8.0, 0.0, 0.0, 1_000.0
         );
 
         double tinyProgressScore = BlitzObjective.CONTROL.objective().scoreOpening(hugeTargetTinyProgress, 1);
@@ -198,10 +198,10 @@ class BlitzObjectiveTest {
     @Test
     void controlOpeningDoesNotCaptureTargetPressureThroughLosingTrades() {
         OpeningMetricVector costlyProgress = new OpeningMetricVector(
-                0.0, 500.0, 0.0, 5.0, 0.0, 8.0, 1_000.0
+            0.0, 500.0, 0.0, 5.0, 0.0, 8.0, 0.0, 0.0, 1_000.0
         );
         OpeningMetricVector cleanerProgress = new OpeningMetricVector(
-                0.0, 0.0, 0.0, 5.0, 0.0, 8.0, 1_000.0
+            0.0, 0.0, 0.0, 5.0, 0.0, 8.0, 0.0, 0.0, 1_000.0
         );
 
         double costlyScore = BlitzObjective.CONTROL.objective().scoreOpening(costlyProgress, 1);
@@ -213,7 +213,7 @@ class BlitzObjectiveTest {
 
     @Test
     void balancedOpeningDoesNotRewardPressureWithoutActionableLeverage() {
-        OpeningMetricVector pressureOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0);
+        OpeningMetricVector pressureOnly = new OpeningMetricVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0);
 
         assertEquals(0.0, BlitzObjective.BALANCED.objective().scoreOpening(pressureOnly, 1), 1e-9);
     }

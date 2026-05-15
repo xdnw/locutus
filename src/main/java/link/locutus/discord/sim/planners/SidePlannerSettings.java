@@ -56,12 +56,12 @@ public record SidePlannerSettings(
         }
     }
 
-    public static SidePlannerSettings legacy() {
+    public static SidePlannerSettings defaults() {
         return fromTuning(SimTuning.defaults());
     }
 
-    public static SidePlannerSettings legacyActing() {
-        return legacy().withIdlePressureWeight(DEFAULT_ACTING_IDLE_PRESSURE_WEIGHT);
+    public static SidePlannerSettings actingDefaults() {
+        return defaults().withIdlePressureWeight(DEFAULT_ACTING_IDLE_PRESSURE_WEIGHT);
     }
 
     public static SidePlannerSettings fromTuning(SimTuning tuning) {

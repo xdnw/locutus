@@ -145,8 +145,8 @@ class FreeSlotRespectTest {
                 return planner.assign(
                                 attackers,
                                 defenders,
-                                SidePolicy.legacy("acting", planner.objective()),
-                                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                                SidePolicy.heuristicActing("acting", planner.objective()),
+                                SidePolicy.heuristicPassive("nonActing", planner.objective()),
                                 0,
                                 List.of(),
                                 1

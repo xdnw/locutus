@@ -553,8 +553,8 @@ public final class BlitzPlannerPipelineBenchmark {
             BlitzAssignment assignment = planner.assign(
                 attackers,
                 defenders,
-                SidePolicy.legacy("acting", planner.objective()),
-                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                SidePolicy.heuristicActing("acting", planner.objective()),
+                SidePolicy.heuristicPassive("nonActing", planner.objective()),
                 0,
                 List.of(),
                 horizonTurns
@@ -567,8 +567,8 @@ public final class BlitzPlannerPipelineBenchmark {
             BlitzAssignment assignment = planner.assign(
                 attackers,
                 defenders,
-                SidePolicy.legacy("acting", planner.objective()),
-                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                SidePolicy.heuristicActing("acting", planner.objective()),
+                SidePolicy.heuristicPassive("nonActing", planner.objective()),
                 0,
                 List.of(),
                 horizonTurns
@@ -625,18 +625,40 @@ public final class BlitzPlannerPipelineBenchmark {
         }
 
         private Outcome runLongHorizon(int horizonTurns, boolean projectionScoring) {
-            LongHorizonAssignmentOptimizer.Result result = LongHorizonAssignmentOptimizer.solveDetailed(
-                    longHorizonEdges,
-                    scenario,
-                    attackerCaps,
-                    defenderCaps,
-                    attackerStrengthRanks,
-                    attackerNationIds,
-                    defenderNationIds,
-                    List.of(),
-                    horizonTurns,
-                        projectionScoring ? LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective) : null
-            );
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext summaryProjectionContext =
+                    new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                        objective,
+                        SideOpeningSettings.defaults(objective),
+                        SideOpeningSettings.defaults(objective),
+                        SidePlannerSettings.actingDefaults(),
+                        SidePlannerSettings.defaults(),
+                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.heuristic()
+                    );
+                LongHorizonAssignmentOptimizer.Result result = projectionScoring
+                    ? LongHorizonAssignmentOptimizer.solveDetailed(
+                        longHorizonEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        List.of(),
+                        horizonTurns,
+                        summaryProjectionContext
+                    )
+                    : LongHorizonAssignmentOptimizer.solveDetailedHeuristic(
+                        longHorizonEdges,
+                        scenario,
+                        attackerCaps,
+                        defenderCaps,
+                        attackerStrengthRanks,
+                        attackerNationIds,
+                        defenderNationIds,
+                        List.of(),
+                        horizonTurns
+                    );
             ObjectiveValueSummary summary = result.projectedObjectiveSummary() != null
                     ? result.projectedObjectiveSummary()
                     : LongHorizonAssignmentOptimizer.projectedObjectiveSummary(
@@ -646,7 +668,7 @@ public final class BlitzPlannerPipelineBenchmark {
                             defenderCaps,
                             horizonTurns,
                             result.assignment(),
-                            objective,
+                                summaryProjectionContext,
                             attackerNationIds,
                             defenderNationIds
                     );

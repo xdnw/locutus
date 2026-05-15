@@ -26,8 +26,8 @@ class BlitzPlannerActiveWarEntryPointTest {
         BlitzAssignment baseline = planner.assign(
                 attackers,
                 defenders,
-                SidePolicy.legacy("acting", planner.objective()),
-                SidePolicy.legacyPassive("defending", planner.objective()),
+                SidePolicy.heuristicActing("acting", planner.objective()),
+                SidePolicy.heuristicPassive("defending", planner.objective()),
                 0,
                 List.of(),
                 72
@@ -35,8 +35,8 @@ class BlitzPlannerActiveWarEntryPointTest {
         BlitzAssignment explicit = planner.assign(
                 attackers,
                 defenders,
-                SidePolicy.legacy("acting", planner.objective()),
-                SidePolicy.legacyPassive("defending", planner.objective()),
+                SidePolicy.heuristicActing("acting", planner.objective()),
+                SidePolicy.heuristicPassive("defending", planner.objective()),
                 0,
                 List.of(),
                 List.<CompiledActiveWar>of(),
@@ -57,8 +57,8 @@ class BlitzPlannerActiveWarEntryPointTest {
         BlitzAssignmentPair baseline = planner.assignSymmetric(
                 sideA,
                 sideB,
-                SidePolicy.legacy("sideA", planner.objective()),
-                SidePolicy.legacyPassive("sideB", planner.objective()),
+                SidePolicy.heuristicActing("sideA", planner.objective()),
+                SidePolicy.heuristicPassive("sideB", planner.objective()),
                 0,
                 List.of(),
                 List.of(),
@@ -67,8 +67,8 @@ class BlitzPlannerActiveWarEntryPointTest {
         BlitzAssignmentPair explicit = planner.assignSymmetric(
                 sideA,
                 sideB,
-                SidePolicy.legacy("sideA", planner.objective()),
-                SidePolicy.legacyPassive("sideB", planner.objective()),
+                SidePolicy.heuristicActing("sideA", planner.objective()),
+                SidePolicy.heuristicPassive("sideB", planner.objective()),
                 0,
                 List.of(),
                 List.of(),

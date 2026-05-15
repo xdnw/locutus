@@ -32,6 +32,20 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LongHorizonAssignmentOptimizerTest {
+        private static LongHorizonAssignmentOptimizer.ProjectionScoringContext heuristicProjectionContext(
+                        StrategicObjective objective
+        ) {
+                return new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
+                                objective,
+                                SideOpeningSettings.defaults(objective),
+                                SideOpeningSettings.defaults(objective),
+                                SidePlannerSettings.actingDefaults(),
+                                SidePlannerSettings.defaults(),
+                                SideProjectionPolicies.heuristic(),
+                                SideProjectionPolicies.heuristic()
+                );
+        }
+
     @Test
     void longHorizonReSolveAddsPressureToHighNeedTarget() {
         List<DBNationSnapshot> attackers = List.of(
@@ -67,7 +81,7 @@ class LongHorizonAssignmentOptimizerTest {
                 attackerNationIds,
                 defenderNationIds
         );
-        Map<Integer, List<Integer>> longAssignment = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> longAssignment = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -119,7 +133,7 @@ class LongHorizonAssignmentOptimizerTest {
                 attackerNationIds,
                 defenderNationIds
         );
-        Map<Integer, List<Integer>> optimizerAssignment = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> optimizerAssignment = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -174,7 +188,7 @@ class LongHorizonAssignmentOptimizerTest {
                 attackerNationIds,
                 defenderNationIds
         );
-        Map<Integer, List<Integer>> longAssignment = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> longAssignment = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -234,7 +248,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 72,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(BlitzObjective.CONTROL.objective())
+                heuristicProjectionContext(BlitzObjective.CONTROL.objective())
         );
 
         assertEquals(1, distinctCommittedAttackerCount(primitiveAssignment),
@@ -268,7 +282,7 @@ class LongHorizonAssignmentOptimizerTest {
                 new int[]{101, 102},
                 List.of(),
                 72,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new SlotDenialNeutralObjective())
+                heuristicProjectionContext(new SlotDenialNeutralObjective())
         );
 
         assertEquals(List.of(102), assignment.get(1),
@@ -300,11 +314,11 @@ class LongHorizonAssignmentOptimizerTest {
         int[] attackerNationIds = {1, 2, 3};
         int[] defenderNationIds = {101, 102};
 
-        Map<Integer, List<Integer>> first = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> first = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges, scenario, attackerCaps, defenderCaps, attackerStrengthRanks,
                 attackerNationIds, defenderNationIds, List.of(), 360
         );
-        Map<Integer, List<Integer>> second = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> second = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges, scenario, attackerCaps, defenderCaps, attackerStrengthRanks,
                 attackerNationIds, defenderNationIds, List.of(), 360
         );
@@ -345,7 +359,7 @@ class LongHorizonAssignmentOptimizerTest {
                 attackerNationIds,
                 defenderNationIds
         );
-        Map<Integer, List<Integer>> longAssignment = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> longAssignment = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -389,7 +403,7 @@ class LongHorizonAssignmentOptimizerTest {
         int[] attackerNationIds = {1, 2};
         int[] defenderNationIds = {101, 102, 103};
 
-        Map<Integer, List<Integer>> projectionOnly = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> projectionOnly = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -410,7 +424,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 13,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
+                heuristicProjectionContext(new WarCountAvoidanceObjective())
         );
 
         assertEquals(3, totalPairs(projectionOnly));
@@ -482,8 +496,8 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 true,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
@@ -512,7 +526,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
         LongHorizonCandidateEvaluator projectedEvaluator = LongHorizonCandidateEvaluator.create(
                 scenario,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(BlitzObjective.NET_DAMAGE.objective())
+                heuristicProjectionContext(BlitzObjective.NET_DAMAGE.objective())
         );
         double marginalProjectedObjective = projectedEvaluator.objectiveSummary(marginalCandidate, projection).mean();
 
@@ -526,7 +540,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 72,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(BlitzObjective.NET_DAMAGE.objective())
+                heuristicProjectionContext(BlitzObjective.NET_DAMAGE.objective())
         );
 
         assertTrue(totalPairs(primitiveAssignment) > 0,
@@ -553,7 +567,7 @@ class LongHorizonAssignmentOptimizerTest {
         List<DBNationSnapshot> defenders = List.of(withTotalScore(nation(101, 2, 300), 300.0));
         CompiledScenario scenario = compile(attackers, defenders);
         CandidateEdgeTable edges = new CandidateEdgeTable();
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 new int[]{0},
@@ -571,7 +585,7 @@ class LongHorizonAssignmentOptimizerTest {
         TeamDifferenceObjective objective = new TeamDifferenceObjective();
         LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
                 scenario,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+                heuristicProjectionContext(objective)
         );
         double projectedBaseline = projection.projectedEvaluation(
                 objective,
@@ -602,7 +616,7 @@ class LongHorizonAssignmentOptimizerTest {
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
         edges.add(0, 1, 100.0f, 0.0f);
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 new int[]{2},
@@ -660,7 +674,7 @@ class LongHorizonAssignmentOptimizerTest {
         CompiledScenario scenario = compile(attackers, defenders);
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 new int[]{1},
@@ -701,7 +715,7 @@ class LongHorizonAssignmentOptimizerTest {
         edges.add(0, 0, 100.0f, 0.0f);
         edges.add(0, 1, 90.0f, 0.0f);
         edges.add(1, 0, 95.0f, 0.0f);
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 new int[]{1, 1},
@@ -782,7 +796,7 @@ class LongHorizonAssignmentOptimizerTest {
         int[] attackerNationIds = {1, 2};
         int[] defenderNationIds = {101, 102};
 
-        Map<Integer, List<Integer>> noCounterAssignment = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> noCounterAssignment = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges,
                 compile(vulnerableAttackers, passiveDefenders),
                 attackerCaps,
@@ -793,7 +807,7 @@ class LongHorizonAssignmentOptimizerTest {
                 List.of(),
                 720
         );
-        Map<Integer, List<Integer>> counterAwareAssignment = LongHorizonAssignmentOptimizer.solve(
+        Map<Integer, List<Integer>> counterAwareAssignment = LongHorizonAssignmentOptimizer.solveHeuristic(
                 edges,
                 compile(vulnerableAttackers, counterCapableDefenders),
                 attackerCaps,
@@ -843,7 +857,7 @@ class LongHorizonAssignmentOptimizerTest {
         int[] attackerStrengthRanks = {1, 0};
         int[] attackerNationIds = {1, 2};
         int[] defenderNationIds = {101, 102, 103, 104};
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -869,7 +883,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 13,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new CounterAdjustedForwardWarObjective())
+                heuristicProjectionContext(new CounterAdjustedForwardWarObjective())
         );
 
         int strongCount = assignment.getOrDefault(2, List.of()).size();
@@ -900,7 +914,7 @@ class LongHorizonAssignmentOptimizerTest {
         int[] attackerStrengthRanks = {1, 0};
         int[] attackerNationIds = {1, 2};
         int[] defenderNationIds = {101, 102};
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -915,7 +929,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
         assertTrue(vulnerableCounters[0] >= 2,
                 "Test setup must project multiple counters against the vulnerable single-war opener");
-        LongHorizonControlProjection peerProjection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection peerProjection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 new int[]{0, 1},
@@ -969,7 +983,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 13,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new CounterAdjustedForwardWarObjective())
+                heuristicProjectionContext(new CounterAdjustedForwardWarObjective())
         );
 
         assertEquals(0, assignment.getOrDefault(1, List.of()).size(),
@@ -1017,7 +1031,7 @@ class LongHorizonAssignmentOptimizerTest {
                                 List.of(),
                                 72,
                                 false,
-                                SidePlannerSettings.legacyActing()
+                                SidePlannerSettings.actingDefaults()
                 );
                 LongHorizonControlProjection projection = LongHorizonControlProjection.createScorerOnly(
                                 edges,
@@ -1028,7 +1042,7 @@ class LongHorizonAssignmentOptimizerTest {
                                 72,
                                 1.0d,
                                 false,
-                                SidePlannerSettings.legacyActing()
+                                SidePlannerSettings.actingDefaults()
                 );
                 LongHorizonMarginalFlowSolver.StaticSolveInputs staticSolveInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
                                 attackerNationIds,
@@ -1052,7 +1066,7 @@ class LongHorizonAssignmentOptimizerTest {
                                 seed,
                                 projection,
                                 new int[]{5, 5, 0},
-                                SidePlannerSettings.legacyActing(),
+                                SidePlannerSettings.actingDefaults(),
                                 staticSolveInputs,
                                 graphBuffers
                 );
@@ -1097,7 +1111,7 @@ class LongHorizonAssignmentOptimizerTest {
                         72,
                         1.0d,
                         false,
-                        SidePlannerSettings.legacyActing()
+                        SidePlannerSettings.actingDefaults()
                 );
                 LongHorizonMarginalFlowSolver.StaticSolveInputs staticSolveInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
                         attackerNationIds,
@@ -1124,7 +1138,7 @@ class LongHorizonAssignmentOptimizerTest {
                         seed,
                         projection,
                         new int[]{1, 0},
-                        SidePlannerSettings.legacyActing(),
+                        SidePlannerSettings.actingDefaults(),
                         staticSolveInputs,
                         graphBuffers
                 );
@@ -1153,7 +1167,7 @@ class LongHorizonAssignmentOptimizerTest {
         CandidateEdgeTable edges = new CandidateEdgeTable();
         edges.add(0, 0, 100.0f, 0.0f);
 
-        LongHorizonControlProjection counterCapableProjection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection counterCapableProjection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 compile(attackers, counterCapableDefenders),
                 new int[]{1},
@@ -1161,7 +1175,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d
         );
-        LongHorizonControlProjection passiveProjection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection passiveProjection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 compile(attackers, passiveDefenders),
                 new int[]{1},
@@ -1212,7 +1226,7 @@ class LongHorizonAssignmentOptimizerTest {
         int[] attackerNationIds = {1, 2};
         int[] defenderNationIds = {101, 102, 103};
         CounterAdjustedForwardWarObjective objective = new CounterAdjustedForwardWarObjective();
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -1241,7 +1255,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
         LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
                 scenario,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+                heuristicProjectionContext(objective)
         );
 
         LongHorizonForwardProjection.ProjectedEvaluation separateEvaluation = projection.projectedEvaluation(
@@ -1292,7 +1306,7 @@ class LongHorizonAssignmentOptimizerTest {
         int[] attackerNationIds = {1, 2};
         int[] defenderNationIds = {101, 102, 103};
         CounterAdjustedForwardWarObjective objective = new CounterAdjustedForwardWarObjective();
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 attackerCaps,
@@ -1328,7 +1342,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
         LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
                 scenario,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+                heuristicProjectionContext(objective)
         );
 
         LongHorizonForwardProjection.ProjectedFeedbackEvaluation first = evaluator.feedbackEvaluation(firstCandidate, projection);
@@ -1381,8 +1395,10 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new CounterAdjustedForwardWarObjective(),
-                        SidePlannerSettings.legacy().withProjectedAuditLimit(1),
-                        SidePlannerSettings.legacy(),
+                        SideOpeningSettings.defaults(new CounterAdjustedForwardWarObjective()),
+                        SideOpeningSettings.defaults(new CounterAdjustedForwardWarObjective()),
+                        SidePlannerSettings.defaults().withProjectedAuditLimit(1),
+                        SidePlannerSettings.defaults(),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -1454,8 +1470,10 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new CounterAdjustedForwardWarObjective(),
-                        SidePlannerSettings.legacy().withProjectedAuditLimit(1),
-                        SidePlannerSettings.legacy(),
+                        SideOpeningSettings.defaults(new CounterAdjustedForwardWarObjective()),
+                        SideOpeningSettings.defaults(new CounterAdjustedForwardWarObjective()),
+                        SidePlannerSettings.defaults().withProjectedAuditLimit(1),
+                        SidePlannerSettings.defaults(),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -1508,8 +1526,10 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         BlitzObjective.CONTROL.objective(),
-                        SidePlannerSettings.legacy().withProjectedAuditLimit(1),
-                        SidePlannerSettings.legacy(),
+                        SideOpeningSettings.defaults(BlitzObjective.CONTROL.objective()),
+                        SideOpeningSettings.defaults(BlitzObjective.CONTROL.objective()),
+                        SidePlannerSettings.defaults().withProjectedAuditLimit(1),
+                        SidePlannerSettings.defaults(),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -1555,7 +1575,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
 
         LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
@@ -1623,7 +1643,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
 
         LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
@@ -1714,7 +1734,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
 
         LongHorizonMarginalFlowSolver.Result result = LongHorizonMarginalFlowSolver.solve(
@@ -1776,7 +1796,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
         LongHorizonControlProjection capTwoProjection = LongHorizonControlProjection.createScorerOnly(
                 edges,
@@ -1787,7 +1807,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
         LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
                 attackerNationIds,
@@ -1873,7 +1893,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
         LongHorizonMarginalFlowSolver.StaticSolveInputs staticInputs = LongHorizonMarginalFlowSolver.staticSolveInputs(
                 attackerNationIds,
@@ -1906,7 +1926,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
 
         LongHorizonMarginalFlowSolver.Result freshVariant = LongHorizonMarginalFlowSolver.solve(
@@ -1961,7 +1981,7 @@ class LongHorizonAssignmentOptimizerTest {
         edges.add(0, 1, 99.0f, 0.0f);
         edges.add(1, 0, 98.0f, 0.0f);
         edges.add(1, 1, 97.0f, 0.0f);
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 new int[]{1, 1},
@@ -2031,8 +2051,8 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 true,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
@@ -2114,7 +2134,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 true,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
         LongHorizonAssignmentScoringModel reused = LongHorizonAssignmentScoringModel.create(
                 edges,
@@ -2125,7 +2145,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 true,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         ).sameTopologyVariant(
                 variantEdges,
                 scenario,
@@ -2133,7 +2153,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderCaps,
                 attackerStrengthRanks,
                 72,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
 
         boolean[] edgeAssigned = {true, false, true};
@@ -2192,7 +2212,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 true,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         );
         LongHorizonAssignmentScoringModel reused = LongHorizonAssignmentScoringModel.create(
                 edges,
@@ -2203,13 +2223,13 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 true,
-                SidePlannerSettings.legacy()
+                SidePlannerSettings.defaults()
         ).sameTopologyRescaledAttackerVariant(
                 variantEdges,
                 attackerCaps,
                 attackerStrengthRanks,
                 72,
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
                 new IntArrayList(new int[]{0, 1})
         );
 
@@ -2273,10 +2293,10 @@ class LongHorizonAssignmentOptimizerTest {
                 1.0d,
                 true,
                 objective,
-                SideOpeningSettings.legacy(objective),
-                SideOpeningSettings.legacy(objective),
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SideOpeningSettings.defaults(objective),
+                SideOpeningSettings.defaults(objective),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
@@ -2371,7 +2391,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 360,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new TeamDifferenceObjective())
+                heuristicProjectionContext(new TeamDifferenceObjective())
         );
         Map<Integer, List<Integer>> second = LongHorizonAssignmentOptimizer.solve(
                 edges,
@@ -2383,7 +2403,7 @@ class LongHorizonAssignmentOptimizerTest {
                 defenderNationIds,
                 List.of(),
                 360,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new TeamDifferenceObjective())
+                heuristicProjectionContext(new TeamDifferenceObjective())
         );
 
         assertEquals(first, second,
@@ -2490,7 +2510,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 new ReverseLaterDeclarationWarCountObjective(),
                 24,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective())
+                heuristicProjectionContext(new ReverseLaterDeclarationWarCountObjective())
         );
         PlannerProfiler.ProfileSnapshot thresholdSuppressedProfile = projectedProfileSnapshot(
                 attackers,
@@ -2500,8 +2520,10 @@ class LongHorizonAssignmentOptimizerTest {
                 24,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new ReverseLaterDeclarationWarCountObjective(),
-                        SidePlannerSettings.legacy(),
-                        SidePlannerSettings.legacy().withLaterDeclarationScoreThreshold(1_000_000d),
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SidePlannerSettings.defaults(),
+                        SidePlannerSettings.defaults().withLaterDeclarationScoreThreshold(1_000_000d),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -2540,7 +2562,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 terminalObjective,
                 24,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(terminalObjective)
+                heuristicProjectionContext(terminalObjective)
         );
         PlannerProfiler.ProfileSnapshot objectivePolicyProfile = projectedProfileSnapshot(
                 attackers,
@@ -2550,12 +2572,14 @@ class LongHorizonAssignmentOptimizerTest {
                 24,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         terminalObjective,
-                        SidePlannerSettings.legacy(),
-                        SidePlannerSettings.legacy().withLaterDeclarationScoreThreshold(0.0d),
+                        SideOpeningSettings.defaults(terminalObjective),
+                        SideOpeningSettings.defaults(terminalObjective),
+                        SidePlannerSettings.defaults(),
+                        SidePlannerSettings.defaults().withLaterDeclarationScoreThreshold(0.0d),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.objectiveDriven(
                                 new LaterDeclarationRejectingObjective(),
-                                SideOpeningSettings.legacy(new LaterDeclarationRejectingObjective())
+                                SideOpeningSettings.defaults(new LaterDeclarationRejectingObjective())
                         )
                 )
         );
@@ -2598,7 +2622,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 new ReverseLaterDeclarationWarCountObjective(),
                 24,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective())
+                heuristicProjectionContext(new ReverseLaterDeclarationWarCountObjective())
         );
         long counterDeclarations = profile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
                 .counters()
@@ -2628,7 +2652,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 new ReverseLaterDeclarationWarCountObjective(),
                 24,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective()),
+                heuristicProjectionContext(new ReverseLaterDeclarationWarCountObjective()),
                 false
         );
         long counterDeclarations = profile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
@@ -2658,7 +2682,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 new WarCountAvoidanceObjective(),
                         reopenDelayTurns,
-                        LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
+                        heuristicProjectionContext(new WarCountAvoidanceObjective())
         );
 
                 long blockedLaterDeclarations = blockedProfile.stats(PlannerProfiler.Scope.LONG_HORIZON_PROJECTED_EVALUATION)
@@ -2691,8 +2715,8 @@ class LongHorizonAssignmentOptimizerTest {
                 2,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
@@ -2744,8 +2768,8 @@ class LongHorizonAssignmentOptimizerTest {
                 2,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
@@ -2758,7 +2782,7 @@ class LongHorizonAssignmentOptimizerTest {
         );
         LongHorizonCandidateEvaluator evaluator = LongHorizonCandidateEvaluator.create(
                 scenario,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
+                heuristicProjectionContext(new WarCountAvoidanceObjective())
         );
 
         LongHorizonForwardProjection.ProjectedEvaluation evaluation = evaluator.projectedEvaluation(seed, projection);
@@ -2809,8 +2833,8 @@ class LongHorizonAssignmentOptimizerTest {
                 2,
                 1.0d,
                 false,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
@@ -3153,7 +3177,7 @@ class LongHorizonAssignmentOptimizerTest {
                         defenderNationIds,
                         List.of(),
                         72,
-                        LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
+                        heuristicProjectionContext(new WarCountAvoidanceObjective())
                 )
         );
 
@@ -3184,7 +3208,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 new WarCountAvoidanceObjective(),
                 61 + Math.max(WarSlotRules.sameOpponentLockoutTurns(), SimTuning.DEFAULT_BEIGE_TURNS_ON_DEFEAT),
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new WarCountAvoidanceObjective())
+                heuristicProjectionContext(new WarCountAvoidanceObjective())
         );
         PlannerProfiler.ProfileSnapshot thresholdSuppressedProfile = projectedProfileSnapshot(
                 attackers,
@@ -3194,8 +3218,10 @@ class LongHorizonAssignmentOptimizerTest {
                 61 + Math.max(WarSlotRules.sameOpponentLockoutTurns(), SimTuning.DEFAULT_BEIGE_TURNS_ON_DEFEAT),
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new WarCountAvoidanceObjective(),
-                        SidePlannerSettings.legacy().withLaterDeclarationScoreThreshold(1_000_000d),
-                        SidePlannerSettings.legacy(),
+                        SideOpeningSettings.defaults(new WarCountAvoidanceObjective()),
+                        SideOpeningSettings.defaults(new WarCountAvoidanceObjective()),
+                        SidePlannerSettings.defaults().withLaterDeclarationScoreThreshold(1_000_000d),
+                        SidePlannerSettings.defaults(),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -3230,7 +3256,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 new ReverseLaterDeclarationWarCountObjective(),
                 2,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(new ReverseLaterDeclarationWarCountObjective())
+                heuristicProjectionContext(new ReverseLaterDeclarationWarCountObjective())
         );
         PlannerProfiler.ProfileSnapshot cappedProfile = projectedProfileSnapshot(
                 attackers,
@@ -3240,8 +3266,10 @@ class LongHorizonAssignmentOptimizerTest {
                 2,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new ReverseLaterDeclarationWarCountObjective(),
-                        SidePlannerSettings.legacy(),
-                        SidePlannerSettings.legacy().withMaxLaterDeclarationsPerTurn(1),
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SidePlannerSettings.defaults(),
+                        SidePlannerSettings.defaults().withMaxLaterDeclarationsPerTurn(1),
                         SideProjectionPolicies.heuristic(),
                         SideProjectionPolicies.heuristic()
                 )
@@ -3283,8 +3311,10 @@ class LongHorizonAssignmentOptimizerTest {
                 2,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new ReverseLaterDeclarationWarCountObjective(),
-                        SidePlannerSettings.legacy(),
-                        SidePlannerSettings.legacy()
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SidePlannerSettings.defaults(),
+                        SidePlannerSettings.defaults()
                                 .withActivityActThreshold(0.0d)
                                 .withLaterDeclarationScoreThreshold(0.0d),
                         SideProjectionPolicies.heuristic(),
@@ -3300,8 +3330,10 @@ class LongHorizonAssignmentOptimizerTest {
                 2,
                 new LongHorizonAssignmentOptimizer.ProjectionScoringContext(
                         new ReverseLaterDeclarationWarCountObjective(),
-                        SidePlannerSettings.legacy(),
-                        SidePlannerSettings.legacy()
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SideOpeningSettings.defaults(new ReverseLaterDeclarationWarCountObjective()),
+                        SidePlannerSettings.defaults(),
+                        SidePlannerSettings.defaults()
                                 .withActivityActThreshold(0.5d)
                                 .withLaterDeclarationScoreThreshold(0.0d),
                         SideProjectionPolicies.heuristic(),
@@ -3367,7 +3399,7 @@ class LongHorizonAssignmentOptimizerTest {
                 List.of(),
                 72,
                 false,
-                SidePlannerSettings.legacy().withIdlePressureWeight(0d)
+                SidePlannerSettings.defaults().withIdlePressureWeight(0d)
         ).assignment();
         Map<Integer, List<Integer>> defaultAssignment = LongHorizonAssignmentOptimizer.solveWithAttackerCaps(
                 edges,
@@ -3380,7 +3412,7 @@ class LongHorizonAssignmentOptimizerTest {
                 List.of(),
                 72,
                 false,
-                SidePlannerSettings.legacyActing()
+                SidePlannerSettings.actingDefaults()
         ).assignment();
 
         int zeroIdleAttackers = idleAttackersWithEdges(edges, attackerNationIds, zeroIdleAssignment);
@@ -3419,7 +3451,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacyActing()
+                SidePlannerSettings.actingDefaults()
         );
 
         assertTrue(projection.attackerIdlePressureMarginalScore(0) > projection.attackerIdlePressureMarginalScore(1),
@@ -3452,7 +3484,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacyActing()
+                SidePlannerSettings.actingDefaults()
         );
 
         assertEquals(0d, projection.attackerIdlePressureMarginalScore(0), 1e-9,
@@ -3501,7 +3533,7 @@ class LongHorizonAssignmentOptimizerTest {
                 72,
                 1.0d,
                 false,
-                SidePlannerSettings.legacyActing()
+                SidePlannerSettings.actingDefaults()
         );
 
         assertTrue(projection.attackerIdlePressureMarginalScore(0) > 0d,
@@ -3545,7 +3577,7 @@ class LongHorizonAssignmentOptimizerTest {
             int horizonTurns
     ) {
         CompiledScenario scenario = compile(attackers, defenders);
-        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+        LongHorizonControlProjection projection = LongHorizonControlProjection.createHeuristic(
                 edges,
                 scenario,
                 new int[attackers.size()],
@@ -3576,7 +3608,7 @@ class LongHorizonAssignmentOptimizerTest {
                 edges,
                 objective,
                 horizonTurns,
-                LongHorizonAssignmentOptimizer.ProjectionScoringContext.legacy(objective)
+                heuristicProjectionContext(objective)
         );
     }
 

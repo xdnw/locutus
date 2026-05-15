@@ -81,7 +81,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
         this.attackerCaps = java.util.Arrays.copyOf(attackerCaps, attackerCaps.length);
     }
 
-    static LongHorizonControlProjection create(
+    static LongHorizonControlProjection createHeuristic(
             CandidateEdgeTable edges,
             CompiledScenario scenario,
             int[] attackerCaps,
@@ -89,10 +89,10 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int horizonTurns,
             double horizonFactor
     ) {
-        return create(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor, false);
+        return createHeuristic(edges, scenario, attackerCaps, defenderCaps, horizonTurns, horizonFactor, false);
     }
 
-    static LongHorizonControlProjection create(
+    static LongHorizonControlProjection createHeuristic(
             CandidateEdgeTable edges,
             CompiledScenario scenario,
             int[] attackerCaps,
@@ -101,10 +101,10 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int horizonTurns,
             double horizonFactor
     ) {
-        return create(edges, scenario, attackerCaps, defenderCaps, attackerStrengthRanks, horizonTurns, horizonFactor, false);
+        return createHeuristic(edges, scenario, attackerCaps, defenderCaps, attackerStrengthRanks, horizonTurns, horizonFactor, false);
     }
 
-    static LongHorizonControlProjection create(
+    static LongHorizonControlProjection createHeuristic(
             CandidateEdgeTable edges,
             CompiledScenario scenario,
             int[] attackerCaps,
@@ -125,14 +125,14 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 null,
                 null,
                 null,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
             );
-            }
+    }
 
-            static LongHorizonControlProjection create(
+    static LongHorizonControlProjection createHeuristic(
                 CandidateEdgeTable edges,
                 CompiledScenario scenario,
                 int[] attackerCaps,
@@ -154,14 +154,14 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 null,
                 null,
                 null,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
             );
-            }
+    }
 
-            static LongHorizonControlProjection create(
+    static LongHorizonControlProjection createHeuristic(
                 CandidateEdgeTable edges,
                 CompiledScenario scenario,
                 int[] attackerCaps,
@@ -184,12 +184,12 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
                 null,
                 null,
                 null,
-                SidePlannerSettings.legacy(),
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
                 attackerProjectionPolicies,
                 defenderProjectionPolicies
             );
-            }
+    }
 
             static LongHorizonControlProjection create(
                 CandidateEdgeTable edges,
@@ -379,7 +379,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             int horizonTurns,
             double horizonFactor
     ) {
-        return createScorerOnly(edges, scenario, attackerCaps, defenderCaps, attackerStrengthRanks, horizonTurns, horizonFactor, false, SidePlannerSettings.legacy());
+        return createScorerOnly(edges, scenario, attackerCaps, defenderCaps, attackerStrengthRanks, horizonTurns, horizonFactor, false, SidePlannerSettings.defaults());
     }
 
     static LongHorizonControlProjection createScorerOnly(
@@ -400,7 +400,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             horizonTurns,
             horizonFactor,
             includeSlotDenial,
-            SidePlannerSettings.legacy()
+            SidePlannerSettings.defaults()
         );
         }
 
@@ -429,7 +429,7 @@ final class LongHorizonControlProjection implements LongHorizonMarginalScorer {
             horizonFactor,
             includeSlotDenial,
             attackerPlannerSettings,
-            SidePlannerSettings.legacy(),
+            SidePlannerSettings.defaults(),
             SideProjectionPolicies.heuristic(),
             SideProjectionPolicies.heuristic(),
             LongHorizonAssignmentScoringModel.create(

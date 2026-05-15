@@ -5,8 +5,8 @@ tools:
   - read
   - search
 model: ["GPT-5.4 mini (copilot)", "GPT-5.4 (copilot)", "Raptor mini (Preview) (copilot)"]
-user-invocable: true
-disable-model-invocation: true
+user-invocable: false
+disable-model-invocation: false
 target: vscode
 ---
 

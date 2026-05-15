@@ -136,7 +136,7 @@ class PlannerReplayProjectorTest {
                 .unit(MilitaryUnit.SHIP, 500)
                 .build();
 
-        SidePolicy basePolicy = SidePolicy.legacy("cacheDeclarer", BlitzObjective.DAMAGE.objective());
+        SidePolicy basePolicy = SidePolicy.heuristicActing("cacheDeclarer", BlitzObjective.DAMAGE.objective());
         SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
                 Arrays.copyOf(basePolicy.opening().warTypeWeights(), basePolicy.opening().warTypeWeights().length),
                 Arrays.copyOf(basePolicy.opening().attackTypeWeights(), basePolicy.opening().attackTypeWeights().length),
@@ -151,7 +151,7 @@ class PlannerReplayProjectorTest {
                 basePolicy.turnActor(),
                 basePolicy.allowInitialDeclarations()
         );
-        SidePolicy passiveTargetPolicy = SidePolicy.legacyPassive("cacheTarget", BlitzObjective.DAMAGE.objective());
+        SidePolicy passiveTargetPolicy = SidePolicy.heuristicPassive("cacheTarget", BlitzObjective.DAMAGE.objective());
 
         PlannerProfiler.Session profiler = new PlannerProfiler.Session();
         BlitzReplayTrace trace = PlannerProfiler.withSession(
@@ -353,7 +353,7 @@ class PlannerReplayProjectorTest {
                 .unit(MilitaryUnit.TANK, 300)
                 .build();
 
-        SidePolicy permissivePolicy = SidePolicy.legacy("laterDeclarer", BlitzObjective.DAMAGE.objective());
+        SidePolicy permissivePolicy = SidePolicy.heuristicActing("laterDeclarer", BlitzObjective.DAMAGE.objective());
         SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
                 Arrays.copyOf(permissivePolicy.opening().warTypeWeights(), permissivePolicy.opening().warTypeWeights().length),
                 Arrays.copyOf(permissivePolicy.opening().attackTypeWeights(), permissivePolicy.opening().attackTypeWeights().length),
@@ -368,7 +368,7 @@ class PlannerReplayProjectorTest {
                 permissivePolicy.turnActor(),
                 permissivePolicy.allowInitialDeclarations()
         );
-        SidePolicy passiveTargetPolicy = SidePolicy.legacyPassive("laterTarget", BlitzObjective.DAMAGE.objective());
+        SidePolicy passiveTargetPolicy = SidePolicy.heuristicPassive("laterTarget", BlitzObjective.DAMAGE.objective());
 
         List<DBNationSnapshot> nations = List.of(target, laterDeclarer);
         SimTuning tuning = SimTuning.defaults().withTurn1DeclarePolicy(Turn1DeclarePolicy.BOTH_FREE);
@@ -850,8 +850,8 @@ class PlannerReplayProjectorTest {
                 List.of(laterDeclarationScope(
                         List.of(defenderDeclarer),
                         List.of(initialTarget, reserveTarget),
-                        SidePolicy.legacy("laterDeclarerOpeningSide", BlitzObjective.DAMAGE.objective()),
-                        SidePolicy.legacyPassive("laterTargetOpeningSide", BlitzObjective.DAMAGE.objective())
+                        SidePolicy.heuristicActing("laterDeclarerOpeningSide", BlitzObjective.DAMAGE.objective()),
+                        SidePolicy.heuristicPassive("laterTargetOpeningSide", BlitzObjective.DAMAGE.objective())
                 )),
                 SimTuning.defaults(),
                 72
@@ -908,14 +908,14 @@ class PlannerReplayProjectorTest {
                         laterDeclarationScope(
                                 List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
                                 List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
-                                SidePolicy.legacy("laterDeclarerOpeningSideA", BlitzObjective.DAMAGE.objective()),
-                                SidePolicy.legacyPassive("laterTargetOpeningSideA", BlitzObjective.DAMAGE.objective())
+                                SidePolicy.heuristicActing("laterDeclarerOpeningSideA", BlitzObjective.DAMAGE.objective()),
+                                SidePolicy.heuristicPassive("laterTargetOpeningSideA", BlitzObjective.DAMAGE.objective())
                         ),
                         laterDeclarationScope(
                                 List.of(defenderDeclarer, defenderInitialTarget, defenderReserveTarget),
                                 List.of(attackerDeclarer, attackerInitialTarget, attackerReserveTarget),
-                                SidePolicy.legacy("laterDeclarerOpeningSideB", BlitzObjective.DAMAGE.objective()),
-                                SidePolicy.legacyPassive("laterTargetOpeningSideB", BlitzObjective.DAMAGE.objective())
+                                SidePolicy.heuristicActing("laterDeclarerOpeningSideB", BlitzObjective.DAMAGE.objective()),
+                                SidePolicy.heuristicPassive("laterTargetOpeningSideB", BlitzObjective.DAMAGE.objective())
                         )
                 ),
                 SimTuning.defaults(),
@@ -953,7 +953,7 @@ class PlannerReplayProjectorTest {
                 .build();
 
         StrategicObjective objective = BlitzObjective.DAMAGE.objective();
-        SidePolicy baseDeclarerPolicy = SidePolicy.legacy("cappedDeclarer", objective);
+        SidePolicy baseDeclarerPolicy = SidePolicy.heuristicActing("cappedDeclarer", objective);
         SidePolicy cappedDeclarerPolicy = new SidePolicy(
                 baseDeclarerPolicy.name(),
                 baseDeclarerPolicy.objective(),
@@ -973,7 +973,7 @@ class PlannerReplayProjectorTest {
                         List.of(declarer),
                         List.of(targetA, targetB, targetC),
                         cappedDeclarerPolicy,
-                        SidePolicy.legacyPassive("target", objective)
+                        SidePolicy.heuristicPassive("target", objective)
                 )),
                 SimTuning.defaults(),
                 1
@@ -1062,8 +1062,8 @@ class PlannerReplayProjectorTest {
                 List.of(laterDeclarationScope(
                         opposingSideDeclarers,
                         opposingSideTargets,
-                        SidePolicy.legacy("laterDeclarerOpposingSide", objective),
-                        SidePolicy.legacyPassive("laterTargetOpposingSide", objective)
+                        SidePolicy.heuristicActing("laterDeclarerOpposingSide", objective),
+                        SidePolicy.heuristicPassive("laterTargetOpposingSide", objective)
                 )),
                 tuning,
                 horizonTurns
@@ -1112,15 +1112,15 @@ class PlannerReplayProjectorTest {
                 scopes,
                 opposingSideDeclarers,
                 opposingSideTargets,
-                SidePolicy.legacy("laterDeclarerOpposingSide", objective),
-                SidePolicy.legacyPassive("laterTargetOpposingSide", objective)
+                SidePolicy.heuristicActing("laterDeclarerOpposingSide", objective),
+                SidePolicy.heuristicPassive("laterTargetOpposingSide", objective)
         );
         addLaterDeclarationScope(
                 scopes,
                 attackers,
                 defenders,
-                SidePolicy.legacy("laterDeclarerOpeningSide", objective),
-                SidePolicy.legacyPassive("laterTargetOpeningSide", objective)
+                SidePolicy.heuristicActing("laterDeclarerOpeningSide", objective),
+                SidePolicy.heuristicPassive("laterTargetOpeningSide", objective)
         );
         return List.copyOf(scopes);
     }

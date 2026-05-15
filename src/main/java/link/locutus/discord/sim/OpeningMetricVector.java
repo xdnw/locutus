@@ -22,52 +22,6 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
             double resourceSwing,
             double controlLeverage,
             double tacticalMomentum,
-            double actionSpaceQuality
-    ) {
-        this(immediateHarm, selfExposure, resourceSwing, controlLeverage, tacticalMomentum, actionSpaceQuality, 0d, 0d, 0d);
-    }
-
-    public OpeningMetricVector(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double tacticalMomentum,
-            double actionSpaceQuality,
-            double targetPressure
-    ) {
-        this(immediateHarm, selfExposure, resourceSwing, controlLeverage, tacticalMomentum, actionSpaceQuality, 0d, 0d, targetPressure);
-    }
-
-    public OpeningMetricVector(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double tacticalMomentum,
-            double actionSpaceQuality,
-            double timingWindowAdvantage,
-            double targetPressure
-    ) {
-        this(
-            immediateHarm,
-            selfExposure,
-            resourceSwing,
-            controlLeverage,
-            tacticalMomentum,
-            actionSpaceQuality,
-            timingWindowAdvantage,
-            0d,
-            targetPressure
-        );
-        }
-
-        public OpeningMetricVector(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double tacticalMomentum,
             double actionSpaceQuality,
             double timingWindowAdvantage,
             double declarationReadiness,
@@ -191,7 +145,7 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         private double targetPressure;
 
         public Mutable() {
-            super(0d, 0d, 0d, 0d, 0d, 0d);
+            super(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d);
         }
 
         public void clear() {

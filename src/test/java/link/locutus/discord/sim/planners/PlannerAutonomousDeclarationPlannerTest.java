@@ -34,8 +34,8 @@ class PlannerAutonomousDeclarationPlannerTest {
                 .build();
 
         StrategicObjective objective = BlitzObjective.DAMAGE.objective();
-        SidePolicy permissivePolicy = SidePolicy.legacy("acting", objective);
-        SidePolicy targetPolicy = SidePolicy.legacyPassive("target", objective);
+        SidePolicy permissivePolicy = SidePolicy.heuristicActing("acting", objective);
+        SidePolicy targetPolicy = SidePolicy.heuristicPassive("target", objective);
         SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
                 Arrays.copyOf(permissivePolicy.opening().warTypeWeights(), permissivePolicy.opening().warTypeWeights().length),
                 Arrays.copyOf(permissivePolicy.opening().attackTypeWeights(), permissivePolicy.opening().attackTypeWeights().length),
@@ -93,8 +93,8 @@ class PlannerAutonomousDeclarationPlannerTest {
                 List.of(declarer),
                 List.of(target),
                 SimTuning.defaults(),
-                SidePolicy.legacy("acting", objective),
-                SidePolicy.legacyPassive("target", objective),
+                SidePolicy.heuristicActing("acting", objective),
+                SidePolicy.heuristicPassive("target", objective),
                 24
         );
         PlannerAutonomousDeclarationPlanner.Plan noDeclarationsPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
@@ -102,7 +102,7 @@ class PlannerAutonomousDeclarationPlannerTest {
                 List.of(target),
                 SimTuning.defaults(),
                 SidePolicy.noDeclarations("acting", objective),
-                SidePolicy.legacyPassive("target", objective),
+                SidePolicy.heuristicPassive("target", objective),
                 24
         );
 
@@ -131,8 +131,8 @@ class PlannerAutonomousDeclarationPlannerTest {
                 List.of(declarer),
                 List.of(target),
                 SimTuning.defaults(),
-                SidePolicy.legacy("acting", objective),
-                SidePolicy.legacyPassive("target", objective),
+                SidePolicy.heuristicActing("acting", objective),
+                SidePolicy.heuristicPassive("target", objective),
                 24
         );
 
@@ -167,17 +167,17 @@ class PlannerAutonomousDeclarationPlannerTest {
                 .build();
 
         StrategicObjective objective = BlitzObjective.NET_DAMAGE.objective();
-        SidePolicy actingPolicy = SidePolicy.legacy("acting", objective);
+        SidePolicy actingPolicy = SidePolicy.heuristicActing("acting", objective);
         SidePolicy fallbackLikePolicy = new SidePolicy(
                 "fallbackLike",
                 objective,
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
                 actingPolicy.opening(),
                 actingPolicy.projection(),
                 actingPolicy.turnActor(),
                 actingPolicy.allowInitialDeclarations()
         );
-        SidePolicy passiveTarget = SidePolicy.legacyPassive("target", objective);
+        SidePolicy passiveTarget = SidePolicy.heuristicPassive("target", objective);
 
         PlannerAutonomousDeclarationPlanner.Plan fallbackLikePlan = PlannerAutonomousDeclarationPlanner.plan(
                 List.of(slotRichDeclarer, peerDeclarer),
@@ -206,7 +206,7 @@ class PlannerAutonomousDeclarationPlannerTest {
                 .build();
 
         StrategicObjective objective = BlitzObjective.NET_DAMAGE.objective();
-        SidePolicy legacyPolicy = SidePolicy.legacy("legacy", objective);
+        SidePolicy legacyPolicy = SidePolicy.heuristicActing("heuristic", objective);
         SidePolicy policyRejected = new SidePolicy(
                 "policyRejected",
                 objective,
@@ -219,7 +219,7 @@ class PlannerAutonomousDeclarationPlannerTest {
                 legacyPolicy.turnActor(),
                 legacyPolicy.allowInitialDeclarations()
         );
-        SidePolicy targetPolicy = SidePolicy.legacyPassive("target", objective);
+        SidePolicy targetPolicy = SidePolicy.heuristicPassive("target", objective);
 
         PlannerAutonomousDeclarationPlanner.Plan legacyPlan = PlannerAutonomousDeclarationPlanner.planWithProjectionContext(
                 List.of(declarer),
@@ -297,7 +297,7 @@ class PlannerAutonomousDeclarationPlannerTest {
                 SimTuning.defaults(),
                 OverrideSet.EMPTY,
                 objective,
-                SideOpeningSettings.legacy(objective),
+                SideOpeningSettings.defaults(objective),
                 attackerCaps,
                 defenderCaps,
                 edges
@@ -313,13 +313,13 @@ class PlannerAutonomousDeclarationPlannerTest {
         PlannerAutonomousDeclarationPlanner.Plan compiledPlan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
                 compiledScenario,
                 edges,
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
                 72
         );
         PlannerAutonomousDeclarationPlanner.Plan plannerViewPlan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
                 plannerView,
                 edges,
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
                 72
         );
 
@@ -361,7 +361,7 @@ class PlannerAutonomousDeclarationPlannerTest {
         PlannerAutonomousDeclarationPlanner.Plan plan = PlannerAutonomousDeclarationPlanner.planScorerOnly(
                 scenario,
                 edges,
-                SidePlannerSettings.legacy(),
+                SidePlannerSettings.defaults(),
                 72
         );
 

@@ -38,7 +38,7 @@ final class PlannerAutonomousDeclarationPlanner {
             declarerPolicy,
             targetPolicy,
             remainingTurns,
-            null,
+            projectionContextFor(declarerPolicy, targetPolicy),
             false
         );
         }
@@ -268,19 +268,7 @@ final class PlannerAutonomousDeclarationPlanner {
                     remainingTurns
             );
         }
-        Map<Integer, List<Integer>> assignment = projectionContext == null
-                ? LongHorizonAssignmentOptimizer.solve(
-                prepared.edges(),
-                prepared.scenario(),
-                prepared.attackerCaps(),
-                prepared.defenderCaps(),
-                attackerStrengthRanks(prepared.scenario()),
-                prepared.attackerNationIds(),
-                prepared.defenderNationIds(),
-                List.of(),
-                Math.max(1, remainingTurns)
-        )
-                : LongHorizonAssignmentOptimizer.solveDetailed(
+        Map<Integer, List<Integer>> assignment = LongHorizonAssignmentOptimizer.solveDetailed(
                 prepared.edges(),
                 prepared.scenario(),
                 prepared.attackerCaps(),

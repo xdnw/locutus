@@ -89,8 +89,8 @@ class BlitzPlannerTest {
         return planner.assign(
                 attackerPool,
                 defenderPool,
-                SidePolicy.legacy(planner.objective()),
-                SidePolicy.legacyPassive(planner.objective()),
+            SidePolicy.heuristicActing("acting", planner.objective()),
+            SidePolicy.heuristicPassive("defending", planner.objective()),
                 currentTurn,
                 fixedEdges,
                 horizonTurns
