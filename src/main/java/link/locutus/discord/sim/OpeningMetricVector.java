@@ -4,13 +4,12 @@ package link.locutus.discord.sim;
  * Objective-facing summary of a bounded opening rollout.
  */
 public class OpeningMetricVector implements StrategicEvaluationComponents {
-    public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d);
+    public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d);
 
     private final double immediateHarm;
     private final double selfExposure;
     private final double resourceSwing;
     private final double controlLeverage;
-    private final double declarationReadiness;
     private final double tacticalMomentum;
     private final double actionSpaceQuality;
     private final double timingWindowAdvantage;
@@ -24,14 +23,12 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
             double tacticalMomentum,
             double actionSpaceQuality,
             double timingWindowAdvantage,
-            double declarationReadiness,
             double targetPressure
         ) {
         this.immediateHarm = immediateHarm;
         this.selfExposure = selfExposure;
         this.resourceSwing = resourceSwing;
         this.controlLeverage = controlLeverage;
-        this.declarationReadiness = declarationReadiness;
         this.tacticalMomentum = tacticalMomentum;
         this.actionSpaceQuality = actionSpaceQuality;
         this.timingWindowAdvantage = timingWindowAdvantage;
@@ -52,11 +49,6 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
 
     public double controlLeverage() {
         return controlLeverage;
-    }
-
-    @Override
-    public double declarationReadiness() {
-        return declarationReadiness;
     }
 
     @Override
@@ -90,7 +82,6 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 && Double.compare(selfExposure(), that.selfExposure()) == 0
                 && Double.compare(resourceSwing(), that.resourceSwing()) == 0
                 && Double.compare(controlLeverage(), that.controlLeverage()) == 0
-            && Double.compare(declarationReadiness(), that.declarationReadiness()) == 0
                 && Double.compare(tacticalMomentum(), that.tacticalMomentum()) == 0
                 && Double.compare(actionSpaceQuality(), that.actionSpaceQuality()) == 0
                 && Double.compare(timingWindowAdvantage(), that.timingWindowAdvantage()) == 0
@@ -103,7 +94,6 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         result = 31 * result + Double.hashCode(selfExposure());
         result = 31 * result + Double.hashCode(resourceSwing());
         result = 31 * result + Double.hashCode(controlLeverage());
-        result = 31 * result + Double.hashCode(declarationReadiness());
         result = 31 * result + Double.hashCode(tacticalMomentum());
         result = 31 * result + Double.hashCode(actionSpaceQuality());
         result = 31 * result + Double.hashCode(timingWindowAdvantage());
@@ -118,7 +108,6 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 + ", selfExposure=" + selfExposure()
                 + ", resourceSwing=" + resourceSwing()
                 + ", controlLeverage=" + controlLeverage()
-                + ", declarationReadiness=" + declarationReadiness()
                 + ", tacticalMomentum=" + tacticalMomentum()
                 + ", actionSpaceQuality=" + actionSpaceQuality()
                 + ", timingWindowAdvantage=" + timingWindowAdvantage()
@@ -138,14 +127,13 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         private double selfExposure;
         private double resourceSwing;
         private double controlLeverage;
-        private double declarationReadiness;
         private double tacticalMomentum;
         private double actionSpaceQuality;
         private double timingWindowAdvantage;
         private double targetPressure;
 
         public Mutable() {
-            super(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d);
+            super(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d);
         }
 
         public void clear() {
@@ -158,7 +146,6 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                     source.selfExposure(),
                     source.resourceSwing(),
                     source.controlLeverage(),
-                    source.declarationReadiness(),
                     source.tacticalMomentum(),
                     source.actionSpaceQuality(),
                     source.timingWindowAdvantage(),
@@ -174,7 +161,7 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 double tacticalMomentum,
                 double actionSpaceQuality
         ) {
-            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, tacticalMomentum, actionSpaceQuality, 0d, 0d);
+            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, tacticalMomentum, actionSpaceQuality, 0d, 0d);
         }
 
         public void set(
@@ -186,7 +173,7 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 double actionSpaceQuality,
                 double targetPressure
         ) {
-            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, tacticalMomentum, actionSpaceQuality, 0d, targetPressure);
+            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, tacticalMomentum, actionSpaceQuality, 0d, targetPressure);
         }
 
         public void set(
@@ -194,20 +181,6 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
                 double selfExposure,
                 double resourceSwing,
                 double controlLeverage,
-                double tacticalMomentum,
-                double actionSpaceQuality,
-                double timingWindowAdvantage,
-                double targetPressure
-        ) {
-            set(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, tacticalMomentum, actionSpaceQuality, timingWindowAdvantage, targetPressure);
-        }
-
-        public void set(
-                double immediateHarm,
-                double selfExposure,
-                double resourceSwing,
-                double controlLeverage,
-                double declarationReadiness,
                 double tacticalMomentum,
                 double actionSpaceQuality,
                 double timingWindowAdvantage,
@@ -217,16 +190,10 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
             this.selfExposure = selfExposure;
             this.resourceSwing = resourceSwing;
             this.controlLeverage = controlLeverage;
-            this.declarationReadiness = declarationReadiness;
             this.tacticalMomentum = tacticalMomentum;
             this.actionSpaceQuality = actionSpaceQuality;
             this.timingWindowAdvantage = timingWindowAdvantage;
             this.targetPressure = targetPressure;
-        }
-
-        @Override
-        public double declarationReadiness() {
-            return declarationReadiness;
         }
 
         @Override

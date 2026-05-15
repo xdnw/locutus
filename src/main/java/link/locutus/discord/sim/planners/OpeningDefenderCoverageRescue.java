@@ -67,7 +67,6 @@ final class OpeningDefenderCoverageRescue {
             collector.resourceSwingAt(selectedIndex),
             collector.controlLeverageAt(selectedIndex),
             collector.futureWarLeverageAt(selectedIndex),
-            collector.declarationReadinessAt(selectedIndex),
             out,
             emittedPairWordsByAttacker,
             emittedWordsPerAttacker,
@@ -94,7 +93,6 @@ final class OpeningDefenderCoverageRescue {
             collector.resourceSwingAt(selectedIndex),
             collector.controlLeverageAt(selectedIndex),
             collector.futureWarLeverageAt(selectedIndex),
-            collector.declarationReadinessAt(selectedIndex),
             out,
             flattenWords(emittedPairWordsByAttacker),
             emittedPairWordsByAttacker.length == 0 ? 0 : emittedPairWordsByAttacker[0].length,
@@ -123,7 +121,6 @@ final class OpeningDefenderCoverageRescue {
                 collector.resourceSwingAt(selectedIndex),
                 collector.controlLeverageAt(selectedIndex),
                 collector.futureWarLeverageAt(selectedIndex),
-                collector.declarationReadinessAt(selectedIndex),
                 out,
                 emittedPairWordsByAttacker,
                 emittedWordsPerAttacker,
@@ -162,7 +159,6 @@ final class OpeningDefenderCoverageRescue {
             float resourceSwing,
             float controlLeverage,
             float futureWarLeverage,
-            float declarationReadiness,
             CandidateEdgeTable out,
             long[] emittedPairWordsByAttacker,
             int emittedWordsPerAttacker,
@@ -181,7 +177,6 @@ final class OpeningDefenderCoverageRescue {
                 resourceSwing,
                 controlLeverage,
                 futureWarLeverage,
-                declarationReadiness,
                 out,
                 emittedPairWordsByAttacker,
                 emittedWordsPerAttacker,
@@ -201,7 +196,6 @@ final class OpeningDefenderCoverageRescue {
                 float resourceSwing,
                 float controlLeverage,
                 float futureWarLeverage,
-                float declarationReadiness,
                 CandidateEdgeTable out,
                 long[] emittedPairWordsByAttacker,
                 int emittedWordsPerAttacker,
@@ -221,8 +215,7 @@ final class OpeningDefenderCoverageRescue {
             selfExposure,
             resourceSwing,
             controlLeverage,
-            futureWarLeverage,
-            declarationReadiness
+            futureWarLeverage
         );
         defenderCoverageCounts[defenderIndex]++;
         return true;

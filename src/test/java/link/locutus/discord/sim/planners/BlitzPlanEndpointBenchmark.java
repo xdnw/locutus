@@ -401,40 +401,18 @@ public final class BlitzPlanEndpointBenchmark {
             double[] incomingScoreSums = new double[scenario.defenderCount()];
             float[] outgoingScoreMax = new float[scenario.attackerCount()];
             float[] incomingScoreMax = new float[scenario.defenderCount()];
-            int declarationReadyEdges = 0;
-            int declarationOnlyEdges = 0;
-            double declarationReadinessSum = 0d;
-            float declarationReadinessMax = 0f;
             java.util.Arrays.fill(outgoingScoreMax, Float.NEGATIVE_INFINITY);
             java.util.Arrays.fill(incomingScoreMax, Float.NEGATIVE_INFINITY);
             for (int edgeIndex = 0; edgeIndex < candidateEdges.edgeCount(); edgeIndex++) {
                 int attackerIndex = candidateEdges.attackerIndex(edgeIndex);
                 int defenderIndex = candidateEdges.defenderIndex(edgeIndex);
                 float score = candidateEdges.scalarScore(edgeIndex);
-                float immediateHarm = candidateEdges.retainsImmediateHarm() ? candidateEdges.immediateHarm(edgeIndex) : 0f;
-                float selfExposure = candidateEdges.retainsSelfExposure() ? candidateEdges.selfExposure(edgeIndex) : 0f;
-                float resourceSwing = candidateEdges.retainsResourceSwing() ? candidateEdges.resourceSwing(edgeIndex) : 0f;
-                float controlLeverage = candidateEdges.retainsControlLeverage() ? candidateEdges.controlLeverage(edgeIndex) : 0f;
-                float futureWarLeverage = candidateEdges.retainsFutureWarLeverage() ? candidateEdges.futureWarLeverage(edgeIndex) : 0f;
-                float declarationReadiness = candidateEdges.retainsDeclarationReadiness() ? candidateEdges.declarationReadiness(edgeIndex) : 0f;
                 outgoingCandidateCounts[attackerIndex]++;
                 incomingCandidateCounts[defenderIndex]++;
                 outgoingScoreSums[attackerIndex] += score;
                 incomingScoreSums[defenderIndex] += score;
                 outgoingScoreMax[attackerIndex] = Math.max(outgoingScoreMax[attackerIndex], score);
                 incomingScoreMax[defenderIndex] = Math.max(incomingScoreMax[defenderIndex], score);
-                if (declarationReadiness > 0f) {
-                    declarationReadyEdges++;
-                    declarationReadinessSum += declarationReadiness;
-                    declarationReadinessMax = Math.max(declarationReadinessMax, declarationReadiness);
-                    if (immediateHarm == 0f
-                            && selfExposure == 0f
-                            && resourceSwing == 0f
-                            && controlLeverage == 0f
-                            && futureWarLeverage == 0f) {
-                        declarationOnlyEdges++;
-                    }
-                }
             }
 
             int[] offensiveAssignments = new int[response.participantIds().length];
@@ -451,14 +429,6 @@ public final class BlitzPlanEndpointBenchmark {
                     candidateEdges.edgeCount(),
                     scenario.attackerCount(),
                     scenario.defenderCount());
-            System.out.printf(Locale.ROOT,
-                    "candidateReadinessSummary,retained=%s,declarationReadyEdges=%d,declarationOnlyEdges=%d,avgDeclarationReadiness=%.3f,maxDeclarationReadiness=%.3f%n",
-                    candidateEdges.retainsDeclarationReadiness(),
-                    declarationReadyEdges,
-                    declarationOnlyEdges,
-                    averageScore(declarationReadinessSum, declarationReadyEdges),
-                    declarationReadinessMax);
-
             for (int nationId : new int[]{379867, 590133}) {
                 int attackerIndex = attackerIndexByNationId(scenario, nationId);
                 if (attackerIndex >= 0) {
@@ -706,7 +676,7 @@ public final class BlitzPlanEndpointBenchmark {
         double targetPressure = OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
         double positiveBaselineScore = targetPressure > 0d ? 0.25d * targetPressure : 0d;
         System.out.printf(Locale.ROOT,
-                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,positiveBaselineScore=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,controlLeverage=%.3f,futureWarLeverage=%.3f,declarationReadiness=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
+                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,positiveBaselineScore=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,controlLeverage=%.3f,futureWarLeverage=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
                 rank,
                 attackerNationId,
                 csvSafe(participantName(response, attackerNationId)),
@@ -720,7 +690,6 @@ public final class BlitzPlanEndpointBenchmark {
                 candidateEdges.retainsResourceSwing() ? candidateEdges.resourceSwing(edgeIndex) : 0f,
                 candidateEdges.retainsControlLeverage() ? candidateEdges.controlLeverage(edgeIndex) : 0f,
                 candidateEdges.retainsFutureWarLeverage() ? candidateEdges.futureWarLeverage(edgeIndex) : 0f,
-                candidateEdges.retainsDeclarationReadiness() ? candidateEdges.declarationReadiness(edgeIndex) : 0f,
                 candidateEdges.counterRisk(edgeIndex),
                 assignmentContains(response, attackerNationId, defenderNationId),
                 outgoing ? "outgoing" : "incoming");

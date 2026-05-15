@@ -14,7 +14,7 @@ final class BlitzStrategicObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, true, false, true, true, true);
+        return new CandidateEdgeComponentPolicy(true, true, false, true, true);
     }
 
     @Override
@@ -36,7 +36,7 @@ final class BlitzStrategicObjective implements StrategicObjective {
             double targetPressure,
             int teamId
     ) {
-        return scoreOpening(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, 0d, futureWarLeverage, targetPressure);
+        return scoreOpening(immediateHarm, selfExposure, resourceSwing, controlLeverage, 0d, futureWarLeverage, targetPressure);
     }
 
     @Override
@@ -46,7 +46,6 @@ final class BlitzStrategicObjective implements StrategicObjective {
                 metrics.selfExposure(),
                 metrics.resourceSwing(),
                 metrics.controlLeverage(),
-                metrics.declarationReadiness(),
                 metrics.tacticalMomentum(),
                 metrics.futureWarLeverage(),
                 metrics.targetPressure()
@@ -58,7 +57,6 @@ final class BlitzStrategicObjective implements StrategicObjective {
             double selfExposure,
             double resourceSwing,
             double controlLeverage,
-            double declarationReadiness,
             double tacticalMomentum,
             double futureWarLeverage,
             double targetPressure
@@ -68,29 +66,10 @@ final class BlitzStrategicObjective implements StrategicObjective {
                 selfExposure,
                 resourceSwing,
                 controlLeverage,
-                declarationReadiness,
                 tacticalMomentum,
                 futureWarLeverage,
                 targetPressure
         ).score();
-    }
-
-    private static double declarationReadinessContribution(
-            double declarationReadiness,
-            double controlLeverage,
-            double futureWarLeverage,
-            double targetPressure
-    ) {
-        if (!(declarationReadiness > 0d) || !(targetPressure > 0d)) {
-            return 0d;
-        }
-        double targetOpportunity = targetPressure / (targetPressure + 12d);
-        double visibilityContribution = 1.20d * Math.min(1d, declarationReadiness) * targetOpportunity;
-        double realizedLeverage = Math.max(0d, controlLeverage) + Math.max(0d, futureWarLeverage);
-        if (!(realizedLeverage > 0d)) {
-            return visibilityContribution;
-        }
-        return Math.min(0.20d * realizedLeverage, 0.35d * visibilityContribution);
     }
 
     @Override
@@ -129,19 +108,12 @@ final class BlitzStrategicObjective implements StrategicObjective {
                 double selfExposure,
                 double resourceSwing,
                 double controlLeverage,
-                double declarationReadiness,
                 double tacticalMomentum,
                 double futureWarLeverage,
                 double targetPressure
         ) {
             double actionSpaceQuality = Math.max(0d, futureWarLeverage);
             double timing = Math.max(0d, tacticalMomentum)
-                    + declarationReadinessContribution(
-                            declarationReadiness,
-                            controlLeverage,
-                            futureWarLeverage,
-                            targetPressure
-                    ) / TIMING_WEIGHT
                     + controlPressureTiming(controlLeverage, targetPressure);
             return new OpeningVector(
                     actionSpaceQuality,

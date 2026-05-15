@@ -1691,7 +1691,6 @@ class PlannerConflictExecutorTest {
                                 0f,
                                 evaluation.futureWarLeverage(),
                                 0f,
-                                0f,
                                 0f
                         ),
                         attacker.teamId()

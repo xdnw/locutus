@@ -11,28 +11,10 @@ public record CandidateEdgeComponentPolicy(
         boolean retainSelfExposure,
         boolean retainResourceSwing,
         boolean retainControlLeverage,
-    boolean retainFutureWarLeverage,
-    boolean retainDeclarationReadiness
+        boolean retainFutureWarLeverage
 ) {
-    public static final CandidateEdgeComponentPolicy NONE = new CandidateEdgeComponentPolicy(false, false, false, false, false, false);
-    public static final CandidateEdgeComponentPolicy HARM_EXPOSURE_ONLY = new CandidateEdgeComponentPolicy(true, true, false, false, false, false);
-
-    public CandidateEdgeComponentPolicy(
-            boolean retainImmediateHarm,
-            boolean retainSelfExposure,
-            boolean retainResourceSwing,
-            boolean retainControlLeverage,
-            boolean retainFutureWarLeverage
-    ) {
-        this(
-                retainImmediateHarm,
-                retainSelfExposure,
-                retainResourceSwing,
-                retainControlLeverage,
-                retainFutureWarLeverage,
-                false
-        );
-    }
+    public static final CandidateEdgeComponentPolicy NONE = new CandidateEdgeComponentPolicy(false, false, false, false, false);
+    public static final CandidateEdgeComponentPolicy HARM_EXPOSURE_ONLY = new CandidateEdgeComponentPolicy(true, true, false, false, false);
 
     public static CandidateEdgeComponentPolicy none() {
         return NONE;
@@ -47,7 +29,6 @@ public record CandidateEdgeComponentPolicy(
                 || retainSelfExposure
                 || retainResourceSwing
                 || retainControlLeverage
-            || retainFutureWarLeverage
-            || retainDeclarationReadiness;
+                || retainFutureWarLeverage;
     }
 }

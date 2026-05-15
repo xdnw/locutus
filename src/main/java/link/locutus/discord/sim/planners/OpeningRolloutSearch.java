@@ -159,7 +159,6 @@ final class OpeningRolloutSearch {
             if (firstAttackTypeId < 0) {
                 return; // no legal attacks at all — cannot declare
             }
-            applyDeclarationOpportunity(baseline, currentMetrics);
             currentScore = scoreObjective(
                     objective,
                     attacker.teamId(),
@@ -180,46 +179,8 @@ final class OpeningRolloutSearch {
                 (float) currentMetrics.selfExposure(),
                 (float) currentMetrics.resourceSwing(),
                 (float) currentMetrics.controlLeverage(),
-                (float) currentMetrics.futureWarLeverage(),
-                (float) currentMetrics.declarationReadiness()
+                (float) currentMetrics.futureWarLeverage()
         );
-    }
-
-    private static void applyDeclarationOpportunity(
-            OpeningEvaluator.OpeningBaseline baseline,
-            OpeningMetricVector.Mutable metrics
-    ) {
-        double attackerStrength = combinedStrength(
-                baseline.attackerGround(),
-                baseline.attackerAir(),
-                baseline.attackerNaval()
-        );
-        double defenderStrength = combinedStrength(
-                baseline.defenderGround(),
-                baseline.defenderAir(),
-                baseline.defenderNaval()
-        );
-        double declarationReadiness = DeclarationReadiness.opening(
-                attackerStrength,
-                defenderStrength,
-                true,
-                true
-        );
-        metrics.set(
-                metrics.immediateHarm(),
-                metrics.selfExposure(),
-                metrics.resourceSwing(),
-                metrics.controlLeverage(),
-                Math.max(metrics.declarationReadiness(), declarationReadiness),
-                metrics.tacticalMomentum(),
-                metrics.actionSpaceQuality(),
-                metrics.timingWindowAdvantage(),
-                metrics.targetPressure()
-        );
-    }
-
-    private static double combinedStrength(double ground, double air, double naval) {
-        return Math.max(0d, ground) + (3d * Math.max(0d, air)) + (2d * Math.max(0d, naval));
     }
 
     private double scoreObjective(
