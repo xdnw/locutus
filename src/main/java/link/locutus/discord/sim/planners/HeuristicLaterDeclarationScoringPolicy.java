@@ -13,7 +13,7 @@ final class HeuristicLaterDeclarationScoringPolicy implements LaterDeclarationSc
     @Override
     public double score(LaterDeclarationScoreContext context) {
         if (!(context.declarerStrength() > 0d) || !(context.targetStrength() > 0d)) {
-            return context.openingScore();
+            return context.projectedValue();
         }
         double activity = clamp01(context.activityWeight());
         double strengthRatio = context.declarerStrength() / Math.max(1d, context.targetStrength());
@@ -22,7 +22,7 @@ final class HeuristicLaterDeclarationScoringPolicy implements LaterDeclarationSc
                 * targetValue
                 * Math.min(MAX_STRENGTH_RATIO, strengthRatio)
                 * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots());
-        return Math.max(context.openingScore(), declarationScore);
+        return Math.max(context.projectedValue(), declarationScore);
     }
 
     private static double clamp01(double value) {

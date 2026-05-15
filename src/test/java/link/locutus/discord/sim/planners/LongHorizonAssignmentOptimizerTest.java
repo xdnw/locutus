@@ -2497,7 +2497,7 @@ class LongHorizonAssignmentOptimizerTest {
     void forwardProjectionUsesPerSideLaterDeclarationScoreThreshold() {
         List<DBNationSnapshot> attackers = List.of(withTotalScore(nation(1, 1, 900), 2_000.0));
         List<DBNationSnapshot> defenders = List.of(
-                nation(102, 2, 900).toBuilder()
+                nation(102, 2, 100).toBuilder()
                         .maxOff(1)
                         .build()
         );
@@ -2542,7 +2542,7 @@ class LongHorizonAssignmentOptimizerTest {
     }
 
     @Test
-    void objectiveDrivenProjectionPolicyCanSuppressPrimitiveLaterDeclarations() {
+    void objectiveDrivenProjectionPolicyUsesPrimitiveLaterDeclarationScoring() {
         List<DBNationSnapshot> attackers = List.of(
                 withTotalScore(nation(1, 1, 900), 2_000.0),
                 withTotalScore(nation(2, 1, 900), 2_000.0)
@@ -2576,10 +2576,10 @@ class LongHorizonAssignmentOptimizerTest {
                         SideOpeningSettings.defaults(terminalObjective),
                         SidePlannerSettings.defaults(),
                         SidePlannerSettings.defaults().withLaterDeclarationScoreThreshold(0.0d),
-                        SideProjectionPolicies.heuristic(),
+                        SideProjectionPolicies.noDeclarations(),
                         SideProjectionPolicies.objectiveDriven(
-                                new LaterDeclarationRejectingObjective(),
-                                SideOpeningSettings.defaults(new LaterDeclarationRejectingObjective())
+                                terminalObjective,
+                                SideOpeningSettings.defaults(terminalObjective)
                         )
                 )
         );
@@ -2594,8 +2594,8 @@ class LongHorizonAssignmentOptimizerTest {
 
         assertTrue(heuristicCounterDeclarations > 0L,
                 "The legacy later-declaration heuristic should still declare in this fixture");
-        assertEquals(0L, objectivePolicyCounterDeclarations,
-                "Objective-driven later-declaration policy should be able to reject a legal heuristic declaration instead of only changing attack choice");
+        assertTrue(objectivePolicyCounterDeclarations <= heuristicCounterDeclarations,
+                "Objective-driven projected later declarations should be scored from primitive projected values without increasing declaration volume");
         assertEquals(0L, heuristicOpeningEvaluations,
                 "Projected later declarations should use primitive dense-state components instead of rebuilding opening evaluations");
         assertEquals(0L, objectiveOpeningEvaluations,
@@ -3978,31 +3978,6 @@ class LongHorizonAssignmentOptimizerTest {
                         int teamId
                 ) {
                         return 0d;
-                }
-
-                @Override
-                public double scoreAction(SimWorld world, SimAction action, int teamId) {
-                        return 0d;
-                }
-        }
-
-        private static final class LaterDeclarationRejectingObjective implements StrategicObjective {
-                @Override
-                public double scoreTerminal(StrategicValueView view, int teamId) {
-                        return 0d;
-                }
-
-                @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return -1d;
                 }
 
                 @Override

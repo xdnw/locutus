@@ -1511,24 +1511,18 @@ final class LongHorizonForwardProjection {
                 declarerOverallIndex,
                 targetOverallIndex
         );
-        double controlLeverage = primitiveDeclarationControlLeverage(strengthRatio);
-        double futureWarLeverage = primitiveDeclarationFutureWarLeverage(strengthRatio);
-        double declarationReadiness = DeclarationReadiness.projected(
-            declarerStrength,
-            targetStrength,
-            true,
-            remainingDeclarerSlots > 0,
-            remainingTargetSlots,
-            0d
+        double projectedValue = primitiveDeclarationProjectedValue(
+                targetPressure,
+                selfExposure,
+                specialistResourceSwing,
+                declarerStrength,
+                targetStrength
         );
         return scoringPolicy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
-                Math.max(0d, immediateHarm - selfExposure),
+                projectedValue,
                 immediateHarm,
                 selfExposure,
                 specialistResourceSwing,
-                controlLeverage,
-                futureWarLeverage,
-            declarationReadiness,
                 targetPressure,
                 declarerStrength,
                 targetStrength,
@@ -1536,6 +1530,37 @@ final class LongHorizonForwardProjection {
                 remainingTargetSlots,
                 Math.max(0d, Math.min(1d, activityWeight))
         ));
+    }
+
+    private static double primitiveDeclarationProjectedValue(
+            double targetPressure,
+            double selfExposure,
+            double specialistResourceSwing,
+            double declarerStrength,
+            double targetStrength
+    ) {
+        double conventionalActionability = declarationActionability(declarerStrength, targetStrength);
+        double specialistActionability = specialistResourceSwing > 0d
+                ? Math.max(conventionalActionability, LaterDeclarationFit.specialistSlotActionability(
+                        specialistResourceSwing,
+                        targetPressure
+                ))
+                : conventionalActionability;
+        if (!(specialistResourceSwing > 0d) && conventionalActionability < 1d) {
+            return 0d;
+        }
+        double pressureValue = Math.max(0d, targetPressure) * Math.min(1.5d, specialistActionability);
+        return Math.max(0d, pressureValue + Math.max(0d, specialistResourceSwing) - Math.max(0d, selfExposure));
+    }
+
+    private static double declarationActionability(double declarerStrength, double targetStrength) {
+        if (!(declarerStrength > 0d)) {
+            return 0d;
+        }
+        if (!(targetStrength > 0d)) {
+            return 1.5d;
+        }
+        return LaterDeclarationFit.actionability(declarerStrength, targetStrength);
     }
 
     private double primitiveDeclarationTargetActionSpaceExposure(
@@ -1624,26 +1649,6 @@ final class LongHorizonForwardProjection {
                 state.unit(nationIndex, MilitaryUnit.AIRCRAFT),
                 state.unit(nationIndex, MilitaryUnit.SHIP)
         );
-    }
-
-    private static double primitiveDeclarationControlLeverage(double strengthRatio) {
-        if (!Double.isFinite(strengthRatio) || strengthRatio >= 1.30d) {
-            return 3d;
-        }
-        if (strengthRatio >= 1.05d) {
-            return 2d;
-        }
-        return 0d;
-    }
-
-    private static double primitiveDeclarationFutureWarLeverage(double strengthRatio) {
-        if (!Double.isFinite(strengthRatio)) {
-            return 3d;
-        }
-        if (strengthRatio < 1.0d) {
-            return 0d;
-        }
-        return Math.max(0d, Math.min(3d, (strengthRatio - 1.0d) * 2d));
     }
 
     private static double strengthRatio(double declarerStrength, double targetStrength) {
