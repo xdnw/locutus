@@ -652,7 +652,7 @@ public class SpyCount {
 
     public static double getSpyKills(int attacking, int defending, boolean defenderHasSN) {
         double killedCap = defending * 0.25 + 4 ;
-        double killed = Math.min(defending, Math.min(killedCap, (attacking - (defending * 0.4)) * 0.5 * 0.95));
+        double killed = Math.min(defending, Math.min(killedCap, (attacking - (defending * 0.4)) * 0.335 * 0.95));
         if (defenderHasSN) killed *= 0.75;
         return killed;
     }

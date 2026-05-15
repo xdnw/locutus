@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LongHorizonForwardProjectionStateTest {
@@ -60,12 +62,12 @@ class LongHorizonForwardProjectionStateTest {
     @Test
     void currentChosenOpeningProjectsWorseRawEnemyStateThanHandBuiltKnownGoodOpening() {
         List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 2_400, 250_000, 24_000, 2_400, 220, 1),
-                nation(2, 1, 2_300, 235_000, 23_000, 2_300, 210, 1)
+                withTotalScore(nation(1, 1, 650, 16_000, 1_600, 650, 0, 1), 1_050.0d),
+                withTotalScore(nation(2, 1, 220, 5_000, 500, 220, 0, 1), 900.0d)
         );
         List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 900, 90_000, 9_000, 900, 80, 0),
-                nation(102, 2, 900, 90_000, 9_000, 900, 80, 0)
+                withTotalScore(nation(101, 2, 520, 13_000, 1_300, 520, 0, 0), 1_020.0d),
+                withTotalScore(nation(102, 2, 180, 4_000, 400, 180, 0, 0), 840.0d)
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
         addGroundEdge(edges, 0, 0, 100.0f);
@@ -82,7 +84,7 @@ class LongHorizonForwardProjectionStateTest {
                 SidePolicy.heuristicPassive("defending", planner.objective()),
                 0,
                 List.of(),
-                36
+                1
         );
 
         assertTrue(
@@ -122,63 +124,93 @@ class LongHorizonForwardProjectionStateTest {
                 SideProjectionPolicies.noDeclarations()
         );
 
-        double chosenEnemyValue = projectedCombatUnits(chosenView, 101) + projectedCombatUnits(chosenView, 102);
-        double knownGoodEnemyValue = projectedCombatUnits(knownGoodView, 101) + projectedCombatUnits(knownGoodView, 102);
+        LongHorizonForwardProjection.ProjectedNationState chosenPriorityDefender = chosenView.projectedNationState(101);
+        LongHorizonForwardProjection.ProjectedNationState knownGoodPriorityDefender = knownGoodView.projectedNationState(101);
+        LongHorizonForwardProjection.ProjectedNationState chosenTrapDefender = chosenView.projectedNationState(102);
+        LongHorizonForwardProjection.ProjectedNationState knownGoodTrapDefender = knownGoodView.projectedNationState(102);
 
         assertTrue(
-                knownGoodEnemyValue < chosenEnemyValue,
-                "The hand-built distributed opening should project to lower enemy combat units than the planner-chosen opening"
+                knownGoodPriorityDefender.money() < chosenPriorityDefender.money(),
+                "The hand-built opening should project more damage onto the higher-value defender than the planner-chosen opening"
                         + "; chosen=" + chosen.assignment()
-                        + ", chosenEnemyValue=" + chosenEnemyValue
-                        + ", knownGoodEnemyValue=" + knownGoodEnemyValue
-                        + ", defender101 chosen=" + describeState(chosenView.projectedNationState(101))
-                        + ", defender101 knownGood=" + describeState(knownGoodView.projectedNationState(101))
-                        + ", defender102 chosen=" + describeState(chosenView.projectedNationState(102))
-                        + ", defender102 knownGood=" + describeState(knownGoodView.projectedNationState(102))
+                        + ", defender101 chosen=" + describeState(chosenPriorityDefender)
+                        + ", defender101 knownGood=" + describeState(knownGoodPriorityDefender)
+        );
+        assertTrue(
+                knownGoodTrapDefender.beigeTurns() < chosenTrapDefender.beigeTurns(),
+                "The hand-built opening should avoid prematurely beiged low-value targets that the planner-chosen opening leaves trapped in beige"
+                        + "; chosen=" + chosen.assignment()
+                        + ", defender102 chosen=" + describeState(chosenTrapDefender)
+                        + ", defender102 knownGood=" + describeState(knownGoodTrapDefender)
         );
     }
 
     @Test
     void beigeTrapProjectsToHigherDefenderRebuildThanSustainedAttrition() {
-        List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 2_600, 260_000, 24_000, 2_600, 240, 2),
-                nation(2, 1, 2_500, 245_000, 23_000, 2_500, 230, 2)
-        );
-        List<DBNationSnapshot> defenders = List.of(
-                nation(101, 2, 1_000, 92_000, 11_000, 1_000, 90, 1),
-                nation(102, 2, 1_000, 92_000, 11_000, 1_000, 90, 1)
-        );
-        CandidateEdgeTable edges = new CandidateEdgeTable();
-        addGroundEdge(edges, 0, 0, 100.0f);
-        addGroundEdge(edges, 0, 1, 96.0f);
-        addGroundEdge(edges, 1, 0, 99.0f);
-        addGroundEdge(edges, 1, 1, 95.0f);
+        DBNationSnapshot attackerOne = withTotalScore(nation(1, 1, 350, 38_000, 3_800, 350, 35, 1), 1_820.0d);
+        DBNationSnapshot attackerTwo = withTotalScore(nation(2, 1, 1_900, 210_000, 21_000, 1_900, 160, 1), 2_320.0d);
+        DBNationSnapshot defenderOne = withTotalScore(nation(101, 2, 500, 55_000, 5_500, 500, 50, 1), 1_860.0d);
+        DBNationSnapshot defenderTwo = withTotalScore(nation(102, 2, 700, 80_000, 8_000, 700, 70, 1), 1_900.0d);
 
         LongHorizonForwardProjection.ProjectionView beigeTrap = project(
-                attackers,
-                defenders,
-                edges,
-                new boolean[]{true, false, true, false},
-                new int[]{1, 1},
-                new int[]{2, 0},
-                36
+                List.of(attackerOne, attackerTwo),
+                List.of(defenderOne.toBuilder().beigeTurns(19).build(), defenderTwo),
+                List.of(),
+                new CandidateEdgeTable(),
+                new boolean[0],
+                new int[]{0, 0},
+                new int[]{0, 0},
+                8,
+                SideProjectionPolicies.noDeclarations(),
+                SideProjectionPolicies.noDeclarations()
         );
         LongHorizonForwardProjection.ProjectionView attrition = project(
-                attackers,
-                defenders,
-                edges,
-                new boolean[]{true, false, false, true},
-                new int[]{1, 1},
-                new int[]{1, 1},
-                36
+                List.of(
+                        attackerOne.toBuilder()
+                                .currentOffensiveWars(1)
+                                .activeOpponentNationId(101)
+                                .build(),
+                        attackerTwo
+                ),
+                List.of(
+                        defenderOne.toBuilder()
+                                .currentDefensiveWars(1)
+                                .activeOpponentNationId(1)
+                                .build(),
+                        defenderTwo
+                ),
+                List.of(
+                        new CompiledActiveWar(
+                                1,
+                                101,
+                                WarType.ORD,
+                                0,
+                                10,
+                                6,
+                                84,
+                                24,
+                                CompiledActiveWar.FlagOwner.ATTACKER,
+                                CompiledActiveWar.FlagOwner.ATTACKER,
+                                CompiledActiveWar.FlagOwner.NONE,
+                                false,
+                                false
+                        )
+                ),
+                new CandidateEdgeTable(),
+                new boolean[0],
+                new int[]{0, 0},
+                new int[]{0, 0},
+                8,
+                SideProjectionPolicies.noDeclarations(),
+                SideProjectionPolicies.noDeclarations()
         );
 
         LongHorizonForwardProjection.ProjectedNationState beigeDefender = beigeTrap.projectedNationState(101);
         LongHorizonForwardProjection.ProjectedNationState attritionDefender = attrition.projectedNationState(101);
 
         assertTrue(
-                beigeDefender.beigeTurns() > attritionDefender.beigeTurns(),
-                "Expected the beige-trap line to leave more beige turns; beige="
+                beigeDefender.beigeTurns() < attritionDefender.beigeTurns(),
+                "Expected the beige-trap line to have fewer remaining beige turns at the horizon because the defender entered beige earlier; beige="
                         + describeState(beigeDefender)
                         + ", attrition=" + describeState(attritionDefender)
         );
@@ -193,28 +225,38 @@ class LongHorizonForwardProjectionStateTest {
     @Test
     void slotOccupancyPreservesProtectedFriendlyStateWhenEnemyAttackerIsAlreadyOccupied() {
         List<DBNationSnapshot> attackers = List.of(
-                nation(1, 1, 2_700, 270_000, 25_000, 2_700, 250, 2),
-                nation(2, 1, 2_650, 265_000, 24_000, 2_650, 240, 2)
+                withTotalScore(nation(1, 1, 350, 42_000, 4_000, 350, 35, 1), 1_780.0d),
+                withTotalScore(nation(2, 1, 260, 30_000, 3_000, 260, 25, 1), 1_700.0d)
         );
-        List<DBNationSnapshot> defenders = List.of(
-                nation(201, 2, 1_100, 96_000, 12_000, 1_100, 100, 1),
-                nation(202, 2, 2_400, 215_000, 20_000, 2_400, 220, 2)
+        List<DBNationSnapshot> idleDefenders = List.of(
+                withTotalScore(nation(201, 2, 950, 110_000, 11_000, 950, 90, 1), 2_000.0d)
+                        .toBuilder()
+                        .maxOff(1)
+                        .build(),
+                withTotalScore(nation(202, 2, 500, 55_000, 5_500, 500, 50, 1), 1_850.0d)
+                        .toBuilder()
+                        .maxOff(0)
+                        .build()
+        );
+        List<DBNationSnapshot> occupiedDefenders = List.of(
+                idleDefenders.get(0).toBuilder()
+                        .currentOffensiveWars(1)
+                        .activeOpponentNationId(2)
+                        .build(),
+                idleDefenders.get(1)
         );
         CandidateEdgeTable edges = new CandidateEdgeTable();
-        addGroundEdge(edges, 0, 0, 100.0f);
-        addGroundEdge(edges, 0, 1, 99.0f);
-        addGroundEdge(edges, 1, 0, 98.0f);
-        addGroundEdge(edges, 1, 1, 97.0f);
+        addGroundEdge(edges, 1, 1, 100.0f);
         List<CompiledActiveWar> occupiedEnemyWar = List.of(
                 new CompiledActiveWar(
-                        202,
                         201,
+                        2,
                         WarType.ORD,
                         0,
                         8,
                         8,
-                        54,
-                        62,
+                        68,
+                        58,
                         CompiledActiveWar.FlagOwner.ATTACKER,
                         CompiledActiveWar.FlagOwner.NONE,
                         CompiledActiveWar.FlagOwner.NONE,
@@ -223,33 +265,35 @@ class LongHorizonForwardProjectionStateTest {
                 )
         );
 
-        LongHorizonForwardProjection.ProjectionView occupied = project(
+        ProjectionRun occupied = projectRun(
                 attackers,
-                defenders,
+                occupiedDefenders,
                 occupiedEnemyWar,
                 edges,
-                new boolean[]{false, false, false, false},
-                new int[]{0, 0},
-                new int[]{0, 0},
+                new boolean[]{true},
+                new int[]{0, 1},
+                new int[]{0, 1},
                 36,
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
-        LongHorizonForwardProjection.ProjectionView idle = project(
+        ProjectionRun idle = projectRun(
                 attackers,
-                defenders,
+                idleDefenders,
                 List.of(),
                 edges,
-                new boolean[]{false, false, false, false},
-                new int[]{0, 0},
-                new int[]{0, 0},
+                new boolean[]{true},
+                new int[]{0, 1},
+                new int[]{0, 1},
                 36,
                 SideProjectionPolicies.heuristic(),
                 SideProjectionPolicies.heuristic()
         );
 
-        LongHorizonForwardProjection.ProjectedNationState occupiedFriendly = occupied.projectedNationState(1);
-        LongHorizonForwardProjection.ProjectedNationState idleFriendly = idle.projectedNationState(1);
+        LongHorizonForwardProjection.ProjectedNationState occupiedFriendly = occupied.view().projectedNationState(1);
+        LongHorizonForwardProjection.ProjectedNationState idleFriendly = idle.view().projectedNationState(1);
+        int occupiedCounters = occupied.evaluation().realizedCounterIncidence()[0];
+        int idleCounters = idle.evaluation().realizedCounterIncidence()[0];
 
         assertTrue(
                 occupiedFriendly.combatUnitCount() > idleFriendly.combatUnitCount()
@@ -257,6 +301,57 @@ class LongHorizonForwardProjectionStateTest {
                 "An already-occupied enemy attacker should leave the protected friendly in a better horizon-end state than an unused slot"
                         + "; occupied=" + describeState(occupiedFriendly)
                         + ", idle=" + describeState(idleFriendly)
+        );
+        assertTrue(
+                occupiedCounters < idleCounters,
+                "Slot occupation should suppress realized counter incidence against the protected friendly"
+                        + "; occupiedCounters=" + occupiedCounters
+                        + ", idleCounters=" + idleCounters
+        );
+    }
+
+    @Test
+    void projectedEvaluationExposesOpeningSideLaterDeclarations() {
+        List<DBNationSnapshot> attackers = List.of(
+                withTotalScore(nation(1, 1, 900, 100_000, 10_000, 900, 90, 2), 2_000.0d)
+                        .toBuilder()
+                        .maxOff(2)
+                        .build()
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                withTotalScore(nation(101, 2, 500, 55_000, 5_500, 500, 50, 0), 1_850.0d)
+                        .toBuilder()
+                        .maxOff(0)
+                        .build(),
+                withTotalScore(nation(102, 2, 480, 52_000, 5_200, 480, 48, 0), 1_830.0d)
+                        .toBuilder()
+                        .maxOff(0)
+                        .build()
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        addGroundEdge(edges, 0, 0, 100.0f);
+        addGroundEdge(edges, 0, 1, 95.0f);
+
+        ProjectionRun projected = projectRun(
+                attackers,
+                defenders,
+                edges,
+                new boolean[]{true, false},
+                new int[]{1},
+                new int[]{1, 0},
+                24,
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+
+        assertFalse(
+                projected.evaluation().openingSideLaterDeclarations().isEmpty(),
+                "Projection should expose the delayed opening-side follow-on instead of hiding it behind only objective scores"
+        );
+        assertEquals(
+                102,
+                projected.evaluation().openingSideLaterDeclarations().getFirst().targetNationId(),
+                "Projected later declarations should name the concrete reserve target"
         );
     }
 
@@ -348,6 +443,89 @@ class LongHorizonForwardProjectionStateTest {
                 defenderProjectionPolicies
         );
         return projection.project(edgeAssigned, attackerCounts, defenderCounts);
+    }
+
+    private static ProjectionRun projectRun(
+            CompiledScenario scenario,
+            CandidateEdgeTable edges,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts,
+            int horizonTurns,
+            SideProjectionPolicies attackerProjectionPolicies,
+            SideProjectionPolicies defenderProjectionPolicies
+    ) {
+        LongHorizonForwardProjection projection = LongHorizonForwardProjection.create(
+                edges,
+                scenario,
+                fill(scenario.attackerCount(), 3),
+                horizonTurns,
+                1.0d,
+                null,
+                null,
+                null,
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
+                attackerProjectionPolicies,
+                defenderProjectionPolicies
+        );
+        return new ProjectionRun(
+                projection.project(edgeAssigned, attackerCounts, defenderCounts),
+                projection.projectedEvaluation(
+                        new link.locutus.discord.sim.DamageObjective(),
+                        scenario.attacker(0).teamId(),
+                        edgeAssigned,
+                        attackerCounts,
+                        defenderCounts
+                )
+        );
+    }
+
+    private static ProjectionRun projectRun(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            CandidateEdgeTable edges,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts,
+            int horizonTurns,
+            SideProjectionPolicies attackerProjectionPolicies,
+            SideProjectionPolicies defenderProjectionPolicies
+    ) {
+        return projectRun(
+                compile(attackers, defenders),
+                edges,
+                edgeAssigned,
+                attackerCounts,
+                defenderCounts,
+                horizonTurns,
+                attackerProjectionPolicies,
+                defenderProjectionPolicies
+        );
+    }
+
+    private static ProjectionRun projectRun(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            List<CompiledActiveWar> activeWars,
+            CandidateEdgeTable edges,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts,
+            int horizonTurns,
+            SideProjectionPolicies attackerProjectionPolicies,
+            SideProjectionPolicies defenderProjectionPolicies
+    ) {
+        return projectRun(
+                compile(attackers, defenders, activeWars),
+                edges,
+                edgeAssigned,
+                attackerCounts,
+                defenderCounts,
+                horizonTurns,
+                attackerProjectionPolicies,
+                defenderProjectionPolicies
+        );
     }
 
     private static LongHorizonForwardProjection.ProjectionView project(
@@ -506,6 +684,12 @@ class LongHorizonForwardProjectionStateTest {
                 + 500.0d * state.ships();
     }
 
+    private record ProjectionRun(
+            LongHorizonForwardProjection.ProjectionView view,
+            LongHorizonForwardProjection.ProjectedEvaluation evaluation
+    ) {
+    }
+
         private static String describeState(LongHorizonForwardProjection.ProjectedNationState state) {
                 return "ProjectedNationState{"
                                 + "nationId=" + state.nationId()
@@ -566,5 +750,17 @@ class LongHorizonForwardProjectionStateTest {
         java.util.Arrays.fill(values, infra);
         return values;
     }
+
+        private static DBNationSnapshot withTotalScore(DBNationSnapshot snapshot, double totalScore) {
+                double unitScore = 0d;
+                for (MilitaryUnit unit : List.of(MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP)) {
+                        unitScore += unit.getScore(snapshot.unit(unit));
+                }
+                int cities = Math.max(1, snapshot.cityInfraCount());
+                double totalInfra = Math.max(0d, (totalScore - snapshot.staticScoreComponent() - unitScore) * 40d);
+                return snapshot.toBuilder()
+                                .cityInfra(uniformInfra(cities, totalInfra / cities))
+                                .build();
+        }
 
 }
