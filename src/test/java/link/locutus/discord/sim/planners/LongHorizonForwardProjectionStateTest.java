@@ -5,6 +5,8 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.sim.planners.compile.CompiledActiveWar;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import org.junit.jupiter.api.Test;
@@ -56,7 +58,7 @@ class LongHorizonForwardProjectionStateTest {
     }
 
     @Test
-    void distributedKnownGoodOpeningProjectsBetterRawEnemyStateThanOverkillOpening() {
+    void currentChosenOpeningProjectsWorseRawEnemyStateThanHandBuiltKnownGoodOpening() {
         List<DBNationSnapshot> attackers = List.of(
                 nation(1, 1, 2_400, 250_000, 24_000, 2_400, 220, 1),
                 nation(2, 1, 2_300, 235_000, 23_000, 2_300, 210, 1)
@@ -71,7 +73,88 @@ class LongHorizonForwardProjectionStateTest {
         addGroundEdge(edges, 1, 0, 98.0f);
         addGroundEdge(edges, 1, 1, 97.0f);
 
-        LongHorizonForwardProjection.ProjectionView overkill = project(
+        CompiledScenario scenario = compile(attackers, defenders);
+        BlitzPlanner planner = new BlitzPlanner(SimTuning.defaults());
+        BlitzAssignment chosen = planner.assign(
+                attackers,
+                defenders,
+                SidePolicy.heuristicActing("acting", planner.objective()),
+                SidePolicy.heuristicPassive("defending", planner.objective()),
+                0,
+                List.of(),
+                36
+        );
+
+        assertTrue(
+                chosen.pairCount() > 0,
+                "Representative fixture is invalid because the planner produced an empty opening: " + chosen.assignment()
+        );
+
+        boolean[] chosenEdgeAssigned = edgeAssigned(scenario, edges, chosen.assignment());
+        int[] chosenAttackerCounts = countsByAttacker(edges, chosenEdgeAssigned, scenario.attackerCount());
+        int[] chosenDefenderCounts = countsByDefender(edges, chosenEdgeAssigned, scenario.defenderCount());
+        LongHorizonForwardProjection.ProjectionView chosenView = project(
+                scenario,
+                edges,
+                chosenEdgeAssigned,
+                chosenAttackerCounts,
+                chosenDefenderCounts,
+                36,
+                SideProjectionPolicies.noDeclarations(),
+                SideProjectionPolicies.noDeclarations()
+        );
+
+        Map<Integer, List<Integer>> knownGoodAssignment = Map.of(
+                1, List.of(101),
+                2, List.of(102)
+        );
+        boolean[] knownGoodEdgeAssigned = edgeAssigned(scenario, edges, knownGoodAssignment);
+        int[] knownGoodAttackerCounts = countsByAttacker(edges, knownGoodEdgeAssigned, scenario.attackerCount());
+        int[] knownGoodDefenderCounts = countsByDefender(edges, knownGoodEdgeAssigned, scenario.defenderCount());
+        LongHorizonForwardProjection.ProjectionView knownGoodView = project(
+                scenario,
+                edges,
+                knownGoodEdgeAssigned,
+                knownGoodAttackerCounts,
+                knownGoodDefenderCounts,
+                36,
+                SideProjectionPolicies.noDeclarations(),
+                SideProjectionPolicies.noDeclarations()
+        );
+
+        double chosenEnemyValue = projectedCombatUnits(chosenView, 101) + projectedCombatUnits(chosenView, 102);
+        double knownGoodEnemyValue = projectedCombatUnits(knownGoodView, 101) + projectedCombatUnits(knownGoodView, 102);
+
+        assertTrue(
+                knownGoodEnemyValue < chosenEnemyValue,
+                "The hand-built distributed opening should project to lower enemy combat units than the planner-chosen opening"
+                        + "; chosen=" + chosen.assignment()
+                        + ", chosenEnemyValue=" + chosenEnemyValue
+                        + ", knownGoodEnemyValue=" + knownGoodEnemyValue
+                        + ", defender101 chosen=" + describeState(chosenView.projectedNationState(101))
+                        + ", defender101 knownGood=" + describeState(knownGoodView.projectedNationState(101))
+                        + ", defender102 chosen=" + describeState(chosenView.projectedNationState(102))
+                        + ", defender102 knownGood=" + describeState(knownGoodView.projectedNationState(102))
+        );
+    }
+
+    @Test
+    void beigeTrapProjectsToHigherDefenderRebuildThanSustainedAttrition() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 2_600, 260_000, 24_000, 2_600, 240, 2),
+                nation(2, 1, 2_500, 245_000, 23_000, 2_500, 230, 2)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 1_000, 92_000, 11_000, 1_000, 90, 1),
+                nation(102, 2, 1_000, 92_000, 11_000, 1_000, 90, 1)
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        addGroundEdge(edges, 0, 0, 100.0f);
+        addGroundEdge(edges, 0, 1, 96.0f);
+        addGroundEdge(edges, 1, 0, 99.0f);
+        addGroundEdge(edges, 1, 1, 95.0f);
+
+        LongHorizonForwardProjection.ProjectionView beigeTrap = project(
                 attackers,
                 defenders,
                 edges,
@@ -80,7 +163,7 @@ class LongHorizonForwardProjectionStateTest {
                 new int[]{2, 0},
                 36
         );
-        LongHorizonForwardProjection.ProjectionView distributed = project(
+        LongHorizonForwardProjection.ProjectionView attrition = project(
                 attackers,
                 defenders,
                 edges,
@@ -90,13 +173,181 @@ class LongHorizonForwardProjectionStateTest {
                 36
         );
 
-        double overkillEnemyValue = projectedCombatUnits(overkill, 101) + projectedCombatUnits(overkill, 102);
-        double distributedEnemyValue = projectedCombatUnits(distributed, 101) + projectedCombatUnits(distributed, 102);
+        LongHorizonForwardProjection.ProjectedNationState beigeDefender = beigeTrap.projectedNationState(101);
+        LongHorizonForwardProjection.ProjectedNationState attritionDefender = attrition.projectedNationState(101);
 
         assertTrue(
-                distributedEnemyValue < overkillEnemyValue,
-                "The hand-built distributed opening should project to lower enemy combat units than overkilling one target"
+                beigeDefender.beigeTurns() > attritionDefender.beigeTurns(),
+                "Expected the beige-trap line to leave more beige turns; beige="
+                        + describeState(beigeDefender)
+                        + ", attrition=" + describeState(attritionDefender)
         );
+        assertTrue(
+                projectedCombatUnits(beigeTrap, 101) >= projectedCombatUnits(attrition, 101),
+                "The beige-trap opening should preserve at least as much defender combat capacity at horizon end because the beige rebuild bonus is active"
+                        + "; beige=" + describeState(beigeDefender)
+                        + ", attrition=" + describeState(attritionDefender)
+        );
+    }
+
+    @Test
+    void slotOccupancyPreservesProtectedFriendlyStateWhenEnemyAttackerIsAlreadyOccupied() {
+        List<DBNationSnapshot> attackers = List.of(
+                nation(1, 1, 2_700, 270_000, 25_000, 2_700, 250, 2),
+                nation(2, 1, 2_650, 265_000, 24_000, 2_650, 240, 2)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(201, 2, 1_100, 96_000, 12_000, 1_100, 100, 1),
+                nation(202, 2, 2_400, 215_000, 20_000, 2_400, 220, 2)
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        addGroundEdge(edges, 0, 0, 100.0f);
+        addGroundEdge(edges, 0, 1, 99.0f);
+        addGroundEdge(edges, 1, 0, 98.0f);
+        addGroundEdge(edges, 1, 1, 97.0f);
+        List<CompiledActiveWar> occupiedEnemyWar = List.of(
+                new CompiledActiveWar(
+                        202,
+                        201,
+                        WarType.ORD,
+                        0,
+                        8,
+                        8,
+                        54,
+                        62,
+                        CompiledActiveWar.FlagOwner.ATTACKER,
+                        CompiledActiveWar.FlagOwner.NONE,
+                        CompiledActiveWar.FlagOwner.NONE,
+                        false,
+                        false
+                )
+        );
+
+        LongHorizonForwardProjection.ProjectionView occupied = project(
+                attackers,
+                defenders,
+                occupiedEnemyWar,
+                edges,
+                new boolean[]{false, false, false, false},
+                new int[]{0, 0},
+                new int[]{0, 0},
+                36,
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+        LongHorizonForwardProjection.ProjectionView idle = project(
+                attackers,
+                defenders,
+                List.of(),
+                edges,
+                new boolean[]{false, false, false, false},
+                new int[]{0, 0},
+                new int[]{0, 0},
+                36,
+                SideProjectionPolicies.heuristic(),
+                SideProjectionPolicies.heuristic()
+        );
+
+        LongHorizonForwardProjection.ProjectedNationState occupiedFriendly = occupied.projectedNationState(1);
+        LongHorizonForwardProjection.ProjectedNationState idleFriendly = idle.projectedNationState(1);
+
+        assertTrue(
+                occupiedFriendly.combatUnitCount() > idleFriendly.combatUnitCount()
+                        || occupiedFriendly.totalInfra() > idleFriendly.totalInfra(),
+                "An already-occupied enemy attacker should leave the protected friendly in a better horizon-end state than an unused slot"
+                        + "; occupied=" + describeState(occupiedFriendly)
+                        + ", idle=" + describeState(idleFriendly)
+        );
+    }
+
+    @Test
+    void unitBackedFlagsProjectBetterThanEmptyFlags() {
+        List<DBNationSnapshot> backedAttackers = List.of(
+                nation(1, 1, 2_200, 230_000, 20_000, 2_200, 210, 2),
+                nation(2, 1, 2_200, 230_000, 20_000, 2_200, 210, 2)
+        );
+        List<DBNationSnapshot> emptyAttackers = List.of(
+                nation(1, 1, 0, 0, 0, 0, 0, 2),
+                nation(2, 1, 0, 0, 0, 0, 0, 2)
+        );
+        List<DBNationSnapshot> defenders = List.of(
+                nation(101, 2, 1_050, 98_000, 11_000, 1_050, 100, 1)
+        );
+        CandidateEdgeTable edges = new CandidateEdgeTable();
+        addGroundEdge(edges, 0, 0, 100.0f);
+        addGroundEdge(edges, 1, 0, 99.0f);
+        CompiledActiveWar fortifiedWar = new CompiledActiveWar(
+                1,
+                101,
+                WarType.ORD,
+                0,
+                8,
+                8,
+                70,
+                64,
+                CompiledActiveWar.FlagOwner.ATTACKER,
+                CompiledActiveWar.FlagOwner.ATTACKER,
+                CompiledActiveWar.FlagOwner.ATTACKER,
+                false,
+                false
+        );
+
+        LongHorizonForwardProjection.ProjectionView backed = project(
+                backedAttackers,
+                defenders,
+                List.of(fortifiedWar),
+                edges,
+                new boolean[]{true, false},
+                new int[]{1, 0},
+                new int[]{1},
+                24,
+                SideProjectionPolicies.noDeclarations(),
+                SideProjectionPolicies.noDeclarations()
+        );
+        LongHorizonForwardProjection.ProjectionView empty = project(
+                emptyAttackers,
+                defenders,
+                List.of(fortifiedWar),
+                edges,
+                new boolean[]{true, false},
+                new int[]{1, 0},
+                new int[]{1},
+                24,
+                SideProjectionPolicies.noDeclarations(),
+                SideProjectionPolicies.noDeclarations()
+        );
+
+        assertTrue(
+                projectedCombatUnits(backed, 101) < projectedCombatUnits(empty, 101),
+                "Unit-backed control should project to lower enemy combat units than the same flags without units behind them"
+        );
+    }
+
+    private static LongHorizonForwardProjection.ProjectionView project(
+            CompiledScenario scenario,
+            CandidateEdgeTable edges,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts,
+            int horizonTurns,
+            SideProjectionPolicies attackerProjectionPolicies,
+            SideProjectionPolicies defenderProjectionPolicies
+    ) {
+        LongHorizonForwardProjection projection = LongHorizonForwardProjection.create(
+                edges,
+                scenario,
+                fill(scenario.attackerCount(), 3),
+                horizonTurns,
+                1.0d,
+                null,
+                null,
+                null,
+                SidePlannerSettings.defaults(),
+                SidePlannerSettings.defaults(),
+                attackerProjectionPolicies,
+                defenderProjectionPolicies
+        );
+        return projection.project(edgeAssigned, attackerCounts, defenderCounts);
     }
 
     private static LongHorizonForwardProjection.ProjectionView project(
@@ -108,28 +359,126 @@ class LongHorizonForwardProjectionStateTest {
             int[] defenderCounts,
             int horizonTurns
     ) {
-        CompiledScenario scenario = new ScenarioCompiler().compile(
+        return project(
+                attackers,
+                defenders,
+                List.of(),
+                edges,
+                edgeAssigned,
+                attackerCounts,
+                defenderCounts,
+                horizonTurns,
+                SideProjectionPolicies.noDeclarations(),
+                SideProjectionPolicies.noDeclarations()
+        );
+    }
+
+    private static LongHorizonForwardProjection.ProjectionView project(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            List<CompiledActiveWar> activeWars,
+            CandidateEdgeTable edges,
+            boolean[] edgeAssigned,
+            int[] attackerCounts,
+            int[] defenderCounts,
+            int horizonTurns,
+            SideProjectionPolicies attackerProjectionPolicies,
+            SideProjectionPolicies defenderProjectionPolicies
+    ) {
+        return project(
+                compile(attackers, defenders, activeWars),
+                edges,
+                edgeAssigned,
+                attackerCounts,
+                defenderCounts,
+                horizonTurns,
+                attackerProjectionPolicies,
+                defenderProjectionPolicies
+        );
+    }
+
+    private static CompiledScenario compile(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders
+    ) {
+        return compile(attackers, defenders, List.of());
+    }
+
+    private static CompiledScenario compile(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            List<CompiledActiveWar> activeWars
+    ) {
+        return new ScenarioCompiler().compile(
                 attackers,
                 defenders,
                 OverrideSet.EMPTY,
                 TreatyProvider.NONE,
-                Map.of()
+                Map.of(),
+                activeWars
         );
-        LongHorizonForwardProjection projection = LongHorizonForwardProjection.create(
-                edges,
-                scenario,
-                fill(attackers.size(), 3),
-                horizonTurns,
-                1.0d,
-                null,
-                null,
-                null,
-                SidePlannerSettings.defaults(),
-                SidePlannerSettings.defaults(),
-                SideProjectionPolicies.noDeclarations(),
-                SideProjectionPolicies.noDeclarations()
-        );
-        return projection.project(edgeAssigned, attackerCounts, defenderCounts);
+    }
+
+    private static boolean[] edgeAssigned(
+            CompiledScenario scenario,
+            CandidateEdgeTable edges,
+            Map<Integer, List<Integer>> assignment
+    ) {
+        boolean[] edgeAssigned = new boolean[edges.edgeCount()];
+        long[] pairKeys = edges.edgePairKeys(attackerNationIds(scenario), defenderNationIds(scenario));
+        java.util.Set<Long> assignedPairs = new java.util.HashSet<>();
+        for (Map.Entry<Integer, List<Integer>> entry : assignment.entrySet()) {
+            int attackerNationId = entry.getKey();
+            for (int defenderNationId : entry.getValue()) {
+                assignedPairs.add(pairKey(attackerNationId, defenderNationId));
+            }
+        }
+        for (int edgeIndex = 0; edgeIndex < pairKeys.length; edgeIndex++) {
+            if (assignedPairs.contains(pairKeys[edgeIndex])) {
+                edgeAssigned[edgeIndex] = true;
+            }
+        }
+        return edgeAssigned;
+    }
+
+    private static int[] countsByAttacker(CandidateEdgeTable edges, boolean[] edgeAssigned, int attackerCount) {
+        int[] attackerCounts = new int[attackerCount];
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            if (edgeAssigned[edgeIndex]) {
+                attackerCounts[edges.attackerIndex(edgeIndex)]++;
+            }
+        }
+        return attackerCounts;
+    }
+
+    private static int[] countsByDefender(CandidateEdgeTable edges, boolean[] edgeAssigned, int defenderCount) {
+        int[] defenderCounts = new int[defenderCount];
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            if (edgeAssigned[edgeIndex]) {
+                defenderCounts[edges.defenderIndex(edgeIndex)]++;
+            }
+        }
+        return defenderCounts;
+    }
+
+    private static int[] attackerNationIds(CompiledScenario scenario) {
+        int[] ids = new int[scenario.attackerCount()];
+        for (int index = 0; index < ids.length; index++) {
+            ids[index] = scenario.attackerNationId(index);
+        }
+        return ids;
+    }
+
+    private static int[] defenderNationIds(CompiledScenario scenario) {
+        int[] ids = new int[scenario.defenderCount()];
+        for (int index = 0; index < ids.length; index++) {
+            ids[index] = scenario.defenderNationId(index);
+        }
+        return ids;
+    }
+
+    private static long pairKey(int attackerNationId, int defenderNationId) {
+        return ((long) attackerNationId << 32) ^ (defenderNationId & 0xffffffffL);
     }
 
     private static CandidateEdgeTable oneEdge() {
@@ -156,6 +505,23 @@ class LongHorizonForwardProjectionStateTest {
                 + 100.0d * state.aircraft()
                 + 500.0d * state.ships();
     }
+
+        private static String describeState(LongHorizonForwardProjection.ProjectedNationState state) {
+                return "ProjectedNationState{"
+                                + "nationId=" + state.nationId()
+                                + ", teamId=" + state.teamId()
+                                + ", score=" + state.score()
+                                + ", infra=" + state.totalInfra()
+                                + ", money=" + state.money()
+                                + ", soldiers=" + state.soldiers()
+                                + ", tanks=" + state.tanks()
+                                + ", aircraft=" + state.aircraft()
+                                + ", ships=" + state.ships()
+                                + ", beigeTurns=" + state.beigeTurns()
+                                + ", activeOffensiveWars=" + state.activeOffensiveWars()
+                                + ", activeDefensiveWars=" + state.activeDefensiveWars()
+                                + '}';
+        }
 
     private static int[] fill(int length, int value) {
         int[] values = new int[length];

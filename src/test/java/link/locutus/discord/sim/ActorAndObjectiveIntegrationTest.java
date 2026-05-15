@@ -3,6 +3,7 @@ package link.locutus.discord.sim;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.input.NationInit;
 import org.junit.jupiter.api.Test;
 

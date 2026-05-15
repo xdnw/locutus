@@ -44,17 +44,17 @@ Use `jq` only for JSON output.
 
 ## Roadmap Continuity
 
-- For roadmap work, use `docs/<task_>ACTIVE_FRONTIER.md` as the cross-session handoff.
-- On a new session, read `docs/<task_>ACTIVE_FRONTIER.md` first and continue there if it still names a live workstream with remaining gaps.
-- Only fall back to the latest targeted test or failing command, the latest edited files, the focused roadmap page for that family, and then `docs/<task_>roadmap.md` if the frontier file is missing, stale, or explicitly cleared.
-- If you had to reconstruct the frontier, rewrite `docs/<task_>ACTIVE_FRONTIER.md` before broader discovery or implementation.
-- Update `docs/<task_>ACTIVE_FRONTIER.md` at the end of every roadmap turn when the frontier, gaps, next command, or blocker changed.
+- For roadmap work, use `docs/<workstream_>ACTIVE_FRONTIER.md` as the cross-session handoff (copy `ACTIVE_FRONTIER_TEMPLATE.md` as needed).
+- On a new session, read `docs/<workstream_>ACTIVE_FRONTIER.md` first and continue there if it still names a live workstream with remaining gaps.
+- Only fall back to the latest targeted test or failing command, the latest edited files, the focused roadmap page for that family, and then `docs/<workstream_>roadmap.md` if the frontier file is missing, stale, or explicitly cleared.
+- If you had to reconstruct the frontier, rewrite `docs/<workstream_>ACTIVE_FRONTIER.md` before broader discovery or implementation.
+- Update `docs/<workstream_>ACTIVE_FRONTIER.md` at the end of every roadmap turn when the frontier, gaps, next command, or blocker changed.
 - Do not replace this handoff with a generic ordered checklist or a first-unchecked-item rule.
 
 ## Completion Discipline
 
-- The normal stop condition for roadmap work is that `docs/<task_>ACTIVE_FRONTIER.md` has no remaining acceptance gaps for the current workstream.
+- The normal stop condition for roadmap work is that `docs/<workstream_>ACTIVE_FRONTIER.md` has no remaining acceptance gaps for the current workstream.
 - Do not end a turn after one local improvement if that file still names an open acceptance gap.
 - After each passing targeted test or benchmark, check the same active frontier again and keep going if any acceptance gap remains.
-- Only stop with open gaps when `docs/<task_>ACTIVE_FRONTIER.md` records a concrete blocker with the exact failing command, file, or missing dependency, or when the user explicitly redirects the work.
+- Only stop with open gaps when `docs/<workstream_>ACTIVE_FRONTIER.md` records a concrete blocker with the exact failing command, file, or missing dependency, or when the user explicitly redirects the work.
 - "Made progress" is not a valid stopping condition.
