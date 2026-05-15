@@ -1,6 +1,8 @@
 package link.locutus.discord.web.commands;
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.web.commands.page.AlliancePages;
+
 public class WM {
         public static class api{
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="AlliancesDataByDay")
@@ -2360,7 +2362,7 @@ public class WM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.alliance.AlliancePages.class,method="allianceLeaves")
+            @AutoRegister(clazz= AlliancePages.class,method="allianceLeaves")
             public static class allianceLeaves extends CommandRef {
                 public static final allianceLeaves cmd = new allianceLeaves();
             public allianceLeaves allianceId(String value) {
@@ -2380,7 +2382,7 @@ public class WM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.alliance.AlliancePages.class,method="announcementVariations")
+            @AutoRegister(clazz= AlliancePages.class,method="announcementVariations")
             public static class announcementVariations extends CommandRef {
                 public static final announcementVariations cmd = new announcementVariations();
             public announcementVariations announcementId(String value) {
@@ -2388,7 +2390,7 @@ public class WM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.alliance.AlliancePages.class,method="announcements")
+            @AutoRegister(clazz= AlliancePages.class,method="announcements")
             public static class announcements extends CommandRef {
                 public static final announcements cmd = new announcements();
             public announcements showArchived(String value) {
@@ -2639,7 +2641,7 @@ public class WM {
                 public static final logout cmd = new logout();
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.alliance.AlliancePages.class,method="manageAnnouncements")
+            @AutoRegister(clazz= AlliancePages.class,method="manageAnnouncements")
             public static class manageAnnouncements extends CommandRef {
                 public static final manageAnnouncements cmd = new manageAnnouncements();
             public manageAnnouncements showArchived(String value) {

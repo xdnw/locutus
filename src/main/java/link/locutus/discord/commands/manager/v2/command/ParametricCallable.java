@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -715,37 +714,6 @@ public class ParametricCallable<T> implements ICommand<T> {
             }
         }
         return result.toString();
-    }
-
-    public String toBasicHtml(ValueStore store) {
-        StringBuilder response = new StringBuilder();
-        for (ParameterData parameter : parameters) {
-            store.addProvider(ParameterData.class, parameter);
-
-            Parser<?> binding = parameter.getBinding();
-            if (!binding.isConsumer(store)) continue;
-
-            Key htmlKey = binding.getKey().append(HtmlInput.class);
-
-            Parser parser = store.get(htmlKey);
-            if (parser == null) throw new IllegalArgumentException("No key found for " + htmlKey);
-
-            response.append(parser.apply(store, null));
-        }
-        return response.toString();
-    }
-
-    @Override
-    public String toHtml(WebStore ws, PermissionHandler permHandler, String endpoint, boolean sse) {
-        validatePermissions(ws.store(), permHandler);
-
-        String response = "<form id='command-form' " + (endpoint != null ? "endpoint=\"" + endpoint + "\" " : "") + "onsubmit=\"return executeCommandFromArgMap(this, " + sse + ")\" method=\"post\">" +
-                "<div class=\"\">" +
-                toBasicHtml(ws.store()) +
-                "</div>" +
-                "<button type=\"submit\" class=\"btn btn-primary\">Submit</button>" +
-                "</form>";
-        return WebStore.render(f -> JteparametriccallableGenerated.render(f, null, ws,  this, ws.unsafe(response)));
     }
 
     public String stringifyArgumentMap(Map<String, String> combined, String delim) {

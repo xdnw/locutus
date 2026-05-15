@@ -2,8 +2,6 @@ package link.locutus.discord.web.jooby;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gg.jte.generated.precompiled.JtealertGenerated;
-import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.http.HandlerType;
@@ -45,7 +43,6 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WebIO;
-import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.api.AdminEndpoints;
 import link.locutus.discord.web.commands.api.CoalitionGraphEndpoints;
 import link.locutus.discord.web.commands.api.ConflictEndpoints;
@@ -71,15 +68,7 @@ import link.locutus.discord.web.commands.binding.JavalinBindings;
 import link.locutus.discord.web.commands.binding.PrimitiveWebBindings;
 import link.locutus.discord.web.commands.binding.WebPWBindings;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
-import link.locutus.discord.web.commands.page.BankPages;
-import link.locutus.discord.web.commands.page.GrantPages;
-import link.locutus.discord.web.commands.page.IAPages;
-import link.locutus.discord.web.commands.page.IndexPages;
 import link.locutus.discord.web.commands.page.PageHelper;
-import link.locutus.discord.web.commands.page.StatPages;
-import link.locutus.discord.web.commands.page.TestPages;
-import link.locutus.discord.web.commands.page.TradePages;
-import link.locutus.discord.web.commands.page.WarPages;
 import link.locutus.discord.web.jooby.handler.SseMessageOutput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -158,15 +147,6 @@ public class PageHandler implements Handler {
 
         this.commands = CommandGroup.createRoot(store, validators);
 
-        this.commands.registerSubCommands(new IndexPages(), "page");
-        this.commands.registerSubCommands(new IAPages(), "page");
-        this.commands.registerSubCommands(new StatPages(), "page");
-        this.commands.registerSubCommands(new WarPages(), "page");
-        this.commands.registerSubCommands(new GrantPages(), "page");
-        this.commands.registerSubCommands(new BankPages(), "page");
-        this.commands.registerSubCommands(new TradePages(), "page");
-        this.commands.registerSubCommands(new AlliancePages(), "page");
-
         // endpoints
         this.commands.registerSubCommands(new EndpointPages(), "api");
         this.commands.registerSubCommands(new TradeEndpoints(), "api");
@@ -187,7 +167,6 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new TreatyEndpoints(), "api");
         this.commands.registerSubCommands(new TreatyVisRuntimeEndpoints(), "api");
 
-        this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
         this.serializer = WebSerializers.MSGPACK;
@@ -555,19 +534,6 @@ public class PageHandler implements Handler {
             Logg.text(logMsg);
 
             switch (path.toLowerCase(Locale.ROOT)) {
-                case "command": {
-                    stack.consumeNext();
-                    CommandCallable cmd = manager.getCommands().getCallable(args);
-                    if (cmd == null) {
-                        throw new IllegalArgumentException("No command found for `/" + StringMan.join(args, " ") + "`");
-                    }
-
-                    String prefix = cmd instanceof ParametricCallable ? "sse" : "command";
-                    String endpoint = WebRoot.REDIRECT + "/" + prefix + "/" + cmd.getFullPath("/");
-                    if (!endpoint.endsWith("/")) endpoint += "/";
-                    ctx.result(WebUtil.minify(cmd.toHtml(ws, stack.getPermissionHandler(), endpoint, true)));
-                    break;
-                }
                 case "api":
                     isApi = true;
                 default: {

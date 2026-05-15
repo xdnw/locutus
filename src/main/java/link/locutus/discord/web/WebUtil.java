@@ -269,72 +269,8 @@ public class WebUtil {
         context.res().addHeader("Set-Cookie", newCookie);
     }
 
-    public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext, Boolean multiple) {
-        String name = param.getName();
-        String desc = param.getExpandedDescription();
-        String def = param.getDefaultValueString();
-        boolean required = !param.isOptional() && !param.isFlag();
-        Type type = param.getType();
-        if (multiple == null) {
-            multiple = type instanceof Class && Collection.class.isAssignableFrom((Class) type);
-            if (type instanceof ParameterizedType) {
-                Type rawType = ((ParameterizedType) type).getRawType();
-                multiple = rawType instanceof Class && Collection.class.isAssignableFrom((Class) rawType);
-            }
-        }
-
-        return generateSearchableDropdown(name, desc, def, required, objects, consumeObjectNamesValueSubtext, multiple);
-    }
-
-    public static <T> String generateSearchableDropdown(String name, String desc, String def, boolean required, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext) {
-        return generateSearchableDropdown(name, desc, def, required, objects, consumeObjectNamesValueSubtext, false);
-    }
-
-    public static <T> String generateSearchableDropdown(String name, String desc, String def, boolean required, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext, boolean multiple) {
-        JsonArray names = new JsonArray();
-        JsonArray values = new JsonArray();
-        JsonArray subtext = new JsonArray();
-        for (T object : objects) {
-            consumeObjectNamesValueSubtext.consume(object, names, values, subtext);
-        }
-        if (names.equals(values)) {
-            values = new JsonArray();
-        }
-        JsonObject dataJson = new JsonObject();
-        if (names.size() > 0) dataJson.add("names", names);
-        if (values.size() > 0) dataJson.add("values", values);
-        if (subtext.size() > 0) dataJson.add("subtext", subtext);
-
-        String valueStr = def != null ? " value=\"" + def + "\"" : "";
-        UUID uuid = UUID.randomUUID();
-        String jsonStr = dataJson.toString().replace("'", "&#39;").replace("&", "&amp;");
-        return wrapLabel(null, desc, uuid, "<select id=\"" + uuid + "\" name=\"" + name + "\" class=\"select-inline-data form-control form-control-sm\" " + valueStr + " data-json='" + jsonStr + "' " + (required ? "required" : "") + (multiple ? " multiple" : "") + " ></select>", InlineMode.NONE);
-    }
-
     public static String getColorHex(Color color) {
         return "#" + Integer.toHexString(color.getRGB()).substring(2);
-    }
-
-    public static String wrapLabel(ParameterData param, UUID uuid, String input, InlineMode inline) {
-        return wrapLabel(null, param.getExpandedDescription(), uuid, input, inline);
-    }
-
-    public static String wrapLabel(String name, String desc, UUID uuid, String input, InlineMode mode) {
-        desc = MarkupUtil.markdownToHTML(desc);
-        if (desc.contains("<br>")) {
-            mode = InlineMode.NONE;
-        } else if (mode != InlineMode.NONE) {
-            desc = Jsoup.parse(desc).text();
-        }
-        switch (mode) {
-            default:
-            case NONE:
-                return "<div class=\"form-group bg-light mt-1 p-1 rounded shadow-sm border\"><label class=\"col-form-label-sm\" " + (uuid != null ? "for=\"" + uuid.toString() + "\"" : "") + ">" + (name != null && !name.isEmpty() ? ("<b>" + name + ": </b>") : "") + desc + "</label><div class=\"col-sm\">" + input + "</div></div>";
-            case BEFORE:
-                return "<div class=\"form-group bg-light mt-1 rounded form-floating shadow-sm border\"><label class=\"col-form-label-sm\" " + (uuid != null ? "for=\"" + uuid.toString() + "\"" : "") + ">" + (name != null && !name.isEmpty() ? ("<b>" + name + ": </b>") : "") + desc + "</label>" + input + "</div>";
-            case AFTER:
-                return "<div class=\"form-group bg-light mt-1 rounded shadow-sm border\"><div class=\"col-sm d-inline\">" + input + "</div><label class=\"col-form-label-sm d-inline\" " + (uuid != null ? "for=\"" + uuid.toString() + "\"" : "") + ">" + (name != null && !name.isEmpty() ? ("<b>" + name + ": </b>") : "") + desc + "</label></div>";
-        }
     }
 
     private static Configuration cfg;

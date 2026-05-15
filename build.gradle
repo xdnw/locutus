@@ -3,16 +3,12 @@
  * Usage: gradlew runMain -PmainClass=fully.qualified.MainClass [-PappArgs="a b"] [-PjvmArgs="-Xmx512m"]
  * Test harness mains should use gradlew runTestMain ... to include test classes and resources.
  *
- * Generate JTE
- * .\gradlew -PwithJtePrecompile generateJte
- * Include JTE in shadowJar (with precompile)
- * .\gradlew -PwithJtePrecompile shadowJar
- *
  * Generate GraphQL
  * .\gradlew -Pgraphql graphqlCodegen
  */
 
 import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
+import java.lang.management.ManagementFactory
 
 buildscript {
     repositories {
@@ -38,8 +34,33 @@ plugins {
     id 'com.gradleup.shadow' version '8.3.0' apply false
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0" apply false
     id 'cz.habarta.typescript-generator' version '3.2.1263' apply false
-    id "gg.jte.gradle" version "3.2.1" apply false
 }
+
+def sanitizeBuildIsolationToken = { String value ->
+    def collapsed = (value ?: 'default')
+            .replaceAll(/[^A-Za-z0-9._-]+/, '-')
+            .replaceAll(/-+/, '-')
+            .replaceAll(/^-|-$/, '')
+    collapsed ? collapsed.take(64) : 'default'
+}
+
+def currentGradleProcessId = {
+    def runtimeName = ManagementFactory.runtimeMXBean.name ?: 'unknown'
+    sanitizeBuildIsolationToken(runtimeName.tokenize('@')[0] ?: 'unknown')
+}
+
+def locutusBuildIsolationId = sanitizeBuildIsolationToken(
+        providers.systemProperty('locutus.build.isolation.id')
+                .orElse(providers.systemProperty('locutusBuildIsolationId'))
+                .orElse(providers.environmentVariable('LOCUTUS_BUILD_ISOLATION_ID'))
+                .orElse(providers.provider { "adhoc-${currentGradleProcessId()}" })
+                .get()
+)
+def sharedBuildRoot = layout.projectDirectory.dir('build')
+def sharedGraphqlGeneratedDir = sharedBuildRoot.dir('generated')
+def sharedGeneratedSourcesDir = sharedBuildRoot.dir('generated-sources')
+def sharedGeneratedSrcDir = sharedBuildRoot.dir('generated-src')
+layout.buildDirectory.set(sharedBuildRoot.dir("isolated/${locutusBuildIsolationId}"))
 
 application { mainClass = 'link.locutus.discord._test._Custom' }
 tasks.register('runCustomMain', JavaExec) {
@@ -255,7 +276,6 @@ tasks.register('offshoreJmhQuick', JavaExec) {
 def useTs = providers.gradleProperty("ts").isPresent()
 def useShadow = gradle.startParameter.taskNames.any { it.endsWith("shadowJar") }
 def useGraphql = providers.gradleProperty("graphql").isPresent() || useShadow
-def useJtePrecompile = providers.gradleProperty("withJtePrecompile").isPresent() || useShadow
 
 //subprojects {
 //    // apply the analysis plugin to every subproject that builds code
@@ -474,8 +494,6 @@ dependencies {
 
 
     implementation 'org.yaml:snakeyaml:1.29'
-    implementation 'gg.jte:jte:3.2.1'
-    implementation 'gg.jte:jte-watcher:3.2.1'
     implementation 'io.javalin:javalin:6.7.0'
     implementation 'io.javalin.community.ssl:ssl-plugin:6.7.0'
     implementation 'io.javalin:javalin-rendering:6.7.0'
@@ -563,7 +581,7 @@ configurations {
 }
 
 def graphqlSchemasDir = layout.projectDirectory.dir("src/main/resources/graphql")
-def graphqlGeneratedDir = layout.buildDirectory.dir("generated")
+def graphqlGeneratedDir = sharedGraphqlGeneratedDir
 
 if (useGraphql) {
     apply plugin: 'io.github.kobylynskyi.graphql.codegen'
@@ -649,29 +667,11 @@ tasks.named('compileTestJava', JavaCompile).configure {
 }
 
 def explicitlyRequestsShadow = gradle.startParameter.taskNames.any { it == 'shadowJar' || it.endsWith(':shadowJar') }
-def forcePrecompile = providers.gradleProperty('withJtePrecompile').isPresent()
-def jteGeneratedDir = layout.buildDirectory.dir("generated-sources")
-
-if (useJtePrecompile) {
-    apply plugin: 'gg.jte.gradle'
-    jte {
-        sourceDirectory = file("src/main/jte").toPath()
-        targetDirectory = layout.buildDirectory.dir("generated-sources").get().asFile.toPath()
-
-        if (explicitlyRequestsShadow && forcePrecompile) {
-            precompile()
-        } else {
-            generate()
-        }
-    }
-}
 
 if (useShadow) {
     apply plugin: 'com.gradleup.shadow'
     tasks.named('shadowJar') {
 //    minimize()
-
-        mustRunAfter tasks.matching { it.name == 'generateJte' || it.name == 'precompileJte' }
 
         zip64 = true
         archiveBaseName = "${name}-${project.name}"
@@ -699,45 +699,31 @@ sourceSets {
     }
 }
 
-def addOptionalGeneratedSrc(String taskName, Provider<Directory> outputDir) {
+def addOptionalGeneratedSrc(String taskName, Directory outputDir) {
     def task = tasks.findByName(taskName)
     if (task) {
-        sourceSets.main.java.srcDir(tasks.named(taskName).map { outputDir.get().asFile })
+        sourceSets.main.java.srcDir(tasks.named(taskName).map { outputDir.asFile })
         tasks.named('compileJava') { dependsOn tasks.named(taskName) }
     } else {
-        sourceSets.main.java.srcDir(outputDir.get().asFile)
+        sourceSets.main.java.srcDir(outputDir.asFile)
     }
 }
 
 // GraphQL (optional)
 addOptionalGeneratedSrc('graphqlCodegen', graphqlGeneratedDir)
 
-// JTE: prefer precompile if present, otherwise generate
-def jteTask = tasks.findByName('precompileJte') ?: tasks.findByName('generateJte')
-if (jteTask) {
-    sourceSets.main.java.srcDir(tasks.named(jteTask.name).map { jteGeneratedDir.get().asFile })
-    tasks.named('compileJava') { dependsOn tasks.named(jteTask.name) }
-} else {
-    sourceSets.main.java.srcDir(jteGeneratedDir)
-}
-
 tasks.register('cleanGeneratedBaselines', Delete) {
     group = 'build'
-    description = 'Deletes the preserved GraphQL, JTE source baselines under build/.'
+    description = 'Deletes the shared generated source baselines under build/generated*.'
     delete(
-            graphqlGeneratedDir.get().asFile,
-            jteGeneratedDir.get().asFile,
+            sharedGraphqlGeneratedDir.asFile,
+            sharedGeneratedSourcesDir.asFile,
+            sharedGeneratedSrcDir.asFile,
     )
 }
 
 tasks.named('clean', Delete) {
-    // These generated source trees are intentionally preserved because they act as
-    // checked-in/manual baselines and are not reliably reproducible on every machine.
-    setDelete(fileTree(layout.buildDirectory.get().asFile) {
-        exclude 'generated/**'
-        exclude 'generated-sources/**'
-        exclude 'generated-src/**'
-    })
+    delete(layout.buildDirectory)
 }
 
 tasks.withType(Test).configureEach {

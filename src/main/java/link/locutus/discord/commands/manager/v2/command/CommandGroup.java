@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.common.base.Predicates;
-import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -246,12 +245,6 @@ public class CommandGroup implements ICommandGroup {
             }
         }
         return allowed;
-    }
-
-    @Override
-    public String toHtml(WebStore ws, PermissionHandler permHandler, String endpoint, boolean sse) {
-        Map<String, CommandCallable> allowed = getAllowedCommands(ws.store(), permHandler);
-        return WebStore.render(f -> JtecommandgroupGenerated.render(f, null, ws, this, allowed, endpoint == null ? "" : endpoint));
     }
 
     public CommandCallable get(String arg0) {

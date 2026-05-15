@@ -4,8 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import gg.jte.generated.precompiled.auth.JtenationpickerGenerated;
-import gg.jte.generated.precompiled.auth.JtepickerGenerated;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;

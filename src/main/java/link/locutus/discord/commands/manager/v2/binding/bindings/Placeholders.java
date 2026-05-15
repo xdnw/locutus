@@ -288,41 +288,6 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         store.addParser(key, parser);
     }
 
-    public void registerWeb() {
-
-    }
-
-    public void registerWebLegacy(ValueStore store) {
-        Key<String> key = Key.of(TypeUtils.parameterize(ICommand.class, getType()), HtmlInput.class);
-        store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-            ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-            List<CommandCallable> options = new ArrayList<>(getParametricCallables());
-            return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-                names.add(obj.getFullPath());
-                subtext.add(obj.simpleDesc().split("\n")[0]);
-            });
-        }));
-    }
-
-    public void registerCompleters(ValueStore store) {
-        // Key<Object> key = Key.nested(Predicate.class, type);
-        // Selectors
-        // Predicate
-        // Set
-        // TypedFunction
-        // ; @Autocomplete
-        // @Binding(types={TypedFunction.class, DBNation.class, Double.class}, multiple
-        // = true)
-        // public List<String> NationPlaceholder(ArgumentStack stack, String input) {
-        // NationPlaceholders placeholders =
-        // Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        // List<String> options = placeholders.getMetricsDouble(stack.getStore())
-        // .stream().map(NationAttribute::getName).collect(Collectors.toList());
-        // return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES,
-        // true);
-        // }
-    }
-
     public void registerTools(ValueStore store, PWGPTHandler gpt) {
         int numFilters = 25;
         Class<T> type = getType();
