@@ -107,10 +107,20 @@ class PlannerProjectionStateTest {
         DBNationSnapshot seededAttacker = state.snapshotsFor(List.of(attacker.nationId())).get(0);
         assertEquals(12_000, seededAttacker.unit(MilitaryUnit.SOLDIER));
 
-        state = state.advance(SimTuning.defaults(), Map.of(attacker.nationId(), List.of(defenderOne.nationId())), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(attacker.nationId(), List.of(defenderOne.nationId())),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
         int soldiersAfterFirstBucket = state.snapshotsFor(List.of(attacker.nationId())).get(0).unit(MilitaryUnit.SOLDIER);
 
-        state = state.advance(SimTuning.defaults(), Map.of(attacker.nationId(), List.of(defenderTwo.nationId())), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(attacker.nationId(), List.of(defenderTwo.nationId())),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
         DBNationSnapshot attackerAfterSecondBucket = state.snapshotsFor(List.of(attacker.nationId())).get(0);
 
         assertTrue(attackerAfterSecondBucket.unit(MilitaryUnit.SOLDIER) <= soldiersAfterFirstBucket);
@@ -143,7 +153,12 @@ class PlannerProjectionStateTest {
                 .build();
 
         PlannerProjectionState state = PlannerProjectionState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
-        state = state.advance(SimTuning.defaults(), Map.of(attacker.nationId(), List.of(defender.nationId())), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(attacker.nationId(), List.of(defender.nationId())),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
 
         PlannerProjectedWar firstBucketWar = onlyProjectedWar(state);
         assertEquals(WarType.ORD, firstBucketWar.warType());
@@ -152,7 +167,12 @@ class PlannerProjectionStateTest {
         assertEquals(0, firstBucketWar.startTurn());
         assertEquals(1, state.snapshotsFor(List.of(attacker.nationId())).get(0).currentOffensiveWars());
 
-        state = state.advance(SimTuning.defaults(), Map.of(), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
 
         PlannerProjectedWar carriedWar = onlyProjectedWar(state);
         assertEquals(firstBucketWar.warType(), carriedWar.warType());
@@ -408,7 +428,8 @@ class PlannerProjectionStateTest {
         state = state.advance(
                 SimTuning.defaults(),
                 Map.of(attacker.nationId(), List.of(defender.nationId())),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
 
         DBNationSnapshot defenderAfterFirstBucket = state.snapshotsFor(List.of(defender.nationId())).get(0);
@@ -422,7 +443,12 @@ class PlannerProjectionStateTest {
             assertEquals(firstOverlay.cityInfraValueAt(i), defenderCityInfra[firstOverlay.cityIndexAt(i)]);
         }
 
-        state = state.advance(SimTuning.defaults(), Map.of(), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
 
         PlannerCityInfraOverlay carriedOverlay = state.cityInfraOverlaysByNation().get(defender.nationId());
         assertNotNull(carriedOverlay);

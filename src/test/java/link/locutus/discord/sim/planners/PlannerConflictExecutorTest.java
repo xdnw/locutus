@@ -438,7 +438,8 @@ class PlannerConflictExecutorTest {
                         OverrideSet.builder().build(),
                         List.of(attacker, defender),
                         Map.of(attacker.nationId(), List.of(defender.nationId())),
-                        2
+                        2,
+                        PlannerTransitionSemantics.NONE
                 )
         );
     }
@@ -499,7 +500,8 @@ class PlannerConflictExecutorTest {
                         OverrideSet.builder().build(),
                         List.of(attacker, defender),
                         Map.of(attacker.nationId(), List.of(defender.nationId())),
-                        2
+                        2,
+                        PlannerTransitionSemantics.NONE
                 )
         );
     }
@@ -800,7 +802,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker, defender),
                 Map.of(),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
 
         DBNationSnapshot projected = projection.snapshotsById().get(attacker.nationId());
@@ -1008,7 +1011,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker, defender),
                 Map.of(attacker.nationId(), List.of(defender.nationId())),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
 
         PlannerProjectionResult firstProjection = state.toProjectionResult();
@@ -1016,7 +1020,7 @@ class PlannerConflictExecutorTest {
         assertNotNull(firstOverlay);
         assertFalse(firstOverlay.isEmpty());
 
-        PlannerProjectionState carried = state.advance(tuning, Map.of(), 1);
+        PlannerProjectionState carried = state.advance(tuning, Map.of(), 1, PlannerTransitionSemantics.NONE);
         PlannerProjectionResult secondProjection = carried.toProjectionResult();
         PlannerCityInfraOverlay carriedOverlay = secondProjection.cityInfraOverlaysByNation().get(defender.nationId());
 
@@ -1350,7 +1354,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.builder().build(),
                 List.of(original),
                 Map.of(),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
         DBNationSnapshot projected = result.snapshotsById().get(original.nationId());
         assertEquals(bits, projected.projectBits(), "projectBits must survive round-trip");

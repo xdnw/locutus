@@ -14,6 +14,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
+import link.locutus.discord.sim.planners.compile.CompiledActiveWar;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
@@ -91,10 +92,31 @@ public final class BlitzPlanner {
             int currentTurn,
             Collection<BlitzFixedEdge> fixedEdges,
             int horizonTurns) {
+        return assign(
+            attackers,
+            defenders,
+            actingPolicy,
+            opposingPolicy,
+            currentTurn,
+            fixedEdges,
+            List.of(),
+            horizonTurns
+        );
+        }
+
+        public BlitzAssignment assign(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            SidePolicy actingPolicy,
+            SidePolicy opposingPolicy,
+            int currentTurn,
+            Collection<BlitzFixedEdge> fixedEdges,
+            Collection<CompiledActiveWar> activeWars,
+            int horizonTurns) {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.BLITZ_ASSIGN)) {
             Objects.requireNonNull(actingPolicy, "actingPolicy");
             Objects.requireNonNull(opposingPolicy, "opposingPolicy");
-            return assignForPolicy(attackers, defenders, actingPolicy, opposingPolicy, currentTurn, fixedEdges, horizonTurns);
+            return assignForPolicy(attackers, defenders, actingPolicy, opposingPolicy, currentTurn, fixedEdges, activeWars, horizonTurns);
         }
     }
 
@@ -108,12 +130,38 @@ public final class BlitzPlanner {
             Collection<BlitzFixedEdge> sideBFixedEdges,
             int horizonTurns
         ) {
+        return assignSymmetric(
+                sideA,
+                sideB,
+                sideAPolicy,
+                sideBPolicy,
+                currentTurn,
+                sideAFixedEdges,
+                sideBFixedEdges,
+                List.of(),
+                List.of(),
+                horizonTurns
+        );
+    }
+
+    public BlitzAssignmentPair assignSymmetric(
+            Collection<DBNationSnapshot> sideA,
+            Collection<DBNationSnapshot> sideB,
+            SidePolicy sideAPolicy,
+            SidePolicy sideBPolicy,
+            int currentTurn,
+            Collection<BlitzFixedEdge> sideAFixedEdges,
+            Collection<BlitzFixedEdge> sideBFixedEdges,
+            Collection<CompiledActiveWar> sideAActiveWars,
+            Collection<CompiledActiveWar> sideBActiveWars,
+            int horizonTurns
+        ) {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.BLITZ_ASSIGN)) {
             Objects.requireNonNull(sideAPolicy, "sideAPolicy");
             Objects.requireNonNull(sideBPolicy, "sideBPolicy");
 
-            BlitzAssignment sideAAssignment = assignForPolicy(sideA, sideB, sideAPolicy, sideBPolicy, currentTurn, sideAFixedEdges, horizonTurns);
-            BlitzAssignment sideBAssignment = assignForPolicy(sideB, sideA, sideBPolicy, sideAPolicy, currentTurn, sideBFixedEdges, horizonTurns);
+            BlitzAssignment sideAAssignment = assignForPolicy(sideA, sideB, sideAPolicy, sideBPolicy, currentTurn, sideAFixedEdges, sideAActiveWars, horizonTurns);
+            BlitzAssignment sideBAssignment = assignForPolicy(sideB, sideA, sideBPolicy, sideAPolicy, currentTurn, sideBFixedEdges, sideBActiveWars, horizonTurns);
             Map<String, List<PlannerDiagnostic>> diagnosticsByPass = new LinkedHashMap<>();
             diagnosticsByPass.put(BlitzAssignmentPair.SIDE_A_PASS, sideAAssignment.diagnostics());
             diagnosticsByPass.put(BlitzAssignmentPair.SIDE_B_PASS, sideBAssignment.diagnostics());
@@ -128,9 +176,10 @@ public final class BlitzPlanner {
             SidePolicy opposingPolicy,
             int currentTurn,
             Collection<BlitzFixedEdge> fixedEdges,
+            Collection<CompiledActiveWar> activeWars,
             int horizonTurns
         ) {
-        AssignmentInputs inputs = normalizeAssignmentInputs(attackers, defenders, currentTurn, fixedEdges, horizonTurns);
+        AssignmentInputs inputs = normalizeAssignmentInputs(attackers, defenders, currentTurn, fixedEdges, activeWars, horizonTurns);
             if (!sidePolicy.allowInitialDeclarations()) {
                 List<PlannerDiagnostic> diagnostics = new ObjectArrayList<>();
                 collectDiagnostics(inputs.attackers(), inputs.defenders(), diagnostics);
@@ -168,21 +217,25 @@ public final class BlitzPlanner {
             Collection<DBNationSnapshot> defenders,
             int currentTurn,
             Collection<BlitzFixedEdge> fixedEdges,
+            Collection<CompiledActiveWar> activeWars,
             int horizonTurns
     ) {
         Objects.requireNonNull(attackers, "attackers");
         Objects.requireNonNull(defenders, "defenders");
         Objects.requireNonNull(fixedEdges, "fixedEdges");
+        Objects.requireNonNull(activeWars, "activeWars");
 
         List<DBNationSnapshot> attList = List.copyOf(attackers);
         List<DBNationSnapshot> defList = List.copyOf(defenders);
         List<BlitzFixedEdge> fixedEdgeList = List.copyOf(fixedEdges);
+        List<CompiledActiveWar> activeWarList = List.copyOf(activeWars);
         int planningHorizonTurns = Math.max(1, horizonTurns);
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "attackers", attList.size());
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "defenders", defList.size());
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "fixedEdges", fixedEdgeList.size());
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "activeWars", activeWarList.size());
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "horizonTurns", planningHorizonTurns);
-        return new AssignmentInputs(attList, defList, fixedEdgeList, currentTurn, planningHorizonTurns);
+        return new AssignmentInputs(attList, defList, fixedEdgeList, activeWarList, currentTurn, planningHorizonTurns);
     }
 
     private PreparedAssignment prepareAssignment(AssignmentInputs inputs, SidePolicy actingPolicy, SidePolicy defendingPolicy) {
@@ -200,7 +253,8 @@ public final class BlitzPlanner {
             inputs.defenders(),
             overrides,
             treatyProvider,
-            activityWeights
+            activityWeights,
+            inputs.activeWars()
         );
 
         int[] attCaps = computeAttackerCaps(compiledScenario);
@@ -874,6 +928,7 @@ public final class BlitzPlanner {
         List<DBNationSnapshot> attackers,
         List<DBNationSnapshot> defenders,
         List<BlitzFixedEdge> fixedEdges,
+        List<CompiledActiveWar> activeWars,
         int currentTurn,
         int planningHorizonTurns
     ) {

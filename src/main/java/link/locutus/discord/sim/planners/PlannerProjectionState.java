@@ -109,14 +109,6 @@ final class PlannerProjectionState {
         }
     }
 
-    PlannerProjectionState advance(
-            SimTuning tuning,
-            Map<Integer, List<Integer>> assignment,
-            int horizonTurns
-    ) {
-        return advance(tuning, assignment, horizonTurns, PlannerTransitionSemantics.NONE);
-    }
-
     PlannerProjectionResult toProjectionResult() {
         return new PlannerProjectionResult(
                 effectiveSnapshotsById(),

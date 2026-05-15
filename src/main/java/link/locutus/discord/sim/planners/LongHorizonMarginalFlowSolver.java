@@ -458,7 +458,7 @@ final class LongHorizonMarginalFlowSolver {
             }
             int[] previousEdge = scratch.previousEdgeArray();
             // This early-stop frontier is intentionally tuned to the live CONTROL route.
-            // A separate synthetic DamageObjective harness still reports a small score drift,
+            // A small synthetic NET_DAMAGE drift remains in offline comparison coverage,
             // but the maintained live benchmark preserves the visible assignment summary and
             // materially reduces projected-evaluation time, so we accept that tradeoff here.
             updatePotentialsAfterSinkSettled(potential, scratch, searchVersion, sinkDistance);

@@ -28,23 +28,6 @@ final class PlannerConflictExecutor {
             OverrideSet overrides,
             Collection<DBNationSnapshot> nations,
             Map<Integer, List<Integer>> assignment,
-            int horizonTurns
-    ) {
-        return projectAssignmentHorizon(
-                tuning,
-                overrides,
-                nations,
-                assignment,
-                horizonTurns,
-                PlannerTransitionSemantics.NONE
-        );
-    }
-
-    static PlannerProjectionResult projectAssignmentHorizon(
-            SimTuning tuning,
-            OverrideSet overrides,
-            Collection<DBNationSnapshot> nations,
-            Map<Integer, List<Integer>> assignment,
             int horizonTurns,
             PlannerTransitionSemantics transitionSemantics
     ) {
@@ -56,23 +39,6 @@ final class PlannerConflictExecutor {
                 horizonTurns,
                 transitionSemantics
         ).toProjectionResult();
-    }
-
-    static PlannerProjectionState projectAssignmentStateHorizon(
-            SimTuning tuning,
-            OverrideSet overrides,
-            Collection<DBNationSnapshot> nations,
-            Map<Integer, List<Integer>> assignment,
-            int horizonTurns
-    ) {
-        return projectAssignmentStateHorizon(
-                tuning,
-                overrides,
-                nations,
-                assignment,
-                horizonTurns,
-                PlannerTransitionSemantics.NONE
-        );
     }
 
     static PlannerProjectionState projectAssignmentStateHorizon(
