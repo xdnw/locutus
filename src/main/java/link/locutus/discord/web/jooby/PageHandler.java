@@ -268,7 +268,7 @@ public class PageHandler implements Handler {
             }
 
             List<String> cmds = queryMap.getOrDefault("cmd", Collections.emptyList());
-            WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null, false));
+            WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null));
 
             Logg.text("SSE Command: cmds=" + StringMan.getString(cmds) + " | queryParams=" + queryMap.entrySet().stream().map(f -> f.getKey() + "=" + StringMan.getString(f.getValue())).collect(Collectors.joining(", ")));
             if (cmds.isEmpty()) {
@@ -633,7 +633,7 @@ public class PageHandler implements Handler {
             return;
         }
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
-        ctx.result(WebUtil.minify(WebStore.render(f -> JteerrorGenerated.render(f, null, new WebStore(null, ctx), entry.getKey(), entry.getValue()))));
+        ctx.result(entry.getKey() + ":\n" + StringMan.stripApiKey(entry.getValue()));
     }
 
     private Object wrap(WebStore ws, Object call, Context ctx, boolean isApi) {
@@ -668,8 +668,7 @@ public class PageHandler implements Handler {
                     ctx.header("Content-Type", "application/json");
                     return str;
                 }
-                String finalStr = str;
-                return WebStore.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
+                return str;
             }
         }
         return call;
@@ -696,7 +695,7 @@ public class PageHandler implements Handler {
                 locals.addProvider(Key.of(DBNation.class, Me.class), nation);
             }
 
-            Guild guild = AuthBindings.guild(ctx, nation, user, false);
+            Guild guild = AuthBindings.guild(ctx, nation, user);
             if (guild != null) {
                 GuildDB guildDb = Locutus.imp().getGuildDB(guild);
                 locals.addProvider(Key.of(Guild.class, Me.class), guild);

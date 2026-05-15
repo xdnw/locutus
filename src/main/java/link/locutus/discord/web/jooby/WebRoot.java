@@ -9,7 +9,6 @@ import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.http.staticfiles.StaticFileConfig;
-import io.javalin.rendering.template.JavalinJte;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
@@ -78,8 +77,6 @@ public class WebRoot {
         Logg.text("Starting on port " + port);
 
         this.app = Javalin.create(config -> {
-            config.fileRenderer(new JavalinJte());
-            // default
             config.http.generateEtags = true;
             config.http.maxRequestSize = 1024 * 1024 * 1024; // 1gb
             config.http.asyncTimeout = 60_000; // 60 seconds

@@ -266,7 +266,7 @@ public class EndpointPages extends PageHelper {
     @Command(desc = "Retrieve the current web session information", viewable = true)
     @ReturnType(value = WebSession.class, cache = CacheType.LocalStorage)
     public Object session(WebStore ws, Context context, NationDB nationDb, @Me @Default GuildDB db, @Me @Default DBAuthRecord auth) throws IOException {
-        Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
+        Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true));
         if (auth != null) {
             WebSession data = auth.toMap();
             if (guild != null) {
