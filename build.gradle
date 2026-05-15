@@ -9,6 +9,7 @@
 
 import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
 import java.lang.management.ManagementFactory
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
 
 buildscript {
     repositories {
@@ -60,6 +61,7 @@ def sharedBuildRoot = layout.projectDirectory.dir('build')
 def sharedGraphqlGeneratedDir = sharedBuildRoot.dir('generated')
 def sharedGeneratedSourcesDir = sharedBuildRoot.dir('generated-sources')
 def sharedGeneratedSrcDir = sharedBuildRoot.dir('generated-src')
+def sharedLibsDir = sharedBuildRoot.dir('libs')
 layout.buildDirectory.set(sharedBuildRoot.dir("isolated/${locutusBuildIsolationId}"))
 
 application { mainClass = 'link.locutus.discord._test._Custom' }
@@ -589,8 +591,8 @@ if (useGraphql) {
         graphqlSchemas.rootDir = graphqlSchemasDir.asFile
         graphqlSchemas.includePattern = "schema\\.graphqls"   // adjust if multiple files
 
-        outputDir = graphqlGeneratedDir.get().asFile
-        outputs.dir(graphqlGeneratedDir)
+        outputDir = graphqlGeneratedDir.asFile
+        outputs.dir(graphqlGeneratedDir.asFile)
 
         // Package / model settings
         modelPackageName = "com.politicsandwar.graphql.model"
@@ -681,7 +683,7 @@ if (useShadow) {
         }
         manifest {
             attributes(
-                    'Class-Path': configurations.runtimeClasspath.files.collect { it.getName() }.join(' '),
+                    'Class-Path': project.configurations.runtimeClasspath.files.collect { it.getName() }.join(' '),
                     'Main-Class': 'link.locutus.discord.Locutus'
             )
         }
@@ -712,6 +714,10 @@ def addOptionalGeneratedSrc(String taskName, Directory outputDir) {
 // GraphQL (optional)
 addOptionalGeneratedSrc('graphqlCodegen', graphqlGeneratedDir)
 
+tasks.withType(AbstractArchiveTask).configureEach { archiveTask ->
+    destinationDirectory.set(sharedLibsDir)
+}
+
 tasks.register('cleanGeneratedBaselines', Delete) {
     group = 'build'
     description = 'Deletes the shared generated source baselines under build/generated*.'
@@ -724,6 +730,7 @@ tasks.register('cleanGeneratedBaselines', Delete) {
 
 tasks.named('clean', Delete) {
     delete(layout.buildDirectory)
+    delete(sharedLibsDir)
 }
 
 tasks.withType(Test).configureEach {
