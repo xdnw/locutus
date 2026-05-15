@@ -1342,11 +1342,11 @@ final class OpeningEvaluator {
         }
 
         float controlLeverageAt(int index) {
-            return edges.retainsControlLeverage() ? edges.controlLeverageAt(index) : 0f;
+            return 0f;
         }
 
         float futureWarLeverageAt(int index) {
-            return edges.retainsFutureWarLeverage() ? edges.futureWarLeverageAt(index) : 0f;
+            return 0f;
         }
 
         byte bestAttackTypeIdAt(int index) {
@@ -1381,9 +1381,7 @@ final class OpeningEvaluator {
                         counterRisk,
                         immediateHarm,
                         selfExposure,
-                        resourceSwing,
-                        controlLeverage,
-                        futureWarLeverage
+                        resourceSwing
                 );
                 siftUp(size);
                 size++;
@@ -1411,9 +1409,7 @@ final class OpeningEvaluator {
                     counterRisk,
                     immediateHarm,
                     selfExposure,
-                    resourceSwing,
-                    controlLeverage,
-                        futureWarLeverage
+                    resourceSwing
             );
             siftDown(0);
             sortedDirty = true;
@@ -1664,11 +1660,11 @@ final class OpeningEvaluator {
         }
 
         float controlLeverageAt(int index) {
-            return edges.retainsControlLeverage() ? edges.controlLeverageAt(index) : 0f;
+            return 0f;
         }
 
         float futureWarLeverageAt(int index) {
-            return edges.retainsFutureWarLeverage() ? edges.futureWarLeverageAt(index) : 0f;
+            return 0f;
         }
 
         float priorityAt(int index) {
@@ -1847,9 +1843,7 @@ final class OpeningEvaluator {
                     counterRisk,
                     immediateHarm,
                     selfExposure,
-                    resourceSwing,
-                    controlLeverage,
-                    futureWarLeverage
+                    resourceSwing
             );
         }
 

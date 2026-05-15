@@ -819,24 +819,15 @@ final class PlannerConflictExecutor {
         double resourceSwing = policy.retainResourceSwing()
                 ? projectedAttacker.resource(ResourceType.MONEY) - attacker.resource(ResourceType.MONEY)
                 : 0.0;
-        double controlLeverage = policy.retainControlLeverage()
-            ? controlLeverage(projectedWar)
-                : 0.0;
-        double tacticalMomentum = policy.retainFutureWarLeverage()
-            ? tacticalMomentumScore(projectedWar)
-                : 0.0;
-        double actionSpaceQuality = policy.retainFutureWarLeverage()
-            ? actionSpaceQuality(attacker, projectedAttacker, defender, projectedDefender, projectedWar)
-                : 0.0;
 
         return new DeclaredWarEvaluation(
                 objectiveScore,
             immediateHarm,
             selfExposure,
             resourceSwing,
-            controlLeverage,
-            tacticalMomentum,
-            actionSpaceQuality
+            0.0,
+            0.0,
+            0.0
         );
     }
 

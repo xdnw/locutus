@@ -9,12 +9,10 @@ package link.locutus.discord.sim;
 public record CandidateEdgeComponentPolicy(
         boolean retainImmediateHarm,
         boolean retainSelfExposure,
-        boolean retainResourceSwing,
-        boolean retainControlLeverage,
-        boolean retainFutureWarLeverage
+        boolean retainResourceSwing
 ) {
-    public static final CandidateEdgeComponentPolicy NONE = new CandidateEdgeComponentPolicy(false, false, false, false, false);
-    public static final CandidateEdgeComponentPolicy HARM_EXPOSURE_ONLY = new CandidateEdgeComponentPolicy(true, true, false, false, false);
+    public static final CandidateEdgeComponentPolicy NONE = new CandidateEdgeComponentPolicy(false, false, false);
+    public static final CandidateEdgeComponentPolicy HARM_EXPOSURE_ONLY = new CandidateEdgeComponentPolicy(true, true, false);
 
     public static CandidateEdgeComponentPolicy none() {
         return NONE;
@@ -27,8 +25,6 @@ public record CandidateEdgeComponentPolicy(
     public boolean retainsAny() {
         return retainImmediateHarm
                 || retainSelfExposure
-                || retainResourceSwing
-                || retainControlLeverage
-                || retainFutureWarLeverage;
+                || retainResourceSwing;
     }
 }

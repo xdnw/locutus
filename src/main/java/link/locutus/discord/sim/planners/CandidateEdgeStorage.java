@@ -56,9 +56,7 @@ final class CandidateEdgeStorage {
             float counterRisk,
             float immediateHarm,
             float selfExposure,
-            float resourceSwing,
-            float controlLeverage,
-            float futureWarLeverage
+            float resourceSwing
     ) {
         attackerIndexes[index] = attackerIndex;
         defenderIndexes[index] = defenderIndex;
@@ -66,7 +64,7 @@ final class CandidateEdgeStorage {
         bestAttackTypeIds[index] = bestAttackTypeId;
         scalarScores[index] = score;
         counterRisks[index] = counterRisk;
-        retainedComponents.set(index, immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage);
+        retainedComponents.set(index, immediateHarm, selfExposure, resourceSwing);
     }
 
     int attackerIndexAt(int index) {
@@ -127,14 +125,6 @@ final class CandidateEdgeStorage {
         return retainedComponents.retainsResourceSwing();
     }
 
-    boolean retainsControlLeverage() {
-        return retainedComponents.retainsControlLeverage();
-    }
-
-    boolean retainsFutureWarLeverage() {
-        return retainedComponents.retainsFutureWarLeverage();
-    }
-
     float immediateHarmAt(int index) {
         return retainedComponents.immediateHarm(index);
     }
@@ -145,14 +135,6 @@ final class CandidateEdgeStorage {
 
     float resourceSwingAt(int index) {
         return retainedComponents.resourceSwing(index);
-    }
-
-    float controlLeverageAt(int index) {
-        return retainedComponents.controlLeverage(index);
-    }
-
-    float futureWarLeverageAt(int index) {
-        return retainedComponents.futureWarLeverage(index);
     }
 
     void swap(int lhs, int rhs) {

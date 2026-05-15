@@ -385,12 +385,6 @@ final class LongHorizonAssignmentScoringModel {
         if (edges.retainsImmediateHarm()) {
             value = Math.max(value, Math.max(0d, edges.immediateHarm(edgeIndex)));
         }
-        if (edges.retainsControlLeverage()) {
-            value = Math.max(value, Math.max(0d, edges.controlLeverage(edgeIndex)));
-        }
-        if (edges.retainsFutureWarLeverage()) {
-            value = Math.max(value, Math.max(0d, edges.futureWarLeverage(edgeIndex)));
-        }
         return value;
     }
 

@@ -69,7 +69,7 @@ final class CandidateEdgeTable {
      * Appends a new edge. Returns the edge index.
      */
     int add(int attackerIndex, int defenderIndex, float score, float counterRisk) {
-        return add(attackerIndex, defenderIndex, (byte) 0, (byte) 0, score, counterRisk, 0f, 0f, 0f, 0f, 0f);
+        return add(attackerIndex, defenderIndex, (byte) 0, (byte) 0, score, counterRisk, 0f, 0f, 0f);
     }
 
     int add(
@@ -89,8 +89,6 @@ final class CandidateEdgeTable {
             counterRisk,
             0f,
             0f,
-            0f,
-            0f,
             0f
         );
     }
@@ -104,9 +102,7 @@ final class CandidateEdgeTable {
             float counterRisk,
             float immediateHarm,
             float selfExposure,
-            float resourceSwing,
-            float controlLeverage,
-            float futureWarLeverage
+            float resourceSwing
     ) {
         edges.ensureCapacity(edgeCount + 1);
         int i = edgeCount++;
@@ -121,9 +117,7 @@ final class CandidateEdgeTable {
                 counterRisk,
                 immediateHarm,
                 selfExposure,
-                resourceSwing,
-                controlLeverage,
-                futureWarLeverage
+                resourceSwing
         );
         return i;
     }
@@ -252,8 +246,7 @@ final class CandidateEdgeTable {
      * <p>This is the dense primitive equivalent of rebuilding a candidate edge from a projected
      * mid-horizon {@link link.locutus.discord.sim.planners.LongHorizonForwardProjection.MidHorizonSnapshot}:
      * an attacker whose projected combat strength and score have been ground down by incoming wars
-     * has its outgoing edges' immediate harm, control leverage, future-war leverage, etc. all
-     * proportionally reduced, not just the scalar opening score.</p>
+     * has its outgoing retained diagnostics proportionally reduced, not just the scalar opening score.</p>
      */
     void rescaleEdgeFromProjectedState(int edge, float factor) {
         edges.rescaleFromProjectedState(edge, factor);
@@ -287,14 +280,6 @@ final class CandidateEdgeTable {
         return edges.retainsResourceSwing();
     }
 
-    boolean retainsControlLeverage() {
-        return edges.retainsControlLeverage();
-    }
-
-    boolean retainsFutureWarLeverage() {
-        return edges.retainsFutureWarLeverage();
-    }
-
     float immediateHarm(int edge) {
         return edges.immediateHarmAt(edge);
     }
@@ -305,10 +290,6 @@ final class CandidateEdgeTable {
 
     float resourceSwing(int edge) {
         return edges.resourceSwingAt(edge);
-    }
-
-    float controlLeverage(int edge) {
-        return edges.controlLeverageAt(edge);
     }
 
     private void invalidateLookupCaches() {
@@ -345,10 +326,6 @@ final class CandidateEdgeTable {
 
     private static long pairKey(int attackerNationId, int defenderNationId) {
         return ((long) attackerNationId << 32) ^ (defenderNationId & 0xffffffffL);
-    }
-
-    float futureWarLeverage(int edge) {
-        return edges.futureWarLeverageAt(edge);
     }
 
     /**

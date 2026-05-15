@@ -35,7 +35,7 @@ class OpeningEvaluatorCoverageTest {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final StrategicObjective PRESSURE_ONLY_OBJECTIVE = new PressureOnlyObjective();
     private static final CandidateEdgeComponentPolicy SPARSE_COMPONENT_POLICY =
-            new CandidateEdgeComponentPolicy(true, false, false, true, false);
+            new CandidateEdgeComponentPolicy(true, false, false);
     private static final StrategicObjective SPARSE_COMPONENT_OBJECTIVE =
             new SparseComponentObjective(SPARSE_COMPONENT_POLICY);
 
@@ -682,7 +682,7 @@ class OpeningEvaluatorCoverageTest {
                 attacker,
                 defender,
                 SPARSE_COMPONENT_OBJECTIVE,
-                new CandidateEdgeComponentPolicy(true, true, true, true, true)
+                new CandidateEdgeComponentPolicy(true, true, true)
         );
         OpeningEvaluator.EvaluatedEdge direct = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -697,16 +697,13 @@ class OpeningEvaluatorCoverageTest {
         assertTrue(Float.isFinite(raw.score()), "Expected raw single-pair evaluation to stay admitted");
         assertTrue(
                 Math.abs(raw.selfExposure()) > 1.0e-5f
-                        || Math.abs(raw.resourceSwing()) > 1.0e-5f
-                        || Math.abs(raw.futureWarLeverage()) > 1.0e-5f,
+                        || Math.abs(raw.resourceSwing()) > 1.0e-5f,
                 "Test setup must produce at least one non-zero unretained component"
         );
 
         assertEquals(raw.immediateHarm(), direct.immediateHarm(), 1.0e-5f);
         assertEquals(0f, direct.selfExposure(), 1.0e-5f);
         assertEquals(0f, direct.resourceSwing(), 1.0e-5f);
-        assertEquals(raw.controlLeverage(), direct.controlLeverage(), 1.0e-5f);
-        assertEquals(0f, direct.futureWarLeverage(), 1.0e-5f);
 
         assertEquals(direct.score(), reusable.score(), 1.0e-5f);
         assertEquals(direct.preferredWarTypeId(), reusable.preferredWarTypeId());
@@ -714,8 +711,6 @@ class OpeningEvaluatorCoverageTest {
         assertEquals(direct.immediateHarm(), reusable.immediateHarm(), 1.0e-5f);
         assertEquals(direct.selfExposure(), reusable.selfExposure(), 1.0e-5f);
         assertEquals(direct.resourceSwing(), reusable.resourceSwing(), 1.0e-5f);
-        assertEquals(direct.controlLeverage(), reusable.controlLeverage(), 1.0e-5f);
-        assertEquals(direct.futureWarLeverage(), reusable.futureWarLeverage(), 1.0e-5f);
 
         CompiledScenario scenario = SCENARIO_COMPILER.compile(
                 List.of(attacker),
@@ -743,13 +738,9 @@ class OpeningEvaluatorCoverageTest {
         assertTrue(out.retainsImmediateHarm());
         assertFalse(out.retainsSelfExposure());
         assertFalse(out.retainsResourceSwing());
-        assertTrue(out.retainsControlLeverage());
-        assertFalse(out.retainsFutureWarLeverage());
         assertEquals(direct.immediateHarm(), out.immediateHarm(0), 1.0e-5f);
         assertThrows(IllegalStateException.class, () -> out.selfExposure(0));
         assertThrows(IllegalStateException.class, () -> out.resourceSwing(0));
-        assertEquals(direct.controlLeverage(), out.controlLeverage(0), 1.0e-5f);
-        assertThrows(IllegalStateException.class, () -> out.futureWarLeverage(0));
     }
 
     @Test

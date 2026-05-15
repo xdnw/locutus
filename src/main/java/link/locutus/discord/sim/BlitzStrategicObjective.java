@@ -14,7 +14,7 @@ final class BlitzStrategicObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, true, false, true, true);
+        return new CandidateEdgeComponentPolicy(true, true, false);
     }
 
     @Override

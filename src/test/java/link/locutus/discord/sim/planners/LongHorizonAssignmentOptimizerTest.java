@@ -2194,8 +2194,8 @@ class LongHorizonAssignmentOptimizerTest {
         );
         CompiledScenario scenario = compile(attackers, defenders);
         CandidateEdgeTable edges = commitmentScenarioEdges();
-        edges.add(0, 2, (byte) 0, (byte) 0, 6f, 0f, 4f, 0f, 0f, 2f, 1f);
-        edges.add(1, 2, (byte) 0, (byte) 0, 7f, 0f, 5f, 0f, 0f, 3f, 2f);
+        edges.add(0, 2, (byte) 0, (byte) 0, 6f, 0f, 4f, 0f, 0f);
+        edges.add(1, 2, (byte) 0, (byte) 0, 7f, 0f, 5f, 0f, 0f);
         CandidateEdgeTable variantEdges = CandidateEdgeTable.copyOf(edges);
         variantEdges.rescaleAttackerEdgesFromProjectedState(0, 0.4f);
         variantEdges.rescaleAttackerEdgesFromProjectedState(1, 0.6f);

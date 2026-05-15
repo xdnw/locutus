@@ -335,9 +335,7 @@ final class PlannerAutonomousDeclarationPlanner {
                     rawEdges.counterRisk(edgeIndex),
                     rawEdges.retainsImmediateHarm() ? rawEdges.immediateHarm(edgeIndex) : 0f,
                     rawEdges.retainsSelfExposure() ? rawEdges.selfExposure(edgeIndex) : 0f,
-                    rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0f,
-                    rawEdges.retainsControlLeverage() ? rawEdges.controlLeverage(edgeIndex) : 0f,
-                    rawEdges.retainsFutureWarLeverage() ? rawEdges.futureWarLeverage(edgeIndex) : 0f
+                    rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0f
             );
         }
         return rescoredEdges;
@@ -347,9 +345,7 @@ final class PlannerAutonomousDeclarationPlanner {
         return new CandidateEdgeComponentPolicy(
                 edges.retainsImmediateHarm(),
                 edges.retainsSelfExposure(),
-                edges.retainsResourceSwing(),
-                edges.retainsControlLeverage(),
-                edges.retainsFutureWarLeverage()
+                edges.retainsResourceSwing()
         );
     }
 

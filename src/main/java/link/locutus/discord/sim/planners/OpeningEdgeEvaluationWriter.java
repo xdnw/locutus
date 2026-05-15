@@ -6,8 +6,6 @@ final class OpeningEdgeEvaluationWriter {
     static final int RETAIN_IMMEDIATE_HARM = 1;
     static final int RETAIN_SELF_EXPOSURE = 1 << 1;
     static final int RETAIN_RESOURCE_SWING = 1 << 2;
-    static final int RETAIN_CONTROL_LEVERAGE = 1 << 3;
-    static final int RETAIN_FUTURE_WAR_LEVERAGE = 1 << 4;
 
     private OpeningEdgeEvaluationWriter() {
     }
@@ -26,12 +24,6 @@ final class OpeningEdgeEvaluationWriter {
         if (componentPolicy.retainResourceSwing()) {
             mask |= RETAIN_RESOURCE_SWING;
         }
-        if (componentPolicy.retainControlLeverage()) {
-            mask |= RETAIN_CONTROL_LEVERAGE;
-        }
-        if (componentPolicy.retainFutureWarLeverage()) {
-            mask |= RETAIN_FUTURE_WAR_LEVERAGE;
-        }
         return mask;
     }
 
@@ -46,8 +38,8 @@ final class OpeningEdgeEvaluationWriter {
                 (componentMask & RETAIN_IMMEDIATE_HARM) != 0 ? evaluation.immediateHarm() : 0f,
                 (componentMask & RETAIN_SELF_EXPOSURE) != 0 ? evaluation.selfExposure() : 0f,
                 (componentMask & RETAIN_RESOURCE_SWING) != 0 ? evaluation.resourceSwing() : 0f,
-                (componentMask & RETAIN_CONTROL_LEVERAGE) != 0 ? evaluation.controlLeverage() : 0f,
-                (componentMask & RETAIN_FUTURE_WAR_LEVERAGE) != 0 ? evaluation.futureWarLeverage() : 0f
+                evaluation.controlLeverage(),
+                evaluation.futureWarLeverage()
         );
     }
 }

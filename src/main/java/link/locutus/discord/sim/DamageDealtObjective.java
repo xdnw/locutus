@@ -7,7 +7,7 @@ final class DamageDealtObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, false, false, false, false);
+        return new CandidateEdgeComponentPolicy(true, false, false);
     }
 
     @Override

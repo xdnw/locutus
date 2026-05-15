@@ -7,7 +7,7 @@ final class DamageAvoidanceObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, true, false, false, false);
+        return new CandidateEdgeComponentPolicy(true, true, false);
     }
 
     @Override

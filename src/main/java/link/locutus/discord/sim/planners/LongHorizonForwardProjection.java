@@ -2858,14 +2858,6 @@ final class LongHorizonForwardProjection {
         warState.clearFlagOwner(ownerByWar, edgeIndex);
     }
 
-    private double positiveControlLeverage(int edgeIndex) {
-        return edges.retainsControlLeverage() ? Math.max(0d, edges.controlLeverage(edgeIndex)) : 0d;
-    }
-
-    private double positiveFutureWarLeverage(int edgeIndex) {
-        return edges.retainsFutureWarLeverage() ? Math.max(0d, edges.futureWarLeverage(edgeIndex)) : 0d;
-    }
-
     private static double projectedBuyValue(DBNationSnapshot snapshot, int horizonTurns) {
         int dayCount = Math.max(1, (horizonTurns + 11) / 12);
         double score = 0d;

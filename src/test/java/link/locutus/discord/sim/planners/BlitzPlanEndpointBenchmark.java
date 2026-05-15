@@ -676,7 +676,7 @@ public final class BlitzPlanEndpointBenchmark {
         double targetPressure = OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
         double positiveBaselineScore = targetPressure > 0d ? 0.25d * targetPressure : 0d;
         System.out.printf(Locale.ROOT,
-                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,positiveBaselineScore=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,controlLeverage=%.3f,futureWarLeverage=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
+                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,positiveBaselineScore=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
                 rank,
                 attackerNationId,
                 csvSafe(participantName(response, attackerNationId)),
@@ -688,8 +688,6 @@ public final class BlitzPlanEndpointBenchmark {
                 candidateEdges.retainsImmediateHarm() ? candidateEdges.immediateHarm(edgeIndex) : 0f,
                 candidateEdges.retainsSelfExposure() ? candidateEdges.selfExposure(edgeIndex) : 0f,
                 candidateEdges.retainsResourceSwing() ? candidateEdges.resourceSwing(edgeIndex) : 0f,
-                candidateEdges.retainsControlLeverage() ? candidateEdges.controlLeverage(edgeIndex) : 0f,
-                candidateEdges.retainsFutureWarLeverage() ? candidateEdges.futureWarLeverage(edgeIndex) : 0f,
                 candidateEdges.counterRisk(edgeIndex),
                 assignmentContains(response, attackerNationId, defenderNationId),
                 outgoing ? "outgoing" : "incoming");

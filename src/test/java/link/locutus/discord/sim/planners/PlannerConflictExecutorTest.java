@@ -1414,8 +1414,6 @@ class PlannerConflictExecutorTest {
         assertTrue(table.retainsImmediateHarm());
         assertTrue(table.retainsSelfExposure());
         assertFalse(table.retainsResourceSwing());
-        assertFalse(table.retainsControlLeverage());
-        assertFalse(table.retainsFutureWarLeverage());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1450,7 +1448,7 @@ class PlannerConflictExecutorTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
 
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true, true, true);
+        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true);
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         PlannerExactValidatorScripts groundOnlyScripts = new PlannerExactValidatorScripts(
                 true,
@@ -1478,8 +1476,6 @@ class PlannerConflictExecutorTest {
 
         assertTrue(Double.isFinite(evaluation.objectiveScore()));
         assertTrue(evaluation.resourceSwing() > 0d);
-        assertTrue(evaluation.controlLeverage() > 0d);
-        assertTrue(evaluation.futureWarLeverage() > 0d);
     }
 
     @Test
@@ -1509,7 +1505,7 @@ class PlannerConflictExecutorTest {
                 5_000_000d
         );
 
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true, true, true);
+        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true);
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         ScenarioCompiler compiler = new ScenarioCompiler();
         CompiledScenario scenario = compiler.compile(
@@ -1535,8 +1531,6 @@ class PlannerConflictExecutorTest {
         assertTrue(table.retainsImmediateHarm());
         assertTrue(table.retainsSelfExposure());
         assertTrue(table.retainsResourceSwing());
-        assertTrue(table.retainsControlLeverage());
-        assertTrue(table.retainsFutureWarLeverage());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1550,8 +1544,6 @@ class PlannerConflictExecutorTest {
         assertEquals(expected.immediateHarm(), table.immediateHarm(0), 1e-5f);
         assertEquals(expected.selfExposure(), table.selfExposure(0), 1e-5f);
         assertEquals(expected.resourceSwing(), table.resourceSwing(0), 1e-5f);
-        assertEquals(expected.controlLeverage(), table.controlLeverage(0), 1e-5f);
-        assertEquals(expected.futureWarLeverage(), table.futureWarLeverage(0), 1e-5f);
     }
 
     @Test
@@ -1581,7 +1573,7 @@ class PlannerConflictExecutorTest {
                 5_000_000d
         );
 
-        CandidateEdgeComponentPolicy sparsePolicy = new CandidateEdgeComponentPolicy(false, false, true, false, true);
+        CandidateEdgeComponentPolicy sparsePolicy = new CandidateEdgeComponentPolicy(false, false, true);
         DamageObjective objective = new RetainedComponentDamageObjective(sparsePolicy);
         ScenarioCompiler compiler = new ScenarioCompiler();
         CompiledScenario scenario = compiler.compile(
@@ -1607,8 +1599,6 @@ class PlannerConflictExecutorTest {
         assertFalse(table.retainsImmediateHarm());
         assertFalse(table.retainsSelfExposure());
         assertTrue(table.retainsResourceSwing());
-        assertFalse(table.retainsControlLeverage());
-        assertTrue(table.retainsFutureWarLeverage());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1620,36 +1610,29 @@ class PlannerConflictExecutorTest {
         assertEquals(expected.preferredWarTypeId(), table.preferredWarTypeId(0));
         assertEquals(expected.firstAttackTypeId(), table.bestAttackTypeId(0));
         assertEquals(expected.resourceSwing(), table.resourceSwing(0), 1e-5f);
-        assertEquals(expected.futureWarLeverage(), table.futureWarLeverage(0), 1e-5f);
     }
 
     @Test
     void candidateEdgeComponentsRetainOnlyRequestedArrays() {
         CandidateEdgeComponents components = new CandidateEdgeComponents(
                 2,
-                new CandidateEdgeComponentPolicy(false, true, false, true, false)
+                new CandidateEdgeComponentPolicy(false, true, false)
         );
 
         assertFalse(components.retainsImmediateHarm());
         assertTrue(components.retainsSelfExposure());
         assertFalse(components.retainsResourceSwing());
-        assertTrue(components.retainsControlLeverage());
-        assertFalse(components.retainsFutureWarLeverage());
 
-        components.set(0, 10f, 20f, 30f, 40f, 50f);
-        components.set(1, 11f, 21f, 31f, 41f, 51f);
+        components.set(0, 10f, 20f, 30f);
+        components.set(1, 11f, 21f, 31f);
 
         assertEquals(20f, components.selfExposure(0), 1e-5f);
-        assertEquals(40f, components.controlLeverage(0), 1e-5f);
         assertThrows(IllegalStateException.class, () -> components.immediateHarm(0));
         assertThrows(IllegalStateException.class, () -> components.resourceSwing(0));
-        assertThrows(IllegalStateException.class, () -> components.futureWarLeverage(0));
 
         components.swap(0, 1);
         assertEquals(21f, components.selfExposure(0), 1e-5f);
-        assertEquals(41f, components.controlLeverage(0), 1e-5f);
         assertEquals(20f, components.selfExposure(1), 1e-5f);
-        assertEquals(40f, components.controlLeverage(1), 1e-5f);
     }
 
     @Test
@@ -1673,7 +1656,7 @@ class PlannerConflictExecutorTest {
                 .build();
 
         DamageObjective objective = new LeverageWeightedDamageObjective();
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true, true, true);
+        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true);
         OpeningEvaluator.EvaluatedEdge evaluation = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
@@ -2284,7 +2267,7 @@ class PlannerConflictExecutorTest {
         private static final class LeverageWeightedDamageObjective extends DamageObjective {
                 @Override
                 public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-                        return new CandidateEdgeComponentPolicy(true, true, true, true, true);
+                        return new CandidateEdgeComponentPolicy(true, true, true);
                 }
 
                 @Override
