@@ -39,14 +39,4 @@ public record SideProjectionPolicies(
                 new ObjectiveDrivenLaterDeclarationScoringPolicy(objective)
         );
     }
-
-    public static SideProjectionPolicies objectiveAttackChoice(
-            StrategicObjective objective,
-            SideOpeningSettings openingSettings
-    ) {
-        return new SideProjectionPolicies(
-                new ObjectiveDrivenAttackChoicePolicy(objective, openingSettings),
-                HeuristicLaterDeclarationScoringPolicy.INSTANCE
-        );
-    }
 }

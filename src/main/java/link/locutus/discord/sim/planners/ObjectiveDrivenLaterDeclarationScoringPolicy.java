@@ -7,8 +7,6 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
 
     private final StrategicObjective objective;
     private final int teamId;
-    private final LaterDeclarationMetrics metrics = new LaterDeclarationMetrics();
-    private final LaterDeclarationMetrics actionableMetrics = new LaterDeclarationMetrics();
 
     ObjectiveDrivenLaterDeclarationScoringPolicy(StrategicObjective objective) {
         this(objective, DEFAULT_TEAM_ID);
@@ -36,11 +34,17 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
                         context.targetPressure()
                 ))
                 : actionability;
-        metrics.set(context);
-        double objectiveScore = objective.scoreOpening(metrics, teamId);
-        if (isReadinessOnly(metrics)) {
-            actionableMetrics.set(context, 0d);
-            if (!(objective.scoreOpening(actionableMetrics, teamId) > 0d)) {
+        double objectiveScore = objective.scoreOpening(
+                Math.max(0d, context.immediateHarm()),
+                Math.max(0d, context.selfExposure()),
+                Math.max(0d, context.resourceSwing()),
+                Math.max(0d, context.controlLeverage()),
+                Math.max(0d, context.futureWarLeverage()),
+                Math.max(0d, context.targetPressure()),
+                teamId
+        );
+        if (isReadinessOnly(context)) {
+            if (!(objectiveScore > 0d)) {
                 return 0d;
             }
         }
@@ -53,70 +57,10 @@ final class ObjectiveDrivenLaterDeclarationScoringPolicy implements LaterDeclara
                 * LaterDeclarationFit.slotFit(context.remainingDeclarerSlots(), context.remainingTargetSlots(), slotActionability);
     }
 
-    private static boolean isReadinessOnly(LaterDeclarationMetrics metrics) {
-        return metrics.declarationReadiness() > 0d
-                && !(metrics.resourceSwing() > 0d)
-                && !(metrics.controlLeverage() > 0d)
-                && !(metrics.futureWarLeverage() > 0d);
-    }
-
-    private static final class LaterDeclarationMetrics implements link.locutus.discord.sim.StrategicEvaluationComponents {
-        private double immediateHarm;
-        private double selfExposure;
-        private double resourceSwing;
-        private double controlLeverage;
-        private double declarationReadiness;
-        private double futureWarLeverage;
-        private double targetPressure;
-
-        private void set(LaterDeclarationScoreContext context) {
-            set(context, Math.max(0d, context.declarationReadiness()));
-        }
-
-        private void set(LaterDeclarationScoreContext context, double declarationReadiness) {
-            this.immediateHarm = Math.max(0d, context.immediateHarm());
-            this.selfExposure = Math.max(0d, context.selfExposure());
-            this.resourceSwing = Math.max(0d, context.resourceSwing());
-            this.controlLeverage = Math.max(0d, context.controlLeverage());
-            this.declarationReadiness = Math.max(0d, declarationReadiness);
-            this.futureWarLeverage = Math.max(0d, context.futureWarLeverage());
-            this.targetPressure = Math.max(0d, context.targetPressure());
-        }
-
-        @Override
-        public double immediateHarm() {
-            return immediateHarm;
-        }
-
-        @Override
-        public double selfExposure() {
-            return selfExposure;
-        }
-
-        @Override
-        public double resourceSwing() {
-            return resourceSwing;
-        }
-
-        @Override
-        public double controlLeverage() {
-            return controlLeverage;
-        }
-
-        @Override
-        public double declarationReadiness() {
-            return declarationReadiness;
-        }
-
-        @Override
-        public double futureWarLeverage() {
-            return futureWarLeverage;
-        }
-
-        @Override
-        public double targetPressure() {
-            return targetPressure;
-        }
-
+    private static boolean isReadinessOnly(LaterDeclarationScoreContext context) {
+        return context.declarationReadiness() > 0d
+                && !(context.resourceSwing() > 0d)
+                && !(context.controlLeverage() > 0d)
+                && !(context.futureWarLeverage() > 0d);
     }
 }

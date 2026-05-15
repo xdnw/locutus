@@ -214,8 +214,7 @@ public final class ProductionPolicyAbHarness {
     }
 
     enum PolicyMode {
-        PROJECTION("projection"),
-        ATTACK_CHOICE("attackChoice");
+        PROJECTION("projection");
 
         private final String cliName;
 
@@ -378,7 +377,6 @@ public final class ProductionPolicyAbHarness {
                     .withMaxLaterDeclarationsPerTurn(maxLaterDeclarationsPerTurn);
             SideProjectionPolicies projection = switch (mode) {
                 case PROJECTION -> SideProjectionPolicies.objectiveDriven(strategicObjective, opening);
-                case ATTACK_CHOICE -> SideProjectionPolicies.objectiveAttackChoice(strategicObjective, opening);
             };
             return new SidePolicy(
                     name,

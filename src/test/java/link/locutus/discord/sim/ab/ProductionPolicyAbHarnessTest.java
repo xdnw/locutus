@@ -32,14 +32,14 @@ class ProductionPolicyAbHarnessTest {
     @Test
     void policySpecBuildsProductionPoliciesWithoutLegacyFactories() {
         ProductionPolicyAbHarness.PolicySpec spec = ProductionPolicyAbHarness.PolicySpec.parse(
-                "A:attackChoice:CONTROL:audit=3;laterCap=4;war=RAID:1.5,ORD:0.7;attack=MISSILE:2.0,NUKE:2.5;minProbe=0.05;specialists=true;positiveBaseline=false",
+                "A:projection:CONTROL:audit=3;laterCap=4;war=RAID:1.5,ORD:0.7;attack=MISSILE:2.0,NUKE:2.5;minProbe=0.05;specialists=true;positiveBaseline=false",
                 "A"
         );
 
         SidePolicy acting = spec.actingPolicy();
         SidePolicy passive = spec.passivePolicy();
 
-        assertEquals(ProductionPolicyAbHarness.PolicyMode.ATTACK_CHOICE, spec.mode());
+        assertEquals(ProductionPolicyAbHarness.PolicyMode.PROJECTION, spec.mode());
         assertTrue(acting.allowInitialDeclarations());
         assertFalse(passive.allowInitialDeclarations());
         assertEquals(3, acting.planner().projectedAuditLimit());

@@ -114,35 +114,4 @@ public record SidePolicy(
         );
     }
 
-    public static SidePolicy objectiveDrivenAttackChoice(String name, StrategicObjective objective) {
-        if (objective == null) {
-            throw new IllegalArgumentException("objective must not be null");
-        }
-        SideOpeningSettings opening = SideOpeningSettings.defaults(objective);
-        return new SidePolicy(
-                name,
-                objective,
-            SidePlannerSettings.actingDefaults(),
-                opening,
-                SideProjectionPolicies.objectiveAttackChoice(objective, opening),
-                NO_OP_ACTOR,
-                true
-        );
-    }
-
-    public static SidePolicy objectiveDrivenAttackChoicePassive(String name, StrategicObjective objective) {
-        if (objective == null) {
-            throw new IllegalArgumentException("objective must not be null");
-        }
-        SideOpeningSettings opening = SideOpeningSettings.defaults(objective);
-        return new SidePolicy(
-                name,
-                objective,
-            SidePlannerSettings.defaults(),
-                opening,
-                SideProjectionPolicies.objectiveAttackChoice(objective, opening),
-                NO_OP_ACTOR,
-                false
-        );
-    }
 }
