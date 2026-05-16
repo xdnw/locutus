@@ -89,7 +89,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     }
 
     @Test
-    void specialistResourceSwingCanSeedShellCandidate() {
+    void specialistResourceSwingDoesNotSeedAttackChoiceWithoutDamage() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                 BlitzObjective.NET_DAMAGE.objective(),
                 null
@@ -101,11 +101,11 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 attackType -> candidate(0d, 0d, 0d, 100d, 0d, SuperiorityFlagDelta.NONE)
         ));
 
-        assertEquals(AttackType.MISSILE, choice);
+        assertEquals(null, choice);
     }
 
     @Test
-    void controlObjectiveCanValueSpecialistResourcePressure() {
+    void controlObjectiveDoesNotValueSpecialistResourcePressureAsAttackDamage() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                 link.locutus.discord.sim.BlitzObjective.CONTROL.objective(),
                 null
@@ -117,7 +117,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 attackType -> candidate(0d, 0d, 0d, 120d, 0d, SuperiorityFlagDelta.NONE)
         ));
 
-        assertEquals(AttackType.MISSILE, choice);
+        assertEquals(null, choice);
     }
 
         @Test

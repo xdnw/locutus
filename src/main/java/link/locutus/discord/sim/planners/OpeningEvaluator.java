@@ -43,13 +43,10 @@ import java.util.Objects;
  * </ul>
  */
 final class OpeningEvaluator {
-    private static final int DEFAULT_ACTION_BUDGET = 3;
-    private static final double RESOURCE_SWING_SHELL_WEIGHT = 0.000001d;
     private static final EvaluatedEdge REJECTED_EDGE = new EvaluatedEdge(
             Float.NEGATIVE_INFINITY,
             (byte) -1,
             (byte) -1,
-            0f,
             0f
     );
     static final AttackType[] OPENING_ATTACK_TYPES = {
@@ -98,9 +95,6 @@ final class OpeningEvaluator {
             return new OpeningBaseline(attacker, defender);
         }
 
-        static OpeningBaseline from(DBNationSnapshot attacker, DBNationSnapshot defender, double targetPressure) {
-            return from(attacker, defender);
-        }
     }
 
     private OpeningEvaluator() {
@@ -112,36 +106,21 @@ final class OpeningEvaluator {
             StrategicObjective objective,
             CandidateEdgeComponentPolicy componentPolicy
     ) {
-        OpeningRolloutSearch evaluator = new OpeningRolloutSearch(DEFAULT_ACTION_BUDGET);
         EdgeEvaluation evaluation = new EdgeEvaluation();
         OpeningCandidateAdmission candidateAdmission = new OpeningCandidateAdmission(resolveAdmissionPolicy(objective));
         int retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
         if (!candidateAdmission.admit(attacker, defender)) {
             return REJECTED_EDGE;
         }
-        if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
-            if (evaluateDelayedSpecialistOpening(
-                    attacker,
-                    defender,
-                    null,
-                    candidateAdmission.preferredWarTypeId(),
-                    candidateAdmission.bestAttackTypeId(),
-                    evaluation
-            )) {
-                if (retainedComponentMask != 0) {
-                    OpeningEdgeEvaluationWriter.retainComponents(evaluation, retainedComponentMask);
-                }
-                return toEvaluatedEdge(evaluation);
-            }
-            return REJECTED_EDGE;
-        }
-        EvaluatedEdge admitted = evaluateAdmittedOpening(
+        EvaluatedEdge admitted = evaluateAdmittedOpeningSeed(
             attacker,
             defender,
             componentPolicy,
-            evaluator,
             evaluation,
-            actionBudgetForProbe(candidateAdmission.probe(), evaluator.maxActionBudget())
+            candidateAdmission.preferredWarTypeId(),
+            candidateAdmission.bestAttackTypeId(),
+            candidateAdmission.probe(),
+            null
         );
         return admitted;
     }
@@ -153,15 +132,20 @@ final class OpeningEvaluator {
             CandidateEdgeComponentPolicy componentPolicy,
             int actionBudget
     ) {
-        OpeningRolloutSearch evaluator = new OpeningRolloutSearch(actionBudget);
         EdgeEvaluation evaluation = new EdgeEvaluation();
-        return evaluateAdmittedOpening(
+        OpeningCandidateAdmission candidateAdmission = new OpeningCandidateAdmission(resolveAdmissionPolicy(objective));
+        if (!candidateAdmission.admit(attacker, defender)) {
+            return REJECTED_EDGE;
+        }
+        return evaluateAdmittedOpeningSeed(
             attacker,
             defender,
             componentPolicy,
-            evaluator,
             evaluation,
-            evaluator.maxActionBudget()
+            candidateAdmission.preferredWarTypeId(),
+            candidateAdmission.bestAttackTypeId(),
+            candidateAdmission.probe(),
+            null
         );
     }
 
@@ -169,91 +153,35 @@ final class OpeningEvaluator {
             float score,
             byte preferredWarTypeId,
             byte firstAttackTypeId,
-            float immediateHarm,
-            float resourceSwing
+            float immediateHarm
     ) {
-    }
-
-    private enum EvaluationEffortTier {
-        SINGLE_STEP(1),
-        SHORT_ROLLOUT(2),
-        DEEP_OPENING(3);
-
-        private final int actionBudget;
-
-        EvaluationEffortTier(int actionBudget) {
-            this.actionBudget = actionBudget;
-        }
-
-        private int clampedBudget(int maxActionBudget) {
-            return Math.max(1, Math.min(actionBudget, maxActionBudget));
-        }
-
-        private static EvaluationEffortTier fromProbe(float probe) {
-            if (probe >= (2f / 3f)) {
-                return DEEP_OPENING;
-            }
-            if (probe >= (1f / 3f)) {
-                return SHORT_ROLLOUT;
-            }
-            return SINGLE_STEP;
-        }
-    }
-
-    static int actionBudgetForHorizon(int horizonTurns) {
-        return Math.max(1, Math.min(DEFAULT_ACTION_BUDGET, horizonTurns));
-    }
-
-    static int actionBudgetForProbe(float probe) {
-        return actionBudgetForProbe(probe, DEFAULT_ACTION_BUDGET);
-    }
-
-    static int actionBudgetForProbe(float probe, int maxActionBudget) {
-        return EvaluationEffortTier.fromProbe(probe).clampedBudget(maxActionBudget);
     }
 
     static final class CandidateOpeningEvaluator {
         private final StrategicObjective objective;
         private final CandidateEdgeComponentPolicy componentPolicy;
         private final OpeningCandidateAdmission candidateAdmission;
-        private final OpeningRolloutSearch rolloutEdgeEvaluator;
         private final EdgeEvaluation edgeEvaluation = new EdgeEvaluation();
 
-        CandidateOpeningEvaluator(StrategicObjective objective, int actionBudget) {
+        CandidateOpeningEvaluator(StrategicObjective objective) {
             this.objective = Objects.requireNonNull(objective, "objective");
             this.componentPolicy = resolveComponentPolicy(objective);
             this.candidateAdmission = new OpeningCandidateAdmission(resolveAdmissionPolicy(objective));
-            this.rolloutEdgeEvaluator = new OpeningRolloutSearch(actionBudget);
         }
 
         EvaluatedEdge evaluate(DBNationSnapshot attacker, DBNationSnapshot defender) {
             if (!candidateAdmission.admit(attacker, defender)) {
                 return REJECTED_EDGE;
             }
-            if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
-                if (evaluateDelayedSpecialistOpening(
-                        attacker,
-                        defender,
-                        null,
-                        candidateAdmission.preferredWarTypeId(),
-                        candidateAdmission.bestAttackTypeId(),
-                        edgeEvaluation
-                )) {
-                    int retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
-                    if (retainedComponentMask != 0) {
-                        OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
-                    }
-                    return toEvaluatedEdge(edgeEvaluation);
-                }
-                return REJECTED_EDGE;
-            }
-            EvaluatedEdge admitted = evaluateAdmittedOpening(
+            EvaluatedEdge admitted = evaluateAdmittedOpeningSeed(
                     attacker,
                     defender,
                     componentPolicy,
-                    rolloutEdgeEvaluator,
                     edgeEvaluation,
-                    actionBudgetForProbe(candidateAdmission.probe(), rolloutEdgeEvaluator.maxActionBudget())
+                    candidateAdmission.preferredWarTypeId(),
+                    candidateAdmission.bestAttackTypeId(),
+                    candidateAdmission.probe(),
+                    null
             );
             return admitted;
         }
@@ -389,7 +317,6 @@ final class OpeningEvaluator {
         private int attackerIndex;
         private DBNationSnapshot attacker;
         private final OpeningCandidateAdmission candidateAdmission;
-        private final OpeningRolloutSearch rolloutEdgeEvaluator;
         private final EdgeEvaluation edgeEvaluation;
         private final boolean retainEdgeComponents;
         private final int retainedComponentMask;
@@ -434,7 +361,6 @@ final class OpeningEvaluator {
             this.defenderCoverageCounts = defenderCoverageCounts;
             this.defenderSourceDiversityCounts = defenderSourceDiversityCounts;
             this.candidateAdmission = new OpeningCandidateAdmission(admissionPolicy);
-            this.rolloutEdgeEvaluator = new OpeningRolloutSearch(DEFAULT_ACTION_BUDGET);
             this.edgeEvaluation = new EdgeEvaluation();
             this.retainEdgeComponents = this.componentPolicy.retainsAny();
             this.retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(this.componentPolicy);
@@ -470,36 +396,20 @@ final class OpeningEvaluator {
             if (!candidateAdmission.admit(attacker, defender)) {
                 return;
             }
-            if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
-                if (!evaluateDelayedSpecialistOpening(
-                        attacker,
-                        defender,
-                        openingSettings,
-                        candidateAdmission.preferredWarTypeId(),
-                        candidateAdmission.bestAttackTypeId(),
-                        edgeEvaluation
-                )) {
-                    return;
-                }
-                if (retainEdgeComponents) {
-                    OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
-                }
-                retainEvaluatedEdge(defenderIndex, edgeEvaluation);
-                return;
-            }
-            float probe = candidateAdmission.probe();
-            rolloutEdgeEvaluator.evaluate(
+            if (!evaluateAdmittedOpeningSeed(
                     attacker,
                     defender,
                     openingSettings,
-                    defenderCoveragePriorities[defenderIndex],
-                    actionBudgetForProbe(probe, rolloutEdgeEvaluator.maxActionBudget()),
+                    candidateAdmission.preferredWarTypeId(),
+                    candidateAdmission.bestAttackTypeId(),
+                    candidateAdmission.probe(),
                     edgeEvaluation
-            );
+            )) {
+                return;
+            }
             if (retainEdgeComponents) {
                 OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
             }
-            finalizeEdgeSelection(edgeEvaluation, candidateAdmission.preferredWarTypeId(), candidateAdmission.bestAttackTypeId());
             float score = edgeEvaluation.score();
             if (!Float.isFinite(score) || score <= 0f) {
                 return;
@@ -785,48 +695,52 @@ final class OpeningEvaluator {
                 : candidateAdmissionPolicy;
     }
 
-    private static void finalizeEdgeSelection(EdgeEvaluation edgeEvaluation, byte fallbackWarTypeId, byte fallbackAttackTypeId) {
-        byte resolvedWarTypeId = edgeEvaluation.preferredWarTypeId() >= 0
-                ? edgeEvaluation.preferredWarTypeId()
-                : fallbackWarTypeId;
-        byte resolvedAttackTypeId = edgeEvaluation.firstAttackTypeId() >= 0
-                ? edgeEvaluation.firstAttackTypeId()
-                : fallbackAttackTypeId;
-        if (resolvedWarTypeId == edgeEvaluation.preferredWarTypeId()
-                && resolvedAttackTypeId == edgeEvaluation.firstAttackTypeId()) {
-            return;
+    private static EvaluatedEdge evaluateAdmittedOpeningSeed(
+            DBNationSnapshot attacker,
+            DBNationSnapshot defender,
+            CandidateEdgeComponentPolicy componentPolicy,
+            EdgeEvaluation edgeEvaluation,
+            byte preferredWarTypeId,
+            byte firstAttackTypeId,
+            float probe,
+            SideOpeningSettings openingSettings
+    ) {
+        if (!evaluateAdmittedOpeningSeed(
+                attacker,
+                defender,
+                openingSettings,
+                preferredWarTypeId,
+                firstAttackTypeId,
+                probe,
+                edgeEvaluation
+        )) {
+            return REJECTED_EDGE;
         }
-        edgeEvaluation.set(
-                edgeEvaluation.score(),
-                resolvedWarTypeId,
-                resolvedAttackTypeId,
-                edgeEvaluation.immediateHarm(),
-                edgeEvaluation.resourceSwing()
-        );
+        int retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
+        if (retainedComponentMask != 0) {
+            OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
+        }
+        return toEvaluatedEdge(edgeEvaluation);
     }
 
-    private static boolean evaluateDelayedSpecialistOpening(
+    private static boolean evaluateAdmittedOpeningSeed(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
             SideOpeningSettings openingSettings,
             byte preferredWarTypeId,
             byte firstAttackTypeId,
+            float probe,
             EdgeEvaluation out
     ) {
         if (preferredWarTypeId < 0 || preferredWarTypeId >= WarType.values.length
-                || !isSpecialistAttackId(firstAttackTypeId)) {
+                || firstAttackTypeId < 0 || firstAttackTypeId >= AttackType.values.length
+                || !(probe > 0f)) {
             return false;
         }
         AttackType attackType = AttackType.values[firstAttackTypeId];
-        byte resolvedAttackTypeId = firstAttackTypeId;
-        AttackType conventionalFirst = conventionalOpeningBeforeSpecialist(attacker, defender);
-        if (conventionalFirst != null) {
-            attackType = conventionalFirst;
-            resolvedAttackTypeId = (byte) conventionalFirst.ordinal();
-        }
         MutableNationState attackerState = new MutableNationState();
         attackerState.bindReadOnly(attacker);
-        if (isSpecialist(attackType) && !isReachableSpecialistOpeningAttack(attackerState, attackType)) {
+        if (!isLegalOpeningAttack(attackerState, SimWar.INITIAL_MAPS, attackType)) {
             return false;
         }
         WarType warType = WarType.values[preferredWarTypeId];
@@ -838,46 +752,17 @@ final class OpeningEvaluator {
         context.setAttackerMaps(SimWar.MAP_CAP);
         CombatKernel.resolveInto(context, attackType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
         double immediateHarm = projectedImmediateHarm(baseline, context, result);
-        double resourceSwing = AttackObjectiveComponentMapper.resourceSwingForObjective(attackType, result.loot());
-        if (immediateHarm <= 0d && result.infraDestroyed() > 0d) {
-            double specialistResourceSwing = AttackObjectiveComponentMapper.resourceSwingForObjective(
-                attackType,
-                    result.infraDestroyed()
-            );
-            resourceSwing += specialistResourceSwing;
-        }
-        double score = scoreShellHeuristic(
-                immediateHarm,
-                resourceSwing,
-                warType,
-                attackType,
-                openingSettings
-        );
+        double score = applyOpeningSettingsWeight(probe, openingSettings, warType, attackType);
         if (!Double.isFinite(score) || score <= 0d) {
             return false;
         }
         out.set(
                 (float) score,
                 preferredWarTypeId,
-                resolvedAttackTypeId,
-                (float) immediateHarm,
-                (float) resourceSwing
+                firstAttackTypeId,
+                (float) immediateHarm
         );
         return true;
-    }
-
-    private static AttackType conventionalOpeningBeforeSpecialist(DBNationSnapshot attacker, DBNationSnapshot defender) {
-        if (combatStrength(attacker) <= 0d || combatStrength(attacker) < combatStrength(defender) * 0.35d) {
-            return null;
-        }
-        MutableNationState attackerState = new MutableNationState();
-        attackerState.bindReadOnly(attacker);
-        for (AttackType type : OPENING_ATTACK_TYPES) {
-            if (!isSpecialist(type) && isLegalOpeningAttack(attackerState, SimWar.INITIAL_MAPS, type)) {
-                return type;
-            }
-        }
-        return null;
     }
 
     private static CandidateEdgeComponentPolicy resolveComponentPolicy(StrategicObjective objective) {
@@ -885,21 +770,6 @@ final class OpeningEvaluator {
         return candidateComponentPolicy == null
                 ? CandidateEdgeComponentPolicy.none()
                 : candidateComponentPolicy;
-    }
-
-    static double scoreShellHeuristic(
-            double immediateHarm,
-            double resourceSwing,
-            WarType warType,
-            AttackType openingAttackType,
-            SideOpeningSettings openingSettings
-    ) {
-        return applyOpeningSettingsWeight(
-                baseScore(immediateHarm, resourceSwing),
-                openingSettings,
-                warType,
-                openingAttackType
-        );
     }
 
     static double applyOpeningSettingsWeight(
@@ -921,11 +791,6 @@ final class OpeningEvaluator {
         return weightedScore;
     }
 
-    static double baseScore(double immediateHarm, double resourceSwing) {
-        return positiveFinite(immediateHarm)
-                + (RESOURCE_SWING_SHELL_WEIGHT * positiveFinite(resourceSwing));
-    }
-
     static double projectedImmediateHarm(
             OpeningBaseline baseline,
             CombatKernel.AttackContext context,
@@ -943,26 +808,6 @@ final class OpeningEvaluator {
         );
     }
 
-    private static double positiveFinite(double value) {
-        return Double.isFinite(value) ? Math.max(0d, value) : 0d;
-    }
-
-    private static EvaluatedEdge evaluateAdmittedOpening(
-            DBNationSnapshot attacker,
-            DBNationSnapshot defender,
-            CandidateEdgeComponentPolicy componentPolicy,
-            OpeningRolloutSearch rolloutEdgeEvaluator,
-            EdgeEvaluation edgeEvaluation,
-            int actionBudget
-    ) {
-        rolloutEdgeEvaluator.evaluate(attacker, defender, actionBudget, edgeEvaluation);
-        int retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
-        if (retainedComponentMask != 0) {
-            OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
-        }
-        return toEvaluatedEdge(edgeEvaluation);
-    }
-
     private static EvaluatedEdge toEvaluatedEdge(EdgeEvaluation edgeEvaluation) {
         if (!Float.isFinite(edgeEvaluation.score())) {
             return REJECTED_EDGE;
@@ -971,8 +816,7 @@ final class OpeningEvaluator {
                 edgeEvaluation.score(),
                 edgeEvaluation.preferredWarTypeId(),
                 edgeEvaluation.firstAttackTypeId(),
-                edgeEvaluation.immediateHarm(),
-                edgeEvaluation.resourceSwing()
+                edgeEvaluation.immediateHarm()
         );
     }
 
@@ -1557,7 +1401,6 @@ final class OpeningEvaluator {
         private byte preferredWarTypeId;
         private byte firstAttackTypeId;
         private float immediateHarm;
-        private float resourceSwing;
 
         float score() {
             return score;
@@ -1575,26 +1418,20 @@ final class OpeningEvaluator {
             return immediateHarm;
         }
 
-        float resourceSwing() {
-            return resourceSwing;
-        }
-
         void set(
                 float score,
                 byte preferredWarTypeId,
                 byte firstAttackTypeId,
-                float immediateHarm,
-                float resourceSwing
+                float immediateHarm
         ) {
             this.score = score;
             this.preferredWarTypeId = preferredWarTypeId;
             this.firstAttackTypeId = firstAttackTypeId;
             this.immediateHarm = immediateHarm;
-            this.resourceSwing = resourceSwing;
         }
 
         void clear() {
-            set(Float.NEGATIVE_INFINITY, (byte) -1, (byte) -1, 0f, 0f);
+            set(Float.NEGATIVE_INFINITY, (byte) -1, (byte) -1, 0f);
         }
     }
 

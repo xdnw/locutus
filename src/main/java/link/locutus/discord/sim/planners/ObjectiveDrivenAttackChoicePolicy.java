@@ -126,11 +126,8 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     }
 
     double scoreCandidate(AttackType attackType, AttackCandidate candidate) {
-        double score = OpeningEvaluator.baseScore(
-                Math.max(0d, candidate.defenderUnitDamage()),
-                AttackObjectiveComponentMapper.resourceSwingForObjective(attackType, candidate.resourceSwing())
-        )
-            * openingSettings.attackTypeWeight(attackType);
+        double score = immediateHarmScore(candidate.defenderUnitDamage())
+                * openingSettings.attackTypeWeight(attackType);
         if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue() > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue() * 0.20d);
         }
@@ -138,14 +135,15 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     }
 
     double scoreCandidate(AttackType attackType, MutableAttackCandidate candidate) {
-        double score = OpeningEvaluator.baseScore(
-                Math.max(0d, candidate.defenderUnitDamage),
-                AttackObjectiveComponentMapper.resourceSwingForObjective(attackType, candidate.resourceSwing)
-        )
-            * openingSettings.attackTypeWeight(attackType);
+        double score = immediateHarmScore(candidate.defenderUnitDamage)
+                * openingSettings.attackTypeWeight(attackType);
         if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue * 0.20d);
         }
         return score;
+    }
+
+    private static double immediateHarmScore(double defenderUnitDamage) {
+        return Double.isFinite(defenderUnitDamage) ? Math.max(0d, defenderUnitDamage) : 0d;
     }
 }

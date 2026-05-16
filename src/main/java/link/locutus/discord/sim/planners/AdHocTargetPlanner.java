@@ -105,8 +105,7 @@ public final class AdHocTargetPlanner {
         DBNationSnapshot compiledAttacker = compiledScenario.attacker(attackerIndex);
         float attackerActivityWeight = compiledScenario.attackerActivityWeight(attackerIndex);
         OpeningEvaluator.CandidateOpeningEvaluator openingEvaluator = new OpeningEvaluator.CandidateOpeningEvaluator(
-            objective,
-            OpeningEvaluator.actionBudgetForHorizon(horizonTurns)
+            objective
         );
 
         List<Integer> defenderIndexes = new ArrayList<>();

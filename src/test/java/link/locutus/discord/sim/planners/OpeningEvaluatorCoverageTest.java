@@ -448,7 +448,7 @@ class OpeningEvaluatorCoverageTest {
         DBNationSnapshot defender = buildNation(121, DEFENDER_TEAM, 1_850.0, 12, 6_000, 950, 1_050, 210);
 
         OpeningEvaluator.CandidateOpeningEvaluator candidateOpeningEvaluator =
-                new OpeningEvaluator.CandidateOpeningEvaluator(PRESSURE_ONLY_OBJECTIVE, 3);
+                new OpeningEvaluator.CandidateOpeningEvaluator(PRESSURE_ONLY_OBJECTIVE);
         OpeningEvaluator.EvaluatedEdge direct = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
@@ -654,18 +654,16 @@ class OpeningEvaluatorCoverageTest {
                 SPARSE_COMPONENT_POLICY
         );
         OpeningEvaluator.CandidateOpeningEvaluator candidateOpeningEvaluator =
-                new OpeningEvaluator.CandidateOpeningEvaluator(SPARSE_COMPONENT_OBJECTIVE, 3);
+                new OpeningEvaluator.CandidateOpeningEvaluator(SPARSE_COMPONENT_OBJECTIVE);
         OpeningEvaluator.EvaluatedEdge reusable = candidateOpeningEvaluator.evaluate(attacker, defender);
 
         assertTrue(Float.isFinite(raw.score()), "Expected raw single-pair evaluation to stay admitted");
         assertEquals(raw.immediateHarm(), direct.immediateHarm(), 1.0e-5f);
-        assertEquals(0f, direct.resourceSwing(), 1.0e-5f);
 
         assertEquals(direct.score(), reusable.score(), 1.0e-5f);
         assertEquals(direct.preferredWarTypeId(), reusable.preferredWarTypeId());
         assertEquals(direct.firstAttackTypeId(), reusable.firstAttackTypeId());
         assertEquals(direct.immediateHarm(), reusable.immediateHarm(), 1.0e-5f);
-        assertEquals(direct.resourceSwing(), reusable.resourceSwing(), 1.0e-5f);
 
         CompiledScenario scenario = SCENARIO_COMPILER.compile(
                 List.of(attacker),
@@ -750,7 +748,7 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void controlObjectiveKeepsSpecialistFallbackWhenConventionalControlIsOutmatched() {
+    void openingAdmissionRejectsDelayedSpecialistFallbackWhenSpecialistIsNotImmediatelyLegal() {
         DBNationSnapshot specialistAttacker = buildNation(54, ATTACKER_TEAM, 820.0, 18,
                 37_500, 3_000, 240, 37)
                 .toBuilder()
@@ -789,13 +787,9 @@ class OpeningEvaluatorCoverageTest {
         );
 
         assertTrue(
-                Float.isFinite(controlEdge.score()) && controlEdge.score() > 0f,
-                "Expected delayed specialist edge, got score=" + controlEdge.score()
+                !Float.isFinite(controlEdge.score()),
+                "Expected delayed specialist fallback to be rejected, got score=" + controlEdge.score()
                         + " attackType=" + controlEdge.firstAttackTypeId()
-        );
-        assertTrue(
-                controlEdge.firstAttackTypeId() == AttackType.MISSILE.ordinal()
-                        || controlEdge.firstAttackTypeId() == AttackType.NUKE.ordinal()
         );
     }
 
@@ -894,7 +888,7 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void openingRolloutDoesNotPreferInfraWhenUnitDamageIsAvailable() {
+    void openingSeedKeepsAdmittedPairAndLegalAttackWithoutRolloutScoring() {
         DBNationSnapshot attacker = buildNation(41, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220)
             .toBuilder()
             .cityInfra(uniformInfra(12, 250.0))
@@ -912,11 +906,7 @@ class OpeningEvaluatorCoverageTest {
         );
 
         assertTrue(Float.isFinite(edge.score()), "Expected the militarized pair to remain admitted");
-        assertTrue(edge.firstAttackTypeId() >= 0, "Expected rollout to choose an opening attack");
-        assertFalse(
-            edge.firstAttackTypeId() == AttackType.AIRSTRIKE_INFRA.ordinal(),
-            "Opening rollout should value unit/control progress before raw infra damage"
-        );
+        assertTrue(edge.firstAttackTypeId() >= 0, "Expected admission to provide a legal opening attack");
     }
 
     @Test
@@ -1061,8 +1051,7 @@ class OpeningEvaluatorCoverageTest {
 
         private static String edgeSummary(OpeningEvaluator.EvaluatedEdge edge) {
                 return "score=" + edge.score()
-                                + "/harm=" + edge.immediateHarm()
-                                + "/resource=" + edge.resourceSwing();
+                                + "/harm=" + edge.immediateHarm();
         }
 
         private static String edgeList(CandidateEdgeTable out, CompiledScenario scenario) {

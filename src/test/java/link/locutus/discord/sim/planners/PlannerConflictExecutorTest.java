@@ -1649,12 +1649,11 @@ class PlannerConflictExecutorTest {
         );
 
         assertTrue(Float.isFinite(evaluation.score()));
-        assertEquals(0f, evaluation.resourceSwing(), 1e-5f);
         assertTrue(evaluation.immediateHarm() > 0f);
     }
 
     @Test
-    void openingEvaluatorRolloutAccumulatesMoreValueThanSingleStep() {
+    void openingEvaluatorSeedIgnoresDeletedRolloutBudget() {
         DBNationSnapshot attacker = nation(313, 1)
                 .unit(MilitaryUnit.SOLDIER, 42_000)
                 .unit(MilitaryUnit.TANK, 2_400)
@@ -1683,12 +1682,12 @@ class PlannerConflictExecutorTest {
                 3
         );
 
-        assertTrue(threeStep.score() >= oneStep.score());
-        assertTrue(threeStep.immediateHarm() > oneStep.immediateHarm());
+        assertEquals(oneStep.score(), threeStep.score(), 1e-5f);
+        assertEquals(oneStep.immediateHarm(), threeStep.immediateHarm(), 1e-5f);
     }
 
     @Test
-    void openingEvaluatorRoutesStrongProbesToDeepOpeningBudget() {
+    void openingEvaluatorStrongProbeSeedIsIndependentOfDeletedBudget() {
         DBNationSnapshot attacker = nation(413, 1)
                 .unit(MilitaryUnit.SOLDIER, 42_000)
                 .unit(MilitaryUnit.TANK, 2_400)
@@ -1704,7 +1703,7 @@ class PlannerConflictExecutorTest {
 
         OpeningEvaluator.ProbeResult probeResult = new OpeningEvaluator.ProbeResult();
         OpeningEvaluator.viabilityProbe(attacker, defender, probeResult);
-        assertEquals(3, OpeningEvaluator.actionBudgetForProbe(probeResult.probe()));
+        assertTrue(probeResult.probe() > 0f);
 
         OpeningEvaluator.EvaluatedEdge routed = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1725,7 +1724,7 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
-    void openingEvaluatorRoutesWeakAdmittedEdgesToSingleStepBudget() {
+    void openingEvaluatorWeakProbeSeedIsIndependentOfDeletedBudget() {
         DBNationSnapshot attacker = nation(415, 1)
                 .unit(MilitaryUnit.SOLDIER, 120)
                 .unit(MilitaryUnit.TANK, 8)
@@ -1747,9 +1746,6 @@ class PlannerConflictExecutorTest {
                 TreatyProvider.NONE,
                 Map.of(attacker.nationId(), 0.5f, defender.nationId(), 0.5f)
         );
-
-        OpeningEvaluator.ProbeResult probeResult = OpeningEvaluator.viabilityProbe(scenario, 0, 0);
-        assertEquals(1, OpeningEvaluator.actionBudgetForProbe(probeResult.probe()));
 
         AdmissionFloorDamageObjective lowFloorObjective = new AdmissionFloorDamageObjective(new CandidateEdgeAdmissionPolicy(0.0d));
         OpeningEvaluator.EvaluatedEdge routed = OpeningEvaluator.evaluateOpening(
@@ -1933,8 +1929,7 @@ class PlannerConflictExecutorTest {
                 specialistTable
         );
 
-        assertEquals(1, specialistTable.edgeCount(), "Legal specialist fallback can seed a damage/resource shell candidate");
-        assertEquals(AttackType.MISSILE.ordinal(), specialistTable.bestAttackTypeId(0));
+        assertEquals(0, specialistTable.edgeCount(), "Specialist fallback no longer seeds a delayed damage/resource shell candidate");
     }
 
     @Test

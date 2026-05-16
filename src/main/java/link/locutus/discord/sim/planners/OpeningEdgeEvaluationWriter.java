@@ -27,8 +27,7 @@ final class OpeningEdgeEvaluationWriter {
                 evaluation.score(),
                 evaluation.preferredWarTypeId(),
                 evaluation.firstAttackTypeId(),
-                (componentMask & RETAIN_IMMEDIATE_HARM) != 0 ? evaluation.immediateHarm() : 0f,
-                evaluation.resourceSwing()
+                (componentMask & RETAIN_IMMEDIATE_HARM) != 0 ? evaluation.immediateHarm() : 0f
         );
     }
 }
