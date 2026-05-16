@@ -1,7 +1,6 @@
 package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 
@@ -11,10 +10,7 @@ import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePolicy {
     private static final int DEFAULT_TEAM_ID = 0;
 
-    private final StrategicObjective objective;
     private final SideOpeningSettings openingSettings;
-    private final int teamId;
-    private final OpeningMetricVector.Mutable metrics = new OpeningMetricVector.Mutable();
 
     @FunctionalInterface
     interface AttackEvaluator {
@@ -70,9 +66,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
         if (objective == null) {
             throw new IllegalArgumentException("objective must not be null");
         }
-        this.objective = objective;
         this.openingSettings = openingSettings == null ? SideOpeningSettings.defaults(objective) : openingSettings;
-        this.teamId = teamId;
     }
 
     @Override
@@ -132,14 +126,10 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     }
 
     double scoreCandidate(AttackType attackType, AttackCandidate candidate) {
-        metrics.set(
+        double score = OpeningEvaluator.baseScore(
                 Math.max(0d, candidate.defenderUnitDamage()),
-                AttackObjectiveComponentMapper.resourceSwingForObjective(
-                        attackType,
-                    candidate.resourceSwing()
-                )
-        );
-        double score = OpeningEvaluator.baseScore(objective, metrics, teamId)
+                AttackObjectiveComponentMapper.resourceSwingForObjective(attackType, candidate.resourceSwing())
+        )
             * openingSettings.attackTypeWeight(attackType);
         if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue() > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue() * 0.20d);
@@ -148,14 +138,10 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     }
 
     double scoreCandidate(AttackType attackType, MutableAttackCandidate candidate) {
-        metrics.set(
+        double score = OpeningEvaluator.baseScore(
                 Math.max(0d, candidate.defenderUnitDamage),
-                AttackObjectiveComponentMapper.resourceSwingForObjective(
-                        attackType,
-                    candidate.resourceSwing
-                )
-        );
-        double score = OpeningEvaluator.baseScore(objective, metrics, teamId)
+                AttackObjectiveComponentMapper.resourceSwingForObjective(attackType, candidate.resourceSwing)
+        )
             * openingSettings.attackTypeWeight(attackType);
         if (AttackObjectiveComponentMapper.isSpecialist(attackType) && candidate.conventionalFollowThroughValue > 0d) {
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue * 0.20d);

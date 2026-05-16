@@ -5,7 +5,6 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
-import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimWar;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
@@ -124,7 +123,6 @@ final class OpeningEvaluator {
             if (evaluateDelayedSpecialistOpening(
                     attacker,
                     defender,
-                    objective,
                     null,
                     candidateAdmission.preferredWarTypeId(),
                     candidateAdmission.bestAttackTypeId(),
@@ -140,7 +138,6 @@ final class OpeningEvaluator {
         EvaluatedEdge admitted = evaluateAdmittedOpening(
             attacker,
             defender,
-            objective,
             componentPolicy,
             evaluator,
             evaluation,
@@ -161,7 +158,6 @@ final class OpeningEvaluator {
         return evaluateAdmittedOpening(
             attacker,
             defender,
-            objective,
             componentPolicy,
             evaluator,
             evaluation,
@@ -238,7 +234,6 @@ final class OpeningEvaluator {
                 if (evaluateDelayedSpecialistOpening(
                         attacker,
                         defender,
-                        objective,
                         null,
                         candidateAdmission.preferredWarTypeId(),
                         candidateAdmission.bestAttackTypeId(),
@@ -255,7 +250,6 @@ final class OpeningEvaluator {
             EvaluatedEdge admitted = evaluateAdmittedOpening(
                     attacker,
                     defender,
-                    objective,
                     componentPolicy,
                     rolloutEdgeEvaluator,
                     edgeEvaluation,
@@ -480,7 +474,6 @@ final class OpeningEvaluator {
                 if (!evaluateDelayedSpecialistOpening(
                         attacker,
                         defender,
-                        objective,
                         openingSettings,
                         candidateAdmission.preferredWarTypeId(),
                         candidateAdmission.bestAttackTypeId(),
@@ -498,7 +491,6 @@ final class OpeningEvaluator {
             rolloutEdgeEvaluator.evaluate(
                     attacker,
                     defender,
-                    objective,
                     openingSettings,
                     defenderCoveragePriorities[defenderIndex],
                     actionBudgetForProbe(probe, rolloutEdgeEvaluator.maxActionBudget()),
@@ -816,7 +808,6 @@ final class OpeningEvaluator {
     private static boolean evaluateDelayedSpecialistOpening(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            StrategicObjective objective,
             SideOpeningSettings openingSettings,
             byte preferredWarTypeId,
             byte firstAttackTypeId,
@@ -843,27 +834,21 @@ final class OpeningEvaluator {
         PairAttackContext context = new PairAttackContext();
         AttackScratch scratch = new AttackScratch();
         MutableAttackResult result = new MutableAttackResult();
-        OpeningMetricVector.Mutable currentMetrics = new OpeningMetricVector.Mutable();
-        OpeningMetricVector.Mutable projectedMetrics = new OpeningMetricVector.Mutable();
         context.bind(attacker, defender, warType);
         context.setAttackerMaps(SimWar.MAP_CAP);
-        currentMetrics.set(0d, 0d);
         CombatKernel.resolveInto(context, attackType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
-        OpeningRolloutMetricProjector.project(baseline, context, attackType, currentMetrics, result, projectedMetrics);
-        if (projectedMetrics.immediateHarm() <= 0d && result.infraDestroyed() > 0d) {
+        double immediateHarm = projectedImmediateHarm(baseline, context, result);
+        double resourceSwing = AttackObjectiveComponentMapper.resourceSwingForObjective(attackType, result.loot());
+        if (immediateHarm <= 0d && result.infraDestroyed() > 0d) {
             double specialistResourceSwing = AttackObjectiveComponentMapper.resourceSwingForObjective(
                 attackType,
                     result.infraDestroyed()
             );
-            projectedMetrics.set(
-                    projectedMetrics.immediateHarm(),
-                projectedMetrics.resourceSwing() + specialistResourceSwing
-            );
+            resourceSwing += specialistResourceSwing;
         }
         double score = scoreShellHeuristic(
-                objective,
-                attacker.teamId(),
-            projectedMetrics,
+                immediateHarm,
+                resourceSwing,
                 warType,
                 attackType,
                 openingSettings
@@ -875,8 +860,8 @@ final class OpeningEvaluator {
                 (float) score,
                 preferredWarTypeId,
                 resolvedAttackTypeId,
-                (float) projectedMetrics.immediateHarm(),
-                (float) projectedMetrics.resourceSwing()
+                (float) immediateHarm,
+                (float) resourceSwing
         );
         return true;
     }
@@ -903,15 +888,14 @@ final class OpeningEvaluator {
     }
 
     static double scoreShellHeuristic(
-            StrategicObjective objective,
-            int attackerTeamId,
-            OpeningMetricVector metrics,
+            double immediateHarm,
+            double resourceSwing,
             WarType warType,
             AttackType openingAttackType,
             SideOpeningSettings openingSettings
     ) {
         return applyOpeningSettingsWeight(
-                baseScore(objective, metrics, attackerTeamId),
+                baseScore(immediateHarm, resourceSwing),
                 openingSettings,
                 warType,
                 openingAttackType
@@ -937,9 +921,26 @@ final class OpeningEvaluator {
         return weightedScore;
     }
 
-    static double baseScore(StrategicObjective objective, OpeningMetricVector metrics, int attackerTeamId) {
-        return positiveFinite(metrics.immediateHarm())
-                + (RESOURCE_SWING_SHELL_WEIGHT * positiveFinite(metrics.resourceSwing()));
+    static double baseScore(double immediateHarm, double resourceSwing) {
+        return positiveFinite(immediateHarm)
+                + (RESOURCE_SWING_SHELL_WEIGHT * positiveFinite(resourceSwing));
+    }
+
+    static double projectedImmediateHarm(
+            OpeningBaseline baseline,
+            CombatKernel.AttackContext context,
+            MutableAttackResult result
+    ) {
+        boolean attackerHadAirControl = context.attackerHasAirControl();
+        return OpeningMetricSummary.immediateHarm(
+                baseline.defenderSnapshot(),
+                result,
+                attackerHadAirControl,
+                attackerHadAirControl,
+                context.defenderHasGroundSuperiority(),
+                context.defenderHasAirControl(),
+                context.blockadeOwner() == CombatKernel.AttackContext.BLOCKADE_DEFENDER
+        );
     }
 
     private static double positiveFinite(double value) {
@@ -949,13 +950,12 @@ final class OpeningEvaluator {
     private static EvaluatedEdge evaluateAdmittedOpening(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            StrategicObjective objective,
             CandidateEdgeComponentPolicy componentPolicy,
             OpeningRolloutSearch rolloutEdgeEvaluator,
             EdgeEvaluation edgeEvaluation,
             int actionBudget
     ) {
-        rolloutEdgeEvaluator.evaluate(attacker, defender, objective, actionBudget, edgeEvaluation);
+        rolloutEdgeEvaluator.evaluate(attacker, defender, actionBudget, edgeEvaluation);
         int retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
         if (retainedComponentMask != 0) {
             OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);

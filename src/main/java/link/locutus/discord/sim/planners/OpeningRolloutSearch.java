@@ -2,8 +2,6 @@ package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.sim.OpeningMetricVector;
-import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.combat.AttackScratch;
 import link.locutus.discord.sim.combat.CombatKernel;
 import link.locutus.discord.sim.combat.MutableAttackResult;
@@ -15,9 +13,10 @@ final class OpeningRolloutSearch {
     private final AttackScratch scratch = new AttackScratch();
     private final MutableAttackResult result = new MutableAttackResult();
     private final MutableAttackResult bestResult = new MutableAttackResult();
-    private final OpeningMetricVector.Mutable currentMetrics = new OpeningMetricVector.Mutable();
-    private final OpeningMetricVector.Mutable bestMetrics = new OpeningMetricVector.Mutable();
-    private final OpeningMetricVector.Mutable projectedMetrics = new OpeningMetricVector.Mutable();
+    private double currentImmediateHarm;
+    private double currentResourceSwing;
+    private double bestImmediateHarm;
+    private double bestResourceSwing;
 
     OpeningRolloutSearch(int actionBudget) {
         this.maxActionBudget = Math.max(1, actionBudget);
@@ -30,14 +29,12 @@ final class OpeningRolloutSearch {
     void evaluate(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            StrategicObjective objective,
             int actionBudget,
             OpeningEvaluator.EdgeEvaluation out
     ) {
         evaluate(
             attacker,
             defender,
-            objective,
             null,
             OpeningMetricSummary.defenderControlPressure(defender),
             actionBudget,
@@ -48,7 +45,6 @@ final class OpeningRolloutSearch {
     void evaluate(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            StrategicObjective objective,
             SideOpeningSettings openingSettings,
             int actionBudget,
             OpeningEvaluator.EdgeEvaluation out
@@ -56,7 +52,6 @@ final class OpeningRolloutSearch {
         evaluate(
                 attacker,
                 defender,
-                objective,
                 openingSettings,
                 OpeningMetricSummary.defenderControlPressure(defender),
                 actionBudget,
@@ -67,7 +62,6 @@ final class OpeningRolloutSearch {
         void evaluate(
             DBNationSnapshot attacker,
             DBNationSnapshot defender,
-            StrategicObjective objective,
             SideOpeningSettings openingSettings,
             double targetPressure,
             int actionBudget,
@@ -78,7 +72,7 @@ final class OpeningRolloutSearch {
         int effectiveActionBudget = Math.max(1, Math.min(maxActionBudget, actionBudget));
 
         for (WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
-            evaluateWarType(attacker, defender, baseline, warType, objective, openingSettings, effectiveActionBudget, out);
+            evaluateWarType(attacker, defender, baseline, warType, openingSettings, effectiveActionBudget, out);
         }
     }
 
@@ -87,7 +81,6 @@ final class OpeningRolloutSearch {
             DBNationSnapshot defender,
             OpeningEvaluator.OpeningBaseline baseline,
             WarType warType,
-            StrategicObjective objective,
             SideOpeningSettings openingSettings,
             int actionBudget,
             OpeningEvaluator.EdgeEvaluation out
@@ -96,13 +89,15 @@ final class OpeningRolloutSearch {
 
         byte firstAttackTypeId = (byte) -1;
         byte fallbackAttackTypeId = (byte) -1;
-        currentMetrics.set(0d, 0d);
-        double currentScore = scoreObjective(objective, attacker.teamId(), currentMetrics, warType, null, openingSettings);
+        currentImmediateHarm = 0d;
+        currentResourceSwing = 0d;
+        double currentScore = scoreObjective(currentImmediateHarm, currentResourceSwing, warType, null, openingSettings);
 
         for (int action = 0; action < actionBudget; action++) {
             double bestNextScore = currentScore;
             AttackType bestType = null;
-            bestMetrics.copyFrom(currentMetrics);
+            bestImmediateHarm = currentImmediateHarm;
+            bestResourceSwing = currentResourceSwing;
 
             for (AttackType type : OpeningEvaluator.OPENING_ATTACK_TYPES) {
                 if (!OpeningEvaluator.isLegalOpeningAttack(context.attacker(), context.attackerMaps(), type)) {
@@ -112,19 +107,14 @@ final class OpeningRolloutSearch {
                     fallbackAttackTypeId = (byte) type.ordinal();
                 }
                 CombatKernel.resolveInto(context, type, ResolutionMode.DETERMINISTIC_EV, scratch, result);
-                OpeningRolloutMetricProjector.project(
-                        baseline,
-                        context,
-                    type,
-                        currentMetrics,
-                        result,
-                        projectedMetrics
-                );
+                double projectedImmediateHarm = currentImmediateHarm
+                        + OpeningEvaluator.projectedImmediateHarm(baseline, context, result);
+                double projectedResourceSwing = currentResourceSwing
+                        + AttackObjectiveComponentMapper.resourceSwingForObjective(type, result.loot());
                 AttackType openingAttackType = firstAttackTypeId < 0 ? type : AttackType.values[firstAttackTypeId];
                 double projectedScore = scoreObjective(
-                        objective,
-                        attacker.teamId(),
-                        projectedMetrics,
+                        projectedImmediateHarm,
+                        projectedResourceSwing,
                         warType,
                         openingAttackType,
                         openingSettings
@@ -132,7 +122,8 @@ final class OpeningRolloutSearch {
                 if (projectedScore > bestNextScore) {
                     bestNextScore = projectedScore;
                     bestType = type;
-                    bestMetrics.copyFrom(projectedMetrics);
+                    bestImmediateHarm = projectedImmediateHarm;
+                    bestResourceSwing = projectedResourceSwing;
                     bestResult.copyFrom(result);
                 }
             }
@@ -142,7 +133,8 @@ final class OpeningRolloutSearch {
             }
 
             context.applyExpectedResult(bestType, bestResult);
-            currentMetrics.copyFrom(bestMetrics);
+            currentImmediateHarm = bestImmediateHarm;
+            currentResourceSwing = bestResourceSwing;
             currentScore = bestNextScore;
             if (firstAttackTypeId < 0) {
                 firstAttackTypeId = (byte) bestType.ordinal();
@@ -160,9 +152,8 @@ final class OpeningRolloutSearch {
                 return; // no legal attacks at all — cannot declare
             }
             currentScore = scoreObjective(
-                    objective,
-                    attacker.teamId(),
-                    currentMetrics,
+                    currentImmediateHarm,
+                    currentResourceSwing,
                     warType,
                     AttackType.values[firstAttackTypeId],
                     openingSettings
@@ -175,23 +166,21 @@ final class OpeningRolloutSearch {
                 (float) currentScore,
                 (byte) warType.ordinal(),
                 firstAttackTypeId,
-                (float) currentMetrics.immediateHarm(),
-                (float) currentMetrics.resourceSwing()
+                (float) currentImmediateHarm,
+                (float) currentResourceSwing
         );
     }
 
     private double scoreObjective(
-            StrategicObjective objective,
-            int attackerTeamId,
-            OpeningMetricVector metrics,
+            double immediateHarm,
+            double resourceSwing,
             WarType warType,
             AttackType openingAttackType,
             SideOpeningSettings openingSettings
     ) {
         return OpeningEvaluator.scoreShellHeuristic(
-            objective,
-            attackerTeamId,
-            metrics,
+            immediateHarm,
+            resourceSwing,
             warType,
             openingAttackType,
             openingSettings
