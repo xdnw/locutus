@@ -69,7 +69,7 @@ final class CandidateEdgeTable {
      * Appends a new edge. Returns the edge index.
      */
     int add(int attackerIndex, int defenderIndex, float score, float counterRisk) {
-        return add(attackerIndex, defenderIndex, (byte) 0, (byte) 0, score, counterRisk, 0f, 0f, 0f);
+        return add(attackerIndex, defenderIndex, (byte) 0, (byte) 0, score, counterRisk, 0f);
     }
 
     int add(
@@ -87,8 +87,6 @@ final class CandidateEdgeTable {
             bestAttackTypeId,
             score,
             counterRisk,
-            0f,
-            0f,
             0f
         );
     }
@@ -100,9 +98,7 @@ final class CandidateEdgeTable {
             byte bestAttackTypeId,
             float score,
             float counterRisk,
-            float immediateHarm,
-            float selfExposure,
-            float resourceSwing
+            float immediateHarm
     ) {
         edges.ensureCapacity(edgeCount + 1);
         int i = edgeCount++;
@@ -115,9 +111,7 @@ final class CandidateEdgeTable {
                 bestAttackTypeId,
                 score,
                 counterRisk,
-                immediateHarm,
-                selfExposure,
-                resourceSwing
+                immediateHarm
         );
         return i;
     }
@@ -272,24 +266,8 @@ final class CandidateEdgeTable {
         return edges.retainsImmediateHarm();
     }
 
-    boolean retainsSelfExposure() {
-        return edges.retainsSelfExposure();
-    }
-
-    boolean retainsResourceSwing() {
-        return edges.retainsResourceSwing();
-    }
-
     float immediateHarm(int edge) {
         return edges.immediateHarmAt(edge);
-    }
-
-    float selfExposure(int edge) {
-        return edges.selfExposureAt(edge);
-    }
-
-    float resourceSwing(int edge) {
-        return edges.resourceSwingAt(edge);
     }
 
     private void invalidateLookupCaches() {

@@ -14,9 +14,8 @@ class BlitzObjectiveTest {
     @Test
     void objectiveComponentRetentionPoliciesStayExplicit() {
         assertTrue(BlitzObjective.NET_DAMAGE.objective().candidateEdgeComponentPolicy().retainImmediateHarm());
-        assertTrue(BlitzObjective.NET_DAMAGE.objective().candidateEdgeComponentPolicy().retainSelfExposure());
         assertTrue(BlitzObjective.DAMAGE.objective().candidateEdgeComponentPolicy().retainImmediateHarm());
-        assertTrue(BlitzObjective.MINIMUM_DAMAGE_RECEIVED.objective().candidateEdgeComponentPolicy().retainSelfExposure());
+        assertTrue(BlitzObjective.MINIMUM_DAMAGE_RECEIVED.objective().candidateEdgeComponentPolicy().retainImmediateHarm());
         assertTrue(BlitzObjective.CONTROL.objective().candidateEdgeComponentPolicy().retainsAny());
         assertTrue(BlitzObjective.BALANCED.objective().candidateEdgeComponentPolicy().retainsAny());
     }

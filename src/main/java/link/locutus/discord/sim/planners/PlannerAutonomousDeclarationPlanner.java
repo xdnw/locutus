@@ -314,8 +314,8 @@ final class PlannerAutonomousDeclarationPlanner {
             double score = scoringPolicy.score(new LaterDeclarationScoringPolicy.LaterDeclarationScoreContext(
                     openingScore,
                     rawEdges.retainsImmediateHarm() ? rawEdges.immediateHarm(edgeIndex) : openingScore,
-                    rawEdges.retainsSelfExposure() ? rawEdges.selfExposure(edgeIndex) : 0d,
-                    rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0d,
+                    0d,
+                    0d,
                     OpeningMetricSummary.defenderControlPressure(target),
                     counterStrength(declarer),
                     counterStrength(target),
@@ -333,20 +333,14 @@ final class PlannerAutonomousDeclarationPlanner {
                     rawEdges.bestAttackTypeId(edgeIndex),
                     (float) score,
                     rawEdges.counterRisk(edgeIndex),
-                    rawEdges.retainsImmediateHarm() ? rawEdges.immediateHarm(edgeIndex) : 0f,
-                    rawEdges.retainsSelfExposure() ? rawEdges.selfExposure(edgeIndex) : 0f,
-                    rawEdges.retainsResourceSwing() ? rawEdges.resourceSwing(edgeIndex) : 0f
+                    rawEdges.retainsImmediateHarm() ? rawEdges.immediateHarm(edgeIndex) : 0f
             );
         }
         return rescoredEdges;
     }
 
     private static CandidateEdgeComponentPolicy retainedComponentPolicy(CandidateEdgeTable edges) {
-        return new CandidateEdgeComponentPolicy(
-                edges.retainsImmediateHarm(),
-                edges.retainsSelfExposure(),
-                edges.retainsResourceSwing()
-        );
+        return new CandidateEdgeComponentPolicy(edges.retainsImmediateHarm());
     }
 
     record Plan(

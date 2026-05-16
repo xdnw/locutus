@@ -812,18 +812,11 @@ final class PlannerConflictExecutor {
         double immediateHarm = policy.retainImmediateHarm()
                 ? marginalStrategicDamage(defender, projectedDefender, attacker, projectedWar, false)
                 : 0.0;
-        double selfExposure = policy.retainSelfExposure()
-            ? marginalStrategicDamage(attacker, projectedAttacker, defender, projectedWar, true)
-                : 0.0;
-        double resourceSwing = policy.retainResourceSwing()
-                ? projectedAttacker.resource(ResourceType.MONEY) - attacker.resource(ResourceType.MONEY)
-                : 0.0;
-
         return new DeclaredWarEvaluation(
                 objectiveScore,
             immediateHarm,
-            selfExposure,
-            resourceSwing,
+            0.0,
+            0.0,
             0.0,
             0.0,
             0.0

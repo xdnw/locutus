@@ -686,8 +686,8 @@ public final class BlitzPlanEndpointBenchmark {
                 targetPressure,
                 positiveBaselineScore,
                 candidateEdges.retainsImmediateHarm() ? candidateEdges.immediateHarm(edgeIndex) : 0f,
-                candidateEdges.retainsSelfExposure() ? candidateEdges.selfExposure(edgeIndex) : 0f,
-                candidateEdges.retainsResourceSwing() ? candidateEdges.resourceSwing(edgeIndex) : 0f,
+                0f,
+                0f,
                 candidateEdges.counterRisk(edgeIndex),
                 assignmentContains(response, attackerNationId, defenderNationId),
                 outgoing ? "outgoing" : "incoming");

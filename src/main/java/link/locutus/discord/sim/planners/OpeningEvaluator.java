@@ -1334,11 +1334,11 @@ final class OpeningEvaluator {
         }
 
         float selfExposureAt(int index) {
-            return edges.retainsSelfExposure() ? edges.selfExposureAt(index) : 0f;
+            return 0f;
         }
 
         float resourceSwingAt(int index) {
-            return edges.retainsResourceSwing() ? edges.resourceSwingAt(index) : 0f;
+            return 0f;
         }
 
         float controlLeverageAt(int index) {
@@ -1379,9 +1379,7 @@ final class OpeningEvaluator {
                         bestAttackTypeId,
                         score,
                         counterRisk,
-                        immediateHarm,
-                        selfExposure,
-                        resourceSwing
+                        immediateHarm
                 );
                 siftUp(size);
                 size++;
@@ -1407,9 +1405,7 @@ final class OpeningEvaluator {
                     bestAttackTypeId,
                     score,
                     counterRisk,
-                    immediateHarm,
-                    selfExposure,
-                    resourceSwing
+                    immediateHarm
             );
             siftDown(0);
             sortedDirty = true;
@@ -1652,11 +1648,11 @@ final class OpeningEvaluator {
         }
 
         float selfExposureAt(int index) {
-            return edges.retainsSelfExposure() ? edges.selfExposureAt(index) : 0f;
+            return 0f;
         }
 
         float resourceSwingAt(int index) {
-            return edges.retainsResourceSwing() ? edges.resourceSwingAt(index) : 0f;
+            return 0f;
         }
 
         float controlLeverageAt(int index) {
@@ -1841,9 +1837,7 @@ final class OpeningEvaluator {
                     bestAttackTypeId,
                     score,
                     counterRisk,
-                    immediateHarm,
-                    selfExposure,
-                    resourceSwing
+                    immediateHarm
             );
         }
 

@@ -34,7 +34,7 @@ class OpeningEvaluatorCoverageTest {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final StrategicObjective PRESSURE_ONLY_OBJECTIVE = new PressureOnlyObjective();
     private static final CandidateEdgeComponentPolicy SPARSE_COMPONENT_POLICY =
-            new CandidateEdgeComponentPolicy(true, false, false);
+            new CandidateEdgeComponentPolicy(true);
     private static final StrategicObjective SPARSE_COMPONENT_OBJECTIVE =
             new SparseComponentObjective(SPARSE_COMPONENT_POLICY);
 
@@ -681,7 +681,7 @@ class OpeningEvaluatorCoverageTest {
                 attacker,
                 defender,
                 SPARSE_COMPONENT_OBJECTIVE,
-                new CandidateEdgeComponentPolicy(true, true, true)
+                CandidateEdgeComponentPolicy.harmOnly()
         );
         OpeningEvaluator.EvaluatedEdge direct = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -694,12 +694,6 @@ class OpeningEvaluatorCoverageTest {
         OpeningEvaluator.EvaluatedEdge reusable = candidateOpeningEvaluator.evaluate(attacker, defender);
 
         assertTrue(Float.isFinite(raw.score()), "Expected raw single-pair evaluation to stay admitted");
-        assertTrue(
-                Math.abs(raw.selfExposure()) > 1.0e-5f
-                        || Math.abs(raw.resourceSwing()) > 1.0e-5f,
-                "Test setup must produce at least one non-zero unretained component"
-        );
-
         assertEquals(raw.immediateHarm(), direct.immediateHarm(), 1.0e-5f);
         assertEquals(0f, direct.selfExposure(), 1.0e-5f);
         assertEquals(0f, direct.resourceSwing(), 1.0e-5f);
@@ -735,11 +729,7 @@ class OpeningEvaluatorCoverageTest {
         assertEquals(direct.preferredWarTypeId(), out.preferredWarTypeId(0));
         assertEquals(direct.firstAttackTypeId(), out.bestAttackTypeId(0));
         assertTrue(out.retainsImmediateHarm());
-        assertFalse(out.retainsSelfExposure());
-        assertFalse(out.retainsResourceSwing());
         assertEquals(direct.immediateHarm(), out.immediateHarm(0), 1.0e-5f);
-        assertThrows(IllegalStateException.class, () -> out.selfExposure(0));
-        assertThrows(IllegalStateException.class, () -> out.resourceSwing(0));
     }
 
     @Test

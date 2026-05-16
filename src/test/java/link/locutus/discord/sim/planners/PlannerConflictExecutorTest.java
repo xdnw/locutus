@@ -1370,9 +1370,9 @@ class PlannerConflictExecutorTest {
     }
 
         @Test
-        void damageObjectiveRetainsOnlyHarmAndExposureCandidateComponents() {
+        void damageObjectiveRetainsOnlyHarmCandidateComponents() {
                 CandidateEdgeComponentPolicy policy = new DamageObjective().candidateEdgeComponentPolicy();
-                assertEquals(CandidateEdgeComponentPolicy.harmExposureOnly(), policy);
+                assertEquals(CandidateEdgeComponentPolicy.harmOnly(), policy);
 
         DBNationSnapshot attacker = nation(301, 1)
                 .unit(MilitaryUnit.SOLDIER, 12_000)
@@ -1409,8 +1409,6 @@ class PlannerConflictExecutorTest {
 
         assertEquals(1, table.edgeCount());
         assertTrue(table.retainsImmediateHarm());
-        assertTrue(table.retainsSelfExposure());
-        assertFalse(table.retainsResourceSwing());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1422,7 +1420,6 @@ class PlannerConflictExecutorTest {
         assertEquals(expected.preferredWarTypeId(), table.preferredWarTypeId(0));
         assertEquals(expected.firstAttackTypeId(), table.bestAttackTypeId(0));
         assertEquals(expected.immediateHarm(), table.immediateHarm(0), 1e-5f);
-        assertEquals(expected.selfExposure(), table.selfExposure(0), 1e-5f);
     }
 
     @Test
@@ -1445,7 +1442,7 @@ class PlannerConflictExecutorTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
 
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true);
+        CandidateEdgeComponentPolicy allComponents = CandidateEdgeComponentPolicy.harmOnly();
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         PlannerExactValidatorScripts groundOnlyScripts = new PlannerExactValidatorScripts(
                 true,
@@ -1472,7 +1469,8 @@ class PlannerConflictExecutorTest {
         );
 
         assertTrue(Double.isFinite(evaluation.objectiveScore()));
-        assertTrue(evaluation.resourceSwing() > 0d);
+        assertEquals(0d, evaluation.selfExposure(), 1e-9);
+        assertEquals(0d, evaluation.resourceSwing(), 1e-9);
     }
 
     @Test
@@ -1502,7 +1500,7 @@ class PlannerConflictExecutorTest {
                 5_000_000d
         );
 
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true);
+        CandidateEdgeComponentPolicy allComponents = CandidateEdgeComponentPolicy.harmOnly();
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         ScenarioCompiler compiler = new ScenarioCompiler();
         CompiledScenario scenario = compiler.compile(
@@ -1526,8 +1524,6 @@ class PlannerConflictExecutorTest {
 
         assertEquals(1, table.edgeCount());
         assertTrue(table.retainsImmediateHarm());
-        assertTrue(table.retainsSelfExposure());
-        assertTrue(table.retainsResourceSwing());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1539,8 +1535,6 @@ class PlannerConflictExecutorTest {
         assertEquals(expected.preferredWarTypeId(), table.preferredWarTypeId(0));
         assertEquals(expected.firstAttackTypeId(), table.bestAttackTypeId(0));
         assertEquals(expected.immediateHarm(), table.immediateHarm(0), 1e-5f);
-        assertEquals(expected.selfExposure(), table.selfExposure(0), 1e-5f);
-        assertEquals(expected.resourceSwing(), table.resourceSwing(0), 1e-5f);
     }
 
     @Test
@@ -1570,7 +1564,7 @@ class PlannerConflictExecutorTest {
                 5_000_000d
         );
 
-        CandidateEdgeComponentPolicy sparsePolicy = new CandidateEdgeComponentPolicy(false, false, true);
+        CandidateEdgeComponentPolicy sparsePolicy = CandidateEdgeComponentPolicy.none();
         DamageObjective objective = new RetainedComponentDamageObjective(sparsePolicy);
         ScenarioCompiler compiler = new ScenarioCompiler();
         CompiledScenario scenario = compiler.compile(
@@ -1594,8 +1588,6 @@ class PlannerConflictExecutorTest {
 
         assertEquals(1, table.edgeCount());
         assertFalse(table.retainsImmediateHarm());
-        assertFalse(table.retainsSelfExposure());
-        assertTrue(table.retainsResourceSwing());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1606,30 +1598,25 @@ class PlannerConflictExecutorTest {
 
         assertEquals(expected.preferredWarTypeId(), table.preferredWarTypeId(0));
         assertEquals(expected.firstAttackTypeId(), table.bestAttackTypeId(0));
-        assertEquals(expected.resourceSwing(), table.resourceSwing(0), 1e-5f);
     }
 
     @Test
     void candidateEdgeComponentsRetainOnlyRequestedArrays() {
         CandidateEdgeComponents components = new CandidateEdgeComponents(
                 2,
-                new CandidateEdgeComponentPolicy(false, true, false)
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
-        assertFalse(components.retainsImmediateHarm());
-        assertTrue(components.retainsSelfExposure());
-        assertFalse(components.retainsResourceSwing());
+        assertTrue(components.retainsImmediateHarm());
 
-        components.set(0, 10f, 20f, 30f);
-        components.set(1, 11f, 21f, 31f);
+        components.set(0, 10f);
+        components.set(1, 11f);
 
-        assertEquals(20f, components.selfExposure(0), 1e-5f);
-        assertThrows(IllegalStateException.class, () -> components.immediateHarm(0));
-        assertThrows(IllegalStateException.class, () -> components.resourceSwing(0));
+        assertEquals(10f, components.immediateHarm(0), 1e-5f);
 
         components.swap(0, 1);
-        assertEquals(21f, components.selfExposure(0), 1e-5f);
-        assertEquals(20f, components.selfExposure(1), 1e-5f);
+        assertEquals(11f, components.immediateHarm(0), 1e-5f);
+        assertEquals(10f, components.immediateHarm(1), 1e-5f);
     }
 
     @Test
@@ -1652,7 +1639,7 @@ class PlannerConflictExecutorTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
 
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true);
+        CandidateEdgeComponentPolicy allComponents = CandidateEdgeComponentPolicy.harmOnly();
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         OpeningEvaluator.EvaluatedEdge evaluation = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1661,11 +1648,9 @@ class PlannerConflictExecutorTest {
                 allComponents
         );
 
-        assertEquals(
-                evaluation.immediateHarm() - evaluation.selfExposure(),
-                evaluation.score(),
-                1e-5f
-        );
+        assertTrue(Float.isFinite(evaluation.score()));
+        assertEquals(0f, evaluation.selfExposure(), 1e-5f);
+        assertEquals(0f, evaluation.resourceSwing(), 1e-5f);
         assertTrue(evaluation.controlLeverage() > 0f || evaluation.futureWarLeverage() > 0f);
     }
 
@@ -1688,14 +1673,14 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 1
         );
         OpeningEvaluator.EvaluatedEdge threeStep = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 3
         );
 
@@ -1726,13 +1711,13 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
         OpeningEvaluator.EvaluatedEdge threeStep = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 3
         );
 
@@ -1772,14 +1757,14 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 lowFloorObjective,
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
         OpeningEvaluator.EvaluatedEdge oneStep = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 lowFloorObjective,
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 1
         );
 
@@ -1807,7 +1792,7 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
         assertFalse(Float.isFinite(rejected.score()));
@@ -1834,7 +1819,7 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
         assertEquals(WarType.ATT.ordinal(), evaluation.preferredWarTypeId());
@@ -1897,7 +1882,7 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new AdmissionFloorDamageObjective(new CandidateEdgeAdmissionPolicy(0.0d)),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
                 if (expected.firstAttackTypeId() < 0) {
                         assertEquals(0, specialistTable.edgeCount());

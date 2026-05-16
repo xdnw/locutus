@@ -7,7 +7,7 @@ final class BalancedBlitzObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, true, true);
+        return CandidateEdgeComponentPolicy.harmOnly();
     }
 
     @Override

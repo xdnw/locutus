@@ -16,7 +16,7 @@ public class DamageObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return CandidateEdgeComponentPolicy.harmExposureOnly();
+        return CandidateEdgeComponentPolicy.harmOnly();
     }
 
     @Override
