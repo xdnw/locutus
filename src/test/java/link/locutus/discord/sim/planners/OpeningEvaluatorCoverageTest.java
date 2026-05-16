@@ -282,42 +282,6 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void controlObjectiveRewardsHigherProbeAttackerOnSameHighThreatDefender() {
-        DBNationSnapshot strongAttacker = buildNation(11, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220);
-        DBNationSnapshot weakAttacker = buildNation(12, ATTACKER_TEAM, 1_250.0, 12, 4_900, 800, 900, 150);
-        DBNationSnapshot highThreatDefender = buildNation(111, DEFENDER_TEAM, 1_850.0, 12, 6_000, 950, 1_050, 210);
-
-        OpeningEvaluator.ProbeResult strongProbe = new OpeningEvaluator.ProbeResult();
-        OpeningEvaluator.ProbeResult weakProbe = new OpeningEvaluator.ProbeResult();
-        OpeningEvaluator.viabilityProbe(strongAttacker, highThreatDefender, strongProbe);
-        OpeningEvaluator.viabilityProbe(weakAttacker, highThreatDefender, weakProbe);
-
-        assertTrue(strongProbe.probe() >= 0.15f, "Expected strong attacker to remain admitted");
-        assertTrue(weakProbe.probe() >= 0.15f, "Expected weak attacker to remain admitted for comparison");
-        assertTrue(strongProbe.probe() > weakProbe.probe(), "Test setup must create a higher-probe strong opener");
-
-        OpeningEvaluator.EvaluatedEdge strongEdge = OpeningEvaluator.evaluateOpening(
-                strongAttacker,
-                highThreatDefender,
-                BlitzObjective.CONTROL.objective(),
-                CandidateEdgeComponentPolicy.none()
-        );
-        OpeningEvaluator.EvaluatedEdge weakEdge = OpeningEvaluator.evaluateOpening(
-                weakAttacker,
-                highThreatDefender,
-                BlitzObjective.CONTROL.objective(),
-                CandidateEdgeComponentPolicy.none()
-        );
-
-        assertTrue(Float.isFinite(strongEdge.score()), "Expected strong attacker edge to remain admitted");
-        assertTrue(Float.isFinite(weakEdge.score()), "Expected weak attacker edge to remain admitted");
-        assertTrue(
-                strongEdge.score() > weakEdge.score(),
-                "Control scoring should prefer the stronger higher-probe opener on the same high-threat defender"
-        );
-    }
-
-    @Test
     void spilloverCanAddHighPriorityDefenderWhileCoverageRemainsBelowTarget() {
                 StrategicObjective objective = sourceDiversityControlObjective();
         DBNationSnapshot strongAttacker = buildNation(13, ATTACKER_TEAM, 2_050.0, 27, 450_000, 36_000, 2_900, 420);
@@ -838,7 +802,7 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void controlOpeningRetainsParityRolloutButRejectsPressureOnlyFallback() {
+    void openingAdmissionRejectsPressureOnlyFallbacks() {
         // Outmatched attacker: probe < 0.15, should not get a pressure-only fallback edge.
         DBNationSnapshot outmatchedAttacker = buildNation(52, ATTACKER_TEAM, 820.0, 18,
                 37_500, 3_000, 240, 37);
@@ -881,20 +845,15 @@ class OpeningEvaluatorCoverageTest {
         );
 
         float fallbackScore = Float.NaN;
-        float primaryScore = Float.NaN;
         for (int edge = 0; edge < out.edgeCount(); edge++) {
             int attackerNationId = scenario.attackerNationId(out.attackerIndex(edge));
             if (attackerNationId == outmatchedAttacker.nationId()) {
                 fallbackScore = out.scalarScore(edge);
-            } else if (attackerNationId == parityAttacker.nationId()) {
-                primaryScore = out.scalarScore(edge);
             }
         }
 
         assertFalse(Float.isFinite(fallbackScore),
                 "Outmatched attacker should not receive a pressure-only CONTROL fallback edge");
-        assertTrue(Float.isFinite(primaryScore),
-                "Parity attacker should receive a full-rollout CONTROL edge");
     }
 
     @Test
@@ -1146,8 +1105,7 @@ class OpeningEvaluatorCoverageTest {
                                 CandidateEdgeAdmissionPolicy base = delegate.candidateEdgeAdmissionPolicy();
                                 return new CandidateEdgeAdmissionPolicy(
                                                 minimumViabilityProbe,
-                                                base.allowLegalSpecialistFallback(),
-                                                base.admitPositiveOpeningBaseline()
+                                                base.allowLegalSpecialistFallback()
                                 );
                         }
 

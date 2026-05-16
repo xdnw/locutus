@@ -39,7 +39,7 @@ class PlannerAutonomousDeclarationPlannerTest {
         SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
                 Arrays.copyOf(permissivePolicy.opening().warTypeWeights(), permissivePolicy.opening().warTypeWeights().length),
                 Arrays.copyOf(permissivePolicy.opening().attackTypeWeights(), permissivePolicy.opening().attackTypeWeights().length),
-                new CandidateEdgeAdmissionPolicy(1.0d, false, false)
+                new CandidateEdgeAdmissionPolicy(1.0d, false)
         );
         SidePolicy restrictivePolicy = new SidePolicy(
                 "restrictive",

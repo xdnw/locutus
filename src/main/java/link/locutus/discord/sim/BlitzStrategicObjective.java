@@ -15,8 +15,7 @@ final class BlitzStrategicObjective implements StrategicObjective {
     public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
         return new CandidateEdgeAdmissionPolicy(
                 CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
-                true,
-                false
+                true
         );
     }
 

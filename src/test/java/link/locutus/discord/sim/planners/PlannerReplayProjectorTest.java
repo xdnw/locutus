@@ -140,7 +140,7 @@ class PlannerReplayProjectorTest {
         SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
                 Arrays.copyOf(basePolicy.opening().warTypeWeights(), basePolicy.opening().warTypeWeights().length),
                 Arrays.copyOf(basePolicy.opening().attackTypeWeights(), basePolicy.opening().attackTypeWeights().length),
-                new CandidateEdgeAdmissionPolicy(1.0d, false, false)
+                new CandidateEdgeAdmissionPolicy(1.0d, false)
         );
         SidePolicy restrictivePolicy = new SidePolicy(
                 "cacheDeclarerRestrictive",
@@ -357,7 +357,7 @@ class PlannerReplayProjectorTest {
         SideOpeningSettings restrictiveOpening = new SideOpeningSettings(
                 Arrays.copyOf(permissivePolicy.opening().warTypeWeights(), permissivePolicy.opening().warTypeWeights().length),
                 Arrays.copyOf(permissivePolicy.opening().attackTypeWeights(), permissivePolicy.opening().attackTypeWeights().length),
-                new CandidateEdgeAdmissionPolicy(1.0d, false, false)
+                new CandidateEdgeAdmissionPolicy(1.0d, false)
         );
         SidePolicy restrictivePolicy = new SidePolicy(
                 "restrictiveLaterDeclarer",

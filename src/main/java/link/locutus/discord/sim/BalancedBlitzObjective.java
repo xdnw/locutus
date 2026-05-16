@@ -12,7 +12,7 @@ final class BalancedBlitzObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
-        return CandidateEdgeAdmissionPolicy.positiveOpeningBaseline();
+        return CandidateEdgeAdmissionPolicy.defaultPolicy();
     }
 
     @Override

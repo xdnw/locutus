@@ -242,7 +242,6 @@ public final class ProductionPolicyAbHarness {
         private final double[] attackTypeWeights;
         private final Double minimumViabilityProbe;
         private final Boolean allowLegalSpecialistFallback;
-        private final Boolean admitPositiveOpeningBaseline;
 
         private PolicySpec(
                 String name,
@@ -253,8 +252,7 @@ public final class ProductionPolicyAbHarness {
                 double[] warTypeWeights,
                 double[] attackTypeWeights,
                 Double minimumViabilityProbe,
-                Boolean allowLegalSpecialistFallback,
-                Boolean admitPositiveOpeningBaseline
+                Boolean allowLegalSpecialistFallback
         ) {
             this.name = name;
             this.mode = mode;
@@ -265,7 +263,6 @@ public final class ProductionPolicyAbHarness {
             this.attackTypeWeights = attackTypeWeights;
             this.minimumViabilityProbe = minimumViabilityProbe;
             this.allowLegalSpecialistFallback = allowLegalSpecialistFallback;
-            this.admitPositiveOpeningBaseline = admitPositiveOpeningBaseline;
         }
 
         static PolicySpec parse(String value, String fallbackName) {
@@ -301,7 +298,6 @@ public final class ProductionPolicyAbHarness {
             double[] attackTypeWeights = neutralAttackTypeWeights();
             Double minimumViabilityProbe = null;
             Boolean allowLegalSpecialistFallback = null;
-            Boolean admitPositiveOpeningBaseline = null;
             if (flags != null && !flags.isBlank()) {
                 for (String flag : flags.split(";")) {
                     String[] kv = flag.split("=", 2);
@@ -320,8 +316,6 @@ public final class ProductionPolicyAbHarness {
                         minimumViabilityProbe = Double.parseDouble(kv[1]);
                     } else if (kv[0].equalsIgnoreCase("specialists")) {
                         allowLegalSpecialistFallback = Boolean.parseBoolean(kv[1]);
-                    } else if (kv[0].equalsIgnoreCase("positiveBaseline")) {
-                        admitPositiveOpeningBaseline = Boolean.parseBoolean(kv[1]);
                     } else {
                         throw new IllegalArgumentException("Unknown policy flag: " + flag);
                     }
@@ -337,8 +331,7 @@ public final class ProductionPolicyAbHarness {
                     warTypeWeights,
                     attackTypeWeights,
                     minimumViabilityProbe,
-                    allowLegalSpecialistFallback,
-                    admitPositiveOpeningBaseline
+                    allowLegalSpecialistFallback
             );
         }
 
@@ -396,8 +389,7 @@ public final class ProductionPolicyAbHarness {
             }
             return new CandidateEdgeAdmissionPolicy(
                     minimumViabilityProbe == null ? base.minimumViabilityProbe() : minimumViabilityProbe,
-                    allowLegalSpecialistFallback == null ? base.allowLegalSpecialistFallback() : allowLegalSpecialistFallback,
-                    admitPositiveOpeningBaseline == null ? base.admitPositiveOpeningBaseline() : admitPositiveOpeningBaseline
+                    allowLegalSpecialistFallback == null ? base.allowLegalSpecialistFallback() : allowLegalSpecialistFallback
             );
         }
 

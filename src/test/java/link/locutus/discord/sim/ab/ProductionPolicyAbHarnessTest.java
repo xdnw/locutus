@@ -32,7 +32,7 @@ class ProductionPolicyAbHarnessTest {
     @Test
     void policySpecBuildsProductionPoliciesWithoutLegacyFactories() {
         ProductionPolicyAbHarness.PolicySpec spec = ProductionPolicyAbHarness.PolicySpec.parse(
-                "A:projection:CONTROL:audit=3;laterCap=4;war=RAID:1.5,ORD:0.7;attack=MISSILE:2.0,NUKE:2.5;minProbe=0.05;specialists=true;positiveBaseline=false",
+                "A:projection:CONTROL:audit=3;laterCap=4;war=RAID:1.5,ORD:0.7;attack=MISSILE:2.0,NUKE:2.5;minProbe=0.05;specialists=true",
                 "A"
         );
 
@@ -50,6 +50,5 @@ class ProductionPolicyAbHarnessTest {
         assertEquals(2.5d, acting.opening().attackTypeWeight(AttackType.NUKE), 1e-9);
         assertEquals(0.05d, acting.opening().minimumViabilityProbe(), 1e-9);
         assertTrue(acting.opening().admissionPolicy().allowLegalSpecialistFallback());
-        assertFalse(acting.opening().admissionPolicy().admitPositiveOpeningBaseline());
     }
 }

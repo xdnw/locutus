@@ -158,22 +158,6 @@ final class OpeningEvaluator {
         OpeningCandidateAdmission candidateAdmission = new OpeningCandidateAdmission(resolveAdmissionPolicy(objective));
         int retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
         if (!candidateAdmission.admit(attacker, defender)) {
-            if (candidateAdmission.admitPositiveOpeningBaseline()
-                    && evaluatePositiveBaselineOpening(attacker, defender, objective, null, evaluation)) {
-                if (retainedComponentMask != 0) {
-                    OpeningEdgeEvaluationWriter.retainComponents(evaluation, retainedComponentMask);
-                }
-                return new EvaluatedEdge(
-                        evaluation.score(),
-                        evaluation.preferredWarTypeId(),
-                        evaluation.firstAttackTypeId(),
-                        evaluation.immediateHarm(),
-                        evaluation.selfExposure(),
-                        evaluation.resourceSwing(),
-                        evaluation.controlLeverage(),
-                    evaluation.futureWarLeverage()
-                );
-            }
             return REJECTED_EDGE;
         }
         if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
@@ -511,13 +495,9 @@ final class OpeningEvaluator {
         private final int candidatesPerAttacker;
         private final int defenderCoverageTarget;
         private final int[] defenderSourceDiversityCounts;
-        private final OpeningMetricVector.Mutable positiveBaselineMetrics = new OpeningMetricVector.Mutable();
-        private byte attackerFirstLegalOpeningAttackId;
-
         private void beginAttacker(int attackerIndex) {
             this.attackerIndex = attackerIndex;
             this.attacker = scenario.attacker(attackerIndex);
-            this.attackerFirstLegalOpeningAttackId = firstLegalOpeningAttack(attacker);
             this.topK.clear();
             this.coverageSpillovers.clear();
             this.topK.setActiveLimit(retentionCapacity(attackerCaps[attackerIndex], candidatesPerAttacker));
@@ -537,23 +517,6 @@ final class OpeningEvaluator {
 
             DBNationSnapshot defender = scenario.defender(defenderIndex);
             if (!candidateAdmission.admit(attacker, defender)) {
-                if (!candidateAdmission.admitPositiveOpeningBaseline()
-                        || !evaluatePositiveBaselineOpening(
-                                attacker,
-                                defender,
-                                objective,
-                                openingSettings,
-                                defenderCoveragePriorities[defenderIndex],
-                                attackerFirstLegalOpeningAttackId,
-                                positiveBaselineMetrics,
-                                edgeEvaluation
-                        )) {
-                    return;
-                }
-                if (retainEdgeComponents) {
-                    OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
-                }
-                retainEvaluatedEdge(defenderIndex, edgeEvaluation);
                 return;
             }
             if (isSpecialistAttackId(candidateAdmission.bestAttackTypeId())) {
@@ -590,22 +553,7 @@ final class OpeningEvaluator {
             finalizeEdgeSelection(edgeEvaluation, candidateAdmission.preferredWarTypeId(), candidateAdmission.bestAttackTypeId());
             float score = edgeEvaluation.score();
             if (!Float.isFinite(score) || score <= 0f) {
-                if (!candidateAdmission.admitPositiveOpeningBaseline()
-                        || !evaluatePositiveBaselineOpening(
-                                attacker,
-                                defender,
-                                objective,
-                                openingSettings,
-                                defenderCoveragePriorities[defenderIndex],
-                                attackerFirstLegalOpeningAttackId,
-                                positiveBaselineMetrics,
-                                edgeEvaluation
-                        )) {
-                    return;
-                }
-                if (retainEdgeComponents) {
-                    OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
-                }
+                return;
             }
             retainEvaluatedEdge(defenderIndex, edgeEvaluation);
         }
@@ -816,75 +764,6 @@ final class OpeningEvaluator {
         float tmp = values[lhs];
         values[lhs] = values[rhs];
         values[rhs] = tmp;
-    }
-
-    private static boolean evaluatePositiveBaselineOpening(
-            DBNationSnapshot attacker,
-            DBNationSnapshot defender,
-            StrategicObjective objective,
-            SideOpeningSettings openingSettings,
-            EdgeEvaluation out
-    ) {
-        return evaluatePositiveBaselineOpening(
-                attacker,
-                defender,
-                objective,
-                openingSettings,
-                OpeningMetricSummary.defenderControlPressure(defender),
-                firstLegalOpeningAttack(attacker),
-                new OpeningMetricVector.Mutable(),
-                out
-        );
-    }
-
-    private static boolean evaluatePositiveBaselineOpening(
-            DBNationSnapshot attacker,
-            DBNationSnapshot defender,
-            StrategicObjective objective,
-            SideOpeningSettings openingSettings,
-            double targetPressure,
-            byte firstAttackTypeId,
-            OpeningMetricVector.Mutable metrics,
-            EdgeEvaluation out
-    ) {
-        out.clear();
-        if (attacker.vmTurns() > 0
-            || defender.vmTurns() > 0
-            || defender.beigeTurns() > 0
-            || shouldPreserveAttackerBeigeRebuild(attacker, defender)) {
-            return false;
-        }
-        if (firstAttackTypeId < 0) {
-            return false;
-        }
-        float score = (float) positiveBaselineOpeningScore(targetPressure);
-        if (openingSettings != null) {
-            score *= (float) (openingSettings.warTypeWeight(WarType.ORD)
-                    * openingSettings.attackTypeWeight(AttackType.values[firstAttackTypeId]));
-        }
-        if (!Float.isFinite(score) || score <= 0f) {
-            return false;
-        }
-        out.set(score, (byte) WarType.ORD.ordinal(), firstAttackTypeId, 0f, 0f, 0f, 0f, 0f);
-        return true;
-    }
-
-    private static double positiveBaselineOpeningScore(double targetPressure) {
-        if (!Double.isFinite(targetPressure) || targetPressure <= 0d) {
-            return 0d;
-        }
-        return 0.25d * targetPressure;
-    }
-
-    private static byte firstLegalOpeningAttack(DBNationSnapshot attacker) {
-        MutableNationState attackerState = new MutableNationState();
-        attackerState.bindReadOnly(attacker);
-        for (AttackType type : OPENING_ATTACK_TYPES) {
-            if (isLegalOpeningAttack(attackerState, SimWar.INITIAL_MAPS, type)) {
-                return (byte) type.ordinal();
-            }
-        }
-        return (byte) -1;
     }
 
     private static boolean shouldPreserveAttackerBeigeRebuild(DBNationSnapshot attacker, DBNationSnapshot defender) {

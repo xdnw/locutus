@@ -674,9 +674,8 @@ public final class BlitzPlanEndpointBenchmark {
         int attackerNationId = scenario.attackerNationId(attackerIndex);
         int defenderNationId = scenario.defenderNationId(defenderIndex);
         double targetPressure = OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
-        double positiveBaselineScore = targetPressure > 0d ? 0.25d * targetPressure : 0d;
         System.out.printf(Locale.ROOT,
-                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,positiveBaselineScore=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
+                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
                 rank,
                 attackerNationId,
                 csvSafe(participantName(response, attackerNationId)),
@@ -684,7 +683,6 @@ public final class BlitzPlanEndpointBenchmark {
                 csvSafe(participantName(response, defenderNationId)),
                 candidateEdges.scalarScore(edgeIndex),
                 targetPressure,
-                positiveBaselineScore,
                 candidateEdges.retainsImmediateHarm() ? candidateEdges.immediateHarm(edgeIndex) : 0f,
                 0f,
                 0f,
