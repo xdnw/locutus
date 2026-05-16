@@ -9,7 +9,6 @@ import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimWorld;
 import link.locutus.discord.sim.StrategicAssetValue;
-import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicValueView;
 import link.locutus.discord.sim.combat.AttackScratch;
@@ -1148,33 +1147,6 @@ class OpeningEvaluatorCoverageTest {
                         }
 
                         @Override
-                        public double scoreOpening(
-                                        double immediateHarm,
-                                        double selfExposure,
-                                        double resourceSwing,
-                                        double controlLeverage,
-                                        double futureWarLeverage,
-                                        double targetPressure,
-                                        int teamId
-                        ) {
-                                return delegate.scoreOpening(
-                                                immediateHarm,
-                                                selfExposure,
-                                                resourceSwing,
-                                                controlLeverage,
-                                                futureWarLeverage,
-                                                targetPressure,
-                                                teamId
-                                ) - (targetPressurePenalty * targetPressure);
-                        }
-
-                                        @Override
-                                        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-                                                return delegate.scoreOpening(metrics, teamId)
-                                                                - (targetPressurePenalty * metrics.targetPressure());
-                                        }
-
-                        @Override
                         public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
                                 return delegate.candidateEdgeComponentPolicy();
                         }
@@ -1213,19 +1185,6 @@ class OpeningEvaluatorCoverageTest {
         }
 
         @Override
-                public double scoreOpening(
-                                double immediateHarm,
-                                double selfExposure,
-                                double resourceSwing,
-                                double controlLeverage,
-                                double futureWarLeverage,
-                                double targetPressure,
-                                int teamId
-                ) {
-                        return targetPressure + (0.0001d * immediateHarm);
-        }
-
-        @Override
         public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
             return CandidateEdgeAdmissionPolicy.lowProbeSpecialists();
         }
@@ -1246,22 +1205,6 @@ class OpeningEvaluatorCoverageTest {
         @Override
         public double scoreTerminal(StrategicValueView view, int teamId) {
             return 0.0;
-        }
-
-        @Override
-        public double scoreOpening(
-                double immediateHarm,
-                double selfExposure,
-                double resourceSwing,
-                double controlLeverage,
-                double futureWarLeverage,
-                double targetPressure,
-                int teamId
-        ) {
-            return immediateHarm
-                    + (2.0d * controlLeverage)
-                    + (0.01d * futureWarLeverage)
-                    - (0.05d * selfExposure);
         }
 
         @Override

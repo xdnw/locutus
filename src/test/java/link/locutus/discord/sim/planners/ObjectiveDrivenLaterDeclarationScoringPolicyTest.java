@@ -65,19 +65,6 @@ class ObjectiveDrivenLaterDeclarationScoringPolicyTest {
         }
 
         @Override
-        public double scoreOpening(
-                double immediateHarm,
-                double selfExposure,
-                double resourceSwing,
-                double controlLeverage,
-                double futureWarLeverage,
-                double targetPressure,
-                int teamId
-        ) {
-            throw new AssertionError("Objective-driven later declarations must not use opening metrics");
-        }
-
-        @Override
         public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
             return CandidateEdgeComponentPolicy.none();
         }

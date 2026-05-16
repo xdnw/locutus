@@ -10,9 +10,7 @@ import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.DamageObjective;
-import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.TeamProjectionView;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
@@ -1410,7 +1408,6 @@ class PlannerConflictExecutorTest {
         );
 
         assertEquals(1, table.edgeCount());
-        assertEquals(WarType.ATT.ordinal(), table.preferredWarTypeId(0));
         assertTrue(table.retainsImmediateHarm());
         assertTrue(table.retainsSelfExposure());
         assertFalse(table.retainsResourceSwing());
@@ -1655,8 +1652,8 @@ class PlannerConflictExecutorTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
 
-        DamageObjective objective = new LeverageWeightedDamageObjective();
         CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true);
+        DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         OpeningEvaluator.EvaluatedEdge evaluation = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
@@ -1665,19 +1662,7 @@ class PlannerConflictExecutorTest {
         );
 
         assertEquals(
-                objective.scoreOpening(
-                        new OpeningMetricVector(
-                                evaluation.immediateHarm(),
-                                evaluation.selfExposure(),
-                                evaluation.resourceSwing(),
-                                evaluation.controlLeverage(),
-                                0f,
-                                evaluation.futureWarLeverage(),
-                                0f,
-                                0f
-                        ),
-                        attacker.teamId()
-                ),
+                evaluation.immediateHarm() - evaluation.selfExposure(),
                 evaluation.score(),
                 1e-5f
         );
@@ -2261,22 +2246,6 @@ class PlannerConflictExecutorTest {
                 @Override
                 public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
                         return policy;
-                }
-        }
-
-        private static final class LeverageWeightedDamageObjective extends DamageObjective {
-                @Override
-                public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-                        return new CandidateEdgeComponentPolicy(true, true, true);
-                }
-
-                @Override
-                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-                        return metrics.immediateHarm()
-                                - metrics.selfExposure()
-                                + (4d * metrics.controlLeverage())
-                                + (3d * metrics.futureWarLeverage())
-                                + (0.000001d * metrics.resourceSwing());
                 }
         }
 

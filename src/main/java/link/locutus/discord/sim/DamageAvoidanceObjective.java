@@ -11,19 +11,6 @@ final class DamageAvoidanceObjective implements StrategicObjective {
     }
 
     @Override
-    public double scoreOpening(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double futureWarLeverage,
-            double targetPressure,
-            int teamId
-    ) {
-        return (0.35d * immediateHarm) - selfExposure;
-    }
-
-    @Override
     public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         return totals.ownValue()

@@ -11,7 +11,6 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicAssetValue;
-import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 
 import java.util.Collection;
@@ -890,65 +889,6 @@ final class PlannerConflictExecutor {
         );
     }
 
-    private static double controlLeverage(PlannerProjectedWar war) {
-        if (war == null) {
-            return 0.0;
-        }
-        return OpeningMetricSummary.controlLeverage(
-                war.groundSuperiorityOwner() == PlannerLocalConflict.FlagOwner.ATTACKER,
-                war.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.ATTACKER,
-                war.blockadeOwner() == PlannerLocalConflict.FlagOwner.ATTACKER
-        );
-    }
-
-    private static double tacticalMomentumScore(PlannerProjectedWar projectedWar) {
-        int defenderResistance = projectedWar == null ? 0 : projectedWar.defenderResistance();
-        return OpeningMetricSummary.tacticalMomentumScore(defenderResistance);
-    }
-
-    private static double actionSpaceQuality(
-            DBNationSnapshot initialAttacker,
-            DBNationSnapshot projectedAttacker,
-            DBNationSnapshot initialDefender,
-            DBNationSnapshot projectedDefender,
-            PlannerProjectedWar projectedWar
-    ) {
-        boolean attackerHasAirControl = projectedWar != null
-                && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.ATTACKER;
-        boolean defenderHasAirControl = projectedWar != null
-                && projectedWar.airSuperiorityOwner() == PlannerLocalConflict.FlagOwner.DEFENDER;
-        return OpeningMetricSummary.actionSpaceQuality(
-                OpeningMetricSummary.groundStrength(
-                        initialAttacker.unit(MilitaryUnit.SOLDIER),
-                        initialAttacker.unit(MilitaryUnit.TANK),
-                        defenderHasAirControl
-                ),
-                OpeningMetricSummary.groundStrength(
-                        projectedAttacker.unit(MilitaryUnit.SOLDIER),
-                        projectedAttacker.unit(MilitaryUnit.TANK),
-                        defenderHasAirControl
-                ),
-                OpeningMetricSummary.groundStrength(
-                        initialDefender.unit(MilitaryUnit.SOLDIER),
-                        initialDefender.unit(MilitaryUnit.TANK),
-                        attackerHasAirControl
-                ),
-                OpeningMetricSummary.groundStrength(
-                        projectedDefender.unit(MilitaryUnit.SOLDIER),
-                        projectedDefender.unit(MilitaryUnit.TANK),
-                        attackerHasAirControl
-                ),
-                initialAttacker.unit(MilitaryUnit.AIRCRAFT),
-                projectedAttacker.unit(MilitaryUnit.AIRCRAFT),
-                initialDefender.unit(MilitaryUnit.AIRCRAFT),
-                projectedDefender.unit(MilitaryUnit.AIRCRAFT),
-                initialAttacker.unit(MilitaryUnit.SHIP),
-                projectedAttacker.unit(MilitaryUnit.SHIP),
-                initialDefender.unit(MilitaryUnit.SHIP),
-                projectedDefender.unit(MilitaryUnit.SHIP)
-        );
-    }
-
     record DeclaredWarEvaluation(
             double objectiveScore,
             double immediateHarm,
@@ -957,7 +897,7 @@ final class PlannerConflictExecutor {
             double controlLeverage,
             double tacticalMomentum,
             double actionSpaceQuality
-    ) implements StrategicEvaluationComponents {
+    ) {
         static DeclaredWarEvaluation scoreOnly(double objectiveScore) {
             return new DeclaredWarEvaluation(objectiveScore, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         }

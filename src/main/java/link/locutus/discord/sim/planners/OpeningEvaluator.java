@@ -1145,7 +1145,7 @@ final class OpeningEvaluator {
         if (objective == BlitzObjective.BALANCED.objective()) {
             return balancedScore(metrics);
         }
-        return objective.scoreOpening(metrics, attackerTeamId);
+        return metrics.immediateHarm() - metrics.selfExposure();
     }
 
     private static double balancedScore(OpeningMetricVector metrics) {

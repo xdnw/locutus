@@ -10,31 +10,6 @@ public interface StrategicObjective extends Objective {
         return scoreTerminal(view, teamId);
     }
 
-    /**
-     * Scores a bounded opening rollout directly from its retained planner metrics.
-     */
-    double scoreOpening(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double futureWarLeverage,
-            double targetPressure,
-            int teamId
-    );
-
-    default double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return scoreOpening(
-                metrics.immediateHarm(),
-                metrics.selfExposure(),
-                metrics.resourceSwing(),
-                metrics.controlLeverage(),
-                metrics.futureWarLeverage(),
-                metrics.targetPressure(),
-                teamId
-        );
-    }
-
     default CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
         return CandidateEdgeComponentPolicy.none();
     }

@@ -1,12 +1,8 @@
 package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
-import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
-import link.locutus.discord.sim.SimWorld;
-import link.locutus.discord.sim.StrategicObjective;
-import link.locutus.discord.sim.StrategicValueView;
-import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +12,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     @Test
     void choosesLowerExposureWhenObjectivePenalizesSelfDamage() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                new LinearOpeningObjective(0.10d, 1.00d, 0d, 0d),
+                BlitzObjective.NET_DAMAGE.objective(),
                 null
         );
 
@@ -25,7 +21,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 6,
                 attackType -> attackType == AttackType.GROUND
                         ? candidate(10d, 0d, 0d, SuperiorityFlagDelta.NONE)
-                        : candidate(30d, 5d, 0d, SuperiorityFlagDelta.NONE)
+                        : candidate(30d, 25d, 0d, SuperiorityFlagDelta.NONE)
         ));
 
         assertEquals(AttackType.GROUND, choice);
@@ -34,7 +30,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     @Test
     void controlObjectiveCanPreferControlTransitionOverRawDamage() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                new LinearOpeningObjective(0.05d, 0d, 4.00d, 0d),
+                BlitzObjective.CONTROL.objective(),
                 null
         );
 
@@ -42,7 +38,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
                 6,
                 attackType -> attackType == AttackType.GROUND
-                        ? candidate(2d, 0d, -10d, SuperiorityFlagDelta.of(1, 0, 0, false, false, false))
+                        ? candidate(2d, 0d, -10d, 0d, 20d, SuperiorityFlagDelta.of(1, 0, 0, false, false, false))
                         : candidate(40d, 0d, -12d, SuperiorityFlagDelta.NONE)
         ));
 
@@ -59,7 +55,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 CandidateEdgeAdmissionPolicy.defaultPolicy()
         );
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                new LinearOpeningObjective(1.00d, 0d, 0d, 0d),
+                BlitzObjective.NET_DAMAGE.objective(),
                 openingSettings
         );
 
@@ -77,7 +73,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     @Test
     void futureWarLeverageComesFromActionSpaceQualityNotResistanceDrain() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                new LinearOpeningObjective(0d, 0d, 0d, 5.00d),
+                BlitzObjective.CONTROL.objective(),
                 null
         );
 
@@ -95,7 +91,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     @Test
     void resourceSwingIsNotSmuggledIntoImmediateHarm() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                new LinearOpeningObjective(1.00d, 0d, 0d, 0d),
+                BlitzObjective.NET_DAMAGE.objective(),
                 null
         );
 
@@ -145,7 +141,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         @Test
         void futureWarLeverageIncludesTimingWindowAdvantage() {
                 ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                                new LinearOpeningObjective(0d, 0d, 0d, 5.00d),
+                                BlitzObjective.CONTROL.objective(),
                                 null
                 );
 
@@ -153,8 +149,8 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                                 new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
                                 6,
                                 attackType -> attackType == AttackType.GROUND
-                                                ? candidate(0d, 0d, -10d, 0d, 0d, 0.40d, SuperiorityFlagDelta.NONE)
-                                                : candidate(0d, 0d, -10d, 0d, 0.25d, 0d, SuperiorityFlagDelta.NONE)
+                                                ? candidate(0d, 0d, -10d, 0d, 0d, 1.00d, SuperiorityFlagDelta.NONE)
+                                                : candidate(0d, 0d, -10d, 0d, 0.10d, 0d, SuperiorityFlagDelta.NONE)
                 ));
 
                 assertEquals(AttackType.GROUND, choice);
@@ -163,7 +159,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         @Test
         void specialistStockpileWaitsForUsefulConventionalFollowThrough() {
                 ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                                new LinearOpeningObjective(0.10d, 0d, 0d, 0d),
+                                BlitzObjective.NET_DAMAGE.objective(),
                                 null
                 );
 
@@ -172,7 +168,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                                 8,
                                 attackType -> attackType == AttackType.GROUND
                                                 ? candidate(50d, 0d, -10d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE)
-                                                : candidate(90d, 0d, -10d, 0d, 0d, 0d, 100d, SuperiorityFlagDelta.NONE)
+                                                : candidate(90d, 0d, -10d, 0d, 0d, 0d, 500d, SuperiorityFlagDelta.NONE)
                 ));
 
                 assertEquals(AttackType.GROUND, choice);
@@ -181,7 +177,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         @Test
         void mutableProjectionPathCarriesTargetPressure() {
                 ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
-                                new TargetPressureObjective(),
+                                BlitzObjective.CONTROL.objective(),
                                 null
                 );
                 ObjectiveDrivenAttackChoicePolicy.MutableAttackCandidate scratch =
@@ -192,9 +188,10 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                                 6,
                                 (attackType, out) -> {
                                         if (attackType == AttackType.GROUND) {
-                                                out.set(true, 3, 0d, 0d, 0d, -10d, 0d, 0d, 25d, 0d, SuperiorityFlagDelta.NONE);
+                                                out.set(true, 3, 0d, 0d, 0d, -10d, 0d, 0d, 25d, 0d,
+                                                                SuperiorityFlagDelta.of(1, 0, 0, false, false, false));
                                         } else {
-                                                out.set(true, 4, 50d, 0d, 0d, -12d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
+                                                out.set(true, 4, 1d, 0d, 0d, -12d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
                                         }
                                 },
                                 scratch,
@@ -302,71 +299,4 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         return weights;
     }
 
-    private record LinearOpeningObjective(
-            double harmWeight,
-            double exposureWeight,
-            double controlWeight,
-            double futureWeight
-    ) implements StrategicObjective {
-        @Override
-        public double scoreTerminal(StrategicValueView view, int teamId) {
-            return 0d;
-        }
-
-        @Override
-        public double scoreOpening(
-                double immediateHarm,
-                double selfExposure,
-                double resourceSwing,
-                double controlLeverage,
-                double futureWarLeverage,
-                double targetPressure,
-                int teamId
-        ) {
-            return (harmWeight * immediateHarm)
-                    - (exposureWeight * selfExposure)
-                    + (controlWeight * controlLeverage)
-                    + (futureWeight * futureWarLeverage);
-        }
-
-        @Override
-        public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-            return CandidateEdgeComponentPolicy.none();
-        }
-
-        @Override
-        public double scoreAction(SimWorld world, SimAction action, int teamId) {
-            return 0d;
-        }
-    }
-
-    private static final class TargetPressureObjective implements StrategicObjective {
-        @Override
-        public double scoreTerminal(StrategicValueView view, int teamId) {
-            return 0d;
-        }
-
-        @Override
-        public double scoreOpening(
-                double immediateHarm,
-                double selfExposure,
-                double resourceSwing,
-                double controlLeverage,
-                double futureWarLeverage,
-                double targetPressure,
-                int teamId
-        ) {
-            return targetPressure;
-        }
-
-        @Override
-        public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-            return CandidateEdgeComponentPolicy.none();
-        }
-
-        @Override
-        public double scoreAction(SimWorld world, SimAction action, int teamId) {
-            return 0d;
-        }
-    }
 }

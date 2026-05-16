@@ -1,9 +1,9 @@
 package link.locutus.discord.sim;
 
 /**
- * Objective-facing summary of a bounded opening rollout.
+ * Summary of a bounded opening rollout used by local shell-selection heuristics.
  */
-public class OpeningMetricVector implements StrategicEvaluationComponents {
+public class OpeningMetricVector {
     public static final OpeningMetricVector ZERO = new OpeningMetricVector(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d);
 
     private final double immediateHarm;
@@ -51,19 +51,20 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
         return controlLeverage;
     }
 
-    @Override
     public double tacticalMomentum() {
         return tacticalMomentum;
     }
 
-    @Override
     public double actionSpaceQuality() {
         return actionSpaceQuality;
     }
 
-    @Override
     public double timingWindowAdvantage() {
         return timingWindowAdvantage;
+    }
+
+    public double futureWarLeverage() {
+        return actionSpaceQuality() + timingWindowAdvantage();
     }
 
     public double targetPressure() {
@@ -196,42 +197,34 @@ public class OpeningMetricVector implements StrategicEvaluationComponents {
             this.targetPressure = targetPressure;
         }
 
-        @Override
-        public double immediateHarm() {
-            return immediateHarm;
-        }
+    public double immediateHarm() {
+        return immediateHarm;
+    }
 
-        @Override
         public double selfExposure() {
             return selfExposure;
         }
 
-        @Override
         public double resourceSwing() {
             return resourceSwing;
         }
 
-        @Override
         public double controlLeverage() {
             return controlLeverage;
         }
 
-        @Override
         public double tacticalMomentum() {
             return tacticalMomentum;
         }
 
-        @Override
         public double actionSpaceQuality() {
             return actionSpaceQuality;
         }
 
-        @Override
         public double timingWindowAdvantage() {
             return timingWindowAdvantage;
         }
 
-        @Override
         public double targetPressure() {
             return targetPressure;
         }

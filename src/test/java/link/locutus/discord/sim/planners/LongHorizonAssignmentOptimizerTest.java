@@ -8,7 +8,6 @@ import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.SimWorld;
-import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicValueView;
 import link.locutus.discord.sim.TeamProjectionView;
@@ -3828,19 +3827,6 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return 0d;
-                }
-
-                @Override
                 public double scoreAction(SimWorld world, SimAction action, int teamId) {
                         return 0d;
                 }
@@ -3858,19 +3844,6 @@ class LongHorizonAssignmentOptimizerTest {
                                 }
                         });
                         return totals[0] - totals[1];
-                }
-
-                @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return 0d;
                 }
 
                 @Override
@@ -3898,19 +3871,6 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return 0d;
-                }
-
-                @Override
                 public double scoreAction(SimWorld world, SimAction action, int teamId) {
                         return 0d;
                 }
@@ -3931,19 +3891,6 @@ class LongHorizonAssignmentOptimizerTest {
                                 }
                         });
                         return score[0];
-                }
-
-                @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return 0d;
                 }
 
                 @Override
@@ -3968,19 +3915,6 @@ class LongHorizonAssignmentOptimizerTest {
                 }
 
                 @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return 0d;
-                }
-
-                @Override
                 public double scoreAction(SimWorld world, SimAction action, int teamId) {
                         return 0d;
                 }
@@ -3999,19 +3933,6 @@ class LongHorizonAssignmentOptimizerTest {
                                 }
                         });
                         return 1_000_000d * ownDeclaredWars[0];
-                }
-
-                @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return 0d;
                 }
 
                 @Override
@@ -4038,19 +3959,6 @@ class LongHorizonAssignmentOptimizerTest {
                                 }
                         });
                         return cost[0];
-                }
-
-                @Override
-                public double scoreOpening(
-                        double immediateHarm,
-                        double selfExposure,
-                        double resourceSwing,
-                        double controlLeverage,
-                        double futureWarLeverage,
-                        double targetPressure,
-                        int teamId
-                ) {
-                        return 0d;
                 }
 
                 @Override

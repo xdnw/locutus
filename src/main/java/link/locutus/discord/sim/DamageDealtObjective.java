@@ -11,19 +11,6 @@ final class DamageDealtObjective implements StrategicObjective {
     }
 
     @Override
-    public double scoreOpening(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double futureWarLeverage,
-            double targetPressure,
-            int teamId
-    ) {
-        return immediateHarm;
-    }
-
-    @Override
     public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
         return -totals.enemyValue() + StrategicValueTotals.slotBalanceOf(view, teamId);

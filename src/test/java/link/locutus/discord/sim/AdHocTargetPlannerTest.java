@@ -29,15 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AdHocTargetPlannerTest {
     private static final class CountingDamageObjective extends DamageObjective {
-        private final AtomicInteger openingCalls = new AtomicInteger();
         private final AtomicInteger terminalCalls = new AtomicInteger();
         private final Set<Integer> terminalDefenderIds = new LinkedHashSet<>();
-
-        @Override
-        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-            openingCalls.incrementAndGet();
-            return super.scoreOpening(metrics, teamId);
-        }
 
         @Override
         public double scoreTerminal(StrategicValueView view, int teamId) {
@@ -167,7 +160,6 @@ class AdHocTargetPlannerTest {
 
         assertEquals(1, plan.recommendations().size());
         assertTrue(plan.metadata().runtimePreviewApplied());
-        assertTrue(objective.openingCalls.get() > 0);
         assertTrue(objective.terminalCalls.get() > 0);
         assertEquals(Set.of(plan.recommendations().get(0).defenderId()), objective.terminalDefenderIds);
     }
@@ -370,4 +362,3 @@ class AdHocTargetPlannerTest {
                                 .build();
         }
 }
-
