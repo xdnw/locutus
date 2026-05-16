@@ -452,28 +452,61 @@ public final class BlitzPlanner {
             int horizonTurns) {
         CandidateEdgeTable edges = new CandidateEdgeTable();
 
-        OpeningEvaluator.evaluate(
-            compiledScenario,
-            effectiveTuning,
-            overrides,
-            effectiveObjective,
-            attCaps,
-            defCaps,
-            edges
-        );
-
-        rescoreOpeningCandidatesInPlace(
-            compiledScenario,
-            attCaps,
-            defCaps,
-            LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+        if (LongHorizonAssignmentOptimizer.shouldOptimize(horizonTurns)) {
+            OpeningEvaluator.emitAdmittedSeeds(
+                compiledScenario,
                 effectiveObjective,
-                actingPolicy,
-                defendingPolicy
-            ),
-            horizonTurns,
-            edges
-        );
+                actingPolicy.opening(),
+                attCaps,
+                defCaps,
+                edges
+            );
+
+            rescoreOpeningCandidatesInPlace(
+                compiledScenario,
+                attCaps,
+                defCaps,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+                    effectiveObjective,
+                    actingPolicy,
+                    defendingPolicy
+                ),
+                horizonTurns,
+                edges
+            );
+
+            edges = retainProjectionRankedCandidates(
+                edges,
+                compiledScenario,
+                attCaps,
+                defCaps,
+                effectiveTuning,
+                effectiveObjective
+            );
+        } else {
+            OpeningEvaluator.evaluate(
+                compiledScenario,
+                effectiveTuning,
+                overrides,
+                effectiveObjective,
+                attCaps,
+                defCaps,
+                edges
+            );
+
+            rescoreOpeningCandidatesInPlace(
+                compiledScenario,
+                attCaps,
+                defCaps,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+                    effectiveObjective,
+                    actingPolicy,
+                    defendingPolicy
+                ),
+                horizonTurns,
+                edges
+            );
+        }
 
         for (int edge = 0; edge < edges.edgeCount(); edge++) {
             float attackerActivityWeight = compiledScenario.attackerActivityWeight(edges.attackerIndex(edge));
@@ -513,6 +546,117 @@ public final class BlitzPlanner {
         }
 
         return new BlitzGeneratedCandidates(edges, candidateDefendersByAttacker, edgeScoresByPair, initialWarTypeOrdinalsByPair, initialAttackTypeOrdinalsByPair);
+    }
+
+    private static CandidateEdgeTable retainProjectionRankedCandidates(
+            CandidateEdgeTable scoredEdges,
+            CompiledScenario compiledScenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            SimTuning tuning,
+            StrategicObjective objective
+    ) {
+        if (scoredEdges.edgeCount() == 0) {
+            return scoredEdges;
+        }
+        boolean[] retained = new boolean[scoredEdges.edgeCount()];
+        int[] defenderRetainedCounts = new int[compiledScenario.defenderCount()];
+        int maxRetainedPerAttacker = 1;
+        for (int attackerIndex = 0; attackerIndex < compiledScenario.attackerCount(); attackerIndex++) {
+            int retainLimit = projectionRetentionCapacity(attackerCaps[attackerIndex], tuning.candidatesPerAttacker());
+            maxRetainedPerAttacker = Math.max(maxRetainedPerAttacker, retainLimit);
+            retainBestAttackerEdges(scoredEdges, attackerIndex, retainLimit, retained, defenderRetainedCounts);
+        }
+        int defenderCoverageTarget = Math.max(maxRetainedPerAttacker, maxRetainedPerAttacker * 2);
+        for (int defenderIndex = 0; defenderIndex < compiledScenario.defenderCount(); defenderIndex++) {
+            if (defenderCaps[defenderIndex] <= 0) {
+                continue;
+            }
+            while (defenderRetainedCounts[defenderIndex] < defenderCoverageTarget) {
+                int bestEdge = bestUnretainedDefenderEdge(scoredEdges, defenderIndex, retained);
+                if (bestEdge < 0) {
+                    break;
+                }
+                retained[bestEdge] = true;
+                defenderRetainedCounts[defenderIndex]++;
+            }
+        }
+        CandidateEdgeTable result = new CandidateEdgeTable(scoredEdges.edgeCount());
+        result.configureComponentRetention(objective.candidateEdgeComponentPolicy());
+        for (int edge = 0; edge < scoredEdges.edgeCount(); edge++) {
+            if (!retained[edge]) {
+                continue;
+            }
+            result.add(
+                    scoredEdges.attackerIndex(edge),
+                    scoredEdges.defenderIndex(edge),
+                    scoredEdges.preferredWarTypeId(edge),
+                    scoredEdges.bestAttackTypeId(edge),
+                    scoredEdges.scalarScore(edge),
+                    scoredEdges.counterRisk(edge),
+                    scoredEdges.retainsImmediateHarm() ? scoredEdges.immediateHarm(edge) : 0f
+            );
+        }
+        return result;
+    }
+
+    private static void retainBestAttackerEdges(
+            CandidateEdgeTable scoredEdges,
+            int attackerIndex,
+            int retainLimit,
+            boolean[] retained,
+            int[] defenderRetainedCounts
+    ) {
+        for (int retainedForAttacker = 0; retainedForAttacker < retainLimit; retainedForAttacker++) {
+            int bestEdge = bestUnretainedAttackerEdge(scoredEdges, attackerIndex, retained);
+            if (bestEdge < 0) {
+                return;
+            }
+            retained[bestEdge] = true;
+            defenderRetainedCounts[scoredEdges.defenderIndex(bestEdge)]++;
+        }
+    }
+
+    private static int bestUnretainedAttackerEdge(CandidateEdgeTable scoredEdges, int attackerIndex, boolean[] retained) {
+        int bestEdge = -1;
+        for (int edge = 0; edge < scoredEdges.edgeCount(); edge++) {
+            if (retained[edge] || scoredEdges.attackerIndex(edge) != attackerIndex || !Float.isFinite(scoredEdges.scalarScore(edge))) {
+                continue;
+            }
+            if (bestEdge < 0 || isBetterProjectionEdge(scoredEdges, edge, bestEdge)) {
+                bestEdge = edge;
+            }
+        }
+        return bestEdge;
+    }
+
+    private static int bestUnretainedDefenderEdge(CandidateEdgeTable scoredEdges, int defenderIndex, boolean[] retained) {
+        int bestEdge = -1;
+        for (int edge = 0; edge < scoredEdges.edgeCount(); edge++) {
+            if (retained[edge] || scoredEdges.defenderIndex(edge) != defenderIndex || !Float.isFinite(scoredEdges.scalarScore(edge))) {
+                continue;
+            }
+            if (bestEdge < 0 || isBetterProjectionEdge(scoredEdges, edge, bestEdge)) {
+                bestEdge = edge;
+            }
+        }
+        return bestEdge;
+    }
+
+    private static boolean isBetterProjectionEdge(CandidateEdgeTable scoredEdges, int lhsEdge, int rhsEdge) {
+        int scoreComparison = Float.compare(scoredEdges.scalarScore(lhsEdge), scoredEdges.scalarScore(rhsEdge));
+        if (scoreComparison != 0) {
+            return scoreComparison > 0;
+        }
+        int attackerComparison = Integer.compare(scoredEdges.attackerIndex(lhsEdge), scoredEdges.attackerIndex(rhsEdge));
+        if (attackerComparison != 0) {
+            return attackerComparison < 0;
+        }
+        return scoredEdges.defenderIndex(lhsEdge) < scoredEdges.defenderIndex(rhsEdge);
+    }
+
+    private static int projectionRetentionCapacity(int attackerCap, int baseCandidatesPerAttacker) {
+        return Math.max(baseCandidatesPerAttacker, Math.max(1, (2 * Math.max(0, attackerCap)) - 2));
     }
 
     private static void rescoreOpeningCandidatesInPlace(

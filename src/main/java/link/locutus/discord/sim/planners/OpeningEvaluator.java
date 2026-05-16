@@ -132,21 +132,7 @@ final class OpeningEvaluator {
             CandidateEdgeComponentPolicy componentPolicy,
             int actionBudget
     ) {
-        EdgeEvaluation evaluation = new EdgeEvaluation();
-        OpeningCandidateAdmission candidateAdmission = new OpeningCandidateAdmission(resolveAdmissionPolicy(objective));
-        if (!candidateAdmission.admit(attacker, defender)) {
-            return REJECTED_EDGE;
-        }
-        return evaluateAdmittedOpeningSeed(
-            attacker,
-            defender,
-            componentPolicy,
-            evaluation,
-            candidateAdmission.preferredWarTypeId(),
-            candidateAdmission.bestAttackTypeId(),
-            candidateAdmission.probe(),
-            null
-        );
+        return evaluateOpening(attacker, defender, objective, componentPolicy);
     }
 
     record EvaluatedEdge(
@@ -294,6 +280,109 @@ final class OpeningEvaluator {
                     defenderCoverageCounts
             );
             PlannerProfiler.addCounter(PlannerProfiler.Scope.OPENING_EVALUATE, "candidateEdges", out.edgeCount());
+        }
+    }
+
+    static void emitAdmittedSeeds(
+            OpeningEvaluationScenario scenario,
+            StrategicObjective objective,
+            SideOpeningSettings openingSettings,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            CandidateEdgeTable out
+    ) {
+        try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.OPENING_EVALUATE)) {
+            CandidateEdgeComponentPolicy componentPolicy = resolveComponentPolicy(objective);
+            out.configureComponentRetention(componentPolicy);
+            out.ensureCapacity(Math.max(0, scenario.attackerCount() * scenario.defenderCount()));
+            CandidateEdgeAdmissionPolicy admissionPolicy = resolveAdmissionPolicy(objective, openingSettings);
+            ProjectionSeedCollector collector = new ProjectionSeedCollector(
+                    scenario,
+                    openingSettings,
+                    componentPolicy,
+                    admissionPolicy,
+                    defenderCaps,
+                    out
+            );
+            for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
+                if (attackerCaps[attackerIndex] <= 0) {
+                    continue;
+                }
+                collector.beginAttacker(attackerIndex);
+                scenario.forEachDefenderIndexInRange(attackerIndex, collector);
+            }
+            PlannerProfiler.addCounter(PlannerProfiler.Scope.OPENING_EVALUATE, "candidateEdges", out.edgeCount());
+        }
+    }
+
+    private static final class ProjectionSeedCollector implements OpeningEvaluationScenario.DefenderIndexVisitor {
+        private final OpeningEvaluationScenario scenario;
+        private final SideOpeningSettings openingSettings;
+        private final int[] defenderCaps;
+        private final CandidateEdgeTable out;
+        private final OpeningCandidateAdmission candidateAdmission;
+        private final EdgeEvaluation edgeEvaluation = new EdgeEvaluation();
+        private final boolean retainEdgeComponents;
+        private final int retainedComponentMask;
+        private int attackerIndex;
+        private DBNationSnapshot attacker;
+
+        private ProjectionSeedCollector(
+                OpeningEvaluationScenario scenario,
+                SideOpeningSettings openingSettings,
+                CandidateEdgeComponentPolicy componentPolicy,
+                CandidateEdgeAdmissionPolicy admissionPolicy,
+                int[] defenderCaps,
+                CandidateEdgeTable out
+        ) {
+            this.scenario = scenario;
+            this.openingSettings = openingSettings;
+            this.defenderCaps = defenderCaps;
+            this.out = out;
+            this.candidateAdmission = new OpeningCandidateAdmission(admissionPolicy);
+            this.retainEdgeComponents = componentPolicy.retainsAny();
+            this.retainedComponentMask = OpeningEdgeEvaluationWriter.componentMask(componentPolicy);
+        }
+
+        private void beginAttacker(int attackerIndex) {
+            this.attackerIndex = attackerIndex;
+            this.attacker = scenario.attacker(attackerIndex);
+        }
+
+        @Override
+        public void accept(int defenderIndex) {
+            if (defenderCaps[defenderIndex] <= 0
+                    || scenario.isTreated(attackerIndex, defenderIndex)
+                    || scenario.hasActivePairConflict(attackerIndex, defenderIndex)) {
+                return;
+            }
+            DBNationSnapshot defender = scenario.defender(defenderIndex);
+            if (!candidateAdmission.admit(attacker, defender)) {
+                return;
+            }
+            if (!evaluateAdmittedOpeningSeed(
+                    attacker,
+                    defender,
+                    openingSettings,
+                    candidateAdmission.preferredWarTypeId(),
+                    candidateAdmission.bestAttackTypeId(),
+                    candidateAdmission.probe(),
+                    edgeEvaluation
+            )) {
+                return;
+            }
+            if (retainEdgeComponents) {
+                OpeningEdgeEvaluationWriter.retainComponents(edgeEvaluation, retainedComponentMask);
+            }
+            out.add(
+                    attackerIndex,
+                    defenderIndex,
+                    edgeEvaluation.preferredWarTypeId(),
+                    edgeEvaluation.firstAttackTypeId(),
+                    edgeEvaluation.score(),
+                    (float) scenario.estimateAllianceCounterRisk(attackerIndex, defenderIndex),
+                    edgeEvaluation.immediateHarm()
+            );
         }
     }
 
