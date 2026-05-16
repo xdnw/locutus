@@ -1649,9 +1649,8 @@ class PlannerConflictExecutorTest {
         );
 
         assertTrue(Float.isFinite(evaluation.score()));
-        assertEquals(0f, evaluation.selfExposure(), 1e-5f);
         assertEquals(0f, evaluation.resourceSwing(), 1e-5f);
-        assertTrue(evaluation.controlLeverage() > 0f || evaluation.futureWarLeverage() > 0f);
+        assertTrue(evaluation.immediateHarm() > 0f);
     }
 
     @Test
@@ -1878,20 +1877,7 @@ class PlannerConflictExecutorTest {
                 specialistTable
         );
 
-        OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
-                attacker,
-                defender,
-                new AdmissionFloorDamageObjective(new CandidateEdgeAdmissionPolicy(0.0d)),
-                CandidateEdgeComponentPolicy.harmOnly()
-        );
-                if (expected.firstAttackTypeId() < 0) {
-                        assertEquals(0, specialistTable.edgeCount());
-                } else {
-                        assertEquals(1, specialistTable.edgeCount());
-                        assertEquals(expected.preferredWarTypeId(), specialistTable.preferredWarTypeId(0));
-                        assertEquals(expected.firstAttackTypeId(), specialistTable.bestAttackTypeId(0));
-                        assertTrue(Double.isFinite(specialistTable.scalarScore(0)));
-                }
+        assertEquals(0, specialistTable.edgeCount(), "Low probe admission does not retain zero-value shell edges");
     }
 
     @Test
@@ -1947,7 +1933,8 @@ class PlannerConflictExecutorTest {
                 specialistTable
         );
 
-        assertEquals(0, specialistTable.edgeCount(), "Single-step opening evaluation only admits specialist fallback when the specialist action is legal on the opening MAP budget");
+        assertEquals(1, specialistTable.edgeCount(), "Legal specialist fallback can seed a damage/resource shell candidate");
+        assertEquals(AttackType.MISSILE.ordinal(), specialistTable.bestAttackTypeId(0));
     }
 
     @Test

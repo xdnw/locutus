@@ -33,11 +33,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
         double attackerUnitDamage;
         double resourceSwing;
         double defenderResistanceDelta;
-        double actionSpaceQuality;
-        double timingWindowAdvantage;
-        double targetPressure;
         double conventionalFollowThroughValue;
-        SuperiorityFlagDelta controlDelta = SuperiorityFlagDelta.NONE;
 
         void set(
                 boolean legal,
@@ -58,11 +54,7 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
             this.attackerUnitDamage = attackerUnitDamage;
             this.resourceSwing = resourceSwing;
             this.defenderResistanceDelta = defenderResistanceDelta;
-            this.actionSpaceQuality = actionSpaceQuality;
-            this.timingWindowAdvantage = timingWindowAdvantage;
-            this.targetPressure = targetPressure;
             this.conventionalFollowThroughValue = conventionalFollowThroughValue;
-            this.controlDelta = controlDelta == null ? SuperiorityFlagDelta.NONE : controlDelta;
         }
     }
 
@@ -140,21 +132,12 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     }
 
     double scoreCandidate(AttackType attackType, AttackCandidate candidate) {
-        double controlLeverage = AttackObjectiveComponentMapper.controlLeverage(candidate.controlDelta());
-        double actionSpaceQuality = Math.max(0d, candidate.actionSpaceQuality());
-        double timingWindowAdvantage = Math.max(0d, candidate.timingWindowAdvantage());
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage()),
-                Math.max(0d, candidate.attackerUnitDamage()),
                 AttackObjectiveComponentMapper.resourceSwingForObjective(
                         attackType,
                     candidate.resourceSwing()
-                ),
-                controlLeverage,
-                tacticalMomentum(candidate.defenderResistanceDelta()),
-                actionSpaceQuality,
-                timingWindowAdvantage,
-                Math.max(0d, candidate.targetPressure())
+                )
         );
         double score = OpeningEvaluator.baseScore(objective, metrics, teamId)
             * openingSettings.attackTypeWeight(attackType);
@@ -165,21 +148,12 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
     }
 
     double scoreCandidate(AttackType attackType, MutableAttackCandidate candidate) {
-        double controlLeverage = AttackObjectiveComponentMapper.controlLeverage(candidate.controlDelta);
-        double actionSpaceQuality = Math.max(0d, candidate.actionSpaceQuality);
-        double timingWindowAdvantage = Math.max(0d, candidate.timingWindowAdvantage);
         metrics.set(
                 Math.max(0d, candidate.defenderUnitDamage),
-                Math.max(0d, candidate.attackerUnitDamage),
                 AttackObjectiveComponentMapper.resourceSwingForObjective(
                         attackType,
                     candidate.resourceSwing
-                ),
-                controlLeverage,
-                tacticalMomentum(candidate.defenderResistanceDelta),
-                actionSpaceQuality,
-                timingWindowAdvantage,
-                Math.max(0d, candidate.targetPressure)
+                )
         );
         double score = OpeningEvaluator.baseScore(objective, metrics, teamId)
             * openingSettings.attackTypeWeight(attackType);
@@ -187,19 +161,5 @@ public final class ObjectiveDrivenAttackChoicePolicy implements AttackChoicePoli
             score -= Math.min(score * 0.75d, candidate.conventionalFollowThroughValue * 0.20d);
         }
         return score;
-    }
-
-    private static double tacticalMomentum(double defenderResistanceDelta) {
-        return clamp01(-defenderResistanceDelta / 100d);
-    }
-
-    private static double clamp01(double value) {
-        if (value <= 0d) {
-            return 0d;
-        }
-        if (value >= 1d) {
-            return 1d;
-        }
-        return value;
     }
 }

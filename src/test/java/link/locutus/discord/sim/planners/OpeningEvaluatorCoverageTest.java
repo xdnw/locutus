@@ -659,14 +659,12 @@ class OpeningEvaluatorCoverageTest {
 
         assertTrue(Float.isFinite(raw.score()), "Expected raw single-pair evaluation to stay admitted");
         assertEquals(raw.immediateHarm(), direct.immediateHarm(), 1.0e-5f);
-        assertEquals(0f, direct.selfExposure(), 1.0e-5f);
         assertEquals(0f, direct.resourceSwing(), 1.0e-5f);
 
         assertEquals(direct.score(), reusable.score(), 1.0e-5f);
         assertEquals(direct.preferredWarTypeId(), reusable.preferredWarTypeId());
         assertEquals(direct.firstAttackTypeId(), reusable.firstAttackTypeId());
         assertEquals(direct.immediateHarm(), reusable.immediateHarm(), 1.0e-5f);
-        assertEquals(direct.selfExposure(), reusable.selfExposure(), 1.0e-5f);
         assertEquals(direct.resourceSwing(), reusable.resourceSwing(), 1.0e-5f);
 
         CompiledScenario scenario = SCENARIO_COMPILER.compile(
@@ -926,9 +924,9 @@ class OpeningEvaluatorCoverageTest {
         OpeningEvaluator.TopKEdgeCollector collector =
                 new OpeningEvaluator.TopKEdgeCollector(3, CandidateEdgeComponentPolicy.none(), true);
 
-        collector.consider(4, 12, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
-        collector.consider(4, 7, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
-        collector.consider(4, 9, (byte) 0, (byte) 0, 80f, 0f, 0f, 0f, 0f, 0f, 0f);
+        collector.consider(4, 12, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(4, 7, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(4, 9, (byte) 0, (byte) 0, 80f, 0f, 0f);
 
         collector.sortSelectedDescending();
 
@@ -942,10 +940,10 @@ class OpeningEvaluatorCoverageTest {
         OpeningEvaluator.TopKEdgeCollector collector =
                 new OpeningEvaluator.TopKEdgeCollector(4, CandidateEdgeComponentPolicy.none(), false);
 
-        collector.consider(2, 12, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
-        collector.consider(1, 20, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
-        collector.consider(1, 9, (byte) 0, (byte) 0, 80f, 0f, 0f, 0f, 0f, 0f, 0f);
-        collector.consider(1, 18, (byte) 0, (byte) 0, 75f, 0f, 0f, 0f, 0f, 0f, 0f);
+        collector.consider(2, 12, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(1, 20, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(1, 9, (byte) 0, (byte) 0, 80f, 0f, 0f);
+        collector.consider(1, 18, (byte) 0, (byte) 0, 75f, 0f, 0f);
 
         collector.sortSelectedDescending();
 
@@ -964,8 +962,8 @@ class OpeningEvaluatorCoverageTest {
                 OpeningEvaluator.CoveragePriorityCollector collector =
                                 new OpeningEvaluator.CoveragePriorityCollector(1, CandidateEdgeComponentPolicy.none());
 
-                collector.consider(50f, 1, 101, (byte) 0, (byte) 0, 150f, 0f, 0f, 0f, 0f, 0f, 0f);
-                collector.consider(75f, 2, 102, (byte) 0, (byte) 0, 100f, 0f, 0f, 0f, 0f, 0f, 0f);
+                collector.consider(50f, 1, 101, (byte) 0, (byte) 0, 150f, 0f, 0f);
+                collector.consider(75f, 2, 102, (byte) 0, (byte) 0, 100f, 0f, 0f);
                 collector.sortSelectedDescending();
 
                 assertEquals(1, collector.size());
@@ -982,7 +980,7 @@ class OpeningEvaluatorCoverageTest {
                 int[] defenderCoverageCounts = new int[1];
                 OpeningEvaluator.CoveragePriorityCollector collector =
                                 new OpeningEvaluator.CoveragePriorityCollector(1, CandidateEdgeComponentPolicy.none());
-                collector.consider(75f, 1, 0, (byte) 0, (byte) 0, 42f, 0f, 0f, 0f, 0f, 0f, 0f);
+                collector.consider(75f, 1, 0, (byte) 0, (byte) 0, 42f, 0f, 0f);
                 collector.sortSelectedDescending();
 
                 boolean emitted = OpeningDefenderCoverageRescue.emitSelectedEdge(
@@ -1064,9 +1062,7 @@ class OpeningEvaluatorCoverageTest {
         private static String edgeSummary(OpeningEvaluator.EvaluatedEdge edge) {
                 return "score=" + edge.score()
                                 + "/harm=" + edge.immediateHarm()
-                                + "/exposure=" + edge.selfExposure()
-                                + "/control=" + edge.controlLeverage()
-                                + "/future=" + edge.futureWarLeverage();
+                                + "/resource=" + edge.resourceSwing();
         }
 
         private static String edgeList(CandidateEdgeTable out, CompiledScenario scenario) {

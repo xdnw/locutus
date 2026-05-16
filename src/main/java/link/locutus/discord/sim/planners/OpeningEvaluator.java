@@ -3,7 +3,6 @@ package link.locutus.discord.sim.planners;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.sim.BlitzObjective;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.OpeningMetricVector;
@@ -46,19 +45,11 @@ import java.util.Objects;
  */
 final class OpeningEvaluator {
     private static final int DEFAULT_ACTION_BUDGET = 3;
-    private static final double PRESSURE_PROGRESS_FLAG_WEIGHT = 1.25d;
-    private static final double CONTROL_TIMING_WEIGHT = 1.5d;
-    private static final double CONTROL_PRESSURE_WEIGHT = 4.0d;
-    private static final double CONTROL_IMMEDIATE_HARM_WEIGHT = 0.10d;
-    private static final double CONTROL_RESOURCE_SWING_WEIGHT = 0.02d;
-    private static final double CONTROL_INDUCED_EXPOSURE_WEIGHT = 0.85d;
+    private static final double RESOURCE_SWING_SHELL_WEIGHT = 0.000001d;
     private static final EvaluatedEdge REJECTED_EDGE = new EvaluatedEdge(
             Float.NEGATIVE_INFINITY,
             (byte) -1,
             (byte) -1,
-            0f,
-            0f,
-            0f,
             0f,
             0f
     );
@@ -102,45 +93,14 @@ final class OpeningEvaluator {
 
     static record OpeningBaseline(
             DBNationSnapshot attackerSnapshot,
-            DBNationSnapshot defenderSnapshot,
-            double attackerGround,
-            double defenderGround,
-            double attackerAir,
-            double defenderAir,
-            double attackerNaval,
-            double defenderNaval,
-            double targetPressure
+            DBNationSnapshot defenderSnapshot
     ) {
         static OpeningBaseline from(DBNationSnapshot attacker, DBNationSnapshot defender) {
-            return from(attacker, defender, OpeningMetricSummary.defenderControlPressure(defender));
+            return new OpeningBaseline(attacker, defender);
         }
 
         static OpeningBaseline from(DBNationSnapshot attacker, DBNationSnapshot defender, double targetPressure) {
-            double attackerGround = OpeningMetricSummary.groundStrength(
-                    attacker.unit(MilitaryUnit.SOLDIER),
-                    attacker.unit(MilitaryUnit.TANK),
-                    false
-            );
-            double defenderGround = OpeningMetricSummary.groundStrength(
-                    defender.unit(MilitaryUnit.SOLDIER),
-                    defender.unit(MilitaryUnit.TANK),
-                    false
-            );
-            double attackerAir = attacker.unit(MilitaryUnit.AIRCRAFT);
-            double defenderAir = defender.unit(MilitaryUnit.AIRCRAFT);
-            double attackerNaval = attacker.unit(MilitaryUnit.SHIP);
-            double defenderNaval = defender.unit(MilitaryUnit.SHIP);
-            return new OpeningBaseline(
-                    attacker,
-                    defender,
-                    attackerGround,
-                    defenderGround,
-                    attackerAir,
-                    defenderAir,
-                    attackerNaval,
-                    defenderNaval,
-                    targetPressure
-            );
+            return from(attacker, defender);
         }
     }
 
@@ -214,10 +174,7 @@ final class OpeningEvaluator {
             byte preferredWarTypeId,
             byte firstAttackTypeId,
             float immediateHarm,
-            float selfExposure,
-            float resourceSwing,
-            float controlLeverage,
-            float futureWarLeverage
+            float resourceSwing
     ) {
     }
 
@@ -560,10 +517,6 @@ final class OpeningEvaluator {
 
         private void retainEvaluatedEdge(int defenderIndex, EdgeEvaluation edgeEvaluation) {
             float immediateHarm = edgeEvaluation.immediateHarm();
-            float selfExposure = edgeEvaluation.selfExposure();
-            float resourceSwing = edgeEvaluation.resourceSwing();
-            float controlLeverage = edgeEvaluation.controlLeverage();
-            float futureWarLeverage = edgeEvaluation.futureWarLeverage();
             // Collector ordering ignores counter risk, so defer that work until an edge is actually emitted.
             topK.consider(
                     attackerIndex,
@@ -572,11 +525,7 @@ final class OpeningEvaluator {
                     edgeEvaluation.firstAttackTypeId(),
                     edgeEvaluation.score(),
                     0f,
-                    immediateHarm,
-                    selfExposure,
-                    resourceSwing,
-                    controlLeverage,
-                        futureWarLeverage
+                    immediateHarm
             );
                     TopKEdgeCollector defenderCoverageCollector = defenderCoverageCollectors[defenderIndex];
                     if (defenderCoverageCollector != null) {
@@ -587,11 +536,7 @@ final class OpeningEvaluator {
                         edgeEvaluation.firstAttackTypeId(),
                         edgeEvaluation.score(),
                         0f,
-                        immediateHarm,
-                        selfExposure,
-                        resourceSwing,
-                        controlLeverage,
-                        futureWarLeverage
+                        immediateHarm
                     );
                     }
                 coverageSpillovers.consider(
@@ -602,11 +547,7 @@ final class OpeningEvaluator {
                     edgeEvaluation.firstAttackTypeId(),
                     edgeEvaluation.score(),
                     0f,
-                    immediateHarm,
-                    selfExposure,
-                    resourceSwing,
-                    controlLeverage,
-                    futureWarLeverage
+                    immediateHarm
                 );
         }
 
@@ -868,10 +809,7 @@ final class OpeningEvaluator {
                 resolvedWarTypeId,
                 resolvedAttackTypeId,
                 edgeEvaluation.immediateHarm(),
-                edgeEvaluation.selfExposure(),
-                edgeEvaluation.resourceSwing(),
-                edgeEvaluation.controlLeverage(),
-            edgeEvaluation.futureWarLeverage()
+                edgeEvaluation.resourceSwing()
         );
     }
 
@@ -909,7 +847,7 @@ final class OpeningEvaluator {
         OpeningMetricVector.Mutable projectedMetrics = new OpeningMetricVector.Mutable();
         context.bind(attacker, defender, warType);
         context.setAttackerMaps(SimWar.MAP_CAP);
-        currentMetrics.set(0d, 0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
+        currentMetrics.set(0d, 0d);
         CombatKernel.resolveInto(context, attackType, ResolutionMode.DETERMINISTIC_EV, scratch, result);
         OpeningRolloutMetricProjector.project(baseline, context, attackType, currentMetrics, result, projectedMetrics);
         if (projectedMetrics.immediateHarm() <= 0d && result.infraDestroyed() > 0d) {
@@ -919,13 +857,7 @@ final class OpeningEvaluator {
             );
             projectedMetrics.set(
                     projectedMetrics.immediateHarm(),
-                    projectedMetrics.selfExposure(),
-                projectedMetrics.resourceSwing() + specialistResourceSwing,
-                    projectedMetrics.controlLeverage(),
-                    projectedMetrics.tacticalMomentum(),
-                    projectedMetrics.actionSpaceQuality(),
-                projectedMetrics.timingWindowAdvantage(),
-                    projectedMetrics.targetPressure()
+                projectedMetrics.resourceSwing() + specialistResourceSwing
             );
         }
         double score = scoreShellHeuristic(
@@ -944,10 +876,7 @@ final class OpeningEvaluator {
                 preferredWarTypeId,
                 resolvedAttackTypeId,
                 (float) projectedMetrics.immediateHarm(),
-                (float) projectedMetrics.selfExposure(),
-                (float) projectedMetrics.resourceSwing(),
-                (float) projectedMetrics.controlLeverage(),
-            (float) projectedMetrics.futureWarLeverage()
+                (float) projectedMetrics.resourceSwing()
         );
         return true;
     }
@@ -1009,101 +938,8 @@ final class OpeningEvaluator {
     }
 
     static double baseScore(StrategicObjective objective, OpeningMetricVector metrics, int attackerTeamId) {
-        if (objective == BlitzObjective.NET_DAMAGE.objective()) {
-            return metrics.immediateHarm() - metrics.selfExposure();
-        }
-        if (objective == BlitzObjective.DAMAGE.objective()) {
-            return metrics.immediateHarm();
-        }
-        if (objective == BlitzObjective.MINIMUM_DAMAGE_RECEIVED.objective()) {
-            return (0.35d * metrics.immediateHarm()) - metrics.selfExposure();
-        }
-        if (objective == BlitzObjective.CONTROL.objective()) {
-            return controlScore(metrics);
-        }
-        if (objective == BlitzObjective.BALANCED.objective()) {
-            return balancedScore(metrics);
-        }
-        return metrics.immediateHarm() - metrics.selfExposure();
-    }
-
-    private static double balancedScore(OpeningMetricVector metrics) {
-        double immediateHarm = metrics.immediateHarm();
-        double selfExposure = metrics.selfExposure();
-        double resourceSwing = metrics.resourceSwing();
-        double controlLeverage = metrics.controlLeverage();
-        double futureWarLeverage = metrics.futureWarLeverage();
-        return immediateHarm
-                - (0.75d * selfExposure)
-                + (1.50d * controlLeverage)
-                + futureWarLeverage
-                + capturableTargetPressure(
-                        immediateHarm,
-                        selfExposure,
-                        resourceSwing,
-                        controlLeverage,
-                        futureWarLeverage,
-                        metrics.targetPressure()
-                )
-                + (0.000001d * resourceSwing);
-    }
-
-    private static double controlScore(OpeningMetricVector metrics) {
-        double immediateHarm = positiveFinite(metrics.immediateHarm());
-        double selfExposure = positiveFinite(metrics.selfExposure());
-        double resourceSwing = positiveFinite(metrics.resourceSwing());
-        double controlLeverage = positiveFinite(metrics.controlLeverage());
-        double futureWarLeverage = positiveFinite(metrics.futureWarLeverage());
-        double tacticalMomentum = positiveFinite(metrics.tacticalMomentum());
-        double targetPressure = positiveFinite(metrics.targetPressure());
-        double actionSpaceQuality = futureWarLeverage;
-        double timing = tacticalMomentum
-                + controlPressureTiming(controlLeverage, targetPressure);
-        double effectivePressure = capturableTargetPressure(
-                immediateHarm,
-                selfExposure,
-                resourceSwing,
-                controlLeverage,
-                actionSpaceQuality + Math.max(0d, timing),
-                targetPressure
-        );
-        return (3.0d * actionSpaceQuality)
-                + (CONTROL_TIMING_WEIGHT * Math.max(0d, timing))
-                + (CONTROL_PRESSURE_WEIGHT * effectivePressure)
-                + (CONTROL_IMMEDIATE_HARM_WEIGHT * immediateHarm)
-                + (CONTROL_RESOURCE_SWING_WEIGHT * resourceSwing)
-                - (CONTROL_INDUCED_EXPOSURE_WEIGHT * selfExposure);
-    }
-
-    private static double controlPressureTiming(double controlLeverage, double targetPressure) {
-        if (!(controlLeverage > 0d) || !(targetPressure > 0d)) {
-            return 0d;
-        }
-        double targetOpportunity = targetPressure / (targetPressure + 12d);
-        return Math.min(Math.max(0d, controlLeverage), targetOpportunity);
-    }
-
-    private static double capturableTargetPressure(
-            double immediateHarm,
-            double selfExposure,
-            double resourceSwing,
-            double controlLeverage,
-            double futureWarLeverage,
-            double targetPressure
-    ) {
-        double pressure = positiveFinite(targetPressure);
-        if (!(pressure > 0d)) {
-            return 0d;
-        }
-        double progress = (0.10d * positiveFinite(immediateHarm))
-                + (0.05d * positiveFinite(resourceSwing))
-                + (PRESSURE_PROGRESS_FLAG_WEIGHT * positiveFinite(controlLeverage))
-                + (3.00d * positiveFinite(futureWarLeverage))
-                - (0.35d * positiveFinite(selfExposure));
-        if (!(progress > 0d)) {
-            return 0d;
-        }
-        return pressure * (1d - Math.exp(-progress / pressure));
+        return positiveFinite(metrics.immediateHarm())
+                + (RESOURCE_SWING_SHELL_WEIGHT * positiveFinite(metrics.resourceSwing()));
     }
 
     private static double positiveFinite(double value) {
@@ -1136,10 +972,7 @@ final class OpeningEvaluator {
                 edgeEvaluation.preferredWarTypeId(),
                 edgeEvaluation.firstAttackTypeId(),
                 edgeEvaluation.immediateHarm(),
-                edgeEvaluation.selfExposure(),
-                edgeEvaluation.resourceSwing(),
-                edgeEvaluation.controlLeverage(),
-            edgeEvaluation.futureWarLeverage()
+                edgeEvaluation.resourceSwing()
         );
     }
 
@@ -1212,22 +1045,6 @@ final class OpeningEvaluator {
             return edges.retainsImmediateHarm() ? edges.immediateHarmAt(index) : 0f;
         }
 
-        float selfExposureAt(int index) {
-            return 0f;
-        }
-
-        float resourceSwingAt(int index) {
-            return 0f;
-        }
-
-        float controlLeverageAt(int index) {
-            return 0f;
-        }
-
-        float futureWarLeverageAt(int index) {
-            return 0f;
-        }
-
         byte bestAttackTypeIdAt(int index) {
             return edges.bestAttackTypeIdAt(index);
         }
@@ -1239,11 +1056,7 @@ final class OpeningEvaluator {
                 byte bestAttackTypeId,
                 float score,
                 float counterRisk,
-                float immediateHarm,
-                float selfExposure,
-                float resourceSwing,
-                float controlLeverage,
-                float futureWarLeverage
+                float immediateHarm
         ) {
             if (activeLimit == 0) {
                 return;
@@ -1526,22 +1339,6 @@ final class OpeningEvaluator {
             return edges.retainsImmediateHarm() ? edges.immediateHarmAt(index) : 0f;
         }
 
-        float selfExposureAt(int index) {
-            return 0f;
-        }
-
-        float resourceSwingAt(int index) {
-            return 0f;
-        }
-
-        float controlLeverageAt(int index) {
-            return 0f;
-        }
-
-        float futureWarLeverageAt(int index) {
-            return 0f;
-        }
-
         float priorityAt(int index) {
             return priorities[index];
         }
@@ -1554,11 +1351,7 @@ final class OpeningEvaluator {
                 byte bestAttackTypeId,
                 float score,
                 float counterRisk,
-                float immediateHarm,
-                float selfExposure,
-                float resourceSwing,
-                float controlLeverage,
-                float futureWarLeverage
+                float immediateHarm
         ) {
             if (edges.capacity() == 0 || !Float.isFinite(priority)) {
                 return;
@@ -1573,11 +1366,7 @@ final class OpeningEvaluator {
                         bestAttackTypeId,
                         score,
                         counterRisk,
-                        immediateHarm,
-                        selfExposure,
-                        resourceSwing,
-                        controlLeverage,
-                        futureWarLeverage
+                        immediateHarm
                 );
                 siftUp(size);
                 size++;
@@ -1603,11 +1392,7 @@ final class OpeningEvaluator {
                     bestAttackTypeId,
                     score,
                     counterRisk,
-                    immediateHarm,
-                    selfExposure,
-                    resourceSwing,
-                    controlLeverage,
-                        futureWarLeverage
+                    immediateHarm
             );
             siftDown(0);
             sortedDirty = true;
@@ -1701,11 +1486,7 @@ final class OpeningEvaluator {
                 byte bestAttackTypeId,
                 float score,
                 float counterRisk,
-                float immediateHarm,
-                float selfExposure,
-                float resourceSwing,
-                float controlLeverage,
-                float futureWarLeverage
+                float immediateHarm
         ) {
             priorities[index] = priority;
             edges.write(
@@ -1776,10 +1557,7 @@ final class OpeningEvaluator {
         private byte preferredWarTypeId;
         private byte firstAttackTypeId;
         private float immediateHarm;
-        private float selfExposure;
         private float resourceSwing;
-        private float controlLeverage;
-        private float futureWarLeverage;
 
         float score() {
             return score;
@@ -1797,20 +1575,8 @@ final class OpeningEvaluator {
             return immediateHarm;
         }
 
-        float selfExposure() {
-            return selfExposure;
-        }
-
         float resourceSwing() {
             return resourceSwing;
-        }
-
-        float controlLeverage() {
-            return controlLeverage;
-        }
-
-        float futureWarLeverage() {
-            return futureWarLeverage;
         }
 
         void set(
@@ -1818,23 +1584,17 @@ final class OpeningEvaluator {
                 byte preferredWarTypeId,
                 byte firstAttackTypeId,
                 float immediateHarm,
-                float selfExposure,
-                float resourceSwing,
-                float controlLeverage,
-                float futureWarLeverage
+                float resourceSwing
         ) {
             this.score = score;
             this.preferredWarTypeId = preferredWarTypeId;
             this.firstAttackTypeId = firstAttackTypeId;
             this.immediateHarm = immediateHarm;
-            this.selfExposure = selfExposure;
             this.resourceSwing = resourceSwing;
-            this.controlLeverage = controlLeverage;
-            this.futureWarLeverage = futureWarLeverage;
         }
 
         void clear() {
-            set(Float.NEGATIVE_INFINITY, (byte) -1, (byte) -1, 0f, 0f, 0f, 0f, 0f);
+            set(Float.NEGATIVE_INFINITY, (byte) -1, (byte) -1, 0f, 0f);
         }
     }
 

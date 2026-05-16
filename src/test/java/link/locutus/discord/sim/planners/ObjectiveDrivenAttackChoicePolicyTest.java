@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ObjectiveDrivenAttackChoicePolicyTest {
     @Test
-    void choosesLowerExposureWhenObjectivePenalizesSelfDamage() {
+    void choosesHigherDamageRegardlessOfDeletedSelfExposureLane() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                 BlitzObjective.NET_DAMAGE.objective(),
                 null
@@ -24,11 +24,11 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                         : candidate(30d, 25d, 0d, SuperiorityFlagDelta.NONE)
         ));
 
-        assertEquals(AttackType.GROUND, choice);
+        assertEquals(AttackType.AIRSTRIKE_SOLDIER, choice);
     }
 
     @Test
-    void controlObjectiveCanPreferControlTransitionOverRawDamage() {
+    void controlObjectiveUsesDamageShellBeforeProjectionRescore() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                 BlitzObjective.CONTROL.objective(),
                 null
@@ -42,7 +42,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                         : candidate(40d, 0d, -12d, SuperiorityFlagDelta.NONE)
         ));
 
-        assertEquals(AttackType.GROUND, choice);
+        assertEquals(AttackType.AIRSTRIKE_TANK, choice);
     }
 
     @Test
@@ -71,7 +71,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
     }
 
     @Test
-    void futureWarLeverageComesFromActionSpaceQualityNotResistanceDrain() {
+    void deletedFutureWarLaneDoesNotCreatePositiveAttackScore() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                 BlitzObjective.CONTROL.objective(),
                 null
@@ -85,11 +85,11 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                         : candidate(0d, 0d, -5d, 0d, 0.25d, SuperiorityFlagDelta.NONE)
         ));
 
-        assertEquals(AttackType.AIRSTRIKE_TANK, choice);
+        assertEquals(null, choice);
     }
 
     @Test
-    void resourceSwingIsNotSmuggledIntoImmediateHarm() {
+    void specialistResourceSwingCanSeedShellCandidate() {
         ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                 BlitzObjective.NET_DAMAGE.objective(),
                 null
@@ -101,7 +101,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                 attackType -> candidate(0d, 0d, 0d, 100d, 0d, SuperiorityFlagDelta.NONE)
         ));
 
-        assertEquals(null, choice);
+        assertEquals(AttackType.MISSILE, choice);
     }
 
     @Test
@@ -139,7 +139,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         }
 
         @Test
-        void futureWarLeverageIncludesTimingWindowAdvantage() {
+        void deletedTimingLaneDoesNotOverrideDamageShell() {
                 ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                                 BlitzObjective.CONTROL.objective(),
                                 null
@@ -150,10 +150,10 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                                 6,
                                 attackType -> attackType == AttackType.GROUND
                                                 ? candidate(0d, 0d, -10d, 0d, 0d, 1.00d, SuperiorityFlagDelta.NONE)
-                                                : candidate(0d, 0d, -10d, 0d, 0.10d, 0d, SuperiorityFlagDelta.NONE)
+                                                : candidate(1d, 0d, -10d, 0d, 0.10d, 0d, SuperiorityFlagDelta.NONE)
                 ));
 
-                assertEquals(AttackType.GROUND, choice);
+                assertEquals(AttackType.AIRSTRIKE_TANK, choice);
         }
 
         @Test
@@ -175,7 +175,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
         }
 
         @Test
-        void mutableProjectionPathCarriesTargetPressure() {
+        void mutableProjectionPathUsesDamageShellOnly() {
                 ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
                                 BlitzObjective.CONTROL.objective(),
                                 null
@@ -198,7 +198,7 @@ class ObjectiveDrivenAttackChoicePolicyTest {
                                 null
                 );
 
-                assertEquals(AttackType.GROUND, choice);
+                assertEquals(AttackType.AIRSTRIKE_TANK, choice);
         }
 
     private static AttackChoicePolicy.AttackCandidate candidate(

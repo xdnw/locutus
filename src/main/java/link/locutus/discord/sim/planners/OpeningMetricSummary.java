@@ -66,40 +66,6 @@ final class OpeningMetricSummary {
         );
     }
 
-    static double selfExposure(
-        DBNationSnapshot attacker,
-        MutableAttackResult result,
-        boolean defenderHadAirControl,
-        boolean defenderHasAirControl,
-        boolean attackerHadGroundSuperiority,
-        boolean attackerHadAirControl,
-        boolean attackerHadBlockade
-    ) {
-    return expectedCapabilityDamage(
-        attacker,
-        result.attackerLossesEv(),
-        defenderHadAirControl,
-        defenderHasAirControl,
-        attackerHadGroundSuperiority,
-        attackerHadAirControl,
-        attackerHadBlockade
-    );
-    }
-
-    static double controlLeverage(boolean attackerHasGroundSuperiority, boolean attackerHasAirControl, boolean attackerHasBlockade) {
-        double leverage = 0d;
-        if (attackerHasGroundSuperiority) {
-            leverage += 1d;
-        }
-        if (attackerHasAirControl) {
-            leverage += 1d;
-        }
-        if (attackerHasBlockade) {
-            leverage += 1d;
-        }
-        return leverage;
-    }
-
     static double tacticalMomentumScore(int defenderResistance) {
         // Measures how much of the defender's resistance has been drained (0 = full, 1 = exhausted).
         // Captures tactical transition propensity: a fully drained war allows the attacker to pivot
@@ -140,30 +106,6 @@ final class OpeningMetricSummary {
                 currentDefenderNaval
         );
         return Math.max(0d, currentQuality - initialQuality);
-    }
-
-    static double futureWarLeverage(
-            double initialAttackerGround,
-            double currentAttackerGround,
-            double initialDefenderGround,
-            double currentDefenderGround,
-            double initialAttackerAir,
-            double currentAttackerAir,
-            double initialDefenderAir,
-            double currentDefenderAir,
-            double initialAttackerNaval,
-            double currentAttackerNaval,
-            double initialDefenderNaval,
-            double currentDefenderNaval,
-            int defenderResistance
-    ) {
-            return actionSpaceQuality(
-                initialAttackerGround, currentAttackerGround,
-                initialDefenderGround, currentDefenderGround,
-                initialAttackerAir, currentAttackerAir,
-                initialDefenderAir, currentDefenderAir,
-                initialAttackerNaval, currentAttackerNaval,
-                initialDefenderNaval, currentDefenderNaval);
     }
 
     static double targetPressure(

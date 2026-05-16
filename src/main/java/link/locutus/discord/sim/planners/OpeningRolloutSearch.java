@@ -96,7 +96,7 @@ final class OpeningRolloutSearch {
 
         byte firstAttackTypeId = (byte) -1;
         byte fallbackAttackTypeId = (byte) -1;
-        currentMetrics.set(0d, 0d, 0d, 0d, 0d, 0d, baseline.targetPressure());
+        currentMetrics.set(0d, 0d);
         double currentScore = scoreObjective(objective, attacker.teamId(), currentMetrics, warType, null, openingSettings);
 
         for (int action = 0; action < actionBudget; action++) {
@@ -176,10 +176,7 @@ final class OpeningRolloutSearch {
                 (byte) warType.ordinal(),
                 firstAttackTypeId,
                 (float) currentMetrics.immediateHarm(),
-                (float) currentMetrics.selfExposure(),
-                (float) currentMetrics.resourceSwing(),
-                (float) currentMetrics.controlLeverage(),
-                (float) currentMetrics.futureWarLeverage()
+                (float) currentMetrics.resourceSwing()
         );
     }
 
