@@ -758,6 +758,8 @@ public class Conflict {
 
         if (previous == null) {
             getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true, declaredFirstTwoTurns);
+        } else {
+            getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).updateWar(previous, current, true);
         }
 
         return true;

@@ -8,12 +8,12 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.DamageObjective;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +26,7 @@ public final class PlannerReplayProjector {
     static final int WAR_MASK_COMBAT_STATE = 0x1;
     static final int WAR_MASK_FLAGS = 0x2;
     static final int TURN_META_BLOCK_SIZE = 12;
+    private static final Comparator<DBNationSnapshot> NATION_ID_ORDER = Comparator.comparingInt(DBNationSnapshot::nationId);
 
     private PlannerReplayProjector() {
     }
@@ -49,8 +50,6 @@ public final class PlannerReplayProjector {
                 assignment,
                 Map.of(),
                 List.of(),
-                List.of(),
-                new DamageObjective(),
                 participantIdsAscending(nations),
                 new int[0],
                 currentTurn,
@@ -66,236 +65,7 @@ public final class PlannerReplayProjector {
         int[] defenderNationIds,
         Map<Integer, List<Integer>> assignment,
         Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        Collection<DBNationSnapshot> redeclareDeclarers,
-        Collection<DBNationSnapshot> redeclareTargets,
-        Collection<DBNationSnapshot> secondaryRedeclareDeclarers,
-        Collection<DBNationSnapshot> secondaryRedeclareTargets,
-        StrategicObjective counterObjective,
-        int currentTurn,
-        int horizonTurns
-    ) {
-        return capture(
-                tuning,
-                overrides,
-                nations,
-                attackerNationIds,
-                defenderNationIds,
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                redeclareDeclarers,
-                redeclareTargets,
-                secondaryRedeclareDeclarers,
-                secondaryRedeclareTargets,
-                counterObjective,
-                participantIdsAscending(nations),
-                new int[0],
-                currentTurn,
-                horizonTurns
-        );
-    }
-
-    public static BlitzReplayTrace capture(
-        SimTuning tuning,
-        OverrideSet overrides,
-        Collection<DBNationSnapshot> nations,
-        int[] attackerNationIds,
-        int[] defenderNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        int currentTurn,
-        int horizonTurns
-    ) {
-        return capture(
-                tuning,
-                overrides,
-                nations,
-                attackerNationIds,
-                defenderNationIds,
-                assignment,
-                Map.of(),
-                counterDeclarers,
-                counterTargets,
-                new DamageObjective(),
-                participantIdsAscending(nations),
-                new int[0],
-                currentTurn,
-                horizonTurns
-        );
-    }
-
-    public static BlitzReplayTrace capture(
-        SimTuning tuning,
-        OverrideSet overrides,
-        Collection<DBNationSnapshot> nations,
-        int[] attackerNationIds,
-        int[] defenderNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        StrategicObjective counterObjective,
-        int currentTurn,
-        int horizonTurns
-    ) {
-        return capture(
-                tuning,
-                overrides,
-                nations,
-                attackerNationIds,
-                defenderNationIds,
-                assignment,
-                Map.of(),
-                counterDeclarers,
-                counterTargets,
-                counterObjective,
-                participantIdsAscending(nations),
-                new int[0],
-                currentTurn,
-                horizonTurns
-        );
-    }
-
-    public static BlitzReplayTrace capture(
-        SimTuning tuning,
-        OverrideSet overrides,
-        Collection<DBNationSnapshot> nations,
-        int[] attackerNationIds,
-        int[] defenderNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        StrategicObjective counterObjective,
-        int currentTurn,
-        int horizonTurns
-    ) {
-        return capture(
-                tuning,
-                overrides,
-                nations,
-                attackerNationIds,
-                defenderNationIds,
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                counterObjective,
-                participantIdsAscending(nations),
-                new int[0],
-                currentTurn,
-                horizonTurns
-        );
-    }
-
-    public static BlitzReplayTrace capture(
-        SimTuning tuning,
-        OverrideSet overrides,
-        Collection<DBNationSnapshot> nations,
-        int[] attackerNationIds,
-        int[] defenderNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        StrategicObjective counterObjective,
-        int[] participantIds,
-        int[] existingWarPairs,
-        int currentTurn,
-        int horizonTurns
-    ) {
-    return capture(
-        tuning,
-        overrides,
-        nations,
-        attackerNationIds,
-        defenderNationIds,
-        assignment,
-        warTypeOrdinalsByPair,
-        counterDeclarers,
-        counterTargets,
-        snapshotsForNationIds(nations, attackerNationIds),
-        snapshotsForNationIds(nations, defenderNationIds),
-        List.of(),
-        List.of(),
-        counterObjective,
-        participantIds,
-        existingWarPairs,
-        currentTurn,
-        horizonTurns
-    );
-    }
-
-    public static BlitzReplayTrace capture(
-        SimTuning tuning,
-        OverrideSet overrides,
-        Collection<DBNationSnapshot> nations,
-        int[] attackerNationIds,
-        int[] defenderNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        Collection<DBNationSnapshot> redeclareDeclarers,
-        Collection<DBNationSnapshot> redeclareTargets,
-        Collection<DBNationSnapshot> secondaryRedeclareDeclarers,
-        Collection<DBNationSnapshot> secondaryRedeclareTargets,
-        StrategicObjective counterObjective,
-        int[] participantIds,
-        int[] existingWarPairs,
-        int currentTurn,
-        int horizonTurns
-    ) {
-        return capture(
-                tuning,
-                overrides,
-                nations,
-                attackerNationIds,
-                defenderNationIds,
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                redeclareDeclarers,
-                redeclareTargets,
-                secondaryRedeclareDeclarers,
-                secondaryRedeclareTargets,
-                legacyAutonomousPolicy("counterDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("counterTarget", counterObjective, false),
-                legacyAutonomousPolicy("redeclareDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("redeclareTarget", counterObjective, false),
-                legacyAutonomousPolicy("secondaryRedeclareDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("secondaryRedeclareTarget", counterObjective, false),
-                participantIds,
-                existingWarPairs,
-                currentTurn,
-                horizonTurns
-        );
-    }
-
-    public static BlitzReplayTrace capture(
-        SimTuning tuning,
-        OverrideSet overrides,
-        Collection<DBNationSnapshot> nations,
-        int[] attackerNationIds,
-        int[] defenderNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        Collection<DBNationSnapshot> redeclareDeclarers,
-        Collection<DBNationSnapshot> redeclareTargets,
-        Collection<DBNationSnapshot> secondaryRedeclareDeclarers,
-        Collection<DBNationSnapshot> secondaryRedeclareTargets,
-        SidePolicy counterDeclarerPolicy,
-        SidePolicy counterTargetPolicy,
-        SidePolicy redeclareDeclarerPolicy,
-        SidePolicy redeclareTargetPolicy,
-        SidePolicy secondaryRedeclareDeclarerPolicy,
-        SidePolicy secondaryRedeclareTargetPolicy,
+        List<LaterDeclarationScope> laterDeclarationScopes,
         int[] participantIds,
         int[] existingWarPairs,
         int currentTurn,
@@ -316,97 +86,7 @@ public final class PlannerReplayProjector {
                 existingWarPairs,
                 assignment,
                 warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                redeclareDeclarers,
-                redeclareTargets,
-                secondaryRedeclareDeclarers,
-                secondaryRedeclareTargets,
-                counterDeclarerPolicy,
-                counterTargetPolicy,
-                redeclareDeclarerPolicy,
-                redeclareTargetPolicy,
-                secondaryRedeclareDeclarerPolicy,
-                secondaryRedeclareTargetPolicy,
-                horizonTurns
-        );
-    }
-
-    static BlitzReplayTrace capture(
-        PlannerLocalConflict conflict,
-        int[] attackerNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        StrategicObjective counterObjective,
-        int horizonTurns
-    ) {
-        return capture(
-                conflict,
-                attackerNationIds,
-                conflict.replayNationIdsAscending(),
-                new int[0],
-                assignment,
-                Map.of(),
-                counterDeclarers,
-                counterTargets,
-                counterObjective,
-                horizonTurns
-        );
-    }
-
-    static BlitzReplayTrace capture(
-        PlannerLocalConflict conflict,
-        int[] attackerNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        StrategicObjective counterObjective,
-        int horizonTurns
-    ) {
-        return capture(
-                conflict,
-                attackerNationIds,
-                conflict.replayNationIdsAscending(),
-                new int[0],
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                counterObjective,
-                horizonTurns
-        );
-    }
-
-    static BlitzReplayTrace capture(
-        PlannerLocalConflict conflict,
-        int[] attackerNationIds,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        Collection<DBNationSnapshot> redeclareDeclarers,
-        Collection<DBNationSnapshot> redeclareTargets,
-        Collection<DBNationSnapshot> secondaryRedeclareDeclarers,
-        Collection<DBNationSnapshot> secondaryRedeclareTargets,
-        StrategicObjective counterObjective,
-        int horizonTurns
-    ) {
-        return capture(
-                conflict,
-                attackerNationIds,
-                conflict.replayNationIdsAscending(),
-                new int[0],
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                redeclareDeclarers,
-                redeclareTargets,
-                secondaryRedeclareDeclarers,
-                secondaryRedeclareTargets,
-                counterObjective,
+                laterDeclarationScopes,
                 horizonTurns
         );
     }
@@ -418,136 +98,7 @@ public final class PlannerReplayProjector {
         int[] existingWarPairs,
         Map<Integer, List<Integer>> assignment,
         Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        StrategicObjective counterObjective,
-        int horizonTurns
-    ) {
-        return capture(
-                conflict,
-                attackerNationIds,
-                participantIds,
-                existingWarPairs,
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                nationIds(attackerNationIds),
-                nationIds(defenderNationIds(participantIds, attackerNationIds)),
-                List.of(),
-                List.of(),
-                legacyAutonomousPolicy("counterDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("counterTarget", counterObjective, false),
-                legacyAutonomousPolicy("redeclareDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("redeclareTarget", counterObjective, false),
-                legacyAutonomousPolicy("secondaryRedeclareDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("secondaryRedeclareTarget", counterObjective, false),
-                horizonTurns
-        );
-    }
-
-    static BlitzReplayTrace capture(
-        PlannerLocalConflict conflict,
-        int[] attackerNationIds,
-        int[] participantIds,
-        int[] existingWarPairs,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        Collection<DBNationSnapshot> redeclareDeclarers,
-        Collection<DBNationSnapshot> redeclareTargets,
-        Collection<DBNationSnapshot> secondaryRedeclareDeclarers,
-        Collection<DBNationSnapshot> secondaryRedeclareTargets,
-        SidePolicy counterDeclarerPolicy,
-        SidePolicy counterTargetPolicy,
-        SidePolicy redeclareDeclarerPolicy,
-        SidePolicy redeclareTargetPolicy,
-        SidePolicy secondaryRedeclareDeclarerPolicy,
-        SidePolicy secondaryRedeclareTargetPolicy,
-        int horizonTurns
-    ) {
-        return capture(
-                conflict,
-                attackerNationIds,
-                participantIds,
-                existingWarPairs,
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                nationIds(redeclareDeclarers),
-                nationIds(redeclareTargets),
-                nationIds(secondaryRedeclareDeclarers),
-                nationIds(secondaryRedeclareTargets),
-                counterDeclarerPolicy,
-                counterTargetPolicy,
-                redeclareDeclarerPolicy,
-                redeclareTargetPolicy,
-                secondaryRedeclareDeclarerPolicy,
-                secondaryRedeclareTargetPolicy,
-                horizonTurns
-        );
-    }
-
-    static BlitzReplayTrace capture(
-        PlannerLocalConflict conflict,
-        int[] attackerNationIds,
-        int[] participantIds,
-        int[] existingWarPairs,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        Collection<DBNationSnapshot> redeclareDeclarers,
-        Collection<DBNationSnapshot> redeclareTargets,
-        Collection<DBNationSnapshot> secondaryRedeclareDeclarers,
-        Collection<DBNationSnapshot> secondaryRedeclareTargets,
-        StrategicObjective counterObjective,
-        int horizonTurns
-    ) {
-        return capture(
-                conflict,
-                attackerNationIds,
-                participantIds,
-                existingWarPairs,
-                assignment,
-                warTypeOrdinalsByPair,
-                counterDeclarers,
-                counterTargets,
-                nationIds(redeclareDeclarers),
-                nationIds(redeclareTargets),
-                nationIds(secondaryRedeclareDeclarers),
-                nationIds(secondaryRedeclareTargets),
-                legacyAutonomousPolicy("counterDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("counterTarget", counterObjective, false),
-                legacyAutonomousPolicy("redeclareDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("redeclareTarget", counterObjective, false),
-                legacyAutonomousPolicy("secondaryRedeclareDeclarer", counterObjective, true),
-                legacyAutonomousPolicy("secondaryRedeclareTarget", counterObjective, false),
-                horizonTurns
-        );
-    }
-
-    static BlitzReplayTrace capture(
-        PlannerLocalConflict conflict,
-        int[] attackerNationIds,
-        int[] participantIds,
-        int[] existingWarPairs,
-        Map<Integer, List<Integer>> assignment,
-        Map<Long, Integer> warTypeOrdinalsByPair,
-        Collection<DBNationSnapshot> counterDeclarers,
-        Collection<DBNationSnapshot> counterTargets,
-        List<Integer> redeclareDeclarerIds,
-        List<Integer> redeclareTargetIds,
-        List<Integer> secondaryRedeclareDeclarerIds,
-        List<Integer> secondaryRedeclareTargetIds,
-        SidePolicy counterDeclarerPolicy,
-        SidePolicy counterTargetPolicy,
-        SidePolicy redeclareDeclarerPolicy,
-        SidePolicy redeclareTargetPolicy,
-        SidePolicy secondaryRedeclareDeclarerPolicy,
-        SidePolicy secondaryRedeclareTargetPolicy,
+        List<LaterDeclarationScope> laterDeclarationScopes,
         int horizonTurns
     ) {
     try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.REPLAY_CAPTURE)) {
@@ -556,8 +107,6 @@ public final class PlannerReplayProjector {
         IntPredicate isAttackerNationId = attackerNationIdLookup(attackerNationIds);
         NationDeltaTracker nationTracker = new NationDeltaTracker(conflict, conflict.replayNationIdsAscending());
         WarTableTracker warTracker = WarTableTracker.seededFromBaseline(conflict, participantIds, existingWarPairs);
-        List<Integer> counterDeclarerIds = nationIds(counterDeclarers);
-        List<Integer> counterTargetIds = nationIds(counterTargets);
 
         IntArrayBuilder turnMetaLanes = new IntArrayBuilder(turns * TURN_META_BLOCK_SIZE);
         IntArrayBuilder changedNationIndexes = new IntArrayBuilder();
@@ -598,18 +147,7 @@ public final class PlannerReplayProjector {
             assignment,
             warTypeOrdinalsByPair,
             turnIndex == 0,
-            counterDeclarerIds,
-            counterTargetIds,
-            redeclareDeclarerIds,
-            redeclareTargetIds,
-            secondaryRedeclareDeclarerIds,
-            secondaryRedeclareTargetIds,
-            counterDeclarerPolicy,
-            counterTargetPolicy,
-            redeclareDeclarerPolicy,
-            redeclareTargetPolicy,
-            secondaryRedeclareDeclarerPolicy,
-            secondaryRedeclareTargetPolicy,
+            laterDeclarationScopes,
             turns - turnIndex
         );
 
@@ -618,23 +156,24 @@ public final class PlannerReplayProjector {
             metrics = new PlannerReplayTurnMetrics(isAttackerNationId);
         }
 
-        NationDelta nationDelta = nationTracker.captureTurn(conflict);
-        WarDelta warDelta = warTracker.captureTurn(conflict, metrics);
-
-        changedNationIndexes.addAll(nationDelta.changedNationIndexes());
-        changedNationMasks.addAll(nationDelta.changedNationMasks());
-        changedNationLanes.addAll(nationDelta.changedNationLanes());
-        changedWarIndexes.addAll(warDelta.changedWarIndexes());
-        changedWarMasks.addAll(warDelta.changedWarMasks());
-        changedWarLanes.addAll(warDelta.changedWarLanes());
-        declaredWarPairs.addAll(warDelta.declaredWarPairs());
-        declaredWarLanes.addAll(warDelta.declaredWarLanes());
-        concludedWarLanes.addAll(warDelta.concludedWarLanes());
-        summaryScalarLanes.addAll(metrics.summaryScalarLanes());
-        summaryWarTypeCounts.addAll(metrics.summaryWarTypeCounts());
-        summaryAttackOutcomeCounts.addAll(metrics.summaryAttackOutcomeCounts());
-        summaryUnitLossCounts.addAll(metrics.summaryUnitLossCounts());
-        summaryInfraLossCents.addAll(metrics.summaryInfraLossCents());
+        nationTracker.captureTurn(conflict, changedNationIndexes, changedNationMasks, changedNationLanes);
+        warTracker.captureTurn(
+            conflict,
+            metrics,
+            changedWarIndexes,
+            changedWarMasks,
+            changedWarLanes,
+            declaredWarPairs,
+            declaredWarLanes,
+            concludedWarLanes
+        );
+        if (!metrics.isEmpty()) {
+            metrics.appendSummaryScalarLanes(summaryScalarLanes);
+            metrics.appendSummaryWarTypeCounts(summaryWarTypeCounts);
+            metrics.appendSummaryAttackOutcomeCounts(summaryAttackOutcomeCounts);
+            metrics.appendSummaryUnitLossCounts(summaryUnitLossCounts);
+            metrics.appendSummaryInfraLossCents(summaryInfraLossCents);
+        }
         }
 
         return new BlitzReplayTrace(
@@ -656,14 +195,6 @@ public final class PlannerReplayProjector {
             summaryInfraLossCents.toArray()
         );
     }
-
-    }
-
-    private static SidePolicy legacyAutonomousPolicy(String name, StrategicObjective objective, boolean declarerSide) {
-        StrategicObjective effectiveObjective = objective == null ? new DamageObjective() : objective;
-        return declarerSide
-                ? SidePolicy.legacy(name, effectiveObjective)
-                : SidePolicy.legacyPassive(name, effectiveObjective);
     }
 
     private static IntPredicate attackerNationIdLookup(int[] attackerNationIds) {
@@ -678,20 +209,21 @@ public final class PlannerReplayProjector {
         if (snapshots.isEmpty()) {
             return List.of();
         }
-        return snapshots.stream()
-                .map(DBNationSnapshot::nationId)
-                .sorted()
-                .toList();
+        int[] nationIds = participantIdsAscending(snapshots);
+        return nationIds(nationIds);
     }
 
     private static List<Integer> nationIds(int[] nationIds) {
         if (nationIds.length == 0) {
             return List.of();
         }
-        return Arrays.stream(nationIds)
-                .sorted()
-                .boxed()
-                .toList();
+        int[] sortedNationIds = Arrays.copyOf(nationIds, nationIds.length);
+        Arrays.sort(sortedNationIds);
+        ArrayList<Integer> ids = new ArrayList<>(sortedNationIds.length);
+        for (int nationId : sortedNationIds) {
+            ids.add(nationId);
+        }
+        return Collections.unmodifiableList(ids);
     }
 
     private static List<DBNationSnapshot> snapshotsForNationIds(Collection<DBNationSnapshot> snapshots, int[] nationIds) {
@@ -702,10 +234,14 @@ public final class PlannerReplayProjector {
         for (int nationId : nationIds) {
             nationIdSet.add(nationId);
         }
-        return snapshots.stream()
-                .filter(snapshot -> nationIdSet.contains(snapshot.nationId()))
-                .sorted(Comparator.comparingInt(DBNationSnapshot::nationId))
-                .toList();
+        ArrayList<DBNationSnapshot> filtered = new ArrayList<>(Math.min(nationIds.length, snapshots.size()));
+        for (DBNationSnapshot snapshot : snapshots) {
+            if (nationIdSet.contains(snapshot.nationId())) {
+                filtered.add(snapshot);
+            }
+        }
+        filtered.sort(NATION_ID_ORDER);
+        return Collections.unmodifiableList(filtered);
     }
 
     private static int[] defenderNationIds(int[] participantIds, int[] attackerNationIds) {
@@ -713,55 +249,36 @@ public final class PlannerReplayProjector {
         for (int attackerNationId : attackerNationIds) {
             attackerIdSet.add(attackerNationId);
         }
-        return Arrays.stream(participantIds)
-                .filter(participantId -> !attackerIdSet.contains(participantId))
-                .sorted()
-                .toArray();
+        int[] defenderNationIds = new int[participantIds.length];
+        int count = 0;
+        for (int participantId : participantIds) {
+            if (!attackerIdSet.contains(participantId)) {
+                defenderNationIds[count++] = participantId;
+            }
+        }
+        int[] trimmed = Arrays.copyOf(defenderNationIds, count);
+        Arrays.sort(trimmed);
+        return trimmed;
     }
 
     private static int[] participantIdsAscending(Collection<DBNationSnapshot> snapshots) {
-        return snapshots.stream().mapToInt(DBNationSnapshot::nationId).sorted().toArray();
+        int[] participantIds = new int[snapshots.size()];
+        int index = 0;
+        for (DBNationSnapshot snapshot : snapshots) {
+            participantIds[index++] = snapshot.nationId();
+        }
+        Arrays.sort(participantIds);
+        return participantIds;
     }
 
     private static boolean isActive(int statusOrdinal) {
         return WarStatus.values[statusOrdinal].isActive();
     }
 
-    private record NationDelta(
-            int[] changedNationIndexes,
-            int[] changedNationMasks,
-            int[] changedNationLanes
-    ) {
-        private static final NationDelta EMPTY = new NationDelta(new int[0], new int[0], new int[0]);
-
-        private boolean isEmpty() {
-            return changedNationIndexes.length == 0;
-        }
-    }
-
-    private record WarDelta(
-            int[] changedWarIndexes,
-            int[] changedWarMasks,
-            int[] changedWarLanes,
-            int[] declaredWarPairs,
-            int[] declaredWarLanes,
-            int[] concludedWarLanes
-    ) {
-        private static final WarDelta EMPTY = new WarDelta(new int[0], new int[0], new int[0], new int[0], new int[0], new int[0]);
-
-        private boolean isEmpty() {
-            return changedWarIndexes.length == 0
-                    && declaredWarPairs.length == 0
-                    && declaredWarLanes.length == 0
-                    && concludedWarLanes.length == 0;
-        }
-    }
-
     private static final class NationDeltaTracker {
         private final int[] nationIdsAscending;
         private final int[] previousAvgInfraCents;
         private final int[][] previousUnitsByNationIndex;
-        private final int[] unitScratch = new int[MilitaryUnit.values.length];
 
         private NationDeltaTracker(PlannerLocalConflict conflict, int[] nationIdsAscending) {
             this.nationIdsAscending = nationIdsAscending;
@@ -778,41 +295,45 @@ public final class PlannerReplayProjector {
             return nationIdsAscending.length;
         }
 
-        private NationDelta captureTurn(PlannerLocalConflict conflict) {
-            IntArrayBuilder indexes = new IntArrayBuilder();
-            IntArrayBuilder masks = new IntArrayBuilder();
-            IntArrayBuilder lanes = new IntArrayBuilder();
+        private void captureTurn(
+            PlannerLocalConflict conflict,
+            IntArrayBuilder changedNationIndexes,
+            IntArrayBuilder changedNationMasks,
+            IntArrayBuilder changedNationLanes
+        ) {
             for (int nationIndex = 0; nationIndex < nationIdsAscending.length; nationIndex++) {
                 int nationId = nationIdsAscending[nationIndex];
                 int currentAvgInfraCents = conflict.replayNationAvgInfraCents(nationId);
-                conflict.copyReplayNationUnitCounts(nationId, unitScratch);
+                boolean unitCountsChanged = !conflict.replayNationUnitCountsMatch(
+                        nationId,
+                        previousUnitsByNationIndex[nationIndex]
+                );
 
                 int mask = 0;
                 if (currentAvgInfraCents != previousAvgInfraCents[nationIndex]) {
                     mask |= NATION_MASK_AVG_INFRA_CENTS;
                 }
-                if (!Arrays.equals(previousUnitsByNationIndex[nationIndex], unitScratch)) {
+                if (unitCountsChanged) {
                     mask |= NATION_MASK_UNIT_COUNTS;
                 }
                 if (mask == 0) {
                     continue;
                 }
 
-                indexes.add(nationIndex);
-                masks.add(mask);
+                changedNationIndexes.add(nationIndex);
+                changedNationMasks.add(mask);
                 if ((mask & NATION_MASK_AVG_INFRA_CENTS) != 0) {
-                    lanes.add(currentAvgInfraCents);
+                    changedNationLanes.add(currentAvgInfraCents);
                     previousAvgInfraCents[nationIndex] = currentAvgInfraCents;
                 }
-                if ((mask & NATION_MASK_UNIT_COUNTS) != 0) {
-                    lanes.addAll(unitScratch);
-                    System.arraycopy(unitScratch, 0, previousUnitsByNationIndex[nationIndex], 0, unitScratch.length);
+                if (unitCountsChanged) {
+                    conflict.appendReplayNationUnitCounts(
+                            nationId,
+                            previousUnitsByNationIndex[nationIndex],
+                            changedNationLanes
+                    );
                 }
             }
-            if (indexes.isEmpty()) {
-                return NationDelta.EMPTY;
-            }
-            return new NationDelta(indexes.toArray(), masks.toArray(), lanes.toArray());
         }
     }
 
@@ -820,21 +341,33 @@ public final class PlannerReplayProjector {
         private static final Comparator<WarSnapshot> PAIR_ORDER = Comparator
                 .comparingInt(WarSnapshot::declarerNationId)
                 .thenComparingInt(WarSnapshot::targetNationId);
+        private static final Comparator<ChangedWarLane> CHANGED_WAR_ORDER = Comparator.comparingInt(ChangedWarLane::warIndex);
+        private static final Comparator<DeclaredWarLane> DECLARED_WAR_ORDER = Comparator
+            .comparingInt(DeclaredWarLane::declarerNationId)
+            .thenComparingInt(DeclaredWarLane::targetNationId);
+        private static final Comparator<ConcludedWarLane> CONCLUDED_WAR_ORDER = Comparator.comparingInt(ConcludedWarLane::warIndex);
+        private static final int MISSING_WAR_STATE = Integer.MIN_VALUE;
 
-        private final Map<Long, WarSnapshot> previousWarsByPair;
-        private final Map<Long, Integer> activeWarIndexByPair;
+        private final Long2IntOpenHashMap previousCombatStateByPair;
+        private final Long2IntOpenHashMap previousFlagsByPair;
+        private final Long2IntOpenHashMap activeWarIndexByPair;
         private final Int2IntOpenHashMap participantIndexByNationId;
+        private final ArrayList<ChangedWarLane> changedScratch = new ArrayList<>();
+        private final ArrayList<DeclaredWarLane> declaredScratch = new ArrayList<>();
+        private final ArrayList<ConcludedWarLane> concludedScratch = new ArrayList<>();
         private final int initialWarCount;
         private int nextWarIndex;
 
         private WarTableTracker(
-                Map<Long, WarSnapshot> previousWarsByPair,
-                Map<Long, Integer> activeWarIndexByPair,
+            Long2IntOpenHashMap previousCombatStateByPair,
+            Long2IntOpenHashMap previousFlagsByPair,
+            Long2IntOpenHashMap activeWarIndexByPair,
                 Int2IntOpenHashMap participantIndexByNationId,
                 int initialWarCount,
                 int nextWarIndex
         ) {
-            this.previousWarsByPair = previousWarsByPair;
+            this.previousCombatStateByPair = previousCombatStateByPair;
+            this.previousFlagsByPair = previousFlagsByPair;
             this.activeWarIndexByPair = activeWarIndexByPair;
             this.participantIndexByNationId = participantIndexByNationId;
             this.initialWarCount = initialWarCount;
@@ -846,8 +379,12 @@ public final class PlannerReplayProjector {
                 int[] participantIds,
                 int[] existingWarPairs
         ) {
-            Map<Long, WarSnapshot> previousWarsByPair = new Long2ObjectOpenHashMap<>();
-            Map<Long, Integer> activeWarIndexByPair = new Long2IntOpenHashMap();
+            Long2IntOpenHashMap previousCombatStateByPair = new Long2IntOpenHashMap();
+            previousCombatStateByPair.defaultReturnValue(MISSING_WAR_STATE);
+            Long2IntOpenHashMap previousFlagsByPair = new Long2IntOpenHashMap();
+            previousFlagsByPair.defaultReturnValue(MISSING_WAR_STATE);
+            Long2IntOpenHashMap activeWarIndexByPair = new Long2IntOpenHashMap();
+            activeWarIndexByPair.defaultReturnValue(-1);
             Int2IntOpenHashMap participantIndexByNationId = new Int2IntOpenHashMap(Math.max(16, participantIds.length * 2));
             participantIndexByNationId.defaultReturnValue(-1);
             for (int index = 0; index < participantIds.length; index++) {
@@ -877,7 +414,8 @@ public final class PlannerReplayProjector {
                         attackerFortified,
                         defenderFortified
                 );
-                previousWarsByPair.put(pairKey, snapshot);
+                previousCombatStateByPair.put(pairKey, snapshot.packedCombatState());
+                previousFlagsByPair.put(pairKey, snapshot.packedFlags());
                 if (snapshot.isActive()) {
                     activeWars.add(snapshot);
                 }
@@ -901,7 +439,8 @@ public final class PlannerReplayProjector {
             }
 
             return new WarTableTracker(
-                    previousWarsByPair,
+                    previousCombatStateByPair,
+                    previousFlagsByPair,
                     activeWarIndexByPair,
                     participantIndexByNationId,
                     nextWarIndex,
@@ -913,111 +452,160 @@ public final class PlannerReplayProjector {
             return initialWarCount;
         }
 
-        private WarDelta captureTurn(PlannerLocalConflict conflict, PlannerReplayTurnMetrics metrics) {
-            List<ChangedWarLane> changed = new ArrayList<>();
-            List<WarSnapshot> declared = new ArrayList<>();
-            List<ConcludedWarLane> concluded = new ArrayList<>();
+        private void captureTurn(
+            PlannerLocalConflict conflict,
+            PlannerReplayTurnMetrics metrics,
+            IntArrayBuilder changedWarIndexes,
+            IntArrayBuilder changedWarMasks,
+            IntArrayBuilder changedWarLanes,
+            IntArrayBuilder declaredWarPairs,
+            IntArrayBuilder declaredWarLanes,
+            IntArrayBuilder concludedWarLanes
+        ) {
+            changedScratch.clear();
+            declaredScratch.clear();
+            concludedScratch.clear();
 
             conflict.forEachReplayWar((pairKey, declarerNationId, targetNationId, warTypeOrdinal, startTurn,
                                       statusOrdinal, attackerMaps, defenderMaps, attackerResistance,
                                       defenderResistance, groundSuperiorityOwnerOrdinal,
                                       airSuperiorityOwnerOrdinal, blockadeOwnerOrdinal,
                                       attackerFortified, defenderFortified) -> {
-                WarSnapshot current = new WarSnapshot(
-                        pairKey,
-                        declarerNationId,
-                        targetNationId,
+                int packedCombatState = packCombatState(attackerMaps, defenderMaps, attackerResistance, defenderResistance);
+                int packedFlags = packFlags(
                         warTypeOrdinal,
-                        startTurn,
                         statusOrdinal,
-                        attackerMaps,
-                        defenderMaps,
-                        attackerResistance,
-                        defenderResistance,
                         groundSuperiorityOwnerOrdinal,
                         airSuperiorityOwnerOrdinal,
                         blockadeOwnerOrdinal,
                         attackerFortified,
                         defenderFortified
                 );
-                WarSnapshot previous = previousWarsByPair.put(pairKey, current);
-                boolean previousActive = previous != null && previous.isActive();
-                boolean currentActive = current.isActive();
+                int previousFlags = previousFlagsByPair.put(pairKey, packedFlags);
+                int previousCombatState = previousCombatStateByPair.put(pairKey, packedCombatState);
+                boolean previousActive = previousFlags != MISSING_WAR_STATE && PlannerReplayProjector.isActive(unpackStatusOrdinal(previousFlags));
+                boolean currentActive = PlannerReplayProjector.isActive(statusOrdinal);
                 if (currentActive && !previousActive) {
-                    declared.add(current);
-                    metrics.recordDeclaredWar(current.declarerNationId(), current.warTypeOrdinal());
+                    declaredScratch.add(new DeclaredWarLane(
+                            pairKey,
+                            declarerNationId,
+                            targetNationId,
+                            warTypeOrdinal,
+                            startTurn,
+                            packedCombatState,
+                            packedFlags
+                    ));
+                    metrics.recordDeclaredWar(declarerNationId, warTypeOrdinal);
                     return;
                 }
                 if (!currentActive && previousActive) {
-                    Integer warIndex = activeWarIndexByPair.remove(pairKey);
-                    if (warIndex != null) {
-                        concluded.add(new ConcludedWarLane(warIndex, current.statusOrdinal()));
-                        metrics.recordConcludedWar(current.declarerNationId(), current.targetNationId(), current.statusOrdinal());
+                    int warIndex = activeWarIndexByPair.remove(pairKey);
+                    if (warIndex >= 0) {
+                        concludedScratch.add(new ConcludedWarLane(warIndex, statusOrdinal));
+                        metrics.recordConcludedWar(declarerNationId, targetNationId, statusOrdinal);
                     }
                     return;
                 }
                 if (!currentActive) {
                     return;
                 }
-                Integer warIndex = activeWarIndexByPair.get(pairKey);
-                int mask = current.diffMask(previous);
-                if (warIndex != null && mask != 0) {
-                    changed.add(new ChangedWarLane(warIndex, mask, current));
+                int warIndex = activeWarIndexByPair.get(pairKey);
+                int mask = diffMask(previousCombatState, previousFlags, packedCombatState, packedFlags);
+                if (warIndex >= 0 && mask != 0) {
+                    changedScratch.add(new ChangedWarLane(warIndex, mask, packedCombatState, packedFlags));
                 }
             });
 
-            if (changed.isEmpty() && declared.isEmpty() && concluded.isEmpty()) {
-                return WarDelta.EMPTY;
+            if (changedScratch.isEmpty() && declaredScratch.isEmpty() && concludedScratch.isEmpty()) {
+                return;
             }
 
-            changed.sort(Comparator.comparingInt(ChangedWarLane::warIndex));
-            declared.sort(PAIR_ORDER);
-            concluded.sort(Comparator.comparingInt(ConcludedWarLane::warIndex));
+            changedScratch.sort(CHANGED_WAR_ORDER);
+            declaredScratch.sort(DECLARED_WAR_ORDER);
+            concludedScratch.sort(CONCLUDED_WAR_ORDER);
 
-            IntArrayBuilder changedIndexes = new IntArrayBuilder(changed.size());
-            IntArrayBuilder changedMasks = new IntArrayBuilder(changed.size());
-            IntArrayBuilder changedLanes = new IntArrayBuilder(changed.size() * 2);
-            for (ChangedWarLane lane : changed) {
-                changedIndexes.add(lane.warIndex());
-                changedMasks.add(lane.mask());
+            for (ChangedWarLane lane : changedScratch) {
+                changedWarIndexes.add(lane.warIndex());
+                changedWarMasks.add(lane.mask());
                 if ((lane.mask() & WAR_MASK_COMBAT_STATE) != 0) {
-                    changedLanes.add(lane.snapshot().packedCombatState());
+                    changedWarLanes.add(lane.packedCombatState());
                 }
                 if ((lane.mask() & WAR_MASK_FLAGS) != 0) {
-                    changedLanes.add(lane.snapshot().packedFlags());
+                    changedWarLanes.add(lane.packedFlags());
                 }
             }
 
-            IntArrayBuilder declaredPairs = new IntArrayBuilder(declared.size() * 2);
-            IntArrayBuilder declaredLanes = new IntArrayBuilder(declared.size() * 3);
-            for (WarSnapshot snapshot : declared) {
-                activeWarIndexByPair.put(snapshot.pairKey(), nextWarIndex++);
-                int declarerIndex = participantIndexByNationId.get(snapshot.declarerNationId());
-                int targetIndex = participantIndexByNationId.get(snapshot.targetNationId());
+            for (DeclaredWarLane lane : declaredScratch) {
+                activeWarIndexByPair.put(lane.pairKey(), nextWarIndex++);
+                int declarerIndex = participantIndexByNationId.get(lane.declarerNationId());
+                int targetIndex = participantIndexByNationId.get(lane.targetNationId());
                 if (declarerIndex < 0 || targetIndex < 0) {
                     continue;
                 }
-                declaredPairs.add(declarerIndex);
-                declaredPairs.add(targetIndex);
-                declaredLanes.add(snapshot.startTurn());
-                declaredLanes.add(snapshot.packedCombatState());
-                declaredLanes.add(snapshot.packedFlags());
+                declaredWarPairs.add(declarerIndex);
+                declaredWarPairs.add(targetIndex);
+                declaredWarLanes.add(lane.startTurn());
+                declaredWarLanes.add(lane.packedCombatState());
+                declaredWarLanes.add(lane.packedFlags());
             }
 
-            IntArrayBuilder concludedLanes = new IntArrayBuilder(concluded.size() * 2);
-            for (ConcludedWarLane lane : concluded) {
-                concludedLanes.add(lane.warIndex());
-                concludedLanes.add(lane.endStatusOrdinal());
+            for (ConcludedWarLane lane : concludedScratch) {
+                concludedWarLanes.add(lane.warIndex());
+                concludedWarLanes.add(lane.endStatusOrdinal());
             }
+        }
 
-            return new WarDelta(
-                    changedIndexes.toArray(),
-                    changedMasks.toArray(),
-                    changedLanes.toArray(),
-                    declaredPairs.toArray(),
-                    declaredLanes.toArray(),
-                    concludedLanes.toArray()
-            );
+        private static int diffMask(int previousCombatState, int previousFlags, int currentCombatState, int currentFlags) {
+            if (previousFlags == MISSING_WAR_STATE) {
+                return WAR_MASK_COMBAT_STATE | WAR_MASK_FLAGS;
+            }
+            int mask = 0;
+            if (previousCombatState != currentCombatState) {
+                mask |= WAR_MASK_COMBAT_STATE;
+            }
+            if (previousFlags != currentFlags) {
+                mask |= WAR_MASK_FLAGS;
+            }
+            return mask;
+        }
+
+        private static int unpackStatusOrdinal(int packedFlags) {
+            return (packedFlags >>> 6) & 0x1F;
+        }
+
+        private static int packCombatState(
+                int attackerMaps,
+                int defenderMaps,
+                int attackerResistance,
+                int defenderResistance
+        ) {
+            return (attackerMaps & 0xF)
+                    | ((defenderMaps & 0xF) << 4)
+                    | ((attackerResistance & 0x7F) << 8)
+                    | ((defenderResistance & 0x7F) << 15);
+        }
+
+        private static int packFlags(
+                int warTypeOrdinal,
+                int statusOrdinal,
+                int groundSuperiorityOwnerOrdinal,
+                int airSuperiorityOwnerOrdinal,
+                int blockadeOwnerOrdinal,
+                boolean attackerFortified,
+                boolean defenderFortified
+        ) {
+            int flags = (warTypeOrdinal & 0x3F)
+                    | ((statusOrdinal & 0x1F) << 6)
+                    | ((groundSuperiorityOwnerOrdinal & 0x3) << 11)
+                    | ((airSuperiorityOwnerOrdinal & 0x3) << 13)
+                    | ((blockadeOwnerOrdinal & 0x3) << 15);
+            if (attackerFortified) {
+                flags |= (1 << 17);
+            }
+            if (defenderFortified) {
+                flags |= (1 << 18);
+            }
+            return flags;
         }
     }
 
@@ -1083,13 +671,24 @@ public final class PlannerReplayProjector {
         }
     }
 
-    private record ChangedWarLane(int warIndex, int mask, WarSnapshot snapshot) {
+        private record ChangedWarLane(int warIndex, int mask, int packedCombatState, int packedFlags) {
+        }
+
+        private record DeclaredWarLane(
+            long pairKey,
+            int declarerNationId,
+            int targetNationId,
+            int warTypeOrdinal,
+            int startTurn,
+            int packedCombatState,
+            int packedFlags
+        ) {
     }
 
     private record ConcludedWarLane(int warIndex, int endStatusOrdinal) {
     }
 
-    private static final class IntArrayBuilder {
+    static final class IntArrayBuilder {
         private int[] values;
         private int size;
 
@@ -1107,9 +706,20 @@ public final class PlannerReplayProjector {
         }
 
         private void addAll(int[] source) {
-            ensureCapacity(size + source.length);
-            System.arraycopy(source, 0, values, size, source.length);
-            size += source.length;
+            addAll(source, source.length);
+        }
+
+        void addAll(int[] source, int length) {
+            addAll(source, 0, length);
+        }
+
+        void addAll(int[] source, int offset, int length) {
+            if (length <= 0) {
+                return;
+            }
+            ensureCapacity(size + length);
+            System.arraycopy(source, offset, values, size, length);
+            size += length;
         }
 
         private boolean isEmpty() {

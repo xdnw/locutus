@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -21,17 +20,17 @@ import java.util.Map;
  *   <li>Attacker supply = {@code supply[ai]} free offensive slots per scenario attacker index.</li>
  *   <li>Defender capacity = {@code capacity[di]} free defensive slots per scenario defender index.</li>
  *   <li>Each candidate edge has capacity 1 and cost = {@code -scalarScore + eps1*counterRisk + eps2*attRank}.</li>
- *   <li>A slack edge from source to sink allows unused supply to drain at zero marginal cost.</li>
+ *   <li>Unused supply is optional flow: the solver simply stops once no negative-cost
+ *       augmenting path remains.</li>
  * </ul>
  *
- * <p><b>Algorithm:</b> successive shortest paths with SPFA (queue-based Bellman-Ford).
- * Handles negative-cost edges from the score-negate transform. Each augmentation sends 1 unit
- * of flow along the cheapest source-to-sink path. Stops when no beneficial path remains
- * (shortest-path cost ≥ 0, meaning only zero-cost slack paths remain).
+ * <p><b>Algorithm:</b> successive shortest paths with Johnson potentials and a primitive
+ * Dijkstra heap. Negative candidate-edge costs are supported through an initial feasible
+ * potential on the layered source/attacker/defender/sink graph, and each augmentation sends
+ * 1 unit of flow along the cheapest simple source-to-sink path. Stops once no beneficial
+ * path remains (actual path cost ≥ 0).
  *
- * <p><b>Complexity:</b> O(supply_total × (V + E)) where V = nAtt + nDef + 2 and E = edge count.
- * For typical blitz sizes (50×200, ~400 candidate edges, supply ≤ 5) this is substantially
- * cheaper than object-based MCMF.
+ * <p><b>Complexity:</b> O(supply_total × (E log V)) where V = nAtt + nDef + 2 and E = edge count.
  */
 final class PrimitiveAssignmentSolver {
 
@@ -40,6 +39,10 @@ final class PrimitiveAssignmentSolver {
 
     /** Tie-breaker weight for attacker strength rank in edge cost. */
     private static final double EPS2 = 1e-6;
+
+    private static final double COST_EPS = 1e-12;
+
+    private static final double REDUCED_COST_EPS = 1e-9;
 
     private PrimitiveAssignmentSolver() {
     }
@@ -192,20 +195,18 @@ final class PrimitiveAssignmentSolver {
             int[] defenderAssignedCountsOut
     ) {
         int totalSupply = 0;
-        for (int ai = 0; ai < nAtt; ai++) totalSupply += supply[ai];
-        if (totalSupply == 0 || edges.edgeCount() == 0) return Map.of();
+        for (int ai = 0; ai < nAtt; ai++) {
+            totalSupply += supply[ai];
+        }
+        if (totalSupply == 0 || edges.edgeCount() == 0) {
+            return Map.of();
+        }
 
-        // Vertex layout:
-        //   0          = source
-        //   1..nAtt    = attacker nodes  (attacker ai → vertex ai+1)
-        //   nAtt+1..nAtt+nDef = defender nodes (defender di → vertex nAtt+di+1)
-        //   nAtt+nDef+1 = sink
         final int SOURCE = 0;
         final int SINK = nAtt + nDef + 1;
         final int nV = nAtt + nDef + 2;
 
-        // Pre-allocate edge arrays: each addEdgePair uses 2 slots.
-        int arraySize = (nAtt + nDef + 1 + edges.edgeCount()) * 2 + 4;
+        int arraySize = (nAtt + nDef + edges.edgeCount()) * 2 + 4;
         int[] eTo = new int[arraySize];
         int[] eCap = new int[arraySize];
         double[] eCost = new double[arraySize];
@@ -213,95 +214,171 @@ final class PrimitiveAssignmentSolver {
         int[] head = new int[nV];
         Arrays.fill(head, -1);
 
-        // Map candidate edge index → its forward edge slot (for result extraction)
         int[] candidateFwdSlot = new int[edges.edgeCount()];
         Arrays.fill(candidateFwdSlot, -1);
+        boolean hasExcludedPairs = !excludedPairKeys.isEmpty();
+
+        double[] potential = new double[nV];
+        Arrays.fill(potential, Double.POSITIVE_INFINITY);
+        potential[SOURCE] = 0.0;
 
         int ptr = 0;
 
-        // Source → attacker supply edges
         for (int ai = 0; ai < nAtt; ai++) {
             if (supply[ai] > 0) {
                 ptr = addEdgePair(eTo, eCap, eCost, eNext, head, ptr, SOURCE, ai + 1, supply[ai], 0.0);
+                potential[ai + 1] = 0.0;
             }
         }
 
-        // Defender → sink demand edges
         for (int di = 0; di < nDef; di++) {
             if (capacity[di] > 0) {
                 ptr = addEdgePair(eTo, eCap, eCost, eNext, head, ptr, nAtt + di + 1, SINK, capacity[di], 0.0);
             }
         }
 
-        // Slack edge source → sink (unused supply drains for free)
-        ptr = addEdgePair(eTo, eCap, eCost, eNext, head, ptr, SOURCE, SINK, totalSupply, 0.0);
-
-        // Candidate edges: attacker → defender
+        int eligibleCandidateCount = 0;
         for (int e = 0; e < edges.edgeCount(); e++) {
             int ai = edges.attackerIndex(e);
             int di = edges.defenderIndex(e);
-            if (supply[ai] <= 0 || capacity[di] <= 0) continue;
-            if (excludedPairKeys.contains(pairKey(attackerNationIds[ai], defenderNationIds[di]))) continue;
+            if (supply[ai] <= 0 || capacity[di] <= 0) {
+                continue;
+            }
+            if (hasExcludedPairs && excludedPairKeys.contains(pairKey(attackerNationIds[ai], defenderNationIds[di]))) {
+                continue;
+            }
             int rank = (attStrengthRank != null && ai < attStrengthRank.length) ? attStrengthRank[ai] : 0;
             double edgeCost = (scoreOverride == null)
                     ? edges.edgeCost(e, EPS1, EPS2, rank)
                     : (-scoreOverride[e] + EPS1 * edges.counterRisk(e) + EPS2 * rank);
+
+            if (!Double.isFinite(edgeCost)) {
+                throw new IllegalArgumentException("Non-finite edge cost for candidate edge " + e + ": " + edgeCost);
+            }
+            if (edgeCost >= -COST_EPS) {
+                continue;
+            }
+
+            int attackerVertex = ai + 1;
+            int defenderVertex = nAtt + di + 1;
             candidateFwdSlot[e] = ptr;
-            ptr = addEdgePair(eTo, eCap, eCost, eNext, head, ptr, ai + 1, nAtt + di + 1, 1, edgeCost);
+            ptr = addEdgePair(eTo, eCap, eCost, eNext, head, ptr, attackerVertex, defenderVertex, 1, edgeCost);
+            if (edgeCost < potential[defenderVertex]) {
+                potential[defenderVertex] = edgeCost;
+            }
+            eligibleCandidateCount++;
         }
 
-        // ---- SPFA successive shortest paths --------------------------------
+        if (eligibleCandidateCount == 0) {
+            return Map.of();
+        }
+
+        double sinkPotential = Double.POSITIVE_INFINITY;
+        for (int di = 0; di < nDef; di++) {
+            int defenderVertex = nAtt + di + 1;
+            if (capacity[di] > 0 && potential[defenderVertex] < sinkPotential) {
+                sinkPotential = potential[defenderVertex];
+            }
+        }
+        if (!Double.isFinite(sinkPotential)) {
+            return Map.of();
+        }
+        potential[SINK] = sinkPotential;
+        for (int v = 0; v < nV; v++) {
+            if (!Double.isFinite(potential[v])) {
+                potential[v] = 0.0;
+            }
+        }
+
         double[] dist = new double[nV];
         int[] prevEdge = new int[nV];
-        boolean[] inQueue = new boolean[nV];
-        ArrayDeque<Integer> q = new ArrayDeque<>(nV);
+        int[] seenStamp = new int[nV];
+        int[] settledStamp = new int[nV];
+        int[] settledVertices = new int[nV];
+        int stamp = 0;
+        IndexedIntDoubleMinHeap heap = new IndexedIntDoubleMinHeap(nV);
 
         while (true) {
-            Arrays.fill(dist, Double.POSITIVE_INFINITY);
-            Arrays.fill(prevEdge, -1);
-            dist[SOURCE] = 0.0;
-            q.clear();
-            q.add(SOURCE);
-            inQueue[SOURCE] = true;
+            if (++stamp == Integer.MAX_VALUE) {
+                Arrays.fill(seenStamp, 0);
+                Arrays.fill(settledStamp, 0);
+                stamp = 1;
+            }
 
-            while (!q.isEmpty()) {
-                int u = q.poll();
-                inQueue[u] = false;
+            int settledCount = 0;
+
+            seenStamp[SOURCE] = stamp;
+            dist[SOURCE] = 0.0;
+            prevEdge[SOURCE] = -1;
+
+            heap.clear();
+            heap.addOrDecrease(SOURCE, 0.0);
+
+            while (!heap.isEmpty()) {
+                int u = heap.popVertex();
+                if (settledStamp[u] == stamp) {
+                    continue;
+                }
+                settledStamp[u] = stamp;
+                settledVertices[settledCount++] = u;
+                if (u == SINK) {
+                    break;
+                }
+                double du = dist[u];
                 for (int eid = head[u]; eid != -1; eid = eNext[eid]) {
-                    if (eCap[eid] > 0) {
-                        double nd = dist[u] + eCost[eid];
-                        int v = eTo[eid];
-                        if (nd < dist[v] - 1e-12) {
-                            dist[v] = nd;
-                            prevEdge[v] = eid;
-                            if (!inQueue[v]) {
-                                q.add(v);
-                                inQueue[v] = true;
-                            }
+                    if (eCap[eid] <= 0) {
+                        continue;
+                    }
+                    int v = eTo[eid];
+                    if (settledStamp[v] == stamp) {
+                        continue;
+                    }
+                    double reducedCost = eCost[eid] + potential[u] - potential[v];
+                    if (reducedCost < 0.0) {
+                        if (reducedCost > -REDUCED_COST_EPS) {
+                            reducedCost = 0.0;
+                        } else {
+                            throw new IllegalStateException(
+                                    "Negative reduced cost invariant violated: eid=" + eid
+                                            + ", from=" + u
+                                            + ", to=" + v
+                                            + ", cost=" + eCost[eid]
+                                            + ", reducedCost=" + reducedCost
+                            );
                         }
+                    }
+                    double nd = du + reducedCost;
+                    if (seenStamp[v] != stamp || nd < dist[v] - COST_EPS) {
+                        seenStamp[v] = stamp;
+                        dist[v] = nd;
+                        prevEdge[v] = eid;
+                        heap.addOrDecrease(v, nd);
                     }
                 }
             }
 
-            // Stop when no strictly-negative-cost augmenting path remains
-            if (dist[SINK] == Double.POSITIVE_INFINITY || dist[SINK] >= -1e-12) break;
-
-            // Augment 1 unit along the shortest path
-            int v = SINK;
-            while (v != SOURCE) {
-                int eid = prevEdge[v];
-                eCap[eid]--;
-                eCap[eid ^ 1]++;
-                v = eTo[eid ^ 1];
+            if (settledStamp[SINK] != stamp) {
+                break;
             }
+
+            double sinkDist = dist[SINK];
+            double actualPathCost = sinkDist + potential[SINK] - potential[SOURCE];
+            if (actualPathCost >= -COST_EPS) {
+                break;
+            }
+
+            for (int i = 0; i < settledCount; i++) {
+                int settledVertex = settledVertices[i];
+                potential[settledVertex] += dist[settledVertex] - sinkDist;
+            }
+
+            augmentPathByOneChecked(SOURCE, SINK, nV, ptr, eTo, eCap, prevEdge);
         }
 
-        // ---- Extract assignment from consumed forward edges ----------------
         Map<Integer, List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
         for (int e = 0; e < edges.edgeCount(); e++) {
             int fwdSlot = candidateFwdSlot[e];
             if (fwdSlot < 0) continue;
-            // Forward capacity was 1; if now 0, the edge carried flow (was assigned)
             if (eCap[fwdSlot] == 0) {
                 int ai = edges.attackerIndex(e);
                 int di = edges.defenderIndex(e);
@@ -352,5 +429,153 @@ final class PrimitiveAssignmentSolver {
         eTo[ptr] = v; eCap[ptr] = edgeCap; eCost[ptr] = edgeCost; eNext[ptr] = head[u]; head[u] = ptr++;
         eTo[ptr] = u; eCap[ptr] = 0;       eCost[ptr] = -edgeCost; eNext[ptr] = head[v]; head[v] = ptr++;
         return ptr;
+    }
+
+    private static void augmentPathByOneChecked(
+            int source,
+            int sink,
+            int nV,
+            int ptr,
+            int[] eTo,
+            int[] eCap,
+            int[] prevEdge
+    ) {
+        int v = sink;
+        int hops = 0;
+        while (v != source) {
+            if (++hops > nV) {
+                throw new IllegalStateException("Cyclic prevEdge chain while augmenting; residual path is invalid");
+            }
+            int eid = prevEdge[v];
+            if (eid < 0 || eid >= ptr) {
+                throw new IllegalStateException("Invalid prevEdge while augmenting: vertex=" + v + ", eid=" + eid);
+            }
+            int rev = eid ^ 1;
+            if (rev < 0 || rev >= ptr) {
+                throw new IllegalStateException("Invalid reverse edge slot: eid=" + eid + ", rev=" + rev);
+            }
+            if (eTo[eid] != v) {
+                throw new IllegalStateException(
+                        "prevEdge does not point into current vertex: vertex=" + v
+                                + ", eid=" + eid
+                                + ", eTo[eid]=" + eTo[eid]
+                );
+            }
+            if (eCap[eid] <= 0) {
+                throw new IllegalStateException("Augmenting through non-positive-capacity edge: eid=" + eid);
+            }
+            eCap[eid]--;
+            eCap[rev]++;
+            v = eTo[rev];
+        }
+    }
+
+    private static final class IndexedIntDoubleMinHeap {
+        private final int[] vertices;
+        private final int[] positions;
+        private final double[] keys;
+        private int size;
+
+        private IndexedIntDoubleMinHeap(int vertexCount) {
+            this.vertices = new int[Math.max(4, vertexCount)];
+            this.positions = new int[this.vertices.length];
+            this.keys = new double[this.vertices.length];
+            Arrays.fill(positions, -1);
+        }
+
+        void clear() {
+            for (int index = 0; index < size; index++) {
+                positions[vertices[index]] = -1;
+            }
+            size = 0;
+        }
+
+        boolean isEmpty() {
+            return size == 0;
+        }
+
+        void addOrDecrease(int vertex, double key) {
+            int index = positions[vertex];
+            if (index < 0) {
+                index = size++;
+                vertices[index] = vertex;
+                positions[vertex] = index;
+                keys[vertex] = key;
+                siftUp(index);
+                return;
+            }
+            if (key < keys[vertex]) {
+                keys[vertex] = key;
+                siftUp(index);
+            }
+        }
+
+        int popVertex() {
+            int resultVertex = vertices[0];
+            int lastVertex = vertices[--size];
+            positions[resultVertex] = -1;
+            if (size > 0) {
+                vertices[0] = lastVertex;
+                positions[lastVertex] = 0;
+                siftDown(0);
+            }
+            return resultVertex;
+        }
+
+        private void siftUp(int index) {
+            int vertex = vertices[index];
+            double key = keys[vertex];
+            while (index > 0) {
+                int parent = (index - 1) >>> 1;
+                int parentVertex = vertices[parent];
+                if (lessOrEqual(keys[parentVertex], parentVertex, key, vertex)) {
+                    break;
+                }
+                vertices[index] = parentVertex;
+                positions[parentVertex] = index;
+                index = parent;
+            }
+            vertices[index] = vertex;
+            positions[vertex] = index;
+        }
+
+        private void siftDown(int index) {
+            int vertex = vertices[index];
+            double key = keys[vertex];
+            while (true) {
+                int left = (index << 1) + 1;
+                if (left >= size) {
+                    break;
+                }
+                int right = left + 1;
+                int child = left;
+                if (right < size) {
+                    int leftVertex = vertices[left];
+                    int rightVertex = vertices[right];
+                    if (less(keys[rightVertex], rightVertex, keys[leftVertex], leftVertex)) {
+                        child = right;
+                    }
+                }
+                int childVertex = vertices[child];
+                if (lessOrEqual(key, vertex, keys[childVertex], childVertex)) {
+                    break;
+                }
+                vertices[index] = childVertex;
+                positions[childVertex] = index;
+                index = child;
+            }
+            vertices[index] = vertex;
+            positions[vertex] = index;
+        }
+
+        private static boolean less(double aKey, int aVertex, double bKey, int bVertex) {
+            int compare = Double.compare(aKey, bKey);
+            return compare < 0 || (compare == 0 && aVertex < bVertex);
+        }
+
+        private static boolean lessOrEqual(double aKey, int aVertex, double bKey, int bVertex) {
+            int compare = Double.compare(aKey, bKey);
+            return compare < 0 || (compare == 0 && aVertex <= bVertex);
+        }
     }
 }

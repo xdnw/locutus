@@ -4,37 +4,21 @@ import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that blends damage, exposure, control, resources, and follow-up leverage. */
 final class BalancedBlitzObjective implements StrategicObjective {
+
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, true, true, true, true);
+        return CandidateEdgeComponentPolicy.harmOnly();
     }
 
     @Override
     public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
-        return CandidateEdgeAdmissionPolicy.positiveOpeningBaseline();
-    }
-
-    @Override
-    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return metrics.immediateHarm()
-                - (0.75d * metrics.selfExposure())
-                + (1.50d * metrics.controlLeverage())
-                + (1.00d * metrics.futureWarLeverage())
-                + (1.00d * metrics.targetPressure())
-                + (0.000001d * metrics.resourceSwing());
+        return CandidateEdgeAdmissionPolicy.defaultPolicy();
     }
 
     @Override
     public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
-        double score = totals.ownValue() - totals.enemyValue();
-        if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlCompositeScoreForTeam(
-                    teamId,
-                    new TeamWarControlView.ControlComponentWeights(1.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d)
-            );
-        }
-        return score;
+        return (totals.ownValue() - totals.enemyValue()) + StrategicValueTotals.slotBalanceOf(view, teamId);
     }
 
     @Override

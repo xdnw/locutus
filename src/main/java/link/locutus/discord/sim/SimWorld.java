@@ -23,7 +23,7 @@ import link.locutus.discord.sim.combat.LiveAttackContext;
 import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.combat.RandomSource;
 import link.locutus.discord.sim.combat.ResolutionMode;
-import link.locutus.discord.sim.combat.WarControlRules;
+import link.locutus.discord.sim.combat.WarTacticalFlagRules;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.input.NationInit;
 import link.locutus.discord.sim.actions.SimAction;
@@ -186,12 +186,12 @@ public final class SimWorld {
     }
 
     /**
-     * Apply control flag changes to a war and invoke the provider callback if blockade changed.
-     * This is called after an attack resolves and may have shifted control flags.
+     * Apply superiority/blockade flag changes to a war and invoke the provider callback if blockade changed.
+     * This is called after an attack resolves and may have shifted tactical war flags.
      * 
      * @param warId the war ID
      * @param actorNationId the nation that attacked
-     * @param groundSuperiorityDelta +1/-1/0 control change
+     * @param groundSuperiorityDelta +1/-1/0 tactical flag change
      * @param airSuperiorityDelta similar
      * @param blockadeDelta similar
      */
@@ -470,8 +470,8 @@ public final class SimWorld {
             }
         }
 
-        // 7. Control flag changes and any cross-war stripping caused by the new local state.
-        WarControlRules.reconcileAfterAttack(
+        // 7. Tactical flag changes and any cross-war stripping caused by the new local state.
+        WarTacticalFlagRules.reconcileAfterAttack(
             war,
             attackerNation,
             defenderNation,

@@ -24,7 +24,6 @@ class SimNationSpecialistProfileTest {
                 77,
                 WarPolicy.ATTRITION,
                 ResourceType.getBuffer(),
-                100d,
                 new double[]{1_650d},
                 5,
                 (byte) 0,
@@ -60,7 +59,6 @@ class SimNationSpecialistProfileTest {
                 88,
                 WarPolicy.ATTRITION,
                 ResourceType.getBuffer(),
-                100d,
                 new double[]{1_650d},
                 5,
                 (byte) 0,
@@ -92,7 +90,6 @@ class SimNationSpecialistProfileTest {
                 99,
                 WarPolicy.ATTRITION,
                 ResourceType.getBuffer(),
-                100d,
                 new double[]{500d, 300d},
                 5,
                 (byte) 0

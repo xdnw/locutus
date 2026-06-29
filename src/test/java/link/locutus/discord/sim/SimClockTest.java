@@ -12,8 +12,8 @@ class SimClockTest {
     @Test
     void dayPhaseAlignsToPerNationResetHour() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(6));
-        SimNation resetAtMidnight = new SimNation(1, WarPolicy.FORTRESS, 0d, 100d, 2, (byte) 0);
-        SimNation resetAtTenUtc = new SimNation(2, WarPolicy.TURTLE, 0d, 100d, 2, (byte) 10);
+        SimNation resetAtMidnight = new SimNation(1, WarPolicy.FORTRESS, 0d, 2, (byte) 0);
+        SimNation resetAtTenUtc = new SimNation(2, WarPolicy.TURTLE, 0d, 2, (byte) 10);
 
         world.addNation(resetAtMidnight);
         world.addNation(resetAtTenUtc);
@@ -33,8 +33,8 @@ class SimClockTest {
     @Test
     void warExpiresExactlyOnTurnStartTPlusSixty() {
         SimWorld world = new SimWorld(SimTuning.defaults(), new SimClock(0));
-        SimNation attacker = new SimNation(11, WarPolicy.FORTRESS, 0d, 100d, 2);
-        SimNation defender = new SimNation(22, WarPolicy.TURTLE, 0d, 100d, 2);
+        SimNation attacker = new SimNation(11, WarPolicy.FORTRESS, 0d, 2, (byte) 0);
+        SimNation defender = new SimNation(22, WarPolicy.TURTLE, 0d, 2, (byte) 0);
 
         world.addNation(attacker);
         world.addNation(defender);
@@ -77,3 +77,4 @@ class SimClockTest {
         assertEquals(0, nation.beigeTurns());
     }
 }
+

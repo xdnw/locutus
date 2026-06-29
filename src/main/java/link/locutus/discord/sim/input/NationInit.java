@@ -5,48 +5,63 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.combat.NationCombatProfile;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
+import link.locutus.discord.util.PW;
 
 import java.util.Objects;
 
-public record NationInit(
-        int nationId,
-        int teamId,
-        WarPolicy policy,
-        double[] resources,
-        double nonInfraScoreBase,
-        double[] cityInfra,
-        int maxOffSlots,
-        byte resetHourUtc,
-        long projectBits,
-        SpecialistCityProfile[] citySpecialistProfiles,
-        NationCombatProfile combatProfile
-) {
+public final class NationInit {
     public static final int DEFAULT_MAX_OFF_SLOTS = WarSlotRules.baseOffensiveSlotCap();
     public static final byte DEFAULT_RESET_HOUR_UTC = 0;
 
-    public NationInit {
+    private final int nationId;
+    private final int teamId;
+    private final WarPolicy policy;
+    private final double[] resources;
+    private final double staticScoreComponent;
+    private final double[] cityInfra;
+    private final int maxOffSlots;
+    private final byte resetHourUtc;
+    private final long projectBits;
+    private final SpecialistCityProfile[] citySpecialistProfiles;
+    private final NationCombatProfile combatProfile;
+
+    public NationInit(
+            int nationId,
+            int teamId,
+            WarPolicy policy,
+            double[] resources,
+            double[] cityInfra,
+            int maxOffSlots,
+            byte resetHourUtc,
+            long projectBits,
+            SpecialistCityProfile[] citySpecialistProfiles,
+            NationCombatProfile combatProfile
+    ) {
         if (nationId <= 0) {
             throw new IllegalArgumentException("nationId must be > 0");
         }
         if (teamId <= 0) {
             throw new IllegalArgumentException("teamId must be > 0");
         }
-        policy = Objects.requireNonNull(policy, "policy");
-        resources = validateResources(resources, "resources");
-        if (nonInfraScoreBase < 0d) {
-            throw new IllegalArgumentException("nonInfraScoreBase must be >= 0");
-        }
-        cityInfra = validateInfra(cityInfra);
+        this.nationId = nationId;
+        this.teamId = teamId;
+        this.policy = Objects.requireNonNull(policy, "policy");
+        this.resources = validateResources(resources, "resources");
+        this.cityInfra = validateInfra(cityInfra);
         if (maxOffSlots <= 0) {
             throw new IllegalArgumentException("maxOffSlots must be > 0");
         }
+        this.maxOffSlots = maxOffSlots;
         if (resetHourUtc < 0 || resetHourUtc > 23) {
             throw new IllegalArgumentException("resetHourUtc must be in [0,23]");
         }
-        citySpecialistProfiles = validateCitySpecialistProfiles(citySpecialistProfiles, cityInfra);
-        combatProfile = combatProfile == null
-                ? NationCombatProfile.derived(policy, projectBits)
+        this.resetHourUtc = resetHourUtc;
+        this.projectBits = projectBits;
+        this.citySpecialistProfiles = validateCitySpecialistProfiles(citySpecialistProfiles, this.cityInfra);
+        this.combatProfile = combatProfile == null
+                ? NationCombatProfile.derived(this.policy, projectBits)
                 : combatProfile;
+        this.staticScoreComponent = derivedStaticScoreComponent(this.cityInfra.length, projectBits, this.combatProfile.researchBits());
     }
 
     public NationInit(
@@ -54,7 +69,6 @@ public record NationInit(
             int teamId,
             WarPolicy policy,
             double[] resources,
-            double nonInfraScoreBase,
             double[] cityInfra,
             int maxOffSlots,
             byte resetHourUtc
@@ -64,7 +78,6 @@ public record NationInit(
                 teamId,
                 policy,
                 resources,
-                nonInfraScoreBase,
                 cityInfra,
                 maxOffSlots,
                 resetHourUtc,
@@ -79,25 +92,23 @@ public record NationInit(
             int teamId,
             WarPolicy policy,
             double[] resources,
-            double nonInfraScoreBase,
             double[] cityInfra,
             int maxOffSlots,
             byte resetHourUtc,
             long projectBits,
             SpecialistCityProfile[] citySpecialistProfiles
     ) {
-            this(
-                    nationId,
-                    teamId,
-                    policy,
-                    resources,
-                    nonInfraScoreBase,
-                    cityInfra,
-                    maxOffSlots,
-                    resetHourUtc,
-                    projectBits,
-                    citySpecialistProfiles,
-                    null
+        this(
+                nationId,
+                teamId,
+                policy,
+                resources,
+                cityInfra,
+                maxOffSlots,
+                resetHourUtc,
+                projectBits,
+                citySpecialistProfiles,
+                null
         );
     }
 
@@ -107,7 +118,6 @@ public record NationInit(
                 nationId,
                 policy,
                 moneyOnly(0d),
-                0d,
                 new double[0],
                 DEFAULT_MAX_OFF_SLOTS,
                 DEFAULT_RESET_HOUR_UTC
@@ -118,12 +128,11 @@ public record NationInit(
             int nationId,
             WarPolicy policy,
             double money,
-            double nonInfraScoreBase,
             double[] cityInfra,
             int maxOffSlots,
             byte resetHourUtc
     ) {
-        return moneyOnly(nationId, nationId, policy, money, nonInfraScoreBase, cityInfra, maxOffSlots, resetHourUtc);
+        return moneyOnly(nationId, nationId, policy, money, cityInfra, maxOffSlots, resetHourUtc);
     }
 
     public static NationInit moneyOnly(
@@ -131,7 +140,6 @@ public record NationInit(
             int teamId,
             WarPolicy policy,
             double money,
-            double nonInfraScoreBase,
             double[] cityInfra,
             int maxOffSlots,
             byte resetHourUtc
@@ -141,26 +149,54 @@ public record NationInit(
                 teamId,
                 policy,
                 moneyOnly(money),
-                nonInfraScoreBase,
                 cityInfra,
                 maxOffSlots,
                 resetHourUtc
         );
     }
 
-    @Override
+    public int nationId() {
+        return nationId;
+    }
+
+    public int teamId() {
+        return teamId;
+    }
+
+    public WarPolicy policy() {
+        return policy;
+    }
+
     public double[] resources() {
         return resources.clone();
     }
 
-    @Override
+    public double staticScoreComponent() {
+        return staticScoreComponent;
+    }
+
     public double[] cityInfra() {
         return cityInfra.clone();
     }
 
-    @Override
+    public int maxOffSlots() {
+        return maxOffSlots;
+    }
+
+    public byte resetHourUtc() {
+        return resetHourUtc;
+    }
+
+    public long projectBits() {
+        return projectBits;
+    }
+
     public SpecialistCityProfile[] citySpecialistProfiles() {
         return citySpecialistProfiles.clone();
+    }
+
+    public NationCombatProfile combatProfile() {
+        return combatProfile;
     }
 
     private static double[] moneyOnly(double money) {
@@ -221,5 +257,12 @@ public record NationInit(
             copy[i] = Objects.requireNonNull(copy[i], "citySpecialistProfiles[" + i + "]");
         }
         return copy;
+    }
+
+    private static double derivedStaticScoreComponent(int cities, long projectBits, int researchBits) {
+        if (cities <= 0) {
+            return 0d;
+        }
+        return PW.computeStaticScoreComponent(cities, Long.bitCount(projectBits), researchBits);
     }
 }

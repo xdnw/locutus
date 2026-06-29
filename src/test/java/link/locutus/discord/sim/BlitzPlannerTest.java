@@ -11,6 +11,7 @@ import link.locutus.discord.sim.planners.PlannerDiagnostic;
 import link.locutus.discord.sim.planners.SidePolicy;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import link.locutus.discord.sim.combat.ResolutionMode;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,15 +46,17 @@ class BlitzPlannerTest {
     private List<DBNationSnapshot> buildNations(int idStart, int count, int teamId, double score,
                                                 int aircraft, int soldiers) {
         List<DBNationSnapshot> result = new ArrayList<>();
+        int cities = 10;
+        double staticScore = PW.computeStaticScoreComponent(cities, 0, 0);
+        double unitScore = MilitaryUnit.AIRCRAFT.getScore(aircraft) + MilitaryUnit.SOLDIER.getScore(soldiers);
+        double infraPerCity = Math.max(0d, ((score - staticScore - unitScore) * 40.0d) / cities);
         for (int i = 0; i < count; i++) {
             int id = idStart + i;
             result.add(DBNationSnapshot.synthetic(id)
                     .teamId(teamId)
                     .allianceId(teamId)
-                    .score(score)
-                    .cities(10)
-                    .nonInfraScoreBase(score)
-                    .cityInfra(uniformInfra(10, 1000.0))
+                .cities(cities)
+                .cityInfra(uniformInfra(cities, infraPerCity))
                     .maxOff(5)
                     .currentOffensiveWars(0)
                     .currentDefensiveWars(0)
@@ -86,8 +89,8 @@ class BlitzPlannerTest {
         return planner.assign(
                 attackerPool,
                 defenderPool,
-                SidePolicy.legacy(planner.objective()),
-                SidePolicy.legacyPassive(planner.objective()),
+            SidePolicy.heuristicActing("acting", planner.objective()),
+            SidePolicy.heuristicPassive("defending", planner.objective()),
                 currentTurn,
                 fixedEdges,
                 horizonTurns
@@ -160,9 +163,7 @@ class BlitzPlannerTest {
         DBNationSnapshot attackerSide = DBNationSnapshot.synthetic(1)
             .teamId(ATTACKER_TEAM)
             .allianceId(ATTACKER_TEAM)
-            .score(ATTACKER_SCORE)
             .cities(10)
-            .nonInfraScoreBase(ATTACKER_SCORE)
             .cityInfra(uniformInfra(10, 1000.0))
             .maxOff(5)
             .currentOffensiveWars(0)
@@ -174,9 +175,7 @@ class BlitzPlannerTest {
         DBNationSnapshot defenderSide = DBNationSnapshot.synthetic(101)
             .teamId(9999)
             .allianceId(9999)
-            .score(DEFENDER_SCORE)
             .cities(10)
-            .nonInfraScoreBase(DEFENDER_SCORE)
             .cityInfra(uniformInfra(10, 1000.0))
             .maxOff(5)
             .currentOffensiveWars(0)
@@ -216,9 +215,7 @@ class BlitzPlannerTest {
         DBNationSnapshot vmAttacker = DBNationSnapshot.synthetic(1)
                 .teamId(ATTACKER_TEAM)
                 .allianceId(ATTACKER_TEAM)
-                .score(ATTACKER_SCORE)
                 .cities(10)
-                .nonInfraScoreBase(ATTACKER_SCORE)
                 .cityInfra(uniformInfra(10, 1000.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -231,9 +228,7 @@ class BlitzPlannerTest {
         DBNationSnapshot normalDefender = DBNationSnapshot.synthetic(101)
                 .teamId(9999)
                 .allianceId(9999)
-                .score(DEFENDER_SCORE)
                 .cities(10)
-                .nonInfraScoreBase(DEFENDER_SCORE)
                 .cityInfra(uniformInfra(10, 1000.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -266,9 +261,7 @@ class BlitzPlannerTest {
         DBNationSnapshot strongestDefender = DBNationSnapshot.synthetic(701)
                 .teamId(9999)
                 .allianceId(9999)
-                .score(1_800.0)
                 .cities(12)
-                .nonInfraScoreBase(1_800.0)
                 .cityInfra(uniformInfra(12, 1_200.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -301,9 +294,7 @@ class BlitzPlannerTest {
         DBNationSnapshot highThreatDefender = DBNationSnapshot.synthetic(901)
                 .teamId(9999)
                 .allianceId(9999)
-                .score(1_850.0)
                 .cities(12)
-                .nonInfraScoreBase(1_850.0)
                 .cityInfra(uniformInfra(12, 1_250.0))
                 .maxOff(5)
                 .currentOffensiveWars(0)
@@ -364,7 +355,6 @@ class BlitzPlannerTest {
             int id = i + 1;
             occupiedAtts.add(DBNationSnapshot.synthetic(id)
                     .teamId(ATTACKER_TEAM).allianceId(ATTACKER_TEAM)
-                    .score(ATTACKER_SCORE).cities(10).nonInfraScoreBase(ATTACKER_SCORE)
                     .cityInfra(uniformInfra(10, 1000.0))
                     .maxOff(5).currentOffensiveWars(5) // all slots occupied
                     .currentDefensiveWars(0)
@@ -408,9 +398,7 @@ class BlitzPlannerTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
                 .teamId(ATTACKER_TEAM)
                 .allianceId(ATTACKER_TEAM)
-                .score(ATTACKER_SCORE)
                 .cities(10)
-                .nonInfraScoreBase(ATTACKER_SCORE)
                 .cityInfra(uniformInfra(10, 1000.0))
                 .maxOff(5)
                 .activeOpponentNationId(101)
@@ -419,9 +407,7 @@ class BlitzPlannerTest {
         DBNationSnapshot blockedDefender = DBNationSnapshot.synthetic(101)
                 .teamId(9999)
                 .allianceId(9999)
-                .score(DEFENDER_SCORE)
                 .cities(10)
-                .nonInfraScoreBase(DEFENDER_SCORE)
                 .cityInfra(uniformInfra(10, 1000.0))
                 .maxOff(5)
                 .warPolicy(WarPolicy.ATTRITION)
@@ -438,9 +424,7 @@ class BlitzPlannerTest {
     DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
         .teamId(ATTACKER_TEAM)
         .allianceId(ATTACKER_TEAM)
-        .score(ATTACKER_SCORE)
         .cities(10)
-        .nonInfraScoreBase(ATTACKER_SCORE)
         .cityInfra(uniformInfra(10, 1000.0))
         .maxOff(5)
         .resetHourUtc((byte) 0)
@@ -450,9 +434,7 @@ class BlitzPlannerTest {
     DBNationSnapshot defender = DBNationSnapshot.synthetic(101)
         .teamId(9999)
         .allianceId(9999)
-        .score(DEFENDER_SCORE)
         .cities(10)
-        .nonInfraScoreBase(DEFENDER_SCORE)
         .cityInfra(uniformInfra(10, 1000.0))
         .maxOff(5)
         .resetHourUtc((byte) 0)
@@ -472,3 +454,4 @@ class BlitzPlannerTest {
             && diagnostic.nationId() == defender.nationId()));
     }
 }
+

@@ -1,0 +1,302 @@
+package link.locutus.discord.sim.planners;
+
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.sim.BlitzObjective;
+import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
+import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class ObjectiveDrivenAttackChoicePolicyTest {
+    @Test
+    void choosesHigherDamageRegardlessOfDeletedSelfExposureLane() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                BlitzObjective.NET_DAMAGE.objective(),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_SOLDIER},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(10d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                        : candidate(30d, 25d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.AIRSTRIKE_SOLDIER, choice);
+    }
+
+    @Test
+    void controlObjectiveUsesDamageShellBeforeProjectionRescore() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                BlitzObjective.CONTROL.objective(),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(2d, 0d, -10d, 0d, 20d, SuperiorityFlagDelta.of(1, 0, 0, false, false, false))
+                        : candidate(40d, 0d, -12d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.AIRSTRIKE_TANK, choice);
+    }
+
+    @Test
+    void attackTypeWeightsRemainPartOfObjectiveDrivenSelection() {
+        double[] attackWeights = neutralAttackWeights();
+        attackWeights[AttackType.AIRSTRIKE_TANK.ordinal()] = 3d;
+        SideOpeningSettings openingSettings = new SideOpeningSettings(
+                neutralWarWeights(),
+                attackWeights,
+                CandidateEdgeAdmissionPolicy.defaultPolicy()
+        );
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                BlitzObjective.NET_DAMAGE.objective(),
+                openingSettings
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(10d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                        : candidate(5d, 0d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(AttackType.AIRSTRIKE_TANK, choice);
+    }
+
+    @Test
+    void deletedFutureWarLaneDoesNotCreatePositiveAttackScore() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                BlitzObjective.CONTROL.objective(),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                6,
+                attackType -> attackType == AttackType.GROUND
+                        ? candidate(0d, 0d, -50d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                        : candidate(0d, 0d, -5d, 0d, 0.25d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(null, choice);
+    }
+
+    @Test
+    void specialistResourceSwingDoesNotSeedAttackChoiceWithoutDamage() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                BlitzObjective.NET_DAMAGE.objective(),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.MISSILE},
+                8,
+                attackType -> candidate(0d, 0d, 0d, 100d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(null, choice);
+    }
+
+    @Test
+    void controlObjectiveDoesNotValueSpecialistResourcePressureAsAttackDamage() {
+        ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                link.locutus.discord.sim.BlitzObjective.CONTROL.objective(),
+                null
+        );
+
+        AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                new AttackType[]{AttackType.MISSILE},
+                8,
+                attackType -> candidate(0d, 0d, 0d, 120d, 0d, SuperiorityFlagDelta.NONE)
+        ));
+
+        assertEquals(null, choice);
+    }
+
+        @Test
+        void controlObjectiveDoesNotTreatConventionalLootAsControlProgress() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                link.locutus.discord.sim.BlitzObjective.CONTROL.objective(),
+                                null
+                );
+
+                AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                                new AttackType[]{AttackType.AIRSTRIKE_MONEY, AttackType.GROUND},
+                                8,
+                                attackType -> attackType == AttackType.AIRSTRIKE_MONEY
+                                ? candidate(2d, 0d, -12d, 500d, 0.01d, SuperiorityFlagDelta.NONE)
+                                                : candidate(20d, 0d, -10d, 0d, 0.10d, SuperiorityFlagDelta.NONE)
+                ));
+
+                assertEquals(AttackType.GROUND, choice);
+        }
+
+        @Test
+        void deletedTimingLaneDoesNotOverrideDamageShell() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                BlitzObjective.CONTROL.objective(),
+                                null
+                );
+
+                AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                                6,
+                                attackType -> attackType == AttackType.GROUND
+                                                ? candidate(0d, 0d, -10d, 0d, 0d, 1.00d, SuperiorityFlagDelta.NONE)
+                                                : candidate(1d, 0d, -10d, 0d, 0.10d, 0d, SuperiorityFlagDelta.NONE)
+                ));
+
+                assertEquals(AttackType.AIRSTRIKE_TANK, choice);
+        }
+
+        @Test
+        void specialistStockpileWaitsForUsefulConventionalFollowThrough() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                BlitzObjective.NET_DAMAGE.objective(),
+                                null
+                );
+
+                AttackType choice = policy.chooseAttackType(new AttackChoicePolicy.AttackChoiceContext(
+                                new AttackType[]{AttackType.GROUND, AttackType.MISSILE},
+                                8,
+                                attackType -> attackType == AttackType.GROUND
+                                                ? candidate(50d, 0d, -10d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE)
+                                                : candidate(90d, 0d, -10d, 0d, 0d, 0d, 500d, SuperiorityFlagDelta.NONE)
+                ));
+
+                assertEquals(AttackType.GROUND, choice);
+        }
+
+        @Test
+        void mutableProjectionPathUsesDamageShellOnly() {
+                ObjectiveDrivenAttackChoicePolicy policy = new ObjectiveDrivenAttackChoicePolicy(
+                                BlitzObjective.CONTROL.objective(),
+                                null
+                );
+                ObjectiveDrivenAttackChoicePolicy.MutableAttackCandidate scratch =
+                                new ObjectiveDrivenAttackChoicePolicy.MutableAttackCandidate();
+
+                AttackType choice = policy.chooseAttackType(
+                                new AttackType[]{AttackType.GROUND, AttackType.AIRSTRIKE_TANK},
+                                6,
+                                (attackType, out) -> {
+                                        if (attackType == AttackType.GROUND) {
+                                                out.set(true, 3, 0d, 0d, 0d, -10d, 0d, 0d, 25d, 0d,
+                                                                SuperiorityFlagDelta.of(1, 0, 0, false, false, false));
+                                        } else {
+                                                out.set(true, 4, 1d, 0d, 0d, -12d, 0d, 0d, 0d, 0d, SuperiorityFlagDelta.NONE);
+                                        }
+                                },
+                                scratch,
+                                null
+                );
+
+                assertEquals(AttackType.AIRSTRIKE_TANK, choice);
+        }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            SuperiorityFlagDelta controlDelta
+    ) {
+        return new AttackChoicePolicy.AttackCandidate(
+                true,
+                3,
+                defenderDamage,
+                attackerDamage,
+                0d,
+                defenderResistanceDelta,
+                0d,
+                0d,
+                                0d,
+                                0d,
+                controlDelta
+        );
+    }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            double resourceSwing,
+            double actionSpaceQuality,
+            SuperiorityFlagDelta controlDelta
+    ) {
+        return candidate(
+                defenderDamage,
+                attackerDamage,
+                defenderResistanceDelta,
+                resourceSwing,
+                actionSpaceQuality,
+                0d,
+                controlDelta
+        );
+    }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            double resourceSwing,
+            double actionSpaceQuality,
+            double timingWindowAdvantage,
+                        double conventionalFollowThroughValue,
+            SuperiorityFlagDelta controlDelta
+    ) {
+        return new AttackChoicePolicy.AttackCandidate(
+                true,
+                3,
+                defenderDamage,
+                attackerDamage,
+                resourceSwing,
+                defenderResistanceDelta,
+                actionSpaceQuality,
+                                timingWindowAdvantage,
+                0d,
+                conventionalFollowThroughValue,
+                controlDelta
+        );
+    }
+
+    private static AttackChoicePolicy.AttackCandidate candidate(
+            double defenderDamage,
+            double attackerDamage,
+            double defenderResistanceDelta,
+            double resourceSwing,
+            double actionSpaceQuality,
+            double timingWindowAdvantage,
+            SuperiorityFlagDelta controlDelta
+    ) {
+        return candidate(
+                defenderDamage,
+                attackerDamage,
+                defenderResistanceDelta,
+                resourceSwing,
+                actionSpaceQuality,
+                timingWindowAdvantage,
+                0d,
+                controlDelta
+        );
+    }
+
+    private static double[] neutralWarWeights() {
+        double[] weights = new double[link.locutus.discord.apiv1.enums.WarType.values.length];
+        java.util.Arrays.fill(weights, 1d);
+        return weights;
+    }
+
+    private static double[] neutralAttackWeights() {
+        double[] weights = new double[AttackType.values.length];
+        java.util.Arrays.fill(weights, 1d);
+        return weights;
+    }
+
+}

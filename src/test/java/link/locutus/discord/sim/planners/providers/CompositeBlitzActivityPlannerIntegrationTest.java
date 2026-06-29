@@ -105,8 +105,8 @@ class CompositeBlitzActivityPlannerIntegrationTest {
         ).assign(
                 combined,
                 combined,
-                SidePolicy.legacy("acting", new DamageObjective()),
-                SidePolicy.legacyPassive("nonActing", new DamageObjective()),
+                SidePolicy.heuristicActing("acting", new DamageObjective()),
+                SidePolicy.heuristicPassive("nonActing", new DamageObjective()),
                 0,
                 List.of(),
                 1
@@ -120,8 +120,8 @@ class CompositeBlitzActivityPlannerIntegrationTest {
         ).assign(
                 combined,
                 combined,
-                SidePolicy.legacy("acting", new DamageObjective()),
-                SidePolicy.legacyPassive("nonActing", new DamageObjective()),
+                SidePolicy.heuristicActing("acting", new DamageObjective()),
+                SidePolicy.heuristicPassive("nonActing", new DamageObjective()),
                 0,
                 List.of(),
                 1
@@ -166,9 +166,7 @@ class CompositeBlitzActivityPlannerIntegrationTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(allianceId)
                 .allianceId(allianceId)
-                .score(1_000d)
                 .cities(10)
-                .nonInfraScoreBase(1_000d)
                 .cityInfra(uniformInfra(10, 1_000d))
                 .maxOff(5)
                 .currentOffensiveWars(0)

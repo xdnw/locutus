@@ -1,6 +1,9 @@
 package link.locutus.discord.sim.planners;
 
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
+
+import java.util.Arrays;
 
 /**
  * Dense primitive-backed storage for scored (attacker, defender) candidate edges.
@@ -35,6 +38,12 @@ final class CandidateEdgeTable {
 
     private int edgeCount;
     private CandidateEdgeStorage edges;
+    private int[] cachedPairKeyAttackerNationIds;
+    private int[] cachedPairKeyDefenderNationIds;
+    private long[] cachedEdgePairKeys;
+    private Long2IntOpenHashMap cachedEdgeIndexByPair;
+    private int[] cachedAttackerEdgeOffsets;
+    private int[] cachedAttackerEdgeIndexes;
 
     CandidateEdgeTable() {
         this(INITIAL_CAPACITY);
@@ -50,13 +59,17 @@ final class CandidateEdgeTable {
         edges.reconfigureComponentRetention(policy);
     }
 
+    void ensureCapacity(int capacity) {
+        edges.ensureCapacity(capacity);
+    }
+
     // ---- Mutation -----------------------------------------------------------
 
     /**
      * Appends a new edge. Returns the edge index.
      */
     int add(int attackerIndex, int defenderIndex, float score, float counterRisk) {
-        return add(attackerIndex, defenderIndex, (byte) 0, (byte) 0, score, counterRisk, 0f, 0f, 0f, 0f, 0f);
+        return add(attackerIndex, defenderIndex, (byte) 0, (byte) 0, score, counterRisk, 0f);
     }
 
     int add(
@@ -74,10 +87,6 @@ final class CandidateEdgeTable {
             bestAttackTypeId,
             score,
             counterRisk,
-            0f,
-            0f,
-            0f,
-            0f,
             0f
         );
     }
@@ -89,14 +98,11 @@ final class CandidateEdgeTable {
             byte bestAttackTypeId,
             float score,
             float counterRisk,
-            float immediateHarm,
-            float selfExposure,
-            float resourceSwing,
-            float controlLeverage,
-            float futureWarLeverage
+            float immediateHarm
     ) {
         edges.ensureCapacity(edgeCount + 1);
         int i = edgeCount++;
+        invalidateLookupCaches();
         edges.write(
                 i,
                 attackerIndex,
@@ -105,11 +111,7 @@ final class CandidateEdgeTable {
                 bestAttackTypeId,
                 score,
                 counterRisk,
-                immediateHarm,
-                selfExposure,
-                resourceSwing,
-                controlLeverage,
-                futureWarLeverage
+                immediateHarm
         );
         return i;
     }
@@ -118,6 +120,9 @@ final class CandidateEdgeTable {
      * Removes all edges, resetting the count to 0 without releasing backing arrays.
      */
     void clear() {
+        if (edgeCount != 0) {
+            invalidateLookupCaches();
+        }
         edgeCount = 0;
     }
 
@@ -131,6 +136,12 @@ final class CandidateEdgeTable {
         CandidateEdgeTable copy = new CandidateEdgeTable(Math.max(INITIAL_CAPACITY, source.edgeCount));
         copy.edgeCount = source.edgeCount;
         copy.edges = source.edges.deepCopy();
+        copy.cachedPairKeyAttackerNationIds = source.cachedPairKeyAttackerNationIds;
+        copy.cachedPairKeyDefenderNationIds = source.cachedPairKeyDefenderNationIds;
+        copy.cachedEdgePairKeys = source.cachedEdgePairKeys;
+        copy.cachedEdgeIndexByPair = source.cachedEdgeIndexByPair;
+        copy.cachedAttackerEdgeOffsets = source.cachedAttackerEdgeOffsets;
+        copy.cachedAttackerEdgeIndexes = source.cachedAttackerEdgeIndexes;
         return copy;
     }
 
@@ -148,6 +159,43 @@ final class CandidateEdgeTable {
         return edges.defenderIndexAt(edge);
     }
 
+    long[] edgePairKeys(int[] attackerNationIds, int[] defenderNationIds) {
+        if (cachedEdgePairKeys != null
+                && cachedPairKeyAttackerNationIds == attackerNationIds
+                && cachedPairKeyDefenderNationIds == defenderNationIds) {
+            return cachedEdgePairKeys;
+        }
+        long[] edgePairKeys = new long[edgeCount];
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            edgePairKeys[edgeIndex] = pairKey(
+                    attackerNationIds[attackerIndex(edgeIndex)],
+                    defenderNationIds[defenderIndex(edgeIndex)]
+            );
+        }
+        cachedPairKeyAttackerNationIds = attackerNationIds;
+        cachedPairKeyDefenderNationIds = defenderNationIds;
+        cachedEdgePairKeys = edgePairKeys;
+        return edgePairKeys;
+    }
+
+    Long2IntOpenHashMap edgeIndexByPair(int[] attackerNationIds, int[] defenderNationIds) {
+        if (cachedEdgeIndexByPair != null
+                && cachedPairKeyAttackerNationIds == attackerNationIds
+                && cachedPairKeyDefenderNationIds == defenderNationIds) {
+            return cachedEdgeIndexByPair;
+        }
+        long[] edgePairKeys = edgePairKeys(attackerNationIds, defenderNationIds);
+        Long2IntOpenHashMap edgeIndexByPair = new Long2IntOpenHashMap(Math.max(16, edgeCount * 2));
+        edgeIndexByPair.defaultReturnValue(-1);
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            edgeIndexByPair.put(edgePairKeys[edgeIndex], edgeIndex);
+        }
+        cachedPairKeyAttackerNationIds = attackerNationIds;
+        cachedPairKeyDefenderNationIds = defenderNationIds;
+        cachedEdgeIndexByPair = edgeIndexByPair;
+        return edgeIndexByPair;
+    }
+
     byte preferredWarTypeId(int edge) {
         return edges.preferredWarTypeIdAt(edge);
     }
@@ -156,8 +204,30 @@ final class CandidateEdgeTable {
         return edges.bestAttackTypeIdAt(edge);
     }
 
+    boolean sameProjectionTopology(CandidateEdgeTable other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || edgeCount != other.edgeCount) {
+            return false;
+        }
+        for (int edge = 0; edge < edgeCount; edge++) {
+            if (attackerIndex(edge) != other.attackerIndex(edge)
+                    || defenderIndex(edge) != other.defenderIndex(edge)
+                    || preferredWarTypeId(edge) != other.preferredWarTypeId(edge)
+                    || bestAttackTypeId(edge) != other.bestAttackTypeId(edge)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     float scalarScore(int edge) {
         return edges.scoreAt(edge);
+    }
+
+    void setScalarScore(int edge, float score) {
+        edges.setScalarScore(edge, score);
     }
 
     void scaleScalarScore(int edge, float factor) {
@@ -169,12 +239,23 @@ final class CandidateEdgeTable {
      *
      * <p>This is the dense primitive equivalent of rebuilding a candidate edge from a projected
      * mid-horizon {@link link.locutus.discord.sim.planners.LongHorizonForwardProjection.MidHorizonSnapshot}:
-     * an attacker whose projected combat strength and score have been ground down by counter wars
-     * has its outgoing edges' immediate harm, control leverage, future-war leverage, etc. all
-     * proportionally reduced, not just the scalar opening score.</p>
+     * an attacker whose projected combat strength and score have been ground down by incoming wars
+     * has its outgoing retained diagnostics proportionally reduced, not just the scalar opening score.</p>
      */
     void rescaleEdgeFromProjectedState(int edge, float factor) {
         edges.rescaleFromProjectedState(edge, factor);
+    }
+
+    void rescaleAttackerEdgesFromProjectedState(int attackerIndex, float factor) {
+        ensureAttackerEdgeIndex();
+        if (attackerIndex < 0 || attackerIndex + 1 >= cachedAttackerEdgeOffsets.length) {
+            return;
+        }
+        int start = cachedAttackerEdgeOffsets[attackerIndex];
+        int end = cachedAttackerEdgeOffsets[attackerIndex + 1];
+        for (int offset = start; offset < end; offset++) {
+            edges.rescaleFromProjectedState(cachedAttackerEdgeIndexes[offset], factor);
+        }
     }
 
     float counterRisk(int edge) {
@@ -185,40 +266,44 @@ final class CandidateEdgeTable {
         return edges.retainsImmediateHarm();
     }
 
-    boolean retainsSelfExposure() {
-        return edges.retainsSelfExposure();
-    }
-
-    boolean retainsResourceSwing() {
-        return edges.retainsResourceSwing();
-    }
-
-    boolean retainsControlLeverage() {
-        return edges.retainsControlLeverage();
-    }
-
-    boolean retainsFutureWarLeverage() {
-        return edges.retainsFutureWarLeverage();
-    }
-
     float immediateHarm(int edge) {
         return edges.immediateHarmAt(edge);
     }
 
-    float selfExposure(int edge) {
-        return edges.selfExposureAt(edge);
+    private void invalidateLookupCaches() {
+        cachedPairKeyAttackerNationIds = null;
+        cachedPairKeyDefenderNationIds = null;
+        cachedEdgePairKeys = null;
+        cachedEdgeIndexByPair = null;
+        cachedAttackerEdgeOffsets = null;
+        cachedAttackerEdgeIndexes = null;
     }
 
-    float resourceSwing(int edge) {
-        return edges.resourceSwingAt(edge);
+    private void ensureAttackerEdgeIndex() {
+        if (cachedAttackerEdgeOffsets != null && cachedAttackerEdgeIndexes != null) {
+            return;
+        }
+        int maxAttackerIndex = -1;
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            maxAttackerIndex = Math.max(maxAttackerIndex, attackerIndex(edgeIndex));
+        }
+        cachedAttackerEdgeOffsets = new int[maxAttackerIndex + 2];
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            cachedAttackerEdgeOffsets[attackerIndex(edgeIndex) + 1]++;
+        }
+        for (int attackerIndex = 0; attackerIndex < maxAttackerIndex + 1; attackerIndex++) {
+            cachedAttackerEdgeOffsets[attackerIndex + 1] += cachedAttackerEdgeOffsets[attackerIndex];
+        }
+        cachedAttackerEdgeIndexes = new int[edgeCount];
+        int[] writeOffsets = Arrays.copyOf(cachedAttackerEdgeOffsets, cachedAttackerEdgeOffsets.length);
+        for (int edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+            int attackerIndex = attackerIndex(edgeIndex);
+            cachedAttackerEdgeIndexes[writeOffsets[attackerIndex]++] = edgeIndex;
+        }
     }
 
-    float controlLeverage(int edge) {
-        return edges.controlLeverageAt(edge);
-    }
-
-    float futureWarLeverage(int edge) {
-        return edges.futureWarLeverageAt(edge);
+    private static long pairKey(int attackerNationId, int defenderNationId) {
+        return ((long) attackerNationId << 32) ^ (defenderNationId & 0xffffffffL);
     }
 
     /**

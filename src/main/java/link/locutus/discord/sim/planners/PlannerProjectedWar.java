@@ -13,9 +13,9 @@ record PlannerProjectedWar(
         int defenderMaps,
         int attackerResistance,
         int defenderResistance,
-        PlannerLocalConflict.ControlOwner groundSuperiorityOwner,
-        PlannerLocalConflict.ControlOwner airSuperiorityOwner,
-        PlannerLocalConflict.ControlOwner blockadeOwner,
+        PlannerLocalConflict.FlagOwner groundSuperiorityOwner,
+        PlannerLocalConflict.FlagOwner airSuperiorityOwner,
+        PlannerLocalConflict.FlagOwner blockadeOwner,
         boolean attackerFortified,
         boolean defenderFortified
 ) {

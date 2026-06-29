@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
 import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.TreatyProvider;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -79,9 +80,9 @@ class CompiledScenarioTest {
                 7,
                 62,
                 57,
-                CompiledActiveWar.ControlOwner.ATTACKER,
-                CompiledActiveWar.ControlOwner.NONE,
-                CompiledActiveWar.ControlOwner.DEFENDER,
+                CompiledActiveWar.FlagOwner.ATTACKER,
+                CompiledActiveWar.FlagOwner.NONE,
+                CompiledActiveWar.FlagOwner.DEFENDER,
                 false,
                 false
         );
@@ -138,6 +139,38 @@ class CompiledScenarioTest {
 
         assertEquals(0.75f, scenario.attackerActivityWeight(0));
         assertEquals(0.5f, scenario.defenderActivityWeight(0));
+    }
+
+    @Test
+    void leanFullCompileSkipsRelevantDefenderIndexesButKeepsPlannerState() {
+        DBNationSnapshot attacker = nation(1, 1_000.0)
+                .unit(MilitaryUnit.SOLDIER, 12_345)
+                .researchBits(0b10101)
+                .projectBits(1L << 4)
+                .build();
+        DBNationSnapshot defender = nation(101, 1_000.0)
+                .unit(MilitaryUnit.AIRCRAFT, 222)
+                .researchBits(0b10010)
+                .projectBits(1L << 7)
+                .build();
+
+        CompiledScenario scenario = compiler.compileWithoutRelevantDefenderIndexes(
+                List.of(attacker),
+                List.of(defender),
+                OverrideSet.EMPTY,
+                TreatyProvider.NONE,
+                Map.of(attacker.nationId(), 0.75f, defender.nationId(), 0.5f)
+        );
+
+        assertEquals(List.of(), toList(scenario.relevantDefenderIndexes(0)));
+        assertEquals(12_345, scenario.attackerUnitCount(0, MilitaryUnit.SOLDIER));
+        assertEquals(222, scenario.defenderUnitCount(0, MilitaryUnit.AIRCRAFT));
+        assertEquals(0.75f, scenario.attackerActivityWeight(0));
+        assertEquals(0.5f, scenario.defenderActivityWeight(0));
+        assertEquals(attacker.researchBits(), scenario.attackerResearchBits(0));
+        assertEquals(attacker.projectBits(), scenario.attackerProjectBits(0));
+        assertEquals(defender.researchBits(), scenario.defenderResearchBits(0));
+        assertEquals(defender.projectBits(), scenario.defenderProjectBits(0));
     }
 
         @Test
@@ -228,13 +261,14 @@ class CompiledScenarioTest {
     }
 
     private static DBNationSnapshot.Builder nation(int nationId, double score) {
+        int cities = 5;
+        double staticScore = PW.computeStaticScoreComponent(cities, 0, 0);
+        double infraPerCity = Math.max(0d, ((score - staticScore) * 40.0d) / cities);
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(nationId)
                 .allianceId(nationId)
-                .score(score)
-                .cities(5)
-                .nonInfraScoreBase(score)
-                .cityInfra(new double[]{1_000, 1_000, 1_000, 1_000, 1_000})
+                .cities(cities)
+                .cityInfra(new double[]{infraPerCity, infraPerCity, infraPerCity, infraPerCity, infraPerCity})
                 .warPolicy(WarPolicy.ATTRITION);
     }
 
@@ -254,3 +288,4 @@ class CompiledScenarioTest {
         return result;
     }
 }
+

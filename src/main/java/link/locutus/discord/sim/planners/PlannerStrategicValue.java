@@ -30,18 +30,47 @@ final class PlannerStrategicValue {
             return Map.of();
         }
         List<DBNationSnapshot> orderedSnapshots = List.copyOf(snapshots);
+        Map<Integer, List<DBNationSnapshot>> snapshotsByTeam = new Int2ObjectLinkedOpenHashMap<>();
+        for (DBNationSnapshot snapshot : orderedSnapshots) {
+            snapshotsByTeam.computeIfAbsent(snapshot.teamId(), ignored -> new ArrayList<>()).add(snapshot);
+        }
+        Map<Integer, double[]> opponentScoresByTeam = new Int2ObjectLinkedOpenHashMap<>(snapshotsByTeam.size());
+        for (Map.Entry<Integer, List<DBNationSnapshot>> teamEntry : snapshotsByTeam.entrySet()) {
+            int teamId = teamEntry.getKey();
+            double[] opponentScores = new double[orderedSnapshots.size() - teamEntry.getValue().size()];
+            int opponentIndex = 0;
+            for (Map.Entry<Integer, List<DBNationSnapshot>> otherEntry : snapshotsByTeam.entrySet()) {
+                if (otherEntry.getKey() == teamId) {
+                    continue;
+                }
+                for (DBNationSnapshot opponent : otherEntry.getValue()) {
+                    opponentScores[opponentIndex++] = opponent.score();
+                }
+            }
+            opponentScoresByTeam.put(teamId, opponentScores);
+        }
         Map<Integer, StrategicAssetValue.StrategicRelevance> relevanceByNationId =
                 new Int2ObjectLinkedOpenHashMap<>(orderedSnapshots.size());
         for (DBNationSnapshot snapshot : orderedSnapshots) {
-            List<DBNationSnapshot> opposingNations = new ArrayList<>(orderedSnapshots.size());
-            for (DBNationSnapshot other : orderedSnapshots) {
-                if (other.teamId() != snapshot.teamId()) {
-                    opposingNations.add(other);
-                }
-            }
-            relevanceByNationId.put(snapshot.nationId(), relevance(snapshot, opposingNations));
+            relevanceByNationId.put(snapshot.nationId(), relevance(snapshot, opponentScoresByTeam.get(snapshot.teamId())));
         }
         return Map.copyOf(relevanceByNationId);
+    }
+
+    private static StrategicAssetValue.StrategicRelevance relevance(
+            DBNationSnapshot snapshot,
+            double[] opponentScores
+    ) {
+        double[] scores = opponentScores == null ? new double[0] : opponentScores;
+        return StrategicAssetValue.relevanceForWarRange(
+                snapshot.cities(),
+                snapshot.score(),
+                snapshot.currentOffensiveWars()
+                        + snapshot.currentDefensiveWars()
+                        + snapshot.activeOpponentNationIds().size(),
+                scores.length,
+                index -> scores[index]
+        );
     }
 
     static StrategicAssetValue.StrategicRelevance relevance(

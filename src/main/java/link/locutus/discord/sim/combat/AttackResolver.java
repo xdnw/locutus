@@ -378,7 +378,7 @@ public final class AttackResolver {
                 casualties.getValue(),
                 consumption,
                 type.getMapUsed(),
-            CombatKernel.computeControlDelta(context, type, success)
+            CombatKernel.computeTacticalFlagDelta(context, type, success)
         );
     }
 

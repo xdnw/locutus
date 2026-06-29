@@ -1,13 +1,13 @@
 package link.locutus.discord.sim.planners;
 
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import link.locutus.discord.sim.StrategicAssetValue;
 import link.locutus.discord.sim.WarSlotRules;
-import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 
 final class LongHorizonAssignmentScoringModel {
     private static final double ATTACKER_COMMITMENT_SCORE_WEIGHT = 0.14d;
+    private static final double ATTACKER_OVERCOMMITMENT_SCORE_WEIGHT = 0.65d;
 
     private final float[] baseScores;
     private final double[] slotDenialScores;
@@ -54,14 +54,21 @@ final class LongHorizonAssignmentScoringModel {
     ) {
         float[] baseScores = baseScores(edges);
         double[] slotDenialScores = includeSlotDenial ? slotDenialScores(edges, scenario) : new double[edges.edgeCount()];
+        double[] edgeScores = edgeScores(baseScores, slotDenialScores);
         double[] attackerValues = attackerValues(edges, baseScores, slotDenialScores, scenario.attackerCount());
-        int[] attackerCommitmentNeeds = attackerCommitmentNeeds(edges, baseScores, slotDenialScores, attackerCaps, horizonTurns);
+        int[] attackerCommitmentNeeds = LongHorizonOpeningCommitmentModel.attackerCommitmentNeeds(
+                edges,
+                scenario,
+                attackerCaps,
+                defenderCaps,
+                edgeScores
+        );
         int[] attackerBaselineOffensiveWars = attackerBaselineOffensiveWars(scenario);
         return new LongHorizonAssignmentScoringModel(
                 baseScores,
                 slotDenialScores,
-                defenderValues(edges, baseScores, slotDenialScores, scenario.defenderCount()),
-                defenderPressureNeeds(scenario, edges, defenderCaps),
+                defenderValues(edges, baseScores, slotDenialScores, scenario),
+                LongHorizonOpeningCommitmentModel.defenderPressureNeeds(scenario, edges, defenderCaps),
             attackerValues,
             attackerBaselineOffensiveWars,
             attackerCommitmentNeeds,
@@ -73,6 +80,123 @@ final class LongHorizonAssignmentScoringModel {
                 attackerPlannerSettings,
                 horizonFactor
             ),
+                horizonFactor
+        );
+    }
+
+            LongHorizonAssignmentScoringModel sameTopologyVariant(
+                CandidateEdgeTable edges,
+                CompiledScenario scenario,
+                int[] attackerCaps,
+                int[] defenderCaps,
+                int[] attackerStrengthRanks,
+                int horizonTurns,
+                SidePlannerSettings attackerPlannerSettings
+            ) {
+            float[] baseScores = baseScores(edges);
+            double[] edgeScores = edgeScores(baseScores, slotDenialScores);
+            double[] attackerValues = attackerValues(edges, baseScores, slotDenialScores, scenario.attackerCount());
+            int[] attackerCommitmentNeeds = LongHorizonOpeningCommitmentModel.attackerCommitmentNeeds(
+                    edges,
+                    scenario,
+                    attackerCaps,
+                    defenderCaps,
+                    edgeScores
+            );
+            int[] attackerBaselineOffensiveWars = this.attackerBaselineOffensiveWars;
+            return new LongHorizonAssignmentScoringModel(
+                baseScores,
+                slotDenialScores,
+                defenderValues(edges, baseScores, slotDenialScores, scenario),
+                LongHorizonOpeningCommitmentModel.defenderPressureNeeds(scenario, edges, defenderCaps),
+                attackerValues,
+                attackerBaselineOffensiveWars,
+                attackerCommitmentNeeds,
+                attackerIdlePressureScores(
+                    attackerValues,
+                    attackerBaselineOffensiveWars,
+                    attackerCommitmentNeeds,
+                    attackerStrengthRanks,
+                    attackerPlannerSettings,
+                    horizonFactor
+                ),
+                horizonFactor
+            );
+            }
+
+    LongHorizonAssignmentScoringModel sameTopologyRescaledAttackerVariant(
+            CandidateEdgeTable edges,
+            int[] attackerCaps,
+            int[] attackerStrengthRanks,
+            int horizonTurns,
+            SidePlannerSettings attackerPlannerSettings,
+            IntArrayList touchedAttackers
+    ) {
+        if (touchedAttackers == null || touchedAttackers.isEmpty()) {
+            return this;
+        }
+        float[] baseScores = this.baseScores.clone();
+        double[] attackerValues = this.attackerValues.clone();
+        int[] attackerCommitmentNeeds = this.attackerCommitmentNeeds.clone();
+        double[] attackerIdlePressureScores = this.attackerIdlePressureScores.clone();
+        double[] defenderValues = this.defenderValues.clone();
+
+        boolean[] touchedAttackerFlags = new boolean[attackerValues.length];
+        double[] refreshedAttackerValues = new double[attackerValues.length];
+        boolean[] touchedDefenderFlags = new boolean[defenderValues.length];
+        IntArrayList touchedDefenders = new IntArrayList();
+        for (int index = 0; index < touchedAttackers.size(); index++) {
+            int attackerIndex = touchedAttackers.getInt(index);
+            if (attackerIndex >= 0 && attackerIndex < touchedAttackerFlags.length) {
+                touchedAttackerFlags[attackerIndex] = true;
+            }
+        }
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            int attackerIndex = edges.attackerIndex(edgeIndex);
+            if (!touchedAttackerFlags[attackerIndex]) {
+                continue;
+            }
+            baseScores[edgeIndex] = edges.scalarScore(edgeIndex);
+            int defenderIndex = edges.defenderIndex(edgeIndex);
+            if (!touchedDefenderFlags[defenderIndex]) {
+                touchedDefenderFlags[defenderIndex] = true;
+                touchedDefenders.add(defenderIndex);
+            }
+            double edgeValue = edgeValue(edges, baseScores, slotDenialScores, edgeIndex);
+            refreshedAttackerValues[attackerIndex] = Math.max(refreshedAttackerValues[attackerIndex], edgeValue);
+        }
+        for (int index = 0; index < touchedDefenders.size(); index++) {
+            defenderValues[touchedDefenders.getInt(index)] = 0d;
+        }
+        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
+            int defenderIndex = edges.defenderIndex(edgeIndex);
+            if (!touchedDefenderFlags[defenderIndex]) {
+                continue;
+            }
+            defenderValues[defenderIndex] = Math.max(defenderValues[defenderIndex], edgeValue(edges, baseScores, slotDenialScores, edgeIndex));
+        }
+        for (int index = 0; index < touchedAttackers.size(); index++) {
+            int attackerIndex = touchedAttackers.getInt(index);
+            attackerValues[attackerIndex] = refreshedAttackerValues[attackerIndex];
+            attackerIdlePressureScores[attackerIndex] = attackerIdlePressureScore(
+                    attackerIndex,
+                    attackerValues,
+                    attackerBaselineOffensiveWars,
+                    attackerCommitmentNeeds,
+                    attackerStrengthRanks,
+                    attackerPlannerSettings,
+                    horizonFactor
+            );
+        }
+        return new LongHorizonAssignmentScoringModel(
+                baseScores,
+                slotDenialScores,
+                defenderValues,
+                defenderPressureNeeds,
+                attackerValues,
+                attackerBaselineOffensiveWars,
+                attackerCommitmentNeeds,
+                attackerIdlePressureScores,
                 horizonFactor
         );
     }
@@ -104,8 +228,14 @@ final class LongHorizonAssignmentScoringModel {
     double attackerCommitmentMarginalScore(int attackerIndex, int assignedBefore) {
         int commitmentNeed = attackerCommitmentNeeds[attackerIndex];
         int totalBefore = attackerBaselineOffensiveWars[attackerIndex] + assignedBefore;
-        if (commitmentNeed <= 0 || assignedBefore < 0 || totalBefore >= commitmentNeed) {
+        if (assignedBefore < 0) {
             return 0d;
+        }
+        if (commitmentNeed <= 0) {
+            return -attackerOvercommitmentMarginalPenalty(attackerIndex, totalBefore);
+        }
+        if (totalBefore >= commitmentNeed) {
+            return -attackerOvercommitmentMarginalPenalty(attackerIndex, totalBefore - commitmentNeed);
         }
         return horizonFactor * ATTACKER_COMMITMENT_SCORE_WEIGHT * attackerValues[attackerIndex] / commitmentNeed;
     }
@@ -151,14 +281,47 @@ final class LongHorizonAssignmentScoringModel {
         double score = 0d;
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
             int commitmentNeed = attackerCommitmentNeeds[attackerIndex];
-            if (commitmentNeed <= 0 || attackerCounts[attackerIndex] <= 0) {
+            if (attackerCounts[attackerIndex] <= 0) {
                 continue;
             }
-            double usefulCount = Math.min(attackerBaselineOffensiveWars[attackerIndex] + attackerCounts[attackerIndex], commitmentNeed);
-            double completion = usefulCount / commitmentNeed;
-            score += horizonFactor * ATTACKER_COMMITMENT_SCORE_WEIGHT * attackerValues[attackerIndex] * completion;
+            if (commitmentNeed > 0) {
+                double usefulCount = Math.min(attackerBaselineOffensiveWars[attackerIndex] + attackerCounts[attackerIndex], commitmentNeed);
+                double completion = usefulCount / commitmentNeed;
+                score += horizonFactor * ATTACKER_COMMITMENT_SCORE_WEIGHT * attackerValues[attackerIndex] * completion;
+            }
+            score -= attackerOvercommitmentPenalty(attackerIndex, attackerCounts[attackerIndex], commitmentNeed);
         }
         return score;
+    }
+
+    private double attackerOvercommitmentPenalty(int attackerIndex, int assignedCount, int commitmentNeed) {
+        int baselineOver = Math.max(0, attackerBaselineOffensiveWars[attackerIndex] - commitmentNeed);
+        int totalOver = Math.max(0, attackerBaselineOffensiveWars[attackerIndex] + assignedCount - commitmentNeed);
+        int addedOver = totalOver - baselineOver;
+        if (addedOver <= 0) {
+            return 0d;
+        }
+        double penalty = 0d;
+        for (int overSlot = baselineOver; overSlot < baselineOver + addedOver; overSlot++) {
+            penalty += attackerOvercommitmentMarginalPenalty(attackerIndex, overSlot);
+        }
+        return penalty;
+    }
+
+    private double attackerOvercommitmentMarginalPenalty(int attackerIndex, int overSlot) {
+        return horizonFactor
+                * ATTACKER_OVERCOMMITMENT_SCORE_WEIGHT
+                * attackerValues[attackerIndex]
+                * attackerOvercommitmentSlotWeight(overSlot);
+    }
+
+    private static double attackerOvercommitmentSlotWeight(int overSlot) {
+        return switch (Math.max(0, overSlot)) {
+            case 0 -> 0.60d;
+            case 1 -> 0.85d;
+            case 2 -> 1.15d;
+            default -> 1.50d;
+        };
     }
 
     private double idlePressureCompletionScore(int[] attackerCounts) {
@@ -180,13 +343,32 @@ final class LongHorizonAssignmentScoringModel {
         return scores;
     }
 
-    private static double[] defenderValues(CandidateEdgeTable edges, float[] baseScores, double[] slotDenialScores, int defenderCount) {
-        double[] values = new double[defenderCount];
+    private static double[] edgeScores(float[] baseScores, double[] slotDenialScores) {
+        double[] scores = new double[baseScores.length];
+        for (int index = 0; index < scores.length; index++) {
+            scores[index] = baseScores[index] + slotDenialScores[index];
+        }
+        return scores;
+    }
+
+    private static double[] defenderValues(CandidateEdgeTable edges, float[] baseScores, double[] slotDenialScores, CompiledScenario scenario) {
+        double[] values = new double[scenario.defenderCount()];
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
             int defenderIndex = edges.defenderIndex(edgeIndex);
             values[defenderIndex] = Math.max(values[defenderIndex], edgeValue(edges, baseScores, slotDenialScores, edgeIndex));
         }
+        for (int defenderIndex = 0; defenderIndex < values.length; defenderIndex++) {
+            values[defenderIndex] = Math.max(values[defenderIndex], strategicCoverageValue(scenario.defender(defenderIndex)));
+        }
         return values;
+    }
+
+    private static double strategicCoverageValue(DBNationSnapshot defender) {
+        double tierWeight = Math.max(0d, Math.min(1d, (defender.cities() - 35d) / 10d));
+        if (!(tierWeight > 0d)) {
+            return 0d;
+        }
+        return tierWeight * (OpeningMetricSummary.defenderControlPressure(defender) + (35d * defender.cities()));
     }
 
     private static double[] attackerValues(CandidateEdgeTable edges, float[] baseScores, double[] slotDenialScores, int attackerCount) {
@@ -203,22 +385,32 @@ final class LongHorizonAssignmentScoringModel {
         if (edges.retainsImmediateHarm()) {
             value = Math.max(value, Math.max(0d, edges.immediateHarm(edgeIndex)));
         }
-        if (edges.retainsControlLeverage()) {
-            value = Math.max(value, Math.max(0d, edges.controlLeverage(edgeIndex)));
-        }
-        if (edges.retainsFutureWarLeverage()) {
-            value = Math.max(value, Math.max(0d, edges.futureWarLeverage(edgeIndex)));
-        }
         return value;
     }
 
     private static double[] slotDenialScores(CandidateEdgeTable edges, CompiledScenario scenario) {
         double[] scores = new double[edges.edgeCount()];
+        double[] attackerPressures = new double[scenario.attackerCount()];
+        double[] attackerSlotCapabilityValues = new double[scenario.attackerCount()];
+        for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
+            DBNationSnapshot attacker = scenario.attacker(attackerIndex);
+            attackerPressures[attackerIndex] = controlPressure(attacker);
+            attackerSlotCapabilityValues[attackerIndex] = PlannerStrategicValue.slotCapabilityValue(attacker);
+        }
+        double[] defenderPressures = new double[scenario.defenderCount()];
+        double[] defenderSlotCapabilityValues = new double[scenario.defenderCount()];
+        for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
+            DBNationSnapshot defender = scenario.defender(defenderIndex);
+            defenderPressures[defenderIndex] = controlPressure(defender);
+            defenderSlotCapabilityValues[defenderIndex] = PlannerStrategicValue.slotCapabilityValue(defender);
+        }
         for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
-            DBNationSnapshot attacker = scenario.attacker(edges.attackerIndex(edgeIndex));
-            DBNationSnapshot defender = scenario.defender(edges.defenderIndex(edgeIndex));
-            double attackerPressure = controlPressure(attacker);
-            double defenderPressure = controlPressure(defender);
+            int attackerIndex = edges.attackerIndex(edgeIndex);
+            int defenderIndex = edges.defenderIndex(edgeIndex);
+            DBNationSnapshot attacker = scenario.attacker(attackerIndex);
+            DBNationSnapshot defender = scenario.defender(defenderIndex);
+            double attackerPressure = attackerPressures[attackerIndex];
+            double defenderPressure = defenderPressures[defenderIndex];
             double attackerSlotPressure = (attacker.currentOffensiveWars() + 1d) / Math.max(1, attacker.maxOff());
             double defenderSlotPressure = (defender.currentDefensiveWars() + 1d) / WarSlotRules.defensiveSlotCap();
             int attackerOpponents = Math.max(
@@ -229,16 +421,14 @@ final class LongHorizonAssignmentScoringModel {
                     defender.activeOpponentNationIds().size() + 1,
                     defender.currentOffensiveWars() + defender.currentDefensiveWars() + 1
             );
-                StrategicCapabilityVector attackerCapability = PlannerStrategicValue.capabilityVector(attacker);
-                StrategicCapabilityVector defenderCapability = PlannerStrategicValue.capabilityVector(defender);
             double attackerCost = StrategicAssetValue.offensiveWarSlotOpportunityCost(
-                    PlannerStrategicValue.offensiveSlotCapabilityValue(attackerCapability, attackerSlotPressure),
+                    PlannerStrategicValue.offensiveSlotCapabilityValue(attackerSlotCapabilityValues[attackerIndex], attackerSlotPressure),
                     attackerPressure,
                     attackerSlotPressure,
                     attackerOpponents
             );
             double defenderDenial = StrategicAssetValue.defensiveWarSlotDenialValue(
-                    PlannerStrategicValue.defensiveSlotCapabilityValue(defenderCapability, defenderSlotPressure),
+                    PlannerStrategicValue.defensiveSlotCapabilityValue(defenderSlotCapabilityValues[defenderIndex], defenderSlotPressure),
                     defenderPressure,
                     defenderSlotPressure,
                     defenderOpponents
@@ -250,39 +440,6 @@ final class LongHorizonAssignmentScoringModel {
 
     private static double controlPressure(DBNationSnapshot snapshot) {
         return OpeningMetricSummary.defenderControlPressure(snapshot);
-    }
-
-    private static int[] defenderPressureNeeds(CompiledScenario scenario, CandidateEdgeTable edges, int[] defenderCaps) {
-        double[] strongestCandidateAttacker = new double[scenario.defenderCount()];
-        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
-            int attackerIndex = edges.attackerIndex(edgeIndex);
-            int defenderIndex = edges.defenderIndex(edgeIndex);
-            strongestCandidateAttacker[defenderIndex] = Math.max(
-                    strongestCandidateAttacker[defenderIndex],
-                    combatStrength(scenario.attacker(attackerIndex))
-            );
-        }
-
-        int[] pressureNeeds = new int[scenario.defenderCount()];
-        for (int defenderIndex = 0; defenderIndex < pressureNeeds.length; defenderIndex++) {
-            int defenderCap = Math.max(1, defenderCaps[defenderIndex]);
-            double attackerStrength = strongestCandidateAttacker[defenderIndex];
-            if (!(attackerStrength > 0d) || defenderCap <= 1) {
-                pressureNeeds[defenderIndex] = 1;
-                continue;
-            }
-            double strengthRatio = combatStrength(scenario.defender(defenderIndex)) / attackerStrength;
-            int estimatedNeed;
-            if (strengthRatio >= 2.25d) {
-                estimatedNeed = 3;
-            } else if (strengthRatio >= 1.15d) {
-                estimatedNeed = 2;
-            } else {
-                estimatedNeed = 1;
-            }
-            pressureNeeds[defenderIndex] = Math.max(1, Math.min(defenderCap, estimatedNeed));
-        }
-        return pressureNeeds;
     }
 
     private static double defenderPressureCompletionWeight(int pressureNeed, int assignedCount) {
@@ -312,22 +469,6 @@ final class LongHorizonAssignmentScoringModel {
         };
     }
 
-    private static int[] attackerCommitmentNeeds(CandidateEdgeTable edges, float[] baseScores, double[] slotDenialScores, int[] attackerCaps, int horizonTurns) {
-        int[] positiveEdgeCounts = new int[attackerCaps.length];
-        for (int edgeIndex = 0; edgeIndex < edges.edgeCount(); edgeIndex++) {
-            if (baseScores[edgeIndex] + slotDenialScores[edgeIndex] > 0d) {
-                positiveEdgeCounts[edges.attackerIndex(edgeIndex)]++;
-            }
-        }
-        int horizonCommitmentLimit = horizonCommitmentLimit(horizonTurns);
-        int[] commitmentNeeds = new int[attackerCaps.length];
-        for (int attackerIndex = 0; attackerIndex < commitmentNeeds.length; attackerIndex++) {
-            int usefulCapacity = Math.min(attackerCaps[attackerIndex], positiveEdgeCounts[attackerIndex]);
-            commitmentNeeds[attackerIndex] = Math.max(0, Math.min(usefulCapacity, horizonCommitmentLimit));
-        }
-        return commitmentNeeds;
-    }
-
         private static double[] attackerIdlePressureScores(
             double[] attackerValues,
             int[] attackerBaselineOffensiveWars,
@@ -343,19 +484,68 @@ final class LongHorizonAssignmentScoringModel {
         }
         int attackerCount = Math.max(1, attackerValues.length);
         for (int attackerIndex = 0; attackerIndex < scores.length; attackerIndex++) {
-            if (attackerBaselineOffensiveWars[attackerIndex] > 0
-                    || attackerCommitmentNeeds[attackerIndex] <= 0
-                    || !(attackerValues[attackerIndex] > 0d)) {
-                continue;
-            }
-            int rank = attackerStrengthRanks != null && attackerIndex < attackerStrengthRanks.length
-                    ? Math.max(0, attackerStrengthRanks[attackerIndex])
-                    : attackerCount - 1;
-            double rankScale = Math.max(1d / attackerCount, Math.min(1d, (attackerCount - rank) / (double) attackerCount));
-            scores[attackerIndex] = horizonFactor * weight * attackerValues[attackerIndex] * rankScale;
+            scores[attackerIndex] = attackerIdlePressureScore(
+                attackerIndex,
+                attackerValues,
+                attackerBaselineOffensiveWars,
+                attackerCommitmentNeeds,
+                attackerStrengthRanks,
+                attackerPlannerSettings,
+                horizonFactor,
+                weight,
+                attackerCount
+            );
         }
         return scores;
     }
+
+        private static double attackerIdlePressureScore(
+            int attackerIndex,
+            double[] attackerValues,
+            int[] attackerBaselineOffensiveWars,
+            int[] attackerCommitmentNeeds,
+            int[] attackerStrengthRanks,
+            SidePlannerSettings attackerPlannerSettings,
+            double horizonFactor
+        ) {
+        double weight = attackerPlannerSettings == null ? 0d : attackerPlannerSettings.idlePressureWeight();
+        int attackerCount = Math.max(1, attackerValues.length);
+        return attackerIdlePressureScore(
+            attackerIndex,
+            attackerValues,
+            attackerBaselineOffensiveWars,
+            attackerCommitmentNeeds,
+            attackerStrengthRanks,
+            attackerPlannerSettings,
+            horizonFactor,
+            weight,
+            attackerCount
+        );
+        }
+
+        private static double attackerIdlePressureScore(
+            int attackerIndex,
+            double[] attackerValues,
+            int[] attackerBaselineOffensiveWars,
+            int[] attackerCommitmentNeeds,
+            int[] attackerStrengthRanks,
+            SidePlannerSettings attackerPlannerSettings,
+            double horizonFactor,
+            double weight,
+            int attackerCount
+        ) {
+        if (!(weight > 0d)
+            || attackerBaselineOffensiveWars[attackerIndex] > 0
+            || attackerCommitmentNeeds[attackerIndex] <= 0
+            || !(attackerValues[attackerIndex] > 0d)) {
+            return 0d;
+        }
+        int rank = attackerStrengthRanks != null && attackerIndex < attackerStrengthRanks.length
+            ? Math.max(0, attackerStrengthRanks[attackerIndex])
+            : attackerCount - 1;
+        double rankScale = Math.max(1d / attackerCount, Math.min(1d, (attackerCount - rank) / (double) attackerCount));
+        return horizonFactor * weight * attackerValues[attackerIndex] * rankScale;
+        }
 
     private static int[] attackerBaselineOffensiveWars(CompiledScenario scenario) {
         int[] baseline = new int[scenario.attackerCount()];
@@ -368,25 +558,4 @@ final class LongHorizonAssignmentScoringModel {
         return baseline;
     }
 
-    private static int horizonCommitmentLimit(int horizonTurns) {
-        if (horizonTurns >= 360) {
-            return 3;
-        }
-        if (horizonTurns >= 72) {
-            return 2;
-        }
-        return 1;
-    }
-
-    private static double combatStrength(DBNationSnapshot snapshot) {
-        double groundStrength = UnitEconomy.groundStrengthRaw(
-                snapshot.unit(MilitaryUnit.SOLDIER),
-                snapshot.unit(MilitaryUnit.TANK),
-                false,
-                false
-        );
-        return groundStrength
-                + (3d * snapshot.unit(MilitaryUnit.AIRCRAFT))
-                + (2d * snapshot.unit(MilitaryUnit.SHIP));
-    }
 }

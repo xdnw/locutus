@@ -14,6 +14,7 @@ import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.WarSlotRules;
 import link.locutus.discord.sim.input.NationInit;
+import link.locutus.discord.util.PW;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -54,7 +55,7 @@ public final class DBNationSnapshot {
     private final WarPolicy warPolicy;
     private final EnumMap<MilitaryUnit, Integer> units;
     private final double[] resources;
-    private final double nonInfraScoreBase;
+    private final double staticScoreComponent;
     private final double[] cityInfra;
     private final SpecialistCityProfile[] citySpecialistProfiles;
     private final double totalInfra;
@@ -70,6 +71,7 @@ public final class DBNationSnapshot {
     private final long projectBits;
     private final boolean blitzkriegActive;
     private final double[] infraAttackModifiers;
+    double[] resourcesRaw() { return resources; }
     private final double[] infraDefendModifiers;
     private final double groundLooterModifier;
     private final double nonGroundLooterModifier;
@@ -79,7 +81,6 @@ public final class DBNationSnapshot {
         this.nationId = b.nationId;
         this.allianceId = b.allianceId;
         this.teamId = b.teamId;
-        this.score = b.score;
         this.cities = b.cities;
         this.currentOffensiveWars = b.currentOffensiveWars;
         this.currentDefensiveWars = b.currentDefensiveWars;
@@ -89,7 +90,7 @@ public final class DBNationSnapshot {
         this.warPolicy = Objects.requireNonNull(b.warPolicy, "warPolicy");
         this.units = new EnumMap<>(b.units);
         this.resources = b.resources.clone();
-        this.nonInfraScoreBase = b.nonInfraScoreBase;
+        this.staticScoreComponent = derivedStaticScoreComponent(b.cities, b.projectBits, b.researchBits);
         this.cityInfra = b.cityInfra.clone();
         this.citySpecialistProfiles = b.citySpecialistProfiles.clone();
         this.totalInfra = totalInfra(this.cityInfra);
@@ -109,6 +110,7 @@ public final class DBNationSnapshot {
         this.groundLooterModifier = b.groundLooterModifier;
         this.nonGroundLooterModifier = b.nonGroundLooterModifier;
         this.lootModifier = b.lootModifier;
+        this.score = derivedScore(this.staticScoreComponent, this.cityInfra, this.units);
     }
 
     private DBNationSnapshot(
@@ -121,7 +123,6 @@ public final class DBNationSnapshot {
         this.nationId = source.nationId;
         this.allianceId = source.allianceId;
         this.teamId = source.teamId;
-        this.score = source.score;
         this.cities = source.cities;
         this.currentOffensiveWars = currentOffensiveWars;
         this.currentDefensiveWars = currentDefensiveWars;
@@ -131,7 +132,7 @@ public final class DBNationSnapshot {
         this.warPolicy = source.warPolicy;
         this.units = new EnumMap<>(source.units);
         this.resources = source.resources.clone();
-        this.nonInfraScoreBase = source.nonInfraScoreBase;
+        this.staticScoreComponent = source.staticScoreComponent;
         this.cityInfra = cityInfra.clone();
         this.citySpecialistProfiles = source.citySpecialistProfiles.clone();
         this.totalInfra = totalInfra(this.cityInfra);
@@ -151,6 +152,87 @@ public final class DBNationSnapshot {
         this.groundLooterModifier = source.groundLooterModifier;
         this.nonGroundLooterModifier = source.nonGroundLooterModifier;
         this.lootModifier = source.lootModifier;
+        this.score = derivedScore(this.staticScoreComponent, this.cityInfra, this.units);
+    }
+
+    private DBNationSnapshot(
+            DBNationSnapshot source,
+            int currentOffensiveWars,
+            int currentDefensiveWars,
+            Set<Integer> activeOpponentNationIds,
+            int beigeTurns,
+            double[] cityInfra,
+            double[] resources,
+            int[] unitsFlat,
+            int unitBase,
+            int[] unitBuysTodayFlat,
+            int[] pendingBuysFlat
+    ) {
+        this.nationId = source.nationId;
+        this.allianceId = source.allianceId;
+        this.teamId = source.teamId;
+        this.cities = source.cities;
+        this.currentOffensiveWars = currentOffensiveWars;
+        this.currentDefensiveWars = currentDefensiveWars;
+        this.slotOnlyOffensiveWarReleaseTurns = source.slotOnlyOffensiveWarReleaseTurns;
+        this.slotOnlyDefensiveWarReleaseTurns = source.slotOnlyDefensiveWarReleaseTurns;
+        this.maxOff = source.maxOff;
+        this.warPolicy = source.warPolicy;
+        EnumMap<MilitaryUnit, Integer> projectedUnits = new EnumMap<>(MilitaryUnit.class);
+        EnumMap<MilitaryUnit, Integer> projectedUnitBuysToday = new EnumMap<>(MilitaryUnit.class);
+        EnumMap<MilitaryUnit, Integer> projectedPendingBuysNextTurn = new EnumMap<>(MilitaryUnit.class);
+        boolean unitsMatchSource = true;
+        boolean unitBuysMatchSource = true;
+        boolean pendingBuysMatchSource = true;
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            int amount = Math.max(0, unitsFlat[unitBase + unit.ordinal()]);
+            if (amount != source.unit(unit)) {
+                unitsMatchSource = false;
+            }
+            if (amount > 0) {
+                projectedUnits.put(unit, amount);
+            }
+            int ordinal = unit.ordinal();
+            int boughtToday = Math.max(0, unitBuysTodayFlat[unitBase + ordinal]);
+            if (boughtToday != source.unitsBoughtToday(unit)) {
+                unitBuysMatchSource = false;
+            }
+            if (boughtToday > 0) {
+                projectedUnitBuysToday.put(unit, boughtToday);
+            }
+            int pendingBuy = Math.max(0, pendingBuysFlat[unitBase + ordinal]);
+            if (pendingBuy != source.pendingBuysNextTurn(unit)) {
+                pendingBuysMatchSource = false;
+            }
+            if (pendingBuy > 0) {
+                projectedPendingBuysNextTurn.put(unit, pendingBuy);
+            }
+        }
+        this.units = unitsMatchSource ? source.units : projectedUnits;
+        this.resources = resources;
+        this.staticScoreComponent = source.staticScoreComponent;
+        this.cityInfra = cityInfra;
+        this.citySpecialistProfiles = source.citySpecialistProfiles;
+        this.totalInfra = totalInfra(this.cityInfra);
+        this.resetHourUtc = source.resetHourUtc;
+        this.resetHourUtcFallback = source.resetHourUtcFallback;
+        this.activeOpponentNationIds = activeOpponentNationIds.equals(source.activeOpponentNationIds)
+                ? source.activeOpponentNationIds
+                : Set.copyOf(activeOpponentNationIds);
+        this.policyCooldownTurnsRemaining = source.policyCooldownTurnsRemaining;
+        this.beigeTurns = beigeTurns;
+        this.vmTurns = source.vmTurns;
+        this.unitBuysToday = unitBuysMatchSource ? source.unitBuysToday : projectedUnitBuysToday;
+        this.pendingBuysNextTurn = pendingBuysMatchSource ? source.pendingBuysNextTurn : projectedPendingBuysNextTurn;
+        this.researchBits = source.researchBits;
+        this.projectBits = source.projectBits;
+        this.blitzkriegActive = source.blitzkriegActive;
+        this.infraAttackModifiers = source.infraAttackModifiers;
+        this.infraDefendModifiers = source.infraDefendModifiers;
+        this.groundLooterModifier = source.groundLooterModifier;
+        this.nonGroundLooterModifier = source.nonGroundLooterModifier;
+        this.lootModifier = source.lootModifier;
+        this.score = derivedScore(this.staticScoreComponent, this.cityInfra, this.units);
     }
 
     /** Snapshot from a live DBNation. Does not seed current-day unit buys unless explicitly requested in bulk. */
@@ -182,7 +264,6 @@ public final class DBNationSnapshot {
         Builder b = new Builder(nation.getNation_id());
         b.allianceId(nation.getAlliance_id());
         b.teamId(nation.getAlliance_id());
-        b.score(nation.getScore());
         b.cities(nation.getCities());
         b.currentOffensiveWars(nation.getOff());
         b.currentDefensiveWars(nation.getDef());
@@ -279,7 +360,7 @@ public final class DBNationSnapshot {
         System.arraycopy(resources, 0, target, targetOffset, resources.length);
     }
     public double resource(ResourceType type) { return resources[type.ordinal()]; }
-    public double nonInfraScoreBase() { return nonInfraScoreBase; }
+    public double staticScoreComponent() { return staticScoreComponent; }
     public double[] cityInfra() { return cityInfra.clone(); }
     /** Returns the city-infra length without allocating a cloned array. */
     public int cityInfraCount() { return cityInfra.length; }
@@ -359,7 +440,6 @@ public final class DBNationSnapshot {
                 teamId,
                 warPolicy,
                 resources,
-                nonInfraScoreBase,
                 cityInfra,
                 maxOff,
                 resetHourUtc,
@@ -381,13 +461,40 @@ public final class DBNationSnapshot {
         return new DBNationSnapshot(this, cityInfra, currentOffensiveWars, currentDefensiveWars, activeOpponentNationIds);
     }
 
+        static DBNationSnapshot projectedFrom(
+            DBNationSnapshot source,
+            int currentOffensiveWars,
+            int currentDefensiveWars,
+            Set<Integer> activeOpponentNationIds,
+            int beigeTurns,
+            double[] cityInfra,
+            double[] resources,
+            int[] unitsFlat,
+            int unitBase,
+            int[] unitBuysTodayFlat,
+            int[] pendingBuysFlat
+        ) {
+        return new DBNationSnapshot(
+            source,
+            currentOffensiveWars,
+            currentDefensiveWars,
+            activeOpponentNationIds,
+            beigeTurns,
+            cityInfra,
+            resources,
+            unitsFlat,
+            unitBase,
+            unitBuysTodayFlat,
+            pendingBuysFlat
+        );
+        }
+
     public Builder toBuilder() {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.DBNATION_TO_BUILDER)) {
             PlannerProfiler.addCounter(PlannerProfiler.Scope.DBNATION_TO_BUILDER, "cities", cityInfra.length);
             Builder builder = new Builder(nationId)
                     .allianceId(allianceId)
                     .teamId(teamId)
-                    .score(score)
                     .cities(cities)
                     .currentOffensiveWars(currentOffensiveWars)
                     .currentDefensiveWars(currentDefensiveWars)
@@ -396,7 +503,6 @@ public final class DBNationSnapshot {
                     .maxOff(maxOff)
                     .warPolicy(warPolicy)
                     .resources(resources)
-                    .nonInfraScoreBase(nonInfraScoreBase)
                     .cityInfra(cityInfra)
                     .citySpecialistProfiles(citySpecialistProfiles)
                     .resetHourUtc(resetHourUtc)
@@ -433,7 +539,6 @@ public final class DBNationSnapshot {
         private final int nationId;
         private int allianceId;
         private int teamId;
-        private double score;
         private int cities;
         private int currentOffensiveWars;
         private int currentDefensiveWars;
@@ -443,7 +548,6 @@ public final class DBNationSnapshot {
         private WarPolicy warPolicy = WarPolicy.ATTRITION;
         private final EnumMap<MilitaryUnit, Integer> units = new EnumMap<>(MilitaryUnit.class);
         private double[] resources = new double[ResourceType.values.length];
-        private double nonInfraScoreBase;
         private double[] cityInfra = new double[0];
         private SpecialistCityProfile[] citySpecialistProfiles = new SpecialistCityProfile[0];
         private byte resetHourUtc;
@@ -477,7 +581,6 @@ public final class DBNationSnapshot {
 
         public Builder allianceId(int v) { this.allianceId = v; return this; }
         public Builder teamId(int v) { this.teamId = v; return this; }
-        public Builder score(double v) { this.score = v; return this; }
         public Builder cities(int v) { this.cities = v; return this; }
         public Builder currentOffensiveWars(int v) { this.currentOffensiveWars = v; return this; }
         public Builder currentDefensiveWars(int v) { this.currentDefensiveWars = v; return this; }
@@ -494,7 +597,6 @@ public final class DBNationSnapshot {
         public Builder unit(MilitaryUnit u, int count) { units.put(u, count); return this; }
         public Builder resources(double[] v) { this.resources = v.clone(); return this; }
         public Builder resource(ResourceType t, double v) { this.resources[t.ordinal()] = v; return this; }
-        public Builder nonInfraScoreBase(double v) { this.nonInfraScoreBase = v; return this; }
         public Builder cityInfra(double[] v) { this.cityInfra = v.clone(); return this; }
         public Builder citySpecialistProfiles(SpecialistCityProfile[] values) {
             this.citySpecialistProfiles = values == null ? new SpecialistCityProfile[0] : values.clone();
@@ -604,6 +706,9 @@ public final class DBNationSnapshot {
             } else if (citySpecialistProfiles.length != cityInfra.length) {
                 throw new IllegalArgumentException("citySpecialistProfiles must match cityInfra length");
             }
+            if (cities <= 0 && cityInfra.length > 0) {
+                cities = cityInfra.length;
+            }
             if (maxOff < 0) {
                 maxOff = WarSlotRules.offensiveSlotCap(projectBits);
             }
@@ -627,6 +732,41 @@ public final class DBNationSnapshot {
             this.infraAttackModifiers = profile.infraAttackModifiers();
             this.infraDefendModifiers = profile.infraDefendModifiers();
         }
+    }
+
+    private static double derivedScore(
+            double staticScoreComponent,
+            double[] cityInfra,
+            EnumMap<MilitaryUnit, Integer> units
+    ) {
+        double total = staticScoreComponent;
+        for (double infra : cityInfra) {
+            total += infra / 40.0d;
+        }
+        for (MilitaryUnit unit : SIM_PURCHASABLE_UNITS) {
+            int count = units.getOrDefault(unit, 0);
+            if (count > 0) {
+                total += unit.getScore(count);
+            }
+        }
+        return total;
+    }
+
+    private static double derivedStaticScoreComponent(int cities, long projectBits, int researchBits) {
+        if (cities <= 0) {
+            return 0d;
+        }
+        return PW.computeStaticScoreComponent(cities, projectCount(projectBits), researchBits);
+    }
+
+    private static int projectCount(long projectBits) {
+        int count = 0;
+        for (Project project : Projects.values) {
+            if ((projectBits & (1L << project.ordinal())) != 0L) {
+                count++;
+            }
+        }
+        return count;
     }
 
 }

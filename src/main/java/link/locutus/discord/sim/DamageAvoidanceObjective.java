@@ -4,27 +4,18 @@ import link.locutus.discord.sim.actions.SimAction;
 
 /** Objective that favors low-exposure declares while still requiring useful damage. */
 final class DamageAvoidanceObjective implements StrategicObjective {
-    @Override
-    public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return new CandidateEdgeComponentPolicy(true, true, false, false, false);
-    }
 
     @Override
-    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return (0.35d * metrics.immediateHarm()) - metrics.selfExposure();
+    public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
+        return CandidateEdgeComponentPolicy.harmOnly();
     }
 
     @Override
     public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
-        double score = totals.ownValue() - (0.35d * totals.enemyValue());
-        if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlCompositeScoreForTeam(
-                    teamId,
-                    new TeamWarControlView.ControlComponentWeights(0.35d, 0.35d, 0.0d, 0.35d, 0.35d, 0.35d)
-            );
-        }
-        return score;
+        return totals.ownValue()
+                - (0.35d * totals.enemyValue())
+                + (0.35d * StrategicValueTotals.slotBalanceOf(view, teamId));
     }
 
     @Override

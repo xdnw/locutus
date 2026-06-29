@@ -1,0 +1,355 @@
+package link.locutus.discord.sim.combat;
+
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.SuccessType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.IntFunction;
+
+/**
+ * Shared owner for war tactical-flag acquisition and stripping semantics.
+ *
+ * <p>The kernel owns attack-family tactical-flag semantics, while mutable live/planner runtimes
+ * own state application. This helper keeps those rules in one place so live sim, planner-local
+ * exact execution, and command-side heuristics do not drift.</p>
+ */
+public final class WarTacticalFlagRules {
+    private WarTacticalFlagRules() {
+    }
+
+    public interface MutableWarFlagState {
+        int NO_NATION_ID = -1;
+
+        boolean isActive();
+
+        int groundSuperiorityNationId();
+
+        int airSuperiorityNationId();
+
+        int blockadeNationId();
+
+        void setGroundSuperiorityNationId(int nationId);
+
+        void setAirSuperiorityNationId(int nationId);
+
+        void setBlockadeNationId(int nationId);
+    }
+
+    private enum TacticalFlagKind {
+        GROUND {
+            @Override
+            int owner(MutableWarFlagState war) {
+                return war.groundSuperiorityNationId();
+            }
+
+            @Override
+            void setOwner(MutableWarFlagState war, int nationId) {
+                war.setGroundSuperiorityNationId(nationId);
+            }
+
+            @Override
+            boolean canHold(CombatKernel.NationState nation) {
+                return nation.getUnits(MilitaryUnit.SOLDIER) > 0 || nation.getUnits(MilitaryUnit.TANK) > 0;
+            }
+
+            @Override
+            boolean attackCanStrip(AttackType type) {
+                return type == AttackType.GROUND || type == AttackType.NAVAL_GROUND;
+            }
+
+            @Override
+            int delta(SuperiorityFlagDelta delta) {
+                return delta.groundSuperiority();
+            }
+
+            @Override
+            boolean clearDefender(SuperiorityFlagDelta delta) {
+                return delta.clearGroundSuperiority();
+            }
+        },
+        AIR {
+            @Override
+            int owner(MutableWarFlagState war) {
+                return war.airSuperiorityNationId();
+            }
+
+            @Override
+            void setOwner(MutableWarFlagState war, int nationId) {
+                war.setAirSuperiorityNationId(nationId);
+            }
+
+            @Override
+            boolean canHold(CombatKernel.NationState nation) {
+                return nation.getUnits(MilitaryUnit.AIRCRAFT) > 0;
+            }
+
+            @Override
+            boolean attackCanStrip(AttackType type) {
+                return type.isAir() || type == AttackType.NAVAL_AIR;
+            }
+
+            @Override
+            int delta(SuperiorityFlagDelta delta) {
+                return delta.airSuperiority();
+            }
+
+            @Override
+            boolean clearDefender(SuperiorityFlagDelta delta) {
+                return delta.clearAirSuperiority();
+            }
+        },
+        BLOCKADE {
+            @Override
+            int owner(MutableWarFlagState war) {
+                return war.blockadeNationId();
+            }
+
+            @Override
+            void setOwner(MutableWarFlagState war, int nationId) {
+                war.setBlockadeNationId(nationId);
+            }
+
+            @Override
+            boolean canHold(CombatKernel.NationState nation) {
+                return nation.getUnits(MilitaryUnit.SHIP) > 0;
+            }
+
+            @Override
+            boolean attackCanStrip(AttackType type) {
+                return type.isNaval();
+            }
+
+            @Override
+            int delta(SuperiorityFlagDelta delta) {
+                return delta.blockade();
+            }
+
+            @Override
+            boolean clearDefender(SuperiorityFlagDelta delta) {
+                return delta.clearBlockade();
+            }
+        };
+
+        abstract int owner(MutableWarFlagState war);
+
+        abstract void setOwner(MutableWarFlagState war, int nationId);
+
+        abstract boolean canHold(CombatKernel.NationState nation);
+
+        abstract boolean attackCanStrip(AttackType type);
+
+        abstract int delta(SuperiorityFlagDelta delta);
+
+        abstract boolean clearDefender(SuperiorityFlagDelta delta);
+    }
+
+    public static SuperiorityFlagDelta tacticalFlagDelta(
+            CombatKernel.AttackContext context,
+            AttackType type,
+            SuccessType success
+    ) {
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(success, "success");
+
+        return tacticalFlagDelta(
+                type,
+                success,
+                context.defenderHasGroundSuperiority(),
+                context.defenderHasAirControl(),
+                context.blockadeOwner() == CombatKernel.AttackContext.BLOCKADE_DEFENDER
+        );
+    }
+
+    public static SuperiorityFlagDelta tacticalFlagDelta(
+            AttackType type,
+            SuccessType success,
+            boolean defenderHasGroundSuperiority,
+            boolean defenderHasAirControl,
+            boolean defenderHasBlockade
+    ) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(success, "success");
+
+        if (success == SuccessType.UTTER_FAILURE) {
+            return SuperiorityFlagDelta.NONE;
+        }
+
+        boolean clearGround = TacticalFlagKind.GROUND.attackCanStrip(type) && defenderHasGroundSuperiority;
+        boolean clearAir = TacticalFlagKind.AIR.attackCanStrip(type) && defenderHasAirControl;
+        boolean clearBlockade = TacticalFlagKind.BLOCKADE.attackCanStrip(type) && defenderHasBlockade;
+
+        if (success != SuccessType.IMMENSE_TRIUMPH) {
+            return SuperiorityFlagDelta.of(0, 0, 0, clearGround, clearAir, clearBlockade);
+        }
+
+        return switch (type) {
+            case GROUND -> SuperiorityFlagDelta.of(1, 0, 0, clearGround, clearAir, clearBlockade);
+            case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY,
+                    AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT ->
+                    SuperiorityFlagDelta.of(0, 1, 0, clearGround, clearAir, clearBlockade);
+            case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND ->
+                    SuperiorityFlagDelta.of(0, 0, 1, clearGround, clearAir, clearBlockade);
+            default -> SuperiorityFlagDelta.of(0, 0, 0, clearGround, clearAir, clearBlockade);
+        };
+    }
+
+    public static <W extends MutableWarFlagState> void reconcileAfterAttack(
+            W currentWar,
+            CombatKernel.NationState actor,
+            CombatKernel.NationState defender,
+            SuperiorityFlagDelta delta,
+            IntFunction<? extends Iterable<W>> activeWarsForNation,
+            Consumer<? super W> onBlockadeChanged
+    ) {
+        Objects.requireNonNull(currentWar, "currentWar");
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(defender, "defender");
+        Objects.requireNonNull(activeWarsForNation, "activeWarsForNation");
+        Consumer<? super W> blockadeCallback = onBlockadeChanged == null ? war -> { } : onBlockadeChanged;
+
+        SuperiorityFlagDelta resolvedDelta = delta == null ? SuperiorityFlagDelta.NONE : delta;
+        applySameWarDelta(currentWar, actor.nationId(), defender.nationId(), resolvedDelta, blockadeCallback);
+        reconcileNation(actor, snapshotWars(activeWarsForNation.apply(actor.nationId())), blockadeCallback);
+        reconcileNation(defender, snapshotWars(activeWarsForNation.apply(defender.nationId())), blockadeCallback);
+    }
+
+    public static <W extends MutableWarFlagState> boolean applySameWarDelta(
+            W war,
+            int actorNationId,
+            int defenderNationId,
+            SuperiorityFlagDelta delta
+    ) {
+        Objects.requireNonNull(war, "war");
+        boolean[] blockadeChanged = new boolean[1];
+        applySameWarDelta(
+                war,
+                actorNationId,
+                defenderNationId,
+                delta == null ? SuperiorityFlagDelta.NONE : delta,
+                ignored -> blockadeChanged[0] = true
+        );
+        return blockadeChanged[0];
+    }
+
+    private static <W extends MutableWarFlagState> void applySameWarDelta(
+            W war,
+            int actorNationId,
+            int defenderNationId,
+            SuperiorityFlagDelta delta,
+            Consumer<? super W> onBlockadeChanged
+    ) {
+        applySameWarDelta(war, TacticalFlagKind.GROUND, actorNationId, defenderNationId, delta, onBlockadeChanged);
+        applySameWarDelta(war, TacticalFlagKind.AIR, actorNationId, defenderNationId, delta, onBlockadeChanged);
+        applySameWarDelta(war, TacticalFlagKind.BLOCKADE, actorNationId, defenderNationId, delta, onBlockadeChanged);
+    }
+
+    private static <W extends MutableWarFlagState> void applySameWarDelta(
+            W war,
+            TacticalFlagKind kind,
+            int actorNationId,
+            int defenderNationId,
+            SuperiorityFlagDelta delta,
+            Consumer<? super W> onBlockadeChanged
+    ) {
+        int newOwner = kind.owner(war);
+        int flagDelta = kind.delta(delta);
+        if (flagDelta > 0) {
+            newOwner = actorNationId;
+        } else if (flagDelta < 0) {
+            newOwner = defenderNationId;
+        } else if (kind.clearDefender(delta) && newOwner == defenderNationId) {
+            newOwner = MutableWarFlagState.NO_NATION_ID;
+        }
+        setOwner(war, kind, newOwner, onBlockadeChanged);
+    }
+
+    private static <W extends MutableWarFlagState> void reconcileNation(
+            CombatKernel.NationState nation,
+            List<W> wars,
+            Consumer<? super W> onBlockadeChanged
+    ) {
+        if (wars.isEmpty()) {
+            return;
+        }
+
+        int nationId = nation.nationId();
+        boolean underGround = hasIncomingEnemyFlag(wars, nationId, TacticalFlagKind.GROUND);
+        boolean underAir = hasIncomingEnemyFlag(wars, nationId, TacticalFlagKind.AIR);
+        boolean underBlockade = hasIncomingEnemyFlag(wars, nationId, TacticalFlagKind.BLOCKADE);
+
+        if (underGround || !TacticalFlagKind.GROUND.canHold(nation)) {
+            clearOutgoingFlags(wars, nationId, TacticalFlagKind.GROUND, onBlockadeChanged);
+        }
+        if (underAir || !TacticalFlagKind.AIR.canHold(nation)) {
+            clearOutgoingFlags(wars, nationId, TacticalFlagKind.AIR, onBlockadeChanged);
+        }
+        if (underBlockade || !TacticalFlagKind.BLOCKADE.canHold(nation)) {
+            clearOutgoingFlags(wars, nationId, TacticalFlagKind.BLOCKADE, onBlockadeChanged);
+        }
+    }
+
+    private static <W extends MutableWarFlagState> boolean hasIncomingEnemyFlag(
+            List<W> wars,
+            int nationId,
+            TacticalFlagKind kind
+    ) {
+        for (W war : wars) {
+            if (!war.isActive()) {
+                continue;
+            }
+            int owner = kind.owner(war);
+            if (owner != MutableWarFlagState.NO_NATION_ID && owner != nationId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static <W extends MutableWarFlagState> void clearOutgoingFlags(
+            List<W> wars,
+            int nationId,
+            TacticalFlagKind kind,
+            Consumer<? super W> onBlockadeChanged
+    ) {
+        for (W war : wars) {
+            if (!war.isActive()) {
+                continue;
+            }
+            if (kind.owner(war) == nationId) {
+                setOwner(war, kind, MutableWarFlagState.NO_NATION_ID, onBlockadeChanged);
+            }
+        }
+    }
+
+    private static <W extends MutableWarFlagState> void setOwner(
+            W war,
+            TacticalFlagKind kind,
+            int nationId,
+            Consumer<? super W> onBlockadeChanged
+    ) {
+        int oldOwner = kind.owner(war);
+        if (oldOwner == nationId) {
+            return;
+        }
+        kind.setOwner(war, nationId);
+        if (kind == TacticalFlagKind.BLOCKADE) {
+            onBlockadeChanged.accept(war);
+        }
+    }
+
+    private static <W extends MutableWarFlagState> List<W> snapshotWars(Iterable<W> wars) {
+        if (wars == null) {
+            return List.of();
+        }
+        ArrayList<W> copy = new ArrayList<>();
+        for (W war : wars) {
+            copy.add(war);
+        }
+        return copy;
+    }
+}

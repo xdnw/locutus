@@ -8,6 +8,7 @@ import link.locutus.discord.sim.planners.ScheduledTargetPlan;
 import link.locutus.discord.sim.planners.ScheduledAttacker;
 import link.locutus.discord.sim.planners.ScheduledTargetPlanner;
 import link.locutus.discord.sim.planners.ScheduledTimingComparison;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -33,8 +34,6 @@ class ScheduledTargetPlannerTest {
                                 DBNationSnapshot.synthetic(1)
                                                 .teamId(1)
                                                 .allianceId(10)
-                                                .score(1_000)
-                                                .nonInfraScoreBase(700)
                                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                                 .warPolicy(WarPolicy.ATTRITION)
                                                 .build(),
@@ -48,32 +47,8 @@ class ScheduledTargetPlannerTest {
 
         @Test
         void carriesPlannedWarStateIntoNextBucket() {
-                DBNationSnapshot attackerSnapshot = DBNationSnapshot.synthetic(1)
-                                .teamId(1)
-                                .allianceId(10)
-                                .score(1_000)
-                                .maxOff(3)
-                                .nonInfraScoreBase(700)
-                                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                                .warPolicy(WarPolicy.ATTRITION)
-                                .unit(MilitaryUnit.SOLDIER, 15_000)
-                                .unit(MilitaryUnit.TANK, 500)
-                                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                                .unit(MilitaryUnit.SHIP, 8)
-                                .build();
-                DBNationSnapshot defenderSnapshot = DBNationSnapshot.synthetic(2)
-                                .teamId(2)
-                                .allianceId(20)
-                                .score(1_000)
-                                .maxOff(3)
-                                .nonInfraScoreBase(700)
-                                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                                .warPolicy(WarPolicy.ATTRITION)
-                                .unit(MilitaryUnit.SOLDIER, 10_000)
-                                .unit(MilitaryUnit.TANK, 200)
-                                .unit(MilitaryUnit.AIRCRAFT, 500)
-                                .unit(MilitaryUnit.SHIP, 4)
-                                .build();
+                DBNationSnapshot attackerSnapshot = combatant(1, 1, 1_000.0, 15_000, 500, 1_000, 8);
+                DBNationSnapshot defenderSnapshot = combatant(2, 2, 950.0, 10_000, 200, 500, 4);
 
                 ScheduledTargetPlan plan = new ScheduledTargetPlanner(SimTuning.defaults()).assign(
                                 List.of(new ScheduledAttacker(attackerSnapshot, List.of(new AvailabilityWindow(0, 1)))),
@@ -96,9 +71,7 @@ class ScheduledTargetPlannerTest {
                 DBNationSnapshot eligibleAttacker = DBNationSnapshot.synthetic(2)
                                 .teamId(1)
                                 .allianceId(10)
-                                .score(1_000)
                                 .maxOff(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .unit(MilitaryUnit.SOLDIER, 15_000)
@@ -109,9 +82,7 @@ class ScheduledTargetPlannerTest {
                 DBNationSnapshot unavailableAttacker = DBNationSnapshot.synthetic(1)
                                 .teamId(1)
                                 .allianceId(10)
-                                .score(1_000)
                                 .currentOffensiveWars(5)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .unit(MilitaryUnit.SOLDIER, 15_000)
@@ -122,9 +93,7 @@ class ScheduledTargetPlannerTest {
                 DBNationSnapshot defenderSnapshot = DBNationSnapshot.synthetic(3)
                                 .teamId(2)
                                 .allianceId(20)
-                                .score(1_000)
                                 .maxOff(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .unit(MilitaryUnit.SOLDIER, 10_000)
@@ -148,5 +117,35 @@ class ScheduledTargetPlannerTest {
                 assertEquals(List.of(2), plan.buckets().get(0).eligibleAttackerIds());
                 assertEquals(1, plan.timingComparisons().size());
                 assertEquals(2, plan.timingComparisons().get(0).attackerId());
+        }
+
+        private static DBNationSnapshot combatant(
+                        int nationId,
+                        int teamId,
+                        double targetScore,
+                        int soldiers,
+                        int tanks,
+                        int aircraft,
+                        int ships
+        ) {
+                int cities = 3;
+                double staticScore = PW.computeStaticScoreComponent(cities, 0, 0);
+                double unitScore = MilitaryUnit.SOLDIER.getScore(soldiers)
+                                + MilitaryUnit.TANK.getScore(tanks)
+                                + MilitaryUnit.AIRCRAFT.getScore(aircraft)
+                                + MilitaryUnit.SHIP.getScore(ships);
+                double infraPerCity = Math.max(0d, ((targetScore - staticScore - unitScore) * 40.0d) / cities);
+                return DBNationSnapshot.synthetic(nationId)
+                                .teamId(teamId)
+                                .allianceId(teamId == 1 ? 10 : 20)
+                                .maxOff(3)
+                                .cities(cities)
+                                .cityInfra(new double[]{infraPerCity, infraPerCity, infraPerCity})
+                                .warPolicy(WarPolicy.ATTRITION)
+                                .unit(MilitaryUnit.SOLDIER, soldiers)
+                                .unit(MilitaryUnit.TANK, tanks)
+                                .unit(MilitaryUnit.AIRCRAFT, aircraft)
+                                .unit(MilitaryUnit.SHIP, ships)
+                                .build();
         }
 }

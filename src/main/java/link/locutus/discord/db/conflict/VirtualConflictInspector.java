@@ -3,7 +3,7 @@ package link.locutus.discord.db.conflict;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import link.locutus.discord.web.jooby.CloudItem;
 import link.locutus.discord.web.jooby.CloudStorage;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -123,7 +123,7 @@ public class VirtualConflictInspector {
 
         byte[] decompressed;
         try {
-            decompressed = JteUtil.decompress(compressed);
+            decompressed = WebSerializeUtil.decompress(compressed);
         } catch (RuntimeException e) {
             return new InspectionResult(id, objectKey, Classification.DECOMPRESS_ERROR,
                     compressed.length,
@@ -142,7 +142,7 @@ public class VirtualConflictInspector {
 
         Object root;
         try {
-            root = JteUtil.getSerializer().readValue(decompressed, Object.class);
+            root = WebSerializeUtil.getSerializer().readValue(decompressed, Object.class);
         } catch (IOException e) {
             return new InspectionResult(id, objectKey, Classification.PARSE_ERROR,
                     compressed.length,
@@ -232,7 +232,7 @@ public class VirtualConflictInspector {
         }
 
         try {
-            return truncate(JteUtil.getSerializer().writeValueAsString(root), 240);
+            return truncate(WebSerializeUtil.getSerializer().writeValueAsString(root), 240);
         } catch (JsonProcessingException ignored) {
             return truncate(String.valueOf(root), 240);
         }

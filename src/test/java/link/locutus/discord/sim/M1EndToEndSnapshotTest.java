@@ -1,15 +1,9 @@
 package link.locutus.discord.sim;
 
-import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.sim.actions.BuyUnitsAction;
-import link.locutus.discord.sim.actions.DeclareWarAction;
-import link.locutus.discord.sim.strategy.AirControlBuild;
-import link.locutus.discord.sim.strategy.GroundUnderAir;
-import link.locutus.discord.sim.strategy.RuleBasedActor;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -27,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * This test exercises:
  * - SimWorld with ActivityProvider and ResetTimeProvider wired
  * - EconomyProvider callbacks (mocked)
- * - Actor decision-making with objectives
  * - Turn sequencing and state mutations
  */
 class M1EndToEndSnapshotTest {
@@ -62,8 +55,8 @@ class M1EndToEndSnapshotTest {
         );
 
         // Add two nations
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4, (byte) 0));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4, (byte) 0));
+        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 4, (byte) 0));
+        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 4, (byte) 0));
 
         SimNation attacker = world.requireNation(1);
         SimNation defender = world.requireNation(2);
@@ -88,34 +81,19 @@ class M1EndToEndSnapshotTest {
         double warActivity = world.effectiveActivityAt(attacker);
         assertTrue(warActivity >= 1.0, "Activity should be >= 1.0 due to war");
 
-        // Test 5: Create actors with objective
-        RuleBasedActor actor = new RuleBasedActor();
-        actor.addPrimitive(new AirControlBuild());
-        actor.addPrimitive(new GroundUnderAir());
-
-        Set<Integer> neighbors = new HashSet<>();
-        neighbors.add(2);
-        DecisionContext ctx = new DecisionContext(world, 0, neighbors, Objective.DAMAGE);
-
-        // Test 6: Actor decision-making
-        List<link.locutus.discord.sim.actions.SimAction> actions = actor.decide(world, attacker, ctx);
-        assertNotNull(actions, "Actor should return non-null action list");
-        // No qualifying air or ground assets yet, so these tactical primitives should still pass.
-        assertEquals(0, actions.size(), "No tactical candidate should be emitted without the needed unit mix");
-
-        // Test 7: Manually buy units to verify economy provider integration
+        // Test 5: Manually buy units to verify economy provider integration
         EnumMap<MilitaryUnit, Integer> unitBuys = new EnumMap<>(MilitaryUnit.class);
         unitBuys.put(MilitaryUnit.SOLDIER, 100);
 
         world.buyUnits(1, unitBuys);
         assertEquals(100, attacker.pendingBuys(MilitaryUnit.SOLDIER), "Units should be queued");
 
-        // Test 8: Advance turn and verify materialization
+        // Test 6: Advance turn and verify materialization
         world.stepTurnStart();
         assertEquals(100, attacker.units(MilitaryUnit.SOLDIER), "Pending buys should materialize");
         assertEquals(0, attacker.pendingBuys(MilitaryUnit.SOLDIER), "Pending should clear");
 
-        // Test 9: Control flag changes
+        // Test 7: Control flag changes
         boolean blockadeChanged = war.applySuperiorityFlagChanges(1, 1, 0, 0);
         assertFalse(blockadeChanged, "Non-blockade delta should not trigger blockade callback");
 
@@ -123,21 +101,21 @@ class M1EndToEndSnapshotTest {
         assertTrue(blockadeChanged, "Blockade delta should trigger callback");
         assertEquals(SimSide.ATTACKER, war.blockadeOwner(), "Attacker should own blockade");
 
-        // Test 10: DamageObjective scoring
+        // Test 8: DamageObjective scoring
         Objective objective = Objective.DAMAGE;
         double teamScore = objective.scoreTerminal(world, 1);
         assertTrue(teamScore >= 0, "Damage score should be non-negative");
 
-        // Test 11: Activity at various turns
+        // Test 9: Activity at various turns
         assertEquals(1.0, world.effectiveActivityAt(attacker), "Turn 0 activity");
         world.stepTurnStart();
         assertEquals(1.0, world.effectiveActivityAt(attacker), "Turn 1 activity");
 
-        // Test 12: Verify turn tracking
+        // Test 10: Verify turn tracking
         assertEquals(2, world.currentTurn(), "Should be on turn 2 after two stepTurnStart calls");
 
-        // Test 13: Multiple nations' activity
-        SimNation nation3 = new SimNation(3, WarPolicy.FORTRESS, 10000.0, 50.0, 4, (byte) 0);
+        // Test 11: Multiple nations' activity
+        SimNation nation3 = new SimNation(3, WarPolicy.FORTRESS, 10000.0, 4, (byte) 0);
         world.addNation(nation3);
         assertEquals(1.0, world.effectiveActivityAt(nation3), "New nation should have baseline activity");
 
@@ -207,7 +185,7 @@ class M1EndToEndSnapshotTest {
     @Test
     void resetTimeProviderControlsClockState() {
         byte resetHour = 12;
-        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 50.0, 4, resetHour);
+        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 4, resetHour);
 
         ResetTimeProvider provider = ResetTimeProvider.FROM_NATION;
         byte returnedHour = provider.resetHourUtc(nation, 0);
@@ -261,3 +239,4 @@ class M1EndToEndSnapshotTest {
         assertEquals(SimSide.ATTACKER, worldWithTracking.requireWar(1001).blockadeOwner());
     }
 }
+

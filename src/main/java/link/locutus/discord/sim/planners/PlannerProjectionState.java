@@ -6,7 +6,6 @@ import link.locutus.discord.sim.SimTuning;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -14,9 +13,9 @@ import java.util.Map;
  * Immutable planner-owned projection state carrying base snapshots, planned wars, and sparse city overlays.
  */
 final class PlannerProjectionState {
-    private final Map<Integer, DBNationSnapshot> baseSnapshotsById;
-    private final Map<Long, PlannerProjectedWar> activePlannedWarsByPair;
-    private final Map<Integer, PlannerCityInfraOverlay> cityInfraOverlaysByNation;
+    private final Int2ObjectLinkedOpenHashMap<DBNationSnapshot> baseSnapshotsById;
+    private final Long2ObjectLinkedOpenHashMap<PlannerProjectedWar> activePlannedWarsByPair;
+    private final Int2ObjectLinkedOpenHashMap<PlannerCityInfraOverlay> cityInfraOverlaysByNation;
     private final int currentTurn;
 
     private PlannerProjectionState(
@@ -25,9 +24,9 @@ final class PlannerProjectionState {
             Map<Integer, PlannerCityInfraOverlay> cityInfraOverlaysByNation,
             int currentTurn
     ) {
-        this.baseSnapshotsById = Collections.unmodifiableMap(new Int2ObjectLinkedOpenHashMap<>(baseSnapshotsById));
-        this.activePlannedWarsByPair = Collections.unmodifiableMap(new Long2ObjectLinkedOpenHashMap<>(activePlannedWarsByPair));
-        this.cityInfraOverlaysByNation = Collections.unmodifiableMap(new Int2ObjectLinkedOpenHashMap<>(cityInfraOverlaysByNation));
+        this.baseSnapshotsById = new Int2ObjectLinkedOpenHashMap<>(baseSnapshotsById);
+        this.activePlannedWarsByPair = new Long2ObjectLinkedOpenHashMap<>(activePlannedWarsByPair);
+        this.cityInfraOverlaysByNation = new Int2ObjectLinkedOpenHashMap<>(cityInfraOverlaysByNation);
         this.currentTurn = currentTurn;
     }
 
@@ -110,14 +109,6 @@ final class PlannerProjectionState {
         }
     }
 
-    PlannerProjectionState advance(
-            SimTuning tuning,
-            Map<Integer, List<Integer>> assignment,
-            int horizonTurns
-    ) {
-        return advance(tuning, assignment, horizonTurns, PlannerTransitionSemantics.NONE);
-    }
-
     PlannerProjectionResult toProjectionResult() {
         return new PlannerProjectionResult(
                 effectiveSnapshotsById(),
@@ -170,6 +161,9 @@ final class PlannerProjectionState {
     }
 
     private Map<Integer, DBNationSnapshot> effectiveSnapshotsById() {
+        if (cityInfraOverlaysByNation.isEmpty()) {
+            return baseSnapshotsById;
+        }
         Map<Integer, DBNationSnapshot> effective = new Int2ObjectLinkedOpenHashMap<>(baseSnapshotsById.size());
         for (Map.Entry<Integer, DBNationSnapshot> entry : baseSnapshotsById.entrySet()) {
             effective.put(entry.getKey(), applyCityInfraOverlay(entry.getValue()));

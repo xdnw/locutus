@@ -1,8 +1,5 @@
 package link.locutus.discord.db.conflict;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
@@ -42,12 +39,11 @@ import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
-import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.web.jooby.CloudStorage;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -84,7 +80,6 @@ import java.util.stream.Stream;
 import static link.locutus.discord.db.conflict.ConflictField.*;
 import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 import static link.locutus.discord.util.math.ArrayUtil.ALWAYS_TRUE_INT;
-import static link.locutus.discord.web.jooby.JteUtil.copyArrayElements;
 
 public class ConflictManager {
     static final class PreparedCloudUpload {
@@ -1529,7 +1524,7 @@ public class ConflictManager {
                 List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
 
                 Map<Long, List<Long>> sourceSets = getSourceSets();
-                ObjectMapper mapper = JteUtil.getSerializer();
+                ObjectMapper mapper = WebSerializeUtil.getSerializer();
                 Map<Integer, Conflict> conflicts = getConflictMap();
 
                 List<List<Object>> conflictRows = new ArrayList<>(conflicts.size());
@@ -1576,7 +1571,7 @@ public class ConflictManager {
 
                 ByteArrayOutputStream baos = new ByteArrayOutputStream(64 * 1024);
                 mapper.writeValue(baos, result);
-                return JteUtil.compress(baos.toByteArray());
+                return WebSerializeUtil.compress(baos.toByteArray());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

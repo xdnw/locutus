@@ -23,12 +23,12 @@ class WarTypeRoutingTest {
     @Test
     void declareWarActionWarTypeRoutesThroughSimWarIntoAttackResolver() {
         SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 0d, 100d, 2));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 0d, 100d, 2));
-        world.addNation(new SimNation(3, WarPolicy.FORTRESS, 0d, 100d, 2));
-        world.addNation(new SimNation(4, WarPolicy.TURTLE, 0d, 100d, 2));
-        world.addNation(new SimNation(5, WarPolicy.FORTRESS, 0d, 100d, 2));
-        world.addNation(new SimNation(6, WarPolicy.TURTLE, 0d, 100d, 2));
+        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 0d, 2));
+        world.addNation(new SimNation(2, WarPolicy.TURTLE, 0d, 2));
+        world.addNation(new SimNation(3, WarPolicy.FORTRESS, 0d, 2));
+        world.addNation(new SimNation(4, WarPolicy.TURTLE, 0d, 2));
+        world.addNation(new SimNation(5, WarPolicy.FORTRESS, 0d, 2));
+        world.addNation(new SimNation(6, WarPolicy.TURTLE, 0d, 2));
 
         world.apply(new DeclareWarAction(1001, 1, 2, WarType.RAID));
         world.apply(new DeclareWarAction(1002, 3, 4, WarType.ORD));
@@ -144,3 +144,4 @@ class WarTypeRoutingTest {
         return (range.getKey() + range.getValue()) * 0.5d;
     }
 }
+

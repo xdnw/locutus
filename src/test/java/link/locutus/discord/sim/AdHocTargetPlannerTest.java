@@ -14,6 +14,7 @@ import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.SnapshotActivityProvider;
 import link.locutus.discord.sim.planners.TreatyProvider;
 import link.locutus.discord.sim.combat.ResolutionMode;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -28,15 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AdHocTargetPlannerTest {
     private static final class CountingDamageObjective extends DamageObjective {
-        private final AtomicInteger openingCalls = new AtomicInteger();
         private final AtomicInteger terminalCalls = new AtomicInteger();
         private final Set<Integer> terminalDefenderIds = new LinkedHashSet<>();
-
-        @Override
-        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-            openingCalls.incrementAndGet();
-            return super.scoreOpening(metrics, teamId);
-        }
 
         @Override
         public double scoreTerminal(StrategicValueView view, int teamId) {
@@ -52,45 +46,9 @@ class AdHocTargetPlannerTest {
 
     @Test
     void ranksTargetsByShortHorizonOutcome() {
-        DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
-                .teamId(1)
-                .allianceId(10)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 15_000)
-                .unit(MilitaryUnit.TANK, 500)
-                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                .unit(MilitaryUnit.SHIP, 8)
-                .build();
-        DBNationSnapshot weakDefender = DBNationSnapshot.synthetic(2)
-                .teamId(2)
-                .allianceId(20)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 8_000)
-                .unit(MilitaryUnit.TANK, 150)
-                .unit(MilitaryUnit.AIRCRAFT, 400)
-                .unit(MilitaryUnit.SHIP, 4)
-                .build();
-        DBNationSnapshot strongDefender = DBNationSnapshot.synthetic(3)
-                .teamId(2)
-                .allianceId(20)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 18_000)
-                .unit(MilitaryUnit.TANK, 700)
-                .unit(MilitaryUnit.AIRCRAFT, 1_200)
-                .unit(MilitaryUnit.SHIP, 10)
-                .build();
+        DBNationSnapshot attacker = combatant(1, 1, 1_000.0, 15_000, 500, 1_000, 8);
+        DBNationSnapshot weakDefender = combatant(2, 2, 900.0, 8_000, 150, 400, 4);
+        DBNationSnapshot strongDefender = combatant(3, 2, 1_100.0, 18_000, 700, 1_200, 10);
 
         AdHocPlan plan = new AdHocTargetPlanner(SimTuning.defaults())
                 .rankTargets(attacker, List.of(strongDefender, weakDefender), 3, 2);
@@ -108,24 +66,18 @@ class AdHocTargetPlannerTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .build();
         DBNationSnapshot outOfRange = DBNationSnapshot.synthetic(2)
                 .teamId(2)
                 .allianceId(20)
-                .score(10_000)
-                .nonInfraScoreBase(10_000)
                 .cityInfra(new double[]{2_000, 2_000, 2_000})
                 .build();
         DBNationSnapshot fullDef = DBNationSnapshot.synthetic(3)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .currentDefensiveWars(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .build();
 
@@ -137,32 +89,8 @@ class AdHocTargetPlannerTest {
 
         @Test
         void defaultRankingUsesDeterministicOpeningScoresInStochasticMode() {
-        DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
-                .teamId(1)
-                .allianceId(10)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 15_000)
-                .unit(MilitaryUnit.TANK, 500)
-                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                .unit(MilitaryUnit.SHIP, 8)
-                .build();
-        DBNationSnapshot defender = DBNationSnapshot.synthetic(2)
-                .teamId(2)
-                .allianceId(20)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 10_000)
-                .unit(MilitaryUnit.TANK, 200)
-                .unit(MilitaryUnit.AIRCRAFT, 500)
-                .unit(MilitaryUnit.SHIP, 4)
-                .build();
+                DBNationSnapshot attacker = combatant(1, 1, 1_000.0, 15_000, 500, 1_000, 8);
+                DBNationSnapshot defender = combatant(2, 2, 950.0, 10_000, 200, 500, 4);
 
         SimTuning tuning = SimTuning.defaults()
                 .withStateResolutionMode(ResolutionMode.STOCHASTIC)
@@ -186,9 +114,7 @@ class AdHocTargetPlannerTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(51)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 15_000)
@@ -199,9 +125,7 @@ class AdHocTargetPlannerTest {
         DBNationSnapshot strongDefender = DBNationSnapshot.synthetic(52)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 8_000)
@@ -212,9 +136,7 @@ class AdHocTargetPlannerTest {
         DBNationSnapshot weakerDefender = DBNationSnapshot.synthetic(53)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 14_000)
@@ -238,39 +160,14 @@ class AdHocTargetPlannerTest {
 
         assertEquals(1, plan.recommendations().size());
         assertTrue(plan.metadata().runtimePreviewApplied());
-        assertTrue(objective.openingCalls.get() > 0);
         assertTrue(objective.terminalCalls.get() > 0);
         assertEquals(Set.of(plan.recommendations().get(0).defenderId()), objective.terminalDefenderIds);
     }
 
     @Test
     void runtimePreviewRetainsStochasticScoreBandsWhenEnabled() {
-        DBNationSnapshot attacker = DBNationSnapshot.synthetic(31)
-                .teamId(1)
-                .allianceId(10)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 15_000)
-                .unit(MilitaryUnit.TANK, 500)
-                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                .unit(MilitaryUnit.SHIP, 8)
-                .build();
-        DBNationSnapshot defender = DBNationSnapshot.synthetic(32)
-                .teamId(2)
-                .allianceId(20)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 10_000)
-                .unit(MilitaryUnit.TANK, 200)
-                .unit(MilitaryUnit.AIRCRAFT, 500)
-                .unit(MilitaryUnit.SHIP, 4)
-                .build();
+        DBNationSnapshot attacker = combatant(31, 1, 1_000.0, 15_000, 500, 1_000, 8);
+        DBNationSnapshot defender = combatant(32, 2, 950.0, 10_000, 200, 500, 4);
 
         SimTuning tuning = SimTuning.defaults()
                 .withStateResolutionMode(ResolutionMode.STOCHASTIC)
@@ -295,32 +192,8 @@ class AdHocTargetPlannerTest {
 
     @Test
     void planningTurnChangesActivityWeightedAdHocScore() {
-        DBNationSnapshot attacker = DBNationSnapshot.synthetic(11)
-                .teamId(1)
-                .allianceId(10)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 15_000)
-                .unit(MilitaryUnit.TANK, 500)
-                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                .unit(MilitaryUnit.SHIP, 8)
-                .build();
-        DBNationSnapshot defender = DBNationSnapshot.synthetic(12)
-                .teamId(2)
-                .allianceId(20)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 10_000)
-                .unit(MilitaryUnit.TANK, 200)
-                .unit(MilitaryUnit.AIRCRAFT, 500)
-                .unit(MilitaryUnit.SHIP, 4)
-                .build();
+        DBNationSnapshot attacker = combatant(11, 1, 1_000.0, 15_000, 500, 1_000, 8);
+        DBNationSnapshot defender = combatant(12, 2, 950.0, 10_000, 200, 500, 4);
 
         SnapshotActivityProvider turnSensitiveActivity = (snapshot, turn) -> snapshot.nationId() == attacker.nationId()
                 ? (turn == 0 ? 0.0 : 1.0)
@@ -346,17 +219,13 @@ class AdHocTargetPlannerTest {
                 DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
                                 .teamId(1)
                                 .allianceId(10)
-                                .score(1_000)
                                 .maxOff(3)
                                 .activeOpponentNationId(2)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .build();
                 DBNationSnapshot defender = DBNationSnapshot.synthetic(2)
                                 .teamId(2)
                                 .allianceId(20)
-                                .score(1_000)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .build();
 
@@ -368,32 +237,8 @@ class AdHocTargetPlannerTest {
 
         @Test
         void coordinationPolicyAppliesInRuntimePreview() {
-                DBNationSnapshot attacker = DBNationSnapshot.synthetic(11)
-                                .teamId(1)
-                                .allianceId(10)
-                                .score(1_000)
-                                .maxOff(3)
-                                .nonInfraScoreBase(700)
-                                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                                .warPolicy(WarPolicy.ATTRITION)
-                                .unit(MilitaryUnit.SOLDIER, 15_000)
-                                .unit(MilitaryUnit.TANK, 500)
-                                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                                .unit(MilitaryUnit.SHIP, 8)
-                                .build();
-                DBNationSnapshot defender = DBNationSnapshot.synthetic(12)
-                                .teamId(2)
-                                .allianceId(20)
-                                .score(1_000)
-                                .maxOff(3)
-                                .nonInfraScoreBase(700)
-                                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                                .warPolicy(WarPolicy.ATTRITION)
-                                .unit(MilitaryUnit.SOLDIER, 10_000)
-                                .unit(MilitaryUnit.TANK, 200)
-                                .unit(MilitaryUnit.AIRCRAFT, 500)
-                                .unit(MilitaryUnit.SHIP, 4)
-                                .build();
+                DBNationSnapshot attacker = combatant(11, 1, 1_000.0, 15_000, 500, 1_000, 8);
+                DBNationSnapshot defender = combatant(12, 2, 950.0, 10_000, 200, 500, 4);
 
                 AdHocSimulationOptions options = new AdHocSimulationOptions(
                                 PlannerCoordinationPolicy.resetWindowSpecialistHold(),
@@ -413,18 +258,14 @@ class AdHocTargetPlannerTest {
                 DBNationSnapshot attacker = DBNationSnapshot.synthetic(21)
                                 .teamId(1)
                                 .allianceId(10)
-                                .score(1_000)
                                 .maxOff(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .build();
                 DBNationSnapshot defender = DBNationSnapshot.synthetic(22)
                                 .teamId(2)
                                 .allianceId(20)
-                                .score(1_000)
                                 .maxOff(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .build();
@@ -444,32 +285,8 @@ class AdHocTargetPlannerTest {
 
     @Test
     void scenarioPolicyDenyDeclaresDropsRuntimePreviewCandidates() {
-        DBNationSnapshot attacker = DBNationSnapshot.synthetic(31)
-                .teamId(1)
-                .allianceId(10)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 15_000)
-                .unit(MilitaryUnit.TANK, 500)
-                .unit(MilitaryUnit.AIRCRAFT, 1_000)
-                .unit(MilitaryUnit.SHIP, 8)
-                .build();
-        DBNationSnapshot defender = DBNationSnapshot.synthetic(32)
-                .teamId(2)
-                .allianceId(20)
-                .score(1_000)
-                .maxOff(3)
-                .nonInfraScoreBase(700)
-                .cityInfra(new double[]{1_200, 1_100, 1_000})
-                .warPolicy(WarPolicy.ATTRITION)
-                .unit(MilitaryUnit.SOLDIER, 10_000)
-                .unit(MilitaryUnit.TANK, 200)
-                .unit(MilitaryUnit.AIRCRAFT, 500)
-                .unit(MilitaryUnit.SHIP, 4)
-                .build();
+        DBNationSnapshot attacker = combatant(31, 1, 1_000.0, 15_000, 500, 1_000, 8);
+        DBNationSnapshot defender = combatant(32, 2, 950.0, 10_000, 200, 500, 4);
 
         ScenarioActionPolicy.NationActionPolicy denyDeclares = new ScenarioActionPolicy.NationActionPolicy(
                 false,
@@ -494,16 +311,12 @@ class AdHocTargetPlannerTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(41)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .build();
         DBNationSnapshot defender = DBNationSnapshot.synthetic(42)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .build();
 
@@ -518,4 +331,34 @@ class AdHocTargetPlannerTest {
                 assertTrue(plan.metadata().exactValidationDefault());
         assertFalse(plan.metadata().runtimePreviewApplied());
     }
+
+        private static DBNationSnapshot combatant(
+                        int nationId,
+                        int teamId,
+                        double targetScore,
+                        int soldiers,
+                        int tanks,
+                        int aircraft,
+                        int ships
+        ) {
+                int cities = 3;
+                double staticScore = PW.computeStaticScoreComponent(cities, 0, 0);
+                double unitScore = MilitaryUnit.SOLDIER.getScore(soldiers)
+                                + MilitaryUnit.TANK.getScore(tanks)
+                                + MilitaryUnit.AIRCRAFT.getScore(aircraft)
+                                + MilitaryUnit.SHIP.getScore(ships);
+                double infraPerCity = Math.max(0d, ((targetScore - staticScore - unitScore) * 40.0d) / cities);
+                return DBNationSnapshot.synthetic(nationId)
+                                .teamId(teamId)
+                                .allianceId(teamId == 1 ? 10 : 20)
+                                .maxOff(3)
+                                .cities(cities)
+                                .cityInfra(new double[]{infraPerCity, infraPerCity, infraPerCity})
+                                .warPolicy(WarPolicy.ATTRITION)
+                                .unit(MilitaryUnit.SOLDIER, soldiers)
+                                .unit(MilitaryUnit.TANK, tanks)
+                                .unit(MilitaryUnit.AIRCRAFT, aircraft)
+                                .unit(MilitaryUnit.SHIP, ships)
+                                .build();
+        }
 }

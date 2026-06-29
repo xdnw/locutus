@@ -50,12 +50,6 @@ public interface CommandCallable {
         }
     }
 
-    default String toHtml(WebStore store, PermissionHandler permisser, boolean sse) {
-        return toHtml(store, permisser, null, sse);
-    }
-
-    String toHtml(WebStore store, PermissionHandler permisser, String endpoint, boolean sse);
-
     default CommandCallable getCallable(List<String> args) {
         return getCallable(new ArrayList<>(args), false);
     }

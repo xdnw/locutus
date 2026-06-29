@@ -50,22 +50,22 @@ public final class LiveAttackContext implements CombatKernel.AttackContext {
 
     @Override
     public boolean attackerHasAirControl() {
-        return controlOwnerMatchesPerspective(war.airSuperiorityOwner());
+        return flagOwnerMatchesPerspective(war.airSuperiorityOwner());
     }
 
     @Override
     public boolean defenderHasAirControl() {
-        return opposingControlOwnerMatchesPerspective(war.airSuperiorityOwner());
+        return opposingFlagOwnerMatchesPerspective(war.airSuperiorityOwner());
     }
 
     @Override
     public boolean attackerHasGroundSuperiority() {
-        return controlOwnerMatchesPerspective(war.groundSuperiorityOwner());
+        return flagOwnerMatchesPerspective(war.groundSuperiorityOwner());
     }
 
     @Override
     public boolean defenderHasGroundSuperiority() {
-        return opposingControlOwnerMatchesPerspective(war.groundSuperiorityOwner());
+        return opposingFlagOwnerMatchesPerspective(war.groundSuperiorityOwner());
     }
 
     @Override
@@ -104,22 +104,22 @@ public final class LiveAttackContext implements CombatKernel.AttackContext {
         if (blockadeOwner == null) {
             return CombatKernel.AttackContext.BLOCKADE_NONE;
         }
-        return controlOwnerMatchesPerspective(blockadeOwner)
+        return flagOwnerMatchesPerspective(blockadeOwner)
                 ? CombatKernel.AttackContext.BLOCKADE_ATTACKER
                 : CombatKernel.AttackContext.BLOCKADE_DEFENDER;
     }
 
-    private boolean controlOwnerMatchesPerspective(SimSide controlOwner) {
-        if (controlOwner == null) {
+    private boolean flagOwnerMatchesPerspective(SimSide flagOwner) {
+        if (flagOwner == null) {
             return false;
         }
-        return actorSide == SimSide.ATTACKER ? controlOwner == SimSide.ATTACKER : controlOwner == SimSide.DEFENDER;
+        return actorSide == SimSide.ATTACKER ? flagOwner == SimSide.ATTACKER : flagOwner == SimSide.DEFENDER;
     }
 
-    private boolean opposingControlOwnerMatchesPerspective(SimSide controlOwner) {
-        if (controlOwner == null) {
+    private boolean opposingFlagOwnerMatchesPerspective(SimSide flagOwner) {
+        if (flagOwner == null) {
             return false;
         }
-        return actorSide == SimSide.ATTACKER ? controlOwner == SimSide.DEFENDER : controlOwner == SimSide.ATTACKER;
+        return actorSide == SimSide.ATTACKER ? flagOwner == SimSide.DEFENDER : flagOwner == SimSide.ATTACKER;
     }
 }

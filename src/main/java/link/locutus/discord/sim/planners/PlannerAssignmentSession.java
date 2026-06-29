@@ -26,6 +26,9 @@ final class PlannerAssignmentSession {
     private final int[] defenderAssignedCount;
     private final PlannerAssignmentChange changeScratch;
     private DefenderReverseIndex defenderReverseIndex;
+    private PlannerConflictBundle.PlannerAssignmentView cachedAssignmentView;
+    private Map<Long, Integer> cachedAssignmentViewWarTypeOrdinalsByPair;
+    private Map<Integer, List<Integer>> cachedAssignmentMap;
 
     private PlannerAssignmentSession(
             int[] attackerNationIds,
@@ -368,9 +371,13 @@ final class PlannerAssignmentSession {
         if (attackerNationIds.length == 0) {
             return PlannerConflictBundle.PlannerAssignmentView.empty();
         }
+        if (change == null
+                && cachedAssignmentView != null
+                && cachedAssignmentViewWarTypeOrdinalsByPair == warTypeOrdinalsByPair) {
+            return cachedAssignmentView;
+        }
 
         int attackerCount = attackerNationIds.length;
-        int[] attackerIds = attackerNationIds.clone();
         int[] attackerOffsets = new int[attackerCount];
         int[] defenderCounts = new int[attackerCount];
 
@@ -383,7 +390,12 @@ final class PlannerAssignmentSession {
         }
 
         if (edgeCount == 0) {
-            return PlannerConflictBundle.PlannerAssignmentView.empty();
+            PlannerConflictBundle.PlannerAssignmentView emptyView = PlannerConflictBundle.PlannerAssignmentView.empty();
+            if (change == null) {
+                cachedAssignmentView = emptyView;
+                cachedAssignmentViewWarTypeOrdinalsByPair = warTypeOrdinalsByPair;
+            }
+            return emptyView;
         }
 
         int[] defenderIds = new int[edgeCount];
@@ -419,6 +431,74 @@ final class PlannerAssignmentSession {
             }
         }
 
+        PlannerConflictBundle.PlannerAssignmentView assignmentView = PlannerConflictBundle.PlannerAssignmentView.ofDenseAssignment(
+                attackerNationIds,
+                attackerOffsets,
+                defenderCounts,
+                defenderIds,
+                warTypeOrdinals
+        );
+        if (change == null) {
+            cachedAssignmentView = assignmentView;
+            cachedAssignmentViewWarTypeOrdinalsByPair = warTypeOrdinalsByPair;
+        }
+        return assignmentView;
+    }
+
+    PlannerConflictBundle.PlannerAssignmentView filteredAssignmentView(
+            List<DBNationSnapshot> orderedAttackers,
+            boolean[] includedDefenderSlots,
+            Map<Long, Integer> warTypeOrdinalsByPair
+    ) {
+        if (orderedAttackers.isEmpty()) {
+            return PlannerConflictBundle.PlannerAssignmentView.empty();
+        }
+
+        int attackerCount = orderedAttackers.size();
+        int[] attackerIds = new int[attackerCount];
+        int[] attackerOffsets = new int[attackerCount];
+        int[] defenderCounts = new int[attackerCount];
+        int edgeCount = 0;
+        for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
+            int attackerId = orderedAttackers.get(attackerIndex).nationId();
+            attackerIds[attackerIndex] = attackerId;
+            attackerOffsets[attackerIndex] = edgeCount;
+            int attackerSlot = attackerSlot(attackerId);
+            int defenderCount = 0;
+            for (int defenderIndex = 0; defenderIndex < assignedCount(attackerSlot); defenderIndex++) {
+                int defenderSlot = defenderSlotAt(attackerSlot, defenderIndex);
+                if (includedDefenderSlots[defenderSlot]) {
+                    defenderCount++;
+                }
+            }
+            defenderCounts[attackerIndex] = defenderCount;
+            edgeCount += defenderCount;
+        }
+
+        if (edgeCount == 0) {
+            return PlannerConflictBundle.PlannerAssignmentView.empty();
+        }
+
+        int[] defenderIds = new int[edgeCount];
+        int[] warTypeOrdinals = new int[edgeCount];
+        for (int attackerIndex = 0; attackerIndex < attackerCount; attackerIndex++) {
+            int attackerSlot = attackerSlot(attackerIds[attackerIndex]);
+            int writeIndex = attackerOffsets[attackerIndex];
+            for (int defenderIndex = 0; defenderIndex < assignedCount(attackerSlot); defenderIndex++) {
+                int defenderSlot = defenderSlotAt(attackerSlot, defenderIndex);
+                if (!includedDefenderSlots[defenderSlot]) {
+                    continue;
+                }
+                int defenderId = defenderNationIdAt(defenderSlot);
+                defenderIds[writeIndex] = defenderId;
+                warTypeOrdinals[writeIndex] = PlannerConflictBundle.PlannerAssignmentView.warTypeForPair(
+                        warTypeOrdinalsByPair,
+                        attackerIds[attackerIndex],
+                        defenderId
+                );
+                writeIndex++;
+            }
+        }
         return PlannerConflictBundle.PlannerAssignmentView.ofDenseAssignment(
                 attackerIds,
                 attackerOffsets,
@@ -432,6 +512,9 @@ final class PlannerAssignmentSession {
         if (attackerNationIds.length == 0) {
             return Map.of();
         }
+        if (cachedAssignmentMap != null) {
+            return cachedAssignmentMap;
+        }
         Int2ObjectLinkedOpenHashMap<List<Integer>> assignment = new Int2ObjectLinkedOpenHashMap<>();
         for (int attackerSlot = 0; attackerSlot < attackerNationIds.length; attackerSlot++) {
             if (assignmentLengths[attackerSlot] == 0) {
@@ -440,18 +523,20 @@ final class PlannerAssignmentSession {
             assignment.put(attackerNationIds[attackerSlot], defenderIdsForAttackerSlot(attackerSlot));
         }
         if (assignment.isEmpty()) {
-            return Map.of();
+            cachedAssignmentMap = Map.of();
+            return cachedAssignmentMap;
         }
-        return Collections.unmodifiableMap(assignment);
+        cachedAssignmentMap = Collections.unmodifiableMap(assignment);
+        return cachedAssignmentMap;
     }
 
     private List<Integer> defenderIdsForAttackerSlot(int attackerSlot) {
         IntArrayList defenderIds = new IntArrayList(assignmentLengths[attackerSlot]);
         appendDefenderIds(attackerSlot, defenderIds);
-        return List.copyOf(defenderIds);
+        return Collections.unmodifiableList(defenderIds);
     }
 
-    private void appendDefenderIds(int attackerSlot, List<Integer> out) {
+    private void appendDefenderIds(int attackerSlot, IntArrayList out) {
         int length = assignmentLengths[attackerSlot];
         int offset = attackerOffsets[attackerSlot];
         for (int index = 0; index < length; index++) {
@@ -521,6 +606,9 @@ final class PlannerAssignmentSession {
 
     private void invalidateDefenderReverseIndex() {
         defenderReverseIndex = null;
+        cachedAssignmentView = null;
+        cachedAssignmentViewWarTypeOrdinalsByPair = null;
+        cachedAssignmentMap = null;
     }
 
     record DefenderReverseIndex(int[] defenderOffsets, int[] defenderToAttackerSlots) {

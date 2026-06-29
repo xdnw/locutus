@@ -353,7 +353,7 @@ class CombatKernelContractTest {
                 AttackType.GROUND,
                 SuccessType.MODERATE_SUCCESS
         );
-        SuperiorityFlagDelta liveDelta = WarControlRules.controlDelta(liveContext, AttackType.GROUND, SuccessType.MODERATE_SUCCESS);
+        SuperiorityFlagDelta liveDelta = WarTacticalFlagRules.tacticalFlagDelta(liveContext, AttackType.GROUND, SuccessType.MODERATE_SUCCESS);
 
         assertEquals(liveDelta, snapshotRanges.controlDelta());
     }
@@ -439,7 +439,7 @@ class CombatKernelContractTest {
             int ships,
             double... cityInfra
     ) {
-        SimNation nation = new SimNation(nationId, WarPolicy.ATTRITION, new double[ResourceType.values.length], 0d, cityInfra, 5);
+        SimNation nation = new SimNation(nationId, WarPolicy.ATTRITION, new double[ResourceType.values.length], cityInfra, 5);
         for (MilitaryUnit unit : new MilitaryUnit[]{
                 MilitaryUnit.SOLDIER,
                 MilitaryUnit.TANK,
@@ -885,3 +885,4 @@ class CombatKernelContractTest {
         return nation;
     }
 }
+

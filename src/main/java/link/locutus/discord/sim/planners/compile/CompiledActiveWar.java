@@ -18,9 +18,9 @@ public record CompiledActiveWar(
         int defenderMaps,
         int attackerResistance,
         int defenderResistance,
-        ControlOwner groundSuperiorityOwner,
-        ControlOwner airSuperiorityOwner,
-        ControlOwner blockadeOwner,
+        FlagOwner groundSuperiorityOwner,
+        FlagOwner airSuperiorityOwner,
+        FlagOwner blockadeOwner,
         boolean attackerFortified,
         boolean defenderFortified
 ) {
@@ -39,12 +39,12 @@ public record CompiledActiveWar(
         defenderMaps = clamp(defenderMaps, 0, 12);
         attackerResistance = clamp(attackerResistance, 0, 100);
         defenderResistance = clamp(defenderResistance, 0, 100);
-        groundSuperiorityOwner = groundSuperiorityOwner == null ? ControlOwner.NONE : groundSuperiorityOwner;
-        airSuperiorityOwner = airSuperiorityOwner == null ? ControlOwner.NONE : airSuperiorityOwner;
-        blockadeOwner = blockadeOwner == null ? ControlOwner.NONE : blockadeOwner;
+        groundSuperiorityOwner = groundSuperiorityOwner == null ? FlagOwner.NONE : groundSuperiorityOwner;
+        airSuperiorityOwner = airSuperiorityOwner == null ? FlagOwner.NONE : airSuperiorityOwner;
+        blockadeOwner = blockadeOwner == null ? FlagOwner.NONE : blockadeOwner;
     }
 
-    public enum ControlOwner {
+    public enum FlagOwner {
         NONE,
         ATTACKER,
         DEFENDER

@@ -259,6 +259,43 @@ public enum MilitaryUnit {
         return cap;
     }
 
+    public int getMaxPerDay(int cities, long projectBits, int researchBits) {
+        MilitaryBuilding building = getBuilding();
+        int cap;
+        if (building != null) {
+            cap = building.cap(project -> (projectBits & (1L << project.ordinal())) != 0L) * building.getUnitDailyBuy() * cities;
+            if ((projectBits & (1L << Projects.PROPAGANDA_BUREAU.ordinal())) != 0L) {
+                cap = (int) Math.round(cap * 1.1);
+            }
+        } else {
+            cap = 0;
+            switch (this) {
+                case MISSILE -> {
+                    if ((projectBits & (1L << Projects.MISSILE_LAUNCH_PAD.ordinal())) != 0L) cap = 2;
+                    if ((projectBits & (1L << Projects.SPACE_PROGRAM.ordinal())) != 0L) cap = 3;
+                }
+                case NUKE -> {
+                    if ((projectBits & (1L << Projects.NUCLEAR_RESEARCH_FACILITY.ordinal())) != 0L) cap++;
+                    if ((projectBits & (1L << Projects.NUCLEAR_LAUNCH_FACILITY.ordinal())) != 0L) cap++;
+                }
+                case SPIES -> {
+                    cap = 2;
+                    if ((projectBits & (1L << Projects.INTELLIGENCE_AGENCY.ordinal())) != 0L) cap++;
+                    if ((projectBits & (1L << Projects.SPY_SATELLITE.ordinal())) != 0L) cap++;
+                }
+            }
+            return cap;
+        }
+        Research research = this.rebuyResearch;
+        if (research != null) {
+            int level = research.getLevel(researchBits);
+            if (level > 0) {
+                cap += rebuyAmount * level;
+            }
+        }
+        return cap;
+    }
+
     public int getCap(DBNation nation, boolean update) {
         int researchBits = nation.getResearchBits(null);
         return getCap(() -> nation.getCityMap(update).values(), nation::hasProject, researchBits);

@@ -20,9 +20,9 @@ class SlotReleaseBetweenPassesTest {
     @Test
     void endedWarReleasesSlotsBeforeSecondDeclarePass() {
         SimWorld world = new SimWorld();
-        SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 0d, 100d, 1);
-        SimNation defenderA = new SimNation(2, WarPolicy.TURTLE, 0d, 100d, 2);
-        SimNation defenderB = new SimNation(3, WarPolicy.TURTLE, 0d, 100d, 2);
+        SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 0d, 1, (byte) 0);
+        SimNation defenderA = new SimNation(2, WarPolicy.TURTLE, 0d, 2, (byte) 0);
+        SimNation defenderB = new SimNation(3, WarPolicy.TURTLE, 0d, 2, (byte) 0);
 
         world.addNation(attacker);
         world.addNation(defenderA);
@@ -47,9 +47,9 @@ class SlotReleaseBetweenPassesTest {
     @Test
     void turnStartConclusionsReleaseSlotsBeforeDeclarePass() {
         SimWorld world = new SimWorld();
-        SimNation attacker = new SimNation(10, WarPolicy.FORTRESS, 0d, 100d, 1);
-        SimNation defenderA = new SimNation(20, WarPolicy.TURTLE, 0d, 100d, 2);
-        SimNation defenderB = new SimNation(30, WarPolicy.TURTLE, 0d, 100d, 2);
+        SimNation attacker = new SimNation(10, WarPolicy.FORTRESS, 0d, 1, (byte) 0);
+        SimNation defenderA = new SimNation(20, WarPolicy.TURTLE, 0d, 2, (byte) 0);
+        SimNation defenderB = new SimNation(30, WarPolicy.TURTLE, 0d, 2, (byte) 0);
 
         world.addNation(attacker);
         world.addNation(defenderA);
@@ -71,8 +71,8 @@ class SlotReleaseBetweenPassesTest {
     @Test
     void declaresExecuteBeforeAttacksWithinSamePass() {
         SimWorld world = new SimWorld();
-        SimNation attacker = new SimNation(40, WarPolicy.FORTRESS, 0d, 100d, 2);
-        SimNation defender = new SimNation(50, WarPolicy.TURTLE, 0d, 100d, 2);
+        SimNation attacker = new SimNation(40, WarPolicy.FORTRESS, 0d, 2, (byte) 0);
+        SimNation defender = new SimNation(50, WarPolicy.TURTLE, 0d, 2, (byte) 0);
         world.addNation(attacker);
         world.addNation(defender);
 
@@ -100,8 +100,8 @@ class SlotReleaseBetweenPassesTest {
         );
         SimWorld world = new SimWorld(tuning);
 
-        world.addNation(new SimNation(60, WarPolicy.FORTRESS, 0d, 100d, 2));
-        world.addNation(new SimNation(70, WarPolicy.TURTLE, 0d, 100d, 2));
+        world.addNation(new SimNation(60, WarPolicy.FORTRESS, 0d, 2));
+        world.addNation(new SimNation(70, WarPolicy.TURTLE, 0d, 2));
 
         assertThrows(
                 IllegalArgumentException.class,
@@ -127,8 +127,8 @@ class SlotReleaseBetweenPassesTest {
         );
         SimWorld world = new SimWorld(tuning);
 
-        world.addNation(new SimNation(80, WarPolicy.FORTRESS, 0d, 100d, 2));
-        world.addNation(new SimNation(90, WarPolicy.TURTLE, 0d, 100d, 2));
+        world.addNation(new SimNation(80, WarPolicy.FORTRESS, 0d, 2));
+        world.addNation(new SimNation(90, WarPolicy.TURTLE, 0d, 2));
 
         world.stepTurn(List.of(List.of(), List.of(new DeclareWarAction(902, 80, 90, WarType.ORD))));
         assertEquals(WarStatus.ACTIVE, world.requireWar(902).status());
@@ -149,10 +149,11 @@ class SlotReleaseBetweenPassesTest {
         );
         SimWorld world = new SimWorld(tuning);
 
-        world.addNation(new SimNation(100, WarPolicy.FORTRESS, 0d, 100d, 2));
-        world.addNation(new SimNation(110, WarPolicy.TURTLE, 0d, 100d, 2));
+        world.addNation(new SimNation(100, WarPolicy.FORTRESS, 0d, 2));
+        world.addNation(new SimNation(110, WarPolicy.TURTLE, 0d, 2));
 
         world.stepTurn(List.of(new DeclareWarAction(903, 100, 110, WarType.ORD)), List.of());
         assertEquals(WarStatus.ACTIVE, world.requireWar(903).status());
     }
 }
+

@@ -2,8 +2,6 @@ package link.locutus.discord.web.jooby;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gg.jte.generated.precompiled.JtealertGenerated;
-import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.http.HandlerType;
@@ -45,7 +43,6 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WebIO;
-import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.api.AdminEndpoints;
 import link.locutus.discord.web.commands.api.CoalitionGraphEndpoints;
 import link.locutus.discord.web.commands.api.ConflictEndpoints;
@@ -66,20 +63,9 @@ import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.api.TreatyEndpoints;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
-import link.locutus.discord.web.commands.binding.DiscordWebBindings;
 import link.locutus.discord.web.commands.binding.JavalinBindings;
-import link.locutus.discord.web.commands.binding.PrimitiveWebBindings;
-import link.locutus.discord.web.commands.binding.WebPWBindings;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
-import link.locutus.discord.web.commands.page.BankPages;
-import link.locutus.discord.web.commands.page.GrantPages;
-import link.locutus.discord.web.commands.page.IAPages;
-import link.locutus.discord.web.commands.page.IndexPages;
 import link.locutus.discord.web.commands.page.PageHelper;
-import link.locutus.discord.web.commands.page.StatPages;
-import link.locutus.discord.web.commands.page.TestPages;
-import link.locutus.discord.web.commands.page.TradePages;
-import link.locutus.discord.web.commands.page.WarPages;
 import link.locutus.discord.web.jooby.handler.SseMessageOutput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -149,23 +135,11 @@ public class PageHandler implements Handler {
 
         new JavalinBindings().register(store);
         new AuthBindings().register(store);
-        new DiscordWebBindings(placeholders).register(store);
-        new WebPWBindings().register(store);
-        new PrimitiveWebBindings().register(store);
 
         this.validators = PWBindings.createDefaultValidators();
         this.permisser = PWBindings.createDefaultPermisser();
 
         this.commands = CommandGroup.createRoot(store, validators);
-
-        this.commands.registerSubCommands(new IndexPages(), "page");
-        this.commands.registerSubCommands(new IAPages(), "page");
-        this.commands.registerSubCommands(new StatPages(), "page");
-        this.commands.registerSubCommands(new WarPages(), "page");
-        this.commands.registerSubCommands(new GrantPages(), "page");
-        this.commands.registerSubCommands(new BankPages(), "page");
-        this.commands.registerSubCommands(new TradePages(), "page");
-        this.commands.registerSubCommands(new AlliancePages(), "page");
 
         // endpoints
         this.commands.registerSubCommands(new EndpointPages(), "api");
@@ -187,7 +161,6 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new TreatyEndpoints(), "api");
         this.commands.registerSubCommands(new TreatyVisRuntimeEndpoints(), "api");
 
-        this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
         this.serializer = WebSerializers.MSGPACK;
@@ -295,7 +268,7 @@ public class PageHandler implements Handler {
             }
 
             List<String> cmds = queryMap.getOrDefault("cmd", Collections.emptyList());
-            WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null, false));
+            WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null));
 
             Logg.text("SSE Command: cmds=" + StringMan.getString(cmds) + " | queryParams=" + queryMap.entrySet().stream().map(f -> f.getKey() + "=" + StringMan.getString(f.getValue())).collect(Collectors.joining(", ")));
             if (cmds.isEmpty()) {
@@ -555,19 +528,6 @@ public class PageHandler implements Handler {
             Logg.text(logMsg);
 
             switch (path.toLowerCase(Locale.ROOT)) {
-                case "command": {
-                    stack.consumeNext();
-                    CommandCallable cmd = manager.getCommands().getCallable(args);
-                    if (cmd == null) {
-                        throw new IllegalArgumentException("No command found for `/" + StringMan.join(args, " ") + "`");
-                    }
-
-                    String prefix = cmd instanceof ParametricCallable ? "sse" : "command";
-                    String endpoint = WebRoot.REDIRECT + "/" + prefix + "/" + cmd.getFullPath("/");
-                    if (!endpoint.endsWith("/")) endpoint += "/";
-                    ctx.result(WebUtil.minify(cmd.toHtml(ws, stack.getPermissionHandler(), endpoint, true)));
-                    break;
-                }
                 case "api":
                     isApi = true;
                 default: {
@@ -611,7 +571,7 @@ public class PageHandler implements Handler {
                         Object cmdResult = parametric.call(null, stack.getStore(), parsed);
                         result = wrap(ws, cmdResult, ctx, isApi);
                     } else if (!isApi) {
-                        result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
+                        throw new IllegalArgumentException("API endpoint is not viewable: `" + path + "`. Only informational commands can be executed without user confirmation.");
                     } else if (cmd instanceof ParametricCallable parametric) {
                         throw new IllegalArgumentException("API endpoint is not viewable: `" + path + "`. Only informational commands can be executed without user confirmation.");
                     } else {
@@ -654,7 +614,7 @@ public class PageHandler implements Handler {
                 ctx.result(WebUtil.minify(msg));
                 return;
             }
-            PageHelper.redirect(ws, ctx, redirectResponse.getMessage(), false);
+            PageHelper.redirect(ws, ctx, redirectResponse.getMessage());
             return;
         }
         if (isApi) {
@@ -673,7 +633,7 @@ public class PageHandler implements Handler {
             return;
         }
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
-        ctx.result(WebUtil.minify(WebStore.render(f -> JteerrorGenerated.render(f, null, new WebStore(null, ctx), entry.getKey(), entry.getValue()))));
+        ctx.result(entry.getKey() + ":\n" + StringMan.stripApiKey(entry.getValue()));
     }
 
     private Object wrap(WebStore ws, Object call, Context ctx, boolean isApi) {
@@ -708,8 +668,7 @@ public class PageHandler implements Handler {
                     ctx.header("Content-Type", "application/json");
                     return str;
                 }
-                String finalStr = str;
-                return WebStore.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
+                return str;
             }
         }
         return call;
@@ -736,7 +695,7 @@ public class PageHandler implements Handler {
                 locals.addProvider(Key.of(DBNation.class, Me.class), nation);
             }
 
-            Guild guild = AuthBindings.guild(ctx, nation, user, false);
+            Guild guild = AuthBindings.guild(ctx, nation, user);
             if (guild != null) {
                 GuildDB guildDb = Locutus.imp().getGuildDB(guild);
                 locals.addProvider(Key.of(Guild.class, Me.class), guild);

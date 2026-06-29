@@ -37,7 +37,7 @@ class DefeatHandlingTest {
         SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 100d);
         double[] defenderResources = ResourceType.getBuffer();
         defenderResources[ResourceType.MONEY.ordinal()] = 500d;
-        SimNation defender = new SimNation(2, WarPolicy.TURTLE, defenderResources, 0d, new double[]{1_000d, 800d}, 5);
+        SimNation defender = new SimNation(2, WarPolicy.TURTLE, defenderResources, new double[]{1_000d, 800d}, 5);
         defender.addResource(ResourceType.STEEL, 500d);
         SimWar war = new SimWar(201, 1, 2, WarType.ORD);
 
@@ -100,7 +100,6 @@ class DefeatHandlingTest {
                 11,
                 WarPolicy.PIRATE,
                 ResourceType.getBuffer(),
-                0d,
                 new double[0],
                 5,
                 (byte) 0,
@@ -113,9 +112,7 @@ class DefeatHandlingTest {
                 22,
                 22,
                 WarPolicy.MONEYBAGS,
-                defenderResources,
-                0d,
-                new double[0],
+                defenderResources, new double[0],
                 5,
                 (byte) 0,
                 0L,
@@ -142,3 +139,4 @@ class DefeatHandlingTest {
         assertEquals(expectedTransferred, attacker.resource(ResourceType.MONEY), 1e-9);
     }
 }
+

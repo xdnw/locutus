@@ -1,15 +1,13 @@
 package link.locutus.discord.web.commands.binding;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import gg.jte.generated.precompiled.auth.JtenationpickerGenerated;
-import gg.jte.generated.precompiled.auth.JtepickerGenerated;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -19,11 +17,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.page.PageHelper;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -43,10 +38,13 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-public class AuthBindings extends WebBindingHelper {
+public class AuthBindings extends BindingHelper {
     @Binding
     @Me
     public static DBAuthRecord auth(Context context) {
@@ -99,10 +97,6 @@ public class AuthBindings extends WebBindingHelper {
     @Me
     @Binding
     public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user) {
-        return guild(context, nation, user, true);
-    }
-
-    public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user, boolean allowRedirect) {
         if (nation != null && user == null) {
             GuildDB db = nation.getGuildDB();
             if (db != null) return db.getGuild();
@@ -119,13 +113,6 @@ public class AuthBindings extends WebBindingHelper {
                 return guild;
             }
         }
-        if (allowRedirect) {
-            if (user == null && nation == null) {
-                throw new RedirectResponse(HttpStatus.SEE_OTHER, WebRoot.REDIRECT + "/page/login");
-            }
-
-            throw new RedirectResponse(HttpStatus.SEE_OTHER, WM.page.guildselect.cmd.toPageUrl());
-        }
         return null;
     }
 
@@ -141,7 +128,7 @@ public class AuthBindings extends WebBindingHelper {
             WebRoot.db().removeToken(true, auth.getUUID(), auth.getNationIdRaw(), auth.getUserIdRaw());
         }
         if (redirect) {
-            PageHelper.redirect(ws, context, WebRoot.REDIRECT, false);
+            PageHelper.redirect(ws, context, WebRoot.REDIRECT);
         }
     }
 
@@ -200,15 +187,6 @@ public class AuthBindings extends WebBindingHelper {
         return accessToken == null ? null : accessToken.getAsString();
     }
 
-    public static DBAuthRecord getAuth(WebStore ws, Context ctx) {
-        try {
-            return getAuth(ws, ctx, false, false, false);
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
     public static DBAuthRecord generateAuthRecord(Context context, long userId, Integer previousNationId) {
         DBNation nationExisting = DiscordUtil.getNation(userId);
         Integer nationId = null;
@@ -221,244 +199,112 @@ public class AuthBindings extends WebBindingHelper {
         return WebUtil.getOrGenerateAuth(previousNationId, userId);
     }
 
-    public static DBAuthRecord getAuth(WebStore ws, Context context, boolean allowRedirect, boolean requireNation, boolean requireUser) throws IOException {
-        if ((requireNation || requireUser) && !allowRedirect) {
-            throw new IllegalArgumentException("Cannot require nation or user without allowing redirect");
-        }
-        boolean pageDesiresRedirect = false;
-        boolean isBackend = true;
+    public static DBAuthRecord getAuth(WebStore ws, Context context) {
+        try {
+            boolean pageDesiresRedirect = false;
+            boolean isBackend = true;
 
-        List<String> errors = new ArrayList<>();
-        DBAuthRecord record = null;
+            List<String> errors = new ArrayList<>();
+            DBAuthRecord record = null;
 
-        String header = context.header("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7); // Strip "Bearer " prefix
-            UUID uuid = UUID.fromString(token);
-            record = WebRoot.db().get(uuid);
-        }
+            String header = context.header("Authorization");
+            if (header != null && header.startsWith("Bearer ")) {
+                String token = header.substring(7); // Strip "Bearer " prefix
+                UUID uuid = UUID.fromString(token);
+                record = WebRoot.db().get(uuid);
+            }
 
-        if (record == null) {
-            Map<String, String> cookies = context.cookieMap();
-            String oAuthCookieId = PageHandler.CookieType.DISCORD_OAUTH.getCookieId();
-            String uuidStr = cookies.get(oAuthCookieId);
-            if (uuidStr == null) {
-                String setCookie = context.res().getHeader("Set-Cookie");
-                if (setCookie != null && !setCookie.isEmpty()) {
-                    List<HttpCookie> httpCookies = HttpCookie.parse(setCookie);
-                    for (HttpCookie cookie : httpCookies) {
-                        if (cookie.getName().equals(oAuthCookieId)) {
-                            uuidStr = cookie.getValue();
-                            break;
+            if (record == null) {
+                Map<String, String> cookies = context.cookieMap();
+                String oAuthCookieId = PageHandler.CookieType.DISCORD_OAUTH.getCookieId();
+                String uuidStr = cookies.get(oAuthCookieId);
+                if (uuidStr == null) {
+                    String setCookie = context.res().getHeader("Set-Cookie");
+                    if (setCookie != null && !setCookie.isEmpty()) {
+                        List<HttpCookie> httpCookies = HttpCookie.parse(setCookie);
+                        for (HttpCookie cookie : httpCookies) {
+                            if (cookie.getName().equals(oAuthCookieId)) {
+                                uuidStr = cookie.getValue();
+                                break;
+                            }
                         }
                     }
                 }
-            }
-            if (uuidStr != null) {
-                try {
-                    UUID uuid = UUID.fromString(uuidStr);
-                    if (uuid != null) {
+                if (uuidStr != null) {
+                    try {
+                        UUID uuid = UUID.fromString(uuidStr);
                         record = WebRoot.db().get(uuid);
                         if (record == null) {
                             context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
                             errors.add("Auth record not found for " + PageHandler.CookieType.DISCORD_OAUTH.name() + " cookie UUID: " + uuid);
                         }
+                    } catch (IllegalArgumentException e) {
+                        context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
+                        errors.add("Invalid UUID in " + PageHandler.CookieType.DISCORD_OAUTH.name() + " cookie: " + uuidStr);
                     }
-                } catch (IllegalArgumentException e) {
-                    context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
-                    errors.add("Invalid UUID in " + PageHandler.CookieType.DISCORD_OAUTH.name() + " cookie: " + uuidStr);
                 }
-            }
 
-            if (record == null || record.getUserId() == null) {
-                Map<String, List<String>> queries = context.queryParamMap();
-                List<String> code = queries.get("code");
-                if (code != null && code.size() == 1) {
-                    pageDesiresRedirect = true;
-                    String codeSingle = code.get(0);
-                    new Exception().printStackTrace();
-                    String access_token = getAccessToken(codeSingle, null);
-                    if (access_token != null) {
-                        JsonObject user = getUser(access_token);
-                        JsonElement idStr = user.get("id");
-                        if (idStr != null) {
-                            Integer previousNationId = record == null ? null : record.getNationIdRaw();
-                            record = generateAuthRecord(context, Long.parseLong(idStr.getAsString()), previousNationId);
-                            WebUtil.setCookie(context, PageHandler.CookieType.DISCORD_OAUTH.getCookieId(), record.getUUID().toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
-                        } else {
-                            errors.add("Invalid user: " + user);
-                        }
-                    }
-                }
-            }
-            {
-                // if command auth exists
-                String commandAuth = cookies.get(PageHandler.CookieType.URL_AUTH.getCookieId());
-                if (commandAuth != null) {
-                    UUID uuid = UUID.fromString(commandAuth);
-                    record = WebRoot.db().get(uuid);
-                    if (record == null) {
-                        context.removeCookie(PageHandler.CookieType.URL_AUTH.getCookieId());
-                        errors.add("Auth record not found for " + PageHandler.CookieType.URL_AUTH.name() + " cookie UUID: " + uuid);
-                    }
-                }
-            }
-        }
-
-        Map<String, List<String>> queryMap = context.queryParamMap();
-        String path = context.path();
-        boolean isLoginPage = switch (path.toLowerCase(Locale.ROOT)) {
-            case "/page/login", "/page/login/" -> true;
-            default -> false;
-        };
-        if (isLoginPage) {
-            if (queryMap.containsKey("token")) {
-                String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
-                if (token != null) {
-                    pageDesiresRedirect = true;
-                    try {
-                        UUID uuid = UUID.fromString(token);
-                        if (record == null || !record.getUUID().equals(uuid)) {
-                            record = WebRoot.db().get(uuid);
-                            if (record != null) {
-                                isLoginPage = false;
-                                WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), uuid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+                if (record == null || record.getUserId() == null) {
+                    Map<String, List<String>> queries = context.queryParamMap();
+                    List<String> code = queries.get("code");
+                    if (code != null && code.size() == 1) {
+                        pageDesiresRedirect = true;
+                        String codeSingle = code.get(0);
+                        new Exception().printStackTrace();
+                        String access_token = getAccessToken(codeSingle, null);
+                        if (access_token != null) {
+                            JsonObject user = getUser(access_token);
+                            JsonElement idStr = user.get("id");
+                            if (idStr != null) {
+                                Integer previousNationId = record == null ? null : record.getNationIdRaw();
+                                record = generateAuthRecord(context, Long.parseLong(idStr.getAsString()), previousNationId);
+                                WebUtil.setCookie(context, PageHandler.CookieType.DISCORD_OAUTH.getCookieId(), record.getUUID().toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+                            } else {
+                                errors.add("Invalid user: " + user);
                             }
                         }
-                    } catch (IllegalArgumentException e) {
-                        e.printStackTrace();
-                        errors.add("Invalid token: " + token);
+                    }
+                }
+                {
+                    // if command auth exists
+                    String commandAuth = cookies.get(PageHandler.CookieType.URL_AUTH.getCookieId());
+                    if (commandAuth != null) {
+                        UUID uuid = UUID.fromString(commandAuth);
+                        record = WebRoot.db().get(uuid);
+                        if (record == null) {
+                            context.removeCookie(PageHandler.CookieType.URL_AUTH.getCookieId());
+                            errors.add("Auth record not found for " + PageHandler.CookieType.URL_AUTH.name() + " cookie UUID: " + uuid);
+                        }
                     }
                 }
             }
-        }
 
-        if (((record == null || record.getNationId() == null) && requireNation) || isLoginPage) {
-            requireNation |= queryMap.containsKey("nation") || queryMap.containsKey("alliance");
-            String nationStr = StringMan.join(queryMap.getOrDefault("nation", new ArrayList<>()), ",");
-            DBNation nation = null;
-            if (!nationStr.isEmpty()) {
-                try {
-                    nation = DiscordUtil.parseNation(nationStr, false, true, null);
-                } catch (IllegalArgumentException e) {
-                    errors.add(e.getMessage());
-                }
+            Map<String, List<String>> queryMap = context.queryParamMap();
+            String path = context.path();
+
+            if (record != null && record.isExpired()) {
+                UUID verifiedUid = WebUtil.generateSecureUUID();
+                WebRoot.db().removeToken(false, record.token, record.getNationIdRaw(), record.getUserIdRaw());
+                record = WebRoot.db().updateToken(verifiedUid, record.getNationId(), record.getUserId());
+                WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), verifiedUid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
             }
 
-            String errorsStr = StringMan.join(queryMap.getOrDefault("message", new ArrayList<>()), "\n");
-            if (!errorsStr.isEmpty()) {
-                errors.addAll(Arrays.asList(errorsStr.split("\n")));
-            }
-            if (nation != null) {
-                try {
-                    String mailUrl = WebUtil.mailLogin(nation, isBackend, true);
-                    throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
-                } catch (IllegalArgumentException e) {
-                    errors.add(e.getMessage());
+            if (record != null) {
+                DBNation nation = record.getNation(true);
+                User user = record.getUser(true);
+                if (nation != null) {
+                    return record;
                 }
-            }
-
-            if (requireNation) {
-                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
-                Set<Integer> allianceIdFilter = null;
-                if (!allianceStr.isEmpty()) {
-                    allianceIdFilter = PW.parseAlliances(null, allianceStr);
-                }
-                String html = nationPicker(ws, errors, allianceIdFilter);
-                throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
             } else {
-                allowRedirect = true;
+                if (context.cookie(PageHandler.CookieType.URL_AUTH_SET.getCookieId()) != null) {
+                    context.removeCookie(PageHandler.CookieType.URL_AUTH_SET.getCookieId());
+                }
             }
-        }
 
-        if (record != null && record.isExpired()) {
-            UUID verifiedUid = WebUtil.generateSecureUUID();
-            WebRoot.db().removeToken(false, record.token, record.getNationIdRaw(), record.getUserIdRaw());
-            record = WebRoot.db().updateToken(verifiedUid, record.getNationId(), record.getUserId());
-            WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), verifiedUid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+            return record;
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-
-        if (record != null) {
-            DBNation nation = record.getNation(true);
-            User user = record.getUser(true);
-            if (requireUser && user == null) {
-                throw new RedirectResponse(HttpStatus.SEE_OTHER, getDiscordAuthUrl());
-            }
-            if ((user != null || nation != null) && (!requireNation || nation != null)) {
-                return record;
-            }
-        } else {
-            if (context.cookie(PageHandler.CookieType.URL_AUTH_SET.getCookieId()) != null) {
-                context.removeCookie(PageHandler.CookieType.URL_AUTH_SET.getCookieId());
-            }
-        }
-
-        if (pageDesiresRedirect && allowRedirect) {
-            String redirect = getRedirect(context);
-            if (redirect != null) {
-                throw new RedirectResponse(HttpStatus.SEE_OTHER, redirect);
-            }
-        }
-
-        if (requireUser) {
-            throw new RedirectResponse(HttpStatus.SEE_OTHER, getDiscordAuthUrl());
-        }
-
-        if (allowRedirect) {
-            String discordAuthUrl = getDiscordAuthUrl();
-            String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
-            String html = WebStore.render(f -> JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
-            throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
-        }
-        return record;
-    }
-
-    public static String nationPicker(WebStore ws, List<String> errors, Set<Integer> allianceIdFilter) {
-        // Please select your nation
-        List<DBNation> nations;
-        if (allianceIdFilter != null) {
-            nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance(allianceIdFilter));
-        } else {
-            nations = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
-        }
-        // Sort nations by lasst_active (descending)
-        nations.sort((o1, o2) -> Long.compare(o2.lastActiveMs(), o1.lastActiveMs()));
-        // Name,Url
-        List<String> nationNames = nations.stream().map(DBNation::getNation).toList();
-        List<Integer> nationIds = nations.stream().map(DBNation::getId).toList();
-
-        JsonArray nationArray = new JsonArray();
-        for (String name : nationNames) {
-            nationArray.add(name);
-        }
-        JsonArray nationIdArray = new JsonArray();
-        for (Integer id : nationIds) {
-            nationIdArray.add(id);
-        }
-
-        String html = WebStore.render(f -> JtenationpickerGenerated.render(f, null, ws, errors, nationArray, nationIdArray));
-        throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
-    }
-
-    public static String getRedirect(Context context) {
-        return getRedirect(context, false);
-    }
-
-    public static void setRedirect(Context context, String url) {
-        String id = PageHandler.CookieType.REDIRECT.getCookieId();
-        WebUtil.setCookie(context, id, url, (int) 60);
-    }
-
-    public static String getRedirect(Context context, boolean indexDefault) {
-        String redirect = context.cookie(PageHandler.CookieType.REDIRECT.getCookieId());
-        if (redirect != null) {
-            if (redirect != null && (redirect.contains("login") || redirect.contains("logout"))) {
-                redirect = null;
-            }
-        }
-        if (indexDefault && redirect == null) {
-            redirect = WebRoot.REDIRECT;
-        }
-        return redirect;
     }
 }
