@@ -4168,7 +4168,7 @@ public class BankCommands {
                     accountDeposits.put(DepositType.DEPOSIT, ResourceType.resourcesToArray(stock));
                     footers.add("Note: No offshore is set. Showing alliance stockpile instead.");
                 } else {
-                    return "No offshore is set. In this server, use "
+                    return "No offshore is set for that alliance. In this server, use "
                             + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id())
                                     .coalitionName(Coalition.OFFSHORE.name())
                             + " and from the offshore server use "
@@ -4190,7 +4190,7 @@ public class BankCommands {
             GuildDB otherDb = nationOrAllianceOrGuild.asGuild();
             OffshoreInstance offshore = otherDb.getOffshore();
             if (offshore == null)
-                return "No offshore is set. In this server, use "
+                return "No offshore is set for that guild. In this server, use "
                         + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "")
                                 .coalitionName(Coalition.OFFSHORE.name())
                         + " and from the offshore server use "

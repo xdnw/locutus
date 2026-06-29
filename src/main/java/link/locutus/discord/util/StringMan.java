@@ -890,6 +890,14 @@ public class StringMan {
         }
     }
 
+    public static String truncateIds(Collection<? extends Number> ids, int maxShown) {
+        if (ids == null || ids.isEmpty()) return "";
+        List<Number> list = new ArrayList<>(ids);
+        int hidden = Math.max(0, list.size() - maxShown);
+        String result = StringMan.join(list.subList(0, Math.min(maxShown, list.size())), ",");
+        return hidden > 0 ? result + " ... (" + hidden + " more)" : result;
+    }
+
     public static String replaceFirst(char c, String s) {
         if (s == null) {
             return "";
