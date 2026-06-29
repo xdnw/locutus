@@ -32,6 +32,7 @@ final class PlannerProfiler {
 
     private static final ThreadLocal<Session> ACTIVE = new ThreadLocal<>();
     private static final ScopeToken NOOP_TOKEN = new ScopeToken(null, null, 0L);
+    private static final CounterToken NOOP_COUNTER_TOKEN = new CounterToken(null, null);
 
     private PlannerProfiler() {
     }
@@ -76,6 +77,21 @@ final class PlannerProfiler {
         session.addCounter(scope, counterName, delta);
     }
 
+    static CounterToken counterToken(Scope scope, String counterName) {
+        if (scope == null || counterName == null) {
+            return NOOP_COUNTER_TOKEN;
+        }
+        return new CounterToken(scope, counterName);
+    }
+
+    static void addCounter(CounterToken token, long delta) {
+        Session session = ACTIVE.get();
+        if (session == null || token == null || token.scope == null || token.counterName == null || delta == 0L) {
+            return;
+        }
+        session.addCounter(token, delta);
+    }
+
     private static void restore(Session previous) {
         if (previous == null) {
             ACTIVE.remove();
@@ -104,6 +120,16 @@ final class PlannerProfiler {
         }
     }
 
+    static final class CounterToken {
+        private final Scope scope;
+        private final String counterName;
+
+        private CounterToken(Scope scope, String counterName) {
+            this.scope = scope;
+            this.counterName = counterName;
+        }
+    }
+
     static final class Session {
         private final EnumMap<Scope, MutableScopeStats> stats = new EnumMap<>(Scope.class);
 
@@ -117,6 +143,11 @@ final class PlannerProfiler {
         void addCounter(Scope scope, String counterName, long delta) {
             MutableScopeStats scopeStats = stats.computeIfAbsent(scope, ignored -> new MutableScopeStats());
             scopeStats.counters.merge(counterName, delta, Long::sum);
+        }
+
+        void addCounter(CounterToken token, long delta) {
+            MutableScopeStats scopeStats = stats.computeIfAbsent(token.scope, ignored -> new MutableScopeStats());
+            scopeStats.tokenCounters.merge(token, delta, Long::sum);
         }
 
         ProfileSnapshot snapshot() {
@@ -159,9 +190,14 @@ final class PlannerProfiler {
         private long totalNanos;
         private long maxNanos;
         private final LinkedHashMap<String, Long> counters = new LinkedHashMap<>();
+        private final LinkedHashMap<CounterToken, Long> tokenCounters = new LinkedHashMap<>();
 
         ScopeStats snapshot() {
-            return new ScopeStats(calls, totalNanos, maxNanos, counters);
+            LinkedHashMap<String, Long> snapshotCounters = new LinkedHashMap<>(counters);
+            for (Map.Entry<CounterToken, Long> entry : tokenCounters.entrySet()) {
+                snapshotCounters.merge(entry.getKey().counterName, entry.getValue(), Long::sum);
+            }
+            return new ScopeStats(calls, totalNanos, maxNanos, snapshotCounters);
         }
     }
 }

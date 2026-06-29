@@ -1,31 +1,27 @@
 package link.locutus.discord.sim.planners;
 
+import link.locutus.discord.sim.StrategicObjective;
+
 public record SideProjectionPolicies(
-        CounterDeclarationPolicy counterDeclarationPolicy,
-        RedeclarationPolicy redeclarationPolicy,
-        AttackChoicePolicy attackChoicePolicy
+        AttackChoicePolicy attackChoicePolicy,
+        LaterDeclarationScoringPolicy laterDeclarationScoringPolicy
 ) {
     public static final SideProjectionPolicies HEURISTIC = new SideProjectionPolicies(
-            HeuristicCounterDeclarationPolicy.INSTANCE,
-            HeuristicRedeclarationPolicy.INSTANCE,
-            HeuristicAttackChoicePolicy.INSTANCE
+            HeuristicAttackChoicePolicy.INSTANCE,
+            HeuristicLaterDeclarationScoringPolicy.INSTANCE
     );
 
-        public static final SideProjectionPolicies NO_DECLARATIONS = new SideProjectionPolicies(
-            NoDeclarationCounterPolicy.INSTANCE,
-            NoDeclarationRedeclarationPolicy.INSTANCE,
-            HeuristicAttackChoicePolicy.INSTANCE
-        );
+    public static final SideProjectionPolicies NO_DECLARATIONS = new SideProjectionPolicies(
+            HeuristicAttackChoicePolicy.INSTANCE,
+            context -> 0d
+    );
 
     public SideProjectionPolicies {
-        if (counterDeclarationPolicy == null) {
-            throw new IllegalArgumentException("counterDeclarationPolicy must not be null");
-        }
-        if (redeclarationPolicy == null) {
-            throw new IllegalArgumentException("redeclarationPolicy must not be null");
-        }
         if (attackChoicePolicy == null) {
             throw new IllegalArgumentException("attackChoicePolicy must not be null");
+        }
+        if (laterDeclarationScoringPolicy == null) {
+            throw new IllegalArgumentException("laterDeclarationScoringPolicy must not be null");
         }
     }
 
@@ -35,5 +31,12 @@ public record SideProjectionPolicies(
 
     public static SideProjectionPolicies noDeclarations() {
         return NO_DECLARATIONS;
+    }
+
+    public static SideProjectionPolicies objectiveDriven(StrategicObjective objective, SideOpeningSettings openingSettings) {
+        return new SideProjectionPolicies(
+                new ObjectiveDrivenAttackChoicePolicy(objective, openingSettings),
+                new ObjectiveDrivenLaterDeclarationScoringPolicy(objective)
+        );
     }
 }

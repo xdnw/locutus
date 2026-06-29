@@ -9,10 +9,12 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
+import link.locutus.discord.sim.combat.NationCombatProfile;
 import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.actions.ReleaseMapAction;
 import link.locutus.discord.sim.actions.ReserveMapAction;
 import link.locutus.discord.sim.input.NationInit;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -34,9 +36,7 @@ class NationInitAndMapReserveTest {
                 42,
                 7,
                 WarPolicy.PIRATE,
-                resources,
-                123d,
-                new double[]{1_700d, 1_300d},
+                resources, new double[]{1_700d, 1_300d},
                 4,
                 (byte) 6
         );
@@ -51,6 +51,26 @@ class NationInitAndMapReserveTest {
         assertEquals(4, nation.maxOffSlots());
         assertEquals(6, nation.resetHourUtc());
         assertEquals(7, nation.teamId());
+    }
+
+    @Test
+    void nationInitDerivesBaseFromImmutableInputsWhenCityStateIsPresent() {
+        int researchBits = 1 << (Research.GROUND_CAPACITY.ordinal() * 5);
+        long projectBits = 1L << Projects.PIRATE_ECONOMY.ordinal();
+        NationInit init = new NationInit(
+                77,
+                77,
+                WarPolicy.PIRATE,
+                ResourceType.getBuffer(),
+                new double[]{1_000d, 800d},
+                5,
+                (byte) 0,
+                projectBits,
+                SpecialistCityProfile.defaults(2),
+                NationCombatProfile.derived(WarPolicy.PIRATE, projectBits, researchBits, false)
+        );
+
+        assertEquals(PW.computeStaticScoreComponent(2, 1, researchBits), init.staticScoreComponent());
     }
 
     @Test
@@ -78,7 +98,6 @@ class NationInitAndMapReserveTest {
                 55,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                0d,
                 new double[]{1_000d, 1_000d},
                 5,
                 (byte) 0
@@ -113,7 +132,6 @@ class NationInitAndMapReserveTest {
                 56,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                0d,
                 new double[]{1_000d},
                 5,
                 (byte) 0,
@@ -172,8 +190,8 @@ class NationInitAndMapReserveTest {
     @Test
     void reserveMapActionSubtractsSpendableMapsThenReleasesOnAttack() {
         SimWorld world = new SimWorld();
-        world.addNation(NationInit.moneyOnly(1, WarPolicy.FORTRESS, 0d, 100d, new double[0], 2, (byte) 0));
-        world.addNation(NationInit.moneyOnly(2, WarPolicy.TURTLE, 0d, 100d, new double[0], 2, (byte) 0));
+        world.addNation(NationInit.moneyOnly(1, WarPolicy.FORTRESS, 0d, new double[0], 2, (byte) 0));
+        world.addNation(NationInit.moneyOnly(2, WarPolicy.TURTLE, 0d, new double[0], 2, (byte) 0));
         world.addWar(new SimWar(900, 1, 2, WarType.ORD));
 
         world.apply(new ReserveMapAction(900, 1, 2));
@@ -234,3 +252,4 @@ class NationInitAndMapReserveTest {
         assertEquals(8, war.defenderSpendableMaps());
     }
 }
+

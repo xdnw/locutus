@@ -1,10 +1,13 @@
 package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.SimTuning;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -17,14 +20,49 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlannerProjectionStateTest {
+        @Test
+        void builderAndOverrideSetRecomputeStaticScoreComponentFromImmutableInputs() {
+                int researchBits = 1 << (Research.GROUND_CAPACITY.ordinal() * 5);
+                long projectBits = 1L << Projects.PIRATE_ECONOMY.ordinal();
+                DBNationSnapshot baseline = DBNationSnapshot.synthetic(500)
+                                .teamId(1)
+                                .allianceId(10)
+                                .cities(3)
+                                .projectBits(projectBits)
+                                .researchBits(researchBits)
+                                .cityInfra(new double[]{1_000d, 900d, 800d})
+                                .warPolicy(WarPolicy.ATTRITION)
+                                .build();
+
+                assertEquals(PW.computeStaticScoreComponent(3, 1, researchBits), baseline.staticScoreComponent());
+
+                DBNationSnapshot overridden = OverrideSet.builder()
+                                .cities(baseline.nationId(), 5)
+                        .build()
+                                .applyToSnapshot(baseline);
+
+                assertEquals(PW.computeStaticScoreComponent(5, 1, researchBits), overridden.staticScoreComponent());
+        }
+
+        @Test
+        void builderInfersScoreCitiesFromCityInfraWhenSyntheticStateOmitsExplicitCities() {
+                DBNationSnapshot snapshot = DBNationSnapshot.synthetic(600)
+                                .teamId(1)
+                                .allianceId(10)
+                                .cityInfra(new double[]{1_000d, 900d, 800d})
+                                .warPolicy(WarPolicy.ATTRITION)
+                                .build();
+
+                assertEquals(3, snapshot.cities());
+                assertEquals(PW.computeStaticScoreComponent(3, 0, 0), snapshot.staticScoreComponent());
+        }
+
     @Test
     void appliesUnitOverridesOnceAtSeedAndCarriesMutatedCountsForward() {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 100)
@@ -35,9 +73,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defenderOne = DBNationSnapshot.synthetic(2)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 8_000)
@@ -48,9 +84,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defenderTwo = DBNationSnapshot.synthetic(3)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 7_000)
@@ -73,10 +107,20 @@ class PlannerProjectionStateTest {
         DBNationSnapshot seededAttacker = state.snapshotsFor(List.of(attacker.nationId())).get(0);
         assertEquals(12_000, seededAttacker.unit(MilitaryUnit.SOLDIER));
 
-        state = state.advance(SimTuning.defaults(), Map.of(attacker.nationId(), List.of(defenderOne.nationId())), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(attacker.nationId(), List.of(defenderOne.nationId())),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
         int soldiersAfterFirstBucket = state.snapshotsFor(List.of(attacker.nationId())).get(0).unit(MilitaryUnit.SOLDIER);
 
-        state = state.advance(SimTuning.defaults(), Map.of(attacker.nationId(), List.of(defenderTwo.nationId())), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(attacker.nationId(), List.of(defenderTwo.nationId())),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
         DBNationSnapshot attackerAfterSecondBucket = state.snapshotsFor(List.of(attacker.nationId())).get(0);
 
         assertTrue(attackerAfterSecondBucket.unit(MilitaryUnit.SOLDIER) <= soldiersAfterFirstBucket);
@@ -88,9 +132,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(11)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 12_000)
@@ -101,9 +143,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defender = DBNationSnapshot.synthetic(12)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 9_000)
@@ -113,7 +153,12 @@ class PlannerProjectionStateTest {
                 .build();
 
         PlannerProjectionState state = PlannerProjectionState.seed(OverrideSet.EMPTY, List.of(attacker, defender));
-        state = state.advance(SimTuning.defaults(), Map.of(attacker.nationId(), List.of(defender.nationId())), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(attacker.nationId(), List.of(defender.nationId())),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
 
         PlannerProjectedWar firstBucketWar = onlyProjectedWar(state);
         assertEquals(WarType.ORD, firstBucketWar.warType());
@@ -122,7 +167,12 @@ class PlannerProjectionStateTest {
         assertEquals(0, firstBucketWar.startTurn());
         assertEquals(1, state.snapshotsFor(List.of(attacker.nationId())).get(0).currentOffensiveWars());
 
-        state = state.advance(SimTuning.defaults(), Map.of(), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
 
         PlannerProjectedWar carriedWar = onlyProjectedWar(state);
         assertEquals(firstBucketWar.warType(), carriedWar.warType());
@@ -145,9 +195,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(21)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .policyCooldownTurnsRemaining(3)
@@ -157,9 +205,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defender = DBNationSnapshot.synthetic(22)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 1_000)
@@ -184,9 +230,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(23)
                 .teamId(1)
                 .allianceId(10)
-                .score(0)
                 .maxOff(3)
-                .nonInfraScoreBase(0)
                 .cityInfra(new double[0])
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 1_000)
@@ -195,9 +239,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defender = DBNationSnapshot.synthetic(24)
                 .teamId(2)
                 .allianceId(20)
-                .score(0)
                 .maxOff(3)
-                .nonInfraScoreBase(0)
                 .cityInfra(new double[0])
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
@@ -220,9 +262,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(25)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .resetHourUtc((byte) 10)
@@ -232,9 +272,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defender = DBNationSnapshot.synthetic(26)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 1_000)
@@ -267,9 +305,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(27)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .resetHourUtc((byte) 10)
@@ -279,9 +315,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defender = DBNationSnapshot.synthetic(28)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 1_000)
@@ -309,18 +343,14 @@ class PlannerProjectionStateTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(31)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
         DBNationSnapshot defender = DBNationSnapshot.synthetic(32)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_000)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_100, 1_000, 900})
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
@@ -335,9 +365,9 @@ class PlannerProjectionStateTest {
                 6,
                 100,
                 100,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
                 false,
                 false
         );
@@ -373,9 +403,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot attacker = DBNationSnapshot.synthetic(41)
                 .teamId(1)
                 .allianceId(10)
-                .score(1_200)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_600, 1_400, 1_200})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 14_000)
@@ -386,9 +414,7 @@ class PlannerProjectionStateTest {
         DBNationSnapshot defender = DBNationSnapshot.synthetic(42)
                 .teamId(2)
                 .allianceId(20)
-                .score(1_100)
                 .maxOff(3)
-                .nonInfraScoreBase(700)
                 .cityInfra(new double[]{1_700, 1_500, 1_300})
                 .warPolicy(WarPolicy.ATTRITION)
                 .unit(MilitaryUnit.SOLDIER, 9_000)
@@ -402,7 +428,8 @@ class PlannerProjectionStateTest {
         state = state.advance(
                 SimTuning.defaults(),
                 Map.of(attacker.nationId(), List.of(defender.nationId())),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
 
         DBNationSnapshot defenderAfterFirstBucket = state.snapshotsFor(List.of(defender.nationId())).get(0);
@@ -416,7 +443,12 @@ class PlannerProjectionStateTest {
             assertEquals(firstOverlay.cityInfraValueAt(i), defenderCityInfra[firstOverlay.cityIndexAt(i)]);
         }
 
-        state = state.advance(SimTuning.defaults(), Map.of(), 1);
+        state = state.advance(
+                SimTuning.defaults(),
+                Map.of(),
+                1,
+                PlannerTransitionSemantics.NONE
+        );
 
         PlannerCityInfraOverlay carriedOverlay = state.cityInfraOverlaysByNation().get(defender.nationId());
         assertNotNull(carriedOverlay);

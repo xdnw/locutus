@@ -57,11 +57,24 @@ final class LongHorizonCounterOpportunityModel {
     double counterOpportunityScore(int[] attackerCounts, int[] attackerCaps) {
         double score = 0d;
         for (int attackerIndex = 0; attackerIndex < attackerCounts.length; attackerIndex++) {
-            for (int assignedBefore = 0; assignedBefore < attackerCounts[attackerIndex]; assignedBefore++) {
-                score += attackerCounterOpportunityMarginalScore(attackerIndex, assignedBefore, attackerCaps);
-            }
+            score += attackerCounterOpportunityScore(attackerIndex, attackerCounts[attackerIndex], attackerCaps);
         }
         return score;
+    }
+
+    private double attackerCounterOpportunityScore(int attackerIndex, int assignedCount, int[] attackerCaps) {
+        if (attackerIndex < 0 || attackerIndex >= attackerCounterPenaltyScales.length || assignedCount <= 0) {
+            return 0d;
+        }
+        double scale = attackerCounterPenaltyScales[attackerIndex];
+        if (!(scale > 0d)) {
+            return 0d;
+        }
+        int usefulCapacity = Math.max(1, Math.min(3, attackerCaps[attackerIndex]));
+        int linearCount = Math.min(assignedCount, (int) Math.floor(1.75d * usefulCapacity));
+        double linearPressure = (linearCount * (linearCount + 1d)) / (2d * usefulCapacity);
+        double saturatedPressure = Math.max(0, assignedCount - linearCount) * 1.75d;
+        return -horizonFactor * COUNTER_OPPORTUNITY_COST_WEIGHT * scale * (linearPressure + saturatedPressure);
     }
 
     private static double[] counterPressures(
@@ -70,15 +83,18 @@ final class LongHorizonCounterOpportunityModel {
             double[] defenderCombatStrengths
     ) {
         double[] pressures = new double[scenario.attackerCount()];
+        int bestCountCapacity = Math.max(1, scenario.attackerCount());
+        double[] bestScores = new double[bestCountCapacity];
+        int[] bestAttackerIndexes = new int[bestCountCapacity];
         for (int defenderIndex = 0; defenderIndex < scenario.defenderCount(); defenderIndex++) {
             DBNationSnapshot counterDeclarer = scenario.defender(defenderIndex);
             int counterSlots = Math.max(0, counterDeclarer.rawFreeOff());
             if (counterSlots == 0 || defenderCombatStrengths[defenderIndex] <= 0d) {
                 continue;
             }
-            double[] bestScores = new double[Math.min(counterSlots, Math.max(1, scenario.attackerCount()))];
-            int[] bestAttackerIndexes = new int[bestScores.length];
-            Arrays.fill(bestAttackerIndexes, -1);
+            int bestCount = Math.min(counterSlots, bestCountCapacity);
+            Arrays.fill(bestScores, 0, bestCount, 0d);
+            Arrays.fill(bestAttackerIndexes, 0, bestCount, -1);
             for (int attackerIndex = 0; attackerIndex < scenario.attackerCount(); attackerIndex++) {
                 if (!canCounter(counterDeclarer, scenario.attacker(attackerIndex))) {
                     continue;
@@ -90,9 +106,9 @@ final class LongHorizonCounterOpportunityModel {
                         attackerCombatStrengths[attackerIndex],
                         scenario.defenderActivityWeight(defenderIndex)
                 );
-                insertBest(bestScores, bestAttackerIndexes, pressure, attackerIndex);
+                insertBest(bestScores, bestAttackerIndexes, bestCount, pressure, attackerIndex);
             }
-            for (int index = 0; index < bestScores.length; index++) {
+            for (int index = 0; index < bestCount; index++) {
                 double pressure = bestScores[index];
                 if (!(pressure > 0d)) {
                     continue;
@@ -106,13 +122,19 @@ final class LongHorizonCounterOpportunityModel {
         return pressures;
     }
 
-    private static void insertBest(double[] bestScores, int[] bestAttackerIndexes, double pressure, int attackerIndex) {
+    private static void insertBest(
+            double[] bestScores,
+            int[] bestAttackerIndexes,
+            int bestCount,
+            double pressure,
+            int attackerIndex
+    ) {
         if (!(pressure > 0d)) {
             return;
         }
-        for (int index = 0; index < bestScores.length; index++) {
+        for (int index = 0; index < bestCount; index++) {
             if (pressure > bestScores[index]) {
-                for (int shift = bestScores.length - 1; shift > index; shift--) {
+                for (int shift = bestCount - 1; shift > index; shift--) {
                     bestScores[shift] = bestScores[shift - 1];
                     bestAttackerIndexes[shift] = bestAttackerIndexes[shift - 1];
                 }

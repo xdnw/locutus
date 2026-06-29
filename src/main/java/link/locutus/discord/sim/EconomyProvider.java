@@ -35,12 +35,12 @@ public interface EconomyProvider {
     void onVictoryLootTransferred(SimNation winner, SimNation loser, SimWar war, double transferredMoney);
 
     /**
-     * Handle a change in war control flags (ground control, air superiority, blockade).
+     * Handle a change in war superiority/blockade flags.
      * 
-     * This is called after any attack that may change control flags.
+     * This is called after any attack that may change tactical war flags.
      * Implementations may use this to update blockade-dependent state like {@code canRestock}.
      * 
-     * @param war the war whose control flags changed
+     * @param war the war whose superiority/blockade flags changed
      */
     void onSuperiorityFlagChange(SimWar war);
 

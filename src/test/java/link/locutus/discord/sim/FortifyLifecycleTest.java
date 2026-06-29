@@ -32,6 +32,9 @@ class FortifyLifecycleTest {
         SimWorld world = new SimWorld();
                 world.addNation(new SimNation(1, WarPolicy.FORTRESS));
                 world.addNation(new SimNation(2, WarPolicy.TURTLE));
+        world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 150);
+        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 5_000);
+        world.requireNation(2).setUnitCount(MilitaryUnit.TANK, 250);
         SimWar war = new SimWar(77, 1, 2, WarType.ORD);
         world.addWar(war);
 
@@ -54,6 +57,8 @@ class FortifyLifecycleTest {
         SimWorld world = new SimWorld();
                 world.addNation(new SimNation(1, WarPolicy.FORTRESS));
                 world.addNation(new SimNation(2, WarPolicy.TURTLE));
+        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 5_000);
+        world.requireNation(2).setUnitCount(MilitaryUnit.TANK, 250);
         SimWar war = new SimWar(88, 1, 2, WarType.ORD);
         world.addWar(war);
 

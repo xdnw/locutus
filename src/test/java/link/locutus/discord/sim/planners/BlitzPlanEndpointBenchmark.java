@@ -2,7 +2,9 @@ package link.locutus.discord.sim.planners;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord._main.ILoader;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.WarDB;
@@ -16,8 +18,10 @@ import link.locutus.discord.web.commands.binding.value_types.BlitzPlanRequest;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlanResponse;
 import link.locutus.discord.web.commands.binding.value_types.BlitzPlannedWar;
 import link.locutus.discord.web.commands.binding.value_types.BlitzRebuyMode;
+import link.locutus.discord.web.commands.binding.value_types.BlitzReplayTrace;
 import link.locutus.discord.web.commands.binding.value_types.BlitzSideMode;
 import link.locutus.discord.sim.BlitzObjective;
+import link.locutus.discord.sim.SimUnits;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.Turn1DeclarePolicy;
@@ -108,6 +112,7 @@ public final class BlitzPlanEndpointBenchmark {
             if (config.printCandidateSummary()) {
                 printCandidateSummary(databases.warDb(), request, attackers, defenders, response);
             }
+            printTraceSummary(response);
             printProfile(session.snapshot());
         } catch (Exception e) {
             throw new IllegalStateException("Failed to run endpoint-shaped blitz benchmark", e);
@@ -154,6 +159,7 @@ public final class BlitzPlanEndpointBenchmark {
                 config.objectiveOrdinal(),
                 assignmentPairs.length / 2,
                 response.plannerNationCount());
+        printOpeningUtilizationSummary(attackers);
 
         List<ParticipantAssignmentRow> highCityIdleAttackers = attackers.stream()
                 .filter(row -> row.cityCount() >= 40 && row.offensiveAssignments() == 0)
@@ -187,6 +193,140 @@ public final class BlitzPlanEndpointBenchmark {
         topUntargetedDefenders.forEach(row -> System.out.printf(Locale.ROOT,
                 "untargetedDefender,id=%d,name=%s,cities=%d,freeDef=%d,offAssigned=%d%n",
                 row.nationId(), csvSafe(row.name()), row.cityCount(), row.freeDef(), row.offensiveAssignments()));
+    }
+
+    private static void printOpeningUtilizationSummary(List<ParticipantAssignmentRow> attackers) {
+        int slotAvailableAttackers = 0;
+        int totalFreeOff = 0;
+        int totalAssignedOff = 0;
+        int maxAssignedOff = 0;
+        int atCapAttackers = 0;
+        int slotRichAttackers = 0;
+        int slotRichZeroWarAttackers = 0;
+        int slotRichOneWarAttackers = 0;
+        int slotRichLightlyUsedAttackers = 0;
+        int[] histogram = new int[8];
+        for (ParticipantAssignmentRow row : attackers) {
+            int freeOff = Math.max(0, row.freeOff());
+            int assigned = Math.max(0, row.offensiveAssignments());
+            if (freeOff > 0) {
+                slotAvailableAttackers++;
+            }
+            totalFreeOff += freeOff;
+            totalAssignedOff += assigned;
+            maxAssignedOff = Math.max(maxAssignedOff, assigned);
+            if (freeOff > 0 && assigned >= freeOff) {
+                atCapAttackers++;
+            }
+            histogram[Math.min(histogram.length - 1, assigned)]++;
+            if (row.cityCount() >= 40 && freeOff >= 5) {
+                slotRichAttackers++;
+                if (assigned == 0) {
+                    slotRichZeroWarAttackers++;
+                }
+                if (assigned == 1) {
+                    slotRichOneWarAttackers++;
+                }
+                if (assigned <= 1) {
+                    slotRichLightlyUsedAttackers++;
+                }
+            }
+        }
+        double utilizationPct = totalFreeOff == 0 ? 0d : 100.0d * totalAssignedOff / totalFreeOff;
+        System.out.printf(Locale.ROOT,
+                "openingUtilization,attackersWithFreeOff=%d,totalFreeOff=%d,totalAssignedOff=%d,utilizationPct=%.2f,maxAssignedOff=%d,attackersAtOffCap=%d,warCountHistogram=%s%n",
+                slotAvailableAttackers,
+                totalFreeOff,
+                totalAssignedOff,
+                utilizationPct,
+                maxAssignedOff,
+                atCapAttackers,
+                warCountHistogram(histogram));
+        System.out.printf(Locale.ROOT,
+                "slotRichOpeningUse,citiesAtLeast=40,freeOffAtLeast=5,attackers=%d,zeroWar=%d,oneWar=%d,zeroOrOneWar=%d%n",
+                slotRichAttackers,
+                slotRichZeroWarAttackers,
+                slotRichOneWarAttackers,
+                slotRichLightlyUsedAttackers);
+    }
+
+    private static String warCountHistogram(int[] histogram) {
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < histogram.length; index++) {
+            if (index > 0) {
+                builder.append(';');
+            }
+            if (index + 1 == histogram.length) {
+                builder.append(index).append("+");
+            } else {
+                builder.append(index);
+            }
+            builder.append(':').append(histogram[index]);
+        }
+        return builder.toString();
+    }
+
+    private static void printTraceSummary(BlitzPlanResponse response) {
+        BlitzReplayTrace trace = response.trace();
+        if (trace == null) {
+            return;
+        }
+        int[] scalarTotals = sumBlocks(trace.summaryScalarLanes(), 8);
+        int[] attackTotals = sumBlocks(trace.summaryAttackOutcomeCounts(), 2 * AttackType.values().length * SuccessType.values.length);
+        int[] unitLossTotals = sumBlocks(trace.summaryUnitLossCounts(), 2 * SimUnits.PURCHASABLE_UNITS.length);
+        int[] infraLossTotals = sumBlocks(trace.summaryInfraLossCents(), 2);
+        int attackerAttacks = sumAttackSide(attackTotals, 0);
+        int defenderAttacks = sumAttackSide(attackTotals, 1);
+        System.out.printf(Locale.ROOT,
+                "traceSummary,attackerDeclares=%d,defenderDeclares=%d,attackerWins=%d,defenderWins=%d,attackerLosses=%d,defenderLosses=%d,attackerExpired=%d,defenderExpired=%d,attackerAttacks=%d,defenderAttacks=%d,attackerInfraLostCents=%d,defenderInfraLostCents=%d%n",
+                scalarTotals[0],
+                scalarTotals[4],
+                scalarTotals[1],
+                scalarTotals[5],
+                scalarTotals[2],
+                scalarTotals[6],
+                scalarTotals[3],
+                scalarTotals[7],
+                attackerAttacks,
+                defenderAttacks,
+                infraLossTotals[0],
+                infraLossTotals[1]);
+        System.out.println("traceUnitLosses,side," + purchasableUnitHeader());
+        printUnitLossSide("attacker", unitLossTotals, 0);
+        printUnitLossSide("defender", unitLossTotals, 1);
+    }
+
+    private static int[] sumBlocks(int[] values, int blockSize) {
+        int[] totals = new int[blockSize];
+        for (int offset = 0; offset + blockSize <= values.length; offset += blockSize) {
+            for (int lane = 0; lane < blockSize; lane++) {
+                totals[lane] += values[offset + lane];
+            }
+        }
+        return totals;
+    }
+
+    private static int sumAttackSide(int[] attackTotals, int sideIndex) {
+        int sideOffset = sideIndex * AttackType.values().length * SuccessType.values.length;
+        int total = 0;
+        for (int index = 0; index < AttackType.values().length * SuccessType.values.length; index++) {
+            total += attackTotals[sideOffset + index];
+        }
+        return total;
+    }
+
+    private static String purchasableUnitHeader() {
+        return java.util.Arrays.stream(SimUnits.PURCHASABLE_UNITS)
+                .map(MilitaryUnit::name)
+                .collect(java.util.stream.Collectors.joining(","));
+    }
+
+    private static void printUnitLossSide(String side, int[] unitLossTotals, int sideIndex) {
+        int sideOffset = sideIndex * SimUnits.PURCHASABLE_UNITS.length;
+        String values = java.util.Arrays.stream(unitLossTotals, sideOffset, sideOffset + SimUnits.PURCHASABLE_UNITS.length)
+                .mapToObj(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(","));
+        System.out.printf(Locale.ROOT, "traceUnitLosses,%s,%s%n", side, values);
     }
 
     private static String csvSafe(String value) {
@@ -289,7 +429,6 @@ public final class BlitzPlanEndpointBenchmark {
                     candidateEdges.edgeCount(),
                     scenario.attackerCount(),
                     scenario.defenderCount());
-
             for (int nationId : new int[]{379867, 590133}) {
                 int attackerIndex = attackerIndexByNationId(scenario, nationId);
                 if (attackerIndex >= 0) {
@@ -534,18 +673,19 @@ public final class BlitzPlanEndpointBenchmark {
         int defenderIndex = candidateEdges.defenderIndex(edgeIndex);
         int attackerNationId = scenario.attackerNationId(attackerIndex);
         int defenderNationId = scenario.defenderNationId(defenderIndex);
+        double targetPressure = OpeningMetricSummary.defenderControlPressure(scenario.defender(defenderIndex));
         System.out.printf(Locale.ROOT,
-                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,immediateHarm=%.3f,selfExposure=%.3f,controlLeverage=%.3f,futureWarLeverage=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
+                "edge,rank=%d,attackerId=%d,attackerName=%s,defenderId=%d,defenderName=%s,score=%.3f,targetPressure=%.3f,immediateHarm=%.3f,selfExposure=%.3f,resourceSwing=%.3f,counterRisk=%.3f,assigned=%s,direction=%s%n",
                 rank,
                 attackerNationId,
                 csvSafe(participantName(response, attackerNationId)),
                 defenderNationId,
                 csvSafe(participantName(response, defenderNationId)),
                 candidateEdges.scalarScore(edgeIndex),
+                targetPressure,
                 candidateEdges.retainsImmediateHarm() ? candidateEdges.immediateHarm(edgeIndex) : 0f,
-                candidateEdges.retainsSelfExposure() ? candidateEdges.selfExposure(edgeIndex) : 0f,
-                candidateEdges.retainsControlLeverage() ? candidateEdges.controlLeverage(edgeIndex) : 0f,
-                candidateEdges.retainsFutureWarLeverage() ? candidateEdges.futureWarLeverage(edgeIndex) : 0f,
+                0f,
+                0f,
                 candidateEdges.counterRisk(edgeIndex),
                 assignmentContains(response, attackerNationId, defenderNationId),
                 outgoing ? "outgoing" : "incoming");
@@ -676,7 +816,7 @@ public final class BlitzPlanEndpointBenchmark {
     }
 
     private static SimTuning tuningForRequest(BlitzPlanRequest request) {
-        SidePlannerSettings plannerSettings = SidePolicy.legacy(objectiveForRequest(request)).planner();
+        SidePlannerSettings plannerSettings = SidePolicy.heuristicActing("heuristic", objectiveForRequest(request)).planner();
         SimTuning defaults = SimTuning.defaults();
         return new SimTuning(
             defaults.intraTurnPasses(),

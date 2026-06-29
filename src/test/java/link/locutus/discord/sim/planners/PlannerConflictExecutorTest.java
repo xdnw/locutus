@@ -10,14 +10,14 @@ import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.sim.CandidateEdgeAdmissionPolicy;
 import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.DamageObjective;
-import link.locutus.discord.sim.OpeningMetricVector;
 import link.locutus.discord.sim.SimTuning;
-import link.locutus.discord.sim.StrategicEvaluationComponents;
+import link.locutus.discord.sim.TeamProjectionView;
 import link.locutus.discord.sim.combat.ResolutionMode;
 import link.locutus.discord.sim.combat.SpecialistCityProfile;
 import link.locutus.discord.sim.combat.WarOutcomeMath;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
+import link.locutus.discord.util.PW;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -114,6 +114,101 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
+    void plannerLocalConflictRollbackRestoresOuterStateAfterInnerApply() {
+        DBNationSnapshot attacker = nation(223, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .unit(MilitaryUnit.SHIP, 6)
+                .build();
+        DBNationSnapshot defender = nation(224, 2)
+                .unit(MilitaryUnit.SOLDIER, 9_000)
+                .unit(MilitaryUnit.TANK, 300)
+                .unit(MilitaryUnit.AIRCRAFT, 600)
+                .unit(MilitaryUnit.SHIP, 4)
+                .build();
+
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker),
+                List.of(defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
+        );
+
+        PlannerProjectionResult before = conflict.project();
+        PlannerLocalConflict.Mark outer = conflict.mark();
+        conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
+
+        PlannerProjectionResult afterOuterMutation = conflict.project();
+        assertFalse(afterOuterMutation.activeWars().isEmpty());
+        assertNotNull(afterOuterMutation.cityInfraOverlaysByNation().get(defender.nationId()));
+
+        PlannerLocalConflict.Mark inner = conflict.mark();
+        conflict.applyReplayTurn(Map.of(attacker.nationId(), List.of(defender.nationId())), false);
+        conflict.apply(inner);
+
+        PlannerProjectionResult afterInnerApply = conflict.project();
+        assertFalse(afterInnerApply.activeWars().isEmpty());
+
+        conflict.rollback(outer);
+
+        PlannerProjectionResult restored = conflict.project();
+        assertTrue(restored.activeWars().isEmpty());
+        assertEquals(
+                before.snapshotsById().get(attacker.nationId()).unit(MilitaryUnit.SOLDIER),
+                restored.snapshotsById().get(attacker.nationId()).unit(MilitaryUnit.SOLDIER)
+        );
+        assertEquals(
+                before.snapshotsById().get(defender.nationId()).cityInfra()[0],
+                restored.snapshotsById().get(defender.nationId()).cityInfra()[0],
+                1e-9
+        );
+        assertNull(restored.cityInfraOverlaysByNation().get(defender.nationId()));
+    }
+
+    @Test
+    void plannerLocalConflictRollbackRestoresInnerTouchedInfraToOuterOverlay() {
+        DBNationSnapshot attacker = nation(225, 1)
+                .unit(MilitaryUnit.SOLDIER, 12_000)
+                .unit(MilitaryUnit.TANK, 500)
+                .unit(MilitaryUnit.AIRCRAFT, 900)
+                .unit(MilitaryUnit.SHIP, 6)
+                .build();
+        DBNationSnapshot defender = nation(226, 2)
+                .unit(MilitaryUnit.SOLDIER, 9_000)
+                .unit(MilitaryUnit.TANK, 300)
+                .unit(MilitaryUnit.AIRCRAFT, 600)
+                .unit(MilitaryUnit.SHIP, 4)
+                .build();
+
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker),
+                List.of(defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.NONE
+        );
+
+        conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
+        PlannerProjectionResult outerState = conflict.project();
+        PlannerCityInfraOverlay outerOverlay = outerState.cityInfraOverlaysByNation().get(defender.nationId());
+        assertNotNull(outerOverlay);
+
+        PlannerLocalConflict.Mark inner = conflict.mark();
+        conflict.applyReplayTurn(Map.of(attacker.nationId(), List.of(defender.nationId())), false);
+
+        PlannerProjectionResult innerState = conflict.project();
+        PlannerCityInfraOverlay innerOverlay = innerState.cityInfraOverlaysByNation().get(defender.nationId());
+        assertNotNull(innerOverlay);
+
+        conflict.rollback(inner);
+
+        PlannerProjectionResult restored = conflict.project();
+        assertEquals(outerOverlay, restored.cityInfraOverlaysByNation().get(defender.nationId()));
+    }
+
+    @Test
     void plannerAssignmentViewPreservesWarTypeDuringExactOpenings() {
         DBNationSnapshot attacker = nation(207, 1)
                 .unit(MilitaryUnit.SOLDIER, 12_000)
@@ -148,7 +243,7 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
-    void plannerLocalConflictExposesActiveWarStrategicMetrics() {
+        void plannerLocalConflictExposesActiveWarProjectionMetrics() {
         DBNationSnapshot attacker = nation(213, 1)
                 .unit(MilitaryUnit.SOLDIER, 12_000)
                 .unit(MilitaryUnit.TANK, 500)
@@ -156,8 +251,6 @@ class PlannerConflictExecutorTest {
                 .unit(MilitaryUnit.SHIP, 20)
                 .build();
         DBNationSnapshot defender = nation(214, 2)
-                .score(1_500)
-                .nonInfraScoreBase(1_200)
                 .unit(MilitaryUnit.SOLDIER, 14_000)
                 .unit(MilitaryUnit.TANK, 800)
                 .unit(MilitaryUnit.AIRCRAFT, 1_100)
@@ -173,11 +266,16 @@ class PlannerConflictExecutorTest {
         );
         conflict.evaluateAssignmentOpenings(Map.of(attacker.nationId(), List.of(defender.nationId())));
 
-        double attackerStrategicScore = conflict.activeWarStrategicScoreForTeam(attacker.teamId(), 1.0, 1.0, 1.0);
-        double defenderStrategicScore = conflict.activeWarStrategicScoreForTeam(defender.teamId(), 1.0, 1.0, 1.0);
+        TeamProjectionView projectionView = conflict;
+        double[] attackerSignal = new double[1];
+        double[] defenderSignal = new double[1];
+        projectionView.forEachActiveWarMetric((attackerTeamId, defenderTeamId, targetPressure, tacticalMomentum, actionSpaceQuality) -> {
+            attackerSignal[0] += targetPressure + tacticalMomentum + actionSpaceQuality;
+            defenderSignal[0] -= targetPressure + tacticalMomentum + actionSpaceQuality;
+        });
 
-        assertTrue(attackerStrategicScore > 0.0);
-        assertEquals(-attackerStrategicScore, defenderStrategicScore, 1e-9);
+        assertTrue(attackerSignal[0] > 0.0);
+        assertEquals(-attackerSignal[0], defenderSignal[0], 1e-9);
     }
 
     @Test
@@ -214,28 +312,24 @@ class PlannerConflictExecutorTest {
     @Test
     void replayExecutionLogReplaysTurnsWithoutCounterReplanning() {
         DBNationSnapshot attackerOne = nation(301, 1)
-                .score(1_200)
                 .unit(MilitaryUnit.SOLDIER, 18_000)
                 .unit(MilitaryUnit.TANK, 900)
                 .unit(MilitaryUnit.AIRCRAFT, 1_200)
                 .unit(MilitaryUnit.SHIP, 10)
                 .build();
         DBNationSnapshot attackerTwo = nation(302, 1)
-                .score(1_150)
                 .unit(MilitaryUnit.SOLDIER, 16_000)
                 .unit(MilitaryUnit.TANK, 800)
                 .unit(MilitaryUnit.AIRCRAFT, 1_000)
                 .unit(MilitaryUnit.SHIP, 8)
                 .build();
         DBNationSnapshot defenderOne = nation(401, 2)
-                .score(1_180)
                 .unit(MilitaryUnit.SOLDIER, 17_000)
                 .unit(MilitaryUnit.TANK, 850)
                 .unit(MilitaryUnit.AIRCRAFT, 1_050)
                 .unit(MilitaryUnit.SHIP, 9)
                 .build();
         DBNationSnapshot defenderTwo = nation(402, 2)
-                .score(1_140)
                 .unit(MilitaryUnit.SOLDIER, 15_000)
                 .unit(MilitaryUnit.TANK, 700)
                 .unit(MilitaryUnit.AIRCRAFT, 900)
@@ -248,8 +342,16 @@ class PlannerConflictExecutorTest {
                 attackerOne.nationId(), List.of(defenderOne.nationId()),
                 attackerTwo.nationId(), List.of(defenderTwo.nationId())
         );
-        List<Integer> counterDeclarerIds = List.of(defenderOne.nationId(), defenderTwo.nationId());
-        List<Integer> counterTargetIds = List.of(attackerOne.nationId(), attackerTwo.nationId());
+        List<Integer> laterDeclarerIds = List.of(defenderOne.nationId(), defenderTwo.nationId());
+        List<Integer> laterTargetIds = List.of(attackerOne.nationId(), attackerTwo.nationId());
+        List<LaterDeclarationScope> laterDeclarationScopes = List.of(
+                new LaterDeclarationScope(
+                        laterDeclarerIds,
+                        laterTargetIds,
+                        SidePolicy.heuristicActing("laterDeclarerOpposingSide", new DamageObjective()),
+                        SidePolicy.heuristicPassive("laterTargetOpposingSide", new DamageObjective())
+                )
+        );
 
         PlannerLocalConflict original = PlannerLocalConflict.create(
                 OverrideSet.EMPTY,
@@ -263,9 +365,7 @@ class PlannerConflictExecutorTest {
                     assignment,
                     Map.of(),
                     turn == 0,
-                    counterDeclarerIds,
-                    counterTargetIds,
-                    new DamageObjective(),
+                    laterDeclarationScopes,
                     3 - turn
             );
         }
@@ -274,7 +374,7 @@ class PlannerConflictExecutorTest {
         assertFalse(executionLog.turns().isEmpty());
         assertTrue(
                 executionLog.turns().stream().anyMatch(turn -> !turn.autonomousDeclarations().isEmpty()),
-                "expected autonomous counter declarations to be recorded"
+                "expected autonomous later declarations to be recorded"
         );
 
         PlannerLocalConflict replayed = PlannerLocalConflict.create(
@@ -339,7 +439,8 @@ class PlannerConflictExecutorTest {
                         OverrideSet.builder().build(),
                         List.of(attacker, defender),
                         Map.of(attacker.nationId(), List.of(defender.nationId())),
-                        2
+                        2,
+                        PlannerTransitionSemantics.NONE
                 )
         );
     }
@@ -400,7 +501,8 @@ class PlannerConflictExecutorTest {
                         OverrideSet.builder().build(),
                         List.of(attacker, defender),
                         Map.of(attacker.nationId(), List.of(defender.nationId())),
-                        2
+                        2,
+                        PlannerTransitionSemantics.NONE
                 )
         );
     }
@@ -597,6 +699,96 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
+    void replayDoesNotDelayExistingOffensiveWarsWhenNationIsDeclaredOn() {
+        DBNationSnapshot declarer = nation(401, 1)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .build();
+        DBNationSnapshot delayedAttacker = nation(402, 2)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .build();
+        DBNationSnapshot otherTarget = nation(403, 1)
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .build();
+        PlannerProjectedWar existingWar = new PlannerProjectedWar(
+                delayedAttacker.nationId(),
+                otherTarget.nationId(),
+                WarType.ORD,
+                0,
+                WarStatus.ACTIVE,
+                6,
+                6,
+                100,
+                100,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                false,
+                false
+        );
+        PlannerLocalConflict conflict = PlannerLocalConflict.createWithActiveWars(
+                OverrideSet.EMPTY,
+                List.of(declarer, delayedAttacker, otherTarget),
+                List.of(existingWar),
+                0,
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.REPLAY
+        );
+
+        conflict.applyReplayTurn(Map.of(declarer.nationId(), List.of(delayedAttacker.nationId())), true);
+
+        PlannerProjectedWar delayedWar = conflict.project().activeWars().stream()
+                .filter(war -> war.attackerNationId() == delayedAttacker.nationId()
+                        && war.defenderNationId() == otherTarget.nationId())
+                .findFirst()
+                .orElseThrow();
+        assertTrue(delayedWar.attackerMaps() < 6);
+        assertTrue(delayedWar.defenderResistance() < 100);
+
+        conflict.applyReplayTurn(Map.of(), false);
+
+        PlannerProjectedWar afterDelayWar = conflict.project().activeWars().stream()
+                .filter(war -> war.attackerNationId() == delayedAttacker.nationId()
+                        && war.defenderNationId() == otherTarget.nationId())
+                .findFirst()
+                .orElseThrow();
+        assertTrue(afterDelayWar.defenderResistance() <= delayedWar.defenderResistance());
+    }
+
+    @Test
+        void replayMaterializesConventionalRebuyAfterAttackLosses() {
+        DBNationSnapshot attacker = nation(404, 1)
+                .citySpecialistProfiles(rebuyProfiles())
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 0)
+                .build();
+        DBNationSnapshot defender = nation(405, 2)
+                .citySpecialistProfiles(rebuyProfiles())
+                .unit(MilitaryUnit.SOLDIER, 20_000)
+                .unit(MilitaryUnit.TANK, 1_000)
+                .unit(MilitaryUnit.AIRCRAFT, 0)
+                .build();
+        PlannerLocalConflict conflict = PlannerLocalConflict.create(
+                OverrideSet.EMPTY,
+                List.of(attacker, defender),
+                new SimTuning(ResolutionMode.MOST_LIKELY),
+                PlannerTransitionSemantics.REPLAY
+        );
+
+        conflict.applyReplayTurn(Map.of(attacker.nationId(), List.of(defender.nationId())), true);
+
+        DBNationSnapshot projectedAttacker = conflict.project().snapshotsById().get(attacker.nationId());
+        assertNotNull(projectedAttacker);
+        assertTrue(projectedAttacker.unitsBoughtToday(MilitaryUnit.SOLDIER) > 0
+                || projectedAttacker.unitsBoughtToday(MilitaryUnit.TANK) > 0);
+        assertEquals(0, projectedAttacker.unitsBoughtToday(MilitaryUnit.AIRCRAFT));
+        assertEquals(0, projectedAttacker.pendingBuysNextTurn(MilitaryUnit.AIRCRAFT));
+    }
+
+    @Test
     void plannerProjectionPreservesBeigeTurnsAndDerivedDailyBuyBonus() {
         DBNationSnapshot attacker = nation(23, 1)
                 .cities(5)
@@ -611,7 +803,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker, defender),
                 Map.of(),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
 
         DBNationSnapshot projected = projection.snapshotsById().get(attacker.nationId());
@@ -819,7 +1012,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.EMPTY,
                 List.of(attacker, defender),
                 Map.of(attacker.nationId(), List.of(defender.nationId())),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
 
         PlannerProjectionResult firstProjection = state.toProjectionResult();
@@ -827,7 +1021,7 @@ class PlannerConflictExecutorTest {
         assertNotNull(firstOverlay);
         assertFalse(firstOverlay.isEmpty());
 
-        PlannerProjectionState carried = state.advance(tuning, Map.of(), 1);
+        PlannerProjectionState carried = state.advance(tuning, Map.of(), 1, PlannerTransitionSemantics.NONE);
         PlannerProjectionResult secondProjection = carried.toProjectionResult();
         PlannerCityInfraOverlay carriedOverlay = secondProjection.cityInfraOverlaysByNation().get(defender.nationId());
 
@@ -1131,9 +1325,7 @@ class PlannerConflictExecutorTest {
                 DBNationSnapshot attacker = DBNationSnapshot.synthetic(1)
                                 .teamId(1)
                                 .allianceId(1)
-                                .score(1_000)
                                 .cities(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION)
                                 .projectBits(pirateBits)
@@ -1163,7 +1355,8 @@ class PlannerConflictExecutorTest {
                 OverrideSet.builder().build(),
                 List.of(original),
                 Map.of(),
-                1
+                1,
+                PlannerTransitionSemantics.NONE
         );
         DBNationSnapshot projected = result.snapshotsById().get(original.nationId());
         assertEquals(bits, projected.projectBits(), "projectBits must survive round-trip");
@@ -1177,9 +1370,9 @@ class PlannerConflictExecutorTest {
     }
 
         @Test
-        void damageObjectiveRetainsOnlyHarmAndExposureCandidateComponents() {
+        void damageObjectiveRetainsOnlyHarmCandidateComponents() {
                 CandidateEdgeComponentPolicy policy = new DamageObjective().candidateEdgeComponentPolicy();
-                assertEquals(CandidateEdgeComponentPolicy.harmExposureOnly(), policy);
+                assertEquals(CandidateEdgeComponentPolicy.harmOnly(), policy);
 
         DBNationSnapshot attacker = nation(301, 1)
                 .unit(MilitaryUnit.SOLDIER, 12_000)
@@ -1215,12 +1408,7 @@ class PlannerConflictExecutorTest {
         );
 
         assertEquals(1, table.edgeCount());
-        assertEquals(WarType.ATT.ordinal(), table.preferredWarTypeId(0));
         assertTrue(table.retainsImmediateHarm());
-        assertTrue(table.retainsSelfExposure());
-        assertFalse(table.retainsResourceSwing());
-        assertFalse(table.retainsControlLeverage());
-        assertFalse(table.retainsFutureWarLeverage());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1232,7 +1420,6 @@ class PlannerConflictExecutorTest {
         assertEquals(expected.preferredWarTypeId(), table.preferredWarTypeId(0));
         assertEquals(expected.firstAttackTypeId(), table.bestAttackTypeId(0));
         assertEquals(expected.immediateHarm(), table.immediateHarm(0), 1e-5f);
-        assertEquals(expected.selfExposure(), table.selfExposure(0), 1e-5f);
     }
 
     @Test
@@ -1255,7 +1442,7 @@ class PlannerConflictExecutorTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
 
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true, true, true);
+        CandidateEdgeComponentPolicy allComponents = CandidateEdgeComponentPolicy.harmOnly();
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         PlannerExactValidatorScripts groundOnlyScripts = new PlannerExactValidatorScripts(
                 true,
@@ -1282,32 +1469,38 @@ class PlannerConflictExecutorTest {
         );
 
         assertTrue(Double.isFinite(evaluation.objectiveScore()));
-        assertTrue(evaluation.resourceSwing() > 0d);
-        assertTrue(evaluation.controlLeverage() > 0d);
-        assertTrue(evaluation.futureWarLeverage() > 0d);
+        assertEquals(0d, evaluation.selfExposure(), 1e-9);
+        assertEquals(0d, evaluation.resourceSwing(), 1e-9);
     }
 
     @Test
     void openingEvaluatorRetainsRequestedComponentsForCustomObjective() {
-        DBNationSnapshot attacker = nation(305, 1)
-                .unit(MilitaryUnit.SOLDIER, 65_000)
-                .unit(MilitaryUnit.TANK, 3_500)
-                .unit(MilitaryUnit.AIRCRAFT, 2_200)
-                .unit(MilitaryUnit.SHIP, 18)
-                .resource(ResourceType.MONEY, 0d)
-                .warPolicy(WarPolicy.PIRATE)
-                .projectBits(1L << Projects.PIRATE_ECONOMY.ordinal())
-                .build();
-        DBNationSnapshot defender = nation(306, 2)
-                .unit(MilitaryUnit.SOLDIER, 5_500)
-                .unit(MilitaryUnit.TANK, 220)
-                .unit(MilitaryUnit.AIRCRAFT, 120)
-                .unit(MilitaryUnit.SHIP, 3)
-                .resource(ResourceType.MONEY, 5_000_000d)
-                .warPolicy(WarPolicy.ATTRITION)
-                .build();
+        DBNationSnapshot attacker = retainedComponentNation(
+                305,
+                1,
+                1_600.0,
+                WarPolicy.PIRATE,
+                1L << Projects.PIRATE_ECONOMY.ordinal(),
+                65_000,
+                3_500,
+                2_200,
+                18,
+                0d
+        );
+        DBNationSnapshot defender = retainedComponentNation(
+                306,
+                2,
+                1_450.0,
+                WarPolicy.ATTRITION,
+                0L,
+                5_500,
+                220,
+                120,
+                3,
+                5_000_000d
+        );
 
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true, true, true);
+        CandidateEdgeComponentPolicy allComponents = CandidateEdgeComponentPolicy.harmOnly();
         DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         ScenarioCompiler compiler = new ScenarioCompiler();
         CompiledScenario scenario = compiler.compile(
@@ -1331,10 +1524,6 @@ class PlannerConflictExecutorTest {
 
         assertEquals(1, table.edgeCount());
         assertTrue(table.retainsImmediateHarm());
-        assertTrue(table.retainsSelfExposure());
-        assertTrue(table.retainsResourceSwing());
-        assertTrue(table.retainsControlLeverage());
-        assertTrue(table.retainsFutureWarLeverage());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1346,33 +1535,36 @@ class PlannerConflictExecutorTest {
         assertEquals(expected.preferredWarTypeId(), table.preferredWarTypeId(0));
         assertEquals(expected.firstAttackTypeId(), table.bestAttackTypeId(0));
         assertEquals(expected.immediateHarm(), table.immediateHarm(0), 1e-5f);
-        assertEquals(expected.selfExposure(), table.selfExposure(0), 1e-5f);
-        assertEquals(expected.resourceSwing(), table.resourceSwing(0), 1e-5f);
-        assertEquals(expected.controlLeverage(), table.controlLeverage(0), 1e-5f);
-        assertEquals(expected.futureWarLeverage(), table.futureWarLeverage(0), 1e-5f);
     }
 
     @Test
     void openingEvaluatorRetainsOnlyRequestedSparseComponentSubset() {
-        DBNationSnapshot attacker = nation(321, 1)
-                .unit(MilitaryUnit.SOLDIER, 65_000)
-                .unit(MilitaryUnit.TANK, 3_500)
-                .unit(MilitaryUnit.AIRCRAFT, 2_200)
-                .unit(MilitaryUnit.SHIP, 18)
-                .resource(ResourceType.MONEY, 0d)
-                .warPolicy(WarPolicy.PIRATE)
-                .projectBits(1L << Projects.PIRATE_ECONOMY.ordinal())
-                .build();
-        DBNationSnapshot defender = nation(322, 2)
-                .unit(MilitaryUnit.SOLDIER, 5_500)
-                .unit(MilitaryUnit.TANK, 220)
-                .unit(MilitaryUnit.AIRCRAFT, 120)
-                .unit(MilitaryUnit.SHIP, 3)
-                .resource(ResourceType.MONEY, 5_000_000d)
-                .warPolicy(WarPolicy.ATTRITION)
-                .build();
+        DBNationSnapshot attacker = retainedComponentNation(
+                321,
+                1,
+                1_600.0,
+                WarPolicy.PIRATE,
+                1L << Projects.PIRATE_ECONOMY.ordinal(),
+                65_000,
+                3_500,
+                2_200,
+                18,
+                0d
+        );
+        DBNationSnapshot defender = retainedComponentNation(
+                322,
+                2,
+                1_450.0,
+                WarPolicy.ATTRITION,
+                0L,
+                5_500,
+                220,
+                120,
+                3,
+                5_000_000d
+        );
 
-        CandidateEdgeComponentPolicy sparsePolicy = new CandidateEdgeComponentPolicy(false, false, true, false, true);
+        CandidateEdgeComponentPolicy sparsePolicy = CandidateEdgeComponentPolicy.none();
         DamageObjective objective = new RetainedComponentDamageObjective(sparsePolicy);
         ScenarioCompiler compiler = new ScenarioCompiler();
         CompiledScenario scenario = compiler.compile(
@@ -1396,10 +1588,6 @@ class PlannerConflictExecutorTest {
 
         assertEquals(1, table.edgeCount());
         assertFalse(table.retainsImmediateHarm());
-        assertFalse(table.retainsSelfExposure());
-        assertTrue(table.retainsResourceSwing());
-        assertFalse(table.retainsControlLeverage());
-        assertTrue(table.retainsFutureWarLeverage());
 
         OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -1410,37 +1598,25 @@ class PlannerConflictExecutorTest {
 
         assertEquals(expected.preferredWarTypeId(), table.preferredWarTypeId(0));
         assertEquals(expected.firstAttackTypeId(), table.bestAttackTypeId(0));
-        assertEquals(expected.resourceSwing(), table.resourceSwing(0), 1e-5f);
-        assertEquals(expected.futureWarLeverage(), table.futureWarLeverage(0), 1e-5f);
     }
 
     @Test
     void candidateEdgeComponentsRetainOnlyRequestedArrays() {
         CandidateEdgeComponents components = new CandidateEdgeComponents(
                 2,
-                new CandidateEdgeComponentPolicy(false, true, false, true, false)
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
-        assertFalse(components.retainsImmediateHarm());
-        assertTrue(components.retainsSelfExposure());
-        assertFalse(components.retainsResourceSwing());
-        assertTrue(components.retainsControlLeverage());
-        assertFalse(components.retainsFutureWarLeverage());
+        assertTrue(components.retainsImmediateHarm());
 
-        components.set(0, 10f, 20f, 30f, 40f, 50f);
-        components.set(1, 11f, 21f, 31f, 41f, 51f);
+        components.set(0, 10f);
+        components.set(1, 11f);
 
-        assertEquals(20f, components.selfExposure(0), 1e-5f);
-        assertEquals(40f, components.controlLeverage(0), 1e-5f);
-        assertThrows(IllegalStateException.class, () -> components.immediateHarm(0));
-        assertThrows(IllegalStateException.class, () -> components.resourceSwing(0));
-        assertThrows(IllegalStateException.class, () -> components.futureWarLeverage(0));
+        assertEquals(10f, components.immediateHarm(0), 1e-5f);
 
         components.swap(0, 1);
-        assertEquals(21f, components.selfExposure(0), 1e-5f);
-        assertEquals(41f, components.controlLeverage(0), 1e-5f);
-        assertEquals(20f, components.selfExposure(1), 1e-5f);
-        assertEquals(40f, components.controlLeverage(1), 1e-5f);
+        assertEquals(11f, components.immediateHarm(0), 1e-5f);
+        assertEquals(10f, components.immediateHarm(1), 1e-5f);
     }
 
     @Test
@@ -1463,8 +1639,8 @@ class PlannerConflictExecutorTest {
                 .warPolicy(WarPolicy.ATTRITION)
                 .build();
 
-        DamageObjective objective = new LeverageWeightedDamageObjective();
-        CandidateEdgeComponentPolicy allComponents = new CandidateEdgeComponentPolicy(true, true, true, true, true);
+        CandidateEdgeComponentPolicy allComponents = CandidateEdgeComponentPolicy.harmOnly();
+        DamageObjective objective = new RetainedComponentDamageObjective(allComponents);
         OpeningEvaluator.EvaluatedEdge evaluation = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
@@ -1472,26 +1648,12 @@ class PlannerConflictExecutorTest {
                 allComponents
         );
 
-        assertEquals(
-                objective.scoreOpening(
-                        new OpeningMetricVector(
-                                evaluation.immediateHarm(),
-                                evaluation.selfExposure(),
-                                evaluation.resourceSwing(),
-                                evaluation.controlLeverage(),
-                                0f,
-                                evaluation.futureWarLeverage()
-                        ),
-                        attacker.teamId()
-                ),
-                evaluation.score(),
-                1e-5f
-        );
-        assertTrue(evaluation.controlLeverage() > 0f || evaluation.futureWarLeverage() > 0f);
+        assertTrue(Float.isFinite(evaluation.score()));
+        assertTrue(evaluation.immediateHarm() > 0f);
     }
 
     @Test
-    void openingEvaluatorRolloutAccumulatesMoreValueThanSingleStep() {
+    void openingEvaluatorSeedIgnoresDeletedRolloutBudget() {
         DBNationSnapshot attacker = nation(313, 1)
                 .unit(MilitaryUnit.SOLDIER, 42_000)
                 .unit(MilitaryUnit.TANK, 2_400)
@@ -1509,23 +1671,23 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 1
         );
         OpeningEvaluator.EvaluatedEdge threeStep = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 3
         );
 
-        assertTrue(threeStep.score() >= oneStep.score());
-        assertTrue(threeStep.immediateHarm() > oneStep.immediateHarm());
+        assertEquals(oneStep.score(), threeStep.score(), 1e-5f);
+        assertEquals(oneStep.immediateHarm(), threeStep.immediateHarm(), 1e-5f);
     }
 
     @Test
-    void openingEvaluatorRoutesStrongProbesToDeepOpeningBudget() {
+    void openingEvaluatorStrongProbeSeedIsIndependentOfDeletedBudget() {
         DBNationSnapshot attacker = nation(413, 1)
                 .unit(MilitaryUnit.SOLDIER, 42_000)
                 .unit(MilitaryUnit.TANK, 2_400)
@@ -1541,19 +1703,19 @@ class PlannerConflictExecutorTest {
 
         OpeningEvaluator.ProbeResult probeResult = new OpeningEvaluator.ProbeResult();
         OpeningEvaluator.viabilityProbe(attacker, defender, probeResult);
-        assertEquals(3, OpeningEvaluator.actionBudgetForProbe(probeResult.probe()));
+        assertTrue(probeResult.probe() > 0f);
 
         OpeningEvaluator.EvaluatedEdge routed = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
         OpeningEvaluator.EvaluatedEdge threeStep = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 3
         );
 
@@ -1562,7 +1724,7 @@ class PlannerConflictExecutorTest {
     }
 
     @Test
-    void openingEvaluatorRoutesWeakAdmittedEdgesToSingleStepBudget() {
+    void openingEvaluatorWeakProbeSeedIsIndependentOfDeletedBudget() {
         DBNationSnapshot attacker = nation(415, 1)
                 .unit(MilitaryUnit.SOLDIER, 120)
                 .unit(MilitaryUnit.TANK, 8)
@@ -1585,22 +1747,19 @@ class PlannerConflictExecutorTest {
                 Map.of(attacker.nationId(), 0.5f, defender.nationId(), 0.5f)
         );
 
-        OpeningEvaluator.ProbeResult probeResult = OpeningEvaluator.viabilityProbe(scenario, 0, 0);
-        assertEquals(1, OpeningEvaluator.actionBudgetForProbe(probeResult.probe()));
-
         AdmissionFloorDamageObjective lowFloorObjective = new AdmissionFloorDamageObjective(new CandidateEdgeAdmissionPolicy(0.0d));
         OpeningEvaluator.EvaluatedEdge routed = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 lowFloorObjective,
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
         OpeningEvaluator.EvaluatedEdge oneStep = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
                 lowFloorObjective,
-                CandidateEdgeComponentPolicy.harmExposureOnly(),
+                CandidateEdgeComponentPolicy.harmOnly(),
                 1
         );
 
@@ -1628,7 +1787,7 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
         assertFalse(Float.isFinite(rejected.score()));
@@ -1655,7 +1814,7 @@ class PlannerConflictExecutorTest {
                 attacker,
                 defender,
                 new DamageObjective(),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
+                CandidateEdgeComponentPolicy.harmOnly()
         );
 
         assertEquals(WarType.ATT.ordinal(), evaluation.preferredWarTypeId());
@@ -1714,20 +1873,7 @@ class PlannerConflictExecutorTest {
                 specialistTable
         );
 
-        OpeningEvaluator.EvaluatedEdge expected = OpeningEvaluator.evaluateOpening(
-                attacker,
-                defender,
-                new AdmissionFloorDamageObjective(new CandidateEdgeAdmissionPolicy(0.0d)),
-                CandidateEdgeComponentPolicy.harmExposureOnly()
-        );
-                if (expected.firstAttackTypeId() < 0) {
-                        assertEquals(0, specialistTable.edgeCount());
-                } else {
-                        assertEquals(1, specialistTable.edgeCount());
-                        assertEquals(expected.preferredWarTypeId(), specialistTable.preferredWarTypeId(0));
-                        assertEquals(expected.firstAttackTypeId(), specialistTable.bestAttackTypeId(0));
-                        assertTrue(Double.isFinite(specialistTable.scalarScore(0)));
-                }
+        assertEquals(0, specialistTable.edgeCount(), "Low probe admission does not retain zero-value shell edges");
     }
 
     @Test
@@ -1783,7 +1929,7 @@ class PlannerConflictExecutorTest {
                 specialistTable
         );
 
-        assertEquals(0, specialistTable.edgeCount(), "Single-step opening evaluation only admits specialist fallback when the specialist action is legal on the opening MAP budget");
+        assertEquals(0, specialistTable.edgeCount(), "Specialist fallback no longer seeds a delayed damage/resource shell candidate");
     }
 
     @Test
@@ -1932,9 +2078,9 @@ class PlannerConflictExecutorTest {
                 6,
                 100,
                 0,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
-                PlannerLocalConflict.ControlOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
+                PlannerLocalConflict.FlagOwner.NONE,
                 false,
                 false
         );
@@ -2070,35 +2216,58 @@ class PlannerConflictExecutorTest {
                 }
         }
 
-        private static final class LeverageWeightedDamageObjective extends DamageObjective {
-                @Override
-                public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-                        return new CandidateEdgeComponentPolicy(true, true, true, true, true);
-                }
-
-                @Override
-                public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-                        return metrics.immediateHarm()
-                                - metrics.selfExposure()
-                                + (4d * metrics.controlLeverage())
-                                + (3d * metrics.futureWarLeverage())
-                                + (0.000001d * metrics.resourceSwing());
-                }
-        }
-
         private static DBNationSnapshot.Builder nation(int nationId, int teamId) {
                 return DBNationSnapshot.synthetic(nationId)
                                 .teamId(teamId)
                                 .allianceId(teamId)
-                                .score(1_000)
                                 .cities(3)
                                 .maxOff(3)
-                                .nonInfraScoreBase(700)
                                 .cityInfra(new double[]{1_200, 1_100, 1_000})
                                 .warPolicy(WarPolicy.ATTRITION);
+        }
+
+        private static SpecialistCityProfile[] rebuyProfiles() {
+                SpecialistCityProfile profile = new SpecialistCityProfile(1_000d, 100, 0, 0, 0d, 0d, 5, 5, 5, 5);
+                return new SpecialistCityProfile[]{profile, profile, profile};
+        }
+
+        private static DBNationSnapshot retainedComponentNation(
+                int nationId,
+                int teamId,
+                double targetScore,
+                WarPolicy warPolicy,
+                long projectBits,
+                int soldiers,
+                int tanks,
+                int aircraft,
+                int ships,
+                double money
+        ) {
+                int cities = 3;
+                double staticScore = PW.computeStaticScoreComponent(cities, Long.bitCount(projectBits), 0);
+                double unitScore = MilitaryUnit.SOLDIER.getScore(soldiers)
+                                + MilitaryUnit.TANK.getScore(tanks)
+                                + MilitaryUnit.AIRCRAFT.getScore(aircraft)
+                                + MilitaryUnit.SHIP.getScore(ships);
+                double infraPerCity = Math.max(0d, ((targetScore - staticScore - unitScore) * 40.0d) / cities);
+                return DBNationSnapshot.synthetic(nationId)
+                                .teamId(teamId)
+                                .allianceId(teamId)
+                                .cities(cities)
+                                .maxOff(3)
+                                .cityInfra(new double[]{infraPerCity, infraPerCity, infraPerCity})
+                                .warPolicy(warPolicy)
+                                .projectBits(projectBits)
+                                .unit(MilitaryUnit.SOLDIER, soldiers)
+                                .unit(MilitaryUnit.TANK, tanks)
+                                .unit(MilitaryUnit.AIRCRAFT, aircraft)
+                                .unit(MilitaryUnit.SHIP, ships)
+                                .resource(ResourceType.MONEY, money)
+                                .build();
         }
 
         private static List<Integer> nationIds(List<DBNationSnapshot> snapshots) {
                 return snapshots.stream().map(DBNationSnapshot::nationId).toList();
         }
 }
+

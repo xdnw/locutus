@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.WebSerializeUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -322,7 +322,7 @@ public enum HeaderGroup {
             Map<HeaderGroup, Boolean> forceUpdate,
             long now
     ) {
-        ObjectMapper mapper = JteUtil.getSerializer();
+        ObjectMapper mapper = WebSerializeUtil.getSerializer();
 
         // Deep-merge each group's field map into a single combined payload so
         // colliding keys (notably "coalitions" between PAGE_META/PAGE_STATS and
@@ -335,7 +335,7 @@ public enum HeaderGroup {
                 HeaderGroup group = entry.getKey();
                 boolean force = entry.getValue();
                 Map<String, Object> groupData = group.getGroupData(manager, conflict.getId(), now, force, conflict, mapper);
-                JteUtil.merge(combined, groupData);
+                WebSerializeUtil.merge(combined, groupData);
             }
             combined.put("update_ms", now);
 

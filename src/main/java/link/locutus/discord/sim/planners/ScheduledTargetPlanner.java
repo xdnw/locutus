@@ -158,11 +158,30 @@ public final class ScheduledTargetPlanner {
                     if (!currentAttackers.isEmpty() && !currentDefenders.isEmpty()) {
                         eligibleList = currentAttackers.stream().map(DBNationSnapshot::nationId).toList();
                         BlitzPlanner planner = new BlitzPlanner(tuning, treatyProvider, overrides, objective, snapshotActivityProvider);
+                        SideOpeningSettings openingSettings = SideOpeningSettings.defaults(planner.objective());
+                        SidePlannerSettings basePlannerSettings = SidePlannerSettings.fromTuning(tuning);
+                        SideProjectionPolicies heuristicPolicies = SideProjectionPolicies.heuristic();
                         assignment = planner.assign(
                                 currentAttackers,
                                 currentDefenders,
-                                SidePolicy.legacy("acting", planner.objective()),
-                                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                            new SidePolicy(
+                                "acting",
+                                planner.objective(),
+                                basePlannerSettings.withIdlePressureWeight(SidePlannerSettings.DEFAULT_ACTING_IDLE_PRESSURE_WEIGHT),
+                                openingSettings,
+                                heuristicPolicies,
+                                SidePolicy.NO_OP_ACTOR,
+                                true
+                            ),
+                            new SidePolicy(
+                                "nonActing",
+                                planner.objective(),
+                                basePlannerSettings,
+                                openingSettings,
+                                heuristicPolicies,
+                                SidePolicy.NO_OP_ACTOR,
+                                false
+                            ),
                                 bucketStart,
                                 List.of(),
                                 1

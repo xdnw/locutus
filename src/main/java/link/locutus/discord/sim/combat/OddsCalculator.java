@@ -37,19 +37,17 @@ public final class OddsCalculator {
 
     /** {@code P(success >= threshold)} summed from the distribution. */
     public static double cumulativeOdds(double attStrength, double defStrength, SuccessType threshold) {
-        double p = 0;
+        double total = 0;
         for (int i = threshold.ordinal(); i < SuccessType.values.length; i++) {
-            p += PW.getOdds(attStrength, defStrength, i);
+            total += PW.getOdds(attStrength, defStrength, i);
         }
-        return p;
+        return total;
     }
 
     static void writeOdds(double attStr, double defStr, double[] target) {
         if (target.length != SuccessType.values.length) {
             throw new IllegalArgumentException("target must be sized to SuccessType.values.length");
         }
-        for (int i = 0; i < target.length; i++) {
-            target[i] = PW.getOdds(attStr, defStr, i);
-        }
+        PW.getOdds4(attStr, defStr, target, 0);
     }
 }

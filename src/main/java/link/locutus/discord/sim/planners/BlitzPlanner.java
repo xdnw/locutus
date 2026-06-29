@@ -10,10 +10,13 @@ import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.sim.combat.UnitEconomy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.StrategicObjective;
+import link.locutus.discord.sim.planners.compile.CompiledActiveWar;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 
@@ -91,10 +94,31 @@ public final class BlitzPlanner {
             int currentTurn,
             Collection<BlitzFixedEdge> fixedEdges,
             int horizonTurns) {
+        return assign(
+            attackers,
+            defenders,
+            actingPolicy,
+            opposingPolicy,
+            currentTurn,
+            fixedEdges,
+            List.of(),
+            horizonTurns
+        );
+        }
+
+        public BlitzAssignment assign(
+            Collection<DBNationSnapshot> attackers,
+            Collection<DBNationSnapshot> defenders,
+            SidePolicy actingPolicy,
+            SidePolicy opposingPolicy,
+            int currentTurn,
+            Collection<BlitzFixedEdge> fixedEdges,
+            Collection<CompiledActiveWar> activeWars,
+            int horizonTurns) {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.BLITZ_ASSIGN)) {
             Objects.requireNonNull(actingPolicy, "actingPolicy");
             Objects.requireNonNull(opposingPolicy, "opposingPolicy");
-            return assignForPolicy(attackers, defenders, actingPolicy, opposingPolicy, currentTurn, fixedEdges, horizonTurns);
+            return assignForPolicy(attackers, defenders, actingPolicy, opposingPolicy, currentTurn, fixedEdges, activeWars, horizonTurns);
         }
     }
 
@@ -108,12 +132,38 @@ public final class BlitzPlanner {
             Collection<BlitzFixedEdge> sideBFixedEdges,
             int horizonTurns
         ) {
+        return assignSymmetric(
+                sideA,
+                sideB,
+                sideAPolicy,
+                sideBPolicy,
+                currentTurn,
+                sideAFixedEdges,
+                sideBFixedEdges,
+                List.of(),
+                List.of(),
+                horizonTurns
+        );
+    }
+
+    public BlitzAssignmentPair assignSymmetric(
+            Collection<DBNationSnapshot> sideA,
+            Collection<DBNationSnapshot> sideB,
+            SidePolicy sideAPolicy,
+            SidePolicy sideBPolicy,
+            int currentTurn,
+            Collection<BlitzFixedEdge> sideAFixedEdges,
+            Collection<BlitzFixedEdge> sideBFixedEdges,
+            Collection<CompiledActiveWar> sideAActiveWars,
+            Collection<CompiledActiveWar> sideBActiveWars,
+            int horizonTurns
+        ) {
         try (PlannerProfiler.ScopeToken ignored = PlannerProfiler.enter(PlannerProfiler.Scope.BLITZ_ASSIGN)) {
             Objects.requireNonNull(sideAPolicy, "sideAPolicy");
             Objects.requireNonNull(sideBPolicy, "sideBPolicy");
 
-            BlitzAssignment sideAAssignment = assignForPolicy(sideA, sideB, sideAPolicy, sideBPolicy, currentTurn, sideAFixedEdges, horizonTurns);
-            BlitzAssignment sideBAssignment = assignForPolicy(sideB, sideA, sideBPolicy, sideAPolicy, currentTurn, sideBFixedEdges, horizonTurns);
+            BlitzAssignment sideAAssignment = assignForPolicy(sideA, sideB, sideAPolicy, sideBPolicy, currentTurn, sideAFixedEdges, sideAActiveWars, horizonTurns);
+            BlitzAssignment sideBAssignment = assignForPolicy(sideB, sideA, sideBPolicy, sideAPolicy, currentTurn, sideBFixedEdges, sideBActiveWars, horizonTurns);
             Map<String, List<PlannerDiagnostic>> diagnosticsByPass = new LinkedHashMap<>();
             diagnosticsByPass.put(BlitzAssignmentPair.SIDE_A_PASS, sideAAssignment.diagnostics());
             diagnosticsByPass.put(BlitzAssignmentPair.SIDE_B_PASS, sideBAssignment.diagnostics());
@@ -128,9 +178,10 @@ public final class BlitzPlanner {
             SidePolicy opposingPolicy,
             int currentTurn,
             Collection<BlitzFixedEdge> fixedEdges,
+            Collection<CompiledActiveWar> activeWars,
             int horizonTurns
         ) {
-        AssignmentInputs inputs = normalizeAssignmentInputs(attackers, defenders, currentTurn, fixedEdges, horizonTurns);
+        AssignmentInputs inputs = normalizeAssignmentInputs(attackers, defenders, currentTurn, fixedEdges, activeWars, horizonTurns);
             if (!sidePolicy.allowInitialDeclarations()) {
                 List<PlannerDiagnostic> diagnostics = new ObjectArrayList<>();
                 collectDiagnostics(inputs.attackers(), inputs.defenders(), diagnostics);
@@ -144,7 +195,9 @@ public final class BlitzPlanner {
         PlannedAssignment planned = planPreparedAssignment(prepared);
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "assignmentPairs", assignmentPairCount(planned.assignment()));
         Map<Long, Integer> assignmentWarTypeOrdinalsByPair = assignmentWarTypeOrdinals(
-            prepared.candidates(),
+            prepared.candidates().edgeTable(),
+            prepared.attackerNationIds(),
+            prepared.defenderNationIds(),
             prepared.inputs().fixedEdges()
         );
         return new BlitzAssignment(
@@ -153,7 +206,11 @@ public final class BlitzPlanner {
             planned.objectiveSummary().mean(),
             planned.objectiveSummary(),
             assignmentWarTypeOrdinalsByPair,
-            prepared.candidates().initialAttackTypeOrdinalsByPair()
+            initialAttackTypeOrdinalsByPair(
+                    prepared.candidates().edgeTable(),
+                    prepared.attackerNationIds(),
+                    prepared.defenderNationIds()
+            )
         );
         }
 
@@ -162,21 +219,25 @@ public final class BlitzPlanner {
             Collection<DBNationSnapshot> defenders,
             int currentTurn,
             Collection<BlitzFixedEdge> fixedEdges,
+            Collection<CompiledActiveWar> activeWars,
             int horizonTurns
     ) {
         Objects.requireNonNull(attackers, "attackers");
         Objects.requireNonNull(defenders, "defenders");
         Objects.requireNonNull(fixedEdges, "fixedEdges");
+        Objects.requireNonNull(activeWars, "activeWars");
 
         List<DBNationSnapshot> attList = List.copyOf(attackers);
         List<DBNationSnapshot> defList = List.copyOf(defenders);
         List<BlitzFixedEdge> fixedEdgeList = List.copyOf(fixedEdges);
+        List<CompiledActiveWar> activeWarList = List.copyOf(activeWars);
         int planningHorizonTurns = Math.max(1, horizonTurns);
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "attackers", attList.size());
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "defenders", defList.size());
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "fixedEdges", fixedEdgeList.size());
+        PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "activeWars", activeWarList.size());
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "horizonTurns", planningHorizonTurns);
-        return new AssignmentInputs(attList, defList, fixedEdgeList, currentTurn, planningHorizonTurns);
+        return new AssignmentInputs(attList, defList, fixedEdgeList, activeWarList, currentTurn, planningHorizonTurns);
     }
 
     private PreparedAssignment prepareAssignment(AssignmentInputs inputs, SidePolicy actingPolicy, SidePolicy defendingPolicy) {
@@ -194,7 +255,8 @@ public final class BlitzPlanner {
             inputs.defenders(),
             overrides,
             treatyProvider,
-            activityWeights
+            activityWeights,
+            inputs.activeWars()
         );
 
         int[] attCaps = computeAttackerCaps(compiledScenario);
@@ -202,7 +264,16 @@ public final class BlitzPlanner {
         int[] attStrengthRank = computeStrengthRanks(compiledScenario);
         int[] attackerNationIds = attackerNationIds(compiledScenario);
         int[] defenderNationIds = defenderNationIds(compiledScenario);
-        BlitzGeneratedCandidates candidates = generateCandidates(compiledScenario, attCaps, defCaps, effectiveTuning, effectiveObjective);
+        BlitzGeneratedCandidates candidates = generateCandidates(
+            compiledScenario,
+            attCaps,
+            defCaps,
+            effectiveTuning,
+            effectiveObjective,
+            actingPolicy,
+            defendingPolicy,
+            inputs.planningHorizonTurns()
+        );
         PlannerProfiler.addCounter(PlannerProfiler.Scope.BLITZ_ASSIGN, "candidateEdges", candidates.edgeTable().edgeCount());
 
         List<PlannerDiagnostic> diagnostics = new ObjectArrayList<>();
@@ -257,7 +328,9 @@ public final class BlitzPlanner {
             );
         }
         Map<Long, Integer> assignmentWarTypeOrdinalsByPair = assignmentWarTypeOrdinals(
-                prepared.candidates(),
+            prepared.candidates().edgeTable(),
+            prepared.attackerNationIds(),
+            prepared.defenderNationIds(),
                 prepared.inputs().fixedEdges()
         );
         assignment = BlitzAssignmentRefiner.refine(
@@ -373,18 +446,67 @@ public final class BlitzPlanner {
             int[] attCaps,
             int[] defCaps,
             SimTuning effectiveTuning,
-            StrategicObjective effectiveObjective) {
+            StrategicObjective effectiveObjective,
+            SidePolicy actingPolicy,
+            SidePolicy defendingPolicy,
+            int horizonTurns) {
         CandidateEdgeTable edges = new CandidateEdgeTable();
 
-        OpeningEvaluator.evaluate(
-            compiledScenario,
-            effectiveTuning,
-            overrides,
-            effectiveObjective,
-            attCaps,
-            defCaps,
-            edges
-        );
+        if (LongHorizonAssignmentOptimizer.shouldOptimize(horizonTurns)) {
+            OpeningEvaluator.emitAdmittedSeeds(
+                compiledScenario,
+                effectiveObjective,
+                actingPolicy.opening(),
+                attCaps,
+                defCaps,
+                edges
+            );
+
+            rescoreOpeningCandidatesInPlace(
+                compiledScenario,
+                attCaps,
+                defCaps,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+                    effectiveObjective,
+                    actingPolicy,
+                    defendingPolicy
+                ),
+                horizonTurns,
+                edges
+            );
+
+            edges = retainProjectionRankedCandidates(
+                edges,
+                compiledScenario,
+                attCaps,
+                defCaps,
+                effectiveTuning,
+                effectiveObjective
+            );
+        } else {
+            OpeningEvaluator.evaluate(
+                compiledScenario,
+                effectiveTuning,
+                overrides,
+                effectiveObjective,
+                attCaps,
+                defCaps,
+                edges
+            );
+
+            rescoreOpeningCandidatesInPlace(
+                compiledScenario,
+                attCaps,
+                defCaps,
+                LongHorizonAssignmentOptimizer.ProjectionScoringContext.fromSidePolicies(
+                    effectiveObjective,
+                    actingPolicy,
+                    defendingPolicy
+                ),
+                horizonTurns,
+                edges
+            );
+        }
 
         for (int edge = 0; edge < edges.edgeCount(); edge++) {
             float attackerActivityWeight = compiledScenario.attackerActivityWeight(edges.attackerIndex(edge));
@@ -426,6 +548,192 @@ public final class BlitzPlanner {
         return new BlitzGeneratedCandidates(edges, candidateDefendersByAttacker, edgeScoresByPair, initialWarTypeOrdinalsByPair, initialAttackTypeOrdinalsByPair);
     }
 
+    private static CandidateEdgeTable retainProjectionRankedCandidates(
+            CandidateEdgeTable scoredEdges,
+            CompiledScenario compiledScenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            SimTuning tuning,
+            StrategicObjective objective
+    ) {
+        if (scoredEdges.edgeCount() == 0) {
+            return scoredEdges;
+        }
+        boolean[] retained = new boolean[scoredEdges.edgeCount()];
+        int[] defenderRetainedCounts = new int[compiledScenario.defenderCount()];
+        int maxRetainedPerAttacker = 1;
+        for (int attackerIndex = 0; attackerIndex < compiledScenario.attackerCount(); attackerIndex++) {
+            int retainLimit = projectionRetentionCapacity(attackerCaps[attackerIndex], tuning.candidatesPerAttacker());
+            maxRetainedPerAttacker = Math.max(maxRetainedPerAttacker, retainLimit);
+            retainBestAttackerEdges(scoredEdges, attackerIndex, retainLimit, retained, defenderRetainedCounts);
+        }
+        int defenderCoverageTarget = Math.max(maxRetainedPerAttacker, maxRetainedPerAttacker * 2);
+        for (int defenderIndex = 0; defenderIndex < compiledScenario.defenderCount(); defenderIndex++) {
+            if (defenderCaps[defenderIndex] <= 0) {
+                continue;
+            }
+            while (defenderRetainedCounts[defenderIndex] < defenderCoverageTarget) {
+                int bestEdge = bestUnretainedDefenderEdge(scoredEdges, defenderIndex, retained);
+                if (bestEdge < 0) {
+                    break;
+                }
+                retained[bestEdge] = true;
+                defenderRetainedCounts[defenderIndex]++;
+            }
+        }
+        CandidateEdgeTable result = new CandidateEdgeTable(scoredEdges.edgeCount());
+        result.configureComponentRetention(objective.candidateEdgeComponentPolicy());
+        for (int edge = 0; edge < scoredEdges.edgeCount(); edge++) {
+            if (!retained[edge]) {
+                continue;
+            }
+            result.add(
+                    scoredEdges.attackerIndex(edge),
+                    scoredEdges.defenderIndex(edge),
+                    scoredEdges.preferredWarTypeId(edge),
+                    scoredEdges.bestAttackTypeId(edge),
+                    scoredEdges.scalarScore(edge),
+                    scoredEdges.counterRisk(edge),
+                    scoredEdges.retainsImmediateHarm() ? scoredEdges.immediateHarm(edge) : 0f
+            );
+        }
+        return result;
+    }
+
+    private static void retainBestAttackerEdges(
+            CandidateEdgeTable scoredEdges,
+            int attackerIndex,
+            int retainLimit,
+            boolean[] retained,
+            int[] defenderRetainedCounts
+    ) {
+        for (int retainedForAttacker = 0; retainedForAttacker < retainLimit; retainedForAttacker++) {
+            int bestEdge = bestUnretainedAttackerEdge(scoredEdges, attackerIndex, retained);
+            if (bestEdge < 0) {
+                return;
+            }
+            retained[bestEdge] = true;
+            defenderRetainedCounts[scoredEdges.defenderIndex(bestEdge)]++;
+        }
+    }
+
+    private static int bestUnretainedAttackerEdge(CandidateEdgeTable scoredEdges, int attackerIndex, boolean[] retained) {
+        int bestEdge = -1;
+        for (int edge = 0; edge < scoredEdges.edgeCount(); edge++) {
+            if (retained[edge] || scoredEdges.attackerIndex(edge) != attackerIndex || !Float.isFinite(scoredEdges.scalarScore(edge))) {
+                continue;
+            }
+            if (bestEdge < 0 || isBetterProjectionEdge(scoredEdges, edge, bestEdge)) {
+                bestEdge = edge;
+            }
+        }
+        return bestEdge;
+    }
+
+    private static int bestUnretainedDefenderEdge(CandidateEdgeTable scoredEdges, int defenderIndex, boolean[] retained) {
+        int bestEdge = -1;
+        for (int edge = 0; edge < scoredEdges.edgeCount(); edge++) {
+            if (retained[edge] || scoredEdges.defenderIndex(edge) != defenderIndex || !Float.isFinite(scoredEdges.scalarScore(edge))) {
+                continue;
+            }
+            if (bestEdge < 0 || isBetterProjectionEdge(scoredEdges, edge, bestEdge)) {
+                bestEdge = edge;
+            }
+        }
+        return bestEdge;
+    }
+
+    private static boolean isBetterProjectionEdge(CandidateEdgeTable scoredEdges, int lhsEdge, int rhsEdge) {
+        int scoreComparison = Float.compare(scoredEdges.scalarScore(lhsEdge), scoredEdges.scalarScore(rhsEdge));
+        if (scoreComparison != 0) {
+            return scoreComparison > 0;
+        }
+        int attackerComparison = Integer.compare(scoredEdges.attackerIndex(lhsEdge), scoredEdges.attackerIndex(rhsEdge));
+        if (attackerComparison != 0) {
+            return attackerComparison < 0;
+        }
+        return scoredEdges.defenderIndex(lhsEdge) < scoredEdges.defenderIndex(rhsEdge);
+    }
+
+    private static int projectionRetentionCapacity(int attackerCap, int baseCandidatesPerAttacker) {
+        return Math.max(baseCandidatesPerAttacker, Math.max(1, (2 * Math.max(0, attackerCap)) - 2));
+    }
+
+    private static void rescoreOpeningCandidatesInPlace(
+            CompiledScenario compiledScenario,
+            int[] attackerCaps,
+            int[] defenderCaps,
+            LongHorizonAssignmentOptimizer.ProjectionScoringContext projectionContext,
+            int horizonTurns,
+            CandidateEdgeTable edges
+    ) {
+        if (edges.edgeCount() == 0) {
+            return;
+        }
+        LongHorizonControlProjection projection = LongHorizonControlProjection.create(
+                edges,
+                compiledScenario,
+                attackerCaps,
+                defenderCaps,
+                horizonTurns,
+                LongHorizonAssignmentOptimizer.horizonFactor(horizonTurns),
+                projectionContext.objective().usesWarSlotDenial(),
+                projectionContext.objective(),
+                projectionContext.attackerOpeningSettings(),
+                projectionContext.defenderOpeningSettings(),
+                projectionContext.attackerPlannerSettings(),
+                projectionContext.defenderPlannerSettings(),
+                projectionContext.attackerProjectionPolicies(),
+                projectionContext.defenderProjectionPolicies()
+        );
+        boolean[] edgeAssigned = new boolean[edges.edgeCount()];
+        int[] attackerCounts = new int[compiledScenario.attackerCount()];
+        int[] defenderCounts = new int[compiledScenario.defenderCount()];
+        for (int edge = 0; edge < edges.edgeCount(); edge++) {
+            int attackerIndex = edges.attackerIndex(edge);
+            int defenderIndex = edges.defenderIndex(edge);
+            edgeAssigned[edge] = true;
+            attackerCounts[attackerIndex] = 1;
+            defenderCounts[defenderIndex] = 1;
+            LongHorizonForwardProjection.ProjectedEvaluation evaluation = projection.projectedEvaluation(
+                    projectionContext.objective(),
+                    compiledScenario.attacker(attackerIndex).teamId(),
+                    compiledScenario.defender(defenderIndex).teamId(),
+                    edgeAssigned,
+                    attackerCounts,
+                    defenderCounts
+            );
+            double weightedScore = OpeningEvaluator.applyOpeningSettingsWeight(
+                    evaluation.comparisonScore(),
+                    projectionContext.attackerOpeningSettings(),
+                    warType(edges.preferredWarTypeId(edge)),
+                    attackType(edges.bestAttackTypeId(edge))
+            );
+            edges.setScalarScore(edge, finiteScore(weightedScore));
+            edgeAssigned[edge] = false;
+            attackerCounts[attackerIndex] = 0;
+            defenderCounts[defenderIndex] = 0;
+        }
+    }
+
+    private static float finiteScore(double score) {
+        return Double.isFinite(score) ? (float) score : Float.NEGATIVE_INFINITY;
+    }
+
+    private static WarType warType(byte warTypeOrdinal) {
+        if (warTypeOrdinal < 0 || warTypeOrdinal >= WarType.values.length) {
+            return null;
+        }
+        return WarType.values[warTypeOrdinal];
+    }
+
+    private static AttackType attackType(byte attackTypeOrdinal) {
+        if (attackTypeOrdinal < 0 || attackTypeOrdinal >= AttackType.values.length) {
+            return null;
+        }
+        return AttackType.values[attackTypeOrdinal];
+    }
+
     private static int validWarTypeOrdinal(byte warTypeOrdinal) {
         return warTypeOrdinal >= 0 && warTypeOrdinal < link.locutus.discord.apiv1.enums.WarType.values.length
                 ? warTypeOrdinal
@@ -433,17 +741,54 @@ public final class BlitzPlanner {
     }
 
     private static Map<Long, Integer> assignmentWarTypeOrdinals(
-            BlitzGeneratedCandidates candidates,
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds,
             List<BlitzFixedEdge> fixedEdges
     ) {
+        Long2IntOpenHashMap initialWarTypeOrdinalsByPair = initialWarTypeOrdinalsByPair(
+                edges,
+                attackerNationIds,
+                defenderNationIds
+        );
         if (fixedEdges.isEmpty()) {
-            return candidates.initialWarTypeOrdinalsByPair();
+            return initialWarTypeOrdinalsByPair;
         }
-        Long2IntOpenHashMap merged = new Long2IntOpenHashMap(candidates.initialWarTypeOrdinalsByPair());
+        Long2IntOpenHashMap merged = new Long2IntOpenHashMap(initialWarTypeOrdinalsByPair);
         for (BlitzFixedEdge fixedEdge : fixedEdges) {
             merged.put(pairKey(fixedEdge.attackerNationId(), fixedEdge.defenderNationId()), fixedEdge.warTypeOrdinal());
         }
         return Long2IntMaps.unmodifiable(merged);
+    }
+
+    private static Long2IntOpenHashMap initialWarTypeOrdinalsByPair(
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds
+    ) {
+        Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, edges.edgeCount() * 2));
+        for (int edge = 0; edge < edges.edgeCount(); edge++) {
+            ordinalsByPair.put(
+                    pairKey(attackerNationIds[edges.attackerIndex(edge)], defenderNationIds[edges.defenderIndex(edge)]),
+                    validWarTypeOrdinal(edges.preferredWarTypeId(edge))
+            );
+        }
+        return ordinalsByPair;
+    }
+
+    private static Long2IntOpenHashMap initialAttackTypeOrdinalsByPair(
+            CandidateEdgeTable edges,
+            int[] attackerNationIds,
+            int[] defenderNationIds
+    ) {
+        Long2IntOpenHashMap ordinalsByPair = new Long2IntOpenHashMap(Math.max(16, edges.edgeCount() * 2));
+        for (int edge = 0; edge < edges.edgeCount(); edge++) {
+            ordinalsByPair.put(
+                    pairKey(attackerNationIds[edges.attackerIndex(edge)], defenderNationIds[edges.defenderIndex(edge)]),
+                    (int) edges.bestAttackTypeId(edge)
+            );
+        }
+        return ordinalsByPair;
     }
 
     // ============================================================
@@ -829,6 +1174,7 @@ public final class BlitzPlanner {
         List<DBNationSnapshot> attackers,
         List<DBNationSnapshot> defenders,
         List<BlitzFixedEdge> fixedEdges,
+        List<CompiledActiveWar> activeWars,
         int currentTurn,
         int planningHorizonTurns
     ) {

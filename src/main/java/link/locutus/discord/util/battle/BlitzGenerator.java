@@ -604,12 +604,36 @@ public class BlitzGenerator {
         link.locutus.discord.sim.planners.BlitzPlanner planner = new link.locutus.discord.sim.planners.BlitzPlanner(
                 tuning, treaties, link.locutus.discord.sim.planners.OverrideSet.EMPTY,
             objective);
+        link.locutus.discord.sim.planners.SideOpeningSettings openingSettings =
+            link.locutus.discord.sim.planners.SideOpeningSettings.defaults(objective);
+        link.locutus.discord.sim.planners.SidePlannerSettings basePlannerSettings =
+            link.locutus.discord.sim.planners.SidePlannerSettings.fromTuning(tuning);
+        link.locutus.discord.sim.planners.SideProjectionPolicies heuristicPolicies =
+            link.locutus.discord.sim.planners.SideProjectionPolicies.heuristic();
 
         link.locutus.discord.sim.planners.BlitzAssignment result = planner.assignSymmetric(
             attackerSnaps,
             defenderSnaps,
-            link.locutus.discord.sim.planners.SidePolicy.legacy("acting", objective),
-            link.locutus.discord.sim.planners.SidePolicy.legacyPassive("nonActing", objective),
+            new link.locutus.discord.sim.planners.SidePolicy(
+                "acting",
+                objective,
+                basePlannerSettings.withIdlePressureWeight(
+                    link.locutus.discord.sim.planners.SidePlannerSettings.DEFAULT_ACTING_IDLE_PRESSURE_WEIGHT
+                ),
+                openingSettings,
+                heuristicPolicies,
+                link.locutus.discord.sim.planners.SidePolicy.NO_OP_ACTOR,
+                true
+            ),
+            new link.locutus.discord.sim.planners.SidePolicy(
+                "nonActing",
+                objective,
+                basePlannerSettings,
+                openingSettings,
+                heuristicPolicies,
+                link.locutus.discord.sim.planners.SidePolicy.NO_OP_ACTOR,
+                false
+            ),
             0,
             java.util.List.of(),
             java.util.List.of(),

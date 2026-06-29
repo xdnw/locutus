@@ -9,14 +9,17 @@ import link.locutus.discord.sim.CandidateEdgeComponentPolicy;
 import link.locutus.discord.sim.SimTuning;
 import link.locutus.discord.sim.SimWorld;
 import link.locutus.discord.sim.StrategicAssetValue;
-import link.locutus.discord.sim.StrategicEvaluationComponents;
 import link.locutus.discord.sim.StrategicObjective;
 import link.locutus.discord.sim.StrategicValueView;
+import link.locutus.discord.sim.combat.AttackScratch;
+import link.locutus.discord.sim.combat.CombatKernel;
+import link.locutus.discord.sim.combat.MutableAttackResult;
 import link.locutus.discord.sim.actions.SimAction;
 import link.locutus.discord.sim.planners.compile.CompiledScenario;
 import link.locutus.discord.sim.planners.compile.ScenarioCompiler;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +34,7 @@ class OpeningEvaluatorCoverageTest {
     private static final ScenarioCompiler SCENARIO_COMPILER = new ScenarioCompiler();
     private static final StrategicObjective PRESSURE_ONLY_OBJECTIVE = new PressureOnlyObjective();
     private static final CandidateEdgeComponentPolicy SPARSE_COMPONENT_POLICY =
-            new CandidateEdgeComponentPolicy(true, false, false, true, false);
+            new CandidateEdgeComponentPolicy(true);
     private static final StrategicObjective SPARSE_COMPONENT_OBJECTIVE =
             new SparseComponentObjective(SPARSE_COMPONENT_POLICY);
 
@@ -220,7 +223,7 @@ class OpeningEvaluatorCoverageTest {
         DBNationSnapshot attackerOne = buildNation(1, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220);
         DBNationSnapshot attackerTwo = buildNation(2, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220);
         DBNationSnapshot contestedHighThreat = buildNation(101, DEFENDER_TEAM, 1_850.0, 12, 6_000, 950, 1_050, 210);
-        DBNationSnapshot viableSecondary = buildNation(102, DEFENDER_TEAM, 1_200.0, 11, 1_200, 160, 120, 24);
+                DBNationSnapshot viableSecondary = buildNation(102, DEFENDER_TEAM, 1_400.0, 11, 1_200, 160, 120, 24);
 
         OpeningEvaluator.EvaluatedEdge firstDefender = OpeningEvaluator.evaluateOpening(
                 attackerOne,
@@ -279,48 +282,12 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void controlObjectiveRewardsHigherProbeAttackerOnSameHighThreatDefender() {
-        DBNationSnapshot strongAttacker = buildNation(11, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220);
-        DBNationSnapshot weakAttacker = buildNation(12, ATTACKER_TEAM, 1_250.0, 12, 4_900, 800, 900, 150);
-        DBNationSnapshot highThreatDefender = buildNation(111, DEFENDER_TEAM, 1_850.0, 12, 6_000, 950, 1_050, 210);
-
-        OpeningEvaluator.ProbeResult strongProbe = new OpeningEvaluator.ProbeResult();
-        OpeningEvaluator.ProbeResult weakProbe = new OpeningEvaluator.ProbeResult();
-        OpeningEvaluator.viabilityProbe(strongAttacker, highThreatDefender, strongProbe);
-        OpeningEvaluator.viabilityProbe(weakAttacker, highThreatDefender, weakProbe);
-
-        assertTrue(strongProbe.probe() >= 0.15f, "Expected strong attacker to remain admitted");
-        assertTrue(weakProbe.probe() >= 0.15f, "Expected weak attacker to remain admitted for comparison");
-        assertTrue(strongProbe.probe() > weakProbe.probe(), "Test setup must create a higher-probe strong opener");
-
-        OpeningEvaluator.EvaluatedEdge strongEdge = OpeningEvaluator.evaluateOpening(
-                strongAttacker,
-                highThreatDefender,
-                BlitzObjective.CONTROL.objective(),
-                CandidateEdgeComponentPolicy.none()
-        );
-        OpeningEvaluator.EvaluatedEdge weakEdge = OpeningEvaluator.evaluateOpening(
-                weakAttacker,
-                highThreatDefender,
-                BlitzObjective.CONTROL.objective(),
-                CandidateEdgeComponentPolicy.none()
-        );
-
-        assertTrue(Float.isFinite(strongEdge.score()), "Expected strong attacker edge to remain admitted");
-        assertTrue(Float.isFinite(weakEdge.score()), "Expected weak attacker edge to remain admitted");
-        assertTrue(
-                strongEdge.score() > weakEdge.score(),
-                "Control scoring should prefer the stronger higher-probe opener on the same high-threat defender"
-        );
-    }
-
-    @Test
     void spilloverCanAddHighPriorityDefenderWhileCoverageRemainsBelowTarget() {
-        StrategicObjective objective = BlitzObjective.CONTROL.objective();
+                StrategicObjective objective = sourceDiversityControlObjective();
         DBNationSnapshot strongAttacker = buildNation(13, ATTACKER_TEAM, 2_050.0, 27, 450_000, 36_000, 2_900, 420);
-        DBNationSnapshot flexibleAttacker = buildNation(14, ATTACKER_TEAM, 820.0, 18, 37_500, 3_000, 240, 37);
+        DBNationSnapshot flexibleAttacker = buildNation(14, ATTACKER_TEAM, 1_970.0, 25, 300_000, 24_000, 1_900, 300);
         DBNationSnapshot highPriorityDefender = buildNation(112, DEFENDER_TEAM, 1_990.0, 25, 387_500, 31_000, 2_480, 387);
-        DBNationSnapshot softerDefender = buildNation(113, DEFENDER_TEAM, 1_200.0, 11, 1_200, 160, 120, 24);
+                DBNationSnapshot softerDefender = buildNation(113, DEFENDER_TEAM, 1_500.0, 11, 1_200, 160, 120, 24);
 
         OpeningEvaluator.EvaluatedEdge strongAttackerHighPriority = OpeningEvaluator.evaluateOpening(
                 strongAttacker,
@@ -349,15 +316,14 @@ class OpeningEvaluatorCoverageTest {
 
         assertTrue(Float.isFinite(strongAttackerHighPriority.score()), "Expected high-priority defender to be admitted for the strong attacker");
         assertTrue(Float.isFinite(strongAttackerSofter.score()), "Expected softer defender to be admitted for the strong attacker");
-        assertTrue(Float.isFinite(flexibleAttackerHighPriority.score()), "Expected high-priority defender to remain admitted for the flexible attacker");
+        assertTrue(Float.isFinite(flexibleAttackerHighPriority.score()),
+                "Expected high-priority defender to remain admitted for the flexible attacker: "
+                        + edgeSummary(flexibleAttackerHighPriority));
         assertTrue(Float.isFinite(flexibleAttackerSofter.score()), "Expected softer defender to remain admitted for the flexible attacker");
         assertTrue(
-                strongAttackerHighPriority.score() > strongAttackerSofter.score(),
-                "Test setup must make the strong attacker emit the high-priority defender first"
-        );
-        assertTrue(
                 flexibleAttackerSofter.score() > flexibleAttackerHighPriority.score(),
-                "Test setup must leave the high-priority defender for the spillover path on the second attacker"
+                "Test setup must leave the high-priority defender for the spillover path on the second attacker: softer="
+                        + edgeSummary(flexibleAttackerSofter) + " highPriority=" + edgeSummary(flexibleAttackerHighPriority)
         );
 
         CompiledScenario scenario = SCENARIO_COMPILER.compile(
@@ -379,28 +345,100 @@ class OpeningEvaluatorCoverageTest {
                 out
         );
 
-        boolean hasStrongAttackerHighPriority = false;
-        boolean hasFlexibleAttackerSofter = false;
         boolean hasFlexibleAttackerHighPriority = false;
+                int highPrioritySources = 0;
         for (int edge = 0; edge < out.edgeCount(); edge++) {
             int attackerNationId = scenario.attackerNationId(out.attackerIndex(edge));
             int defenderNationId = scenario.defenderNationId(out.defenderIndex(edge));
-            if (attackerNationId == strongAttacker.nationId() && defenderNationId == highPriorityDefender.nationId()) {
-                hasStrongAttackerHighPriority = true;
-            }
-            if (attackerNationId == flexibleAttacker.nationId() && defenderNationId == softerDefender.nationId()) {
-                hasFlexibleAttackerSofter = true;
-            }
+                        if (defenderNationId == highPriorityDefender.nationId()) {
+                                highPrioritySources++;
+                        }
             if (attackerNationId == flexibleAttacker.nationId() && defenderNationId == highPriorityDefender.nationId()) {
                 hasFlexibleAttackerHighPriority = true;
             }
         }
 
-        assertTrue(hasStrongAttackerHighPriority, "Expected the high-priority defender to keep the strong attacker's primary edge");
-        assertTrue(hasFlexibleAttackerSofter, "Expected the second attacker to keep its softer primary edge");
+                assertEquals(2, highPrioritySources,
+                                "Expected the high-priority defender to keep both viable sources while below target, edges="
+                                                + edgeList(out, scenario));
         assertTrue(
                 hasFlexibleAttackerHighPriority,
-                "Spillover should still emit a high-priority defender while that defender remains below the global coverage target"
+                "Source diversity should keep the flexible high-priority defender lane while that defender remains below the global coverage target, edges="
+                        + edgeList(out, scenario)
+        );
+    }
+
+    @Test
+    void sourceDiversitySpilloverCanAddHighPriorityDefenderAfterCoverageTargetIsMet() {
+                StrategicObjective objective = sourceDiversityControlObjective();
+        DBNationSnapshot strongAttackerOne = buildNation(15, ATTACKER_TEAM, 2_050.0, 27, 450_000, 36_000, 2_900, 420);
+        DBNationSnapshot strongAttackerTwo = buildNation(16, ATTACKER_TEAM, 2_030.0, 27, 440_000, 35_200, 2_850, 410);
+        DBNationSnapshot flexibleAttacker = buildNation(17, ATTACKER_TEAM, 1_970.0, 25, 300_000, 24_000, 1_900, 300);
+        DBNationSnapshot highPriorityDefender = buildNation(114, DEFENDER_TEAM, 1_990.0, 25, 387_500, 31_000, 2_480, 387);
+        DBNationSnapshot softerDefender = buildNation(115, DEFENDER_TEAM, 1_500.0, 11, 1_200, 160, 120, 24);
+
+        OpeningEvaluator.EvaluatedEdge flexibleHighPriority = OpeningEvaluator.evaluateOpening(
+                flexibleAttacker,
+                highPriorityDefender,
+                objective,
+                CandidateEdgeComponentPolicy.none()
+        );
+        OpeningEvaluator.EvaluatedEdge flexibleSofter = OpeningEvaluator.evaluateOpening(
+                flexibleAttacker,
+                softerDefender,
+                objective,
+                CandidateEdgeComponentPolicy.none()
+        );
+
+        assertTrue(Float.isFinite(flexibleHighPriority.score()),
+                "Expected high-priority defender to remain admitted for the flexible attacker: "
+                        + edgeSummary(flexibleHighPriority));
+        assertTrue(Float.isFinite(flexibleSofter.score()), "Expected softer defender to remain admitted for the flexible attacker");
+        assertTrue(
+                flexibleSofter.score() > flexibleHighPriority.score(),
+                "Test setup must leave the high-priority defender outside the flexible attacker's top-1 lane: softer="
+                        + edgeSummary(flexibleSofter) + " highPriority=" + edgeSummary(flexibleHighPriority)
+        );
+
+        CompiledScenario scenario = SCENARIO_COMPILER.compile(
+                List.of(strongAttackerOne, strongAttackerTwo, flexibleAttacker),
+                List.of(highPriorityDefender, softerDefender),
+                OverrideSet.EMPTY,
+                TreatyProvider.NONE,
+                Map.of()
+        );
+        CandidateEdgeTable out = new CandidateEdgeTable();
+
+        OpeningEvaluator.evaluate(
+                scenario,
+                tuningWithCandidatesPerAttacker(1),
+                OverrideSet.EMPTY,
+                objective,
+                new int[]{1, 1, 1},
+                new int[]{1, 1},
+                out
+        );
+
+        int highPrioritySources = 0;
+        boolean hasFlexibleHighPriority = false;
+        for (int edge = 0; edge < out.edgeCount(); edge++) {
+            int attackerNationId = scenario.attackerNationId(out.attackerIndex(edge));
+            int defenderNationId = scenario.defenderNationId(out.defenderIndex(edge));
+            if (defenderNationId == highPriorityDefender.nationId()) {
+                highPrioritySources++;
+            }
+            if (attackerNationId == flexibleAttacker.nationId()
+                    && defenderNationId == highPriorityDefender.nationId()) {
+                hasFlexibleHighPriority = true;
+            }
+        }
+
+        assertEquals(3, highPrioritySources,
+                "The high-priority defender should retain one over-target alternate source, edges=" + edgeList(out, scenario));
+        assertTrue(
+                hasFlexibleHighPriority,
+                "Source-diversity spillover should expose the flexible attacker's high-priority defender lane after normal coverage is already full, edges="
+                        + edgeList(out, scenario)
         );
     }
 
@@ -410,7 +448,7 @@ class OpeningEvaluatorCoverageTest {
         DBNationSnapshot defender = buildNation(121, DEFENDER_TEAM, 1_850.0, 12, 6_000, 950, 1_050, 210);
 
         OpeningEvaluator.CandidateOpeningEvaluator candidateOpeningEvaluator =
-                new OpeningEvaluator.CandidateOpeningEvaluator(PRESSURE_ONLY_OBJECTIVE, 3);
+                new OpeningEvaluator.CandidateOpeningEvaluator(PRESSURE_ONLY_OBJECTIVE);
         OpeningEvaluator.EvaluatedEdge direct = OpeningEvaluator.evaluateOpening(
                 attacker,
                 defender,
@@ -449,6 +487,155 @@ class OpeningEvaluatorCoverageTest {
         assertEquals(direct.firstAttackTypeId(), out.bestAttackTypeId(0));
     }
 
+        @Test
+        void viabilityProbeWarTypeResetMatchesFreshReadOnlyBind() throws Exception {
+                DBNationSnapshot attacker = buildNation(31, ATTACKER_TEAM, 1_720.0, 18, 21_000, 1_600, 850, 40);
+                DBNationSnapshot defender = buildNation(131, DEFENDER_TEAM, 1_680.0, 17, 18_500, 1_050, 620, 18);
+
+                assertEquals(
+                                conventionalProbeWithFreshBind(attacker, defender),
+                                conventionalProbeWithHoistedReadOnlyBind(attacker, defender),
+                                1.0e-9,
+                                "Conventional probe should match when nation binding is hoisted and only war-state resets per war type"
+                );
+        }
+
+        @Test
+        void specialistProbeWarTypeResetMatchesFreshReadOnlyBind() throws Exception {
+                DBNationSnapshot attacker = buildNation(32, ATTACKER_TEAM, 1_720.0, 18, 21_000, 1_600, 850, 40)
+                                .toBuilder()
+                                .unit(MilitaryUnit.MISSILE, 1)
+                                .projectBits(1L << link.locutus.discord.apiv1.enums.city.project.Projects.MISSILE_LAUNCH_PAD.ordinal())
+                                .build();
+                DBNationSnapshot defender = buildNation(132, DEFENDER_TEAM, 1_680.0, 17, 18_500, 1_050, 620, 18);
+
+                assertEquals(
+                                specialistProbeWithFreshBind(attacker, defender),
+                                specialistProbeWithHoistedReadOnlyBind(attacker, defender),
+                                1.0e-9,
+                                "Specialist probe should match when nation binding is hoisted and only war-state resets per war type"
+                );
+        }
+
+        private static double conventionalProbeWithFreshBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnly = context.getClass().getDeclaredMethod(
+                                "bindReadOnly",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class,
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnly.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        bindReadOnly.invoke(context, attacker, defender, warType);
+                        for (AttackType type : OpeningEvaluator.CONVENTIONAL_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.admissionSignal(attackContext, type, scratch));
+                        }
+                }
+                return best;
+        }
+
+        private static double conventionalProbeWithHoistedReadOnlyBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnlyNations = context.getClass().getDeclaredMethod(
+                                "bindReadOnlyNations",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class
+                );
+                java.lang.reflect.Method resetWarState = context.getClass().getDeclaredMethod(
+                                "resetWarState",
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnlyNations.setAccessible(true);
+                resetWarState.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                bindReadOnlyNations.invoke(context, attacker, defender);
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        resetWarState.invoke(context, warType);
+                        for (AttackType type : OpeningEvaluator.CONVENTIONAL_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.admissionSignal(attackContext, type, scratch));
+                        }
+                }
+                return best;
+        }
+
+        private static double specialistProbeWithFreshBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnly = context.getClass().getDeclaredMethod(
+                                "bindReadOnly",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class,
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnly.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                MutableAttackResult result = new MutableAttackResult();
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        bindReadOnly.invoke(context, attacker, defender, warType);
+                        for (AttackType type : OpeningEvaluator.SPECIALIST_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.specialistAdmissionSignal(attackContext, type, scratch, result));
+                        }
+                }
+                return best;
+        }
+
+        private static double specialistProbeWithHoistedReadOnlyBind(DBNationSnapshot attacker, DBNationSnapshot defender) throws Exception {
+                Object context = newPairAttackContext();
+                java.lang.reflect.Method bindReadOnlyNations = context.getClass().getDeclaredMethod(
+                                "bindReadOnlyNations",
+                                DBNationSnapshot.class,
+                                DBNationSnapshot.class
+                );
+                java.lang.reflect.Method resetWarState = context.getClass().getDeclaredMethod(
+                                "resetWarState",
+                                link.locutus.discord.apiv1.enums.WarType.class
+                );
+                bindReadOnlyNations.setAccessible(true);
+                resetWarState.setAccessible(true);
+
+                CombatKernel.AttackContext attackContext = (CombatKernel.AttackContext) context;
+                AttackScratch scratch = new AttackScratch();
+                MutableAttackResult result = new MutableAttackResult();
+                bindReadOnlyNations.invoke(context, attacker, defender);
+                double best = 0d;
+                for (link.locutus.discord.apiv1.enums.WarType warType : OpeningEvaluator.OPENING_WAR_TYPES) {
+                        resetWarState.invoke(context, warType);
+                        for (AttackType type : OpeningEvaluator.SPECIALIST_OPENING_ATTACK_TYPES) {
+                                if (!OpeningEvaluator.isLegalOpeningAttack(attackContext.attacker(), attackContext.attackerMaps(), type)) {
+                                        continue;
+                                }
+                                best = Math.max(best, CombatKernel.specialistAdmissionSignal(attackContext, type, scratch, result));
+                        }
+                }
+                return best;
+        }
+
+        private static Object newPairAttackContext() throws Exception {
+                Class<?> contextClass = Class.forName("link.locutus.discord.sim.planners.OpeningEvaluator$PairAttackContext");
+                Constructor<?> constructor = contextClass.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+        }
+
     @Test
     void singlePairCollectorRetainsOnlyRequestedComponents() {
         DBNationSnapshot attacker = buildNation(31, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220);
@@ -458,7 +645,7 @@ class OpeningEvaluatorCoverageTest {
                 attacker,
                 defender,
                 SPARSE_COMPONENT_OBJECTIVE,
-                new CandidateEdgeComponentPolicy(true, true, true, true, true)
+                CandidateEdgeComponentPolicy.harmOnly()
         );
         OpeningEvaluator.EvaluatedEdge direct = OpeningEvaluator.evaluateOpening(
                 attacker,
@@ -467,31 +654,16 @@ class OpeningEvaluatorCoverageTest {
                 SPARSE_COMPONENT_POLICY
         );
         OpeningEvaluator.CandidateOpeningEvaluator candidateOpeningEvaluator =
-                new OpeningEvaluator.CandidateOpeningEvaluator(SPARSE_COMPONENT_OBJECTIVE, 3);
+                new OpeningEvaluator.CandidateOpeningEvaluator(SPARSE_COMPONENT_OBJECTIVE);
         OpeningEvaluator.EvaluatedEdge reusable = candidateOpeningEvaluator.evaluate(attacker, defender);
 
         assertTrue(Float.isFinite(raw.score()), "Expected raw single-pair evaluation to stay admitted");
-        assertTrue(
-                Math.abs(raw.selfExposure()) > 1.0e-5f
-                        || Math.abs(raw.resourceSwing()) > 1.0e-5f
-                        || Math.abs(raw.futureWarLeverage()) > 1.0e-5f,
-                "Test setup must produce at least one non-zero unretained component"
-        );
-
         assertEquals(raw.immediateHarm(), direct.immediateHarm(), 1.0e-5f);
-        assertEquals(0f, direct.selfExposure(), 1.0e-5f);
-        assertEquals(0f, direct.resourceSwing(), 1.0e-5f);
-        assertEquals(raw.controlLeverage(), direct.controlLeverage(), 1.0e-5f);
-        assertEquals(0f, direct.futureWarLeverage(), 1.0e-5f);
 
         assertEquals(direct.score(), reusable.score(), 1.0e-5f);
         assertEquals(direct.preferredWarTypeId(), reusable.preferredWarTypeId());
         assertEquals(direct.firstAttackTypeId(), reusable.firstAttackTypeId());
         assertEquals(direct.immediateHarm(), reusable.immediateHarm(), 1.0e-5f);
-        assertEquals(direct.selfExposure(), reusable.selfExposure(), 1.0e-5f);
-        assertEquals(direct.resourceSwing(), reusable.resourceSwing(), 1.0e-5f);
-        assertEquals(direct.controlLeverage(), reusable.controlLeverage(), 1.0e-5f);
-        assertEquals(direct.futureWarLeverage(), reusable.futureWarLeverage(), 1.0e-5f);
 
         CompiledScenario scenario = SCENARIO_COMPILER.compile(
                 List.of(attacker),
@@ -517,19 +689,11 @@ class OpeningEvaluatorCoverageTest {
         assertEquals(direct.preferredWarTypeId(), out.preferredWarTypeId(0));
         assertEquals(direct.firstAttackTypeId(), out.bestAttackTypeId(0));
         assertTrue(out.retainsImmediateHarm());
-        assertFalse(out.retainsSelfExposure());
-        assertFalse(out.retainsResourceSwing());
-        assertTrue(out.retainsControlLeverage());
-        assertFalse(out.retainsFutureWarLeverage());
         assertEquals(direct.immediateHarm(), out.immediateHarm(0), 1.0e-5f);
-        assertThrows(IllegalStateException.class, () -> out.selfExposure(0));
-        assertThrows(IllegalStateException.class, () -> out.resourceSwing(0));
-        assertEquals(direct.controlLeverage(), out.controlLeverage(0), 1.0e-5f);
-        assertThrows(IllegalStateException.class, () -> out.futureWarLeverage(0));
     }
 
     @Test
-    void outmatchedAttackerGetsEdgeUnderControlObjectiveDueToPositiveBaseline() {
+    void outmatchedAttackerDoesNotGetControlEdgeFromPressureOnlyBaseline() {
         // Outmatched attacker: ~15% of normal military — probe < 0.15 against the strong defender.
         DBNationSnapshot outmatchedAttacker = buildNation(51, ATTACKER_TEAM, 820.0, 18,
                 37_500, 3_000, 240, 37);
@@ -557,17 +721,17 @@ class OpeningEvaluatorCoverageTest {
                 "NET_DAMAGE baseline is 0 for outmatched attacker — no edge expected"
         );
 
-        // CONTROL baseline is 4.0 * targetPressure > 0 → edge should be produced via rollout
-        // even though no single attack improves the score above that baseline.
+        // CONTROL target pressure is not standalone strategic progress. A pressure-only
+        // fallback must not create an empty declaration when no action changes the outcome.
         OpeningEvaluator.EvaluatedEdge controlEdge = OpeningEvaluator.evaluateOpening(
                 outmatchedAttacker,
                 strongDefender,
                 BlitzObjective.CONTROL.objective(),
                 CandidateEdgeComponentPolicy.none()
         );
-        assertTrue(
-                Float.isFinite(controlEdge.score()) && controlEdge.score() > 0f,
-                "CONTROL baseline is 4.0*targetPressure > 0 — outmatched attacker should receive an edge"
+        assertFalse(
+                Float.isFinite(controlEdge.score()),
+                "CONTROL should not admit pressure-only fallback declarations with no actionable leverage"
         );
 
         // MINIMUM_DAMAGE_RECEIVED baseline is 0.35*harm − exposure = 0 → no edge.
@@ -584,8 +748,54 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void controlRolloutFallbackEdgeScoreIsBelowParityAttackersFullRolloutScore() {
-        // Outmatched attacker: probe < 0.15, gets edge only via positive-baseline fallback.
+    void openingAdmissionRejectsDelayedSpecialistFallbackWhenSpecialistIsNotImmediatelyLegal() {
+        DBNationSnapshot specialistAttacker = buildNation(54, ATTACKER_TEAM, 820.0, 18,
+                37_500, 3_000, 240, 37)
+                .toBuilder()
+                .unit(MilitaryUnit.MISSILE, 2)
+                .unit(MilitaryUnit.NUKE, 1)
+                .projectBits(
+                        (1L << link.locutus.discord.apiv1.enums.city.project.Projects.MISSILE_LAUNCH_PAD.ordinal())
+                                | (1L << link.locutus.discord.apiv1.enums.city.project.Projects.NUCLEAR_RESEARCH_FACILITY.ordinal())
+                )
+                .build();
+        DBNationSnapshot strongDefender = buildNation(154, DEFENDER_TEAM, 1_990.0, 25,
+                387_500, 31_000, 2_480, 387)
+                .toBuilder()
+                .cityInfra(uniformInfra(25, 2_000.0))
+                .build();
+
+        OpeningEvaluator.ProbeResult probeResult = new OpeningEvaluator.ProbeResult();
+        OpeningEvaluator.viabilityProbe(specialistAttacker, strongDefender, probeResult);
+        assertTrue(
+                probeResult.probe() < CandidateEdgeAdmissionPolicy.DEFAULT_MINIMUM_VIABILITY_PROBE,
+                "Test setup must remain conventionally outmatched"
+        );
+        OpeningEvaluator.SpecialistProbeResult specialistProbe = new OpeningEvaluator.SpecialistProbeResult();
+        new OpeningEvaluator.SpecialistProbeEvaluator().evaluate(specialistAttacker, strongDefender, specialistProbe);
+        assertTrue(
+                specialistProbe.probe() > 0f,
+                "Test setup must expose positive delayed specialist pressure, got " + specialistProbe.probe()
+                        + " attackType=" + specialistProbe.bestAttackTypeId()
+        );
+
+        OpeningEvaluator.EvaluatedEdge controlEdge = OpeningEvaluator.evaluateOpening(
+                specialistAttacker,
+                strongDefender,
+                BlitzObjective.CONTROL.objective(),
+                CandidateEdgeComponentPolicy.none()
+        );
+
+        assertTrue(
+                !Float.isFinite(controlEdge.score()),
+                "Expected delayed specialist fallback to be rejected, got score=" + controlEdge.score()
+                        + " attackType=" + controlEdge.firstAttackTypeId()
+        );
+    }
+
+    @Test
+    void openingAdmissionRejectsPressureOnlyFallbacks() {
+        // Outmatched attacker: probe < 0.15, should not get a pressure-only fallback edge.
         DBNationSnapshot outmatchedAttacker = buildNation(52, ATTACKER_TEAM, 820.0, 18,
                 37_500, 3_000, 240, 37);
         // Parity attacker: probe >= 0.15, gets full improving rollout under CONTROL.
@@ -627,24 +837,15 @@ class OpeningEvaluatorCoverageTest {
         );
 
         float fallbackScore = Float.NaN;
-        float primaryScore = Float.NaN;
         for (int edge = 0; edge < out.edgeCount(); edge++) {
             int attackerNationId = scenario.attackerNationId(out.attackerIndex(edge));
             if (attackerNationId == outmatchedAttacker.nationId()) {
                 fallbackScore = out.scalarScore(edge);
-            } else if (attackerNationId == parityAttacker.nationId()) {
-                primaryScore = out.scalarScore(edge);
             }
         }
 
-        assertTrue(Float.isFinite(fallbackScore),
-                "Outmatched attacker should receive a positive-baseline CONTROL edge");
-        assertTrue(Float.isFinite(primaryScore),
-                "Parity attacker should receive a full-rollout CONTROL edge");
-        assertTrue(
-                fallbackScore < primaryScore,
-                "Positive-baseline fallback score should be below the full-rollout primary score"
-        );
+        assertFalse(Float.isFinite(fallbackScore),
+                "Outmatched attacker should not receive a pressure-only CONTROL fallback edge");
     }
 
     @Test
@@ -687,7 +888,7 @@ class OpeningEvaluatorCoverageTest {
     }
 
     @Test
-    void openingRolloutDoesNotPreferInfraWhenUnitDamageIsAvailable() {
+    void openingSeedKeepsAdmittedPairAndLegalAttackWithoutRolloutScoring() {
         DBNationSnapshot attacker = buildNation(41, ATTACKER_TEAM, 1_550.0, 12, 6_500, 1_100, 1_250, 220)
             .toBuilder()
             .cityInfra(uniformInfra(12, 250.0))
@@ -705,11 +906,45 @@ class OpeningEvaluatorCoverageTest {
         );
 
         assertTrue(Float.isFinite(edge.score()), "Expected the militarized pair to remain admitted");
-        assertTrue(edge.firstAttackTypeId() >= 0, "Expected rollout to choose an opening attack");
-        assertFalse(
-            edge.firstAttackTypeId() == AttackType.AIRSTRIKE_INFRA.ordinal(),
-            "Opening rollout should value unit/control progress before raw infra damage"
-        );
+        assertTrue(edge.firstAttackTypeId() >= 0, "Expected admission to provide a legal opening attack");
+    }
+
+    @Test
+    void topKCollectorSortSelectedDescendingOrdersAttackerStableByScoreThenDefender() {
+        OpeningEvaluator.TopKEdgeCollector collector =
+                new OpeningEvaluator.TopKEdgeCollector(3, CandidateEdgeComponentPolicy.none(), true);
+
+        collector.consider(4, 12, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(4, 7, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(4, 9, (byte) 0, (byte) 0, 80f, 0f, 0f);
+
+        collector.sortSelectedDescending();
+
+        assertEquals(9, collector.defenderIndexAt(collector.sortedIndexAt(0)));
+        assertEquals(7, collector.defenderIndexAt(collector.sortedIndexAt(1)));
+        assertEquals(12, collector.defenderIndexAt(collector.sortedIndexAt(2)));
+    }
+
+    @Test
+    void topKCollectorSortSelectedDescendingOrdersMixedCollectorByScoreThenAttackerThenDefender() {
+        OpeningEvaluator.TopKEdgeCollector collector =
+                new OpeningEvaluator.TopKEdgeCollector(4, CandidateEdgeComponentPolicy.none(), false);
+
+        collector.consider(2, 12, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(1, 20, (byte) 0, (byte) 0, 75f, 0f, 0f);
+        collector.consider(1, 9, (byte) 0, (byte) 0, 80f, 0f, 0f);
+        collector.consider(1, 18, (byte) 0, (byte) 0, 75f, 0f, 0f);
+
+        collector.sortSelectedDescending();
+
+        assertEquals(1, collector.attackerIndexAt(collector.sortedIndexAt(0)));
+        assertEquals(9, collector.defenderIndexAt(collector.sortedIndexAt(0)));
+        assertEquals(1, collector.attackerIndexAt(collector.sortedIndexAt(1)));
+        assertEquals(18, collector.defenderIndexAt(collector.sortedIndexAt(1)));
+        assertEquals(1, collector.attackerIndexAt(collector.sortedIndexAt(2)));
+        assertEquals(20, collector.defenderIndexAt(collector.sortedIndexAt(2)));
+        assertEquals(2, collector.attackerIndexAt(collector.sortedIndexAt(3)));
+        assertEquals(12, collector.defenderIndexAt(collector.sortedIndexAt(3)));
     }
 
         @Test
@@ -717,8 +952,8 @@ class OpeningEvaluatorCoverageTest {
                 OpeningEvaluator.CoveragePriorityCollector collector =
                                 new OpeningEvaluator.CoveragePriorityCollector(1, CandidateEdgeComponentPolicy.none());
 
-                collector.consider(50f, 1, 101, (byte) 0, (byte) 0, 150f, 0f, 0f, 0f, 0f, 0f, 0f);
-                collector.consider(75f, 2, 102, (byte) 0, (byte) 0, 100f, 0f, 0f, 0f, 0f, 0f, 0f);
+                collector.consider(50f, 1, 101, (byte) 0, (byte) 0, 150f, 0f, 0f);
+                collector.consider(75f, 2, 102, (byte) 0, (byte) 0, 100f, 0f, 0f);
                 collector.sortSelectedDescending();
 
                 assertEquals(1, collector.size());
@@ -735,7 +970,7 @@ class OpeningEvaluatorCoverageTest {
                 int[] defenderCoverageCounts = new int[1];
                 OpeningEvaluator.CoveragePriorityCollector collector =
                                 new OpeningEvaluator.CoveragePriorityCollector(1, CandidateEdgeComponentPolicy.none());
-                collector.consider(75f, 1, 0, (byte) 0, (byte) 0, 42f, 0f, 0f, 0f, 0f, 0f, 0f);
+                collector.consider(75f, 1, 0, (byte) 0, (byte) 0, 42f, 0f, 0f);
                 collector.sortSelectedDescending();
 
                 boolean emitted = OpeningDefenderCoverageRescue.emitSelectedEdge(
@@ -780,13 +1015,17 @@ class OpeningEvaluatorCoverageTest {
             int aircraft,
             int ships
     ) {
+        double staticScore = link.locutus.discord.util.PW.computeStaticScoreComponent(cities, 0, 0);
+        double unitScore = MilitaryUnit.SOLDIER.getScore(soldiers)
+                + MilitaryUnit.TANK.getScore(tanks)
+                + MilitaryUnit.AIRCRAFT.getScore(aircraft)
+                + MilitaryUnit.SHIP.getScore(ships);
+        double infraPerCity = Math.max(0d, ((score - staticScore - unitScore) * 40.0d) / Math.max(1, cities));
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(teamId)
                 .allianceId(teamId)
-                .score(score)
                 .cities(cities)
-                .nonInfraScoreBase(score)
-                .cityInfra(uniformInfra(cities, 1_200.0))
+                .cityInfra(uniformInfra(cities, infraPerCity))
                 .maxOff(5)
                 .currentOffensiveWars(0)
                 .currentDefensiveWars(0)
@@ -806,15 +1045,76 @@ class OpeningEvaluatorCoverageTest {
         return result;
     }
 
+        private static StrategicObjective sourceDiversityControlObjective() {
+                return withMinimumViabilityProbe(BlitzObjective.CONTROL.objective(), 0.0d, 0.0d);
+        }
+
+        private static String edgeSummary(OpeningEvaluator.EvaluatedEdge edge) {
+                return "score=" + edge.score()
+                                + "/harm=" + edge.immediateHarm();
+        }
+
+        private static String edgeList(CandidateEdgeTable out, CompiledScenario scenario) {
+                StringBuilder builder = new StringBuilder();
+                for (int edge = 0; edge < out.edgeCount(); edge++) {
+                        if (builder.length() > 0) {
+                                builder.append(';');
+                        }
+                        builder.append(scenario.attackerNationId(out.attackerIndex(edge)))
+                                        .append("->")
+                                        .append(scenario.defenderNationId(out.defenderIndex(edge)))
+                                        .append('@')
+                                        .append(out.scalarScore(edge));
+                }
+                return builder.toString();
+        }
+
+        private static StrategicObjective withMinimumViabilityProbe(
+                        StrategicObjective delegate,
+                        double minimumViabilityProbe,
+                        double targetPressurePenalty
+        ) {
+                return new StrategicObjective() {
+                        @Override
+                        public double scoreTerminal(StrategicValueView view, int teamId) {
+                                return delegate.scoreTerminal(view, teamId);
+                        }
+
+                        @Override
+                        public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
+                                return delegate.candidateEdgeComponentPolicy();
+                        }
+
+                        @Override
+                        public CandidateEdgeAdmissionPolicy candidateEdgeAdmissionPolicy() {
+                                CandidateEdgeAdmissionPolicy base = delegate.candidateEdgeAdmissionPolicy();
+                                return new CandidateEdgeAdmissionPolicy(
+                                                minimumViabilityProbe,
+                                                base.allowLegalSpecialistFallback()
+                                );
+                        }
+
+                        @Override
+                        public boolean usesWarSlotDenial() {
+                                return delegate.usesWarSlotDenial();
+                        }
+
+                        @Override
+                        public double scoreTerminal(SimWorld world, int teamId) {
+                                return delegate.scoreTerminal(world, teamId);
+                        }
+
+                        @Override
+                        public double scoreAction(SimWorld world, SimAction action, int teamId) {
+                                return delegate.scoreAction(world, action, teamId);
+                        }
+                };
+        }
+
     private static final class PressureOnlyObjective implements StrategicObjective {
         @Override
         public double scoreTerminal(StrategicValueView view, int teamId) {
             return 0.0;
-        }
-
-        @Override
-        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-            return metrics.targetPressure() + (0.0001d * metrics.immediateHarm());
         }
 
         @Override
@@ -838,14 +1138,6 @@ class OpeningEvaluatorCoverageTest {
         @Override
         public double scoreTerminal(StrategicValueView view, int teamId) {
             return 0.0;
-        }
-
-        @Override
-        public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-            return metrics.immediateHarm()
-                    + (2.0d * metrics.controlLeverage())
-                    + (0.01d * metrics.futureWarLeverage())
-                    - (0.05d * metrics.selfExposure());
         }
 
         @Override

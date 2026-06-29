@@ -54,11 +54,7 @@ final class CandidateEdgeStorage {
             byte bestAttackTypeId,
             float score,
             float counterRisk,
-            float immediateHarm,
-            float selfExposure,
-            float resourceSwing,
-            float controlLeverage,
-            float futureWarLeverage
+            float immediateHarm
     ) {
         attackerIndexes[index] = attackerIndex;
         defenderIndexes[index] = defenderIndex;
@@ -66,7 +62,7 @@ final class CandidateEdgeStorage {
         bestAttackTypeIds[index] = bestAttackTypeId;
         scalarScores[index] = score;
         counterRisks[index] = counterRisk;
-        retainedComponents.set(index, immediateHarm, selfExposure, resourceSwing, controlLeverage, futureWarLeverage);
+        retainedComponents.set(index, immediateHarm);
     }
 
     int attackerIndexAt(int index) {
@@ -89,8 +85,21 @@ final class CandidateEdgeStorage {
         return scalarScores[index];
     }
 
+    void setScalarScore(int index, float score) {
+        scalarScores[index] = sanitizeScalarScore(score);
+    }
+
     void scaleScalarScore(int index, float factor) {
-        scalarScores[index] *= factor;
+        float currentScore = scalarScores[index];
+        if (!Float.isFinite(currentScore) || !Float.isFinite(factor)) {
+            scalarScores[index] = Float.NEGATIVE_INFINITY;
+            return;
+        }
+        scalarScores[index] = sanitizeScalarScore(currentScore * factor);
+    }
+
+    private static float sanitizeScalarScore(float score) {
+        return Float.isFinite(score) ? score : Float.NEGATIVE_INFINITY;
     }
 
     float counterRiskAt(int index) {
@@ -106,40 +115,8 @@ final class CandidateEdgeStorage {
         return retainedComponents.retainsImmediateHarm();
     }
 
-    boolean retainsSelfExposure() {
-        return retainedComponents.retainsSelfExposure();
-    }
-
-    boolean retainsResourceSwing() {
-        return retainedComponents.retainsResourceSwing();
-    }
-
-    boolean retainsControlLeverage() {
-        return retainedComponents.retainsControlLeverage();
-    }
-
-    boolean retainsFutureWarLeverage() {
-        return retainedComponents.retainsFutureWarLeverage();
-    }
-
     float immediateHarmAt(int index) {
         return retainedComponents.immediateHarm(index);
-    }
-
-    float selfExposureAt(int index) {
-        return retainedComponents.selfExposure(index);
-    }
-
-    float resourceSwingAt(int index) {
-        return retainedComponents.resourceSwing(index);
-    }
-
-    float controlLeverageAt(int index) {
-        return retainedComponents.controlLeverage(index);
-    }
-
-    float futureWarLeverageAt(int index) {
-        return retainedComponents.futureWarLeverage(index);
     }
 
     void swap(int lhs, int rhs) {
@@ -147,6 +124,30 @@ final class CandidateEdgeStorage {
         attackerIndexes[lhs] = attackerIndexes[rhs];
         attackerIndexes[rhs] = attackerSwap;
 
+        int defenderSwap = defenderIndexes[lhs];
+        defenderIndexes[lhs] = defenderIndexes[rhs];
+        defenderIndexes[rhs] = defenderSwap;
+
+        byte warTypeSwap = preferredWarTypeIds[lhs];
+        preferredWarTypeIds[lhs] = preferredWarTypeIds[rhs];
+        preferredWarTypeIds[rhs] = warTypeSwap;
+
+        byte attackTypeSwap = bestAttackTypeIds[lhs];
+        bestAttackTypeIds[lhs] = bestAttackTypeIds[rhs];
+        bestAttackTypeIds[rhs] = attackTypeSwap;
+
+        float scoreSwap = scalarScores[lhs];
+        scalarScores[lhs] = scalarScores[rhs];
+        scalarScores[rhs] = scoreSwap;
+
+        float counterRiskSwap = counterRisks[lhs];
+        counterRisks[lhs] = counterRisks[rhs];
+        counterRisks[rhs] = counterRiskSwap;
+
+        retainedComponents.swap(lhs, rhs);
+    }
+
+    void swapIgnoringAttacker(int lhs, int rhs) {
         int defenderSwap = defenderIndexes[lhs];
         defenderIndexes[lhs] = defenderIndexes[rhs];
         defenderIndexes[rhs] = defenderSwap;

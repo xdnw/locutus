@@ -16,25 +16,13 @@ public class DamageObjective implements StrategicObjective {
 
     @Override
     public CandidateEdgeComponentPolicy candidateEdgeComponentPolicy() {
-        return CandidateEdgeComponentPolicy.harmExposureOnly();
-    }
-
-    @Override
-    public double scoreOpening(StrategicEvaluationComponents metrics, int teamId) {
-        return metrics.immediateHarm() - metrics.selfExposure();
+        return CandidateEdgeComponentPolicy.harmOnly();
     }
 
     @Override
     public double scoreTerminal(StrategicValueView view, int teamId) {
         StrategicValueTotals totals = StrategicValueTotals.of(view, teamId);
-        double score = totals.ownValue() - totals.enemyValue();
-        if (view instanceof TeamWarControlView controlView) {
-            score += controlView.controlCompositeScoreForTeam(
-                    teamId,
-                    new TeamWarControlView.ControlComponentWeights(1.0d, 1.0d, 0.0d, 1.0d, 1.0d, 1.0d)
-            );
-        }
-        return score;
+        return (totals.ownValue() - totals.enemyValue()) + StrategicValueTotals.slotBalanceOf(view, teamId);
     }
 
     @Override

@@ -34,8 +34,8 @@ class BlitzPlannerFixedEdgeTest {
         return planner.assign(
                 attackers,
                 defenders,
-                SidePolicy.legacy("acting", planner.objective()),
-                SidePolicy.legacyPassive("nonActing", planner.objective()),
+                SidePolicy.heuristicActing("acting", planner.objective()),
+                SidePolicy.heuristicPassive("nonActing", planner.objective()),
                 0,
                 fixedEdges,
                 1
@@ -106,9 +106,7 @@ class BlitzPlannerFixedEdgeTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(allianceId)
                 .allianceId(allianceId)
-                .score(SCORE)
                 .cities(10)
-                .nonInfraScoreBase(SCORE)
                 .cityInfra(uniformInfra(10, 1000.0))
                 .maxOff(maxOff)
                 .currentOffensiveWars(0)

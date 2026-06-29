@@ -4,7 +4,7 @@ public enum BlitzObjective {
     NET_DAMAGE(new DamageObjective()),
     DAMAGE(new DamageDealtObjective()),
     MINIMUM_DAMAGE_RECEIVED(new DamageAvoidanceObjective()),
-    CONTROL(new ControlObjective()),
+    CONTROL(new BlitzStrategicObjective()),
     BALANCED(new BalancedBlitzObjective());
 
     private final StrategicObjective objective;

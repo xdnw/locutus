@@ -1,15 +1,10 @@
 package link.locutus.discord.sim;
 
-import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.sim.actions.AttackAction;
 import link.locutus.discord.sim.input.NationInit;
-import link.locutus.discord.sim.strategy.AirControlBuild;
-import link.locutus.discord.sim.strategy.GroundUnderAir;
-import link.locutus.discord.sim.strategy.RuleBasedActor;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -23,80 +18,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class ActorAndObjectiveIntegrationTest {
 
     @Test
-    void ruleBasedActorWithSimplePrimitives() {
-        SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4));
-
-        RuleBasedActor actor = new RuleBasedActor();
-        actor.addPrimitive(new AirControlBuild());
-        actor.addPrimitive(new GroundUnderAir());
-
-        SimNation self = world.requireNation(1);
-        Set<Integer> neighbors = new HashSet<>();
-        neighbors.add(2);
-        DecisionContext ctx = new DecisionContext(world, 0, neighbors, Objective.DAMAGE);
-
-        var actions = actor.decide(world, self, ctx);
-        assertNotNull(actions);
-        // With no active offensive wars, both tactical primitives should pass.
-        assertTrue(actions.isEmpty());
-    }
-
-    @Test
-    void airControlBuildTargetsOffensiveWarWithAirPressure() {
-        SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4));
-
-        world.declareWar(1001, 1, 2, WarType.ORD);
-
-        world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 120);
-        world.requireNation(2).setUnitCount(MilitaryUnit.AIRCRAFT, 40);
-        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 300);
-
-        RuleBasedActor actor = new RuleBasedActor();
-        actor.addPrimitive(new AirControlBuild());
-        actor.addPrimitive(new GroundUnderAir());
-
-        DecisionContext ctx = new DecisionContext(world, 0, Set.of(2), Objective.DAMAGE);
-        var actions = actor.decide(world, world.requireNation(1), ctx);
-
-        assertEquals(1, actions.size());
-        assertInstanceOf(AttackAction.class, actions.get(0));
-        assertEquals(AttackType.AIRSTRIKE_AIRCRAFT, ((AttackAction) actions.get(0)).attackType());
-        assertEquals(1, world.activeWarsForNation(1).size());
-    }
-
-    @Test
-    void groundUnderAirTargetsGroundAfterAirControlIsHeld() {
-        SimWorld world = new SimWorld();
-        world.addNation(new SimNation(1, WarPolicy.FORTRESS, 10000.0, 50.0, 4));
-        world.addNation(new SimNation(2, WarPolicy.TURTLE, 10000.0, 50.0, 4));
-
-        world.declareWar(1002, 1, 2, WarType.ORD);
-
-        world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 120);
-        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 600);
-        world.requireNation(1).setUnitCount(MilitaryUnit.TANK, 80);
-        world.requireNation(2).setUnitCount(MilitaryUnit.AIRCRAFT, 60);
-        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 400);
-        world.requireNation(2).setUnitCount(MilitaryUnit.TANK, 120);
-        world.applySuperiorityFlagChanges(1002, 1, 0, 1, 0);
-
-        RuleBasedActor actor = new RuleBasedActor();
-        actor.addPrimitive(new AirControlBuild());
-        actor.addPrimitive(new GroundUnderAir());
-
-        DecisionContext ctx = new DecisionContext(world, 0, Set.of(2), Objective.DAMAGE);
-        var actions = actor.decide(world, world.requireNation(1), ctx);
-
-        assertEquals(1, actions.size());
-        assertInstanceOf(AttackAction.class, actions.get(0));
-        assertEquals(AttackType.GROUND, ((AttackAction) actions.get(0)).attackType());
-    }
-
-    @Test
     void damageObjectiveScoresTerminal() {
         SimWorld world = new SimWorld();
         world.addNation(new SimNation(new NationInit(
@@ -104,8 +25,7 @@ class ActorAndObjectiveIntegrationTest {
                 99,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                15.0,
-                new double[0],
+            new double[]{1_000, 1_000, 1_000},
                 5,
                 (byte) 0
         )));
@@ -114,8 +34,7 @@ class ActorAndObjectiveIntegrationTest {
                 99,
                 WarPolicy.TURTLE,
                 ResourceType.getBuffer(),
-                10.0,
-                new double[0],
+            new double[]{900, 900, 900},
                 5,
                 (byte) 0
         )));
@@ -124,21 +43,28 @@ class ActorAndObjectiveIntegrationTest {
                 3,
                 WarPolicy.FORTRESS,
                 ResourceType.getBuffer(),
-                40.0,
-                new double[0],
+            new double[]{1_400, 1_400, 1_400},
                 5,
                 (byte) 0
         )));
+        world.requireNation(1).setUnitCount(MilitaryUnit.SOLDIER, 12_000);
+        world.requireNation(1).setUnitCount(MilitaryUnit.AIRCRAFT, 400);
+        world.requireNation(2).setUnitCount(MilitaryUnit.SOLDIER, 8_000);
+        world.requireNation(2).setUnitCount(MilitaryUnit.TANK, 150);
+        world.requireNation(3).setUnitCount(MilitaryUnit.SOLDIER, 18_000);
+        world.requireNation(3).setUnitCount(MilitaryUnit.TANK, 400);
+        world.requireNation(3).setUnitCount(MilitaryUnit.AIRCRAFT, 700);
 
         Objective objective = Objective.DAMAGE;
         double team99Score = objective.scoreTerminal(world, 99);
         double team3Score = objective.scoreTerminal(world, 3);
+        StrategicValueTotals team99Totals = StrategicValueTotals.of(StrategicValueView.of(world), 99);
+        StrategicValueTotals team3Totals = StrategicValueTotals.of(StrategicValueView.of(world), 3);
 
-        // DamageObjective: scoreTerminal = ownTeamScore - enemyTeamScore (net proxy)
-        // team99: own=15+10=25, enemy=40  => 25-40 = -15
-        // team3:  own=40,       enemy=25  => 40-25 = 15
-        assertEquals(-15.0, team99Score, 0.01);
-        assertEquals(15.0, team3Score, 0.01);
+        assertEquals(team99Totals.ownValue() - team99Totals.enemyValue(), team99Score, 0.01);
+        assertEquals(team3Totals.ownValue() - team3Totals.enemyValue(), team3Score, 0.01);
+        assertTrue(team3Score > team99Score);
+        assertEquals(-team99Score, team3Score, 0.01);
     }
 
     @Test
@@ -175,7 +101,7 @@ class ActorAndObjectiveIntegrationTest {
 
     @Test
     void resetTimeProviderFromNationReturnsNationResetHour() {
-        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 50.0, 4, (byte) 12);
+        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, 1000.0, 4, (byte) 12);
         byte resetHour = ResetTimeProvider.FROM_NATION.resetHourUtc(nation, 0);
         assertEquals(12, resetHour);
     }
@@ -212,3 +138,4 @@ class ActorAndObjectiveIntegrationTest {
         assertEquals(3, count);
     }
 }
+

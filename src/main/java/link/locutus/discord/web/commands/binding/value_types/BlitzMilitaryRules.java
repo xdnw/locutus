@@ -131,8 +131,8 @@ public record BlitzMilitaryRules(
         }
 
         // Score coefficients so the frontend can recompute nation score from
-        // base inputs (cities/projects/research/units/avg infra) when the
-        // user edits overrides. Mirrors PW.computeNonInfraScoreBase /
+        // canonical state inputs (cities/projects/research/units/avg infra) when the
+        // user edits overrides. Mirrors PW.computeStaticScoreComponent /
         // PW.scoreBreakdown / MilitaryUnit.getScore.
         Research[] researchValues = Research.values;
         int[] researchScoreByOrdinal = new int[researchValues.length];

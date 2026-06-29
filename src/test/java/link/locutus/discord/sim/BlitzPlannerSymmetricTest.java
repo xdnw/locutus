@@ -25,8 +25,8 @@ class BlitzPlannerSymmetricTest {
         BlitzAssignment oneWay = planner.assign(
                 sideA,
                 sideB,
-                SidePolicy.legacy("sideA", planner.objective()),
-                SidePolicy.legacyPassive("sideB", planner.objective()),
+                SidePolicy.heuristicActing("sideA", planner.objective()),
+                SidePolicy.heuristicPassive("sideB", planner.objective()),
                 0,
                 List.of(),
                 72
@@ -34,8 +34,8 @@ class BlitzPlannerSymmetricTest {
         BlitzAssignmentPair symmetric = planner.assignSymmetric(
                 sideA,
                 sideB,
-                SidePolicy.legacy("sideA", new DamageObjective()),
-                SidePolicy.legacyPassive("sideB", new DamageObjective()),
+                SidePolicy.heuristicActing("sideA", new DamageObjective()),
+                SidePolicy.heuristicPassive("sideB", new DamageObjective()),
                 0,
                 List.of(),
                 List.of(),
@@ -56,9 +56,7 @@ class BlitzPlannerSymmetricTest {
             result.add(DBNationSnapshot.synthetic(id)
                     .teamId(teamId)
                     .allianceId(teamId)
-                    .score(score)
                     .cities(10)
-                    .nonInfraScoreBase(score)
                     .cityInfra(uniformInfra(10, 1000.0))
                     .maxOff(5)
                     .currentOffensiveWars(0)
@@ -79,3 +77,4 @@ class BlitzPlannerSymmetricTest {
         return arr;
     }
 }
+

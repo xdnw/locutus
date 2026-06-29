@@ -1,17 +1,17 @@
 package link.locutus.discord.sim;
 
 /**
- * Mechanics-facing timing helpers for declaration and redeclaration windows.
+ * Mechanics-facing timing helpers for declaration windows.
  */
 public final class StrategicTimingValue {
     private StrategicTimingValue() {
     }
 
-    public static int redeclareBlockedTurns(int attackerBeigeTurns, int defenderBeigeTurns, int sameOpponentLockoutTurns) {
+    public static int declarationBlockedTurns(int attackerBeigeTurns, int defenderBeigeTurns, int sameOpponentLockoutTurns) {
         return Math.max(0, Math.max(attackerBeigeTurns, Math.max(defenderBeigeTurns, sameOpponentLockoutTurns)));
     }
 
-    public static double redeclareWaitDiscount(int blockedTurns, int horizonRemainingTurns) {
+    public static double declarationWaitDiscount(int blockedTurns, int horizonRemainingTurns) {
         if (blockedTurns <= 0) {
             return 1d;
         }

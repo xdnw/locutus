@@ -23,6 +23,8 @@ Use:
 - `copilot-code-indexer` for broad read-only indexing where shell search is better: usage scans, imports/packages, generated sources, changed files, or test discovery.
 - `copilot-code-cartographer` before non-trivial refactors/roadmaps when boundaries, ownership, data flow, dependency direction, or overlapping concepts are unclear.
 - `copilot-test-output-triager` for build/test/check output or logs.
+- `copilot-function-optimizer-scout` for read-only performance analysis of a specific function, loop, or small algorithmic unit.
+- `copilot-function-optimizer-impl` for implementing a specific, correctness-preserving optimization for one function, loop, method, or small algorithmic unit.
 
 Do not chain subagents by default. Escalate only if the prior result is insufficient: `file-reader` → `code-indexer` → `code-cartographer`.
 Subagent findings are leads, not authority. Before editing, directly inspect the cited files/line ranges.
@@ -31,19 +33,28 @@ Direct main-agent Read/Grep is allowed for exact verification, trivial edits, an
 When running under GitHub Copilot, do not use `.claude/agents/*` agents directly.
 Use `.github/agents/copilot-*` agents only.
 
+## Search/tool policy
+Installed tools: `rg`, `fd`, `ast-grep`, `semgrep`, `jq`.
+Do not discuss tool choice. Run the search.
+Default to `rg`. Use it for symbols, strings, method names, class names, config keys, logs, comments, and first-pass narrowing.
+Use `fd` only when the task is to select files by path, name, or extension.
+Use `ast-grep --lang java` only after `rg` is insufficient because the match depends on Java structure: declarations, annotations, call shape, nesting, control flow, or syntax-safe rewrite.
+Use `semgrep` only for explicit repeated bug/correctness/security scans across files. Never use it for ordinary lookup.
+Use `jq` only for JSON output.
+
 ## Roadmap Continuity
 
-- For roadmap work, use `docs/ACTIVE_FRONTIER.md` as the cross-session handoff.
-- On a new session, read `docs/ACTIVE_FRONTIER.md` first and continue there if it still names a live workstream with remaining gaps.
-- Only fall back to the latest targeted test or failing command, the latest edited files, the focused roadmap page for that family, and then `docs/roadmap.md` if the frontier file is missing, stale, or explicitly cleared.
-- If you had to reconstruct the frontier, rewrite `docs/ACTIVE_FRONTIER.md` before broader discovery or implementation.
-- Update `docs/ACTIVE_FRONTIER.md` at the end of every roadmap turn when the frontier, gaps, next command, or blocker changed.
+- For roadmap work, use `docs/<workstream_>ACTIVE_FRONTIER.md` as the cross-session handoff (copy `ACTIVE_FRONTIER_TEMPLATE.md` as needed).
+- On a new session, read `docs/<workstream_>ACTIVE_FRONTIER.md` first and continue there if it still names a live workstream with remaining gaps.
+- Only fall back to the latest targeted test or failing command, the latest edited files, the focused roadmap page for that family, and then `docs/<workstream_>roadmap.md` if the frontier file is missing, stale, or explicitly cleared.
+- If you had to reconstruct the frontier, rewrite `docs/<workstream_>ACTIVE_FRONTIER.md` before broader discovery or implementation.
+- Update `docs/<workstream_>ACTIVE_FRONTIER.md` at the end of every roadmap turn when the frontier, gaps, next command, or blocker changed.
 - Do not replace this handoff with a generic ordered checklist or a first-unchecked-item rule.
 
 ## Completion Discipline
 
-- The normal stop condition for roadmap work is that `docs/ACTIVE_FRONTIER.md` has no remaining acceptance gaps for the current workstream.
+- The normal stop condition for roadmap work is that `docs/<workstream_>ACTIVE_FRONTIER.md` has no remaining acceptance gaps for the current workstream.
 - Do not end a turn after one local improvement if that file still names an open acceptance gap.
 - After each passing targeted test or benchmark, check the same active frontier again and keep going if any acceptance gap remains.
-- Only stop with open gaps when `docs/ACTIVE_FRONTIER.md` records a concrete blocker with the exact failing command, file, or missing dependency, or when the user explicitly redirects the work.
+- Only stop with open gaps when `docs/<workstream_>ACTIVE_FRONTIER.md` records a concrete blocker with the exact failing command, file, or missing dependency, or when the user explicitly redirects the work.
 - "Made progress" is not a valid stopping condition.

@@ -12,17 +12,15 @@ public record SidePlannerSettings(
         double activityActThreshold,
         double idlePressureWeight,
         boolean useMidHorizonCounterStrengths,
-        double counterScoreThreshold,
-        double redeclareScoreThreshold,
-        int maxCountersPerTurn,
+    double laterDeclarationScoreThreshold,
+    int maxLaterDeclarationsPerTurn,
         int projectedAuditLimit
 ) {
     public static final double DEFAULT_IDLE_PRESSURE_WEIGHT = 0d;
     public static final double DEFAULT_ACTING_IDLE_PRESSURE_WEIGHT = 0.35d;
     public static final boolean DEFAULT_USE_MID_HORIZON_COUNTER_STRENGTHS = false;
-    public static final double DEFAULT_COUNTER_SCORE_THRESHOLD = 8d;
-    public static final double DEFAULT_REDECLARE_SCORE_THRESHOLD = 8d;
-    public static final int DEFAULT_MAX_COUNTERS_PER_TURN = Integer.MAX_VALUE;
+    public static final double DEFAULT_LATER_DECLARATION_SCORE_THRESHOLD = 8d;
+    public static final int DEFAULT_MAX_LATER_DECLARATIONS_PER_TURN = Integer.MAX_VALUE;
     public static final int DEFAULT_PROJECTED_AUDIT_LIMIT = 1;
 
     public SidePlannerSettings {
@@ -47,26 +45,23 @@ public record SidePlannerSettings(
         if (!Double.isFinite(idlePressureWeight)) {
             throw new IllegalArgumentException("idlePressureWeight must be finite");
         }
-        if (!Double.isFinite(counterScoreThreshold)) {
-            throw new IllegalArgumentException("counterScoreThreshold must be finite");
+        if (!Double.isFinite(laterDeclarationScoreThreshold)) {
+            throw new IllegalArgumentException("laterDeclarationScoreThreshold must be finite");
         }
-        if (!Double.isFinite(redeclareScoreThreshold)) {
-            throw new IllegalArgumentException("redeclareScoreThreshold must be finite");
-        }
-        if (maxCountersPerTurn <= 0) {
-            throw new IllegalArgumentException("maxCountersPerTurn must be > 0");
+        if (maxLaterDeclarationsPerTurn <= 0) {
+            throw new IllegalArgumentException("maxLaterDeclarationsPerTurn must be > 0");
         }
         if (projectedAuditLimit <= 0) {
             throw new IllegalArgumentException("projectedAuditLimit must be > 0");
         }
     }
 
-    public static SidePlannerSettings legacy() {
+    public static SidePlannerSettings defaults() {
         return fromTuning(SimTuning.defaults());
     }
 
-    public static SidePlannerSettings legacyActing() {
-        return legacy().withIdlePressureWeight(DEFAULT_ACTING_IDLE_PRESSURE_WEIGHT);
+    public static SidePlannerSettings actingDefaults() {
+        return defaults().withIdlePressureWeight(DEFAULT_ACTING_IDLE_PRESSURE_WEIGHT);
     }
 
     public static SidePlannerSettings fromTuning(SimTuning tuning) {
@@ -80,9 +75,8 @@ public record SidePlannerSettings(
                 effective.activityActThreshold(),
                 DEFAULT_IDLE_PRESSURE_WEIGHT,
                 DEFAULT_USE_MID_HORIZON_COUNTER_STRENGTHS,
-                DEFAULT_COUNTER_SCORE_THRESHOLD,
-                DEFAULT_REDECLARE_SCORE_THRESHOLD,
-                DEFAULT_MAX_COUNTERS_PER_TURN,
+                DEFAULT_LATER_DECLARATION_SCORE_THRESHOLD,
+                DEFAULT_MAX_LATER_DECLARATIONS_PER_TURN,
                 DEFAULT_PROJECTED_AUDIT_LIMIT
         );
     }
@@ -97,9 +91,8 @@ public record SidePlannerSettings(
                 value,
                 idlePressureWeight,
                 useMidHorizonCounterStrengths,
-                counterScoreThreshold,
-                redeclareScoreThreshold,
-                maxCountersPerTurn,
+                laterDeclarationScoreThreshold,
+                maxLaterDeclarationsPerTurn,
                 projectedAuditLimit
         );
     }
@@ -114,9 +107,8 @@ public record SidePlannerSettings(
                 activityActThreshold,
                 idlePressureWeight,
                 useMidHorizonCounterStrengths,
-                counterScoreThreshold,
-                redeclareScoreThreshold,
-                maxCountersPerTurn,
+                laterDeclarationScoreThreshold,
+                maxLaterDeclarationsPerTurn,
                 projectedAuditLimit
         );
     }
@@ -131,14 +123,13 @@ public record SidePlannerSettings(
                 activityActThreshold,
                 value,
                 useMidHorizonCounterStrengths,
-                counterScoreThreshold,
-                redeclareScoreThreshold,
-                maxCountersPerTurn,
+                laterDeclarationScoreThreshold,
+                maxLaterDeclarationsPerTurn,
                 projectedAuditLimit
         );
     }
 
-    public SidePlannerSettings withCounterScoreThreshold(double value) {
+    public SidePlannerSettings withLaterDeclarationScoreThreshold(double value) {
         return new SidePlannerSettings(
                 candidatesPerAttacker,
                 localSearchBudgetMs,
@@ -149,13 +140,12 @@ public record SidePlannerSettings(
                 idlePressureWeight,
                 useMidHorizonCounterStrengths,
                 value,
-                redeclareScoreThreshold,
-                maxCountersPerTurn,
+                maxLaterDeclarationsPerTurn,
                 projectedAuditLimit
         );
     }
 
-    public SidePlannerSettings withRedeclareScoreThreshold(double value) {
+    public SidePlannerSettings withMaxLaterDeclarationsPerTurn(int value) {
         return new SidePlannerSettings(
                 candidatesPerAttacker,
                 localSearchBudgetMs,
@@ -165,25 +155,7 @@ public record SidePlannerSettings(
                 activityActThreshold,
                 idlePressureWeight,
                 useMidHorizonCounterStrengths,
-                counterScoreThreshold,
-                value,
-                maxCountersPerTurn,
-                projectedAuditLimit
-        );
-    }
-
-    public SidePlannerSettings withMaxCountersPerTurn(int value) {
-        return new SidePlannerSettings(
-                candidatesPerAttacker,
-                localSearchBudgetMs,
-                localSearchMaxIterations,
-                turn1DeclarePolicy,
-                wartimeActivityUplift,
-                activityActThreshold,
-                idlePressureWeight,
-                useMidHorizonCounterStrengths,
-                counterScoreThreshold,
-                redeclareScoreThreshold,
+                laterDeclarationScoreThreshold,
                 value,
                 projectedAuditLimit
         );
@@ -199,9 +171,8 @@ public record SidePlannerSettings(
                 activityActThreshold,
                 idlePressureWeight,
                 useMidHorizonCounterStrengths,
-                counterScoreThreshold,
-                redeclareScoreThreshold,
-                maxCountersPerTurn,
+                laterDeclarationScoreThreshold,
+                maxLaterDeclarationsPerTurn,
                 value
         );
     }

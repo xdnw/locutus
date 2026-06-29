@@ -67,9 +67,7 @@ class PlannerSimSupportTest {
         return DBNationSnapshot.synthetic(nationId)
                 .teamId(nationId)
                 .allianceId(nationId)
-                .score(1_000)
                 .cities(5)
-                .nonInfraScoreBase(1_000)
                 .cityInfra(new double[]{1_000, 1_000, 1_000, 1_000, 1_000})
                 .warPolicy(WarPolicy.ATTRITION);
     }

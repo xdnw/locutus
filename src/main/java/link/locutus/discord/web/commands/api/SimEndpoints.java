@@ -38,6 +38,7 @@ import link.locutus.discord.sim.planners.BlitzAssignment;
 import link.locutus.discord.sim.planners.BlitzFixedEdge;
 import link.locutus.discord.sim.planners.BlitzPlanner;
 import link.locutus.discord.sim.planners.DBNationSnapshot;
+import link.locutus.discord.sim.planners.LaterDeclarationScope;
 import link.locutus.discord.sim.planners.OverrideSet;
 import link.locutus.discord.sim.planners.ScheduledAttacker;
 import link.locutus.discord.sim.planners.SidePolicy;
@@ -410,18 +411,7 @@ public class SimEndpoints {
                 context.defenderNationIds(),
                 assignment.assignment(),
                 assignment.initialWarTypeOrdinalsByPair(),
-                counterDeclarers(context, sideMode),
-                counterTargets(context, sideMode),
-                redeclareDeclarers(context, sideMode),
-                redeclareTargets(context, sideMode),
-                secondaryRedeclareDeclarers(context, sideMode),
-                secondaryRedeclareTargets(context, sideMode),
-                autonomousDeclarerPolicy(context, "counterDeclarer"),
-                autonomousTargetPolicy(context, "counterTarget"),
-                autonomousDeclarerPolicy(context, "redeclareDeclarer"),
-                autonomousTargetPolicy(context, "redeclareTarget"),
-                autonomousDeclarerPolicy(context, "secondaryRedeclareDeclarer"),
-                autonomousTargetPolicy(context, "secondaryRedeclareTarget"),
+            autonomousLaterDeclarationScopes(context, sideMode),
                 context.participantIds(),
                 context.existingWarPairs(),
                 context.currentTurn(),
@@ -429,50 +419,88 @@ public class SimEndpoints {
         );
     }
 
-    private static SidePolicy autonomousDeclarerPolicy(BlitzPlanContext context, String name) {
-        return SidePolicy.legacy(name, objectiveForRequest(context.request()));
+        private static List<LaterDeclarationScope> autonomousLaterDeclarationScopes(
+            BlitzPlanContext context,
+            BlitzSideMode sideMode
+        ) {
+            List<LaterDeclarationScope> scopes = new ArrayList<>(2);
+        switch (sideMode) {
+            case ATTACKERS_ONLY -> {
+            addLaterDeclarationScope(
+                scopes,
+                context.defenderSnapshots(),
+                context.attackerSnapshots(),
+                autonomousPassivePolicy(context, "laterDeclarerOpposingSide"),
+                autonomousActingPolicy(context, "laterTargetOpposingSide")
+            );
+            addLaterDeclarationScope(
+                scopes,
+                context.attackerSnapshots(),
+                context.defenderSnapshots(),
+                autonomousActingPolicy(context, "laterDeclarerOpeningSide"),
+                autonomousPassivePolicy(context, "laterTargetOpeningSide")
+            );
+            }
+            case DEFENDERS_ONLY -> {
+            addLaterDeclarationScope(
+                scopes,
+                context.attackerSnapshots(),
+                context.defenderSnapshots(),
+                autonomousPassivePolicy(context, "laterDeclarerOpposingSide"),
+                autonomousActingPolicy(context, "laterTargetOpposingSide")
+            );
+            addLaterDeclarationScope(
+                scopes,
+                context.defenderSnapshots(),
+                context.attackerSnapshots(),
+                autonomousActingPolicy(context, "laterDeclarerOpeningSide"),
+                autonomousPassivePolicy(context, "laterTargetOpeningSide")
+            );
+            }
+            case BOTH -> {
+            addLaterDeclarationScope(
+                scopes,
+                context.attackerSnapshots(),
+                context.defenderSnapshots(),
+                autonomousActingPolicy(context, "laterDeclarerAttackerSide"),
+                autonomousActingPolicy(context, "laterTargetAttackerSide")
+            );
+            addLaterDeclarationScope(
+                scopes,
+                context.defenderSnapshots(),
+                context.attackerSnapshots(),
+                autonomousActingPolicy(context, "laterDeclarerDefenderSide"),
+                autonomousActingPolicy(context, "laterTargetDefenderSide")
+            );
+            }
+        }
+        return scopes.isEmpty() ? List.of() : List.copyOf(scopes);
+        }
+
+        private static void addLaterDeclarationScope(
+            List<LaterDeclarationScope> scopes,
+            List<DBNationSnapshot> declarers,
+            List<DBNationSnapshot> targets,
+            SidePolicy declarerPolicy,
+            SidePolicy targetPolicy
+        ) {
+        if (declarers == null || declarers.isEmpty() || targets == null || targets.isEmpty()) {
+            return;
+        }
+        scopes.add(new LaterDeclarationScope(
+            declarers.stream().map(DBNationSnapshot::nationId).toList(),
+            targets.stream().map(DBNationSnapshot::nationId).toList(),
+            declarerPolicy,
+            targetPolicy
+        ));
+        }
+
+    private static SidePolicy autonomousActingPolicy(BlitzPlanContext context, String name) {
+        return SidePolicy.objectiveDrivenProjection(name, objectiveForRequest(context.request()));
     }
 
-    private static SidePolicy autonomousTargetPolicy(BlitzPlanContext context, String name) {
-        return SidePolicy.legacyPassive(name, objectiveForRequest(context.request()));
-    }
-
-    private static List<DBNationSnapshot> counterDeclarers(BlitzPlanContext context, BlitzSideMode sideMode) {
-        return switch (sideMode) {
-            case ATTACKERS_ONLY -> context.defenderSnapshots();
-            case DEFENDERS_ONLY -> context.attackerSnapshots();
-            case BOTH -> List.of();
-        };
-    }
-
-    private static List<DBNationSnapshot> counterTargets(BlitzPlanContext context, BlitzSideMode sideMode) {
-        return switch (sideMode) {
-            case ATTACKERS_ONLY -> context.attackerSnapshots();
-            case DEFENDERS_ONLY -> context.defenderSnapshots();
-            case BOTH -> List.of();
-        };
-    }
-
-    private static List<DBNationSnapshot> redeclareDeclarers(BlitzPlanContext context, BlitzSideMode sideMode) {
-        return switch (sideMode) {
-            case ATTACKERS_ONLY, BOTH -> context.attackerSnapshots();
-            case DEFENDERS_ONLY -> context.defenderSnapshots();
-        };
-    }
-
-    private static List<DBNationSnapshot> redeclareTargets(BlitzPlanContext context, BlitzSideMode sideMode) {
-        return switch (sideMode) {
-            case ATTACKERS_ONLY, BOTH -> context.defenderSnapshots();
-            case DEFENDERS_ONLY -> context.attackerSnapshots();
-        };
-    }
-
-    private static List<DBNationSnapshot> secondaryRedeclareDeclarers(BlitzPlanContext context, BlitzSideMode sideMode) {
-        return sideMode == BlitzSideMode.BOTH ? context.defenderSnapshots() : List.of();
-    }
-
-    private static List<DBNationSnapshot> secondaryRedeclareTargets(BlitzPlanContext context, BlitzSideMode sideMode) {
-        return sideMode == BlitzSideMode.BOTH ? context.attackerSnapshots() : List.of();
+    private static SidePolicy autonomousPassivePolicy(BlitzPlanContext context, String name) {
+        return SidePolicy.objectiveDrivenProjectionPassive(name, objectiveForRequest(context.request()));
     }
 
     private static List<DBNationSnapshot> combinedSnapshots(
@@ -1084,9 +1112,9 @@ public class SimEndpoints {
         int packedFlags = packWarFlags(
                 war.getWarType().ordinal(),
                 war.getStatus().ordinal(),
-                controlOwnerOrdinal(war.getGroundControl(), war),
-                controlOwnerOrdinal(war.getAirControl(), war),
-                controlOwnerOrdinal(war.getBlockader(), war),
+                flagOwnerOrdinal(war.getGroundControl(), war),
+                flagOwnerOrdinal(war.getAirControl(), war),
+                flagOwnerOrdinal(war.getBlockader(), war),
                 fortified.getKey(),
                 fortified.getValue()
         );
@@ -1135,7 +1163,7 @@ public class SimEndpoints {
         return flags;
     }
 
-    private static int controlOwnerOrdinal(int nationId, DBWar war) {
+    private static int flagOwnerOrdinal(int nationId, DBWar war) {
         if (nationId == war.getAttacker_id()) {
             return 1;
         }
@@ -1662,8 +1690,8 @@ public class SimEndpoints {
         return planner.assignSymmetric(
             declarers,
             targets,
-            SidePolicy.legacy("acting", objective),
-            SidePolicy.legacyPassive("nonActing", objective),
+            SidePolicy.objectiveDrivenProjection("acting", objective),
+            SidePolicy.objectiveDrivenProjectionPassive("nonActing", objective),
             currentTurn,
             fixedEdges,
             List.of(),

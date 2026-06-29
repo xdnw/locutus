@@ -8,7 +8,6 @@ import link.locutus.discord.util.PW;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.IntConsumer;
 
 /**
  * Dense compiled planner input for legality and range filtering.
@@ -16,7 +15,85 @@ import java.util.function.IntConsumer;
  * <p>This first substrate intentionally stays narrow: it owns the hot candidate-generation
  * indexes while exact combat evaluation still runs through the existing sim path.</p>
  */
-public final class CompiledScenario {
+public final class CompiledScenario implements OpeningEvaluationScenario {
+
+    public static CompiledScenario scorerOnlyPlannerView(
+            List<DBNationSnapshot> attackers,
+            List<DBNationSnapshot> defenders,
+            int[] attackerFreeOffSlots,
+            int[] defenderFreeDefSlots
+    ) {
+        List<DBNationSnapshot> attackerList = List.copyOf(attackers);
+        List<DBNationSnapshot> defenderList = List.copyOf(defenders);
+        int[] attackerNationIds = new int[attackerList.size()];
+        int[] defenderNationIds = new int[defenderList.size()];
+        double[] attackerScores = new double[attackerList.size()];
+        double[] defenderScores = new double[defenderList.size()];
+        Int2IntOpenHashMap attackerIndexByNationId = newNationIndex(attackerList.size());
+        Int2IntOpenHashMap defenderIndexByNationId = newNationIndex(defenderList.size());
+        for (int attackerIndex = 0; attackerIndex < attackerList.size(); attackerIndex++) {
+            DBNationSnapshot attacker = attackerList.get(attackerIndex);
+            attackerNationIds[attackerIndex] = attacker.nationId();
+            attackerScores[attackerIndex] = attacker.score();
+            attackerIndexByNationId.put(attacker.nationId(), attackerIndex);
+        }
+        for (int defenderIndex = 0; defenderIndex < defenderList.size(); defenderIndex++) {
+            DBNationSnapshot defender = defenderList.get(defenderIndex);
+            defenderNationIds[defenderIndex] = defender.nationId();
+            defenderScores[defenderIndex] = defender.score();
+            defenderIndexByNationId.put(defender.nationId(), defenderIndex);
+        }
+        return new CompiledScenario(
+                attackerList,
+                defenderList,
+                List.of(),
+                attackerNationIds,
+                defenderNationIds,
+                attackerScores,
+                defenderScores,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                toByteArray(attackerFreeOffSlots),
+                toByteArray(defenderFreeDefSlots),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                attackerIndexByNationId,
+                defenderIndexByNationId,
+                new long[attackerList.size()][],
+                new long[attackerList.size()][],
+                new int[0][],
+                0,
+                new int[defenderList.size()],
+                new int[defenderList.size()],
+                new int[0],
+                new int[attackerList.size()][]
+        );
+    }
+
+    private static byte[] toByteArray(int[] values) {
+        byte[] result = new byte[values.length];
+        for (int index = 0; index < values.length; index++) {
+            result[index] = (byte) Math.max(0, Math.min(255, values[index]));
+        }
+        return result;
+    }
+
+    private static Int2IntOpenHashMap newNationIndex(int size) {
+        Int2IntOpenHashMap index = new Int2IntOpenHashMap(Math.max(16, size * 2));
+        index.defaultReturnValue(-1);
+        return index;
+    }
+
     private final List<DBNationSnapshot> attackers;
     private final List<DBNationSnapshot> defenders;
     private final List<CompiledActiveWar> activeWars;
@@ -42,7 +119,7 @@ public final class CompiledScenario {
     private final long[] defenderProjectBits;
     private final Int2IntOpenHashMap attackerIndexByNationId;
     private final Int2IntOpenHashMap defenderIndexByNationId;
-    private final int[][] treatedDefenderIndexesByAttacker;
+    private final long[][] treatedDefenderWordsByAttacker;
     private final long[][] activePairConflictWordsByAttacker;
     private final int[][] defenderIndexesByScoreBucket;
     private final int minDefenderBucket;
@@ -77,7 +154,7 @@ public final class CompiledScenario {
             long[] defenderProjectBits,
             Int2IntOpenHashMap attackerIndexByNationId,
             Int2IntOpenHashMap defenderIndexByNationId,
-            int[][] treatedDefenderIndexesByAttacker,
+            long[][] treatedDefenderWordsByAttacker,
             long[][] activePairConflictWordsByAttacker,
             int[][] defenderIndexesByScoreBucket,
             int minDefenderBucket,
@@ -111,7 +188,7 @@ public final class CompiledScenario {
         this.defenderProjectBits = defenderProjectBits;
         this.attackerIndexByNationId = attackerIndexByNationId;
         this.defenderIndexByNationId = defenderIndexByNationId;
-        this.treatedDefenderIndexesByAttacker = treatedDefenderIndexesByAttacker;
+        this.treatedDefenderWordsByAttacker = treatedDefenderWordsByAttacker;
         this.activePairConflictWordsByAttacker = activePairConflictWordsByAttacker;
         this.defenderIndexesByScoreBucket = defenderIndexesByScoreBucket;
         this.minDefenderBucket = minDefenderBucket;
@@ -121,18 +198,22 @@ public final class CompiledScenario {
         this.relevantDefenderIndexesByAttacker = relevantDefenderIndexesByAttacker;
     }
 
+    @Override
     public int attackerCount() {
         return attackers.size();
     }
 
+    @Override
     public int defenderCount() {
         return defenders.size();
     }
 
+    @Override
     public DBNationSnapshot attacker(int attackerIndex) {
         return attackers.get(attackerIndex);
     }
 
+    @Override
     public DBNationSnapshot defender(int defenderIndex) {
         return defenders.get(defenderIndex);
     }
@@ -150,6 +231,9 @@ public final class CompiledScenario {
     }
 
     public int attackerUnitCount(int attackerIndex, MilitaryUnit unit) {
+        if (attackerUnitsFlat == null || attackerUnitOffsets == null) {
+            return attackers.get(attackerIndex).unit(unit);
+        }
         int unitOffset = SimUnits.purchasableIndex(unit);
         if (unitOffset < 0) {
             return 0;
@@ -158,6 +242,9 @@ public final class CompiledScenario {
     }
 
     public int defenderUnitCount(int defenderIndex, MilitaryUnit unit) {
+        if (defenderUnitsFlat == null || defenderUnitOffsets == null) {
+            return defenders.get(defenderIndex).unit(unit);
+        }
         int unitOffset = SimUnits.purchasableIndex(unit);
         if (unitOffset < 0) {
             return 0;
@@ -166,19 +253,31 @@ public final class CompiledScenario {
     }
 
     public int attackerCityCount(int attackerIndex) {
+        if (attackerCityInfraOffsets == null) {
+            return attackers.get(attackerIndex).cityInfraCount();
+        }
         return attackerCityInfraOffsets[attackerIndex + 1] - attackerCityInfraOffsets[attackerIndex];
     }
 
     public int defenderCityCount(int defenderIndex) {
+        if (defenderCityInfraOffsets == null) {
+            return defenders.get(defenderIndex).cityInfraCount();
+        }
         return defenderCityInfraOffsets[defenderIndex + 1] - defenderCityInfraOffsets[defenderIndex];
     }
 
     public double attackerCityInfraAt(int attackerIndex, int cityOrdinal) {
+        if (attackerCityInfraOffsets == null || attackerCityInfraFlat == null) {
+            return attackers.get(attackerIndex).cityInfra()[cityOrdinal];
+        }
         int base = attackerCityInfraOffsets[attackerIndex];
         return attackerCityInfraFlat[base + cityOrdinal];
     }
 
     public double defenderCityInfraAt(int defenderIndex, int cityOrdinal) {
+        if (defenderCityInfraOffsets == null || defenderCityInfraFlat == null) {
+            return defenders.get(defenderIndex).cityInfra()[cityOrdinal];
+        }
         int base = defenderCityInfraOffsets[defenderIndex];
         return defenderCityInfraFlat[base + cityOrdinal];
     }
@@ -192,37 +291,42 @@ public final class CompiledScenario {
     }
 
     public float attackerActivityWeight(int attackerIndex) {
-        return attackerActivityWeights[attackerIndex];
+        return attackerActivityWeights == null ? 1.0f : attackerActivityWeights[attackerIndex];
     }
 
     public float defenderActivityWeight(int defenderIndex) {
-        return defenderActivityWeights[defenderIndex];
+        return defenderActivityWeights == null ? 1.0f : defenderActivityWeights[defenderIndex];
     }
 
     public int attackerResearchBits(int attackerIndex) {
-        return attackerResearchBits[attackerIndex];
+        return attackerResearchBits == null ? attackers.get(attackerIndex).researchBits() : attackerResearchBits[attackerIndex];
     }
 
     public int defenderResearchBits(int defenderIndex) {
-        return defenderResearchBits[defenderIndex];
+        return defenderResearchBits == null ? defenders.get(defenderIndex).researchBits() : defenderResearchBits[defenderIndex];
     }
 
     public long attackerProjectBits(int attackerIndex) {
-        return attackerProjectBits[attackerIndex];
+        return attackerProjectBits == null ? attackers.get(attackerIndex).projectBits() : attackerProjectBits[attackerIndex];
     }
 
     public long defenderProjectBits(int defenderIndex) {
-        return defenderProjectBits[defenderIndex];
+        return defenderProjectBits == null ? defenders.get(defenderIndex).projectBits() : defenderProjectBits[defenderIndex];
     }
 
     public int[] relevantDefenderIndexes(int attackerIndex) {
         return relevantDefenderIndexesByAttacker[attackerIndex].clone();
     }
 
+    @Override
     public boolean isTreated(int attackerIndex, int defenderIndex) {
-        return Arrays.binarySearch(treatedDefenderIndexesByAttacker[attackerIndex], defenderIndex) >= 0;
+        long[] words = treatedDefenderWordsByAttacker[attackerIndex];
+        int wordIndex = defenderIndex >>> 6;
+        return wordIndex < words.length
+                && (words[wordIndex] & (1L << (defenderIndex & 63))) != 0L;
     }
 
+    @Override
     public boolean hasActivePairConflict(int attackerIndex, int defenderIndex) {
         long[] words = activePairConflictWordsByAttacker[attackerIndex];
         int wordIndex = defenderIndex >>> 6;
@@ -230,7 +334,8 @@ public final class CompiledScenario {
                 && (words[wordIndex] & (1L << (defenderIndex & 63))) != 0L;
     }
 
-    public void forEachDefenderIndexInRange(int attackerIndex, IntConsumer consumer) {
+    @Override
+    public void forEachDefenderIndexInRange(int attackerIndex, OpeningEvaluationScenario.DefenderIndexVisitor visitor) {
         double attackerScore = attackerScores[attackerIndex];
         double minScore = attackerScore * PW.WAR_RANGE_MIN_MODIFIER;
         double maxScore = attackerScore * PW.WAR_RANGE_MAX_MODIFIER;
@@ -245,12 +350,13 @@ public final class CompiledScenario {
             for (int defenderIndex : defenderIndexes) {
                 double defenderScore = defenderScores[defenderIndex];
                 if (defenderScore >= minScore && defenderScore <= maxScore) {
-                    consumer.accept(defenderIndex);
+                    visitor.accept(defenderIndex);
                 }
             }
         }
     }
 
+    @Override
     public double estimateAllianceCounterRisk(int attackerIndex, int defenderIndex) {
         int sameAllianceCount = defenderAllianceGroupLengths[defenderIndex];
         if (sameAllianceCount == 0) {
@@ -264,7 +370,7 @@ public final class CompiledScenario {
         double inRangeWeight = 0.0;
         for (int i = 0; i < sameAllianceCount; i++) {
             int sameAllianceDefenderIndex = defenderAllianceFlatIndexes[sameAllianceOffset + i];
-            double weight = defenderActivityWeights[sameAllianceDefenderIndex];
+            double weight = defenderActivityWeights == null ? 1.0d : defenderActivityWeights[sameAllianceDefenderIndex];
             totalWeight += weight;
             double candidateScore = defenderScores[sameAllianceDefenderIndex];
             if (candidateScore >= minScore && candidateScore <= maxScore) {
@@ -282,6 +388,14 @@ public final class CompiledScenario {
     public Integer defenderIndex(int nationId) {
         int defenderIndex = defenderIndexByNationId.get(nationId);
         return defenderIndex >= 0 ? defenderIndex : null;
+    }
+
+    public int attackerIndexOrMinusOne(int nationId) {
+        return attackerIndexByNationId.get(nationId);
+    }
+
+    public int defenderIndexOrMinusOne(int nationId) {
+        return defenderIndexByNationId.get(nationId);
     }
 
     static int scoreBucket(double score) {

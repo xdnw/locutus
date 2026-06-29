@@ -51,7 +51,7 @@ class BeigeMechanicsTest {
         SimWorld world = new SimWorld();
         double[] resources = ResourceType.getBuffer();
         resources[ResourceType.MONEY.ordinal()] = 1_000_000d;
-        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, resources, 0d, 5);
+        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, resources, 5, (byte) 0);
         nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 100);
         nation.setUnitCap(MilitaryUnit.SOLDIER, 1_000);
         nation.applyBeigeTurns(3);
@@ -68,7 +68,7 @@ class BeigeMechanicsTest {
         SimWorld world = new SimWorld();
         double[] resources = ResourceType.getBuffer();
         resources[ResourceType.MONEY.ordinal()] = 1_000_000d;
-        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, resources, 0d, 5);
+        SimNation nation = new SimNation(1, WarPolicy.FORTRESS, resources, 5, (byte) 0);
         SimNation opponent = new SimNation(2, WarPolicy.TURTLE, 1_000_000d);
         nation.setDailyBuyCap(MilitaryUnit.SOLDIER, 100);
         nation.setUnitCap(MilitaryUnit.SOLDIER, 1_000);
@@ -83,7 +83,7 @@ class BeigeMechanicsTest {
     }
 
     @Test
-    void recentOpponentLockoutBlocksRedeclareButReleasesSlotsImmediately() {
+    void recentOpponentLockoutBlocksSameOpponentDeclarationButReleasesSlotsImmediately() {
         SimWorld world = new SimWorld();
         SimNation attacker = new SimNation(1, WarPolicy.FORTRESS, 1_000_000d);
         SimNation defender = new SimNation(2, WarPolicy.TURTLE, 1_000_000d);
@@ -114,3 +114,4 @@ class BeigeMechanicsTest {
         assertTrue(world.canDeclareWar(1, 2));
     }
 }
+

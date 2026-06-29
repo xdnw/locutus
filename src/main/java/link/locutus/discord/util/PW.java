@@ -1697,23 +1697,23 @@ public final class PW {
     }
 
     /**
-     * Computes the static (non-infra, non-unit) score component from the three immutable sim inputs.
+    * Computes the static score component from the three immutable sim inputs.
      * <p>
      * Score decomposition (PnW formula):
      * <pre>
-     *   totalScore = computeNonInfraScoreBase(cities, numProjects, researchBits)
+    *   totalScore = computeStaticScoreComponent(cities, numProjects, researchBits)
      *              + totalInfra / 40.0          // changes as infra is damaged
      *              + sum(unit.getScore(count))   // changes as units are bought / killed
      * </pre>
-     * Callers (planners) should call this once at nation-init time, after applying any overrides to
-     * cities/projects/research, and pass the result as {@code nonInfraScoreBase} to {@code SimNation}.
-     * Score then recomputes cheaply inside SimNation whenever infra or unit counts change.
+    * Sim/planner owners cache this immutable-state component once after cities, projects, and research are fixed.
+    * Public call edges should not expose it as an override knob separate from those inputs. Score then recomputes
+    * cheaply inside sim state whenever infra or unit counts change.
      *
      * @param cities       number of cities (>= 1)
      * @param numProjects  number of projects owned
      * @param researchBits bitmask of research levels (see {@link Research})
      */
-    public static double computeNonInfraScoreBase(int cities, int numProjects, int researchBits) {
+    public static double computeStaticScoreComponent(int cities, int numProjects, int researchBits) {
         double base = 10d;
         if (researchBits > 0) {
             for (Research rs : Research.values) {
@@ -1855,7 +1855,7 @@ public final class PW {
         if (cities == null)
             cities = nation.getCities();
 
-        double base = computeNonInfraScoreBase(cities, projects, researchBits);
+        double base = computeStaticScoreComponent(cities, projects, researchBits);
         base += infra / 40d;
         for (MilitaryUnit unit : MilitaryUnit.values) {
             if (unit == MilitaryUnit.INFRASTRUCTURE)
@@ -1952,40 +1952,114 @@ public final class PW {
         };
     }
 
+    private static final double ODDS_RATIO_MIN = 0.294722519891231;
+    private static final double ODDS_RATIO_MAX = 3.393022020743633;
+
+    private static final double ODDS_A = 1.3888888888888888;
+    private static final double ODDS_B = 0.2222222222222222;
+    private static final double ODDS_C = 1.1111111111111112;
+    private static final double ODDS_D = 2.111111111111111;
+
+    public static void getOdds4(double attStrength, double defStrength, double[] out, int off) {
+        if (attStrength <= 0.0) {
+            writeOdds4_1000(out, off);
+            return;
+        }
+        if (defStrength <= 0.0) {
+            writeOdds4_0001(out, off);
+            return;
+        }
+
+        double ratio = attStrength / defStrength;
+
+        if (ratio <= ODDS_RATIO_MIN) {
+            writeOdds4_1000(out, off);
+            return;
+        }
+        if (ratio >= ODDS_RATIO_MAX) {
+            writeOdds4_0001(out, off);
+            return;
+        }
+
+        double p = oddsWinProgressUnchecked(ratio);
+        double q = 1.0 - p;
+
+        double pp = p * p;
+        double qq = q * q;
+
+        out[off]     = q * qq;
+        out[off + 1] = 3.0 * p * qq;
+        out[off + 2] = 3.0 * pp * q;
+        out[off + 3] = p * pp;
+    }
+
     public static double getOdds(double attStrength, double defStrength, int success) {
-        attStrength = Math.pow(attStrength, 0.75);
-        defStrength = Math.pow(defStrength, 0.75);
+        // Valid only for success in [0, 3].
+        if ((success & ~3) != 0) {
+            return 0.0;
+        }
 
-        double attMin = attStrength * 0.4;
-        double attMax = attStrength;
-        double defMin = defStrength * 0.4;
-        double defMax = defStrength;
+        if (attStrength <= 0.0) {
+            return success == 0 ? 1.0 : 0.0;
+        }
+        if (defStrength <= 0.0) {
+            return success == 3 ? 1.0 : 0.0;
+        }
 
-        // Skip formula for common cases (for performance)
-        if (attStrength <= 0)
-            return success == 0 ? 1 : 0;
-        if (defStrength * 2.5 <= attStrength)
-            return success == 3 ? 1 : 0;
-        if (attMax <= defMin || defMax <= attMin)
-            return success == 0 ? 1 : 0;
+        double ratio = attStrength / defStrength;
 
-        double sampleSpace = (attMax - attMin) * (defMax - defMin);
-        double overlap = Math.min(attMax, defMax) - Math.max(attMin, defMin);
-        double p = (overlap * overlap * 0.5) / sampleSpace;
-        if (attStrength > defStrength)
-            p = 1 - p;
+        if (ratio <= ODDS_RATIO_MIN) {
+            return success == 0 ? 1.0 : 0.0;
+        }
+        if (ratio >= ODDS_RATIO_MAX) {
+            return success == 3 ? 1.0 : 0.0;
+        }
 
-        if (p <= 0)
-            return 0;
-        if (p >= 1)
-            return 1;
+        double p = oddsWinProgressUnchecked(ratio);
 
-        int k = success;
-        int n = 3;
+        return switch (success) {
+            case 0 -> {
+                double q = 1.0 - p;
+                yield q * q * q;
+            }
+            case 1 -> {
+                double q = 1.0 - p;
+                yield 3.0 * p * q * q;
+            }
+            case 2 -> {
+                double q = 1.0 - p;
+                yield 3.0 * p * p * q;
+            }
+            case 3 -> p * p * p;
+            default -> 0.0; // unreachable because of the bit check above
+        };
+    }
 
-        double odds = Math.pow(p, k) * Math.pow(1 - p, n - k);
-        double npr = MathMan.factorial(n) / (double) (MathMan.factorial(k) * MathMan.factorial(n - k));
-        return odds * npr;
+    private static double oddsWinProgressUnchecked(double ratio) {
+        // r = ratio^0.75, but much faster than Math.pow(ratio, 0.75).
+        double sqrtRatio = Math.sqrt(ratio);
+        double r = sqrtRatio * Math.sqrt(sqrtRatio);
+        double invR = 1.0 / r;
+
+        if (r < 1.0) {
+            return ODDS_A * r + ODDS_B * invR - ODDS_C;
+        }
+
+        return ODDS_D - ODDS_A * invR - ODDS_B * r;
+    }
+
+    private static void writeOdds4_1000(double[] out, int off) {
+        out[off]     = 1.0;
+        out[off + 1] = 0.0;
+        out[off + 2] = 0.0;
+        out[off + 3] = 0.0;
+    }
+
+    private static void writeOdds4_0001(double[] out, int off) {
+        out[off]     = 0.0;
+        out[off + 1] = 0.0;
+        out[off + 2] = 0.0;
+        out[off + 3] = 1.0;
     }
 
     public static Set<Integer> parseAlliances(GuildDB db, String arg) {

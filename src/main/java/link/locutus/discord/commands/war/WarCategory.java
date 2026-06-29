@@ -28,7 +28,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.sim.combat.SuperiorityFlagDelta;
-import link.locutus.discord.sim.combat.WarControlRules;
+import link.locutus.discord.sim.combat.WarTacticalFlagRules;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -431,7 +431,7 @@ public class WarCategory {
         WarRoom room = roomTmp;
 
         boolean value = room.target.getNation_id() == attack.getAttacker_id();
-        RoomControlUpdate roomControlUpdate = roomControlUpdate(attack.getAttack_type(), attack.getSuccess(), value);
+        RoomFlagUpdate roomFlagUpdate = roomFlagUpdate(attack.getAttack_type(), attack.getSuccess(), value);
 
         DBNation attacker = Locutus.imp().getNationDB().getNationById(attackerId);
         DBNation defender = Locutus.imp().getNationDB().getNationById(defenderId);
@@ -515,15 +515,15 @@ public class WarCategory {
                 break;
         }
 
-        if (!roomControlUpdate.isEmpty()) {
-            if (roomControlUpdate.groundControl() != null) {
-                room.setGC(roomControlUpdate.groundControl());
+        if (!roomFlagUpdate.isEmpty()) {
+            if (roomFlagUpdate.groundSuperiority() != null) {
+                room.setGC(roomFlagUpdate.groundSuperiority());
             }
-            if (roomControlUpdate.airSuperiority() != null) {
-                room.setAC(roomControlUpdate.airSuperiority());
+            if (roomFlagUpdate.airSuperiority() != null) {
+                room.setAC(roomFlagUpdate.airSuperiority());
             }
-            if (roomControlUpdate.blockade() != null) {
-                room.setBlockade(roomControlUpdate.blockade());
+            if (roomFlagUpdate.blockade() != null) {
+                room.setBlockade(roomFlagUpdate.blockade());
             }
         }
 
@@ -864,12 +864,12 @@ public class WarCategory {
         }
     }
 
-    private static RoomControlUpdate roomControlUpdate(
+    private static RoomFlagUpdate roomFlagUpdate(
             AttackType attackType,
             SuccessType success,
             boolean trackedNationIsAttacker
     ) {
-        SuperiorityFlagDelta delta = WarControlRules.controlDelta(
+        SuperiorityFlagDelta delta = WarTacticalFlagRules.tacticalFlagDelta(
                 attackType,
                 success,
                 !trackedNationIsAttacker,
@@ -877,15 +877,15 @@ public class WarCategory {
                 !trackedNationIsAttacker
         );
         if (delta == SuperiorityFlagDelta.NONE) {
-            return RoomControlUpdate.NONE;
+            return RoomFlagUpdate.NONE;
         }
 
-        Boolean groundControl = null;
+        Boolean groundSuperiority = null;
         Boolean airSuperiority = null;
         Boolean blockade = null;
 
         if (delta.clearGroundSuperiority()) {
-            groundControl = Boolean.FALSE;
+            groundSuperiority = Boolean.FALSE;
         }
         if (delta.clearAirSuperiority()) {
             airSuperiority = Boolean.FALSE;
@@ -894,7 +894,7 @@ public class WarCategory {
             blockade = Boolean.FALSE;
         }
         if (delta.groundSuperiority() != 0) {
-            groundControl = trackedNationIsAttacker == (delta.groundSuperiority() > 0);
+            groundSuperiority = trackedNationIsAttacker == (delta.groundSuperiority() > 0);
         }
         if (delta.airSuperiority() != 0) {
             airSuperiority = trackedNationIsAttacker == (delta.airSuperiority() > 0);
@@ -902,18 +902,18 @@ public class WarCategory {
         if (delta.blockade() != 0) {
             blockade = trackedNationIsAttacker == (delta.blockade() > 0);
         }
-        return new RoomControlUpdate(groundControl, airSuperiority, blockade);
+        return new RoomFlagUpdate(groundSuperiority, airSuperiority, blockade);
     }
 
-    private record RoomControlUpdate(
-            Boolean groundControl,
+    private record RoomFlagUpdate(
+            Boolean groundSuperiority,
             Boolean airSuperiority,
             Boolean blockade
     ) {
-        private static final RoomControlUpdate NONE = new RoomControlUpdate(null, null, null);
+        private static final RoomFlagUpdate NONE = new RoomFlagUpdate(null, null, null);
 
         private boolean isEmpty() {
-            return groundControl == null && airSuperiority == null && blockade == null;
+            return groundSuperiority == null && airSuperiority == null && blockade == null;
         }
     }
 

@@ -384,58 +384,6 @@ public final class StrategicAssetValue {
         );
     }
 
-    public static double controlRegimeScore(
-            int ownResistance,
-            int enemyResistance,
-            int ownControls,
-            int enemyControls
-    ) {
-        return controlRegimeScore(
-                DEFAULT_STARTING_MAPS,
-                DEFAULT_STARTING_MAPS,
-                ownResistance,
-                enemyResistance,
-                ownControls,
-            enemyControls
-        );
-    }
-
-    public static double controlRegimeScore(
-            int ownMaps,
-            int enemyMaps,
-            int ownResistance,
-            int enemyResistance,
-            int ownControls,
-            int enemyControls
-    ) {
-        ActiveWarContext context = ActiveWarContext.fromRelativeWarState(
-                1,
-                1d,
-                ownMaps,
-                enemyMaps,
-                ownResistance,
-                enemyResistance,
-                ownControls,
-                enemyControls
-        );
-        double controlBalance = Math.max(0, ownControls) - Math.max(0, enemyControls);
-        double tenability = durableControlMultiplier(context);
-        double timingWindowBalance = StrategicTimingValue.victoryTimingWindowValue(
-            ownResistance,
-            enemyResistance,
-            ownControls,
-            enemyControls
-        ) - StrategicTimingValue.victoryTimingWindowValue(
-            enemyResistance,
-            ownResistance,
-            enemyControls,
-            ownControls
-        );
-        double warSignal = (2.5d * controlBalance * tenability)
-            + (2.0d * timingWindowBalance * tenability);
-        return Math.max(-18.0d, Math.min(18.0d, warSignal));
-    }
-
     public static double nationValue(SimNation nation) {
         StrategicRelevance relevance = StrategicRelevance.DEFAULT;
         ActiveWarContext activeWarContext = ActiveWarContext.fromSlots(

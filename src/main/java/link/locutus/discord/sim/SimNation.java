@@ -40,58 +40,46 @@ public final class SimNation implements CombatantView {
                 nationId,
                 policy,
                 warchest,
-                0d,
                 new double[0],
                 NationInit.DEFAULT_MAX_OFF_SLOTS,
                 NationInit.DEFAULT_RESET_HOUR_UTC
         ));
     }
 
-    public SimNation(int nationId, WarPolicy policy, double warchest, double nonInfraScoreBase, int maxOffSlots) {
-        this(NationInit.moneyOnly(
-                nationId,
-                policy,
-                warchest,
-                nonInfraScoreBase,
-                new double[0],
-                maxOffSlots,
-                NationInit.DEFAULT_RESET_HOUR_UTC
-        ));
+    public SimNation(int nationId, WarPolicy policy, double warchest, int maxOffSlots) {
+        this(nationId, policy, warchest, maxOffSlots, NationInit.DEFAULT_RESET_HOUR_UTC);
     }
 
-    public SimNation(int nationId, WarPolicy policy, double warchest, double nonInfraScoreBase, int maxOffSlots, byte resetHourUtc) {
-        this(NationInit.moneyOnly(nationId, policy, warchest, nonInfraScoreBase, new double[0], maxOffSlots, resetHourUtc));
+    public SimNation(int nationId, WarPolicy policy, double warchest, int maxOffSlots, byte resetHourUtc) {
+        this(NationInit.moneyOnly(nationId, policy, warchest, new double[0], maxOffSlots, resetHourUtc));
     }
 
-    public SimNation(int nationId, WarPolicy policy, double[] resources, double nonInfraScoreBase, int maxOffSlots) {
+    public SimNation(int nationId, WarPolicy policy, double[] resources, int maxOffSlots) {
         this(new NationInit(
                 nationId,
                 nationId,
                 policy,
                 resources,
-                nonInfraScoreBase,
                 new double[0],
                 maxOffSlots,
                 NationInit.DEFAULT_RESET_HOUR_UTC
         ));
     }
 
-    public SimNation(int nationId, WarPolicy policy, double[] resources, double nonInfraScoreBase, int maxOffSlots, byte resetHourUtc) {
-        this(new NationInit(nationId, nationId, policy, resources, nonInfraScoreBase, new double[0], maxOffSlots, resetHourUtc));
+    public SimNation(int nationId, WarPolicy policy, double[] resources, int maxOffSlots, byte resetHourUtc) {
+        this(new NationInit(nationId, nationId, policy, resources, new double[0], maxOffSlots, resetHourUtc));
     }
 
     // Primary constructor with explicit per-city infra.
-    // nonInfraScoreBase captures static score from cities, land, research, projects — not infra or units.
     // cityInfra is per-city infra; length must equal the number of cities for this nation.
-    // Score from infra = sum(cityInfra) / 40.0 (PnW formula).
+    // Static score is derived from immutable state (cities, projects, research), while infra and units mutate.
     public SimNation(int nationId, WarPolicy policy, double[] resources,
-                     double nonInfraScoreBase, double[] cityInfra, int maxOffSlots) {
+                     double[] cityInfra, int maxOffSlots) {
         this(new NationInit(
                 nationId,
                 nationId,
                 policy,
                 resources,
-                nonInfraScoreBase,
                 cityInfra,
                 maxOffSlots,
                 NationInit.DEFAULT_RESET_HOUR_UTC
@@ -99,8 +87,8 @@ public final class SimNation implements CombatantView {
     }
 
     public SimNation(int nationId, WarPolicy policy, double[] resources,
-                     double nonInfraScoreBase, double[] cityInfra, int maxOffSlots, byte resetHourUtc) {
-        this(new NationInit(nationId, nationId, policy, resources, nonInfraScoreBase, cityInfra, maxOffSlots, resetHourUtc));
+                     double[] cityInfra, int maxOffSlots, byte resetHourUtc) {
+        this(new NationInit(nationId, nationId, policy, resources, cityInfra, maxOffSlots, resetHourUtc));
     }
 
     public SimNation(NationInit init) {
@@ -215,13 +203,8 @@ public final class SimNation implements CombatantView {
         return sum;
     }
 
-    public double nonInfraScoreBase() {
-        return storage.nonInfraScoreBase[nationIndex];
-    }
-
-    @Deprecated
-    public double scoreBase() {
-        return nonInfraScoreBase();
+    public double staticScoreComponent() {
+        return storage.staticScoreComponent[nationIndex];
     }
 
     public double score() {
@@ -510,19 +493,6 @@ public final class SimNation implements CombatantView {
         for (ResourceType type : ResourceType.values) {
             storage.resourcesFlat[resourceBase + type.ordinal()] -= validatedCost[type.ordinal()];
         }
-    }
-
-    public void setNonInfraScoreBase(double base) {
-        if (base < 0d) {
-            throw new IllegalArgumentException("nonInfraScoreBase must be >= 0");
-        }
-        storage.nonInfraScoreBase[nationIndex] = base;
-        recalculateScoreAndNotify();
-    }
-
-    @Deprecated
-    public void setScoreBase(double scoreBase) {
-        setNonInfraScoreBase(scoreBase);
     }
 
     // Applies infra damage to the highest-infra city only.

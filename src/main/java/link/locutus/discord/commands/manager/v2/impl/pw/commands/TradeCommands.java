@@ -1096,7 +1096,7 @@ public class TradeCommands {
 
         String emoji = "Show Day Graph";
 
-        body.append("\nPress `" + emoji + "` to compare by day (200 days)");
+        body.append("\nPress `" + emoji + "` to compare by day");
 
 
         CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.stockpile1(ResourceType.toString(stockpile)).stockpile2(ResourceType.toString(allDeposits)).numDays("200");
