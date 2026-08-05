@@ -758,40 +758,64 @@ public class GuildKey {
             return "The #channel to receive recruitment message output";
         }
     }.setupRequirements(f -> f.requires(RECRUIT_MESSAGE_SUBJECT).requires(RECRUIT_MESSAGE_CONTENT).requires(API_KEY).requireValidAlliance().requireActiveGuild());
-    public static final GuildSetting<Long> RECRUIT_MESSAGE_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT, NATION_CREATION, Timediff.class) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String RECRUIT_MESSAGE_DELAY(@Me GuildDB db, @Me User user, @Timediff Long timediff) {
-            if (timediff < 60) {
-                return "The interval must be at least 1 minute";
-            }
-            if (timediff > TimeUnit.DAYS.toMillis(1)) {
-                return "The interval must be less than 1 day";
-            }
-            return RECRUIT_MESSAGE_DELAY.setAndValidate(db, user, timediff);
-        }
+    public static final GuildSetting<Long> RECRUIT_MESSAGE_DELAY =
+            new GuildLongSetting(
+                    GuildSettingCategory.RECRUIT,
+                    NATION_CREATION,
+                    Timediff.class
+            ) {
+                @NoFormat
+                @Command(descMethod = "help")
+                @RolePermission(Roles.ADMIN)
+                public String RECRUIT_MESSAGE_DELAY(
+                        @Me GuildDB db,
+                        @Me User user,
+                        @Timediff Long timediff
+                ) {
+                    return RECRUIT_MESSAGE_DELAY.setAndValidate(db, user, timediff);
+                }
 
-        // fix legacy
-        @Override
-        public Long parse(GuildDB db, String input) {
-            if (input.matches(".*[a-zA-Z]+.*")) {
-                input = "" + (TimeUtil.timeToSec(input) * 1000);
-            }
-            return super.parse(db, input);
-        }
+                @Override
+                public Long validate(GuildDB db, User user, Long value) {
+                    if (value < TimeUnit.MINUTES.toMillis(1)) {
+                        throw new IllegalArgumentException(
+                                "The interval must be at least 1 minute"
+                        );
+                    }
+                    if (value >= TimeUnit.DAYS.toMillis(1)) {
+                        throw new IllegalArgumentException(
+                                "The interval must be less than 1 day"
+                        );
+                    }
+                    return value;
+                }
 
-        @Override
-        public String toReadableString(GuildDB db, Long value) {
-            return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
-        }
+                @Override
+                public Long parse(GuildDB db, String input) {
+                    String value = input.trim();
 
-        @Override
-        public String help() {
-            return "The amount of time to delay recruitment messages by";
-        }
+                    // Current persisted representation is already milliseconds.
+                    try {
+                        return Long.parseLong(value);
+                    } catch (NumberFormatException ignored) {
+                        // Legacy human-readable values such as "10m".
+                        return TimeUnit.SECONDS.toMillis(TimeUtil.timeToSec(value));
+                    }
+                }
 
-    }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
+                @Override
+                public String toReadableString(GuildDB db, Long value) {
+                    return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
+                }
+
+                @Override
+                public String help() {
+                    return "The amount of time to delay recruitment messages by";
+                }
+            }.setupRequirements(f -> f
+                    .requireValidAlliance()
+                    .requires(RECRUIT_MESSAGE_OUTPUT)
+                    .requires(ALLIANCE_ID));
     public static final GuildSetting<Map<NationFilter, TaxRate>> REQUIRED_INTERNAL_TAXRATE = new GuildSetting<Map<NationFilter, TaxRate>>(GuildSettingCategory.TAX, TAX_AUTO_ASSIGN, Map.class, NationFilter.class, TaxRate.class) {
         @NoFormat
         @Command(descMethod = "help")
