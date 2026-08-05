@@ -2663,7 +2663,7 @@ public class GuildKey {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String BANKER_WITHDRAW_LIMIT_INTERVAL(@Me GuildDB db, @Me User user, @Timediff Long timediff) {
-            if (timediff < 60) {
+            if (timediff < TimeUnit.MINUTES.toMillis(1)) {
                 return "The interval must be at least 1 minute";
             }
             if (timediff > TimeUnit.DAYS.toMillis(90)) {
@@ -2979,7 +2979,10 @@ public class GuildKey {
             return "The timeframe the `" + GRANT_TEMPLATE_LIMITS.name() + "` is for, which restricts max funds that a user can grant using templates over this timeframe.";
         }
 
-    }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
+    }.setupRequirements(f -> f
+            .requireValidAlliance()
+            .requiresOffshore()
+            .requires(GRANT_TEMPLATE_LIMITS));
 
     public static final GuildSetting<NationFilter> WAR_ROOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ROOM, null) {
         @NoFormat
