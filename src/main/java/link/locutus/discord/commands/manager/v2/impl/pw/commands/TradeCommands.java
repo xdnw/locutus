@@ -58,6 +58,8 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.util.StringMan.truncateIds;
+
 public class TradeCommands {
 
 //    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
@@ -1071,8 +1073,9 @@ public class TradeCommands {
         StringBuilder body = new StringBuilder();
         Set<Long> aaIds = ArrayUtil.sort(coalitions.stream().filter(f -> f.intValue() == f).collect(Collectors.toSet()), true);
         Set<Long> corpIds = ArrayUtil.sort(coalitions.stream().filter(f -> f.intValue() != f).collect(Collectors.toSet()), true);
-        body.append("Alliances: " + StringMan.join(aaIds, ",")).append("\n");
-        body.append("Corporations: " + StringMan.join(corpIds, ",")).append("\n");
+        int maxCoalitionIdsShown = 5;
+        body.append("Alliances: " + truncateIds(aaIds, maxCoalitionIdsShown)).append("\n");
+        body.append("Corporations: " + truncateIds(corpIds, maxCoalitionIdsShown)).append("\n");
         body.append("Stockpile: `" + ResourceType.toString(stockpile) + "`\n");
         body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(stockpile))).append("\n");
 
