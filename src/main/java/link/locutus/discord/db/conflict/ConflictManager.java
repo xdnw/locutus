@@ -1330,18 +1330,29 @@ public class ConflictManager {
         long oldStart = conflict.getStartTurn();
         long oldEnd = conflict.getEndTurn();
 
+        boolean rangeChanged = start != oldStart || end != oldEnd;
         boolean expandedRange = start < oldStart || (end > oldEnd && oldEnd < TimeUtil.getTurn());
         boolean narrowedRange = start > oldStart || (end < oldEnd && end <= TimeUtil.getTurn());
+
         List<HeaderGroup> toInvalidate = new ObjectArrayList<>(
-                Arrays.asList(HeaderGroup.INDEX_META, HeaderGroup.PAGE_META, HeaderGroup.GRAPH_META));
-        if (expandedRange) {
+                Arrays.asList(
+                        HeaderGroup.INDEX_META,
+                        HeaderGroup.PAGE_META,
+                        HeaderGroup.GRAPH_META
+                )
+        );
+
+        if (rangeChanged) {
             toInvalidate.add(HeaderGroup.INDEX_STATS);
             toInvalidate.add(HeaderGroup.PAGE_STATS);
             toInvalidate.add(HeaderGroup.GRAPH_DATA);
+        }
 
+        if (expandedRange) {
             flagGraphRecalc(conflict.getId());
             conflict.markGraphsInvalid();
         }
+
         invalidateConflictRowCache(conflict.getId(), toInvalidate.toArray(new HeaderGroup[0]));
 
         int conflictOrd = conflict.getOrdinal();
@@ -1350,7 +1361,7 @@ public class ConflictManager {
                 if (end <= TimeUtil.getTurn()) {
                     activeConflictsOrd.remove(conflictOrd);
                 }
-            } else if (!activeConflictsOrd.contains(conflictOrd) && end == Long.MAX_VALUE || end > TimeUtil.getTurn()) {
+            } else if (!activeConflictsOrd.contains(conflictOrd) && (end == Long.MAX_VALUE || end > TimeUtil.getTurn())) {
                 activeConflictsOrd.add(conflictOrd);
             }
             addConflictsByAlliance(conflict, true);

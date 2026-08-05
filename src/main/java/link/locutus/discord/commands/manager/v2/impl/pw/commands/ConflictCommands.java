@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.db.conflict.HeaderGroup;
 import link.locutus.discord.util.RateLimitedSources;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -262,6 +263,9 @@ public class ConflictCommands {
         }
         CompletableFuture<IMessageBuilder> msgFuture;
         if (reinitialize_wars) {
+            for (Conflict conflict : conflicts) {
+                manager.invalidateConflictRowCache(conflict.getId(), HeaderGroup.INDEX_STATS);
+            }
             msgFuture = io.sendIfFree("Initializing wars...", RateLimitedSources.COMMAND_PROGRESS);
             manager.loadConflictWars(conflicts, true, false, true);
         } else {
