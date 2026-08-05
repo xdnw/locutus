@@ -1801,21 +1801,53 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String ADD_RSS_CONVERSION_RATE(@Me GuildDB db, @Me User user, NationFilter filter, Map<ResourceType, Double> prices) {
-            for (Map.Entry<ResourceType, Double> entry : prices.entrySet()) {
-                if (entry.getKey() == ResourceType.MONEY || entry.getKey() == ResourceType.CREDITS) {
-                    throw new IllegalArgumentException("Cannot set conversion rate for money or credits");
-                }
-                if ((entry.getValue() > 0  && entry.getValue() <= 1) || entry.getValue() < 0 || entry.getValue() > 100) {
-                    throw new IllegalArgumentException("Invalid value for " + entry.getKey() + ": " + entry.getValue() + ". Conversion is between 0 and 100");
-                }
-            }
-            Map<NationFilter, Map<ResourceType, Double>> existing = GuildKey.RSS_CONVERSION_RATES.getOrNull(db);
-            existing = existing == null ? new LinkedHashMap<>() : new LinkedHashMap<>(existing);
-            existing.entrySet().removeIf(e -> e.getKey().getFilter().equalsIgnoreCase(filter.getFilter()));
+        public String ADD_RSS_CONVERSION_RATE(
+                @Me GuildDB db,
+                @Me User user,
+                NationFilter filter,
+                Map<ResourceType, Double> prices
+        ) {
+            Map<NationFilter, Map<ResourceType, Double>> existing =
+                    RSS_CONVERSION_RATES.getOrNull(db);
+
+            existing = existing == null
+                    ? new LinkedHashMap<>()
+                    : new LinkedHashMap<>(existing);
+
+            existing.entrySet().removeIf(entry ->
+                    entry.getKey()
+                            .getFilter()
+                            .equalsIgnoreCase(filter.getFilter())
+            );
+
             existing.put(filter, prices);
 
             return RSS_CONVERSION_RATES.setAndValidate(db, user, existing);
+        }
+
+        @Override
+        public Map<NationFilter, Map<ResourceType, Double>> validate(
+                GuildDB db,
+                User user,
+                Map<NationFilter, Map<ResourceType, Double>> value
+        ) {
+            for (Map<ResourceType, Double> prices : value.values()) {
+                for (Map.Entry<ResourceType, Double> entry : prices.entrySet()) {
+                    ResourceType resource = entry.getKey();
+                    double rate = entry.getValue();
+                    if (resource == ResourceType.MONEY
+                            || resource == ResourceType.CREDITS) {
+                        throw new IllegalArgumentException(
+                                "Cannot set conversion rate for money or credits"
+                        );
+                    }
+                    if ((rate > 0 && rate <= 1) || rate < 0 || rate > 100) {
+                        throw new IllegalArgumentException("Invalid value for " + resource + ": " + rate  + ". Conversion must be 0, or greater than "  + "1 and at most 100");
+                    }
+                }
+            }
+
+            return super.validate(db, user, value);
         }
 
         @Override
@@ -2511,6 +2543,16 @@ public class GuildKey {
         }
 
         @Override
+        public Long parse(GuildDB db, String input) {
+            String value = input.trim();
+            try {
+                return Long.parseLong(value);
+            } catch (NumberFormatException ignored) {
+                return super.parse(db, value);
+            }
+        }
+
+        @Override
         public String toReadableString(GuildDB db, Long value) {
             return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
         }
@@ -2589,9 +2631,17 @@ public class GuildKey {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String ALLIANCE_EXODUS_TOP_X(@Me GuildDB db, @Me User user, int rank) {
-            if (rank <= 0) return "Invalid rank: `" + rank + "` (must be > 0)";
             return ALLIANCE_EXODUS_TOP_X.setAndValidate(db, user, rank);
         }
+
+        @Override
+        public Integer validate(GuildDB db, User user, Integer value) {
+            if (value <= 0) {
+                throw new IllegalArgumentException("Invalid rank: `" + value + "` (must be > 0)");
+            }
+            return super.validate(db, user, value);
+        }
+
         @Override
         public String help() {
             return "The rank threshold to post exodus alerts for";
@@ -2663,23 +2713,34 @@ public class GuildKey {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String BANKER_WITHDRAW_LIMIT_INTERVAL(@Me GuildDB db, @Me User user, @Timediff Long timediff) {
-            if (timediff < TimeUnit.MINUTES.toMillis(1)) {
-                return "The interval must be at least 1 minute";
-            }
-            if (timediff > TimeUnit.DAYS.toMillis(90)) {
-                return "The interval must be less than 90 days";
-            }
             return BANKER_WITHDRAW_LIMIT_INTERVAL.setAndValidate(db, user, timediff);
         }
 
-        // fix legacy
+        @Override
+        public Long validate(GuildDB db, User user, Long value) {
+            if (value < TimeUnit.MINUTES.toMillis(1)) {
+                throw new IllegalArgumentException(
+                        "The interval must be at least 1 minute"
+                );
+            }
+
+            if (value > TimeUnit.DAYS.toMillis(90)) {
+                throw new IllegalArgumentException(
+                        "The interval must be at most 90 days"
+                );
+            }
+
+            return super.validate(db, user, value);
+        }
+
         @Override
         public Long parse(GuildDB db, String input) {
-            // if info contains letters
-            if (input.matches(".*[a-zA-Z]+.*")) {
-                input = "" + (TimeUtil.timeToSec(input) * 1000);
+            String value = input.trim();
+            try {
+                return Long.parseLong(value);
+            } catch (NumberFormatException ignored) {
+                return super.parse(db, value);
             }
-            return super.parse(db, input);
         }
 
         @Override
@@ -2959,14 +3020,14 @@ public class GuildKey {
             return GRANT_LIMIT_DELAY.setAndValidate(db, user, timediff);
         }
 
-        // fix legacy
         @Override
         public Long parse(GuildDB db, String input) {
-            // if info contains letters
-            if (input.matches(".*[a-zA-Z]+.*")) {
-                input = "" + (TimeUtil.timeToSec(input) * 1000);
+            String value = input.trim();
+            try {
+                return Long.parseLong(value);
+            } catch (NumberFormatException ignored) {
+                return super.parse(db, value);
             }
-            return super.parse(db, input);
         }
 
         @Override
