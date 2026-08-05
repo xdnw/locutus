@@ -4158,6 +4158,9 @@ public class BankCommands {
 
             OffshoreInstance offshore = otherDb2 == null && allowCheckDeleted ? db.getOffshore()
                     : otherDb2.getOffshore();
+            if (offshore == null && allowCheckDeleted) {
+                offshore = db.getOffshore();
+            }
 
             if (offshore == null) {
                 if (otherDb2 == db) {
@@ -4182,8 +4185,7 @@ public class BankCommands {
                         && (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()))) {
                     return "You do not have permisssion to check another alliance's deposits (3)";
                 }
-                double[] deposits = ResourceType
-                        .resourcesToArray(offshore.getDeposits(alliance.getAlliance_id(), true));
+                double[] deposits = ResourceType.resourcesToArray(offshore.getDeposits(alliance.getAlliance_id(), true, allowCheckDeleted));
                 accountDeposits.put(DepositType.DEPOSIT, deposits);
             }
         } else if (nationOrAllianceOrGuild.isGuild()) {

@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.apiv3.enums.ApiKeyPermission;
+import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.util.RateLimitedSources;
 import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
@@ -1875,7 +1877,7 @@ public class AdminCommands {
         List<Object> leaders = sheet.findColumn("leader");
         List<Object> users = sheet.findColumn(-1, f -> {
             String lower = f.toLowerCase(Locale.ROOT);
-            return lower.startsWith("user") || lower.startsWith("member");
+            return lower.startsWith("user") || lower.startsWith("member") || lower.startsWith("username");
         });
         if (nations == null && leaders == null && users == null) {
             throw new IllegalArgumentException("Expecting column `nation` or `leader` or `user` or `member`");
@@ -1962,7 +1964,7 @@ public class AdminCommands {
                         errors.add("[Row:" + (i + 2) + "] Nation Leader not found: `" + leaderStr + "`");
                     }
                 }
-            } catch (IllegalArgumentException e) {
+            } catch (Exception e) {
                 errors.add("[Row:" + (i + 2) + "] " + e.getMessage());
             }
             if (user == null)
@@ -2067,8 +2069,17 @@ public class AdminCommands {
                     .append(removeRoles.stream().map(Role::getName).collect(Collectors.joining(","))).append("`\n");
         }
 
+        String errorList = "- " + errors.stream().collect(Collectors.joining("\n- "));
         if (rolesRemoved.isEmpty() && rolesAdded.isEmpty()) {
-            msg.append("\n**Result**: No roles to add or remove").send(RateLimitedSources.COMMAND_RESULT);
+            msg = msg.append("\n**Result**: No roles to add or remove");
+            if (!errors.isEmpty()) {
+                if (errors.size() <= 5) {
+                    msg = msg.append("**Errors**:\n- ").append(errorList).append("\n");
+                } else {
+                    msg = msg.file("errors.txt", errorList);
+                }
+            }
+            msg.send(RateLimitedSources.COMMAND_RESULT);
             return null;
         }
 
@@ -2083,6 +2094,13 @@ public class AdminCommands {
             Member member = entry.getKey();
             for (Role role : entry.getValue()) {
                 info.removeRoleFromMember(member, role);
+            }
+        }
+        if (!errors.isEmpty()) {
+            if (errors.size() <= 5) {
+                body.append("**Errors**:\n- ").append(errorList).append("\n");
+            } else {
+                msg = msg.file("errors.txt", errorList);
             }
         }
         if (!force) {
@@ -3868,6 +3886,53 @@ public class AdminCommands {
     }
 
     // SyncTaxes
+    @Command(desc = "View api key info for an alliance's api keys")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String apiKeyInfo(DiscordDB db, GuildOrAlliance account) {
+        int invalidApiKeys = 0;
+        ApiKeyPool pool;
+        if (account.isGuild()) {
+            List<String> keys = account.asGuild().getOrNull(GuildKey.API_KEY);
+            ApiKeyPool.SimpleBuilder builder = ApiKeyPool.builder();
+            for (String key : keys) {
+                Integer nationId = db.getNationFromApiKey(key);
+                if (nationId != null) {
+                    builder.addKey(nationId, key);
+                } else {
+                    invalidApiKeys++;
+                }
+            }
+            pool = builder.build();
+        } else {
+            pool = account.asAlliance().getApiKeys();
+        }
+
+        StringBuilder msg = new StringBuilder();
+        // resolve key perms
+        List<ApiKeyPool.ApiKey> keys = pool.getKeys();
+        if (keys.isEmpty()) {
+            return "No api keys found for " + account.getMarkdownUrl();
+        }
+        for (ApiKeyPool.ApiKey key : keys) {
+            int nationId = key.getNationId();
+            try {
+                ApiKeyDetails details = new PoliticsAndWarV3(new ApiKeyPool(List.of(key))).getApiKeyStats();
+                int permBits = details.getPermission_bits();
+                Set<ApiKeyPermission> perms = ApiKeyPermission.fromBitmask(permBits);
+                msg.append("Key for nation: ").append(nationId).append(StringMan.join(perms, ",")).append("\n");
+            } catch (Exception e) {
+                msg.append("Error fetching details for nation ").append(nationId).append(": ")
+                        .append(e.getMessage()).append("\n");
+                invalidApiKeys++;
+            }
+        }
+        return msg.toString();
+
+
+
+    }
+
+    // SyncTaxes
     @Command(desc = "Force a fetch and update of taxes from the api", groups = {
             "Alliance to update",
             "Update via sheet tax records",
@@ -3915,7 +3980,7 @@ public class AdminCommands {
             return "Updated " + taxesCount + " records.\n"
                     + "<" + SyncTaxes.updateTurnGraph(db, aaId) + ">";
         }
-        AllianceList aaList = db.getAllianceList();
+        AllianceList aaList = alliance == null ? db.getAllianceList() : alliance.toAllianceList();
         if (aaList == null) {
             return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
         }

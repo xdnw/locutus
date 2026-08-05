@@ -284,6 +284,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "apiKeyInfo","api_key_info");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "importTreatyHistoryLegacy","import_treaty_history");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "validateTreatyHistoryBootstrap","validate_treaty_history");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "resetTreatyHistoryBootstrap","reset_treaty_history");

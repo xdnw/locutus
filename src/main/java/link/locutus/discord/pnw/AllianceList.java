@@ -103,7 +103,7 @@ public class AllianceList {
         List<TaxDeposit> deposits = new ObjectArrayList<>();
         for (DBAlliance alliance : getAlliances(lookup)) {
             List<TaxDeposit> taxRecs = alliance.updateTaxes(startDate, false);
-            if (taxRecs == null) throw new IllegalStateException("Failed to update taxes for " + alliance.getMarkdownUrl() + ". Are you sure the API_KEY set has the scope `" + AlliancePermission.TAX_BRACKETS.name() + "`");
+            if (taxRecs == null) throw new IllegalStateException("Failed to update taxes for " + alliance.getMarkdownUrl() + ". Are you sure the API_KEY set has the scope `" + AlliancePermission.VIEW_BANK.name() + "`");
             deposits.addAll(taxRecs);
         }
         depositSink.accept(deposits);

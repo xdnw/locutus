@@ -1,5 +1,8 @@
 package link.locutus.discord.apiv3.enums;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public enum ApiKeyPermission {
     NATION_VIEW_RESOURCES,
     NATION_DEPOSIT_TO_BANK,
@@ -22,5 +25,9 @@ public enum ApiKeyPermission {
 
     public boolean has(int permission) {
         return (permission & (1 << this.ordinal())) > 0;
+    }
+
+    public static Set<ApiKeyPermission> fromBitmask(int bitmask) {
+        return Set.of(values()).stream().filter(p -> p.has(bitmask)).collect(Collectors.toSet());
     }
 }

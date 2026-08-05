@@ -1599,7 +1599,10 @@ public abstract class DBAlliance implements NationList, NationOrAlliance, GuildO
 
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
 
-        PoliticsAndWarV3 api = getApi(AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = getApi(
+                AlliancePermission.VIEW_BANK,
+                AlliancePermission.TAX_BRACKETS
+        );
         if (api == null) {
             return null;
         }
@@ -1616,16 +1619,21 @@ public abstract class DBAlliance implements NationList, NationOrAlliance, GuildO
 
         List<Bankrec> bankRecs = api.fetchTaxRecsWithInfo(getAlliance_id(), afterDate);
 
-        if (bankRecs == null)
+        if (bankRecs == null) {
+            System.out.println("Fetched null taxes for " + allianceId + " | afterDate: " + afterDate + " | oldestApiFetchDate: " + oldestApiFetchDate);
             return null;
-        if (bankRecs.isEmpty())
+        } if (bankRecs.isEmpty()) {
+            System.out.println("Fetched no taxes for " + allianceId + " | afterDate: " + afterDate + " | oldestApiFetchDate: " + oldestApiFetchDate);
             return new ArrayList<>();
+        }
+        System.out.println("Fetched " + bankRecs.size() + " taxes for " + allianceId + " | afterDate: " + afterDate + " | oldestApiFetchDate: " + oldestApiFetchDate);
 
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(getAlliance_id(),
                 false);
 
         List<TaxDeposit> taxes = new ObjectArrayList<>();
         Map<Integer, TaxRate> internalTaxRateCache = new Int2ObjectOpenHashMap<>();
+        int skipped = 0;
         for (Bankrec bankrec : bankRecs) {
             int nationId = bankrec.getSender_id();
             TaxRate internal = internalTaxRateCache.get(nationId);
@@ -1639,8 +1647,10 @@ public abstract class DBAlliance implements NationList, NationOrAlliance, GuildO
             }
 
             double[] deposit = ResourceType.fromApiV3(bankrec, null);
-            if (ResourceType.isZero(deposit))
+            if (ResourceType.isZero(deposit)) {
+                skipped++;
                 continue;
+            }
 
             int moneyTax = 0;
             int resourceTax = 0;
@@ -1655,6 +1665,9 @@ public abstract class DBAlliance implements NationList, NationOrAlliance, GuildO
                     internal.resources, deposit);
             taxes.add(taxRecord);
 
+        }
+        if (allianceId == 15120 && skipped > 0) {
+            System.out.println("Skipped " + skipped + " zero-value taxes for alliance 15120");
         }
         if (saveTaxes)
             Locutus.imp().getBankDB().addTaxDeposits(taxes);

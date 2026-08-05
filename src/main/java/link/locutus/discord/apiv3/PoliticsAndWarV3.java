@@ -57,6 +57,7 @@ public class PoliticsAndWarV3 {
 
     static {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         GraphQLRequestSerializer.OBJECT_MAPPER.setDateFormat(sdf);
     }
     public static int NATIONS_PER_PAGE = 500;
@@ -1199,7 +1200,7 @@ public class PoliticsAndWarV3 {
             @Override
             public void accept(AllianceResponseProjection projection) {
                 AllianceTaxrecsParametrizedInput filter = new AllianceTaxrecsParametrizedInput();
-                if (afterDate != null) filter.after(new Date(afterDate));
+                if (afterDate != null && afterDate != 0) filter.after(new Date(afterDate));
 
                 BankrecResponseProjection taxProj = new BankrecResponseProjection();
                 taxProj.id();
@@ -1227,7 +1228,9 @@ public class PoliticsAndWarV3 {
                 projection.taxrecs(filter, taxProj);
             }
         });
-        if (alliances != null && alliances.size() == 1) return alliances.get(0).getTaxrecs();
+        if (alliances != null && alliances.size() == 1) {
+            return alliances.get(0).getTaxrecs();
+        }
         return null;
     }
 

@@ -946,6 +946,7 @@ public class DiscordUtil {
     };
 
     private static String normalizeUserLookupArg(String arg) {
+        if (arg.isEmpty()) return "";
         if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
             arg = arg.substring(1, arg.length() - 1);
         }

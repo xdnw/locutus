@@ -346,14 +346,19 @@ public class OffshoreInstance {
     }
 
     public synchronized Map<ResourceType, Double> getDeposits(int allianceId, boolean force) {
-        return getDepositsAA(Collections.singleton(allianceId), force);
+        return getDeposits(allianceId, force, false);
     }
 
-    public synchronized Map<ResourceType, Double> getDepositsAA(Set<Integer> allianceIds, boolean force) {
-        allianceIds = new ObjectLinkedOpenHashSet<>(allianceIds);
-        Set<Integer> allowed = getGuildDB().getCoalition(Coalition.OFFSHORING);
+    public synchronized Map<ResourceType, Double> getDeposits(int allianceId, boolean force, boolean allowDeleted) {
+        return getDepositsAA(Collections.singleton(allianceId), force, allowDeleted);
+    }
 
-        allianceIds.removeIf(f -> !allowed.contains(f));
+    public synchronized Map<ResourceType, Double> getDepositsAA(Set<Integer> allianceIds, boolean force, boolean allowDeleted) {
+        allianceIds = new ObjectLinkedOpenHashSet<>(allianceIds);
+        if (!allowDeleted) {
+            Set<Integer> allowed = getGuildDB().getCoalition(Coalition.OFFSHORING);
+            allianceIds.removeIf(f -> !allowed.contains(f));
+        }
 
         if (allianceIds.isEmpty())
             return new HashMap<>();
@@ -2045,7 +2050,7 @@ public class OffshoreInstance {
                     continue;
                 }
                 allowedAny = true;
-                double[] rss = ResourceType.resourcesToArray(getDepositsAA(Set.of(id), update));
+                double[] rss = ResourceType.resourcesToArray(getDepositsAA(Set.of(id), update, false));
                 update = false;
                 result.put(DBAlliance.getOrCreate(id), rss);
             }
