@@ -1,8 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.BatchEntry;
 import link.locutus.discord.apiv1.enums.city.CityFallbackHeuristic;
@@ -26,6 +24,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitedSources;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
@@ -55,9 +54,9 @@ public class RevenueSheetCommand {
     ) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
 
         long start = System.currentTimeMillis();
-        if (nations.getNations().size() > 100 && (db == null || !db.isValidAlliance())) {
+        if (nations.getNations().size() > 9999) {
             throw new IllegalArgumentException(
-                    "Too many nations: " + nations.getNations().size() + " (max: 100 outside of an alliance guild)"
+                    "Too many nations: " + nations.getNations().size() + " (max: 9999)"
             );
         }
         System.out.println("[RevenueSheet] Starting revenue command: " + ((-start) + (start = System.currentTimeMillis())) + "ms");
@@ -79,20 +78,6 @@ public class RevenueSheetCommand {
 
         List<String> footer = new ArrayList<>();
         int before = nationSet.size();
-
-        if (db != null) {
-            Set<Integer> allianceIds = db.getAllianceIds(false);
-            nationSet.removeIf(n ->
-                    n.getPosition() <= Rank.APPLICANT.id ||
-                            (!allianceIds.isEmpty() && !allianceIds.contains(n.getAlliance_id()))
-            );
-            int removed = before - nationSet.size();
-            if (removed > 0) {
-                footer.add(removed + " nations were removed for not being members of the guild's alliances");
-            }
-            before = nationSet.size();
-        }
-
         nationSet.removeIf(n -> n.getVm_turns() > 0);
         int removedVm = before - nationSet.size();
         if (removedVm > 0) {
